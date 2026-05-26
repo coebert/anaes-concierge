@@ -79,3 +79,24 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
     return { ok: true, id: userId };
   });
+
+/** Admin-only: list staff including sensitive fields (email). */
+export const listStaffForAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: roleRow } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) {
+      throw new Error("Only admins can list staff with emails.");
+    }
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id,email,full_name,grade,training_level,active")
+      .order("full_name");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
