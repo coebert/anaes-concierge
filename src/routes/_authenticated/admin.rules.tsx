@@ -198,9 +198,127 @@ function RulesPage() {
           {save.isPending ? "Saving…" : "Save rules"}
         </Button>
       </div>
+
+      <CustomRulesCard />
     </div>
   );
 }
+
+function CustomRulesCard() {
+  const qc = useQueryClient();
+  const { data: rules } = useQuery({
+    queryKey: ["custom-rota-rules"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("custom_rota_rules")
+        .select("id,scope,staff_id,grade,summary,rule_text,active,created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const staffIds = Array.from(
+    new Set((rules ?? []).filter((r) => r.staff_id).map((r) => r.staff_id as string)),
+  );
+  const { data: staff } = useQuery({
+    queryKey: ["custom-rule-staff-names", staffIds.sort().join(",")],
+    enabled: staffIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,full_name")
+        .in("id", staffIds);
+      if (error) throw error;
+      return new Map((data ?? []).map((p) => [p.id, p.full_name]));
+    },
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("custom_rota_rules").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rule removed");
+      qc.invalidateQueries({ queryKey: ["custom-rota-rules"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggle = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { error } = await supabase
+        .from("custom_rota_rules")
+        .update({ active })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["custom-rota-rules"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Custom rules taught to the AI assistant</CardTitle>
+        <CardDescription>
+          Plain-English working-pattern rules the AI remembers and factors into rota writing.
+          Create new rules by chatting with the assistant (e.g. "Dr Smith always has the morning
+          off after an overnight on-call").
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {(!rules || rules.length === 0) && (
+          <p className="text-sm text-muted-foreground">
+            No custom rules yet. Open the assistant and tell it about a working pattern to
+            remember.
+          </p>
+        )}
+        {rules?.map((r) => (
+          <div
+            key={r.id}
+            className="flex items-start justify-between gap-3 rounded-md border p-3"
+          >
+            <div className="space-y-1">
+              <div className="text-sm font-medium flex items-center gap-2">
+                {r.summary}
+                {!r.active && (
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    inactive
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {r.scope === "staff"
+                  ? `Staff: ${staff?.get(r.staff_id ?? "") ?? r.staff_id}`
+                  : r.scope === "grade"
+                    ? `Grade: ${r.grade}`
+                    : "Department-wide"}
+              </div>
+              <div className="text-xs">{r.rule_text}</div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Switch
+                checked={r.active}
+                onCheckedChange={(v) => toggle.mutate({ id: r.id, active: v })}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => del.mutate(r.id)}
+                disabled={del.isPending}
+              >
+                Remove
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
