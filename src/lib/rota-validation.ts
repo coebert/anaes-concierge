@@ -136,6 +136,17 @@ export function validateAssignment(args: {
     });
   }
 
+  // 2c. LTFT fixed weekly day off — block assignment on contractually-off weekdays.
+  if (profile?.ltft_days_off && profile.ltft_days_off.length) {
+    const dow = dayIndexMonFirst(date);
+    if (profile.ltft_days_off.includes(dow)) {
+      issues.push({
+        severity: "error",
+        message: `LTFT fixed day off (${DAY_LABELS_MON_FIRST[dow]}) — not available.`,
+      });
+    }
+  }
+
   // 3. Trainee assigned 'supervised' must have a supervising consultant on the same list (warning only)
   if (role === "supervised" && profile?.grade !== "trainee") {
     issues.push({
