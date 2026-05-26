@@ -374,6 +374,7 @@ function buildTools(userId: string, isAdminUser: boolean) {
       },
     }),
   };
+  return isAdminUser ? { ...baseTools, ...buildAdminTools() } : baseTools;
 }
 
 const ChatBody = z.object({
