@@ -16,6 +16,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
