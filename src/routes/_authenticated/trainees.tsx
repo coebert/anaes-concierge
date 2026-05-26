@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO } from "@/lib/utils";
+import { todayISO, getSurname } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
   component: TraineesGuard,
