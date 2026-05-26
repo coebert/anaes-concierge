@@ -25,6 +25,7 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   roles?: Array<"admin" | "rota_coordinator" | "staff">;
+  traineeOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -32,12 +33,12 @@ const NAV: NavItem[] = [
   { to: "/calendar", label: "Global calendar", icon: CalendarDays },
   { to: "/me", label: "My rota", icon: CalendarRange },
   { to: "/leave", label: "Leave", icon: ClipboardList },
-  { to: "/trainees", label: "Trainees", icon: GraduationCap },
+  { to: "/trainees", label: "Trainees", icon: GraduationCap, traineeOnly: true },
   { to: "/chat", label: "AI assistant", icon: MessageSquare },
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin", "rota_coordinator"] },
+  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin"] },
   { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
   { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
