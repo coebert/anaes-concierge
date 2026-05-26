@@ -39,7 +39,9 @@ export function AddStaffDialog({
   const createFn = useServerFn(createStaffMember);
 
   const [email, setEmail] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [title, setTitle] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [surname, setSurname] = useState("");
   const [grade, setGrade] = useState<Grade>("");
   const [trainingLevel, setTrainingLevel] = useState<string>("");
   const [role, setRole] = useState<AppRole>("staff");
@@ -47,7 +49,8 @@ export function AddStaffDialog({
   const [password, setPassword] = useState("");
 
   const reset = () => {
-    setEmail(""); setFullName(""); setGrade(""); setTrainingLevel("");
+    setEmail(""); setTitle(""); setFirstName(""); setSurname("");
+    setGrade(""); setTrainingLevel("");
     setRole("staff"); setSendInvite(true); setPassword("");
   };
 
