@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { computeProgress } from "@/lib/competency-utils";
 import { ArrowLeft } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   component: TraineeDetailPage,
