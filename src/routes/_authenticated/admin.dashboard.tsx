@@ -192,7 +192,7 @@ function AdminDashboardPage() {
       const ma = monthAgg.get(monthKey);
       if (!ma) continue;
       ma.total += 1;
-      const isSolo = a.role_on_list === "solo";
+      const isSolo = a.role_on_list === "solo" && !a.supervisor_id;
       if (isSolo) ma.solo += 1;
 
       const pt = perTrainee.get(a.staff_id) ?? { solo: 0, total: 0 };
