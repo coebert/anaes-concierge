@@ -202,9 +202,13 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
     }
 
     let rows: Record<string, unknown>[];
+    let rawPreview = "";
+    let sampleKeys: string[] = [];
     try {
       const text = await fetchReportRaw(url, apiKey);
+      rawPreview = text.slice(0, 500);
       rows = parseRows(text);
+      if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       await supabaseAdmin.from("clwrota_sync_state").upsert({
@@ -214,6 +218,28 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         last_error: msg,
       });
       throw new Error(msg);
+    }
+
+    if (rows.length === 0) {
+      await supabaseAdmin.from("clwrota_sync_state").upsert({
+        id: 1,
+        last_sync_at: new Date().toISOString(),
+        last_status: "staff_no_rows",
+        last_error: `Staff URL returned no recognisable rows. Response preview: ${rawPreview.slice(0, 200)}`,
+        last_pulled_rows: 0,
+      });
+      return {
+        ok: false,
+        message: "Staff URL returned 0 rows. See preview below.",
+        total: 0,
+        matched: 0,
+        updated: 0,
+        inserted: 0,
+        unmatched: [] as string[],
+        errors: [],
+        rawPreview,
+        sampleKeys,
+      };
     }
 
     // Load existing profiles once, indexed by lower-cased email.
