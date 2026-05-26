@@ -324,8 +324,25 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
     }
 
     for (const row of rows) {
+      const first =
+        pick(row, ["first_name", "firstname", "given_name", "forename", "First Name"]) ?? "";
+      const last =
+        pick(row, ["last_name", "lastname", "surname", "family_name", "Last Name"]) ?? "";
+      const composed = `${first} ${last}`.trim();
       const fullName =
-        pick(row, ["full_name", "name", "display_name", "Name"]) ?? "";
+        pick(row, [
+          "rota_name",
+          "person.rota_name",
+          "display_name",
+          "full_name",
+          "fullname",
+          "name",
+          "person_name",
+          "Name",
+          "person.name",
+        ]) ??
+        composed ??
+        "";
       const externalId = pick(row, [
         "local_id",
         "id",
