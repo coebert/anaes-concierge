@@ -464,11 +464,31 @@ function CellDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,role_on_list,supervisor_id")
+        .select("id,staff_id,role_on_list,supervisor_id,locally_modified,clwrota_external_id")
         .eq("theatre_session_id", ts!.id);
       if (error) throw error;
       return data;
     },
+  });
+
+  const updateAssign = useMutation({
+    mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
+      const { error } = await supabase
+        .from("rota_assignments")
+        .update({
+          staff_id: vars.staff_id,
+          role_on_list: vars.role_on_list,
+          locally_modified: true,
+        })
+        .eq("id", vars.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Assignment updated");
+      refetchAssigns();
+      qc.invalidateQueries({ queryKey: ["assignments"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [newStaff, setNewStaff] = useState<string>("");
