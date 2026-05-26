@@ -15,6 +15,7 @@ import {
   testClwRotaConnection,
   runClwRotaSync,
   syncClwRotaStaff,
+  syncClwRotaRota,
 } from "@/lib/clwrota.functions";
 import { formatDateGB } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ function SettingsPage() {
   const testConn = useServerFn(testClwRotaConnection);
   const runSync = useServerFn(runClwRotaSync);
   const syncStaff = useServerFn(syncClwRotaStaff);
+  const syncRota = useServerFn(syncClwRotaRota);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
@@ -118,6 +120,19 @@ function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["staff"] });
       void qc.invalidateQueries({ queryKey: ["profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rotaMut = useMutation({
+    mutationFn: () => syncRota({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(res.message);
+      else toast.warning(res.message);
+      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+      void qc.invalidateQueries({ queryKey: ["rota"] });
+      void qc.invalidateQueries({ queryKey: ["rota-assignments"] });
+      void qc.invalidateQueries({ queryKey: ["theatre-sessions"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -245,8 +260,113 @@ function SettingsPage() {
                 )}
                 Sync staff now
               </Button>
+              <Button
+                variant="default"
+                onClick={() => rotaMut.mutate()}
+                disabled={rotaMut.isPending || !credsOk || !rotaUrl.trim()}
+              >
+                {rotaMut.isPending ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                )}
+                Sync rota now
+              </Button>
             </div>
           </div>
+
+          {rotaMut.data && (
+            <div className="rounded-md border border-border p-3 text-xs space-y-3">
+              <div className="font-medium text-sm">Last rota sync results</div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Stat label="Rows pulled" value={rotaMut.data.total} />
+                <Stat label="Assignments" value={rotaMut.data.assignmentsUpserted} tone="success" />
+                <Stat label="New sessions" value={rotaMut.data.sessionsUpserted} tone="info" />
+                <Stat
+                  label="Skipped / errors"
+                  value={rotaMut.data.skipped.length + rotaMut.data.errors.length}
+                  tone={rotaMut.data.errors.length ? "danger" : undefined}
+                />
+              </div>
+
+              {rotaMut.data.unmatchedStaff.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Unmatched staff ({rotaMut.data.unmatchedStaff.length})
+                  </summary>
+                  <div className="mt-2 break-all text-muted-foreground">
+                    {rotaMut.data.unmatchedStaff.join(", ")}
+                  </div>
+                </details>
+              )}
+
+              {rotaMut.data.unmatchedTheatres.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Unmatched theatres ({rotaMut.data.unmatchedTheatres.length})
+                  </summary>
+                  <div className="mt-2 break-all text-muted-foreground">
+                    {rotaMut.data.unmatchedTheatres.join(", ")}
+                  </div>
+                  <p className="mt-1 italic text-muted-foreground">
+                    Add these in Admin → Theatres so future syncs can link them.
+                  </p>
+                </details>
+              )}
+
+              {rotaMut.data.skipped.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Skipped rows ({rotaMut.data.skipped.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-muted-foreground">
+                    {rotaMut.data.skipped.slice(0, 200).map((s, i) => (
+                      <li key={i}>
+                        {s.label} — <span className="italic">{s.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {rotaMut.data.errors.length > 0 && (
+                <details open className="rounded border border-destructive/40 p-2">
+                  <summary className="cursor-pointer font-medium text-destructive">
+                    Errors ({rotaMut.data.errors.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-destructive">
+                    {rotaMut.data.errors.map((e, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{e.label}</span> — {e.error}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {rotaMut.data.sampleKeys.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Detected CLWRota columns ({rotaMut.data.sampleKeys.length})
+                  </summary>
+                  <div className="mt-2 break-all text-muted-foreground">
+                    {rotaMut.data.sampleKeys.join(", ")}
+                  </div>
+                </details>
+              )}
+
+              {rotaMut.data.rawPreview && rotaMut.data.total === 0 && (
+                <div>
+                  <div className="font-medium text-foreground">Response preview:</div>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/40 p-2 text-[10px]">
+                    {rotaMut.data.rawPreview}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
 
           {staffMut.data && (
             <div className="rounded-md border border-border p-3 text-xs space-y-3">
