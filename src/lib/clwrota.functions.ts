@@ -170,9 +170,16 @@ function parseRows(text: string): Record<string, unknown>[] {
 
 function pick(row: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {
-    const v = row[k];
+    // Support dotted paths like "person.email" → row.person.email
+    const v = k.includes(".")
+      ? k.split(".").reduce<unknown>((acc, part) => {
+          if (acc && typeof acc === "object") return (acc as Record<string, unknown>)[part];
+          return undefined;
+        }, row)
+      : row[k];
     if (typeof v === "string" && v.trim()) return v.trim();
     if (typeof v === "number") return String(v);
+    if (typeof v === "boolean") return v ? "true" : "false";
   }
   return null;
 }
