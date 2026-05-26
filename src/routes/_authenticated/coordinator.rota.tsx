@@ -798,6 +798,13 @@ function CellDialog({
                     <SelectContent>
                       {staff
                         .filter((s) => !assigns?.some((a) => a.staff_id === s.id))
+                        .sort((a, b) => {
+                          const aSurname = getSurname(a.full_name).toLowerCase();
+                          const bSurname = getSurname(b.full_name).toLowerCase();
+                          if (aSurname < bSurname) return 1;
+                          if (aSurname > bSurname) return -1;
+                          return 0;
+                        })
                         .map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.full_name} {s.grade ? `(${s.grade})` : ""}
