@@ -142,6 +142,45 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_rota_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          grade: string | null
+          id: string
+          rule_text: string
+          scope: Database["public"]["Enums"]["custom_rule_scope"]
+          staff_id: string | null
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          grade?: string | null
+          id?: string
+          rule_text: string
+          scope?: Database["public"]["Enums"]["custom_rule_scope"]
+          staff_id?: string | null
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          grade?: string | null
+          id?: string
+          rule_text?: string
+          scope?: Database["public"]["Enums"]["custom_rule_scope"]
+          staff_id?: string | null
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_inbound_log: {
         Row: {
           body_text: string | null
@@ -798,6 +837,7 @@ export type Database = {
       access_request_status: "pending" | "approved" | "declined"
       app_role: "admin" | "rota_coordinator" | "staff"
       chat_role: "user" | "assistant" | "system"
+      custom_rule_scope: "staff" | "grade" | "department"
       duty_type:
         | "theatre"
         | "consultant_in_charge"
@@ -959,6 +999,7 @@ export const Constants = {
       access_request_status: ["pending", "approved", "declined"],
       app_role: ["admin", "rota_coordinator", "staff"],
       chat_role: ["user", "assistant", "system"],
+      custom_rule_scope: ["staff", "grade", "department"],
       duty_type: [
         "theatre",
         "consultant_in_charge",
