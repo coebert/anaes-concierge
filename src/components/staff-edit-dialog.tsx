@@ -107,6 +107,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
     start_date: "",
     rotation_end_date: "",
     active: true,
+    ltft_days_off: [] as number[],
   });
 
   useEffect(() => {
@@ -119,6 +120,9 @@ function ProfileTab({ staffId }: { staffId: string }) {
         start_date: data.start_date ?? "",
         rotation_end_date: data.rotation_end_date ?? "",
         active: data.active,
+        ltft_days_off: Array.isArray((data as { ltft_days_off?: number[] }).ltft_days_off)
+          ? ((data as { ltft_days_off?: number[] }).ltft_days_off ?? [])
+          : [],
       });
     }
   }, [data]);
@@ -135,6 +139,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
           start_date: form.start_date || null,
           rotation_end_date: form.grade === "trainee" ? form.rotation_end_date || null : null,
           active: form.active,
+          ltft_days_off: [...form.ltft_days_off].sort((a, b) => a - b),
         })
         .eq("id", staffId);
       if (error) throw error;
@@ -143,6 +148,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
       toast.success("Profile saved");
       qc.invalidateQueries({ queryKey: ["profiles"] });
       qc.invalidateQueries({ queryKey: ["profile-edit", staffId] });
+      qc.invalidateQueries({ queryKey: ["staff-active"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
