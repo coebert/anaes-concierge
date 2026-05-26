@@ -763,14 +763,14 @@ function CellDialog({
                     <Plus className="mr-1 h-4 w-4" />Assign
                   </Button>
                 </div>
-                {newStaff && candidateIssues.length > 0 && (
+                {newStaff && allCandidateIssues.length > 0 && (
                   <div className="rounded-md border bg-muted/30 p-2 space-y-1">
                     <div className="text-xs font-medium flex items-center gap-1.5">
-                      <SeverityIcon severity={worstSeverity(candidateIssues) ?? "info"} />
+                      <SeverityIcon severity={worstSeverity(allCandidateIssues) ?? "info"} />
                       Validation
                     </div>
                     <ul className="space-y-0.5 text-[11px]">
-                      {candidateIssues.map((i, idx) => (
+                      {allCandidateIssues.map((i, idx) => (
                         <li key={idx} className={cn(
                           "flex items-start gap-1.5",
                           i.severity === "error" && "text-destructive",
