@@ -197,6 +197,18 @@ function AdminDashboardPage() {
     const perMonthTrainee = new Map<string, Map<string, { solo: number; total: number }>>();
     soloMonthly.months.forEach((m) => perMonthTrainee.set(m, new Map()));
 
+    const debugRows: Array<{
+      trainee: string | null;
+      date: string;
+      session: string;
+      role: string;
+      theatre_session_id: string | null;
+      hasConsultant: boolean;
+      supervisor_id: string | null;
+      supervisorIsConsultant: boolean;
+      isSolo: boolean;
+    }> = [];
+
     for (const a of soloMonthly.assignments) {
       const t = traineeIds.get(a.staff_id);
       if (!t || !inBucket(t.bucket)) continue;
@@ -213,6 +225,18 @@ function AdminDashboardPage() {
         a.role_on_list === "solo";
       if (isSolo) ma.solo += 1;
 
+      debugRows.push({
+        trainee: t.full_name,
+        date: a.session_date,
+        session: a.session,
+        role: a.role_on_list,
+        theatre_session_id: a.theatre_session_id ?? null,
+        hasConsultant,
+        supervisor_id: a.supervisor_id ?? null,
+        supervisorIsConsultant,
+        isSolo,
+      });
+
       const pt = perTrainee.get(a.staff_id) ?? { solo: 0, total: 0 };
       pt.total += 1;
       if (isSolo) pt.solo += 1;
@@ -224,6 +248,7 @@ function AdminDashboardPage() {
       if (isSolo) pmtRow.solo += 1;
       pmt.set(a.staff_id, pmtRow);
     }
+
 
     const chart = soloMonthly.months.map((m) => {
       const ma = monthAgg.get(m)!;
