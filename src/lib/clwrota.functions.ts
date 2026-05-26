@@ -120,6 +120,180 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+async function fetchReportRaw(url: string, apiKey: string): Promise<string> {
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { "X-Auth": apiKey, Accept: "application/json, text/csv;q=0.9" },
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`CLWRota report failed: ${res.status} ${text.slice(0, 200)}`);
+  }
+  return text;
+}
+
+function parseRows(text: string): Record<string, unknown>[] {
+  // Try JSON first.
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
+    if (Array.isArray((parsed as { data?: unknown })?.data))
+      return (parsed as { data: Record<string, unknown>[] }).data;
+    if (Array.isArray((parsed as { rows?: unknown })?.rows))
+      return (parsed as { rows: Record<string, unknown>[] }).rows;
+    if (Array.isArray((parsed as { results?: unknown })?.results))
+      return (parsed as { results: Record<string, unknown>[] }).results;
+    return [];
+  } catch {
+    // CSV fallback — naive parse (no quoted commas). Good enough for Rotamap reports.
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map((h) => h.trim());
+    return lines.slice(1).map((line) => {
+      const cells = line.split(",");
+      const obj: Record<string, unknown> = {};
+      headers.forEach((h, i) => {
+        obj[h] = cells[i]?.trim() ?? "";
+      });
+      return obj;
+    });
+  }
+}
+
+function pick(row: Record<string, unknown>, keys: string[]): string | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number") return String(v);
+  }
+  return null;
+}
+
+/**
+ * Pull staff from the configured CLWRota staff report URL and update existing
+ * profiles in-place (matched by email, case-insensitive). New people that
+ * aren't already in the app are listed as unmatched — they need to be invited
+ * separately to get an auth login before they can be linked.
+ */
+export const syncClwRotaStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { apiKey } = getEnv();
+
+    const { data: settings, error: loadErr } = await supabaseAdmin
+      .from("clwrota_sync_state")
+      .select("staff_report_url")
+      .eq("id", 1)
+      .maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+
+    const url = settings?.staff_report_url;
+    if (!url) {
+      return { ok: false, message: "No staff report URL configured.", matched: 0, updated: 0, unmatched: [] as string[], total: 0 };
+    }
+
+    let rows: Record<string, unknown>[];
+    try {
+      const text = await fetchReportRaw(url, apiKey);
+      rows = parseRows(text);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await supabaseAdmin.from("clwrota_sync_state").upsert({
+        id: 1,
+        last_sync_at: new Date().toISOString(),
+        last_status: "staff_fetch_failed",
+        last_error: msg,
+      });
+      throw new Error(msg);
+    }
+
+    // Load existing profiles once, indexed by lower-cased email.
+    const { data: profiles, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email");
+    if (profErr) throw new Error(profErr.message);
+    const byEmail = new Map<string, string>();
+    for (const p of profiles ?? []) {
+      if (p.email) byEmail.set(p.email.toLowerCase(), p.id);
+    }
+
+    let matched = 0;
+    let updated = 0;
+    const unmatched: string[] = [];
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const email = pick(row, ["email", "email_address", "Email"]);
+      const fullName =
+        pick(row, ["full_name", "name", "display_name", "Name"]) ?? "";
+      const externalId = pick(row, [
+        "local_id",
+        "id",
+        "person_id",
+        "external_id",
+        "Local ID",
+      ]);
+      const gmc = pick(row, ["gmc_number", "gmc", "GMC", "gmc_no"]);
+      const startDate = pick(row, ["start_date", "employment_start", "Start Date"]);
+      const endDate = pick(row, ["end_date", "employment_end", "End Date"]);
+
+      if (!email) {
+        if (fullName) unmatched.push(`${fullName} (no email)`);
+        continue;
+      }
+
+      const profileId = byEmail.get(email.toLowerCase());
+      if (!profileId) {
+        unmatched.push(`${fullName || email} <${email}>`);
+        continue;
+      }
+
+      matched++;
+      const patch: Record<string, unknown> = {};
+      if (fullName) patch.full_name = fullName;
+      if (externalId) patch.clwrota_external_id = externalId;
+      if (gmc) patch.gmc_number = gmc;
+      if (startDate) patch.start_date = startDate;
+      // Mark inactive if an end date in the past was supplied.
+      if (endDate) {
+        const ts = Date.parse(endDate);
+        if (!Number.isNaN(ts) && ts < Date.now()) patch.active = false;
+      }
+
+      if (Object.keys(patch).length === 0) continue;
+
+      const { error: upErr } = await supabaseAdmin
+        .from("profiles")
+        .update(patch)
+        .eq("id", profileId);
+      if (upErr) {
+        errors.push(`${email}: ${upErr.message}`);
+      } else {
+        updated++;
+      }
+    }
+
+    const summary = `Staff sync: ${rows.length} rows · ${matched} matched · ${updated} updated · ${unmatched.length} unmatched`;
+    await supabaseAdmin.from("clwrota_sync_state").upsert({
+      id: 1,
+      last_sync_at: new Date().toISOString(),
+      last_status: errors.length ? "staff_partial" : "staff_success",
+      last_error: errors.length ? errors.slice(0, 5).join("; ") : null,
+      last_pulled_rows: rows.length,
+    });
+
+    return {
+      ok: errors.length === 0,
+      message: summary,
+      total: rows.length,
+      matched,
+      updated,
+      unmatched,
+      errors,
+    };
+  });
+
 async function fetchReport(url: string, apiKey: string) {
   const res = await fetch(url, {
     method: "GET",
