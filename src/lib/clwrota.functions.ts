@@ -737,6 +737,65 @@ function normaliseRole(
   return "solo";
 }
 
+type ResolvedDutyType =
+  | "theatre"
+  | "consultant_in_charge"
+  | "obstetrics"
+  | "obstetrics_2nd"
+  | "icu_trainee"
+  | "icu_ct2_plus"
+  | "icu_consultant_oncall"
+  | "general_consultant_oncall"
+  | "registrar_oncall"
+  | "sho_oncall";
+
+/**
+ * Classify a CLWRota row as a non-theatre duty (on-call, obstetrics, ICU,
+ * consultant in charge) based on the free-text label fields plus the staff
+ * member's grade/training level. Returns "theatre" when nothing matches —
+ * the row stays as a theatre list assignment.
+ */
+function classifyDutyType(
+  labels: Array<string | null | undefined>,
+  grade: string | null | undefined,
+  trainingLevel: string | null | undefined,
+): ResolvedDutyType {
+  const text = labels.filter(Boolean).join(" ").toLowerCase();
+  if (!text) return "theatre";
+
+  const isJuniorTrainee = (() => {
+    const tl = (trainingLevel ?? "").toUpperCase();
+    return tl === "CT1" || tl === "CT2" || tl === "ACCS1" || tl === "ACCS2" || tl === "ACCS3";
+  })();
+
+  if (text.includes("consultant in charge") || /\bcic\b/.test(text)) return "consultant_in_charge";
+
+  if (text.includes("obstet")) {
+    if (/\b(2nd|second)\b/.test(text)) return "obstetrics_2nd";
+    return "obstetrics";
+  }
+
+  const mentionsIcu =
+    text.includes("icu") || text.includes("intensive") || text.includes("critical care");
+  if (mentionsIcu) {
+    if (grade === "consultant") return "icu_consultant_oncall";
+    if (grade === "trainee") return isJuniorTrainee ? "icu_trainee" : "icu_ct2_plus";
+    return "icu_ct2_plus"; // SAS or unknown — closest fit
+  }
+
+  const mentionsOnCall =
+    text.includes("on call") || text.includes("on-call") || text.includes("oncall");
+  if (mentionsOnCall) {
+    if (grade === "consultant") return "general_consultant_oncall";
+    if (grade === "sas") return "registrar_oncall";
+    if (grade === "trainee") return isJuniorTrainee ? "sho_oncall" : "registrar_oncall";
+    return "registrar_oncall";
+  }
+
+  return "theatre";
+}
+
+
 /**
  * Pull rota assignments from the configured CLWRota rota report URL and
  * write them to `theatre_sessions` + `rota_assignments`. Matches staff by
