@@ -462,7 +462,7 @@ function CellDialog({
                   <Select value={newRole} onValueChange={(v) => setNewRole(v as RotaRole)}>
                     <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(["solo", "supervised", "supervising", "on_call", "non_clinical", "teaching"] as RotaRole[]).map((r) => (
+                      {(["solo", "supervised", "supervising", "on_call", "non_clinical", "teaching", "admin_session"] as RotaRole[]).map((r) => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
                       ))}
                     </SelectContent>
