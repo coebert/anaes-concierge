@@ -131,9 +131,9 @@ function LoginPage() {
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            New here?{" "}
+            Need access?{" "}
             <Link to="/signup" className="font-medium text-foreground hover:underline">
-              Create an account
+              Request access
             </Link>
           </p>
         </CardContent>

@@ -54,28 +54,28 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
     if (!userId) return { error: "User was created but no id was returned." };
 
-    // Update profile fields the trigger doesn't set.
+    // Ensure profile exists (the trigger only auto-creates profiles for pre-approved
+    // access requests; admin-invited users bypass that gate so we upsert here).
     const profilePatch: {
+      id: string;
+      email: string;
       full_name: string;
       grade?: "consultant" | "sas" | "trainee" | null;
       training_level?: string | null;
-    } = { full_name: data.full_name };
+    } = { id: userId, email: data.email, full_name: data.full_name };
     if (data.grade !== undefined) profilePatch.grade = data.grade;
     if (data.training_level !== undefined) profilePatch.training_level = data.training_level;
 
     const { error: profErr } = await supabaseAdmin
       .from("profiles")
-      .update(profilePatch)
-      .eq("id", userId);
+      .upsert(profilePatch, { onConflict: "id" });
     if (profErr) return { error: `User created, but profile update failed: ${profErr.message}` };
 
-    // Upgrade role if requested (trigger inserts 'staff' by default).
-    if (data.role !== "staff") {
-      const { error: roleErr } = await supabaseAdmin
-        .from("user_roles")
-        .insert({ user_id: userId, role: data.role });
-      if (roleErr) return { error: `User created, but role assignment failed: ${roleErr.message}` };
-    }
+    // Ensure the requested role exists (trigger may not have inserted it for admin invites).
+    const { error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: userId, role: data.role }, { onConflict: "user_id,role" });
+    if (roleErr) return { error: `User created, but role assignment failed: ${roleErr.message}` };
 
     return { ok: true, id: userId };
   });
