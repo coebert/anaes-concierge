@@ -91,7 +91,10 @@ function AdminDashboard() {
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Configuration
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class
+="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ActionCard to="/admin/dashboard" icon={Grid3x3}
+            title="Rota dashboard" body="Daily overview: assignments, leave and availability by grade." />
           <ActionCard to="/coordinator/rota" icon={CalendarRange}
             title="Rota editor" body="Assign staff to theatre sessions with live rule validation." />
           <ActionCard to="/coordinator/leave" icon={ClipboardList}
