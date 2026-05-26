@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
-import { cn, parseDateLocal, getSurname } from "@/lib/utils";
+import { cn, parseDateLocal, getSurname, toISODateLocal } from "@/lib/utils";
 
 type SessionHalf = "am" | "pm";
 
