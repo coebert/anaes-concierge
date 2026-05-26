@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          email: string
+          full_name: string
+          id: string
+          message: string | null
+          status: Database["public"]["Enums"]["access_request_status"]
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          email: string
+          full_name: string
+          id?: string
+          message?: string | null
+          status?: Database["public"]["Enums"]["access_request_status"]
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          message?: string | null
+          status?: Database["public"]["Enums"]["access_request_status"]
+        }
+        Relationships: []
+      }
       ai_conversations: {
         Row: {
           created_at: string
@@ -759,6 +795,7 @@ export type Database = {
       }
     }
     Enums: {
+      access_request_status: "pending" | "approved" | "declined"
       app_role: "admin" | "rota_coordinator" | "staff"
       chat_role: "user" | "assistant" | "system"
       duty_type:
@@ -919,6 +956,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_request_status: ["pending", "approved", "declined"],
       app_role: ["admin", "rota_coordinator", "staff"],
       chat_role: ["user", "assistant", "system"],
       duty_type: [
