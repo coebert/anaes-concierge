@@ -17,6 +17,39 @@ export const Route = createFileRoute("/_authenticated/admin/job-plans")({
   component: JobPlansPage,
 });
 
+const TITLE_TOKENS = new Set([
+  "dr", "dr.", "mr", "mr.", "mrs", "mrs.", "ms", "ms.", "miss",
+  "prof", "prof.", "professor", "mx", "mx.", "sir", "dame",
+]);
+
+function splitName(full: string | null | undefined): {
+  title: string;
+  firstName: string;
+  surname: string;
+} {
+  const raw = (full ?? "").trim();
+  if (!raw) return { title: "", firstName: "", surname: "" };
+  // Support "Surname, First" format
+  if (raw.includes(",")) {
+    const [last, rest] = raw.split(",", 2).map((s) => s.trim());
+    const parts = (rest ?? "").split(/\s+/).filter(Boolean);
+    let title = "";
+    if (parts.length && TITLE_TOKENS.has(parts[0].toLowerCase())) {
+      title = parts.shift()!;
+    }
+    return { title, firstName: parts.join(" "), surname: last };
+  }
+  const parts = raw.split(/\s+/);
+  let title = "";
+  if (parts.length > 1 && TITLE_TOKENS.has(parts[0].toLowerCase())) {
+    title = parts.shift()!;
+  }
+  if (parts.length === 0) return { title, firstName: "", surname: "" };
+  if (parts.length === 1) return { title, firstName: "", surname: parts[0] };
+  const surname = parts.pop()!;
+  return { title, firstName: parts.join(" "), surname };
+}
+
 function JobPlansPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -49,9 +82,13 @@ function JobPlansPage() {
 
       return (profiles ?? []).map((p) => ({
         ...p,
+        ...splitName(p.full_name),
         jp: latestJp.get(p.id) ?? null,
         fixed: fixedCount.get(p.id) ?? 0,
-      }));
+      })).sort((a, b) =>
+        (a.surname || a.email || "").localeCompare(b.surname || b.email || "") ||
+        (a.firstName || "").localeCompare(b.firstName || ""),
+      );
     },
   });
 
@@ -61,7 +98,10 @@ function JobPlansPage() {
     return (
       p.full_name?.toLowerCase().includes(q) ||
       p.email?.toLowerCase().includes(q) ||
-      p.grade?.toLowerCase().includes(q)
+      p.grade?.toLowerCase().includes(q) ||
+      p.surname?.toLowerCase().includes(q) ||
+      p.firstName?.toLowerCase().includes(q) ||
+      p.title?.toLowerCase().includes(q)
     );
   });
 
@@ -95,7 +135,9 @@ function JobPlansPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Surname</TableHead>
+                  <TableHead>First name</TableHead>
                   <TableHead>Grade</TableHead>
                   <TableHead className="text-right">Total PAs</TableHead>
                   <TableHead className="text-right">DCC</TableHead>
@@ -109,8 +151,14 @@ function JobPlansPage() {
               <TableBody>
                 {filtered.map((p) => (
                   <TableRow key={p.id}>
+                    <TableCell className="text-muted-foreground">
+                      {p.title || "—"}
+                    </TableCell>
                     <TableCell className="font-medium">
-                      {p.full_name || p.email}
+                      {p.surname || (!p.firstName ? p.email : "—")}
+                    </TableCell>
+                    <TableCell>
+                      {p.firstName || "—"}
                       {p.training_level && (
                         <Badge variant="secondary" className="ml-2">{p.training_level}</Badge>
                       )}
