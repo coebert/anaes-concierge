@@ -11,44 +11,11 @@ import {
 } from "@/components/ui/table";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { Pencil } from "lucide-react";
-import { formatDateGB } from "@/lib/utils";
+import { formatDateGB, splitName } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/job-plans")({
   component: JobPlansPage,
 });
-
-const TITLE_TOKENS = new Set([
-  "dr", "dr.", "mr", "mr.", "mrs", "mrs.", "ms", "ms.", "miss",
-  "prof", "prof.", "professor", "mx", "mx.", "sir", "dame",
-]);
-
-function splitName(full: string | null | undefined): {
-  title: string;
-  firstName: string;
-  surname: string;
-} {
-  const raw = (full ?? "").trim();
-  if (!raw) return { title: "", firstName: "", surname: "" };
-  // Support "Surname, First" format
-  if (raw.includes(",")) {
-    const [last, rest] = raw.split(",", 2).map((s) => s.trim());
-    const parts = (rest ?? "").split(/\s+/).filter(Boolean);
-    let title = "";
-    if (parts.length && TITLE_TOKENS.has(parts[0].toLowerCase())) {
-      title = parts.shift()!;
-    }
-    return { title, firstName: parts.join(" "), surname: last };
-  }
-  const parts = raw.split(/\s+/);
-  let title = "";
-  if (parts.length > 1 && TITLE_TOKENS.has(parts[0].toLowerCase())) {
-    title = parts.shift()!;
-  }
-  if (parts.length === 0) return { title, firstName: "", surname: "" };
-  if (parts.length === 1) return { title, firstName: "", surname: parts[0] };
-  const surname = parts.pop()!;
-  return { title, firstName: parts.join(" "), surname };
-}
 
 function JobPlansPage() {
   const [editingId, setEditingId] = useState<string | null>(null);

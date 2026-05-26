@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { composeName } from "@/lib/utils";
 import { toast } from "sonner";
 import { createStaffMember } from "@/lib/admin-staff.functions";
 
@@ -38,7 +39,9 @@ export function AddStaffDialog({
   const createFn = useServerFn(createStaffMember);
 
   const [email, setEmail] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [title, setTitle] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [surname, setSurname] = useState("");
   const [grade, setGrade] = useState<Grade>("");
   const [trainingLevel, setTrainingLevel] = useState<string>("");
   const [role, setRole] = useState<AppRole>("staff");
@@ -46,7 +49,8 @@ export function AddStaffDialog({
   const [password, setPassword] = useState("");
 
   const reset = () => {
-    setEmail(""); setFullName(""); setGrade(""); setTrainingLevel("");
+    setEmail(""); setTitle(""); setFirstName(""); setSurname("");
+    setGrade(""); setTrainingLevel("");
     setRole("staff"); setSendInvite(true); setPassword("");
   };
 
@@ -55,7 +59,7 @@ export function AddStaffDialog({
       const res = await createFn({
         data: {
           email: email.trim(),
-          full_name: fullName.trim(),
+          full_name: composeName({ title, firstName, surname }),
           grade: grade || null,
           training_level: grade === "trainee" && trainingLevel ? (trainingLevel as typeof TRAINING_LEVELS[number]) : null,
           role,
@@ -77,7 +81,7 @@ export function AddStaffDialog({
 
   const canSubmit =
     email.trim().length > 0 &&
-    fullName.trim().length > 0 &&
+    surname.trim().length > 0 &&
     (sendInvite || password.length >= 8);
 
   return (
@@ -104,15 +108,37 @@ export function AddStaffDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="add-staff-name">Full name</Label>
-            <Input
-              id="add-staff-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Dr Jane Smith"
-              maxLength={200}
-            />
+          <div className="grid grid-cols-[6rem_1fr_1fr] gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-title">Title</Label>
+              <Input
+                id="add-staff-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Dr"
+                maxLength={20}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-surname">Surname</Label>
+              <Input
+                id="add-staff-surname"
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+                placeholder="Smith"
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-first">First name</Label>
+              <Input
+                id="add-staff-first"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Jane"
+                maxLength={100}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
