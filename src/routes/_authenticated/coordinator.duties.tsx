@@ -35,16 +35,17 @@ interface DutyConfig {
   description?: string;
 }
 
+const ALL_SLOTS: Slot[] = ["am", "pm", "eve", "night"];
 const DUTY_CONFIG: DutyConfig[] = [
   { type: "consultant_in_charge", label: "Consultant in charge", slots: ["am", "pm"] },
-  { type: "obstetrics", label: "Obstetrics", slots: ["am", "pm"] },
-  { type: "obstetrics_2nd", label: "2nd Obstetric competent anaesthetist", slots: ["am", "pm"] },
-  { type: "icu_trainee", label: "ICU trainees", slots: ["am", "pm"] },
-  { type: "icu_ct2_plus", label: "ICU CT2 and above", slots: ["am", "pm"] },
-  { type: "icu_consultant_oncall", label: "ICU consultant on-call", slots: ["am", "pm", "eve", "night"] },
-  { type: "general_consultant_oncall", label: "General consultant on-call", slots: ["eve", "night"] },
-  { type: "registrar_oncall", label: "Registrar on-call", slots: ["eve", "night"] },
-  { type: "sho_oncall", label: "SHO on-call", slots: ["eve", "night"] },
+  { type: "obstetrics", label: "Obstetrics", slots: ALL_SLOTS },
+  { type: "obstetrics_2nd", label: "2nd Obstetric competent anaesthetist", slots: ALL_SLOTS },
+  { type: "icu_trainee", label: "ICU trainees", slots: ALL_SLOTS },
+  { type: "icu_ct2_plus", label: "ICU CT2 and above", slots: ALL_SLOTS },
+  { type: "icu_consultant_oncall", label: "ICU consultant on-call", slots: ALL_SLOTS },
+  { type: "general_consultant_oncall", label: "General consultant on-call", slots: ALL_SLOTS },
+  { type: "registrar_oncall", label: "Registrar on-call", slots: ALL_SLOTS },
+  { type: "sho_oncall", label: "SHO on-call", slots: ALL_SLOTS },
 ];
 
 const SLOT_LABEL: Record<Slot, string> = { am: "AM", pm: "PM", eve: "Eve", night: "Night" };
