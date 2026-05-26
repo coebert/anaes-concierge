@@ -67,16 +67,6 @@ function fmt(d: Date) {
 }
 
 function RotaGridPage() {
-  const { hasRole, loading: authLoading } = useAuth();
-  if (!authLoading && !hasRole("admin")) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">
-          Only administrators can edit the rota.
-        </CardContent>
-      </Card>
-    );
-  }
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const startIso = iso(days[0]);
