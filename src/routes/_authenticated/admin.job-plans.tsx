@@ -49,9 +49,13 @@ function JobPlansPage() {
 
       return (profiles ?? []).map((p) => ({
         ...p,
+        ...splitName(p.full_name),
         jp: latestJp.get(p.id) ?? null,
         fixed: fixedCount.get(p.id) ?? 0,
-      }));
+      })).sort((a, b) =>
+        (a.surname || a.email || "").localeCompare(b.surname || b.email || "") ||
+        (a.firstName || "").localeCompare(b.firstName || ""),
+      );
     },
   });
 
@@ -61,7 +65,10 @@ function JobPlansPage() {
     return (
       p.full_name?.toLowerCase().includes(q) ||
       p.email?.toLowerCase().includes(q) ||
-      p.grade?.toLowerCase().includes(q)
+      p.grade?.toLowerCase().includes(q) ||
+      p.surname?.toLowerCase().includes(q) ||
+      p.firstName?.toLowerCase().includes(q) ||
+      p.title?.toLowerCase().includes(q)
     );
   });
 
