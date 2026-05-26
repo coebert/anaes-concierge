@@ -55,6 +55,7 @@ export interface Profile {
   full_name: string;
   grade: "consultant" | "sas" | "trainee" | null;
   training_level: string | null;
+  rotation_end_date?: string | null;
 }
 
 const DCC_ROLES: RotaRole[] = ["solo", "supervised", "supervising", "on_call"];
@@ -120,6 +121,14 @@ export function validateAssignment(args: {
   );
   if (onLeave) {
     issues.push({ severity: "error", message: "Approved leave covers this date." });
+  }
+
+  // 2b. Trainee rotation end date — block any assignment after their last day at Salisbury.
+  if (profile?.grade === "trainee" && profile.rotation_end_date && date > profile.rotation_end_date) {
+    issues.push({
+      severity: "error",
+      message: `After trainee's rotation end date (${profile.rotation_end_date}).`,
+    });
   }
 
   // 3. Trainee assigned 'supervised' must have a supervising consultant on the same list (warning only)
