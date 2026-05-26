@@ -31,12 +31,12 @@ function TraineeDetailPage() {
       ] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,full_name,email,training_level,grade")
+          .select("id,full_name,email,training_level,grade,start_date")
           .eq("id", staffId)
           .single(),
         supabase
           .from("rota_assignments")
-          .select("id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session")
+          .select("id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type")
           .eq("staff_id", staffId)
           .lte("session_date", today)
           .order("session_date", { ascending: false }),
