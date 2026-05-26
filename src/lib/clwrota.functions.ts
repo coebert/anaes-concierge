@@ -354,6 +354,49 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       const startDate = pick(row, ["start_date", "employment_start", "Start Date"]);
       const endDate = pick(row, ["end_date", "employment_end", "End Date"]);
 
+      // Grade / role / training-level extraction. Rotamap exposes role text
+      // under various keys; keep the raw text as training_level and bucket it
+      // into our `grade` enum (consultant | sas | trainee).
+      const roleRaw =
+        pick(row, [
+          "grade",
+          "Grade",
+          "role",
+          "Role",
+          "job_title",
+          "jobtitle",
+          "JobTitle",
+          "title",
+          "Title",
+          "position",
+          "Position",
+          "post",
+          "Post",
+          "rota_role",
+          "person.grade",
+          "person.role",
+          "person.job_title",
+          "person.title",
+          "person.post",
+        ]) ?? "";
+      const roleLower = roleRaw.toLowerCase();
+      let derivedGrade: "consultant" | "sas" | "trainee" | null = null;
+      if (roleLower) {
+        if (/consultant|attending/.test(roleLower)) derivedGrade = "consultant";
+        else if (
+          /\b(sas|specialty\s*doctor|specialist\s*doctor|associate\s*specialist|staff\s*grade)\b/.test(
+            roleLower,
+          )
+        )
+          derivedGrade = "sas";
+        else if (
+          /trainee|registrar|resident|fellow|\bst\d+\b|\bct\d+\b|\bspr\b|\bsho\b|\bfy?\d\b|core|foundation/.test(
+            roleLower,
+          )
+        )
+          derivedGrade = "trainee";
+      }
+
       const { field: emailField, value: emailRaw } = pickRawEmail(row);
       if (emailField) detectedEmailFields.add(emailField);
       const emailTrimmed = emailRaw.trim();
