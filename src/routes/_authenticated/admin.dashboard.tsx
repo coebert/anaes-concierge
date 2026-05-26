@@ -141,6 +141,7 @@ function AdminDashboardPage() {
           .select("staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id")
           .eq("duty_type", "theatre")
           .in("session", ["am", "pm"])
+          .not("theatre_session_id", "is", null)
           .gte("session_date", startISO)
           .lte("session_date", endISO),
       ]);
