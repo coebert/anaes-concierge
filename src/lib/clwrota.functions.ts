@@ -748,6 +748,10 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
+    return performRotaSync();
+  });
+
+export async function performRotaSync() {
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin
