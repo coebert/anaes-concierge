@@ -19,6 +19,7 @@ import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
@@ -73,6 +74,12 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCoordinatorRotaRoute =
+  AuthenticatedCoordinatorRotaRouteImport.update({
+    id: '/coordinator/rota',
+    path: '/coordinator/rota',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCoordinatorLeaveRoute =
   AuthenticatedCoordinatorLeaveRouteImport.update({
     id: '/coordinator/leave',
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
+  '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -126,6 +134,7 @@ export interface FileRoutesByTo {
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
+  '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +152,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
+  '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/admin/staff'
     | '/admin/theatres'
     | '/coordinator/leave'
+    | '/coordinator/rota'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/admin/staff'
     | '/admin/theatres'
     | '/coordinator/leave'
+    | '/coordinator/rota'
   id:
     | '__root__'
     | '/_authenticated'
@@ -191,6 +203,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/staff'
     | '/_authenticated/admin/theatres'
     | '/_authenticated/coordinator/leave'
+    | '/_authenticated/coordinator/rota'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/coordinator/rota': {
+      id: '/_authenticated/coordinator/rota'
+      path: '/coordinator/rota'
+      fullPath: '/coordinator/rota'
+      preLoaderRoute: typeof AuthenticatedCoordinatorRotaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/coordinator/leave': {
       id: '/_authenticated/coordinator/leave'
       path: '/coordinator/leave'
@@ -314,6 +334,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
+  AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -327,6 +348,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
+  AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
