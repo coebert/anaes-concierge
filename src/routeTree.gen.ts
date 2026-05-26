@@ -20,9 +20,11 @@ import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
+import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -82,6 +84,11 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedChatRoute,
+} as any)
 const AuthenticatedTraineesStaffIdRoute =
   AuthenticatedTraineesStaffIdRouteImport.update({
     id: '/$staffId',
@@ -99,6 +106,12 @@ const AuthenticatedCoordinatorLeaveRoute =
     id: '/coordinator/leave',
     path: '/coordinator/leave',
     getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedChatConversationIdRoute =
+  AuthenticatedChatConversationIdRouteImport.update({
+    id: '/$conversationId',
+    path: '/$conversationId',
+    getParentRoute: () => AuthenticatedChatRoute,
   } as any)
 const AuthenticatedAdminTheatresRoute =
   AuthenticatedAdminTheatresRouteImport.update({
@@ -130,7 +143,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
-  '/chat': typeof AuthenticatedChatRoute
+  '/chat': typeof AuthenticatedChatRouteWithChildren
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -138,9 +151,11 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/chat/': typeof AuthenticatedChatIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRoutesByTo {
@@ -148,7 +163,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
-  '/chat': typeof AuthenticatedChatRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -157,9 +171,11 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/chat': typeof AuthenticatedChatIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRoutesById {
@@ -169,7 +185,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRouteWithChildren
-  '/_authenticated/chat': typeof AuthenticatedChatRoute
+  '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -178,9 +194,11 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRouteTypes {
@@ -199,9 +217,11 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/theatres'
+    | '/chat/$conversationId'
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/trainees/$staffId'
+    | '/chat/'
     | '/calendar/staff/$staffId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -209,7 +229,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/calendar'
-    | '/chat'
     | '/leave'
     | '/me'
     | '/trainees'
@@ -218,9 +237,11 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/theatres'
+    | '/chat/$conversationId'
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/trainees/$staffId'
+    | '/chat'
     | '/calendar/staff/$staffId'
   id:
     | '__root__'
@@ -238,9 +259,11 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
     | '/_authenticated/admin/theatres'
+    | '/_authenticated/chat/$conversationId'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/trainees/$staffId'
+    | '/_authenticated/chat/'
     | '/_authenticated/calendar/staff/$staffId'
   fileRoutesById: FileRoutesById
 }
@@ -331,6 +354,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/chat/': {
+      id: '/_authenticated/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof AuthenticatedChatIndexRouteImport
+      parentRoute: typeof AuthenticatedChatRoute
+    }
     '/_authenticated/trainees/$staffId': {
       id: '/_authenticated/trainees/$staffId'
       path: '/$staffId'
@@ -351,6 +381,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/coordinator/leave'
       preLoaderRoute: typeof AuthenticatedCoordinatorLeaveRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/chat/$conversationId': {
+      id: '/_authenticated/chat/$conversationId'
+      path: '/$conversationId'
+      fullPath: '/chat/$conversationId'
+      preLoaderRoute: typeof AuthenticatedChatConversationIdRouteImport
+      parentRoute: typeof AuthenticatedChatRoute
     }
     '/_authenticated/admin/theatres': {
       id: '/_authenticated/admin/theatres'
@@ -397,6 +434,19 @@ const AuthenticatedCalendarRouteWithChildren =
     AuthenticatedCalendarRouteChildren,
   )
 
+interface AuthenticatedChatRouteChildren {
+  AuthenticatedChatConversationIdRoute: typeof AuthenticatedChatConversationIdRoute
+  AuthenticatedChatIndexRoute: typeof AuthenticatedChatIndexRoute
+}
+
+const AuthenticatedChatRouteChildren: AuthenticatedChatRouteChildren = {
+  AuthenticatedChatConversationIdRoute: AuthenticatedChatConversationIdRoute,
+  AuthenticatedChatIndexRoute: AuthenticatedChatIndexRoute,
+}
+
+const AuthenticatedChatRouteWithChildren =
+  AuthenticatedChatRoute._addFileChildren(AuthenticatedChatRouteChildren)
+
 interface AuthenticatedTraineesRouteChildren {
   AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
 }
@@ -412,7 +462,7 @@ const AuthenticatedTraineesRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
-  AuthenticatedChatRoute: typeof AuthenticatedChatRoute
+  AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
@@ -426,7 +476,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRouteWithChildren,
-  AuthenticatedChatRoute: AuthenticatedChatRoute,
+  AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
