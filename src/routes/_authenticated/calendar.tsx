@@ -37,6 +37,25 @@ function CalendarPage() {
           <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Legend:</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="font-bold text-foreground">Jane Doe</span>
+          <span>= Consultant</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className={cn("text-blue-600 dark:text-blue-400")}>John Smith</span>
+          <span>= Solo trainee</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Badge variant="outline" className="px-1 py-0 text-[9px]">solo</Badge>
+          <span>+ blue</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="text-foreground">Alex Lee (ST4)</span>
+          <span>= Trainee grade</span>
+        </span>
+      </div>
       <GlobalWeekGrid weekStart={days[0]} days={days} />
     </div>
   );
