@@ -875,7 +875,7 @@ export async function performRotaSync() {
     }
 
     const [{ data: profiles }, { data: theatres }, { data: specialties }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id"),
+      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id, grade, training_level"),
       supabaseAdmin.from("theatres").select("id, name"),
       supabaseAdmin.from("specialties").select("id, name"),
     ]);
@@ -883,6 +883,7 @@ export async function performRotaSync() {
     const profByEmail = new Map<string, string>();
     const profByExtId = new Map<string, string>();
     const profByName = new Map<string, string>();
+    const profById = new Map<string, { grade: string | null; training_level: string | null }>();
     for (const p of profiles ?? []) {
       if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
       if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
