@@ -28,6 +28,7 @@ interface LeaveRow {
   conflict_notes: string | null;
   decision_notes: string | null;
   decided_at: string | null;
+  reserve_listed_at: string | null;
   created_at: string;
 }
 
@@ -118,7 +119,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     ).then((c) => { setConflicts(c); setLoading(false); });
   }, [row.id]);
 
-  const decide = async (status: "approved" | "rejected") => {
+  const decide = async (status: "approved" | "rejected", reserveList = false) => {
     if (!user) return;
     setActing(true);
     const { error } = await supabase
@@ -128,11 +129,12 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
         decided_by: user.id,
         decided_at: new Date().toISOString(),
         decision_notes: notes || null,
+        ...(reserveList ? { reserve_listed_at: new Date().toISOString() } : {}),
       })
       .eq("id", row.id);
     setActing(false);
     if (error) return toast.error(error.message);
-    toast.success(`Leave ${status}`);
+    toast.success(reserveList ? "Rejected & placed on reserve list" : `Leave ${status}`);
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
@@ -154,12 +156,15 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
               {row.half_day_end ? ` (${row.half_day_end} only)` : ""}
             </div>
           </div>
-          <Badge
-            variant={row.status === "approved" ? "default" : row.status === "pending" ? "secondary" : "destructive"}
-            className="capitalize"
-          >
-            {row.status}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge
+              variant={row.status === "approved" ? "default" : row.status === "pending" ? "secondary" : "destructive"}
+              className="capitalize"
+            >
+              {row.status}
+            </Badge>
+            {row.reserve_listed_at && <Badge variant="outline">Reserve list</Badge>}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -207,12 +212,15 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
               rows={2}
             />
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => decide("approved")} disabled={acting}>
                 <Check className="mr-1 h-4 w-4" /> Approve
               </Button>
               <Button size="sm" variant="destructive" onClick={() => decide("rejected")} disabled={acting}>
                 <X className="mr-1 h-4 w-4" /> Reject
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => decide("rejected", true)} disabled={acting}>
+                Reject & place on reserve list
               </Button>
             </div>
           </>

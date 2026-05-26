@@ -281,6 +281,7 @@ export type Database = {
           half_day_start: Database["public"]["Enums"]["session_half"] | null
           id: string
           reason: string | null
+          reserve_listed_at: string | null
           staff_id: string
           start_date: string
           status: Database["public"]["Enums"]["leave_status"]
@@ -298,6 +299,7 @@ export type Database = {
           half_day_start?: Database["public"]["Enums"]["session_half"] | null
           id?: string
           reason?: string | null
+          reserve_listed_at?: string | null
           staff_id: string
           start_date: string
           status?: Database["public"]["Enums"]["leave_status"]
@@ -315,6 +317,7 @@ export type Database = {
           half_day_start?: Database["public"]["Enums"]["session_half"] | null
           id?: string
           reason?: string | null
+          reserve_listed_at?: string | null
           staff_id?: string
           start_date?: string
           status?: Database["public"]["Enums"]["leave_status"]
@@ -449,6 +452,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rota_change_log: {
+        Row: {
+          action: string
+          assignment_id: string | null
+          changed_at: string
+          changed_by: string | null
+          hours_before_session: number
+          id: string
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          session_start_ts: string
+          staff_id: string | null
+        }
+        Insert: {
+          action: string
+          assignment_id?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          hours_before_session: number
+          id?: string
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          session_start_ts: string
+          staff_id?: string | null
+        }
+        Update: {
+          action?: string
+          assignment_id?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          hours_before_session?: number
+          id?: string
+          session?: Database["public"]["Enums"]["session_half"]
+          session_date?: string
+          session_start_ts?: string
+          staff_id?: string | null
+        }
+        Relationships: []
       }
       rota_rules: {
         Row: {
@@ -686,6 +728,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      session_start_ts: {
+        Args: {
+          p_date: string
+          p_session: Database["public"]["Enums"]["session_half"]
+        }
+        Returns: string
       }
     }
     Enums: {

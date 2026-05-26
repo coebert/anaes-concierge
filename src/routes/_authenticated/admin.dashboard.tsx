@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateGB } from "@/lib/utils";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
-  CalendarDays, AlertTriangle,
+  CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
@@ -72,6 +72,27 @@ function AdminDashboardPage() {
         profiles: profilesRes.data ?? [],
         assignments: assignmentsRes.data ?? [],
         leave: leaveRes.data ?? [],
+      };
+    },
+  });
+
+  const { data: activity } = useQuery({
+    queryKey: ["admin-dashboard-activity"],
+    queryFn: async () => {
+      const since7 = new Date(Date.now() - 7 * 86400_000).toISOString();
+      const since30 = new Date(Date.now() - 30 * 86400_000).toISOString();
+      const [late7, late30, rejected7, rejected30, reserve7, reserve30] = await Promise.all([
+        supabase.from("rota_change_log").select("id", { count: "exact", head: true }).gte("changed_at", since7),
+        supabase.from("rota_change_log").select("id", { count: "exact", head: true }).gte("changed_at", since30),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").gte("decided_at", since7),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").gte("decided_at", since30),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).not("reserve_listed_at", "is", null).gte("reserve_listed_at", since7),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).not("reserve_listed_at", "is", null).gte("reserve_listed_at", since30),
+      ]);
+      return {
+        lateRota: { d7: late7.count ?? 0, d30: late30.count ?? 0 },
+        rejected:  { d7: rejected7.count ?? 0, d30: rejected30.count ?? 0 },
+        reserve:   { d7: reserve7.count ?? 0, d30: reserve30.count ?? 0 },
       };
     },
   });
@@ -182,6 +203,34 @@ function AdminDashboardPage() {
             <Stat label="On leave" value={summary.totalOnLeave} icon={UserX} />
             <Stat label="Available" value={summary.totalAvailable} icon={CalendarDays} />
           </div>
+
+          {/* Activity metrics */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Activity (rolling)
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <DualStat
+                label="Late rota changes (within 24h of session)"
+                icon={Clock}
+                d7={activity?.lateRota.d7}
+                d30={activity?.lateRota.d30}
+              />
+              <DualStat
+                label="Leave requests rejected"
+                icon={XCircle}
+                d7={activity?.rejected.d7}
+                d30={activity?.rejected.d30}
+              />
+              <DualStat
+                label="Placed on reserve leave list"
+                icon={ListChecks}
+                d7={activity?.reserve.d7}
+                d30={activity?.reserve.d30}
+              />
+            </div>
+          </section>
+
 
           {/* Assigned + available by grade */}
           <section className="space-y-3">
@@ -315,6 +364,33 @@ function AdminDashboardPage() {
         </>
       )}
     </div>
+  );
+}
+
+function DualStat({
+  label, icon: Icon, d7, d30,
+}: { label: string; icon: typeof Users; d7?: number; d30?: number }) {
+  return (
+    <Card>
+      <CardContent className="flex items-start gap-3 p-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <div className="text-xs text-muted-foreground">{label}</div>
+          <div className="mt-1 flex items-baseline gap-4">
+            <div>
+              <div className="text-xl font-semibold">{d7 ?? "—"}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Last 7d</div>
+            </div>
+            <div>
+              <div className="text-xl font-semibold">{d30 ?? "—"}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Last 30d</div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
