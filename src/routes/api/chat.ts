@@ -9,6 +9,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { sendGmail } from "@/lib/gmail.server";
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
 You help staff understand their rota, leave entitlement, leave requests and trainee progress.
@@ -265,6 +266,59 @@ export const Route = createFileRoute("/api/chat")({
                 .eq("id", conversationId);
             } catch (e) {
               console.error("Failed to persist assistant message", e);
+            }
+
+            // Email the assistant's text reply to the user
+            try {
+              const text = (responseMessage.parts ?? [])
+                .filter((p: any) => p.type === "text")
+                .map((p: any) => p.text as string)
+                .join("\n\n")
+                .trim();
+              if (!text) return;
+
+              const { data: prof } = await admin
+                .from("profiles")
+                .select("email,full_name")
+                .eq("id", userId)
+                .maybeSingle();
+              const recipient = prof?.email;
+              if (!recipient) return;
+
+              const lastUser = [...uiMessages]
+                .reverse()
+                .find((m: any) => m.role === "user");
+              const question = ((lastUser?.parts ?? []) as any[])
+                .filter((p) => p.type === "text")
+                .map((p) => p.text as string)
+                .join(" ")
+                .trim();
+              const subject = question
+                ? `Re: ${question.slice(0, 60)}${question.length > 60 ? "…" : ""}`
+                : "Your rota assistant reply";
+
+              const safeQuestion = question
+                ? question.replace(/[<>&]/g, (c) =>
+                    c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+                  )
+                : "";
+              const safeAnswer = text.replace(/[<>&]/g, (c) =>
+                c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+              );
+              const html = `<div style="font-family:Arial,sans-serif;color:#111;max-width:640px">
+  <p style="color:#555;font-size:13px;margin:0 0 4px">Salisbury DGH Anaesthetics Rota — AI assistant</p>
+  ${safeQuestion ? `<blockquote style="border-left:3px solid #ddd;margin:0 0 16px;padding:6px 12px;color:#555;white-space:pre-wrap">${safeQuestion}</blockquote>` : ""}
+  <div style="white-space:pre-wrap;line-height:1.5">${safeAnswer}</div>
+</div>`;
+
+              await sendGmail({
+                to: recipient,
+                subject,
+                text,
+                html,
+              });
+            } catch (e) {
+              console.error("Failed to email assistant reply", e);
             }
           },
           onError: (err) => {
