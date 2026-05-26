@@ -208,8 +208,48 @@ function SettingsPage() {
                 )}
                 Run pull sync now
               </Button>
+              <Button
+                variant="default"
+                onClick={() => staffMut.mutate()}
+                disabled={staffMut.isPending || !credsOk || !staffUrl.trim()}
+              >
+                {staffMut.isPending ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                )}
+                Sync staff now
+              </Button>
             </div>
           </div>
+
+          {staffMut.data && (
+            <div className="rounded-md border border-border p-3 text-xs space-y-2">
+              <div className="font-medium">Last staff sync</div>
+              <div className="text-muted-foreground">
+                {staffMut.data.total} rows · {staffMut.data.matched} matched ·{" "}
+                {staffMut.data.updated} updated · {staffMut.data.unmatched.length} unmatched
+              </div>
+              {staffMut.data.unmatched.length > 0 && (
+                <div>
+                  <div className="font-medium text-foreground">Unmatched (need to be invited first):</div>
+                  <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                    {staffMut.data.unmatched.slice(0, 20).map((u) => (
+                      <li key={u}>{u}</li>
+                    ))}
+                    {staffMut.data.unmatched.length > 20 && (
+                      <li>…and {staffMut.data.unmatched.length - 20} more</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              {staffMut.data.errors && staffMut.data.errors.length > 0 && (
+                <div className="text-destructive">
+                  Errors: {staffMut.data.errors.join("; ")}
+                </div>
+              )}
+            </div>
+          )}
 
           {settings?.last_sync_at && (
             <div className="rounded-md border border-border p-3 text-sm">
