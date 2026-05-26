@@ -79,7 +79,7 @@ function AdminDashboardPage() {
           .eq("active", true),
         supabase
           .from("rota_assignments")
-          .select("id, staff_id, role_on_list, session, supervisor_id")
+          .select("id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type")
           .eq("session_date", date),
         supabase
           .from("leave_requests")
