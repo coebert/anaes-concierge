@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -102,6 +104,7 @@ function AdminStaffPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -133,6 +136,7 @@ function AdminStaffPage() {
   });
 
   const filtered = data?.filter((p) => {
+    if (!showInactive && p.active === false) return false;
     if (!filter) return true;
     const q = filter.toLowerCase();
     return (
@@ -152,7 +156,17 @@ function AdminStaffPage() {
             Manage profiles, roles, job plans and fixed weekly sessions.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-inactive"
+              checked={showInactive}
+              onCheckedChange={setShowInactive}
+            />
+            <Label htmlFor="show-inactive" className="cursor-pointer text-sm">
+              Show inactive
+            </Label>
+          </div>
           <Input
             placeholder="Filter…"
             value={filter}
