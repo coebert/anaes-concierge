@@ -205,7 +205,12 @@ function AdminDashboardPage() {
       if (!ma) continue;
       ma.total += 1;
       const hasConsultant = a.theatre_session_id ? consultantOnSession.has(a.theatre_session_id) : false;
-      const isSolo = !hasConsultant && !a.supervisor_id && a.role_on_list === "solo";
+      const supervisorIsConsultant = a.supervisor_id ? gradeById.get(a.supervisor_id) === "consultant" : false;
+      const isSolo =
+        !hasConsultant &&
+        !a.supervisor_id &&
+        !supervisorIsConsultant &&
+        a.role_on_list === "solo";
       if (isSolo) ma.solo += 1;
 
       const pt = perTrainee.get(a.staff_id) ?? { solo: 0, total: 0 };
