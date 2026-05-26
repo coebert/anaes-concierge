@@ -31,12 +31,12 @@ function TraineeDetailPage() {
       ] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,full_name,email,training_level,grade")
+          .select("id,full_name,email,training_level,grade,start_date")
           .eq("id", staffId)
           .single(),
         supabase
           .from("rota_assignments")
-          .select("id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session")
+          .select("id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type")
           .eq("staff_id", staffId)
           .lte("session_date", today)
           .order("session_date", { ascending: false }),
@@ -117,6 +117,32 @@ function TraineeDetailPage() {
     ["solo", "supervised", "supervising"].includes(a.role_on_list),
   );
 
+  // Per-trainee metrics
+  const startDate = data.profile.start_date ? new Date(data.profile.start_date) : null;
+  const weeksAtSalisbury = startDate
+    ? Math.max(0, Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7)))
+    : null;
+  const daytimeLists = data.assignments.filter(
+    (a) => a.duty_type === "theatre" && (a.session === "am" || a.session === "pm"),
+  ).length;
+  const soloLists = data.assignments.filter((a) => a.role_on_list === "solo").length;
+  const supervisedLists = data.assignments.filter((a) => a.role_on_list === "supervised").length;
+
+  const specialtyCounts = new Map<string, number>();
+  for (const a of clinicalAssignments) {
+    const specId = a.theatre_session_id ? data.tsMap.get(a.theatre_session_id)?.specialty_id : null;
+    const name = specId ? data.specMap.get(specId) ?? "Unknown" : "Unknown";
+    specialtyCounts.set(name, (specialtyCounts.get(name) ?? 0) + 1);
+  }
+  const totalClinical = clinicalAssignments.length;
+  const specialtyBreakdown = Array.from(specialtyCounts.entries())
+    .map(([name, count]) => ({
+      name,
+      count,
+      percent: totalClinical ? Math.round((count / totalClinical) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
   return (
     <div className="space-y-6">
       <div>
@@ -133,6 +159,49 @@ function TraineeDetailPage() {
           {data.profile.training_level ?? "No level set"} · {data.profile.email}
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Metrics</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Metric
+              label="Time at Salisbury"
+              value={weeksAtSalisbury === null ? "—" : `${weeksAtSalisbury} wk`}
+              sub={
+                startDate
+                  ? `since ${formatDateWithWeekdayGB(data.profile.start_date!)}`
+                  : "no start date set"
+              }
+            />
+            <Metric label="Daytime lists" value={daytimeLists.toString()} sub="theatre AM/PM" />
+            <Metric label="Directly supervised" value={supervisedLists.toString()} />
+            <Metric label="Solo lists" value={soloLists.toString()} />
+          </div>
+
+          <div>
+            <div className="mb-2 text-sm font-medium">Lists by surgical specialty</div>
+            {specialtyBreakdown.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No clinical lists recorded.</p>
+            ) : (
+              <div className="space-y-2">
+                {specialtyBreakdown.map((s) => (
+                  <div key={s.name} className="flex items-center gap-3 text-sm">
+                    <div className="w-40 truncate">{s.name}</div>
+                    <div className="flex-1">
+                      <Progress value={s.percent} className="h-2" />
+                    </div>
+                    <div className="w-24 text-right tabular-nums text-muted-foreground">
+                      {s.count} · {s.percent}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -215,6 +284,16 @@ function TraineeDetailPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+      {sub ? <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div> : null}
     </div>
   );
 }
