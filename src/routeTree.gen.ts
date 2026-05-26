@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -164,6 +165,12 @@ const AuthenticatedAdminDashboardRoute =
     path: '/admin/dashboard',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAccessRequestsRoute =
+  AuthenticatedAdminAccessRequestsRouteImport.update({
+    id: '/admin/access-requests',
+    path: '/admin/access-requests',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCalendarStaffStaffIdRoute =
   AuthenticatedCalendarStaffStaffIdRouteImport.update({
     id: '/staff/$staffId',
@@ -182,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -207,6 +215,7 @@ export interface FileRoutesByTo {
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -235,6 +244,7 @@ export interface FileRoutesById {
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/me'
     | '/trainees'
     | '/api/chat'
+    | '/admin/access-requests'
     | '/admin/dashboard'
     | '/admin/job-plans'
     | '/admin/rules'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/trainees'
     | '/api/chat'
     | '/'
+    | '/admin/access-requests'
     | '/admin/dashboard'
     | '/admin/job-plans'
     | '/admin/rules'
@@ -315,6 +327,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trainees'
     | '/api/chat'
     | '/_authenticated/'
+    | '/_authenticated/admin/access-requests'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/job-plans'
     | '/_authenticated/admin/rules'
@@ -509,6 +522,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/access-requests': {
+      id: '/_authenticated/admin/access-requests'
+      path: '/admin/access-requests'
+      fullPath: '/admin/access-requests'
+      preLoaderRoute: typeof AuthenticatedAdminAccessRequestsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/calendar/staff/$staffId': {
       id: '/_authenticated/calendar/staff/$staffId'
       path: '/staff/$staffId'
@@ -566,6 +586,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
@@ -585,6 +606,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
@@ -611,3 +633,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
