@@ -79,7 +79,7 @@ function AdminDashboardPage() {
           .eq("active", true),
         supabase
           .from("rota_assignments")
-          .select("id, staff_id, role_on_list, session, supervisor_id")
+          .select("id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type")
           .eq("session_date", date),
         supabase
           .from("leave_requests")
@@ -335,11 +335,30 @@ function AdminDashboardPage() {
       }
     }
 
-    // Trainees working solo: role_on_list = 'solo' for a trainee profile
+    // Trainees genuinely working solo today: must be assigned to a theatre
+    // AM/PM list, role = solo, no supervisor, and no consultant sharing
+    // the same theatre_session_id.
+    const consultantSessionsToday = new Set<string>();
+    for (const a of data.assignments) {
+      if (!a.theatre_session_id) continue;
+      const p = profilesById.get(a.staff_id);
+      if (p?.grade === "consultant") consultantSessionsToday.add(a.theatre_session_id);
+    }
     const traineeSolo = data.assignments
-      .filter((a) => a.role_on_list === "solo")
-      .map((a) => profilesById.get(a.staff_id))
-      .filter((p): p is NonNullable<typeof p> => !!p && p.grade === "trainee");
+      .filter((a) => {
+        if (a.duty_type !== "theatre") return false;
+        if (a.session !== "am" && a.session !== "pm") return false;
+        if (a.role_on_list !== "solo") return false;
+        if (a.supervisor_id) return false;
+        const p = profilesById.get(a.staff_id);
+        if (!p || p.grade !== "trainee") return false;
+        // Require a theatre_session_id so we can verify no consultant is on it.
+        if (!a.theatre_session_id) return false;
+        if (consultantSessionsToday.has(a.theatre_session_id)) return false;
+        return true;
+      })
+      .map((a) => profilesById.get(a.staff_id)!)
+      .filter((p): p is NonNullable<typeof p> => !!p);
 
     const totalAssigned = Object.values(assignedByGrade).reduce((a, b) => a + b, 0);
     const totalOnLeave = Array.from(leaveByStaff.keys())
