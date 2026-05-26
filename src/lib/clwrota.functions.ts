@@ -118,12 +118,11 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
   });
 
 function withApiToken(url: string, apiKey: string): string {
-  // Rotamap Central API expects the key as an `api_token` query parameter.
-  // Don't duplicate it if the user already pasted a URL containing the token.
+  // Rotamap Central API expects the key as an `api_key` query parameter.
   try {
     const u = new URL(url);
-    if (!u.searchParams.has("api_token")) {
-      u.searchParams.set("api_token", apiKey);
+    if (!u.searchParams.has("api_key")) {
+      u.searchParams.set("api_key", apiKey);
     }
     return u.toString();
   } catch {
