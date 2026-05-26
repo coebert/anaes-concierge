@@ -15,6 +15,7 @@ import {
   testClwRotaConnection,
   runClwRotaSync,
   syncClwRotaStaff,
+  syncClwRotaRota,
 } from "@/lib/clwrota.functions";
 import { formatDateGB } from "@/lib/utils";
 
