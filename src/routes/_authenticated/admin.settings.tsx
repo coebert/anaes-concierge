@@ -264,6 +264,65 @@ function SettingsPage() {
                 />
               </div>
 
+              {staffMut.data.emailDiagnostics && (
+                <details open className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Email matching diagnostics
+                  </summary>
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Stat
+                      label="With email"
+                      value={staffMut.data.emailDiagnostics.rowsWithEmail}
+                      tone="success"
+                    />
+                    <Stat
+                      label="Blank / missing"
+                      value={staffMut.data.emailDiagnostics.rowsBlankEmail}
+                      tone={
+                        staffMut.data.emailDiagnostics.rowsBlankEmail
+                          ? "danger"
+                          : undefined
+                      }
+                    />
+                    <Stat
+                      label="Invalid format"
+                      value={staffMut.data.emailDiagnostics.rowsInvalidEmail}
+                      tone={
+                        staffMut.data.emailDiagnostics.rowsInvalidEmail
+                          ? "danger"
+                          : undefined
+                      }
+                    />
+                    <Stat
+                      label="Duplicates in feed"
+                      value={staffMut.data.emailDiagnostics.rowsDuplicateEmail}
+                      tone={
+                        staffMut.data.emailDiagnostics.rowsDuplicateEmail
+                          ? "danger"
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <div className="mt-2 space-y-1 text-muted-foreground">
+                    <div>
+                      <span className="font-medium text-foreground">
+                        Email fields tried:
+                      </span>{" "}
+                      {staffMut.data.emailDiagnostics.emailFieldsTried.join(", ")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">
+                        Email fields detected in payload:
+                      </span>{" "}
+                      {staffMut.data.emailDiagnostics.detectedEmailFields.length
+                        ? staffMut.data.emailDiagnostics.detectedEmailFields.join(", ")
+                        : "none — staff report has no recognised email column"}
+                    </div>
+                  </div>
+                </details>
+              )}
+
+
               {staffMut.data.insertedList.length > 0 && (
                 <details open className="rounded border border-border p-2">
                   <summary className="cursor-pointer font-medium text-emerald-600">

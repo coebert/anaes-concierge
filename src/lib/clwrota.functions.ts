@@ -197,6 +197,14 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
     if (loadErr) throw new Error(loadErr.message);
 
     const url = settings?.staff_report_url;
+    const emptyDiagnostics = {
+      rowsWithEmail: 0,
+      rowsBlankEmail: 0,
+      rowsInvalidEmail: 0,
+      rowsDuplicateEmail: 0,
+      emailFieldsTried: ["email", "email_address", "Email", "e_mail", "EmailAddress"],
+      detectedEmailFields: [] as string[],
+    };
     if (!url) {
       return {
         ok: false,
@@ -211,6 +219,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         errors: [] as Array<{ label: string; error: string }>,
         rawPreview: "",
         sampleKeys: [] as string[],
+        emailDiagnostics: emptyDiagnostics,
       };
     }
 
@@ -254,6 +263,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         errors: [] as Array<{ label: string; error: string }>,
         rawPreview,
         sampleKeys,
+        emailDiagnostics: emptyDiagnostics,
       };
     }
 
@@ -274,8 +284,39 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
     const skipped: Array<{ label: string; reason: string }> = [];
     const errors: Array<{ label: string; error: string }> = [];
 
+    // Email diagnostics
+    const emailFieldsTried = [
+      "email",
+      "email_address",
+      "Email",
+      "e_mail",
+      "EmailAddress",
+    ];
+    const detectedEmailFields = new Set<string>();
+    let rowsWithEmail = 0;
+    let rowsBlankEmail = 0;
+    let rowsInvalidEmail = 0;
+    let rowsDuplicateEmail = 0;
+    const seenEmailsThisRun = new Set<string>();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // Pick raw email value (preserving whether the field exists vs is blank)
+    function pickRawEmail(row: Record<string, unknown>): {
+      field: string | null;
+      value: string;
+    } {
+      for (const k of emailFieldsTried) {
+        if (k in row) {
+          const v = row[k];
+          if (typeof v === "string") return { field: k, value: v };
+          if (typeof v === "number") return { field: k, value: String(v) };
+          if (v == null) return { field: k, value: "" };
+        }
+      }
+      return { field: null, value: "" };
+    }
+
     for (const row of rows) {
-      const email = pick(row, ["email", "email_address", "Email"]);
       const fullName =
         pick(row, ["full_name", "name", "display_name", "Name"]) ?? "";
       const externalId = pick(row, [
@@ -289,19 +330,58 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       const startDate = pick(row, ["start_date", "employment_start", "Start Date"]);
       const endDate = pick(row, ["end_date", "employment_end", "End Date"]);
 
-      const label = fullName || email || `(row with keys: ${Object.keys(row).slice(0, 5).join(",")})`;
+      const { field: emailField, value: emailRaw } = pickRawEmail(row);
+      if (emailField) detectedEmailFields.add(emailField);
+      const emailTrimmed = emailRaw.trim();
+      const emailLower = emailTrimmed.toLowerCase();
 
-      if (!email) {
-        skipped.push({ label, reason: "no email in CLWRota row" });
+      // Build a rich label so missing-email rows can still be identified.
+      const identifiers: string[] = [];
+      if (fullName) identifiers.push(fullName);
+      if (externalId) identifiers.push(`id=${externalId}`);
+      if (gmc) identifiers.push(`GMC=${gmc}`);
+      const label =
+        identifiers.length > 0
+          ? identifiers.join(" · ")
+          : `(row keys: ${Object.keys(row).slice(0, 6).join(", ")})`;
+
+      if (!emailTrimmed) {
+        rowsBlankEmail++;
+        const reason =
+          emailField == null
+            ? `no email field found (tried: ${emailFieldsTried.join(", ")})`
+            : `email field "${emailField}" is blank`;
+        skipped.push({ label, reason });
         continue;
       }
+
+      if (!emailRegex.test(emailTrimmed)) {
+        rowsInvalidEmail++;
+        skipped.push({
+          label,
+          reason: `invalid email format: "${emailTrimmed}" (from field "${emailField}")`,
+        });
+        continue;
+      }
+
+      rowsWithEmail++;
+
+      if (seenEmailsThisRun.has(emailLower)) {
+        rowsDuplicateEmail++;
+        skipped.push({
+          label,
+          reason: `duplicate email in CLWRota feed: ${emailTrimmed}`,
+        });
+        continue;
+      }
+      seenEmailsThisRun.add(emailLower);
 
       const isEndedPast =
         endDate != null &&
         !Number.isNaN(Date.parse(endDate)) &&
         Date.parse(endDate) < Date.now();
 
-      const profileId = byEmail.get(email.toLowerCase());
+      const profileId = byEmail.get(emailLower);
 
       if (!profileId) {
         const newRow: {
@@ -314,8 +394,8 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
           active: boolean;
         } = {
           id: crypto.randomUUID(),
-          email,
-          full_name: fullName || email,
+          email: emailTrimmed,
+          full_name: fullName || emailTrimmed,
           active: !isEndedPast,
         };
         if (externalId) newRow.clwrota_external_id = externalId;
@@ -328,10 +408,13 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
           .select("id")
           .single();
         if (insErr) {
-          errors.push({ label: `${label} <${email}>`, error: `insert: ${insErr.message}` });
+          errors.push({
+            label: `${label} <${emailTrimmed}>`,
+            error: `insert: ${insErr.message}`,
+          });
         } else {
-          insertedList.push({ name: fullName || email, email });
-          if (insData?.id) byEmail.set(email.toLowerCase(), insData.id);
+          insertedList.push({ name: fullName || emailTrimmed, email: emailTrimmed });
+          if (insData?.id) byEmail.set(emailLower, insData.id);
         }
         continue;
       }
@@ -360,11 +443,23 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         .update(patch)
         .eq("id", profileId);
       if (upErr) {
-        errors.push({ label: `${label} <${email}>`, error: `update: ${upErr.message}` });
+        errors.push({
+          label: `${label} <${emailTrimmed}>`,
+          error: `update: ${upErr.message}`,
+        });
       } else {
         updated++;
       }
     }
+
+    const emailDiagnostics = {
+      rowsWithEmail,
+      rowsBlankEmail,
+      rowsInvalidEmail,
+      rowsDuplicateEmail,
+      emailFieldsTried,
+      detectedEmailFields: Array.from(detectedEmailFields),
+    };
 
     const inserted = insertedList.length;
     const summary = `Staff sync: ${rows.length} rows · ${inserted} added · ${updated} updated · ${unchangedCount} unchanged · ${skipped.length} skipped · ${errors.length} errors`;
@@ -391,8 +486,10 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       errors,
       rawPreview,
       sampleKeys,
+      emailDiagnostics,
     };
   });
+
 
 async function fetchReport(url: string, apiKey: string) {
   const res = await fetch(url, {
