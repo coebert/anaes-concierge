@@ -9,12 +9,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { formatDateGB, todayISO } from "@/lib/utils";
+import { formatDateGB, getSurname, todayISO } from "@/lib/utils";
 import {
   buildConsultantSessionSet,
   isSoloTraineeAssignment,
   type SoloProfile,
 } from "@/lib/solo-stats";
+import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
