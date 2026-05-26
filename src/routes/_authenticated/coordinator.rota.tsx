@@ -127,6 +127,22 @@ function RotaGridPage() {
     },
   });
 
+  // Wider window for TCS rolling checks (±21 days around the displayed week).
+  const ctxStartIso = iso(addDays(days[0], -21));
+  const ctxEndIso = iso(addDays(days[days.length - 1], 21));
+  const { data: contextAssignments } = useQuery({
+    queryKey: ["assignments-context", ctxStartIso, ctxEndIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,theatre_session_id,role_on_list")
+        .gte("session_date", ctxStartIso)
+        .lte("session_date", ctxEndIso);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: staff } = useQuery({
     queryKey: ["staff-active"],
     queryFn: async () => {
