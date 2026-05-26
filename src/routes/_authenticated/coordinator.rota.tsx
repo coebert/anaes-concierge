@@ -13,9 +13,13 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  validateAssignment, worstSeverity,
+  type Issue, type Profile, type RotaRules,
+} from "@/lib/rota-validation";
 
 type SessionHalf = "am" | "pm";
 type RotaRole =
@@ -112,11 +116,56 @@ function RotaGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name,grade")
+        .select("id,full_name,grade,training_level")
         .eq("active", true)
         .order("full_name");
       if (error) throw error;
+      return data as Profile[];
+    },
+  });
+
+  const { data: rules } = useQuery({
+    queryKey: ["rota-rules"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_rules").select("*").eq("id", 1).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as RotaRules | null;
+    },
+  });
+
+  const { data: jobPlans } = useQuery({
+    queryKey: ["job-plans-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("job_plans")
+        .select("staff_id,total_pas,dcc_pas,spa_pas,ltft,ltft_percentage,valid_from,valid_to");
+      if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: leave } = useQuery({
+    queryKey: ["leave-week", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leave_requests")
+        .select("staff_id,start_date,end_date,status")
+        .lte("start_date", endIso)
+        .gte("end_date", startIso);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: fixedSessions } = useQuery({
+    queryKey: ["fixed-sessions-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fixed_sessions")
+        .select("staff_id,day_of_week,session");
+      if (error) throw error;
+      return data as { staff_id: string; day_of_week: number; session: SessionHalf }[];
     },
   });
 
@@ -249,20 +298,47 @@ function RotaGridPage() {
           session={cellOpen.session}
           onOpenChange={(o) => !o && setCellOpen(null)}
           staff={staff ?? []}
+          weekDates={days.map(iso)}
+          weekAssignments={assignments ?? []}
+          jobPlans={jobPlans ?? []}
+          leave={leave ?? []}
+          fixedSessions={fixedSessions ?? []}
+          rules={rules ?? DEFAULT_RULES}
         />
       )}
     </div>
   );
 }
 
+const DEFAULT_RULES: RotaRules = {
+  sessions_per_pa: 1,
+  max_sessions_per_week: 10,
+  max_consecutive_days: 7,
+  honour_fixed_sessions: true,
+  allow_back_to_back_oncall: false,
+};
+
 /* ----------------------- Cell dialog ----------------------- */
 
 function CellDialog({
   theatreId, theatreName, date, session, onOpenChange, staff,
+  weekDates, weekAssignments, jobPlans, leave, fixedSessions, rules,
 }: {
   theatreId: string; theatreName: string; date: string; session: SessionHalf;
   onOpenChange: (o: boolean) => void;
-  staff: { id: string; full_name: string; grade: string | null }[];
+  staff: Profile[];
+  weekDates: string[];
+  weekAssignments: {
+    id: string; staff_id: string; session: SessionHalf; session_date: string;
+    theatre_session_id: string | null; role_on_list: RotaRole;
+  }[];
+  jobPlans: {
+    staff_id: string; total_pas: number; dcc_pas: number; spa_pas: number;
+    ltft: boolean; ltft_percentage: number | null; valid_from: string; valid_to: string | null;
+  }[];
+  leave: { staff_id: string; start_date: string; end_date: string; status: string }[];
+  fixedSessions: { staff_id: string; day_of_week: number; session: SessionHalf }[];
+  rules: RotaRules;
 }) {
   const qc = useQueryClient();
 
@@ -348,10 +424,48 @@ function CellDialog({
   const [newStaff, setNewStaff] = useState<string>("");
   const [newRole, setNewRole] = useState<RotaRole>("solo");
 
+  // Live validation for the candidate being added
+  const candidateIssues: Issue[] = newStaff
+    ? validateAssignment({
+        candidateStaffId: newStaff,
+        role: newRole,
+        date,
+        session,
+        weekDates,
+        weekAssignments,
+        profiles: staff,
+        jobPlans,
+        leave,
+        fixedSessions,
+        rules,
+      })
+    : [];
+  const blocking = candidateIssues.some((i) => i.severity === "error");
+
+  // Validation summary per existing assignment in this cell
+  const issuesFor = (staffId: string, role: RotaRole) =>
+    validateAssignment({
+      candidateStaffId: staffId,
+      role,
+      date,
+      session,
+      weekDates,
+      // exclude the current assignment so it doesn't clash with itself
+      weekAssignments: weekAssignments.filter(
+        (a) => !(a.staff_id === staffId && a.session_date === date && a.session === session),
+      ),
+      profiles: staff,
+      jobPlans,
+      leave,
+      fixedSessions,
+      rules,
+    });
+
   const addAssign = useMutation({
     mutationFn: async () => {
       if (!ts?.id) throw new Error("Save the list first");
       if (!newStaff) throw new Error("Pick a staff member");
+      if (blocking) throw new Error("Resolve blocking validation errors first.");
       const { error } = await supabase.from("rota_assignments").insert({
         staff_id: newStaff,
         session, session_date: date,
@@ -429,17 +543,36 @@ function CellDialog({
               <>
                 {assigns?.length ? (
                   <ul className="divide-y rounded border">
-                    {assigns.map((a) => (
-                      <li key={a.id} className="flex items-center gap-2 p-2 text-sm">
-                        <Badge variant="outline">{a.role_on_list}</Badge>
-                        <span className="flex-1">
-                          {staff.find((s) => s.id === a.staff_id)?.full_name ?? "—"}
-                        </span>
-                        <Button size="icon" variant="ghost" onClick={() => removeAssign.mutate(a.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
+                    {assigns.map((a) => {
+                      const iss = issuesFor(a.staff_id, a.role_on_list as RotaRole);
+                      const worst = worstSeverity(iss);
+                      return (
+                        <li key={a.id} className="flex items-start gap-2 p-2 text-sm">
+                          <Badge variant="outline">{a.role_on_list}</Badge>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span>{staff.find((s) => s.id === a.staff_id)?.full_name ?? "—"}</span>
+                              {worst && <SeverityIcon severity={worst} />}
+                            </div>
+                            {iss.length > 0 && (
+                              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                                {iss.map((i, idx) => (
+                                  <li key={idx} className={cn(
+                                    i.severity === "error" && "text-destructive",
+                                    i.severity === "warning" && "text-amber-600 dark:text-amber-400",
+                                  )}>
+                                    • {i.message}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <Button size="icon" variant="ghost" onClick={() => removeAssign.mutate(a.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="text-xs text-muted-foreground">No staff assigned.</p>
@@ -467,10 +600,35 @@ function CellDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={() => addAssign.mutate()} disabled={addAssign.isPending}>
+                  <Button
+                    size="sm"
+                    onClick={() => addAssign.mutate()}
+                    disabled={addAssign.isPending || blocking}
+                    variant={blocking ? "destructive" : "default"}
+                  >
                     <Plus className="mr-1 h-4 w-4" />Assign
                   </Button>
                 </div>
+                {newStaff && candidateIssues.length > 0 && (
+                  <div className="rounded-md border bg-muted/30 p-2 space-y-1">
+                    <div className="text-xs font-medium flex items-center gap-1.5">
+                      <SeverityIcon severity={worstSeverity(candidateIssues) ?? "info"} />
+                      Validation
+                    </div>
+                    <ul className="space-y-0.5 text-[11px]">
+                      {candidateIssues.map((i, idx) => (
+                        <li key={idx} className={cn(
+                          "flex items-start gap-1.5",
+                          i.severity === "error" && "text-destructive",
+                          i.severity === "warning" && "text-amber-600 dark:text-amber-400",
+                          i.severity === "info" && "text-muted-foreground",
+                        )}>
+                          <span>•</span><span>{i.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -482,4 +640,10 @@ function CellDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function SeverityIcon({ severity }: { severity: "error" | "warning" | "info" }) {
+  if (severity === "error") return <ShieldAlert className="h-3.5 w-3.5 text-destructive" />;
+  if (severity === "warning") return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
+  return <Info className="h-3.5 w-3.5 text-muted-foreground" />;
 }
