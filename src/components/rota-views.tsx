@@ -280,33 +280,47 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                 {ts.surgical_consultant}
                               </div>
                             )}
-                            {assigns.map((a) => {
-                              const sp = staffById(a.staff_id);
-                              const isConsultant = sp?.grade === "consultant";
-                              const isTrainee = sp?.grade === "trainee";
-                              const highlightTrainee = isTrainee && a.role_on_list === "solo";
-                              return (
-                                <Link
-                                  key={a.id}
-                                  to="/calendar/staff/$staffId"
-                                  params={{ staffId: a.staff_id }}
-                                  className={cn(
-                                    "block truncate text-[10px] hover:underline",
-                                    isConsultant && "font-bold",
-                                    highlightTrainee && "text-blue-600 dark:text-blue-400",
-                                  )}
-                                >
-                                  <Badge
-                                    variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                    className="mr-1 px-1 py-0 text-[9px]"
-                                  >
-                                    {a.role_on_list}
-                                  </Badge>
-                                  {staffName(a.staff_id)}
-                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
-                                </Link>
+                            {(() => {
+                              const hasConsultant = assigns.some(
+                                (x) => staffById(x.staff_id)?.grade === "consultant",
                               );
-                            })}
+                              return assigns.map((a) => {
+                                const sp = staffById(a.staff_id);
+                                const isConsultant = sp?.grade === "consultant";
+                                const isTrainee = sp?.grade === "trainee";
+                                const isSoloTrainee =
+                                  isTrainee && a.role_on_list === "solo" && !hasConsultant;
+                                // Hide the "solo" badge for consultants and for
+                                // trainees who are working alongside a consultant.
+                                const showRoleBadge = !(
+                                  a.role_on_list === "solo" && (isConsultant || !isSoloTrainee)
+                                );
+                                return (
+                                  <Link
+                                    key={a.id}
+                                    to="/calendar/staff/$staffId"
+                                    params={{ staffId: a.staff_id }}
+                                    className={cn(
+                                      "block truncate text-[10px] hover:underline",
+                                      isConsultant && "font-bold",
+                                      isSoloTrainee && "text-blue-600 dark:text-blue-400",
+                                    )}
+                                  >
+                                    {showRoleBadge && (
+                                      <Badge
+                                        variant={a.role_on_list === "supervising" ? "default" : "outline"}
+                                        className="mr-1 px-1 py-0 text-[9px]"
+                                      >
+                                        {a.role_on_list}
+                                      </Badge>
+                                    )}
+                                    {staffName(a.staff_id)}
+                                    {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
+                                  </Link>
+                                );
+                              });
+                            })()}
+
                           </div>
                         ) : (
                           <div className="text-muted-foreground/40 text-[10px]">—</div>
