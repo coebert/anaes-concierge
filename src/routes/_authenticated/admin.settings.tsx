@@ -224,39 +224,77 @@ function SettingsPage() {
           </div>
 
           {staffMut.data && (
-            <div className="rounded-md border border-border p-3 text-xs space-y-2">
-              <div className="font-medium">Last staff sync</div>
-              <div className="text-muted-foreground">
-                {staffMut.data.total} rows · {staffMut.data.matched} matched ·{" "}
-                {staffMut.data.updated} updated · {staffMut.data.inserted ?? 0} added ·{" "}
-                {staffMut.data.unmatched.length} skipped
+            <div className="rounded-md border border-border p-3 text-xs space-y-3">
+              <div className="font-medium text-sm">Last staff sync results</div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <Stat label="Rows pulled" value={staffMut.data.total} />
+                <Stat label="Added" value={staffMut.data.insertedCount} tone="success" />
+                <Stat label="Updated" value={staffMut.data.updated} tone="info" />
+                <Stat label="Unchanged" value={staffMut.data.unchangedCount} />
+                <Stat
+                  label="Skipped / errors"
+                  value={staffMut.data.skipped.length + staffMut.data.errors.length}
+                  tone={staffMut.data.errors.length ? "danger" : undefined}
+                />
               </div>
-              {staffMut.data.unmatched.length > 0 && (
-                <div>
-                  <div className="font-medium text-foreground">Unmatched (need to be invited first):</div>
-                  <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                    {staffMut.data.unmatched.slice(0, 20).map((u) => (
-                      <li key={u}>{u}</li>
+
+              {staffMut.data.insertedList.length > 0 && (
+                <details open className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium text-emerald-600">
+                    Added profiles ({staffMut.data.insertedList.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-muted-foreground">
+                    {staffMut.data.insertedList.map((p) => (
+                      <li key={p.email}>
+                        {p.name} <span className="opacity-70">&lt;{p.email}&gt;</span>
+                      </li>
                     ))}
-                    {staffMut.data.unmatched.length > 20 && (
-                      <li>…and {staffMut.data.unmatched.length - 20} more</li>
-                    )}
                   </ul>
-                </div>
+                </details>
               )}
-              {staffMut.data.errors && staffMut.data.errors.length > 0 && (
-                <div className="text-destructive">
-                  Errors: {staffMut.data.errors.join("; ")}
-                </div>
+
+              {staffMut.data.skipped.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Skipped rows ({staffMut.data.skipped.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-muted-foreground">
+                    {staffMut.data.skipped.map((s, i) => (
+                      <li key={`${s.label}-${i}`}>
+                        {s.label} — <span className="italic">{s.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
-              {staffMut.data.sampleKeys && staffMut.data.sampleKeys.length > 0 && (
-                <div>
-                  <div className="font-medium text-foreground">Detected columns:</div>
-                  <div className="text-muted-foreground break-all">
+
+              {staffMut.data.errors.length > 0 && (
+                <details open className="rounded border border-destructive/40 p-2">
+                  <summary className="cursor-pointer font-medium text-destructive">
+                    Errors ({staffMut.data.errors.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-destructive">
+                    {staffMut.data.errors.map((e, i) => (
+                      <li key={`${e.label}-${i}`}>
+                        <span className="font-medium">{e.label}</span> — {e.error}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {staffMut.data.sampleKeys.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Detected CLWRota columns ({staffMut.data.sampleKeys.length})
+                  </summary>
+                  <div className="mt-2 break-all text-muted-foreground">
                     {staffMut.data.sampleKeys.join(", ")}
                   </div>
-                </div>
+                </details>
               )}
+
               {staffMut.data.rawPreview && staffMut.data.total === 0 && (
                 <div>
                   <div className="font-medium text-foreground">Response preview:</div>
