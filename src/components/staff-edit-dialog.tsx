@@ -354,15 +354,21 @@ function JobPlanTab({ staffId }: { staffId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["job-plan", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: profile, error: e1 } = await supabase
+        .from("profiles")
+        .select("grade")
+        .eq("id", staffId)
+        .single();
+      if (e1) throw e1;
+      const { data: jp, error: e2 } = await supabase
         .from("job_plans")
         .select("*")
         .eq("staff_id", staffId)
         .order("valid_from", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error) throw error;
-      return data;
+      if (e2) throw e2;
+      return { profile, jobPlan: jp };
     },
   });
 
@@ -378,35 +384,37 @@ function JobPlanTab({ staffId }: { staffId: string }) {
   });
 
   useEffect(() => {
-    if (data) {
+    if (data?.jobPlan) {
       setForm({
-        total_pas: Number(data.total_pas),
-        dcc_pas: Number(data.dcc_pas),
-        spa_pas: Number(data.spa_pas),
-        ltft: data.ltft,
-        ltft_percentage: data.ltft_percentage?.toString() ?? "",
-        on_call_commitment: data.on_call_commitment ?? "",
-        notes: data.notes ?? "",
-        valid_from: data.valid_from,
+        total_pas: Number(data.jobPlan.total_pas),
+        dcc_pas: Number(data.jobPlan.dcc_pas),
+        spa_pas: Number(data.jobPlan.spa_pas),
+        ltft: data.jobPlan.ltft,
+        ltft_percentage: data.jobPlan.ltft_percentage?.toString() ?? "",
+        on_call_commitment: data.jobPlan.on_call_commitment ?? "",
+        notes: data.jobPlan.notes ?? "",
+        valid_from: data.jobPlan.valid_from,
       });
     }
   }, [data]);
+
+  const isTrainee = data?.profile?.grade === "trainee";
 
   const save = useMutation({
     mutationFn: async () => {
       const payload = {
         staff_id: staffId,
-        total_pas: form.total_pas,
-        dcc_pas: form.dcc_pas,
-        spa_pas: form.spa_pas,
+        total_pas: isTrainee ? 0 : form.total_pas,
+        dcc_pas: isTrainee ? 0 : form.dcc_pas,
+        spa_pas: isTrainee ? 0 : form.spa_pas,
         ltft: form.ltft,
         ltft_percentage: form.ltft_percentage ? Number(form.ltft_percentage) : null,
         on_call_commitment: form.on_call_commitment || null,
         notes: form.notes || null,
         valid_from: form.valid_from,
       };
-      if (data) {
-        const { error } = await supabase.from("job_plans").update(payload).eq("id", data.id);
+      if (data?.jobPlan) {
+        const { error } = await supabase.from("job_plans").update(payload).eq("id", data.jobPlan.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("job_plans").insert(payload);
@@ -425,27 +433,31 @@ function JobPlanTab({ staffId }: { staffId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Total PAs / week">
-          <Input
-            type="number" step="0.5"
-            value={form.total_pas}
-            onChange={(e) => setForm({ ...form, total_pas: Number(e.target.value) })}
-          />
-        </Field>
-        <Field label="DCC PAs">
-          <Input
-            type="number" step="0.5"
-            value={form.dcc_pas}
-            onChange={(e) => setForm({ ...form, dcc_pas: Number(e.target.value) })}
-          />
-        </Field>
-        <Field label="SPA PAs">
-          <Input
-            type="number" step="0.5"
-            value={form.spa_pas}
-            onChange={(e) => setForm({ ...form, spa_pas: Number(e.target.value) })}
-          />
-        </Field>
+        {!isTrainee && (
+          <>
+            <Field label="Total PAs / week">
+              <Input
+                type="number" step="0.5"
+                value={form.total_pas}
+                onChange={(e) => setForm({ ...form, total_pas: Number(e.target.value) })}
+              />
+            </Field>
+            <Field label="DCC PAs">
+              <Input
+                type="number" step="0.5"
+                value={form.dcc_pas}
+                onChange={(e) => setForm({ ...form, dcc_pas: Number(e.target.value) })}
+              />
+            </Field>
+            <Field label="SPA PAs">
+              <Input
+                type="number" step="0.5"
+                value={form.spa_pas}
+                onChange={(e) => setForm({ ...form, spa_pas: Number(e.target.value) })}
+              />
+            </Field>
+          </>
+        )}
         <Field label="LTFT">
           <div className="flex h-10 items-center">
             <Switch
