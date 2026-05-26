@@ -348,6 +348,7 @@ export type Database = {
           gmc_number: string | null
           grade: Database["public"]["Enums"]["staff_grade"] | null
           id: string
+          rotation_end_date: string | null
           start_date: string | null
           training_level: string | null
           updated_at: string
@@ -361,6 +362,7 @@ export type Database = {
           gmc_number?: string | null
           grade?: Database["public"]["Enums"]["staff_grade"] | null
           id: string
+          rotation_end_date?: string | null
           start_date?: string | null
           training_level?: string | null
           updated_at?: string
@@ -374,6 +376,7 @@ export type Database = {
           gmc_number?: string | null
           grade?: Database["public"]["Enums"]["staff_grade"] | null
           id?: string
+          rotation_end_date?: string | null
           start_date?: string | null
           training_level?: string | null
           updated_at?: string
