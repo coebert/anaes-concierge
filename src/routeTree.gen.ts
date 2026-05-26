@@ -19,6 +19,7 @@ import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
@@ -75,6 +76,12 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedTraineesStaffIdRoute =
+  AuthenticatedTraineesStaffIdRouteImport.update({
+    id: '/$staffId',
+    path: '/$staffId',
+    getParentRoute: () => AuthenticatedTraineesRoute,
+  } as any)
 const AuthenticatedCoordinatorRotaRoute =
   AuthenticatedCoordinatorRotaRouteImport.update({
     id: '/coordinator/rota',
@@ -120,12 +127,13 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
-  '/trainees': typeof AuthenticatedTraineesRoute
+  '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRoutesByTo {
@@ -136,13 +144,14 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
-  '/trainees': typeof AuthenticatedTraineesRoute
+  '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/': typeof AuthenticatedIndexRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRoutesById {
@@ -155,13 +164,14 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
-  '/_authenticated/trainees': typeof AuthenticatedTraineesRoute
+  '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRouteTypes {
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/admin/theatres'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/trainees/$staffId'
     | '/calendar/staff/$staffId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/admin/theatres'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/trainees/$staffId'
     | '/calendar/staff/$staffId'
   id:
     | '__root__'
@@ -216,6 +228,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatres'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
+    | '/_authenticated/trainees/$staffId'
     | '/_authenticated/calendar/staff/$staffId'
   fileRoutesById: FileRoutesById
 }
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/trainees/$staffId': {
+      id: '/_authenticated/trainees/$staffId'
+      path: '/$staffId'
+      fullPath: '/trainees/$staffId'
+      preLoaderRoute: typeof AuthenticatedTraineesStaffIdRouteImport
+      parentRoute: typeof AuthenticatedTraineesRoute
+    }
     '/_authenticated/coordinator/rota': {
       id: '/_authenticated/coordinator/rota'
       path: '/coordinator/rota'
@@ -357,12 +377,25 @@ const AuthenticatedCalendarRouteWithChildren =
     AuthenticatedCalendarRouteChildren,
   )
 
+interface AuthenticatedTraineesRouteChildren {
+  AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
+}
+
+const AuthenticatedTraineesRouteChildren: AuthenticatedTraineesRouteChildren = {
+  AuthenticatedTraineesStaffIdRoute: AuthenticatedTraineesStaffIdRoute,
+}
+
+const AuthenticatedTraineesRouteWithChildren =
+  AuthenticatedTraineesRoute._addFileChildren(
+    AuthenticatedTraineesRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
-  AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRoute
+  AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
@@ -376,7 +409,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
-  AuthenticatedTraineesRoute: AuthenticatedTraineesRoute,
+  AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
@@ -398,3 +431,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
