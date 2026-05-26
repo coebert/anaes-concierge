@@ -641,3 +641,9 @@ function CellDialog({
     </Dialog>
   );
 }
+
+function SeverityIcon({ severity }: { severity: "error" | "warning" | "info" }) {
+  if (severity === "error") return <ShieldAlert className="h-3.5 w-3.5 text-destructive" />;
+  if (severity === "warning") return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
+  return <Info className="h-3.5 w-3.5 text-muted-foreground" />;
+}
