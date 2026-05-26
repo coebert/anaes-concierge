@@ -355,13 +355,17 @@ const DEFAULT_RULES: RotaRules = {
 
 function CellDialog({
   theatreId, theatreName, date, session, onOpenChange, staff,
-  weekDates, weekAssignments, jobPlans, leave, fixedSessions, rules,
+  weekDates, weekAssignments, contextAssignments, jobPlans, leave, fixedSessions, rules,
 }: {
   theatreId: string; theatreName: string; date: string; session: SessionHalf;
   onOpenChange: (o: boolean) => void;
   staff: Profile[];
   weekDates: string[];
   weekAssignments: {
+    id: string; staff_id: string; session: SessionHalf; session_date: string;
+    theatre_session_id: string | null; role_on_list: RotaRole;
+  }[];
+  contextAssignments: {
     id: string; staff_id: string; session: SessionHalf; session_date: string;
     theatre_session_id: string | null; role_on_list: RotaRole;
   }[];
