@@ -1072,10 +1072,11 @@ export async function performRotaSync() {
     // --- Pass 3: bulk-upsert theatre sessions in chunks. ----------------------
     const sessionDrafts = Array.from(sessionDraftsByKey.values());
     const sessionIdByKey = new Map<string, string>();
-    const CHUNK = 500;
+    const SESSION_CHUNK = 1000;
+    const ASSIGN_CHUNK = 1500;
     let sessionsUpserted = 0;
-    for (let i = 0; i < sessionDrafts.length; i += CHUNK) {
-      const chunk = sessionDrafts.slice(i, i + CHUNK);
+    for (let i = 0; i < sessionDrafts.length; i += SESSION_CHUNK) {
+      const chunk = sessionDrafts.slice(i, i + SESSION_CHUNK);
       const { data, error: sessErr } = await supabaseAdmin
         .from("theatre_sessions")
         .upsert(chunk, { onConflict: "session_date,theatre_id,session" })
@@ -1090,30 +1091,36 @@ export async function performRotaSync() {
       }
     }
 
-    // --- Pass 4: bulk-upsert rota assignments in chunks (dedup external id). --
+    // --- Pass 4: bulk-upsert rota assignments (dedup external id). -----------
     // Dedupe by external id keeping the last occurrence (latest in the feed).
     const assignmentByExtId = new Map<string, AssignmentDraft>();
     for (const a of assignmentDrafts) assignmentByExtId.set(a.clwrota_external_id, a);
 
     // Skip rows the coordinator has locally edited — they are "locked" and
-    // must not be overwritten by the upstream sync.
-    const allExtIds = Array.from(assignmentByExtId.keys());
+    // must not be overwritten by upstream sync. Fetch all locked external IDs
+    // in a single query covering the date range we just parsed (avoids 70+
+    // chunked `.in()` lookups which blow past the Worker subrequest cap).
     const lockedExtIds = new Set<string>();
-    for (let i = 0; i < allExtIds.length; i += CHUNK) {
-      const idChunk = allExtIds.slice(i, i + CHUNK);
+    const allDates = Array.from(assignmentByExtId.values()).map((a) => a.session_date);
+    if (allDates.length > 0) {
+      allDates.sort();
+      const minDate = allDates[0];
+      const maxDate = allDates[allDates.length - 1];
       const { data: lockedRows, error: lockedErr } = await supabaseAdmin
         .from("rota_assignments")
         .select("clwrota_external_id")
         .eq("locally_modified", true)
-        .in("clwrota_external_id", idChunk);
+        .gte("session_date", minDate)
+        .lte("session_date", maxDate);
       if (lockedErr) {
-        errors.push({ label: `(locked-row lookup chunk ${i})`, error: lockedErr.message });
-        continue;
-      }
-      for (const r of lockedRows ?? []) {
-        if (r.clwrota_external_id) lockedExtIds.add(r.clwrota_external_id);
+        errors.push({ label: "(locked-row lookup)", error: lockedErr.message });
+      } else {
+        for (const r of lockedRows ?? []) {
+          if (r.clwrota_external_id) lockedExtIds.add(r.clwrota_external_id);
+        }
       }
     }
+
     let lockedSkipped = 0;
     const uniqueAssignments = Array.from(assignmentByExtId.values())
       .filter((a) => {
@@ -1133,8 +1140,8 @@ export async function performRotaSync() {
       }));
 
     let assignmentsUpserted = 0;
-    for (let i = 0; i < uniqueAssignments.length; i += CHUNK) {
-      const chunk = uniqueAssignments.slice(i, i + CHUNK);
+    for (let i = 0; i < uniqueAssignments.length; i += ASSIGN_CHUNK) {
+      const chunk = uniqueAssignments.slice(i, i + ASSIGN_CHUNK);
       const { error: asgErr } = await supabaseAdmin
         .from("rota_assignments")
         .upsert(chunk, { onConflict: "clwrota_external_id" });
@@ -1147,6 +1154,7 @@ export async function performRotaSync() {
     if (lockedSkipped > 0) {
       skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
     }
+
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
