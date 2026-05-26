@@ -424,10 +424,48 @@ function CellDialog({
   const [newStaff, setNewStaff] = useState<string>("");
   const [newRole, setNewRole] = useState<RotaRole>("solo");
 
+  // Live validation for the candidate being added
+  const candidateIssues: Issue[] = newStaff
+    ? validateAssignment({
+        candidateStaffId: newStaff,
+        role: newRole,
+        date,
+        session,
+        weekDates,
+        weekAssignments,
+        profiles: staff,
+        jobPlans,
+        leave,
+        fixedSessions,
+        rules,
+      })
+    : [];
+  const blocking = candidateIssues.some((i) => i.severity === "error");
+
+  // Validation summary per existing assignment in this cell
+  const issuesFor = (staffId: string, role: RotaRole) =>
+    validateAssignment({
+      candidateStaffId: staffId,
+      role,
+      date,
+      session,
+      weekDates,
+      // exclude the current assignment so it doesn't clash with itself
+      weekAssignments: weekAssignments.filter(
+        (a) => !(a.staff_id === staffId && a.session_date === date && a.session === session),
+      ),
+      profiles: staff,
+      jobPlans,
+      leave,
+      fixedSessions,
+      rules,
+    });
+
   const addAssign = useMutation({
     mutationFn: async () => {
       if (!ts?.id) throw new Error("Save the list first");
       if (!newStaff) throw new Error("Pick a staff member");
+      if (blocking) throw new Error("Resolve blocking validation errors first.");
       const { error } = await supabase.from("rota_assignments").insert({
         staff_id: newStaff,
         session, session_date: date,
