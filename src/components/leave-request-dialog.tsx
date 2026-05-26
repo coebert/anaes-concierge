@@ -82,7 +82,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
             .join("; ")}`
         : null;
 
-    const { error } = await supabase.from("leave_requests").insert({
+    const { data: inserted, error } = await supabase.from("leave_requests").insert({
       staff_id: user.id,
       type,
       start_date: startDate,
@@ -91,13 +91,16 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
       half_day_end: halfDayEnd === "none" ? null : halfDayEnd,
       reason: reason || null,
       conflict_notes: conflictNotes,
-    });
+    }).select("id").maybeSingle();
     setSaving(false);
     if (error) {
       toast.error(error.message);
       return;
     }
     toast.success("Leave request submitted");
+    if (inserted?.id) {
+      void notify({ data: { leaveId: inserted.id } }).catch((e) => console.error("notify failed", e));
+    }
     onOpenChange(false);
     onSubmitted?.();
   };
