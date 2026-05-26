@@ -93,7 +93,8 @@ function AdminStaffPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Grade</TableHead>
-                  <TableHead>Level</TableHead>
+                  <TableHead>Details</TableHead>
+                  <TableHead>LTFT</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-16"></TableHead>
                 </TableRow>
@@ -107,9 +108,20 @@ function AdminStaffPage() {
                       {p.grade ? <Badge variant="outline">{p.grade}</Badge> : "—"}
                     </TableCell>
                     <TableCell>
-                      {p.training_level ? (
+                      {p.grade === "consultant" && p.job_plan ? (
+                        <span className="text-sm">{p.job_plan.total_pas} PAs</span>
+                      ) : p.grade === "trainee" && p.training_level ? (
                         <Badge variant="secondary">{p.training_level}</Badge>
-                      ) : "—"}
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {p.job_plan?.ltft ? (
+                        <Badge>{p.job_plan.ltft_percentage ?? ""}%</Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Full time</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {p.active ? (
