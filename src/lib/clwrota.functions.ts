@@ -737,6 +737,65 @@ function normaliseRole(
   return "solo";
 }
 
+type ResolvedDutyType =
+  | "theatre"
+  | "consultant_in_charge"
+  | "obstetrics"
+  | "obstetrics_2nd"
+  | "icu_trainee"
+  | "icu_ct2_plus"
+  | "icu_consultant_oncall"
+  | "general_consultant_oncall"
+  | "registrar_oncall"
+  | "sho_oncall";
+
+/**
+ * Classify a CLWRota row as a non-theatre duty (on-call, obstetrics, ICU,
+ * consultant in charge) based on the free-text label fields plus the staff
+ * member's grade/training level. Returns "theatre" when nothing matches —
+ * the row stays as a theatre list assignment.
+ */
+function classifyDutyType(
+  labels: Array<string | null | undefined>,
+  grade: string | null | undefined,
+  trainingLevel: string | null | undefined,
+): ResolvedDutyType {
+  const text = labels.filter(Boolean).join(" ").toLowerCase();
+  if (!text) return "theatre";
+
+  const isJuniorTrainee = (() => {
+    const tl = (trainingLevel ?? "").toUpperCase();
+    return tl === "CT1" || tl === "CT2" || tl === "ACCS1" || tl === "ACCS2" || tl === "ACCS3";
+  })();
+
+  if (text.includes("consultant in charge") || /\bcic\b/.test(text)) return "consultant_in_charge";
+
+  if (text.includes("obstet")) {
+    if (/\b(2nd|second)\b/.test(text)) return "obstetrics_2nd";
+    return "obstetrics";
+  }
+
+  const mentionsIcu =
+    text.includes("icu") || text.includes("intensive") || text.includes("critical care");
+  if (mentionsIcu) {
+    if (grade === "consultant") return "icu_consultant_oncall";
+    if (grade === "trainee") return isJuniorTrainee ? "icu_trainee" : "icu_ct2_plus";
+    return "icu_ct2_plus"; // SAS or unknown — closest fit
+  }
+
+  const mentionsOnCall =
+    text.includes("on call") || text.includes("on-call") || text.includes("oncall");
+  if (mentionsOnCall) {
+    if (grade === "consultant") return "general_consultant_oncall";
+    if (grade === "sas") return "registrar_oncall";
+    if (grade === "trainee") return isJuniorTrainee ? "sho_oncall" : "registrar_oncall";
+    return "registrar_oncall";
+  }
+
+  return "theatre";
+}
+
+
 /**
  * Pull rota assignments from the configured CLWRota rota report URL and
  * write them to `theatre_sessions` + `rota_assignments`. Matches staff by
@@ -816,7 +875,7 @@ export async function performRotaSync() {
     }
 
     const [{ data: profiles }, { data: theatres }, { data: specialties }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id"),
+      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id, grade, training_level"),
       supabaseAdmin.from("theatres").select("id, name"),
       supabaseAdmin.from("specialties").select("id, name"),
     ]);
@@ -824,10 +883,12 @@ export async function performRotaSync() {
     const profByEmail = new Map<string, string>();
     const profByExtId = new Map<string, string>();
     const profByName = new Map<string, string>();
+    const profById = new Map<string, { grade: string | null; training_level: string | null }>();
     for (const p of profiles ?? []) {
       if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
       if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
       if (p.full_name) profByName.set(p.full_name.toLowerCase().trim(), p.id);
+      profById.set(p.id, { grade: p.grade ?? null, training_level: p.training_level ?? null });
     }
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
@@ -851,7 +912,7 @@ export async function performRotaSync() {
       staff_id: string;
       session_date: string;
       session: "am" | "pm" | "eve" | "night";
-      duty_type: "theatre";
+      duty_type: ResolvedDutyType;
       role_on_list: ReturnType<typeof normaliseRole>;
       source: "clwrota";
       theatre_session_key: string | null; // resolve after sessions upserted
@@ -939,8 +1000,16 @@ export async function performRotaSync() {
         if (!theatreId) unmatchedTheatres.add(theatreName);
       }
 
+      // Classify duty type from free-text labels + staff grade.
+      const prof = profById.get(staffId);
+      const dutyType = classifyDutyType(
+        [consultantName, roleRaw, specialtyName, theatreName],
+        prof?.grade,
+        prof?.training_level,
+      );
+
       let theatreSessionKey: string | null = null;
-      if (theatreId) {
+      if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
         // Last write wins (later rows can fill in specialty/consultant).
         sessionDraftsByKey.set(theatreSessionKey, {
@@ -956,8 +1025,9 @@ export async function performRotaSync() {
         staff_id: staffId,
         session_date,
         session,
-        duty_type: "theatre",
-        role_on_list: normaliseRole(roleRaw),
+        duty_type: dutyType,
+        // Non-theatre duties are always on-call style; theatre rows keep the parsed role.
+        role_on_list: dutyType === "theatre" ? normaliseRole(roleRaw) : "on_call",
         source: "clwrota",
         theatre_session_key: theatreSessionKey,
         clwrota_external_id: externalId,
