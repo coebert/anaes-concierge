@@ -228,7 +228,8 @@ function SettingsPage() {
               <div className="font-medium">Last staff sync</div>
               <div className="text-muted-foreground">
                 {staffMut.data.total} rows · {staffMut.data.matched} matched ·{" "}
-                {staffMut.data.updated} updated · {staffMut.data.unmatched.length} unmatched
+                {staffMut.data.updated} updated · {staffMut.data.inserted ?? 0} added ·{" "}
+                {staffMut.data.unmatched.length} skipped
               </div>
               {staffMut.data.unmatched.length > 0 && (
                 <div>
