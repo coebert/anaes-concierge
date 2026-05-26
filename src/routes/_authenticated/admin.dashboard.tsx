@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateGB } from "@/lib/utils";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
-  CalendarDays, AlertTriangle,
+  CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
