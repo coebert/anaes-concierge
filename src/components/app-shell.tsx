@@ -43,6 +43,7 @@ const NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/dashboard", label: "Rota audit data", icon: Grid3x3, roles: ["admin"] },
+  { to: "/admin/tcs-audit", label: "TCS 2016 audit", icon: ShieldCheck, roles: ["admin"] },
   { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin"] },
   { to: "/coordinator/duties", label: "Duties & on-call", icon: Stethoscope, roles: ["admin", "rota_coordinator"] },
   { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
