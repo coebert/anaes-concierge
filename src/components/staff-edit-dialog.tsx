@@ -104,6 +104,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
     training_level: "",
     gmc_number: "",
     start_date: "",
+    rotation_end_date: "",
     active: true,
   });
 
@@ -115,6 +116,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
         training_level: data.training_level ?? "",
         gmc_number: data.gmc_number ?? "",
         start_date: data.start_date ?? "",
+        rotation_end_date: data.rotation_end_date ?? "",
         active: data.active,
       });
     }
@@ -130,6 +132,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
           training_level: form.training_level || null,
           gmc_number: form.gmc_number || null,
           start_date: form.start_date || null,
+          rotation_end_date: form.grade === "trainee" ? form.rotation_end_date || null : null,
           active: form.active,
         })
         .eq("id", staffId);
@@ -186,6 +189,15 @@ function ProfileTab({ staffId }: { staffId: string }) {
             onChange={(e) => setForm({ ...form, start_date: e.target.value })}
           />
         </Field>
+        {form.grade === "trainee" && (
+          <Field label="Rotation end date (last day at Salisbury)">
+            <Input
+              type="date"
+              value={form.rotation_end_date}
+              onChange={(e) => setForm({ ...form, rotation_end_date: e.target.value })}
+            />
+          </Field>
+        )}
         <Field label="Active">
           <div className="flex h-10 items-center">
             <Switch
