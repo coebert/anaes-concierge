@@ -238,6 +238,7 @@ function AdminDashboardPage() {
   }, [traineeMetricsData]);
 
 
+  const soloStats = useMemo(() => {
     if (!soloMonthly) return null;
     const traineeIds = new Map<string, { full_name: string | null; bucket: TraineeBucket | null; level: string | null }>();
     const gradeById = new Map<string, string | null>();
