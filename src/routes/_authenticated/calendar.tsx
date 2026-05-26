@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  GlobalWeekGrid, WeekPicker, StaffPicker, startOfWeek,
+  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, buildDays,
+  type ViewMode,
 } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
@@ -9,8 +10,11 @@ export const Route = createFileRoute("/_authenticated/calendar")({
 });
 
 function CalendarPage() {
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const [mode, setMode] = useState<ViewMode>("week");
   const navigate = useNavigate();
+
+  const days = useMemo(() => buildDays(anchor, mode, false), [anchor, mode]);
 
   return (
     <div className="space-y-4">
@@ -18,7 +22,7 @@ function CalendarPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Global calendar</h1>
           <p className="text-sm text-muted-foreground">
-            Read-only theatre grid for the week. Click a name to open that staff member's view.
+            Read-only theatre grid. Click a name to open that staff member's view.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -27,10 +31,11 @@ function CalendarPage() {
               navigate({ to: "/calendar/staff/$staffId", params: { staffId } })
             }
           />
-          <WeekPicker weekStart={weekStart} onChange={setWeekStart} />
+          <ViewModeToggle mode={mode} onChange={setMode} />
+          <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
         </div>
       </div>
-      <GlobalWeekGrid weekStart={weekStart} />
+      <GlobalWeekGrid weekStart={days[0]} days={days} />
     </div>
   );
 }
