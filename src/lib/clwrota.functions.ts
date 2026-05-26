@@ -593,3 +593,329 @@ export const runClwRotaSync = createServerFn({ method: "POST" })
       details,
     };
   });
+
+// =====================================================================
+// Rota sync
+// =====================================================================
+
+type SessionHalf = "am" | "pm" | "eve" | "night";
+
+function normaliseSession(raw: string | null): SessionHalf | null {
+  if (!raw) return null;
+  const s = raw.trim().toLowerCase();
+  if (["am", "morning", "a.m.", "a.m"].includes(s)) return "am";
+  if (["pm", "afternoon", "p.m.", "p.m"].includes(s)) return "pm";
+  if (["eve", "evening"].includes(s)) return "eve";
+  if (["night", "nights"].includes(s)) return "night";
+  const m = s.match(/^(\d{1,2})[:.]?(\d{2})?/);
+  if (m) {
+    const h = parseInt(m[1], 10);
+    if (h < 12) return "am";
+    if (h < 17) return "pm";
+    if (h < 21) return "eve";
+    return "night";
+  }
+  return null;
+}
+
+function normaliseDate(raw: string | null): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
+  if (m) {
+    let [, d, mo, y] = m;
+    if (y.length === 2) y = `20${y}`;
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  return null;
+}
+
+function normaliseRole(
+  raw: string | null,
+): "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session" {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (s.includes("trainer") || (s.includes("supervis") && (s.includes("ing") || s.includes("or"))))
+    return "supervising";
+  if (s.includes("supervised") || s.includes("trainee")) return "supervised";
+  if (s.includes("on call") || s.includes("on-call") || s.includes("oncall")) return "on_call";
+  if (s.includes("teach")) return "teaching";
+  if (s.includes("admin")) return "admin_session";
+  if (s.includes("non") && s.includes("clin")) return "non_clinical";
+  return "solo";
+}
+
+/**
+ * Pull rota assignments from the configured CLWRota rota report URL and
+ * write them to `theatre_sessions` + `rota_assignments`. Matches staff by
+ * email/external id/name, theatres by name, specialties by name (created on
+ * demand). Rows that can't be matched are reported as skipped so the field
+ * mapping can be tuned.
+ */
+export const syncClwRotaRota = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { apiKey } = getEnv();
+
+    const { data: settings, error: loadErr } = await supabaseAdmin
+      .from("clwrota_sync_state")
+      .select("rota_report_url")
+      .eq("id", 1)
+      .maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+
+    const url = settings?.rota_report_url;
+    const emptyResult = {
+      ok: false as boolean,
+      message: "",
+      total: 0,
+      sessionsUpserted: 0,
+      assignmentsUpserted: 0,
+      skipped: [] as Array<{ label: string; reason: string }>,
+      errors: [] as Array<{ label: string; error: string }>,
+      rawPreview: "",
+      sampleKeys: [] as string[],
+      unmatchedTheatres: [] as string[],
+      unmatchedStaff: [] as string[],
+    };
+
+    if (!url) {
+      return { ...emptyResult, message: "No rota report URL configured." };
+    }
+
+    let rows: Record<string, unknown>[];
+    let rawPreview = "";
+    let sampleKeys: string[] = [];
+    try {
+      const text = await fetchReportRaw(url, apiKey);
+      rawPreview = text.slice(0, 500);
+      rows = parseRows(text);
+      if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await supabaseAdmin.from("clwrota_sync_state").upsert({
+        id: 1,
+        last_sync_at: new Date().toISOString(),
+        last_status: "rota_fetch_failed",
+        last_error: msg,
+      });
+      throw new Error(msg);
+    }
+
+    if (rows.length === 0) {
+      await supabaseAdmin.from("clwrota_sync_state").upsert({
+        id: 1,
+        last_sync_at: new Date().toISOString(),
+        last_status: "rota_no_rows",
+        last_error: `Rota URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`,
+        last_pulled_rows: 0,
+      });
+      return {
+        ...emptyResult,
+        message: "Rota URL returned 0 rows. See preview below.",
+        rawPreview,
+        sampleKeys,
+      };
+    }
+
+    const [{ data: profiles }, { data: theatres }, { data: specialties }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id"),
+      supabaseAdmin.from("theatres").select("id, name"),
+      supabaseAdmin.from("specialties").select("id, name"),
+    ]);
+
+    const profByEmail = new Map<string, string>();
+    const profByExtId = new Map<string, string>();
+    const profByName = new Map<string, string>();
+    for (const p of profiles ?? []) {
+      if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
+      if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
+      if (p.full_name) profByName.set(p.full_name.toLowerCase().trim(), p.id);
+    }
+    const theatreByName = new Map<string, string>();
+    for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
+    const specialtyByName = new Map<string, string>();
+    for (const s of specialties ?? []) specialtyByName.set(s.name.toLowerCase().trim(), s.id);
+
+    const skipped: Array<{ label: string; reason: string }> = [];
+    const errors: Array<{ label: string; error: string }> = [];
+    const unmatchedTheatres = new Set<string>();
+    const unmatchedStaff = new Set<string>();
+
+    const sessionCache = new Map<string, string>();
+    let sessionsUpserted = 0;
+    let assignmentsUpserted = 0;
+
+    for (const row of rows) {
+      const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
+      const sessRaw = pick(row, ["session", "session_half", "half", "Session", "period", "shift", "time"]);
+      const personEmail = pick(row, ["email", "person_email", "Email"]);
+      const personExtId = pick(row, ["person_id", "local_id", "staff_id", "user_id"]);
+      const personName = pick(row, ["person", "person_name", "name", "staff", "Name", "full_name"]);
+      const theatreName = pick(row, ["theatre", "location", "room", "Theatre", "list", "Location"]);
+      const specialtyName = pick(row, ["specialty", "speciality", "service", "Specialty", "Service"]);
+      const consultantName = pick(row, ["consultant", "surgeon", "surgical_consultant", "Consultant"]);
+      const roleRaw = pick(row, ["role", "duty", "type", "Role", "Duty"]);
+      const externalId = pick(row, ["id", "rota_id", "assignment_id", "external_id"]);
+
+      const session_date = normaliseDate(dateRaw);
+      const session = normaliseSession(sessRaw);
+      const label = `${dateRaw ?? "?"} ${sessRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
+
+      if (!session_date) {
+        skipped.push({ label, reason: `cannot parse date "${dateRaw ?? ""}"` });
+        continue;
+      }
+      if (!session) {
+        skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` });
+        continue;
+      }
+
+      let staffId: string | undefined;
+      if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
+      if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
+      if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
+      if (!staffId) {
+        unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
+        skipped.push({
+          label,
+          reason: `staff not found (email=${personEmail ?? "-"}, extId=${personExtId ?? "-"}, name=${personName ?? "-"})`,
+        });
+        continue;
+      }
+
+      let specialtyId: string | undefined;
+      if (specialtyName) {
+        const key = specialtyName.toLowerCase().trim();
+        specialtyId = specialtyByName.get(key);
+        if (!specialtyId) {
+          const { data: spec } = await supabaseAdmin
+            .from("specialties")
+            .insert({ name: specialtyName })
+            .select("id")
+            .single();
+          if (spec?.id) {
+            specialtyId = spec.id;
+            specialtyByName.set(key, spec.id);
+          }
+        }
+      }
+
+      let theatreId: string | undefined;
+      if (theatreName) {
+        theatreId = theatreByName.get(theatreName.toLowerCase().trim());
+        if (!theatreId) unmatchedTheatres.add(theatreName);
+      }
+
+      let theatreSessionId: string | undefined;
+      if (theatreId) {
+        const sessKey = `${session_date}|${theatreId}|${session}`;
+        theatreSessionId = sessionCache.get(sessKey);
+        if (!theatreSessionId) {
+          const { data: existingSess } = await supabaseAdmin
+            .from("theatre_sessions")
+            .select("id")
+            .eq("session_date", session_date)
+            .eq("theatre_id", theatreId)
+            .eq("session", session)
+            .maybeSingle();
+          if (existingSess?.id) {
+            theatreSessionId = existingSess.id;
+            const patch: Record<string, unknown> = {};
+            if (specialtyId) patch.specialty_id = specialtyId;
+            if (consultantName) patch.surgical_consultant = consultantName;
+            if (Object.keys(patch).length) {
+              await supabaseAdmin
+                .from("theatre_sessions")
+                .update(patch)
+                .eq("id", existingSess.id);
+            }
+          } else {
+            const { data: newSess, error: sessErr } = await supabaseAdmin
+              .from("theatre_sessions")
+              .insert({
+                session_date,
+                theatre_id: theatreId,
+                session,
+                specialty_id: specialtyId ?? null,
+                surgical_consultant: consultantName ?? null,
+              })
+              .select("id")
+              .single();
+            if (sessErr) {
+              errors.push({ label, error: `theatre_session insert: ${sessErr.message}` });
+            } else if (newSess?.id) {
+              theatreSessionId = newSess.id;
+              sessionsUpserted++;
+            }
+          }
+          if (theatreSessionId) sessionCache.set(sessKey, theatreSessionId);
+        }
+      }
+
+      const role_on_list = normaliseRole(roleRaw);
+
+      const { data: existingAssign } = await supabaseAdmin
+        .from("rota_assignments")
+        .select("id")
+        .eq("staff_id", staffId)
+        .eq("session_date", session_date)
+        .eq("session", session)
+        .maybeSingle();
+
+      const assignmentRow = {
+        staff_id: staffId,
+        session_date,
+        session,
+        duty_type: "theatre" as const,
+        role_on_list,
+        source: "clwrota" as const,
+        theatre_session_id: theatreSessionId ?? null,
+        clwrota_external_id: externalId ?? null,
+        notes: consultantName ? `Surgeon: ${consultantName}` : null,
+      };
+
+      if (existingAssign?.id) {
+        const { error: upErr } = await supabaseAdmin
+          .from("rota_assignments")
+          .update(assignmentRow)
+          .eq("id", existingAssign.id);
+        if (upErr) errors.push({ label, error: `assignment update: ${upErr.message}` });
+        else assignmentsUpserted++;
+      } else {
+        const { error: insErr } = await supabaseAdmin
+          .from("rota_assignments")
+          .insert(assignmentRow);
+        if (insErr) errors.push({ label, error: `assignment insert: ${insErr.message}` });
+        else assignmentsUpserted++;
+      }
+    }
+
+    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
+    await supabaseAdmin.from("clwrota_sync_state").upsert({
+      id: 1,
+      last_sync_at: new Date().toISOString(),
+      last_status: errors.length ? "rota_partial" : "rota_success",
+      last_error: errors.length
+        ? errors.slice(0, 5).map((e) => `${e.label}: ${e.error}`).join("; ")
+        : null,
+      last_pulled_rows: rows.length,
+    });
+
+    return {
+      ok: errors.length === 0,
+      message: summary,
+      total: rows.length,
+      sessionsUpserted,
+      assignmentsUpserted,
+      skipped,
+      errors,
+      rawPreview,
+      sampleKeys,
+      unmatchedTheatres: Array.from(unmatchedTheatres),
+      unmatchedStaff: Array.from(unmatchedStaff),
+    };
+  });
