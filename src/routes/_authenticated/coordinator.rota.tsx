@@ -116,11 +116,56 @@ function RotaGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name,grade")
+        .select("id,full_name,grade,training_level")
         .eq("active", true)
         .order("full_name");
       if (error) throw error;
+      return data as Profile[];
+    },
+  });
+
+  const { data: rules } = useQuery({
+    queryKey: ["rota-rules"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_rules").select("*").eq("id", 1).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as RotaRules | null;
+    },
+  });
+
+  const { data: jobPlans } = useQuery({
+    queryKey: ["job-plans-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("job_plans")
+        .select("staff_id,total_pas,dcc_pas,spa_pas,ltft,ltft_percentage,valid_from,valid_to");
+      if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: leave } = useQuery({
+    queryKey: ["leave-week", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leave_requests")
+        .select("staff_id,start_date,end_date,status")
+        .lte("start_date", endIso)
+        .gte("end_date", startIso);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: fixedSessions } = useQuery({
+    queryKey: ["fixed-sessions-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fixed_sessions")
+        .select("staff_id,day_of_week,session");
+      if (error) throw error;
+      return data as { staff_id: string; day_of_week: number; session: SessionHalf }[];
     },
   });
 
