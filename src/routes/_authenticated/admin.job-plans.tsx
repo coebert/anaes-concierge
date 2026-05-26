@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { Pencil } from "lucide-react";
+import { formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/job-plans")({
   component: JobPlansPage,
@@ -135,7 +136,7 @@ function JobPlansPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{p.fixed}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {p.jp?.valid_from ?? "—"}
+                      {formatDateGB(p.jp?.valid_from)}
                     </TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" onClick={() => setEditingId(p.id)}>

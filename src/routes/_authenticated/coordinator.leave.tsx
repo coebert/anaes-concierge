@@ -13,6 +13,7 @@ import { computeLeaveConflicts, type LeaveConflict } from "@/lib/leave-utils";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveDecided } from "@/lib/leave-notifications.functions";
+import { formatDateGB } from "@/lib/utils";
 
 interface LeaveRow {
   id: string;
@@ -146,10 +147,10 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
           <div>
             <CardTitle className="text-base">{staffName}</CardTitle>
             <div className="text-xs text-muted-foreground mt-1">
-              <span className="capitalize">{row.type}</span> · {row.start_date}
+              <span className="capitalize">{row.type}</span> · {formatDateGB(row.start_date)}
               {row.half_day_start ? ` (${row.half_day_start === "am" ? "PM only" : "AM only"})` : ""}
               {" → "}
-              {row.end_date}
+              {formatDateGB(row.end_date)}
               {row.half_day_end ? ` (${row.half_day_end} only)` : ""}
             </div>
           </div>

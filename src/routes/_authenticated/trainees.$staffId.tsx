@@ -193,7 +193,7 @@ function TraineeDetailPage() {
                   const ts = a.theatre_session_id ? data.tsMap.get(a.theatre_session_id) : null;
                   return (
                     <TableRow key={a.id}>
-                      <TableCell>{format(new Date(a.session_date), "EEE d MMM yyyy")}</TableCell>
+                      <TableCell>{format(new Date(a.session_date), "EEE dd/MM/yyyy")}</TableCell>
                       <TableCell className="capitalize">{a.session}</TableCell>
                       <TableCell>{ts ? data.theatreMap.get(ts.theatre_id) ?? "—" : "—"}</TableCell>
                       <TableCell>

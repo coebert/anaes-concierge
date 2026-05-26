@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
+import { formatDateGB } from "@/lib/utils";
 
 interface LeaveRow {
   id: string;
@@ -99,10 +100,10 @@ function LeavePage() {
                 {rows.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs">
-                      {r.start_date}
+                      {formatDateGB(r.start_date)}
                       {r.half_day_start ? ` (${r.half_day_start === "am" ? "PM only" : "AM only"})` : ""}
                       {" → "}
-                      {r.end_date}
+                      {formatDateGB(r.end_date)}
                       {r.half_day_end ? ` (${r.half_day_end} only)` : ""}
                     </TableCell>
                     <TableCell className="capitalize">{r.type}</TableCell>
