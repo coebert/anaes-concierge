@@ -220,6 +220,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
 
     let matched = 0;
     let updated = 0;
+    let inserted = 0;
     const unmatched: string[] = [];
     const errors: string[] = [];
 
@@ -243,9 +244,46 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         continue;
       }
 
+      const isEndedPast =
+        endDate != null &&
+        !Number.isNaN(Date.parse(endDate)) &&
+        Date.parse(endDate) < Date.now();
+
       const profileId = byEmail.get(email.toLowerCase());
+
       if (!profileId) {
-        unmatched.push(`${fullName || email} <${email}>`);
+        // Create a new profile so the person shows up in the coordinator
+        // staff list. They won't have a login until invited separately —
+        // the profile id is just a placeholder uuid until then.
+        const newRow: {
+          id: string;
+          email: string;
+          full_name: string;
+          clwrota_external_id?: string;
+          gmc_number?: string;
+          start_date?: string;
+          active: boolean;
+        } = {
+          id: crypto.randomUUID(),
+          email,
+          full_name: fullName || email,
+          active: !isEndedPast,
+        };
+        if (externalId) newRow.clwrota_external_id = externalId;
+        if (gmc) newRow.gmc_number = gmc;
+        if (startDate) newRow.start_date = startDate;
+
+        const { data: insData, error: insErr } = await supabaseAdmin
+          .from("profiles")
+          .insert(newRow)
+          .select("id")
+          .single();
+        if (insErr) {
+          errors.push(`${email} (insert): ${insErr.message}`);
+        } else {
+          inserted++;
+          if (insData?.id) byEmail.set(email.toLowerCase(), insData.id);
+        }
         continue;
       }
 
@@ -261,11 +299,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       if (externalId) patch.clwrota_external_id = externalId;
       if (gmc) patch.gmc_number = gmc;
       if (startDate) patch.start_date = startDate;
-      // Mark inactive if an end date in the past was supplied.
-      if (endDate) {
-        const ts = Date.parse(endDate);
-        if (!Number.isNaN(ts) && ts < Date.now()) patch.active = false;
-      }
+      if (isEndedPast) patch.active = false;
 
       if (Object.keys(patch).length === 0) continue;
 
@@ -280,7 +314,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       }
     }
 
-    const summary = `Staff sync: ${rows.length} rows · ${matched} matched · ${updated} updated · ${unmatched.length} unmatched`;
+    const summary = `Staff sync: ${rows.length} rows · ${matched} matched · ${updated} updated · ${inserted} added · ${unmatched.length} skipped`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
       id: 1,
       last_sync_at: new Date().toISOString(),
@@ -295,6 +329,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       total: rows.length,
       matched,
       updated,
+      inserted,
       unmatched,
       errors,
     };
