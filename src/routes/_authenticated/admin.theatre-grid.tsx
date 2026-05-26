@@ -140,44 +140,22 @@ function TheatreGridPage() {
             Configure AM/PM sessions for every theatre. Pick a specialty and operating consultant per slot.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWeekStart(addDays(weekStart, -7))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="rounded-md border px-3 py-1.5 text-sm font-medium tabular-nums">
-            {startISO} – {endISO}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWeekStart(addDays(weekStart, 7))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setWeekStart(mondayOf(new Date()))}
-          >
-            This week
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewModeToggle mode={mode} onChange={setMode} />
+          <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIncludeWeekend((v) => !v)}
           >
-            {includeWeekend ? "Mon–Fri" : "Include weekend"}
+            {includeWeekend ? "Hide weekend" : "Include weekend"}
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Week of {startISO}</CardTitle>
+          <CardTitle className="text-base">{startISO} – {endISO}</CardTitle>
           <CardDescription>
             Empty cells become new sessions when you choose a specialty or type a consultant.
           </CardDescription>
