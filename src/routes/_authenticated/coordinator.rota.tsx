@@ -213,18 +213,24 @@ function RotaGridPage() {
     },
   });
 
-  const staffName = (id: string | null) =>
-    staff?.find((s) => s.id === id)?.full_name ?? "—";
+  const staffById = (id: string | null) => staff?.find((s) => s.id === id);
+  const staffName = (id: string | null) => staffById(id)?.full_name ?? "—";
+  const gradeRank = (g: string | null | undefined) =>
+    g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
 
   const cellSession = (theatreId: string, date: string, session: SessionHalf) =>
     theatreSessions?.find(
       (s) => s.theatre_id === theatreId && s.session_date === date && s.session === session,
     );
 
-  const cellAssignments = (theatreSessionId: string | undefined) =>
-    theatreSessionId
+  const cellAssignments = (theatreSessionId: string | undefined) => {
+    const list = theatreSessionId
       ? assignments?.filter((a) => a.theatre_session_id === theatreSessionId) ?? []
       : [];
+    return [...list].sort(
+      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -311,17 +317,31 @@ function RotaGridPage() {
                                   {ts.surgical_consultant}
                                 </div>
                               )}
-                              {assigns.map((a) => (
-                                <div key={a.id} className="truncate text-[10px]">
-                                  <Badge
-                                    variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                    className="mr-1 px-1 py-0 text-[9px]"
+                              {assigns.map((a) => {
+                                const sp = staffById(a.staff_id);
+                                const isConsultant = sp?.grade === "consultant";
+                                const isTrainee = sp?.grade === "trainee";
+                                const highlightTrainee = isTrainee && a.role_on_list === "solo";
+                                return (
+                                  <div
+                                    key={a.id}
+                                    className={cn(
+                                      "truncate text-[10px]",
+                                      isConsultant && "font-bold",
+                                      highlightTrainee && "text-blue-600 dark:text-blue-400",
+                                    )}
                                   >
-                                    {a.role_on_list}
-                                  </Badge>
-                                  {staffName(a.staff_id)}
-                                </div>
-                              ))}
+                                    <Badge
+                                      variant={a.role_on_list === "supervising" ? "default" : "outline"}
+                                      className="mr-1 px-1 py-0 text-[9px]"
+                                    >
+                                      {a.role_on_list}
+                                    </Badge>
+                                    {staffName(a.staff_id)}
+                                    {isTrainee && sp?.training_level ? ` (${sp.training_level})` : ""}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="text-muted-foreground/60 text-[10px]">+ add</div>
@@ -460,7 +480,7 @@ function CellDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: assigns, refetch: refetchAssigns } = useQuery({
+  const { data: rawAssigns, refetch: refetchAssigns } = useQuery({
     queryKey: ["assigns", theatreId, date, session, ts?.id],
     enabled: !!ts?.id,
     queryFn: async () => {
@@ -472,6 +492,19 @@ function CellDialog({
       return data;
     },
   });
+
+  const gradeRank = (g: string | null | undefined) =>
+    g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
+  const staffByIdLocal = (id: string) => staff.find((s) => s.id === id);
+  const assigns = useMemo(
+    () =>
+      [...(rawAssigns ?? [])].sort(
+        (a, b) =>
+          gradeRank(staffByIdLocal(a.staff_id)?.grade) -
+          gradeRank(staffByIdLocal(b.staff_id)?.grade),
+      ),
+    [rawAssigns, staff],
+  );
 
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
@@ -701,6 +734,25 @@ function CellDialog({
                                     ))}
                                 </SelectContent>
                               </Select>
+                              {(() => {
+                                const sp = staffByIdLocal(a.staff_id);
+                                if (!sp) return null;
+                                const isConsultant = sp.grade === "consultant";
+                                const isTrainee = sp.grade === "trainee";
+                                const highlightTrainee = isTrainee && a.role_on_list === "solo";
+                                return (
+                                  <span
+                                    className={cn(
+                                      "text-[11px]",
+                                      isConsultant && "font-bold",
+                                      highlightTrainee && "text-blue-600 dark:text-blue-400",
+                                    )}
+                                  >
+                                    {sp.full_name}
+                                    {isTrainee && sp.training_level ? ` (${sp.training_level})` : ""}
+                                  </span>
+                                );
+                              })()}
                               {worst && <SeverityIcon severity={worst} />}
                               {a.locally_modified && a.clwrota_external_id && (
                                 <Badge variant="secondary" className="px-1 py-0 text-[9px]" title="Locked: this row was edited locally and will not be overwritten by CLWRota sync.">
