@@ -26,6 +26,7 @@ import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_auth
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
+import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
@@ -121,6 +122,12 @@ const AuthenticatedAdminTheatresRoute =
     path: '/admin/theatres',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminTheatreGridRoute =
+  AuthenticatedAdminTheatreGridRouteImport.update({
+    id: '/admin/theatre-grid',
+    path: '/admin/theatre-grid',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminStaffRoute = AuthenticatedAdminStaffRouteImport.update({
   id: '/admin/staff',
   path: '/admin/staff',
@@ -165,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -187,6 +195,7 @@ export interface FileRoutesByTo {
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -212,6 +221,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
     | '/coordinator/leave'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
     | '/coordinator/leave'
@@ -283,6 +295,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
+    | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
     | '/_authenticated/chat/$conversationId'
     | '/_authenticated/coordinator/leave'
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTheatresRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/theatre-grid': {
+      id: '/_authenticated/admin/theatre-grid'
+      path: '/admin/theatre-grid'
+      fullPath: '/admin/theatre-grid'
+      preLoaderRoute: typeof AuthenticatedAdminTheatreGridRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/staff': {
       id: '/_authenticated/admin/staff'
       path: '/admin/staff'
@@ -510,6 +530,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
+  AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
@@ -526,6 +547,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
+  AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
