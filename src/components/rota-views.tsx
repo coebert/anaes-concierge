@@ -420,7 +420,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
           <p className="text-sm text-muted-foreground">
             {profile?.grade ?? "—"}
             {profile?.grade === "trainee" ? ` · ${profile?.training_level || "Level unknown"}` : ""}
-            {profile?.email ? ` · ${profile.email}` : ""}
+            
           </p>
         </div>
         <WeekPicker weekStart={weekStart} onChange={setWeekStart} />
