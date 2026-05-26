@@ -124,6 +124,19 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const rotaMut = useMutation({
+    mutationFn: () => syncRota({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(res.message);
+      else toast.warning(res.message);
+      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+      void qc.invalidateQueries({ queryKey: ["rota"] });
+      void qc.invalidateQueries({ queryKey: ["rota-assignments"] });
+      void qc.invalidateQueries({ queryKey: ["theatre-sessions"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center">
