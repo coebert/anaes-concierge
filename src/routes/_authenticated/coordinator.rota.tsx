@@ -492,6 +492,9 @@ function CellDialog({
       weekAssignments: weekAssignments.filter(
         (a) => !(a.staff_id === staffId && a.session_date === date && a.session === session),
       ),
+      contextAssignments: contextAssignments.filter(
+        (a) => !(a.staff_id === staffId && a.session_date === date && a.session === session),
+      ),
       profiles: staff,
       jobPlans,
       leave,
