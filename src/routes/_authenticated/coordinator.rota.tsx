@@ -229,7 +229,10 @@ function RotaGridPage() {
           </Button>
           <Input
             type="date" value={iso(weekStart)}
-            onChange={(e) => setWeekStart(startOfWeek(new Date(e.target.value)))}
+            onChange={(e) => {
+              const d = parseDateLocal(e.target.value);
+              if (d) setWeekStart(startOfWeek(d));
+            }}
             className="h-8 w-40"
           />
           <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
