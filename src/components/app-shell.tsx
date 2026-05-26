@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/dashboard", label: "Dashboard", icon: Grid3x3, roles: ["admin"] },
   { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin"] },
+  { to: "/coordinator/duties", label: "Duties & on-call", icon: Stethoscope, roles: ["admin", "rota_coordinator"] },
   { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
   { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },

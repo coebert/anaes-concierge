@@ -390,6 +390,7 @@ export type Database = {
         Row: {
           clwrota_external_id: string | null
           created_at: string
+          duty_type: Database["public"]["Enums"]["duty_type"]
           id: string
           notes: string | null
           role_on_list: Database["public"]["Enums"]["rota_role"]
@@ -404,6 +405,7 @@ export type Database = {
         Insert: {
           clwrota_external_id?: string | null
           created_at?: string
+          duty_type?: Database["public"]["Enums"]["duty_type"]
           id?: string
           notes?: string | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
@@ -418,6 +420,7 @@ export type Database = {
         Update: {
           clwrota_external_id?: string | null
           created_at?: string
+          duty_type?: Database["public"]["Enums"]["duty_type"]
           id?: string
           notes?: string | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
@@ -740,6 +743,17 @@ export type Database = {
     Enums: {
       app_role: "admin" | "rota_coordinator" | "staff"
       chat_role: "user" | "assistant" | "system"
+      duty_type:
+        | "theatre"
+        | "consultant_in_charge"
+        | "obstetrics"
+        | "obstetrics_2nd"
+        | "icu_trainee"
+        | "icu_ct2_plus"
+        | "icu_consultant_oncall"
+        | "general_consultant_oncall"
+        | "registrar_oncall"
+        | "sho_oncall"
       leave_status: "pending" | "approved" | "rejected" | "cancelled"
       leave_type:
         | "annual"
@@ -757,7 +771,7 @@ export type Database = {
         | "teaching"
         | "admin_session"
       rota_source: "manual" | "clwrota"
-      session_half: "am" | "pm"
+      session_half: "am" | "pm" | "eve" | "night"
       staff_grade: "consultant" | "sas" | "trainee"
       theatre_kind: "main" | "day_surgery"
     }
@@ -889,6 +903,18 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "rota_coordinator", "staff"],
       chat_role: ["user", "assistant", "system"],
+      duty_type: [
+        "theatre",
+        "consultant_in_charge",
+        "obstetrics",
+        "obstetrics_2nd",
+        "icu_trainee",
+        "icu_ct2_plus",
+        "icu_consultant_oncall",
+        "general_consultant_oncall",
+        "registrar_oncall",
+        "sho_oncall",
+      ],
       leave_status: ["pending", "approved", "rejected", "cancelled"],
       leave_type: [
         "annual",
@@ -908,7 +934,7 @@ export const Constants = {
         "admin_session",
       ],
       rota_source: ["manual", "clwrota"],
-      session_half: ["am", "pm"],
+      session_half: ["am", "pm", "eve", "night"],
       staff_grade: ["consultant", "sas", "trainee"],
       theatre_kind: ["main", "day_surgery"],
     },
