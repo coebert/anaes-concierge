@@ -74,13 +74,24 @@ function StaffGroup({
               <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
               <TableCell className="text-muted-foreground">{p.email}</TableCell>
               <TableCell>
-                {p.grade === "consultant" && p.job_plan ? (
-                  <span className="text-sm">{p.job_plan.total_pas} PAs</span>
-                ) : p.grade === "trainee" && p.training_level ? (
-                  <Badge variant="secondary">{p.training_level}</Badge>
-                ) : (
-                  "—"
-                )}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {p.grade === "consultant" ? (
+                    <Badge variant="default">Consultant</Badge>
+                  ) : p.grade === "sas" ? (
+                    <Badge variant="default">SAS</Badge>
+                  ) : p.grade === "trainee" ? (
+                    <Badge variant="default">Trainee</Badge>
+                  ) : null}
+                  {p.training_level && p.training_level !== "Consultant" ? (
+                    <Badge variant="secondary">{p.training_level}</Badge>
+                  ) : null}
+                  {p.grade === "consultant" && p.job_plan ? (
+                    <span className="text-sm text-muted-foreground">
+                      {p.job_plan.total_pas} PAs
+                    </span>
+                  ) : null}
+                  {!p.grade && !p.training_level ? <span>—</span> : null}
+                </div>
               </TableCell>
               <TableCell>
                 {p.job_plan?.ltft ? (
