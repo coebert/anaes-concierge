@@ -114,7 +114,7 @@ function AdminStaffPage() {
       const { data: jps } = await supabase
         .from("job_plans")
         .select("staff_id,total_pas,ltft,ltft_percentage,valid_from,valid_to");
-      const now = new Date().toISOString().slice(0, 10);
+      const now = todayISO();
       const jobPlanMap = new Map<string, { total_pas: number; ltft: boolean; ltft_percentage: number | null }>();
       for (const jp of jps ?? []) {
         if (jp.valid_from <= now && (!jp.valid_to || jp.valid_to >= now)) {
