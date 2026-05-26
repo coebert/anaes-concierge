@@ -336,7 +336,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
     queryKey: ["profile", staffId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id,full_name,email,grade,training_level")
+        .from("profiles").select("id,full_name,grade,training_level")
         .eq("id", staffId).maybeSingle();
       if (error) throw error;
       return data;
