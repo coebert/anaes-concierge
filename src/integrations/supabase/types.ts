@@ -407,6 +407,7 @@ export type Database = {
           created_at: string
           duty_type: Database["public"]["Enums"]["duty_type"]
           id: string
+          locally_modified: boolean
           notes: string | null
           role_on_list: Database["public"]["Enums"]["rota_role"]
           session: Database["public"]["Enums"]["session_half"]
@@ -422,6 +423,7 @@ export type Database = {
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
           id?: string
+          locally_modified?: boolean
           notes?: string | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
           session: Database["public"]["Enums"]["session_half"]
@@ -437,6 +439,7 @@ export type Database = {
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
           id?: string
+          locally_modified?: boolean
           notes?: string | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
           session?: Database["public"]["Enums"]["session_half"]
