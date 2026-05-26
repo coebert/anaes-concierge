@@ -49,7 +49,7 @@ const ADMIN_NAV: NavItem[] = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { signOut, user, roles, hasRole } = useAuth();
+  const { signOut, user, roles, hasRole, grade } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,16 +58,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     void navigate({ to: "/login" });
   };
 
+  const isAdmin = hasRole("admin");
+  const visibleMain = NAV.filter(
+    (i) => !i.traineeOnly || isAdmin || grade === "trainee",
+  );
   const visibleAdmin = ADMIN_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
 
-  const roleLabel =
-    roles.includes("admin")
-      ? "Admin"
-      : roles.includes("rota_coordinator")
-      ? "Coordinator"
-      : "Staff";
+  const roleLabel = isAdmin
+    ? "Admin"
+    : roles.includes("rota_coordinator")
+    ? "Coordinator"
+    : grade === "trainee"
+    ? "Trainee"
+    : grade === "consultant"
+    ? "Consultant"
+    : grade === "sas"
+    ? "SAS"
+    : "Staff";
 
   return (
     <div className="flex min-h-screen bg-muted/30">
@@ -83,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-6 px-2 py-4 text-sm">
-          <NavSection items={NAV} currentPath={location.pathname} />
+          <NavSection items={visibleMain} currentPath={location.pathname} />
           {visibleAdmin.length > 0 && (
             <div className="space-y-1">
               <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
