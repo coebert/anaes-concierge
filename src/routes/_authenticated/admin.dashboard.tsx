@@ -163,24 +163,36 @@ function AdminDashboardPage() {
   const soloStats = useMemo(() => {
     if (!soloMonthly) return null;
     const traineeIds = new Map<string, { full_name: string | null; bucket: TraineeBucket | null; level: string | null }>();
+    const gradeById = new Map<string, string | null>();
     for (const p of soloMonthly.profiles) {
-      traineeIds.set(p.id, {
-        full_name: p.full_name,
-        bucket: traineeBucket(p.training_level),
-        level: p.training_level,
-      });
+      gradeById.set(p.id, p.grade ?? null);
+      if (p.grade === "trainee") {
+        traineeIds.set(p.id, {
+          full_name: p.full_name,
+          bucket: traineeBucket(p.training_level),
+          level: p.training_level,
+        });
+      }
+    }
+
+    // For each theatre session occurrence, determine if a consultant is assigned.
+    // Group key: theatre_session_id OR fall back to date|session|staff-less key (no session id -> treat as standalone).
+    const consultantOnSession = new Set<string>();
+    const sessionKey = (a: typeof soloMonthly.assignments[number]) =>
+      a.theatre_session_id ?? `noid:${a.session_date}:${a.session}:${a.staff_id}`;
+    for (const a of soloMonthly.assignments) {
+      if (gradeById.get(a.staff_id) === "consultant") {
+        consultantOnSession.add(sessionKey(a));
+      }
     }
 
     const inBucket = (b: TraineeBucket | null) =>
       bucket === "all" ? b !== null : b === bucket;
 
-    // month -> { solo, total }, plus per trainee per month
     const monthAgg = new Map<string, { solo: number; total: number }>();
     soloMonthly.months.forEach((m) => monthAgg.set(m, { solo: 0, total: 0 }));
 
-    // perTrainee: id -> { solo, total }
     const perTrainee = new Map<string, { solo: number; total: number }>();
-    // monthly per-trainee for averaging % across trainees
     const perMonthTrainee = new Map<string, Map<string, { solo: number; total: number }>>();
     soloMonthly.months.forEach((m) => perMonthTrainee.set(m, new Map()));
 
@@ -191,7 +203,8 @@ function AdminDashboardPage() {
       const ma = monthAgg.get(monthKey);
       if (!ma) continue;
       ma.total += 1;
-      const isSolo = a.role_on_list === "solo" && !a.supervisor_id;
+      const hasConsultant = consultantOnSession.has(sessionKey(a));
+      const isSolo = !hasConsultant && !a.supervisor_id && a.role_on_list === "solo";
       if (isSolo) ma.solo += 1;
 
       const pt = perTrainee.get(a.staff_id) ?? { solo: 0, total: 0 };
