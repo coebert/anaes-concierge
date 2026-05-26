@@ -59,7 +59,7 @@ export function AddStaffDialog({
       const res = await createFn({
         data: {
           email: email.trim(),
-          full_name: fullName.trim(),
+          full_name: composeName({ title, firstName, surname }),
           grade: grade || null,
           training_level: grade === "trainee" && trainingLevel ? (trainingLevel as typeof TRAINING_LEVELS[number]) : null,
           role,
@@ -81,7 +81,7 @@ export function AddStaffDialog({
 
   const canSubmit =
     email.trim().length > 0 &&
-    fullName.trim().length > 0 &&
+    surname.trim().length > 0 &&
     (sendInvite || password.length >= 8);
 
   return (
@@ -108,15 +108,37 @@ export function AddStaffDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="add-staff-name">Full name</Label>
-            <Input
-              id="add-staff-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Dr Jane Smith"
-              maxLength={200}
-            />
+          <div className="grid grid-cols-[6rem_1fr_1fr] gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-title">Title</Label>
+              <Input
+                id="add-staff-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Dr"
+                maxLength={20}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-surname">Surname</Label>
+              <Input
+                id="add-staff-surname"
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+                placeholder="Smith"
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-staff-first">First name</Label>
+              <Input
+                id="add-staff-first"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Jane"
+                maxLength={100}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
