@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { formatDateGB } from "@/lib/utils";
 import {
   ViewModeToggle, PeriodNav, buildDays, type ViewMode,
 } from "@/components/rota-views";
