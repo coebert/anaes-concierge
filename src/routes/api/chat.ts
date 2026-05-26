@@ -448,7 +448,7 @@ export const Route = createFileRoute("/api/chat")({
           model,
           system: SYSTEM_PROMPT,
           messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId),
+          tools: buildTools(userId, await isAdmin(userId)),
           stopWhen: stepCountIs(50),
         });
 
