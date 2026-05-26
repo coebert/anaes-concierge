@@ -191,6 +191,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
         </Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Grade">
           <Select
             value={form.grade}
             onValueChange={(v) => setForm({ ...form, grade: v as Grade })}
