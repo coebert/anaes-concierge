@@ -14,6 +14,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
@@ -50,6 +51,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedTraineesRoute = AuthenticatedTraineesRouteImport.update({
   id: '/trainees',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/leave'
     | '/me'
     | '/trainees'
+    | '/api/chat'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/theatres'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/leave'
     | '/me'
     | '/trainees'
+    | '/api/chat'
     | '/'
     | '/admin/settings'
     | '/admin/staff'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leave'
     | '/_authenticated/me'
     | '/_authenticated/trainees'
+    | '/api/chat'
     | '/_authenticated/'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/trainees': {
       id: '/_authenticated/trainees'
@@ -427,17 +447,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
