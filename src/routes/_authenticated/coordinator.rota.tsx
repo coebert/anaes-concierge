@@ -540,9 +540,7 @@ function CellDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const dateLabel = new Date(date).toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  const dateLabel = formatDateLongGB(date);
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
