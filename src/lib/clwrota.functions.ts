@@ -1007,17 +1007,43 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
     // Dedupe by external id keeping the last occurrence (latest in the feed).
     const assignmentByExtId = new Map<string, AssignmentDraft>();
     for (const a of assignmentDrafts) assignmentByExtId.set(a.clwrota_external_id, a);
-    const uniqueAssignments = Array.from(assignmentByExtId.values()).map((a) => ({
-      staff_id: a.staff_id,
-      session_date: a.session_date,
-      session: a.session,
-      duty_type: a.duty_type,
-      role_on_list: a.role_on_list,
-      source: a.source,
-      theatre_session_id: a.theatre_session_key ? sessionIdByKey.get(a.theatre_session_key) ?? null : null,
-      clwrota_external_id: a.clwrota_external_id,
-      notes: a.notes,
-    }));
+
+    // Skip rows the coordinator has locally edited — they are "locked" and
+    // must not be overwritten by the upstream sync.
+    const allExtIds = Array.from(assignmentByExtId.keys());
+    const lockedExtIds = new Set<string>();
+    for (let i = 0; i < allExtIds.length; i += CHUNK) {
+      const idChunk = allExtIds.slice(i, i + CHUNK);
+      const { data: lockedRows, error: lockedErr } = await supabaseAdmin
+        .from("rota_assignments")
+        .select("clwrota_external_id")
+        .eq("locally_modified", true)
+        .in("clwrota_external_id", idChunk);
+      if (lockedErr) {
+        errors.push({ label: `(locked-row lookup chunk ${i})`, error: lockedErr.message });
+        continue;
+      }
+      for (const r of lockedRows ?? []) {
+        if (r.clwrota_external_id) lockedExtIds.add(r.clwrota_external_id);
+      }
+    }
+    let lockedSkipped = 0;
+    const uniqueAssignments = Array.from(assignmentByExtId.values())
+      .filter((a) => {
+        if (lockedExtIds.has(a.clwrota_external_id)) { lockedSkipped++; return false; }
+        return true;
+      })
+      .map((a) => ({
+        staff_id: a.staff_id,
+        session_date: a.session_date,
+        session: a.session,
+        duty_type: a.duty_type,
+        role_on_list: a.role_on_list,
+        source: a.source,
+        theatre_session_id: a.theatre_session_key ? sessionIdByKey.get(a.theatre_session_key) ?? null : null,
+        clwrota_external_id: a.clwrota_external_id,
+        notes: a.notes,
+      }));
 
     let assignmentsUpserted = 0;
     for (let i = 0; i < uniqueAssignments.length; i += CHUNK) {
@@ -1030,6 +1056,9 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
         continue;
       }
       assignmentsUpserted += chunk.length;
+    }
+    if (lockedSkipped > 0) {
+      skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
     }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
