@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { formatDateGB, todayISO, toISODateLocal } from "@/lib/utils";
+import { formatDateGB, todayISO } from "@/lib/utils";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
