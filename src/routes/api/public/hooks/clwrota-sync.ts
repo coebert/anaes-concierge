@@ -1,16 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { timingSafeEqual } from "crypto";
 
 /**
  * Cron-triggered full CLWRota resync (staff + rota).
- * Called by pg_cron with the Supabase anon key in the `apikey` header.
+ * Authenticated via a dedicated server-only secret (`CLWROTA_WEBHOOK_SECRET`),
+ * sent in the `x-webhook-secret` header. The previously-used Supabase
+ * publishable key was insecure because it is exposed in the client bundle.
  */
 export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = request.headers.get("apikey");
-        const expected = process.env.SUPABASE_PUBLISHABLE_KEY;
-        if (!expected || apiKey !== expected) {
+        const provided = request.headers.get("x-webhook-secret") ?? "";
+        const expected = process.env.CLWROTA_WEBHOOK_SECRET ?? "";
+        const a = Buffer.from(provided);
+        const b = Buffer.from(expected);
+        if (!expected || a.length !== b.length || !timingSafeEqual(a, b)) {
           return new Response("Unauthorized", { status: 401 });
         }
 

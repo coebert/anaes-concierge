@@ -336,7 +336,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
     queryKey: ["profile", staffId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id,full_name,email,grade,training_level")
+        .from("profiles").select("id,full_name,grade,training_level")
         .eq("id", staffId).maybeSingle();
       if (error) throw error;
       return data;
@@ -420,7 +420,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
           <p className="text-sm text-muted-foreground">
             {profile?.grade ?? "—"}
             {profile?.grade === "trainee" ? ` · ${profile?.training_level || "Level unknown"}` : ""}
-            {profile?.email ? ` · ${profile.email}` : ""}
+            
           </p>
         </div>
         <WeekPicker weekStart={weekStart} onChange={setWeekStart} />
