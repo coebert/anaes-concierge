@@ -156,12 +156,15 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
               {row.half_day_end ? ` (${row.half_day_end} only)` : ""}
             </div>
           </div>
-          <Badge
-            variant={row.status === "approved" ? "default" : row.status === "pending" ? "secondary" : "destructive"}
-            className="capitalize"
-          >
-            {row.status}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge
+              variant={row.status === "approved" ? "default" : row.status === "pending" ? "secondary" : "destructive"}
+              className="capitalize"
+            >
+              {row.status}
+            </Badge>
+            {row.reserve_listed_at && <Badge variant="outline">Reserve list</Badge>}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
