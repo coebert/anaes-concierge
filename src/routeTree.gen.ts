@@ -20,6 +20,7 @@ import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
@@ -89,6 +90,11 @@ const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/chat': typeof AuthenticatedChatRouteWithChildren
   '/leave': typeof AuthenticatedLeaveRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/account'
     | '/calendar'
     | '/chat'
     | '/leave'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/account'
     | '/calendar'
     | '/leave'
     | '/me'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/_authenticated/account'
     | '/_authenticated/calendar'
     | '/_authenticated/chat'
     | '/_authenticated/leave'
@@ -443,6 +455,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/account': {
+      id: '/_authenticated/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/chat/': {
@@ -601,6 +620,7 @@ const AuthenticatedTraineesRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
@@ -621,6 +641,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRouteWithChildren,
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
@@ -655,3 +676,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

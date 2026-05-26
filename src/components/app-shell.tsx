@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Grid3x3,
   UserPlus,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ const NAV: NavItem[] = [
   { to: "/leave", label: "Leave", icon: ClipboardList },
   { to: "/trainees", label: "Trainees", icon: GraduationCap, traineeOnly: true },
   { to: "/chat", label: "AI assistant", icon: MessageSquare },
+  { to: "/account", label: "My account", icon: UserCircle },
 ];
 
 const ADMIN_NAV: NavItem[] = [
