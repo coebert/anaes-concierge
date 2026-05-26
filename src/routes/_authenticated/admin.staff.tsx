@@ -23,12 +23,29 @@ function AdminStaffPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: profiles, error } = await supabase
         .from("profiles")
         .select("id,email,full_name,grade,training_level,active")
         .order("full_name");
       if (error) throw error;
-      return data;
+      const { data: jps } = await supabase
+        .from("job_plans")
+        .select("staff_id,total_pas,ltft,ltft_percentage,valid_from,valid_to");
+      const now = new Date().toISOString().slice(0, 10);
+      const jobPlanMap = new Map<string, { total_pas: number; ltft: boolean; ltft_percentage: number | null }>();
+      for (const jp of jps ?? []) {
+        if (jp.valid_from <= now && (!jp.valid_to || jp.valid_to >= now)) {
+          jobPlanMap.set(jp.staff_id, {
+            total_pas: Number(jp.total_pas),
+            ltft: jp.ltft,
+            ltft_percentage: jp.ltft_percentage ? Number(jp.ltft_percentage) : null,
+          });
+        }
+      }
+      return (profiles ?? []).map((p) => ({
+        ...p,
+        job_plan: jobPlanMap.get(p.id) ?? null,
+      }));
     },
   });
 
@@ -76,7 +93,8 @@ function AdminStaffPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Grade</TableHead>
-                  <TableHead>Level</TableHead>
+                  <TableHead>Details</TableHead>
+                  <TableHead>LTFT</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-16"></TableHead>
                 </TableRow>
@@ -90,9 +108,20 @@ function AdminStaffPage() {
                       {p.grade ? <Badge variant="outline">{p.grade}</Badge> : "—"}
                     </TableCell>
                     <TableCell>
-                      {p.training_level ? (
+                      {p.grade === "consultant" && p.job_plan ? (
+                        <span className="text-sm">{p.job_plan.total_pas} PAs</span>
+                      ) : p.grade === "trainee" && p.training_level ? (
                         <Badge variant="secondary">{p.training_level}</Badge>
-                      ) : "—"}
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {p.job_plan?.ltft ? (
+                        <Badge>{p.job_plan.ltft_percentage ?? ""}%</Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Full time</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {p.active ? (
