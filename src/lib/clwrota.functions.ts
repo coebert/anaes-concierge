@@ -170,9 +170,16 @@ function parseRows(text: string): Record<string, unknown>[] {
 
 function pick(row: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {
-    const v = row[k];
+    // Support dotted paths like "person.email" → row.person.email
+    const v = k.includes(".")
+      ? k.split(".").reduce<unknown>((acc, part) => {
+          if (acc && typeof acc === "object") return (acc as Record<string, unknown>)[part];
+          return undefined;
+        }, row)
+      : row[k];
     if (typeof v === "string" && v.trim()) return v.trim();
     if (typeof v === "number") return String(v);
+    if (typeof v === "boolean") return v ? "true" : "false";
   }
   return null;
 }
@@ -603,11 +610,21 @@ type SessionHalf = "am" | "pm" | "eve" | "night";
 function normaliseSession(raw: string | null): SessionHalf | null {
   if (!raw) return null;
   const s = raw.trim().toLowerCase();
-  if (["am", "morning", "a.m.", "a.m"].includes(s)) return "am";
-  if (["pm", "afternoon", "p.m.", "p.m"].includes(s)) return "pm";
-  if (["eve", "evening"].includes(s)) return "eve";
-  if (["night", "nights"].includes(s)) return "night";
-  const m = s.match(/^(\d{1,2})[:.]?(\d{2})?/);
+  if (s === "am" || s.includes("morning") || s.startsWith("a.m")) return "am";
+  if (s === "pm" || s.includes("afternoon") || s.startsWith("p.m")) return "pm";
+  if (s.includes("evening") || s === "eve") return "eve";
+  if (s.includes("night")) return "night";
+  // ISO timestamp like "2026-05-26T08:00:00+01:00" — extract the hour after T.
+  const iso = s.match(/t(\d{2}):(\d{2})/);
+  if (iso) {
+    const h = parseInt(iso[1], 10);
+    if (h < 12) return "am";
+    if (h < 17) return "pm";
+    if (h < 21) return "eve";
+    return "night";
+  }
+  // Bare time like "08:00" or "13.30".
+  const m = s.match(/^(\d{1,2})[:.](\d{2})/);
   if (m) {
     const h = parseInt(m[1], 10);
     if (h < 12) return "am";
@@ -751,15 +768,42 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
-      const sessRaw = pick(row, ["session", "session_half", "half", "Session", "period", "shift", "time"]);
-      const personEmail = pick(row, ["email", "person_email", "Email"]);
-      const personExtId = pick(row, ["person_id", "local_id", "staff_id", "user_id"]);
-      const personName = pick(row, ["person", "person_name", "name", "staff", "Name", "full_name"]);
-      const theatreName = pick(row, ["theatre", "location", "room", "Theatre", "list", "Location"]);
-      const specialtyName = pick(row, ["specialty", "speciality", "service", "Specialty", "Service"]);
-      const consultantName = pick(row, ["consultant", "surgeon", "surgical_consultant", "Consultant"]);
-      const roleRaw = pick(row, ["role", "duty", "type", "Role", "Duty"]);
-      const externalId = pick(row, ["id", "rota_id", "assignment_id", "external_id"]);
+      // Rotamap puts the AM/PM label on session.rota_label or shift.rota_label.
+      const sessRaw =
+        pick(row, [
+          "session.rota_label", "shift.rota_label",
+          "session.name", "shift.name",
+          "session", "session_half", "half", "Session", "period", "shift", "time",
+          "start_time",
+        ]);
+      const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
+      const personExtId = pick(row, [
+        "person.local_id", "person.esr_employee_number", "person.assignment_number",
+        "person_id", "local_id", "staff_id", "user_id",
+      ]);
+      const personFirst = pick(row, ["person.first_name"]);
+      const personLast = pick(row, ["person.last_name"]);
+      const personName =
+        pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
+        ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+      const theatreName = pick(row, [
+        "place.name", "place.external_code",
+        "theatre", "location", "room", "Theatre", "list", "Location",
+      ]);
+      const specialtyName = pick(row, [
+        "slot_speciality", "service.local_name", "service.long_name",
+        "specialty", "speciality", "service", "Specialty", "Service",
+      ]);
+      const consultantName = pick(row, [
+        "slot_titles", "consultant", "surgeon", "surgical_consultant", "Consultant",
+      ]);
+      const roleRaw = pick(row, [
+        "role.name", "assignment_type.name", "place_category.name",
+        "role", "duty", "type", "Role", "Duty",
+      ]);
+      const externalId =
+        pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
+        (personExtId && dateRaw && sessRaw ? `${personExtId}|${dateRaw}|${sessRaw}` : null);
 
       const session_date = normaliseDate(dateRaw);
       const session = normaliseSession(sessRaw);
