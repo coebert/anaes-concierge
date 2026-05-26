@@ -24,6 +24,7 @@ import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
+import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
@@ -111,6 +112,12 @@ const AuthenticatedCoordinatorLeaveRoute =
     path: '/coordinator/leave',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCoordinatorDutiesRoute =
+  AuthenticatedCoordinatorDutiesRouteImport.update({
+    id: '/coordinator/duties',
+    path: '/coordinator/duties',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedChatConversationIdRoute =
   AuthenticatedChatConversationIdRouteImport.update({
     id: '/$conversationId',
@@ -183,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
@@ -207,6 +215,7 @@ export interface FileRoutesByTo {
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
@@ -234,6 +243,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
+  '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
+    | '/coordinator/duties'
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/trainees/$staffId'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
+    | '/coordinator/duties'
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/trainees/$staffId'
@@ -311,6 +323,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
     | '/_authenticated/chat/$conversationId'
+    | '/_authenticated/coordinator/duties'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/trainees/$staffId'
@@ -433,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoordinatorLeaveRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/coordinator/duties': {
+      id: '/_authenticated/coordinator/duties'
+      path: '/coordinator/duties'
+      fullPath: '/coordinator/duties'
+      preLoaderRoute: typeof AuthenticatedCoordinatorDutiesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/chat/$conversationId': {
       id: '/_authenticated/chat/$conversationId'
       path: '/$conversationId'
@@ -553,6 +573,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
+  AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
 }
@@ -571,6 +592,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
+  AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
 }

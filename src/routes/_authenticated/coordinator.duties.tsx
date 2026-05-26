@@ -85,7 +85,7 @@ interface StaffRow {
 
 function DutiesPage() {
   const qc = useQueryClient();
-  const [anchor, setAnchor] = useState<Date>(() => startOfWeek(parseDateLocal(todayISO())));
+  const [anchor, setAnchor] = useState<Date>(() => startOfWeek(parseDateLocal(todayISO()) ?? new Date()));
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(anchor, i)), [anchor]);
   const startIso = isoLocal(days[0]);
@@ -215,7 +215,7 @@ function DutiesPage() {
             <Button variant="outline" size="icon" onClick={() => setAnchor(addDays(anchor, -7))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setAnchor(startOfWeek(parseDateLocal(todayISO())))}>
+            <Button variant="secondary" size="sm" onClick={() => setAnchor(startOfWeek(parseDateLocal(todayISO()) ?? new Date()))}>
               This week
             </Button>
             <Button variant="outline" size="icon" onClick={() => setAnchor(addDays(anchor, 7))}>
