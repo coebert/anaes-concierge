@@ -363,6 +363,8 @@ export async function performStaffSync() {
       // into our `grade` enum (consultant | sas | trainee).
       const roleRaw =
         pick(row, [
+          "role.name",
+          "role_category.name",
           "grade",
           "Grade",
           "role",
@@ -383,23 +385,29 @@ export async function performStaffSync() {
           "person.title",
           "person.post",
         ]) ?? "";
+      const categoryCode = (pick(row, ["role_category.code"]) ?? "").toUpperCase();
       const roleLower = roleRaw.toLowerCase();
       let derivedGrade: "consultant" | "sas" | "trainee" | null = null;
-      if (roleLower) {
+      // Prefer the explicit Rotamap role_category code when present.
+      if (categoryCode === "CONS") derivedGrade = "consultant";
+      else if (categoryCode === "SASS") derivedGrade = "sas";
+      else if (categoryCode === "JTRN" || categoryCode === "STRN") derivedGrade = "trainee";
+      else if (roleLower) {
         if (/consultant|attending/.test(roleLower)) derivedGrade = "consultant";
         else if (
-          /\b(sas|specialty\s*doctor|specialist\s*doctor|associate\s*specialist|staff\s*grade)\b/.test(
+          /\b(sas|specialty\s*doctor|speciality\s*doctor|specialist\s*doctor|associate\s*specialist|staff\s*grade)\b/.test(
             roleLower,
           )
         )
           derivedGrade = "sas";
         else if (
-          /trainee|registrar|resident|fellow|\bst\d+\b|\bct\d+\b|\bspr\b|\bsho\b|\bfy?\d\b|core|foundation/.test(
+          /trainee|registrar|resident|fellow|\bst\d+\b|\bct\d+\b|\bspr\b|\bsho\b|\bfy?\d\b|core|foundation|accs/.test(
             roleLower,
           )
         )
           derivedGrade = "trainee";
       }
+
 
       const { field: emailField, value: emailRaw } = pickRawEmail(row);
       if (emailField) detectedEmailFields.add(emailField);
