@@ -85,6 +85,18 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const staffMut = useMutation({
+    mutationFn: () => syncStaff({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(res.message);
+      else toast.warning(res.message);
+      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+      void qc.invalidateQueries({ queryKey: ["staff"] });
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center">
