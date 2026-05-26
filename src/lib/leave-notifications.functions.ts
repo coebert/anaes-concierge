@@ -1,7 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendGmail } from "./gmail.server";
+
+async function callerIsCoordOrAdmin(userId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "rota_coordinator"]);
+  return !!(data && data.length);
+}
 
 async function staffName(staffId: string): Promise<{ name: string; email: string | null }> {
   const { data } = await supabaseAdmin
