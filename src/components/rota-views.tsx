@@ -303,7 +303,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                     className={cn(
                                       "block truncate text-[10px] hover:underline",
                                       isConsultant && "font-bold",
-                                      isSoloTrainee && "text-blue-600 dark:text-blue-400",
+                                      isTrainee && "text-blue-600 dark:text-blue-400",
                                     )}
                                   >
                                     {showRoleBadge && (
