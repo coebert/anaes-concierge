@@ -24,6 +24,7 @@ import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_aut
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -103,13 +104,19 @@ const AuthenticatedAdminSettingsRoute =
     path: '/admin/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCalendarStaffStaffIdRoute =
+  AuthenticatedCalendarStaffStaffIdRouteImport.update({
+    id: '/staff/$staffId',
+    path: '/staff/$staffId',
+    getParentRoute: () => AuthenticatedCalendarRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/calendar': typeof AuthenticatedCalendarRoute
+  '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/chat': typeof AuthenticatedChatRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
@@ -119,12 +126,13 @@ export interface FileRoutesByFullPath {
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/calendar': typeof AuthenticatedCalendarRoute
+  '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/chat': typeof AuthenticatedChatRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
@@ -135,6 +143,7 @@ export interface FileRoutesByTo {
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,7 +151,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
@@ -153,6 +162,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/admin/theatres'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/calendar/staff/$staffId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/admin/theatres'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/calendar/staff/$staffId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -204,6 +216,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatres'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
+    | '/_authenticated/calendar/staff/$staffId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -320,11 +333,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/calendar/staff/$staffId': {
+      id: '/_authenticated/calendar/staff/$staffId'
+      path: '/staff/$staffId'
+      fullPath: '/calendar/staff/$staffId'
+      preLoaderRoute: typeof AuthenticatedCalendarStaffStaffIdRouteImport
+      parentRoute: typeof AuthenticatedCalendarRoute
+    }
   }
 }
 
+interface AuthenticatedCalendarRouteChildren {
+  AuthenticatedCalendarStaffStaffIdRoute: typeof AuthenticatedCalendarStaffStaffIdRoute
+}
+
+const AuthenticatedCalendarRouteChildren: AuthenticatedCalendarRouteChildren = {
+  AuthenticatedCalendarStaffStaffIdRoute:
+    AuthenticatedCalendarStaffStaffIdRoute,
+}
+
+const AuthenticatedCalendarRouteWithChildren =
+  AuthenticatedCalendarRoute._addFileChildren(
+    AuthenticatedCalendarRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
@@ -338,7 +372,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedCalendarRoute: AuthenticatedCalendarRouteWithChildren,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
