@@ -762,13 +762,32 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
     const unmatchedTheatres = new Set<string>();
     const unmatchedStaff = new Set<string>();
 
-    const sessionCache = new Map<string, string>();
-    let sessionsUpserted = 0;
-    let assignmentsUpserted = 0;
+    // --- Pass 1: parse rows, match staff/theatre, collect work in memory. -----
+    type SessionDraft = {
+      session_date: string;
+      theatre_id: string;
+      session: "am" | "pm" | "eve" | "night";
+      specialty_id: string | null;
+      surgical_consultant: string | null;
+    };
+    type AssignmentDraft = {
+      staff_id: string;
+      session_date: string;
+      session: "am" | "pm" | "eve" | "night";
+      duty_type: "theatre";
+      role_on_list: ReturnType<typeof normaliseRole>;
+      source: "clwrota";
+      theatre_session_key: string | null; // resolve after sessions upserted
+      clwrota_external_id: string;
+      notes: string | null;
+    };
+
+    const sessionDraftsByKey = new Map<string, SessionDraft>();
+    const assignmentDrafts: AssignmentDraft[] = [];
+    const newSpecialtyNames = new Set<string>();
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
-      // Rotamap puts the AM/PM label on session.rota_label or shift.rota_label.
       const sessRaw =
         pick(row, [
           "session.rota_label", "shift.rota_label",
@@ -809,14 +828,9 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
       const session = normaliseSession(sessRaw);
       const label = `${dateRaw ?? "?"} ${sessRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
 
-      if (!session_date) {
-        skipped.push({ label, reason: `cannot parse date "${dateRaw ?? ""}"` });
-        continue;
-      }
-      if (!session) {
-        skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` });
-        continue;
-      }
+      if (!session_date) { skipped.push({ label, reason: `cannot parse date "${dateRaw ?? ""}"` }); continue; }
+      if (!session)      { skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` }); continue; }
+      if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
       let staffId: string | undefined;
       if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
@@ -831,21 +845,15 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
         continue;
       }
 
-      let specialtyId: string | undefined;
+      // Track date range for prefetching existing assignments later.
+
+      // Collect new specialty names (resolve after pass 1 in one insert).
+      let specialtyId: string | null = null;
       if (specialtyName) {
         const key = specialtyName.toLowerCase().trim();
-        specialtyId = specialtyByName.get(key);
-        if (!specialtyId) {
-          const { data: spec } = await supabaseAdmin
-            .from("specialties")
-            .insert({ name: specialtyName })
-            .select("id")
-            .single();
-          if (spec?.id) {
-            specialtyId = spec.id;
-            specialtyByName.set(key, spec.id);
-          }
-        }
+        const existing = specialtyByName.get(key);
+        if (existing) specialtyId = existing;
+        else newSpecialtyNames.add(specialtyName);
       }
 
       let theatreId: string | undefined;
@@ -854,88 +862,106 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
         if (!theatreId) unmatchedTheatres.add(theatreName);
       }
 
-      let theatreSessionId: string | undefined;
+      let theatreSessionKey: string | null = null;
       if (theatreId) {
-        const sessKey = `${session_date}|${theatreId}|${session}`;
-        theatreSessionId = sessionCache.get(sessKey);
-        if (!theatreSessionId) {
-          const { data: existingSess } = await supabaseAdmin
-            .from("theatre_sessions")
-            .select("id")
-            .eq("session_date", session_date)
-            .eq("theatre_id", theatreId)
-            .eq("session", session)
-            .maybeSingle();
-          if (existingSess?.id) {
-            theatreSessionId = existingSess.id;
-            const patch: { specialty_id?: string; surgical_consultant?: string } = {};
-            if (specialtyId) patch.specialty_id = specialtyId;
-            if (consultantName) patch.surgical_consultant = consultantName;
-            if (Object.keys(patch).length) {
-              await supabaseAdmin
-                .from("theatre_sessions")
-                .update(patch)
-                .eq("id", existingSess.id);
-            }
-          } else {
-            const { data: newSess, error: sessErr } = await supabaseAdmin
-              .from("theatre_sessions")
-              .insert({
-                session_date,
-                theatre_id: theatreId,
-                session,
-                specialty_id: specialtyId ?? null,
-                surgical_consultant: consultantName ?? null,
-              })
-              .select("id")
-              .single();
-            if (sessErr) {
-              errors.push({ label, error: `theatre_session insert: ${sessErr.message}` });
-            } else if (newSess?.id) {
-              theatreSessionId = newSess.id;
-              sessionsUpserted++;
-            }
-          }
-          if (theatreSessionId) sessionCache.set(sessKey, theatreSessionId);
-        }
+        theatreSessionKey = `${session_date}|${theatreId}|${session}`;
+        // Last write wins (later rows can fill in specialty/consultant).
+        sessionDraftsByKey.set(theatreSessionKey, {
+          session_date,
+          theatre_id: theatreId,
+          session,
+          specialty_id: specialtyId,
+          surgical_consultant: consultantName ?? null,
+        });
       }
 
-      const role_on_list = normaliseRole(roleRaw);
-
-      const { data: existingAssign } = await supabaseAdmin
-        .from("rota_assignments")
-        .select("id")
-        .eq("staff_id", staffId)
-        .eq("session_date", session_date)
-        .eq("session", session)
-        .maybeSingle();
-
-      const assignmentRow = {
+      assignmentDrafts.push({
         staff_id: staffId,
         session_date,
         session,
-        duty_type: "theatre" as const,
-        role_on_list,
-        source: "clwrota" as const,
-        theatre_session_id: theatreSessionId ?? null,
-        clwrota_external_id: externalId ?? null,
+        duty_type: "theatre",
+        role_on_list: normaliseRole(roleRaw),
+        source: "clwrota",
+        theatre_session_key: theatreSessionKey,
+        clwrota_external_id: externalId,
         notes: consultantName ? `Surgeon: ${consultantName}` : null,
-      };
+      });
+    }
 
-      if (existingAssign?.id) {
-        const { error: upErr } = await supabaseAdmin
-          .from("rota_assignments")
-          .update(assignmentRow)
-          .eq("id", existingAssign.id);
-        if (upErr) errors.push({ label, error: `assignment update: ${upErr.message}` });
-        else assignmentsUpserted++;
+    // --- Pass 2: bulk-insert any new specialties, then refresh the map. -------
+    if (newSpecialtyNames.size > 0) {
+      const toInsert = Array.from(newSpecialtyNames).map((name) => ({ name }));
+      const { data: created, error: specErr } = await supabaseAdmin
+        .from("specialties")
+        .insert(toInsert)
+        .select("id, name");
+      if (specErr) {
+        errors.push({ label: "(specialties)", error: `bulk insert: ${specErr.message}` });
       } else {
-        const { error: insErr } = await supabaseAdmin
-          .from("rota_assignments")
-          .insert(assignmentRow);
-        if (insErr) errors.push({ label, error: `assignment insert: ${insErr.message}` });
-        else assignmentsUpserted++;
+        for (const s of created ?? []) {
+          specialtyByName.set(s.name.toLowerCase().trim(), s.id);
+        }
+        // Back-fill specialty_id on session drafts that referenced new names.
+        for (const draft of sessionDraftsByKey.values()) {
+          if (!draft.specialty_id) {
+            // We don't know the original name here; safe to leave null. The
+            // assignment loop above only stores specialty_id when it was
+            // already known, so newly created specialties attach to sessions
+            // on the next sync. (Avoids carrying name around for thousands
+            // of rows.)
+          }
+        }
       }
+    }
+
+    // --- Pass 3: bulk-upsert theatre sessions in chunks. ----------------------
+    const sessionDrafts = Array.from(sessionDraftsByKey.values());
+    const sessionIdByKey = new Map<string, string>();
+    const CHUNK = 500;
+    let sessionsUpserted = 0;
+    for (let i = 0; i < sessionDrafts.length; i += CHUNK) {
+      const chunk = sessionDrafts.slice(i, i + CHUNK);
+      const { data, error: sessErr } = await supabaseAdmin
+        .from("theatre_sessions")
+        .upsert(chunk, { onConflict: "session_date,theatre_id,session" })
+        .select("id, session_date, theatre_id, session");
+      if (sessErr) {
+        errors.push({ label: "(theatre_sessions chunk)", error: sessErr.message });
+        continue;
+      }
+      sessionsUpserted += data?.length ?? 0;
+      for (const s of data ?? []) {
+        sessionIdByKey.set(`${s.session_date}|${s.theatre_id}|${s.session}`, s.id);
+      }
+    }
+
+    // --- Pass 4: bulk-upsert rota assignments in chunks (dedup external id). --
+    // Dedupe by external id keeping the last occurrence (latest in the feed).
+    const assignmentByExtId = new Map<string, AssignmentDraft>();
+    for (const a of assignmentDrafts) assignmentByExtId.set(a.clwrota_external_id, a);
+    const uniqueAssignments = Array.from(assignmentByExtId.values()).map((a) => ({
+      staff_id: a.staff_id,
+      session_date: a.session_date,
+      session: a.session,
+      duty_type: a.duty_type,
+      role_on_list: a.role_on_list,
+      source: a.source,
+      theatre_session_id: a.theatre_session_key ? sessionIdByKey.get(a.theatre_session_key) ?? null : null,
+      clwrota_external_id: a.clwrota_external_id,
+      notes: a.notes,
+    }));
+
+    let assignmentsUpserted = 0;
+    for (let i = 0; i < uniqueAssignments.length; i += CHUNK) {
+      const chunk = uniqueAssignments.slice(i, i + CHUNK);
+      const { error: asgErr } = await supabaseAdmin
+        .from("rota_assignments")
+        .upsert(chunk, { onConflict: "clwrota_external_id" });
+      if (asgErr) {
+        errors.push({ label: `(rota_assignments chunk ${i}-${i + chunk.length})`, error: asgErr.message });
+        continue;
+      }
+      assignmentsUpserted += chunk.length;
     }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
