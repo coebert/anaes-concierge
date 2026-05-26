@@ -366,6 +366,8 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       inserted,
       unmatched,
       errors,
+      rawPreview,
+      sampleKeys,
     };
   });
 
