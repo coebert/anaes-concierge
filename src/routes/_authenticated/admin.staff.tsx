@@ -123,14 +123,11 @@ function AdminStaffPage() {
   const [filter, setFilter] = useState("");
   const [showInactive, setShowInactive] = useState(false);
 
+  const listStaff = useServerFn(listStaffForAdmin);
   const { data, isLoading } = useQuery({
-    queryKey: ["profiles"],
+    queryKey: ["profiles", "admin-with-email"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id,email,full_name,grade,training_level,active")
-        .order("full_name");
-      if (error) throw error;
+      const profiles = await listStaff();
       const { data: jps } = await supabase
         .from("job_plans")
         .select("staff_id,total_pas,ltft,ltft_percentage,valid_from,valid_to");
