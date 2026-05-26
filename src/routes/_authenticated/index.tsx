@@ -194,8 +194,8 @@ function TraineeDashboard() {
     enabled: !!user?.id,
     queryKey: ["trainee-dashboard", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const in14 = new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10);
+      const today = todayISO();
+      const in14 = addDaysISO(14);
       const [upcoming, pendingLeave, pastLogged, profile] = await Promise.all([
         supabase.from("rota_assignments").select("id", { count: "exact", head: true })
           .eq("staff_id", user!.id).gte("session_date", today).lte("session_date", in14),
