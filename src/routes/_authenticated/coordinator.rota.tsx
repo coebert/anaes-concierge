@@ -734,6 +734,25 @@ function CellDialog({
                                     ))}
                                 </SelectContent>
                               </Select>
+                              {(() => {
+                                const sp = staffByIdLocal(a.staff_id);
+                                if (!sp) return null;
+                                const isConsultant = sp.grade === "consultant";
+                                const isTrainee = sp.grade === "trainee";
+                                const highlightTrainee = isTrainee && a.role_on_list === "solo";
+                                return (
+                                  <span
+                                    className={cn(
+                                      "text-[11px]",
+                                      isConsultant && "font-bold",
+                                      highlightTrainee && "text-blue-600 dark:text-blue-400",
+                                    )}
+                                  >
+                                    {sp.full_name}
+                                    {isTrainee && sp.training_level ? ` (${sp.training_level})` : ""}
+                                  </span>
+                                );
+                              })()}
                               {worst && <SeverityIcon severity={worst} />}
                               {a.locally_modified && a.clwrota_external_id && (
                                 <Badge variant="secondary" className="px-1 py-0 text-[9px]" title="Locked: this row was edited locally and will not be overwritten by CLWRota sync.">
