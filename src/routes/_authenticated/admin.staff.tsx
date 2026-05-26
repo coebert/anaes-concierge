@@ -10,7 +10,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
-import { Pencil } from "lucide-react";
+import { AddStaffDialog } from "@/components/add-staff-dialog";
+import { Pencil, UserPlus } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
@@ -94,7 +96,10 @@ function StaffGroup({
 }
 
 function AdminStaffPage() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -146,12 +151,19 @@ function AdminStaffPage() {
             Manage profiles, roles, job plans and fixed weekly sessions.
           </p>
         </div>
-        <Input
-          placeholder="Filter…"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="max-w-xs"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Filter…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="max-w-xs"
+          />
+          {isAdmin && (
+            <Button onClick={() => setAddOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Add staff
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -198,6 +210,7 @@ function AdminStaffPage() {
         open={!!editingId}
         onOpenChange={(o) => !o && setEditingId(null)}
       />
+      <AddStaffDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
