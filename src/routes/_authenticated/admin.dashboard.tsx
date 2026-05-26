@@ -204,7 +204,7 @@ function AdminDashboardPage() {
       const ma = monthAgg.get(monthKey);
       if (!ma) continue;
       ma.total += 1;
-      const hasConsultant = consultantOnSession.has(sessionKey(a));
+      const hasConsultant = a.theatre_session_id ? consultantOnSession.has(a.theatre_session_id) : false;
       const isSolo = !hasConsultant && !a.supervisor_id && a.role_on_list === "solo";
       if (isSolo) ma.solo += 1;
 
