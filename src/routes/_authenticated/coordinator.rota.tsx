@@ -13,9 +13,13 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  validateAssignment, worstSeverity,
+  type Issue, type Profile, type RotaRules,
+} from "@/lib/rota-validation";
 
 type SessionHalf = "am" | "pm";
 type RotaRole =
