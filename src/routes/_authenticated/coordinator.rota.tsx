@@ -464,11 +464,31 @@ function CellDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,role_on_list,supervisor_id")
+        .select("id,staff_id,role_on_list,supervisor_id,locally_modified,clwrota_external_id")
         .eq("theatre_session_id", ts!.id);
       if (error) throw error;
       return data;
     },
+  });
+
+  const updateAssign = useMutation({
+    mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
+      const { error } = await supabase
+        .from("rota_assignments")
+        .update({
+          staff_id: vars.staff_id,
+          role_on_list: vars.role_on_list,
+          locally_modified: true,
+        })
+        .eq("id", vars.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Assignment updated");
+      refetchAssigns();
+      qc.invalidateQueries({ queryKey: ["assignments"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [newStaff, setNewStaff] = useState<string>("");
@@ -605,14 +625,47 @@ function CellDialog({
                       const worst = worstSeverity(iss);
                       return (
                         <li key={a.id} className="flex items-start gap-2 p-2 text-sm">
-                          <Badge variant="outline">{a.role_on_list}</Badge>
-                          <div className="flex-1">
+                          <Select
+                            value={a.role_on_list}
+                            onValueChange={(v) => updateAssign.mutate({
+                              id: a.id, staff_id: a.staff_id, role_on_list: v as RotaRole,
+                            })}
+                          >
+                            <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(["solo", "supervised", "supervising", "on_call", "non_clinical", "teaching", "admin_session"] as RotaRole[]).map((r) => (
+                                <SelectItem key={r} value={r}>{r}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex-1 space-y-1">
                             <div className="flex items-center gap-2">
-                              <span>{staff.find((s) => s.id === a.staff_id)?.full_name ?? "—"}</span>
+                              <Select
+                                value={a.staff_id}
+                                onValueChange={(v) => updateAssign.mutate({
+                                  id: a.id, staff_id: v, role_on_list: a.role_on_list as RotaRole,
+                                })}
+                              >
+                                <SelectTrigger className="h-7 min-w-[12rem] text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {staff
+                                    .filter((s) => s.id === a.staff_id || !assigns?.some((x) => x.staff_id === s.id))
+                                    .map((s) => (
+                                      <SelectItem key={s.id} value={s.id}>
+                                        {s.full_name} {s.grade ? `(${s.grade})` : ""}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
                               {worst && <SeverityIcon severity={worst} />}
+                              {a.locally_modified && a.clwrota_external_id && (
+                                <Badge variant="secondary" className="px-1 py-0 text-[9px]" title="Locked: this row was edited locally and will not be overwritten by CLWRota sync.">
+                                  locked
+                                </Badge>
+                              )}
                             </div>
                             {iss.length > 0 && (
-                              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                              <ul className="space-y-0.5 text-[11px] text-muted-foreground">
                                 {iss.map((i, idx) => (
                                   <li key={idx} className={cn(
                                     i.severity === "error" && "text-destructive",
