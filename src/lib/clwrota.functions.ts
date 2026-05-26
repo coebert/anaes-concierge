@@ -610,11 +610,21 @@ type SessionHalf = "am" | "pm" | "eve" | "night";
 function normaliseSession(raw: string | null): SessionHalf | null {
   if (!raw) return null;
   const s = raw.trim().toLowerCase();
-  if (["am", "morning", "a.m.", "a.m"].includes(s)) return "am";
-  if (["pm", "afternoon", "p.m.", "p.m"].includes(s)) return "pm";
-  if (["eve", "evening"].includes(s)) return "eve";
-  if (["night", "nights"].includes(s)) return "night";
-  const m = s.match(/^(\d{1,2})[:.]?(\d{2})?/);
+  if (s === "am" || s.includes("morning") || s.startsWith("a.m")) return "am";
+  if (s === "pm" || s.includes("afternoon") || s.startsWith("p.m")) return "pm";
+  if (s.includes("evening") || s === "eve") return "eve";
+  if (s.includes("night")) return "night";
+  // ISO timestamp like "2026-05-26T08:00:00+01:00" — extract the hour after T.
+  const iso = s.match(/t(\d{2}):(\d{2})/);
+  if (iso) {
+    const h = parseInt(iso[1], 10);
+    if (h < 12) return "am";
+    if (h < 17) return "pm";
+    if (h < 21) return "eve";
+    return "night";
+  }
+  // Bare time like "08:00" or "13.30".
+  const m = s.match(/^(\d{1,2})[:.](\d{2})/);
   if (m) {
     const h = parseInt(m[1], 10);
     if (h < 12) return "am";
