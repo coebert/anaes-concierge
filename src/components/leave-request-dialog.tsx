@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { computeLeaveConflicts, countWorkingDays, type LeaveConflict } from "@/lib/leave-utils";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyLeaveSubmitted } from "@/lib/leave-notifications.functions";
 
 interface Props {
   open: boolean;
