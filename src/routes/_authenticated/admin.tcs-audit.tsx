@@ -247,6 +247,3 @@ function Stat({
     </Card>
   );
 }
-
-// Suppress unused warning on Button import if/when we add an export action later.
-export const _unused = Button;
