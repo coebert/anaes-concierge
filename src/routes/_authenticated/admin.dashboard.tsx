@@ -640,7 +640,55 @@ function AdminDashboardPage() {
                 </Card>
               </div>
             )}
+            {soloStats && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Debug: solo detection per assignment</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Showing first 300 trainee assignments with intermediate values used to compute solo.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <details>
+                    <summary className="cursor-pointer text-sm">Show / hide ({soloStats.debugRows.length} rows)</summary>
+                    <div className="mt-2 max-h-[500px] overflow-auto">
+                      <table className="w-full text-xs font-mono">
+                        <thead className="text-left uppercase text-muted-foreground sticky top-0 bg-background">
+                          <tr>
+                            <th className="py-1 pr-2">Trainee</th>
+                            <th className="py-1 pr-2">Date</th>
+                            <th className="py-1 pr-2">Sess</th>
+                            <th className="py-1 pr-2">role_on_list</th>
+                            <th className="py-1 pr-2">theatre_session_id</th>
+                            <th className="py-1 pr-2">hasConsultant</th>
+                            <th className="py-1 pr-2">supervisor_id</th>
+                            <th className="py-1 pr-2">supIsCons</th>
+                            <th className="py-1 pr-2">isSolo</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {soloStats.debugRows.slice(0, 300).map((r, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="py-1 pr-2">{r.trainee || "—"}</td>
+                              <td className="py-1 pr-2">{r.date}</td>
+                              <td className="py-1 pr-2">{r.session}</td>
+                              <td className="py-1 pr-2">{r.role}</td>
+                              <td className="py-1 pr-2">{r.theatre_session_id ? r.theatre_session_id.slice(0, 8) : "—"}</td>
+                              <td className="py-1 pr-2">{String(r.hasConsultant)}</td>
+                              <td className="py-1 pr-2">{r.supervisor_id ? r.supervisor_id.slice(0, 8) : "—"}</td>
+                              <td className="py-1 pr-2">{String(r.supervisorIsConsultant)}</td>
+                              <td className="py-1 pr-2 font-bold">{String(r.isSolo)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </CardContent>
+              </Card>
+            )}
           </section>
+
 
 
 
