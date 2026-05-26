@@ -15,6 +15,7 @@ import {
   Building2,
   Briefcase,
   SlidersHorizontal,
+  ShieldCheck,
   Grid3x3,
   UserPlus,
   UserCircle,
