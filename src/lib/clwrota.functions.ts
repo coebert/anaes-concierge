@@ -1000,8 +1000,16 @@ export async function performRotaSync() {
         if (!theatreId) unmatchedTheatres.add(theatreName);
       }
 
+      // Classify duty type from free-text labels + staff grade.
+      const prof = profById.get(staffId);
+      const dutyType = classifyDutyType(
+        [consultantName, roleRaw, specialtyName, theatreName],
+        prof?.grade,
+        prof?.training_level,
+      );
+
       let theatreSessionKey: string | null = null;
-      if (theatreId) {
+      if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
         // Last write wins (later rows can fill in specialty/consultant).
         sessionDraftsByKey.set(theatreSessionKey, {
@@ -1017,8 +1025,9 @@ export async function performRotaSync() {
         staff_id: staffId,
         session_date,
         session,
-        duty_type: "theatre",
-        role_on_list: normaliseRole(roleRaw),
+        duty_type: dutyType,
+        // Non-theatre duties are always on-call style; theatre rows keep the parsed role.
+        role_on_list: dutyType === "theatre" ? normaliseRole(roleRaw) : "on_call",
         source: "clwrota",
         theatre_session_key: theatreSessionKey,
         clwrota_external_id: externalId,
