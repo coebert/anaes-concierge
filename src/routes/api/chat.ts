@@ -246,7 +246,6 @@ function buildAdminTools() {
 function buildTools(userId: string, isAdminUser: boolean) {
   const admin = getAdminClient();
   const baseTools = {
-  return {
     get_my_upcoming_rota: tool({
       description:
         "Get the signed-in user's upcoming rota assignments (theatre lists, on-call, teaching, admin). Defaults to the next 14 days.",
