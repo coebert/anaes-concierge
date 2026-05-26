@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { computeLeaveConflicts, countWorkingDays, type LeaveConflict } from "@/lib/leave-utils";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyLeaveSubmitted } from "@/lib/leave-notifications.functions";
 
 interface Props {
   open: boolean;
@@ -21,6 +23,7 @@ interface Props {
 const TYPES = ["annual", "study", "compassionate", "sick", "parental", "other"] as const;
 
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
+  const notify = useServerFn(notifyLeaveSubmitted);
   const { user } = useAuth();
   const [type, setType] = useState<(typeof TYPES)[number]>("annual");
   const [startDate, setStartDate] = useState("");
@@ -79,7 +82,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
             .join("; ")}`
         : null;
 
-    const { error } = await supabase.from("leave_requests").insert({
+    const { data: inserted, error } = await supabase.from("leave_requests").insert({
       staff_id: user.id,
       type,
       start_date: startDate,
@@ -88,13 +91,16 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
       half_day_end: halfDayEnd === "none" ? null : halfDayEnd,
       reason: reason || null,
       conflict_notes: conflictNotes,
-    });
+    }).select("id").maybeSingle();
     setSaving(false);
     if (error) {
       toast.error(error.message);
       return;
     }
     toast.success("Leave request submitted");
+    if (inserted?.id) {
+      void notify({ data: { leaveId: inserted.id } }).catch((e) => console.error("notify failed", e));
+    }
     onOpenChange(false);
     onSubmitted?.();
   };
