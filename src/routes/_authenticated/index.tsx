@@ -195,29 +195,21 @@ function TraineeDashboard() {
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
       const in14 = new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10);
-      const [{ count: upcoming }, { count: pendingLeave }, targets, specs, assignments] =
-        await Promise.all([
-          supabase.from("rota_assignments").select("id", { count: "exact", head: true })
-            .eq("staff_id", user!.id).gte("session_date", today).lte("session_date", in14),
-          supabase.from("leave_requests").select("id", { count: "exact", head: true })
-            .eq("staff_id", user!.id).eq("status", "pending"),
-          supabase.from("trainee_targets").select("*").eq("staff_id", user!.id),
-          supabase.from("specialties").select("id,name"),
-          supabase
-            .from("rota_assignments")
-            .select("specialty_id,session_date")
-            .eq("staff_id", user!.id)
-            .lte("session_date", today),
-        ]);
-      const progress = computeProgress(
-        (targets.data ?? []) as never,
-        (assignments.data ?? []) as never,
-        (specs.data ?? []) as never,
-      );
+      const [upcoming, pendingLeave, pastLogged, profile] = await Promise.all([
+        supabase.from("rota_assignments").select("id", { count: "exact", head: true })
+          .eq("staff_id", user!.id).gte("session_date", today).lte("session_date", in14),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true })
+          .eq("staff_id", user!.id).eq("status", "pending"),
+        supabase.from("rota_assignments").select("id", { count: "exact", head: true })
+          .eq("staff_id", user!.id).lte("session_date", today)
+          .in("role_on_list", ["solo", "supervised"]),
+        supabase.from("profiles").select("training_level").eq("id", user!.id).maybeSingle(),
+      ]);
       return {
-        upcoming: upcoming ?? 0,
-        pendingLeave: pendingLeave ?? 0,
-        progress: progress.slice(0, 4),
+        upcoming: upcoming.count ?? 0,
+        pendingLeave: pendingLeave.count ?? 0,
+        pastLogged: pastLogged.count ?? 0,
+        trainingLevel: profile.data?.training_level ?? null,
       };
     },
   });
@@ -226,43 +218,12 @@ function TraineeDashboard() {
     <div className="space-y-6">
       <Header subtitle="Your training workspace" />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Sessions next 14 days" value={data?.upcoming ?? "—"} icon={CalendarRange} />
         <Stat label="Pending leave" value={data?.pendingLeave ?? "—"} icon={ClipboardList} />
-        <Stat label="Tracked specialties" value={data?.progress.length ?? "—"} icon={GraduationCap} />
+        <Stat label="Sessions logged" value={data?.pastLogged ?? "—"} icon={GraduationCap} />
+        <Stat label="Training level" value={data?.trainingLevel ?? "—"} icon={Stethoscope} />
       </div>
-
-      {data?.progress && data.progress.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Curriculum progress</CardTitle>
-            <CardDescription>Snapshot of your top tracked subspecialties.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data.progress.map((p) => (
-              <div key={p.specialtyId}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span>{p.specialtyName}</span>
-                  <span className="text-muted-foreground">
-                    {p.completed}/{p.target}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded bg-muted">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${Math.min(100, (p.completed / Math.max(1, p.target)) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-            <div className="pt-2">
-              <Button asChild variant="outline" size="sm">
-                <Link to="/trainees">View full progress <ArrowRight className="ml-1 h-3 w-3" /></Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ActionCard to="/me" icon={CalendarRange}
