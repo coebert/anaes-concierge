@@ -379,6 +379,8 @@ export function validateAssignment(args: {
 
   return issues;
 }
+
+export function severityRank(s: Severity): number {
   return s === "error" ? 0 : s === "warning" ? 1 : 2;
 }
 
