@@ -543,17 +543,36 @@ function CellDialog({
               <>
                 {assigns?.length ? (
                   <ul className="divide-y rounded border">
-                    {assigns.map((a) => (
-                      <li key={a.id} className="flex items-center gap-2 p-2 text-sm">
-                        <Badge variant="outline">{a.role_on_list}</Badge>
-                        <span className="flex-1">
-                          {staff.find((s) => s.id === a.staff_id)?.full_name ?? "—"}
-                        </span>
-                        <Button size="icon" variant="ghost" onClick={() => removeAssign.mutate(a.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
+                    {assigns.map((a) => {
+                      const iss = issuesFor(a.staff_id, a.role_on_list as RotaRole);
+                      const worst = worstSeverity(iss);
+                      return (
+                        <li key={a.id} className="flex items-start gap-2 p-2 text-sm">
+                          <Badge variant="outline">{a.role_on_list}</Badge>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span>{staff.find((s) => s.id === a.staff_id)?.full_name ?? "—"}</span>
+                              {worst && <SeverityIcon severity={worst} />}
+                            </div>
+                            {iss.length > 0 && (
+                              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                                {iss.map((i, idx) => (
+                                  <li key={idx} className={cn(
+                                    i.severity === "error" && "text-destructive",
+                                    i.severity === "warning" && "text-amber-600 dark:text-amber-400",
+                                  )}>
+                                    • {i.message}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <Button size="icon" variant="ghost" onClick={() => removeAssign.mutate(a.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="text-xs text-muted-foreground">No staff assigned.</p>
@@ -581,10 +600,35 @@ function CellDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" onClick={() => addAssign.mutate()} disabled={addAssign.isPending}>
+                  <Button
+                    size="sm"
+                    onClick={() => addAssign.mutate()}
+                    disabled={addAssign.isPending || blocking}
+                    variant={blocking ? "destructive" : "default"}
+                  >
                     <Plus className="mr-1 h-4 w-4" />Assign
                   </Button>
                 </div>
+                {newStaff && candidateIssues.length > 0 && (
+                  <div className="rounded-md border bg-muted/30 p-2 space-y-1">
+                    <div className="text-xs font-medium flex items-center gap-1.5">
+                      <SeverityIcon severity={worstSeverity(candidateIssues) ?? "info"} />
+                      Validation
+                    </div>
+                    <ul className="space-y-0.5 text-[11px]">
+                      {candidateIssues.map((i, idx) => (
+                        <li key={idx} className={cn(
+                          "flex items-start gap-1.5",
+                          i.severity === "error" && "text-destructive",
+                          i.severity === "warning" && "text-amber-600 dark:text-amber-400",
+                          i.severity === "info" && "text-muted-foreground",
+                        )}>
+                          <span>•</span><span>{i.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </>
             )}
           </div>
