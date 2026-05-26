@@ -243,8 +243,9 @@ function buildAdminTools() {
   };
 }
 
-function buildTools(userId: string, admin: boolean) {
-  const adminClient = getAdminClient();
+function buildTools(userId: string, isAdminUser: boolean) {
+  const admin = getAdminClient();
+  const baseTools = {
   return {
     get_my_upcoming_rota: tool({
       description:
