@@ -13,6 +13,8 @@ import {
   ClipboardList,
   Users,
   Building2,
+  Briefcase,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
