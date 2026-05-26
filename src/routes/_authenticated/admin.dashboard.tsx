@@ -181,16 +181,13 @@ function AdminDashboardPage() {
       }
     }
 
-    // A trainee list counts as "solo" only when we can confirm no consultant
-    // shares the same theatre_session_id. Assignments without a
-    // theatre_session_id are excluded from the query above because we cannot
-    // reliably group them with their consultant counterpart.
-    const consultantOnSession = new Set<string>();
-    for (const a of soloMonthly.assignments) {
-      if (a.theatre_session_id && gradeById.get(a.staff_id) === "consultant") {
-        consultantOnSession.add(a.theatre_session_id);
-      }
-    }
+    const profilesById = new Map<string, SoloProfile>(
+      soloMonthly.profiles.map((p) => [p.id, { id: p.id, grade: p.grade ?? null }]),
+    );
+    const consultantOnSession = buildConsultantSessionSet(
+      soloMonthly.assignments,
+      profilesById,
+    );
 
     const inBucket = (b: TraineeBucket | null) =>
       bucket === "all" ? b !== null : b === bucket;
