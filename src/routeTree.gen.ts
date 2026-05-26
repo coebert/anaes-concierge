@@ -34,6 +34,7 @@ import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
+import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -171,6 +172,12 @@ const AuthenticatedAdminAccessRequestsRoute =
     path: '/admin/access-requests',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const ApiPublicHooksClwrotaSyncRoute =
+  ApiPublicHooksClwrotaSyncRouteImport.update({
+    id: '/api/public/hooks/clwrota-sync',
+    path: '/api/public/hooks/clwrota-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedCalendarStaffStaffIdRoute =
   AuthenticatedCalendarStaffStaffIdRouteImport.update({
     id: '/staff/$staffId',
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
+  '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -230,6 +238,7 @@ export interface FileRoutesByTo {
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/chat': typeof AuthenticatedChatIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
+  '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -259,6 +268,7 @@ export interface FileRoutesById {
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
+  '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/trainees/$staffId'
     | '/chat/'
     | '/calendar/staff/$staffId'
+    | '/api/public/hooks/clwrota-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/trainees/$staffId'
     | '/chat'
     | '/calendar/staff/$staffId'
+    | '/api/public/hooks/clwrota-sync'
   id:
     | '__root__'
     | '/_authenticated'
@@ -342,6 +354,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trainees/$staffId'
     | '/_authenticated/chat/'
     | '/_authenticated/calendar/staff/$staffId'
+    | '/api/public/hooks/clwrota-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -350,6 +363,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPublicHooksClwrotaSyncRoute: typeof ApiPublicHooksClwrotaSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -529,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAccessRequestsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/clwrota-sync': {
+      id: '/api/public/hooks/clwrota-sync'
+      path: '/api/public/hooks/clwrota-sync'
+      fullPath: '/api/public/hooks/clwrota-sync'
+      preLoaderRoute: typeof ApiPublicHooksClwrotaSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/calendar/staff/$staffId': {
       id: '/_authenticated/calendar/staff/$staffId'
       path: '/staff/$staffId'
@@ -629,6 +650,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPublicHooksClwrotaSyncRoute: ApiPublicHooksClwrotaSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
