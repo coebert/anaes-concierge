@@ -120,7 +120,138 @@ function AdminDashboardPage() {
     },
   });
 
-  const summary = useMemo(() => {
+  const [bucket, setBucket] = useState<TraineeBucket>("all");
+
+  const { data: soloMonthly, isLoading: soloLoading } = useQuery({
+    queryKey: ["admin-dashboard-solo-monthly"],
+    queryFn: async () => {
+      // Last 12 full months including current month
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // last day of current month
+      const startISO = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
+      const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+
+      const [profilesRes, assignmentsRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, grade, training_level")
+          .eq("grade", "trainee"),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, role_on_list, session, session_date, duty_type")
+          .eq("duty_type", "theatre")
+          .in("session", ["am", "pm"])
+          .gte("session_date", startISO)
+          .lte("session_date", endISO),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (assignmentsRes.error) throw assignmentsRes.error;
+
+      const months: string[] = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+        months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+      return {
+        profiles: profilesRes.data ?? [],
+        assignments: assignmentsRes.data ?? [],
+        months,
+      };
+    },
+  });
+
+  const soloStats = useMemo(() => {
+    if (!soloMonthly) return null;
+    const traineeIds = new Map<string, { full_name: string | null; bucket: TraineeBucket | null; level: string | null }>();
+    for (const p of soloMonthly.profiles) {
+      traineeIds.set(p.id, {
+        full_name: p.full_name,
+        bucket: traineeBucket(p.training_level),
+        level: p.training_level,
+      });
+    }
+
+    const inBucket = (b: TraineeBucket | null) =>
+      bucket === "all" ? b !== null : b === bucket;
+
+    // month -> { solo, total }, plus per trainee per month
+    const monthAgg = new Map<string, { solo: number; total: number }>();
+    soloMonthly.months.forEach((m) => monthAgg.set(m, { solo: 0, total: 0 }));
+
+    // perTrainee: id -> { solo, total }
+    const perTrainee = new Map<string, { solo: number; total: number }>();
+    // monthly per-trainee for averaging % across trainees
+    const perMonthTrainee = new Map<string, Map<string, { solo: number; total: number }>>();
+    soloMonthly.months.forEach((m) => perMonthTrainee.set(m, new Map()));
+
+    for (const a of soloMonthly.assignments) {
+      const t = traineeIds.get(a.staff_id);
+      if (!t || !inBucket(t.bucket)) continue;
+      const monthKey = a.session_date.slice(0, 7);
+      const ma = monthAgg.get(monthKey);
+      if (!ma) continue;
+      ma.total += 1;
+      const isSolo = a.role_on_list === "solo";
+      if (isSolo) ma.solo += 1;
+
+      const pt = perTrainee.get(a.staff_id) ?? { solo: 0, total: 0 };
+      pt.total += 1;
+      if (isSolo) pt.solo += 1;
+      perTrainee.set(a.staff_id, pt);
+
+      const pmt = perMonthTrainee.get(monthKey)!;
+      const pmtRow = pmt.get(a.staff_id) ?? { solo: 0, total: 0 };
+      pmtRow.total += 1;
+      if (isSolo) pmtRow.solo += 1;
+      pmt.set(a.staff_id, pmtRow);
+    }
+
+    const chart = soloMonthly.months.map((m) => {
+      const ma = monthAgg.get(m)!;
+      const pmt = perMonthTrainee.get(m)!;
+      // average of per-trainee % (only counting trainees with at least 1 list that month)
+      let pctSum = 0;
+      let n = 0;
+      for (const row of pmt.values()) {
+        if (row.total > 0) {
+          pctSum += (row.solo / row.total) * 100;
+          n += 1;
+        }
+      }
+      const avgPct = n > 0 ? pctSum / n : 0;
+      const [yyyy, mm] = m.split("-");
+      const label = new Date(parseInt(yyyy), parseInt(mm) - 1, 1).toLocaleString("en-GB", { month: "short", year: "2-digit" });
+      return {
+        month: m,
+        label,
+        soloLists: ma.solo,
+        totalLists: ma.total,
+        avgPctSolo: Math.round(avgPct * 10) / 10,
+      };
+    });
+
+    const traineeRows = Array.from(perTrainee.entries())
+      .map(([id, v]) => {
+        const t = traineeIds.get(id)!;
+        return {
+          id,
+          full_name: t.full_name,
+          level: t.level,
+          solo: v.solo,
+          total: v.total,
+          pct: v.total > 0 ? Math.round((v.solo / v.total) * 1000) / 10 : 0,
+        };
+      })
+      .sort((a, b) => b.pct - a.pct);
+
+    const totalSolo = chart.reduce((s, r) => s + r.soloLists, 0);
+    const totalLists = chart.reduce((s, r) => s + r.totalLists, 0);
+
+    return { chart, traineeRows, totalSolo, totalLists };
+  }, [soloMonthly, bucket]);
+
+
     if (!data) return null;
     const profilesById = new Map(data.profiles.map((p) => [p.id, p]));
 
