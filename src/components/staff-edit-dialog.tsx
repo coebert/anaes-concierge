@@ -214,6 +214,33 @@ function ProfileTab({ staffId }: { staffId: string }) {
           </div>
         </Field>
       </div>
+      <Field label="LTFT fixed days off">
+        <div className="flex flex-wrap gap-3 pt-1">
+          {DAYS.map((d, i) => {
+            const checked = form.ltft_days_off.includes(i);
+            return (
+              <label key={d} className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={(v) => {
+                    const on = v === true;
+                    setForm({
+                      ...form,
+                      ltft_days_off: on
+                        ? [...form.ltft_days_off, i]
+                        : form.ltft_days_off.filter((x) => x !== i),
+                    });
+                  }}
+                />
+                {d}
+              </label>
+            );
+          })}
+        </div>
+        <p className="pt-1 text-xs text-muted-foreground">
+          Weekdays this person is contractually off. They will not be assignable to activity on these days.
+        </p>
+      </Field>
       <Button onClick={() => save.mutate()} disabled={save.isPending}>
         {save.isPending ? "Saving…" : "Save profile"}
       </Button>
