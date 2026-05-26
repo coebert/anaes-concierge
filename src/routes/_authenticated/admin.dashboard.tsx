@@ -457,7 +457,7 @@ function AdminDashboardPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rota dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Rota audit data</h1>
           <p className="text-sm text-muted-foreground">
             Daily overview of assignments, leave and availability — {formatDateGB(date)}
           </p>
