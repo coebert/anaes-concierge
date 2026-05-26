@@ -137,12 +137,20 @@ function parseRows(text: string): Record<string, unknown>[] {
   try {
     const parsed = JSON.parse(text);
     if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
-    if (Array.isArray((parsed as { data?: unknown })?.data))
-      return (parsed as { data: Record<string, unknown>[] }).data;
-    if (Array.isArray((parsed as { rows?: unknown })?.rows))
-      return (parsed as { rows: Record<string, unknown>[] }).rows;
-    if (Array.isArray((parsed as { results?: unknown })?.results))
-      return (parsed as { results: Record<string, unknown>[] }).results;
+    if (parsed && typeof parsed === "object") {
+      // Common Rotamap shapes: { data: [...] }, { rows: [...] }, { results: [...] },
+      // or a top-level key matching the report name e.g. { staff: [...] }, { people: [...] }.
+      const obj = parsed as Record<string, unknown>;
+      for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
+        if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[];
+      }
+      // Fallback: first array-valued property anywhere at the top level.
+      for (const v of Object.values(obj)) {
+        if (Array.isArray(v) && v.length && typeof v[0] === "object") {
+          return v as Record<string, unknown>[];
+        }
+      }
+    }
     return [];
   } catch {
     // CSV fallback — naive parse (no quoted commas). Good enough for Rotamap reports.
