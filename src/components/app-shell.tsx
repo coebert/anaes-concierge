@@ -39,6 +39,8 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin", "rota_coordinator"] },
   { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
+  { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
+  { to: "/admin/rules", label: "Working rules", icon: SlidersHorizontal, roles: ["admin"] },
   { to: "/admin/theatres", label: "Theatres", icon: Building2, roles: ["admin"] },
   { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ];
