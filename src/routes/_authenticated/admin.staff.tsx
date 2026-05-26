@@ -156,7 +156,17 @@ function AdminStaffPage() {
             Manage profiles, roles, job plans and fixed weekly sessions.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-inactive"
+              checked={showInactive}
+              onCheckedChange={setShowInactive}
+            />
+            <Label htmlFor="show-inactive" className="cursor-pointer text-sm">
+              Show inactive
+            </Label>
+          </div>
           <Input
             placeholder="Filter…"
             value={filter}
