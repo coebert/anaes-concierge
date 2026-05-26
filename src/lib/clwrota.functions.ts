@@ -496,12 +496,16 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         clwrota_external_id?: string;
         gmc_number?: string;
         start_date?: string;
+        grade?: "consultant" | "sas" | "trainee";
+        training_level?: string;
         active?: boolean;
       } = {};
       if (fullName) patch.full_name = fullName;
       if (externalId) patch.clwrota_external_id = externalId;
       if (gmc) patch.gmc_number = gmc;
       if (startDate) patch.start_date = startDate;
+      if (derivedGrade) patch.grade = derivedGrade;
+      if (roleRaw) patch.training_level = roleRaw;
       if (isEndedPast) patch.active = false;
 
       if (Object.keys(patch).length === 0) {
