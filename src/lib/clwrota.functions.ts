@@ -888,6 +888,7 @@ export async function performRotaSync() {
       if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
       if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
       if (p.full_name) profByName.set(p.full_name.toLowerCase().trim(), p.id);
+      profById.set(p.id, { grade: p.grade ?? null, training_level: p.training_level ?? null });
     }
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
