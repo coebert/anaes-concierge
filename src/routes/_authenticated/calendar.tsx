@@ -1,22 +1,36 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import {
+  GlobalWeekGrid, WeekPicker, StaffPicker, startOfWeek,
+} from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
-  component: () => <Placeholder title="Global calendar" body="Theatre grid by day/week/month — coming next." />,
+  component: CalendarPage,
 });
 
-function Placeholder({ title, body }: { title: string; body: string }) {
+function CalendarPage() {
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Under construction</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{body}</p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Global calendar</h1>
+          <p className="text-sm text-muted-foreground">
+            Read-only theatre grid for the week. Click a name to open that staff member's view.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StaffPicker
+            onChange={(staffId) =>
+              navigate({ to: "/calendar/staff/$staffId", params: { staffId } })
+            }
+          />
+          <WeekPicker weekStart={weekStart} onChange={setWeekStart} />
+        </div>
+      </div>
+      <GlobalWeekGrid weekStart={weekStart} />
     </div>
   );
 }
