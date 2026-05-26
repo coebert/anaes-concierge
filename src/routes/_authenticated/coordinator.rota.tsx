@@ -488,7 +488,12 @@ function CellDialog({
         theatre_session_id: ts.id,
         role_on_list: newRole,
       });
-      if (error) throw error;
+      if (error) {
+        if ((error as { code?: string }).code === "23505") {
+          throw new Error("This staff member is already booked for this date and session.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       setNewStaff("");
