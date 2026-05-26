@@ -135,7 +135,9 @@ function JobPlansPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Surname</TableHead>
+                  <TableHead>First name</TableHead>
                   <TableHead>Grade</TableHead>
                   <TableHead className="text-right">Total PAs</TableHead>
                   <TableHead className="text-right">DCC</TableHead>
@@ -149,8 +151,14 @@ function JobPlansPage() {
               <TableBody>
                 {filtered.map((p) => (
                   <TableRow key={p.id}>
+                    <TableCell className="text-muted-foreground">
+                      {p.title || "—"}
+                    </TableCell>
                     <TableCell className="font-medium">
-                      {p.full_name || p.email}
+                      {p.surname || (!p.firstName ? p.email : "—")}
+                    </TableCell>
+                    <TableCell>
+                      {p.firstName || "—"}
                       {p.training_level && (
                         <Badge variant="secondary" className="ml-2">{p.training_level}</Badge>
                       )}
