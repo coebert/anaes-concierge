@@ -38,31 +38,34 @@ async function assertAdmin(userId: string) {
   if (!data) throw new Error("Forbidden: admin role required");
 }
 
-/** Verify the API key + base URL work by hitting the CLWRota base URL. */
+/** Verify the API key + base URL work by hitting a real Central API endpoint. */
 export const testClwRotaConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { apiKey, baseUrl } = getEnv();
 
+    // Hit a real Central API endpoint — the bare base URL returns the login
+    // HTML page even without auth, which would be a false positive.
+    const probeUrl = `${baseUrl}/central_api/query/services?fields=id_name`;
     const started = Date.now();
     try {
-      const res = await fetch(baseUrl, {
+      const res = await fetch(probeUrl, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          "X-Auth": apiKey,
           Accept: "application/json",
         },
       });
       const elapsed = Date.now() - started;
       const bodyPreview = (await res.text()).slice(0, 500);
       return {
-        ok: res.ok || res.status === 401 ? res.ok : false,
+        ok: res.ok,
         status: res.status,
         statusText: res.statusText,
         elapsedMs: elapsed,
         bodyPreview,
-        baseUrl,
+        baseUrl: probeUrl,
       };
     } catch (err) {
       return {
@@ -71,7 +74,7 @@ export const testClwRotaConnection = createServerFn({ method: "POST" })
         statusText: err instanceof Error ? err.message : "Network error",
         elapsedMs: Date.now() - started,
         bodyPreview: "",
-        baseUrl,
+        baseUrl: probeUrl,
       };
     }
   });
