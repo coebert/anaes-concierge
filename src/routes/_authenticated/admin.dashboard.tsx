@@ -168,7 +168,76 @@ function AdminDashboardPage() {
     },
   });
 
-  const soloStats = useMemo(() => {
+  const { data: traineeMetricsData, isLoading: traineeMetricsLoading } = useQuery({
+    queryKey: ["admin-dashboard-trainee-metrics"],
+    queryFn: async () => {
+      const today = todayISO();
+      const { data: trainees, error: e1 } = await supabase
+        .from("profiles")
+        .select("id, full_name, training_level, start_date")
+        .eq("grade", "trainee")
+        .eq("active", true)
+        .order("full_name");
+      if (e1) throw e1;
+      const ids = (trainees ?? []).map((t) => t.id);
+      if (!ids.length) {
+        return { trainees: [], assignmentsByStaff: new Map(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>() };
+      }
+      const [{ data: assignments, error: e2 }, { data: specs, error: e3 }] = await Promise.all([
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, role_on_list, session, duty_type, theatre_session_id, session_date")
+          .in("staff_id", ids)
+          .lte("session_date", today),
+        supabase.from("specialties").select("id, name"),
+      ]);
+      if (e2) throw e2;
+      if (e3) throw e3;
+      const tsIds = Array.from(
+        new Set((assignments ?? []).map((a) => a.theatre_session_id).filter(Boolean) as string[]),
+      );
+      const tsSpecMap = new Map<string, string | null>();
+      if (tsIds.length) {
+        const { data: ts, error: e4 } = await supabase
+          .from("theatre_sessions")
+          .select("id, specialty_id")
+          .in("id", tsIds);
+        if (e4) throw e4;
+        for (const t of ts ?? []) tsSpecMap.set(t.id, t.specialty_id ?? null);
+      }
+      const specNameMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
+      const assignmentsByStaff = new Map<string, typeof assignments>();
+      for (const a of assignments ?? []) {
+        const arr = assignmentsByStaff.get(a.staff_id) ?? [];
+        arr.push(a);
+        assignmentsByStaff.set(a.staff_id, arr);
+      }
+      return { trainees: trainees ?? [], assignmentsByStaff, tsSpecMap, specNameMap };
+    },
+  });
+
+  const traineeMetricRows = useMemo(() => {
+    if (!traineeMetricsData) return [];
+    return traineeMetricsData.trainees
+      .map((t) => ({
+        trainee: t,
+        metrics: computeTraineeMetrics(
+          traineeMetricsData.assignmentsByStaff.get(t.id) ?? [],
+          t.start_date,
+          traineeMetricsData.tsSpecMap,
+          traineeMetricsData.specNameMap,
+        ),
+      }))
+      .sort((a, b) => {
+        const aSur = getSurname(a.trainee.full_name).toLowerCase();
+        const bSur = getSurname(b.trainee.full_name).toLowerCase();
+        if (aSur < bSur) return -1;
+        if (aSur > bSur) return 1;
+        return 0;
+      });
+  }, [traineeMetricsData]);
+
+
     if (!soloMonthly) return null;
     const traineeIds = new Map<string, { full_name: string | null; bucket: TraineeBucket | null; level: string | null }>();
     const gradeById = new Map<string, string | null>();
