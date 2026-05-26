@@ -251,7 +251,7 @@ function AdminDashboardPage() {
     return { chart, traineeRows, totalSolo, totalLists };
   }, [soloMonthly, bucket]);
 
-
+  const summary = useMemo(() => {
     if (!data) return null;
     const profilesById = new Map(data.profiles.map((p) => [p.id, p]));
 
