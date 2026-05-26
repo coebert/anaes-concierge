@@ -120,25 +120,11 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-function withApiToken(url: string, apiKey: string): string {
-  // Rotamap Central API expects the key as an `api_key` query parameter.
-  try {
-    const u = new URL(url);
-    if (!u.searchParams.has("api_key")) {
-      u.searchParams.set("api_key", apiKey);
-    }
-    return u.toString();
-  } catch {
-    return url;
-  }
-}
-
 async function fetchReport(url: string, apiKey: string) {
-  const finalUrl = withApiToken(url, apiKey);
-  const res = await fetch(finalUrl, {
+  const res = await fetch(url, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "X-Auth": apiKey,
       Accept: "application/json, text/csv;q=0.9",
     },
   });
