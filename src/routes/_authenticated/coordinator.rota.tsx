@@ -21,6 +21,8 @@ import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
 } from "@/lib/rota-validation";
+import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 type SessionHalf = "am" | "pm";
 type RotaRole =
