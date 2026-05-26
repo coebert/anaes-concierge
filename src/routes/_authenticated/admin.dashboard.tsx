@@ -220,11 +220,7 @@ function AdminDashboardPage() {
       ma.total += 1;
       const hasConsultant = a.theatre_session_id ? consultantOnSession.has(a.theatre_session_id) : false;
       const supervisorIsConsultant = a.supervisor_id ? gradeById.get(a.supervisor_id) === "consultant" : false;
-      const isSolo =
-        !hasConsultant &&
-        !a.supervisor_id &&
-        !supervisorIsConsultant &&
-        a.role_on_list === "solo";
+      const isSolo = isSoloTraineeAssignment(a, consultantOnSession, profilesById);
       if (isSolo) ma.solo += 1;
 
       debugRows.push({
