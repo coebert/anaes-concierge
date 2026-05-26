@@ -198,7 +198,20 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
 
     const url = settings?.staff_report_url;
     if (!url) {
-      return { ok: false, message: "No staff report URL configured.", matched: 0, updated: 0, unmatched: [] as string[], total: 0 };
+      return {
+        ok: false,
+        message: "No staff report URL configured.",
+        total: 0,
+        matched: 0,
+        updated: 0,
+        insertedCount: 0,
+        insertedList: [] as Array<{ name: string; email: string }>,
+        unchangedCount: 0,
+        skipped: [] as Array<{ label: string; reason: string }>,
+        errors: [] as Array<{ label: string; error: string }>,
+        rawPreview: "",
+        sampleKeys: [] as string[],
+      };
     }
 
     let rows: Record<string, unknown>[];
