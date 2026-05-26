@@ -280,22 +280,33 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                 {ts.surgical_consultant}
                               </div>
                             )}
-                            {assigns.map((a) => (
-                              <Link
-                                key={a.id}
-                                to="/calendar/staff/$staffId"
-                                params={{ staffId: a.staff_id }}
-                                className="block truncate text-[10px] hover:underline"
-                              >
-                                <Badge
-                                  variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                  className="mr-1 px-1 py-0 text-[9px]"
+                            {assigns.map((a) => {
+                              const sp = staffById(a.staff_id);
+                              const isConsultant = sp?.grade === "consultant";
+                              const isTrainee = sp?.grade === "trainee";
+                              const highlightTrainee = isTrainee && a.role_on_list === "solo";
+                              return (
+                                <Link
+                                  key={a.id}
+                                  to="/calendar/staff/$staffId"
+                                  params={{ staffId: a.staff_id }}
+                                  className={cn(
+                                    "block truncate text-[10px] hover:underline",
+                                    isConsultant && "font-bold",
+                                    highlightTrainee && "text-blue-600 dark:text-blue-400",
+                                  )}
                                 >
-                                  {a.role_on_list}
-                                </Badge>
-                                {staffName(a.staff_id)}
-                              </Link>
-                            ))}
+                                  <Badge
+                                    variant={a.role_on_list === "supervising" ? "default" : "outline"}
+                                    className="mr-1 px-1 py-0 text-[9px]"
+                                  >
+                                    {a.role_on_list}
+                                  </Badge>
+                                  {staffName(a.staff_id)}
+                                  {isTrainee && sp?.training_level ? ` (${sp.training_level})` : ""}
+                                </Link>
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="text-muted-foreground/40 text-[10px]">—</div>
