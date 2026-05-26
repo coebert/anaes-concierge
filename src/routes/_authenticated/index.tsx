@@ -135,7 +135,7 @@ function ConsultantSasDashboard() {
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
       const in14 = new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10);
-      const [{ count: upcoming }, { count: pendingLeave }, { data: jobPlan }] = await Promise.all([
+      const [upcoming, pendingLeave, jobPlan] = await Promise.all([
         supabase
           .from("rota_assignments")
           .select("id", { count: "exact", head: true })
@@ -149,11 +149,15 @@ function ConsultantSasDashboard() {
           .eq("status", "pending"),
         supabase
           .from("job_plans")
-          .select("total_pas,dcc_pas,spa_pas,ltft_percent")
+          .select("total_pas,dcc_pas,spa_pas,ltft_percentage")
           .eq("staff_id", user!.id)
           .maybeSingle(),
       ]);
-      return { upcoming: upcoming ?? 0, pendingLeave: pendingLeave ?? 0, jobPlan: jobPlan.data ?? null };
+      return {
+        upcoming: upcoming.count ?? 0,
+        pendingLeave: pendingLeave.count ?? 0,
+        jobPlan: jobPlan.data ?? null,
+      };
     },
   });
 
