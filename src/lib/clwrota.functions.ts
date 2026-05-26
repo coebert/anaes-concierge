@@ -846,8 +846,6 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
       }
 
       // Track date range for prefetching existing assignments later.
-      if (!minDate || session_date < minDate) minDate = session_date;
-      if (!maxDate || session_date > maxDate) maxDate = session_date;
 
       // Collect new specialty names (resolve after pass 1 in one insert).
       let specialtyId: string | null = null;
