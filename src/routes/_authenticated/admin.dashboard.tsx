@@ -291,7 +291,7 @@ function AdminDashboardPage() {
     const totalSolo = chart.reduce((s, r) => s + r.soloLists, 0);
     const totalLists = chart.reduce((s, r) => s + r.totalLists, 0);
 
-    return { chart, traineeRows, totalSolo, totalLists };
+    return { chart, traineeRows, totalSolo, totalLists, debugRows };
   }, [soloMonthly, bucket]);
 
   const summary = useMemo(() => {
