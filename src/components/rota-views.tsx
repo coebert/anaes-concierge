@@ -288,10 +288,11 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                 const sp = staffById(a.staff_id);
                                 const isConsultant = sp?.grade === "consultant";
                                 const isTrainee = sp?.grade === "trainee";
-                                const isSoloTrainee =
-                                  isTrainee && a.role_on_list === "solo" && !hasConsultant;
                                 // Hide the "solo" badge for consultants and for
                                 // trainees who are working alongside a consultant.
+                                const hasConsultant = assigns.some(
+                                  (x) => staffById(x.staff_id)?.grade === "consultant",
+                                );
                                 const showRoleBadge = !(
                                   a.role_on_list === "solo" && (isConsultant || !isSoloTrainee)
                                 );
