@@ -119,7 +119,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     ).then((c) => { setConflicts(c); setLoading(false); });
   }, [row.id]);
 
-  const decide = async (status: "approved" | "rejected") => {
+  const decide = async (status: "approved" | "rejected", reserveList = false) => {
     if (!user) return;
     setActing(true);
     const { error } = await supabase
@@ -129,11 +129,12 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
         decided_by: user.id,
         decided_at: new Date().toISOString(),
         decision_notes: notes || null,
+        ...(reserveList ? { reserve_listed_at: new Date().toISOString() } : {}),
       })
       .eq("id", row.id);
     setActing(false);
     if (error) return toast.error(error.message);
-    toast.success(`Leave ${status}`);
+    toast.success(reserveList ? "Rejected & placed on reserve list" : `Leave ${status}`);
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
