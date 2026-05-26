@@ -785,8 +785,6 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
     const sessionDraftsByKey = new Map<string, SessionDraft>();
     const assignmentDrafts: AssignmentDraft[] = [];
     const newSpecialtyNames = new Set<string>();
-    let minDate: string | null = null;
-    let maxDate: string | null = null;
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
