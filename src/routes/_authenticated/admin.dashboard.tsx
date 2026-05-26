@@ -135,11 +135,10 @@ function AdminDashboardPage() {
       const [profilesRes, assignmentsRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, grade, training_level")
-          .eq("grade", "trainee"),
+          .select("id, full_name, grade, training_level"),
         supabase
           .from("rota_assignments")
-          .select("staff_id, role_on_list, session, session_date, duty_type, supervisor_id")
+          .select("staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id")
           .eq("duty_type", "theatre")
           .in("session", ["am", "pm"])
           .gte("session_date", startISO)
