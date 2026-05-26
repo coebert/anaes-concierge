@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { cn, parseDateLocal, formatDateLongGB } from "@/lib/utils";
+import { cn, parseDateLocal, formatDateLongGB, getSurname } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import {
   validateAssignment, worstSeverity,
