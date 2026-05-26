@@ -314,7 +314,7 @@ function JobPlanTab({ staffId }: { staffId: string }) {
     ltft_percentage: "",
     on_call_commitment: "",
     notes: "",
-    valid_from: new Date().toISOString().slice(0, 10),
+    valid_from: todayISO(),
   });
 
   useEffect(() => {
