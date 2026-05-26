@@ -249,6 +249,22 @@ function SettingsPage() {
                   Errors: {staffMut.data.errors.join("; ")}
                 </div>
               )}
+              {staffMut.data.sampleKeys && staffMut.data.sampleKeys.length > 0 && (
+                <div>
+                  <div className="font-medium text-foreground">Detected columns:</div>
+                  <div className="text-muted-foreground break-all">
+                    {staffMut.data.sampleKeys.join(", ")}
+                  </div>
+                </div>
+              )}
+              {staffMut.data.rawPreview && staffMut.data.total === 0 && (
+                <div>
+                  <div className="font-medium text-foreground">Response preview:</div>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/40 p-2 text-[10px]">
+                    {staffMut.data.rawPreview}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
 
