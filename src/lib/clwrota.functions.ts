@@ -954,14 +954,14 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
     let assignmentsUpserted = 0;
     for (let i = 0; i < uniqueAssignments.length; i += CHUNK) {
       const chunk = uniqueAssignments.slice(i, i + CHUNK);
-      const { error: asgErr, count } = await supabaseAdmin
+      const { error: asgErr } = await supabaseAdmin
         .from("rota_assignments")
-        .upsert(chunk, { onConflict: "clwrota_external_id", count: "exact" });
+        .upsert(chunk, { onConflict: "clwrota_external_id" });
       if (asgErr) {
         errors.push({ label: `(rota_assignments chunk ${i}-${i + chunk.length})`, error: asgErr.message });
         continue;
       }
-      assignmentsUpserted += count ?? chunk.length;
+      assignmentsUpserted += chunk.length;
     }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
