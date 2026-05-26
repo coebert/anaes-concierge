@@ -117,17 +117,33 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+function withApiToken(url: string, apiKey: string): string {
+  // Rotamap Central API expects the key as an `api_token` query parameter.
+  // Don't duplicate it if the user already pasted a URL containing the token.
+  try {
+    const u = new URL(url);
+    if (!u.searchParams.has("api_token")) {
+      u.searchParams.set("api_token", apiKey);
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 async function fetchReport(url: string, apiKey: string) {
-  const res = await fetch(url, {
+  const finalUrl = withApiToken(url, apiKey);
+  const res = await fetch(finalUrl, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      // Send both header forms in case the deployment prefers either.
+      Authorization: `Token ${apiKey}`,
       Accept: "application/json, text/csv;q=0.9",
     },
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`CLWRota report ${url} failed: ${res.status} ${text.slice(0, 200)}`);
+    throw new Error(`CLWRota report failed: ${res.status} ${text.slice(0, 200)}`);
   }
   // Try JSON first, fall back to CSV row count.
   let rows = 0;
