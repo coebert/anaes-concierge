@@ -84,6 +84,8 @@ export function validateAssignment(args: {
   session: Sess;
   weekDates: string[]; // ISO Mon..Fri (or longer) of the working week
   weekAssignments: Assignment[]; // all assignments in week (excluding the new one)
+  /** Optional wider window (e.g. ±21 days around `date`) used for TCS rolling checks. */
+  contextAssignments?: Assignment[];
   profiles: Profile[];
   jobPlans: JobPlan[];
   leave: LeaveRequest[];
@@ -92,7 +94,7 @@ export function validateAssignment(args: {
 }): Issue[] {
   const {
     candidateStaffId, role, date, session, weekDates,
-    weekAssignments, profiles, jobPlans, leave, fixedSessions, rules,
+    weekAssignments, contextAssignments, profiles, jobPlans, leave, fixedSessions, rules,
   } = args;
   const issues: Issue[] = [];
   const profile = profiles.find((p) => p.id === candidateStaffId);
