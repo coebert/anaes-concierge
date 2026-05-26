@@ -566,13 +566,17 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createLovableAiGatewayProvider(apiKey);
         const model = gateway("google/gemini-3-flash-preview");
 
+        const adminUser = await isAdmin(userId);
+        const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
+
         const result = streamText({
           model,
-          system: SYSTEM_PROMPT,
+          system: SYSTEM_PROMPT + rulesPreamble,
           messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId, await isAdmin(userId)),
+          tools: buildTools(userId, adminUser),
           stopWhen: stepCountIs(50),
         });
+
 
         return result.toUIMessageStreamResponse({
           originalMessages: uiMessages,
