@@ -156,15 +156,24 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
 
   const rules: RuleResult[] = [];
 
-  // R1 — Max 48h/week averaged over the rota's reference period (full window here)
+  // R1 — Max 48h/week averaged over the rota's reference period (full window here).
+  // Only meaningful with ≥4 weeks of data; otherwise mark indeterminate.
   const spanDays = Math.max(1, Math.round((shifts[shifts.length - 1].endMs - shifts[0].startMs) / MS_DAY));
   const spanWeeks = spanDays / 7;
   const avgWeekly = totalHours / spanWeeks;
   rules.push({
     id: "avg_48h",
     label: "Average ≤ 48h / week (over reference period)",
-    status: avgWeekly <= 48 ? "pass" : "fail",
-    detail: `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} d)`,
+    status:
+      spanWeeks < 4
+        ? "indeterminate"
+        : avgWeekly <= 48
+          ? "pass"
+          : "fail",
+    detail:
+      spanWeeks < 4
+        ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)`
+        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} d)`,
   });
 
   // R2 — Max 72h in any rolling 7 consecutive days
