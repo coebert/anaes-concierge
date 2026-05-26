@@ -213,18 +213,24 @@ function RotaGridPage() {
     },
   });
 
-  const staffName = (id: string | null) =>
-    staff?.find((s) => s.id === id)?.full_name ?? "—";
+  const staffById = (id: string | null) => staff?.find((s) => s.id === id);
+  const staffName = (id: string | null) => staffById(id)?.full_name ?? "—";
+  const gradeRank = (g: string | null | undefined) =>
+    g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
 
   const cellSession = (theatreId: string, date: string, session: SessionHalf) =>
     theatreSessions?.find(
       (s) => s.theatre_id === theatreId && s.session_date === date && s.session === session,
     );
 
-  const cellAssignments = (theatreSessionId: string | undefined) =>
-    theatreSessionId
+  const cellAssignments = (theatreSessionId: string | undefined) => {
+    const list = theatreSessionId
       ? assignments?.filter((a) => a.theatre_session_id === theatreSessionId) ?? []
       : [];
+    return [...list].sort(
+      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+    );
+  };
 
   return (
     <div className="space-y-4">
