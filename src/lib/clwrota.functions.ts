@@ -95,10 +95,14 @@ export const getClwRotaSettings = createServerFn({ method: "GET" })
     };
   });
 
+const urlOrNull = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+  z.string().url().max(2000).nullable(),
+);
 const SettingsSchema = z.object({
-  rota_report_url: z.string().url().max(2000).nullable(),
-  leave_report_url: z.string().url().max(2000).nullable(),
-  staff_report_url: z.string().url().max(2000).nullable(),
+  rota_report_url: urlOrNull,
+  leave_report_url: urlOrNull,
+  staff_report_url: urlOrNull,
 });
 
 export const saveClwRotaSettings = createServerFn({ method: "POST" })
