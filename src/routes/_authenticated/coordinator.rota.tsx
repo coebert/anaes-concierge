@@ -332,6 +332,7 @@ function RotaGridPage() {
           staff={staff ?? []}
           weekDates={days.map(iso)}
           weekAssignments={assignments ?? []}
+          contextAssignments={contextAssignments ?? []}
           jobPlans={jobPlans ?? []}
           leave={leave ?? []}
           fixedSessions={fixedSessions ?? []}
