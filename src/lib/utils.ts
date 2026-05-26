@@ -94,3 +94,52 @@ export function formatDateWithWeekdayGB(value: Date | string | null | undefined)
   const wd = d.toLocaleDateString("en-GB", { weekday: "short" });
   return `${wd} ${formatDateGB(d)}`;
 }
+
+/* ----------------------------------------------------------------------------
+ * Name parsing
+ * -------------------------------------------------------------------------- */
+
+const TITLE_TOKENS = new Set([
+  "dr", "dr.", "mr", "mr.", "mrs", "mrs.", "ms", "ms.", "miss",
+  "prof", "prof.", "professor", "mx", "mx.", "sir", "dame",
+]);
+
+/** Split a single "full name" string into title / first name / surname. */
+export function splitName(full: string | null | undefined): {
+  title: string;
+  firstName: string;
+  surname: string;
+} {
+  const raw = (full ?? "").trim();
+  if (!raw) return { title: "", firstName: "", surname: "" };
+  if (raw.includes(",")) {
+    const [last, rest] = raw.split(",", 2).map((s) => s.trim());
+    const parts = (rest ?? "").split(/\s+/).filter(Boolean);
+    let title = "";
+    if (parts.length && TITLE_TOKENS.has(parts[0].toLowerCase())) {
+      title = parts.shift()!;
+    }
+    return { title, firstName: parts.join(" "), surname: last };
+  }
+  const parts = raw.split(/\s+/);
+  let title = "";
+  if (parts.length > 1 && TITLE_TOKENS.has(parts[0].toLowerCase())) {
+    title = parts.shift()!;
+  }
+  if (parts.length === 0) return { title, firstName: "", surname: "" };
+  if (parts.length === 1) return { title, firstName: "", surname: parts[0] };
+  const surname = parts.pop()!;
+  return { title, firstName: parts.join(" "), surname };
+}
+
+/** Compose title / first / surname back into a single full-name string. */
+export function composeName(parts: {
+  title?: string;
+  firstName?: string;
+  surname?: string;
+}): string {
+  return [parts.title, parts.firstName, parts.surname]
+    .map((s) => (s ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
