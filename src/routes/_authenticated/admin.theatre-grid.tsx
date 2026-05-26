@@ -9,7 +9,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import {
+  ViewModeToggle, PeriodNav, buildDays, type ViewMode,
+} from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
   component: TheatreGridPage,
@@ -17,20 +20,8 @@ export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
 
 type Sess = "am" | "pm";
 const SESSIONS: Sess[] = ["am", "pm"];
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function mondayOf(d: Date) {
-  const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // 0 = Mon
-  x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -45,13 +36,14 @@ type SessionRow = {
 };
 
 function TheatreGridPage() {
-  const [weekStart, setWeekStart] = useState<Date>(mondayOf(new Date()));
+  const [anchor, setAnchor] = useState<Date>(new Date());
+  const [mode, setMode] = useState<ViewMode>("week");
   const [includeWeekend, setIncludeWeekend] = useState(false);
 
-  const dayCount = includeWeekend ? 7 : 5;
-  const days = Array.from({ length: dayCount }, (_, i) => addDays(weekStart, i));
-  const startISO = isoDate(weekStart);
-  const endISO = isoDate(addDays(weekStart, dayCount - 1));
+  const days = useMemo(() => buildDays(anchor, mode, includeWeekend), [anchor, mode, includeWeekend]);
+  const startISO = isoDate(days[0]);
+  const endISO = isoDate(days[days.length - 1]);
+
 
   const qc = useQueryClient();
 
