@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { todayISO } from "@/lib/utils";
+import { todayISO, splitName, composeName } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -100,7 +100,9 @@ function ProfileTab({ staffId }: { staffId: string }) {
   });
 
   const [form, setForm] = useState({
-    full_name: "",
+    title: "",
+    first_name: "",
+    surname: "",
     grade: "" as Grade | "",
     training_level: "",
     gmc_number: "",
@@ -112,8 +114,11 @@ function ProfileTab({ staffId }: { staffId: string }) {
 
   useEffect(() => {
     if (data) {
+      const parts = splitName(data.full_name);
       setForm({
-        full_name: data.full_name ?? "",
+        title: parts.title,
+        first_name: parts.firstName,
+        surname: parts.surname,
         grade: (data.grade as Grade) ?? "",
         training_level: data.training_level ?? "",
         gmc_number: data.gmc_number ?? "",
@@ -132,7 +137,11 @@ function ProfileTab({ staffId }: { staffId: string }) {
       const { error } = await supabase
         .from("profiles")
         .update({
-          full_name: form.full_name,
+          full_name: composeName({
+            title: form.title,
+            firstName: form.first_name,
+            surname: form.surname,
+          }),
           grade: form.grade || null,
           training_level: form.training_level || null,
           gmc_number: form.gmc_number || null,
@@ -157,14 +166,31 @@ function ProfileTab({ staffId }: { staffId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Full name">
+      <div className="grid gap-3 sm:grid-cols-[6rem_1fr_1fr]">
+        <Field label="Title">
           <Input
-            value={form.full_name}
-            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Dr"
+            maxLength={20}
           />
         </Field>
-        <Field label="Grade">
+        <Field label="Surname">
+          <Input
+            value={form.surname}
+            onChange={(e) => setForm({ ...form, surname: e.target.value })}
+            maxLength={100}
+          />
+        </Field>
+        <Field label="First name">
+          <Input
+            value={form.first_name}
+            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+            maxLength={100}
+          />
+        </Field>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
           <Select
             value={form.grade}
             onValueChange={(v) => setForm({ ...form, grade: v as Grade })}
