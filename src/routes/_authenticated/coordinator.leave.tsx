@@ -98,6 +98,7 @@ function ApproveLeavePage() {
 
 function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: string; onChanged: () => void }) {
   const { user } = useAuth();
+  const notifyDecided = useServerFn(notifyLeaveDecided);
   const [conflicts, setConflicts] = useState<LeaveConflict[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
@@ -131,6 +132,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     setActing(false);
     if (error) return toast.error(error.message);
     toast.success(`Leave ${status}`);
+    void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
 
