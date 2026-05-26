@@ -22,7 +22,7 @@ function TraineeDetailPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["trainee-detail", staffId],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const [
         { data: profile, error: e1 },
         { data: assignments, error: e2 },
