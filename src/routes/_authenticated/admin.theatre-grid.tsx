@@ -9,7 +9,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import {
+  ViewModeToggle, PeriodNav, buildDays, type ViewMode,
+} from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
   component: TheatreGridPage,
@@ -17,20 +20,8 @@ export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
 
 type Sess = "am" | "pm";
 const SESSIONS: Sess[] = ["am", "pm"];
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function mondayOf(d: Date) {
-  const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // 0 = Mon
-  x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -45,13 +36,14 @@ type SessionRow = {
 };
 
 function TheatreGridPage() {
-  const [weekStart, setWeekStart] = useState<Date>(mondayOf(new Date()));
+  const [anchor, setAnchor] = useState<Date>(new Date());
+  const [mode, setMode] = useState<ViewMode>("week");
   const [includeWeekend, setIncludeWeekend] = useState(false);
 
-  const dayCount = includeWeekend ? 7 : 5;
-  const days = Array.from({ length: dayCount }, (_, i) => addDays(weekStart, i));
-  const startISO = isoDate(weekStart);
-  const endISO = isoDate(addDays(weekStart, dayCount - 1));
+  const days = useMemo(() => buildDays(anchor, mode, includeWeekend), [anchor, mode, includeWeekend]);
+  const startISO = isoDate(days[0]);
+  const endISO = isoDate(days[days.length - 1]);
+
 
   const qc = useQueryClient();
 
@@ -148,44 +140,22 @@ function TheatreGridPage() {
             Configure AM/PM sessions for every theatre. Pick a specialty and operating consultant per slot.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWeekStart(addDays(weekStart, -7))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="rounded-md border px-3 py-1.5 text-sm font-medium tabular-nums">
-            {startISO} – {endISO}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWeekStart(addDays(weekStart, 7))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setWeekStart(mondayOf(new Date()))}
-          >
-            This week
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewModeToggle mode={mode} onChange={setMode} />
+          <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIncludeWeekend((v) => !v)}
           >
-            {includeWeekend ? "Mon–Fri" : "Include weekend"}
+            {includeWeekend ? "Hide weekend" : "Include weekend"}
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Week of {startISO}</CardTitle>
+          <CardTitle className="text-base">{startISO} – {endISO}</CardTitle>
           <CardDescription>
             Empty cells become new sessions when you choose a specialty or type a consultant.
           </CardDescription>
@@ -204,7 +174,7 @@ function TheatreGridPage() {
                   <th className="sticky left-0 z-10 bg-card p-2 text-left font-medium">Theatre</th>
                   {days.map((d, i) => (
                     <th key={i} colSpan={2} className="border-l p-2 text-center font-medium">
-                      {DAY_LABELS[i]} <span className="text-muted-foreground">{isoDate(d).slice(5)}</span>
+                      {DAY_SHORT[d.getDay()]} <span className="text-muted-foreground">{isoDate(d).slice(5)}</span>
                     </th>
                   ))}
                 </tr>

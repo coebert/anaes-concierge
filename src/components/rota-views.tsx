@@ -30,6 +30,91 @@ export function fmt(d: Date) {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
+export type ViewMode = "day" | "week" | "month";
+
+export function startOfMonth(d: Date) {
+  const x = new Date(d.getFullYear(), d.getMonth(), 1);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+export function endOfMonth(d: Date) {
+  const x = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+export function buildDays(anchor: Date, mode: ViewMode, includeWeekend = false): Date[] {
+  if (mode === "day") return [new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())];
+  if (mode === "month") {
+    const start = startOfMonth(anchor);
+    const end = endOfMonth(anchor);
+    const out: Date[] = [];
+    for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+      const dow = d.getDay();
+      if (!includeWeekend && (dow === 0 || dow === 6)) continue;
+      out.push(new Date(d));
+    }
+    return out;
+  }
+  const ws = startOfWeek(anchor);
+  const len = includeWeekend ? 7 : 5;
+  return Array.from({ length: len }, (_, i) => addDays(ws, i));
+}
+
+export function shiftAnchor(anchor: Date, mode: ViewMode, dir: 1 | -1): Date {
+  if (mode === "day") return addDays(anchor, dir);
+  if (mode === "week") return addDays(anchor, dir * 7);
+  return new Date(anchor.getFullYear(), anchor.getMonth() + dir, 1);
+}
+
+export function ViewModeToggle({
+  mode, onChange,
+}: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
+  return (
+    <div className="inline-flex rounded-md border">
+      {(["day", "week", "month"] as ViewMode[]).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "px-3 py-1 text-xs font-medium capitalize first:rounded-l-md last:rounded-r-md",
+            mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+          )}
+        >
+          {m}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function PeriodNav({
+  anchor, mode, onChange,
+}: { anchor: Date; mode: ViewMode; onChange: (d: Date) => void }) {
+  const label = (() => {
+    if (mode === "day") return anchor.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    if (mode === "month") return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const ws = startOfWeek(anchor);
+    return `Week of ${fmt(ws)}`;
+  })();
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" onClick={() => onChange(shiftAnchor(anchor, mode, -1))}>
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <div className="rounded-md border px-3 py-1 text-xs font-medium tabular-nums min-w-[180px] text-center">
+        {label}
+      </div>
+      <Button variant="outline" size="sm" onClick={() => onChange(shiftAnchor(anchor, mode, 1))}>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      <Button size="sm" variant="secondary" onClick={() => onChange(new Date())}>
+        Today
+      </Button>
+    </div>
+  );
+}
+
 export function WeekPicker({
   weekStart, onChange, days,
 }: {
@@ -58,8 +143,11 @@ export function WeekPicker({
 
 /* --------------------- Global read-only grid --------------------- */
 
-export function GlobalWeekGrid({ weekStart }: { weekStart: Date }) {
-  const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date; days?: Date[] }) {
+  const days = useMemo(
+    () => daysProp ?? Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)),
+    [weekStart, daysProp],
+  );
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
