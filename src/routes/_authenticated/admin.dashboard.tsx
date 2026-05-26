@@ -76,6 +76,27 @@ function AdminDashboardPage() {
     },
   });
 
+  const { data: activity } = useQuery({
+    queryKey: ["admin-dashboard-activity"],
+    queryFn: async () => {
+      const since7 = new Date(Date.now() - 7 * 86400_000).toISOString();
+      const since30 = new Date(Date.now() - 30 * 86400_000).toISOString();
+      const [late7, late30, rejected7, rejected30, reserve7, reserve30] = await Promise.all([
+        supabase.from("rota_change_log").select("id", { count: "exact", head: true }).gte("changed_at", since7),
+        supabase.from("rota_change_log").select("id", { count: "exact", head: true }).gte("changed_at", since30),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").gte("decided_at", since7),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").gte("decided_at", since30),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).not("reserve_listed_at", "is", null).gte("reserve_listed_at", since7),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true }).not("reserve_listed_at", "is", null).gte("reserve_listed_at", since30),
+      ]);
+      return {
+        lateRota: { d7: late7.count ?? 0, d30: late30.count ?? 0 },
+        rejected:  { d7: rejected7.count ?? 0, d30: rejected30.count ?? 0 },
+        reserve:   { d7: reserve7.count ?? 0, d30: reserve30.count ?? 0 },
+      };
+    },
+  });
+
   const summary = useMemo(() => {
     if (!data) return null;
     const profilesById = new Map(data.profiles.map((p) => [p.id, p]));
