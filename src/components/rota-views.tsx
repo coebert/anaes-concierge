@@ -128,7 +128,10 @@ export function WeekPicker({
       </Button>
       <Input
         type="date" value={iso(weekStart)}
-        onChange={(e) => onChange(startOfWeek(new Date(e.target.value)))}
+        onChange={(e) => {
+          const d = parseDateLocal(e.target.value);
+          if (d) onChange(startOfWeek(d));
+        }}
         className="h-8 w-40"
       />
       <Button variant="outline" size="sm" onClick={() => onChange(addDays(weekStart, 7))}>
