@@ -85,12 +85,16 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
   });
 
 export const notifyLeaveDecided = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
       leaveId: z.string().uuid(),
     }).parse(d),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    if (!(await callerIsCoordOrAdmin(context.userId))) {
+      throw new Error("Forbidden");
+    }
     const { data: req } = await supabaseAdmin
       .from("leave_requests")
       .select("*")
