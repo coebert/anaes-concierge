@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { computeLeaveConflicts, type LeaveConflict } from "@/lib/leave-utils";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyLeaveDecided } from "@/lib/leave-notifications.functions";
 
 interface LeaveRow {
   id: string;
