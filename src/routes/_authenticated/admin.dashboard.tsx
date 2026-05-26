@@ -204,6 +204,34 @@ function AdminDashboardPage() {
             <Stat label="Available" value={summary.totalAvailable} icon={CalendarDays} />
           </div>
 
+          {/* Activity metrics */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Activity (rolling)
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <DualStat
+                label="Late rota changes (within 24h of session)"
+                icon={Clock}
+                d7={activity?.lateRota.d7}
+                d30={activity?.lateRota.d30}
+              />
+              <DualStat
+                label="Leave requests rejected"
+                icon={XCircle}
+                d7={activity?.rejected.d7}
+                d30={activity?.rejected.d30}
+              />
+              <DualStat
+                label="Placed on reserve leave list"
+                icon={ListChecks}
+                d7={activity?.reserve.d7}
+                d30={activity?.reserve.d30}
+              />
+            </div>
+          </section>
+
+
           {/* Assigned + available by grade */}
           <section className="space-y-3">
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
