@@ -195,10 +195,10 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
   });
 
   const { data: staff } = useQuery({
-    queryKey: ["staff-active"],
+    queryKey: ["staff-active-with-grade"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade").eq("active", true);
+        .from("profiles").select("id,full_name,grade,training_level").eq("active", true);
       if (error) throw error;
       return data;
     },
@@ -214,12 +214,19 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
-  const staffName = (id: string | null) => staff?.find((s) => s.id === id)?.full_name ?? "—";
+  const staffById = (id: string | null) => staff?.find((s) => s.id === id);
+  const staffName = (id: string | null) => staffById(id)?.full_name ?? "—";
   const specName = (id: string | null) => (id ? specs?.find((s) => s.id === id)?.name : undefined);
   const cellSession = (theatreId: string, date: string, s: SessionHalf) =>
     sessions?.find((x) => x.theatre_id === theatreId && x.session_date === date && x.session === s);
-  const cellAssigns = (sessionId?: string) =>
-    sessionId ? assignments?.filter((a) => a.theatre_session_id === sessionId) ?? [] : [];
+  const gradeRank = (g: string | null | undefined) =>
+    g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
+  const cellAssigns = (sessionId?: string) => {
+    const list = sessionId ? assignments?.filter((a) => a.theatre_session_id === sessionId) ?? [] : [];
+    return [...list].sort(
+      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+    );
+  };
 
   return (
     <Card>
@@ -273,22 +280,33 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                 {ts.surgical_consultant}
                               </div>
                             )}
-                            {assigns.map((a) => (
-                              <Link
-                                key={a.id}
-                                to="/calendar/staff/$staffId"
-                                params={{ staffId: a.staff_id }}
-                                className="block truncate text-[10px] hover:underline"
-                              >
-                                <Badge
-                                  variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                  className="mr-1 px-1 py-0 text-[9px]"
+                            {assigns.map((a) => {
+                              const sp = staffById(a.staff_id);
+                              const isConsultant = sp?.grade === "consultant";
+                              const isTrainee = sp?.grade === "trainee";
+                              const highlightTrainee = isTrainee && a.role_on_list === "solo";
+                              return (
+                                <Link
+                                  key={a.id}
+                                  to="/calendar/staff/$staffId"
+                                  params={{ staffId: a.staff_id }}
+                                  className={cn(
+                                    "block truncate text-[10px] hover:underline",
+                                    isConsultant && "font-bold",
+                                    highlightTrainee && "text-blue-600 dark:text-blue-400",
+                                  )}
                                 >
-                                  {a.role_on_list}
-                                </Badge>
-                                {staffName(a.staff_id)}
-                              </Link>
-                            ))}
+                                  <Badge
+                                    variant={a.role_on_list === "supervising" ? "default" : "outline"}
+                                    className="mr-1 px-1 py-0 text-[9px]"
+                                  >
+                                    {a.role_on_list}
+                                  </Badge>
+                                  {staffName(a.staff_id)}
+                                  {isTrainee && sp?.training_level ? ` (${sp.training_level})` : ""}
+                                </Link>
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="text-muted-foreground/40 text-[10px]">—</div>
