@@ -912,7 +912,7 @@ export async function performRotaSync() {
       staff_id: string;
       session_date: string;
       session: "am" | "pm" | "eve" | "night";
-      duty_type: "theatre";
+      duty_type: ResolvedDutyType;
       role_on_list: ReturnType<typeof normaliseRole>;
       source: "clwrota";
       theatre_session_key: string | null; // resolve after sessions upserted
