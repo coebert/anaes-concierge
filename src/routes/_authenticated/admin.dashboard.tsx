@@ -38,9 +38,6 @@ const LEAVE_LABEL: Record<LeaveType, string> = {
   other: "Other",
 };
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function AdminDashboardPage() {
   const { hasRole, loading } = useAuth();
