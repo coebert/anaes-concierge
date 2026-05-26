@@ -317,17 +317,31 @@ function RotaGridPage() {
                                   {ts.surgical_consultant}
                                 </div>
                               )}
-                              {assigns.map((a) => (
-                                <div key={a.id} className="truncate text-[10px]">
-                                  <Badge
-                                    variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                    className="mr-1 px-1 py-0 text-[9px]"
+                              {assigns.map((a) => {
+                                const sp = staffById(a.staff_id);
+                                const isConsultant = sp?.grade === "consultant";
+                                const isTrainee = sp?.grade === "trainee";
+                                const highlightTrainee = isTrainee && a.role_on_list === "solo";
+                                return (
+                                  <div
+                                    key={a.id}
+                                    className={cn(
+                                      "truncate text-[10px]",
+                                      isConsultant && "font-bold",
+                                      highlightTrainee && "text-blue-600 dark:text-blue-400",
+                                    )}
                                   >
-                                    {a.role_on_list}
-                                  </Badge>
-                                  {staffName(a.staff_id)}
-                                </div>
-                              ))}
+                                    <Badge
+                                      variant={a.role_on_list === "supervising" ? "default" : "outline"}
+                                      className="mr-1 px-1 py-0 text-[9px]"
+                                    >
+                                      {a.role_on_list}
+                                    </Badge>
+                                    {staffName(a.staff_id)}
+                                    {isTrainee && sp?.training_level ? ` (${sp.training_level})` : ""}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="text-muted-foreground/60 text-[10px]">+ add</div>
