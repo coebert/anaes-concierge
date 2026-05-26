@@ -41,18 +41,22 @@ function fmtDates(start: string, end: string) {
 }
 
 export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
       leaveId: z.string().uuid(),
     }).parse(d),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { data: req } = await supabaseAdmin
       .from("leave_requests")
       .select("*")
       .eq("id", data.leaveId)
       .maybeSingle();
     if (!req) return { ok: false };
+    if (req.staff_id !== context.userId && !(await callerIsCoordOrAdmin(context.userId))) {
+      throw new Error("Forbidden");
+    }
 
     const { name } = await staffName(req.staff_id);
     const recipients = await coordinatorEmails();
