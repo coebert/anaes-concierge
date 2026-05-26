@@ -87,58 +87,28 @@ function AdminStaffPage() {
           ) : !filtered?.length ? (
             <p className="text-sm text-muted-foreground">No staff records.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Details</TableHead>
-                  <TableHead>LTFT</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{p.email}</TableCell>
-                    <TableCell>
-                      {p.grade ? <Badge variant="outline">{p.grade}</Badge> : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {p.grade === "consultant" && p.job_plan ? (
-                        <span className="text-sm">{p.job_plan.total_pas} PAs</span>
-                      ) : p.grade === "trainee" && p.training_level ? (
-                        <Badge variant="secondary">{p.training_level}</Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {p.job_plan?.ltft ? (
-                        <Badge>{p.job_plan.ltft_percentage ?? ""}%</Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Full time</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {p.active ? (
-                        <Badge variant="default">active</Badge>
-                      ) : (
-                        <Badge variant="destructive">inactive</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button size="icon" variant="ghost" onClick={() => setEditingId(p.id)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="space-y-6">
+              <StaffGroup
+                title="Consultants"
+                staff={filtered.filter((p) => p.grade === "consultant")}
+                onEdit={(id) => setEditingId(id)}
+              />
+              <StaffGroup
+                title="SAS Doctors"
+                staff={filtered.filter((p) => p.grade === "sas")}
+                onEdit={(id) => setEditingId(id)}
+              />
+              <StaffGroup
+                title="Trainees"
+                staff={filtered.filter((p) => p.grade === "trainee")}
+                onEdit={(id) => setEditingId(id)}
+              />
+              <StaffGroup
+                title="Other"
+                staff={filtered.filter((p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade))}
+                onEdit={(id) => setEditingId(id)}
+              />
+            </div>
           )}
           <p className="mt-4 text-xs text-muted-foreground">
             New users appear here automatically when they sign up.
