@@ -758,15 +758,42 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
-      const sessRaw = pick(row, ["session", "session_half", "half", "Session", "period", "shift", "time"]);
-      const personEmail = pick(row, ["email", "person_email", "Email"]);
-      const personExtId = pick(row, ["person_id", "local_id", "staff_id", "user_id"]);
-      const personName = pick(row, ["person", "person_name", "name", "staff", "Name", "full_name"]);
-      const theatreName = pick(row, ["theatre", "location", "room", "Theatre", "list", "Location"]);
-      const specialtyName = pick(row, ["specialty", "speciality", "service", "Specialty", "Service"]);
-      const consultantName = pick(row, ["consultant", "surgeon", "surgical_consultant", "Consultant"]);
-      const roleRaw = pick(row, ["role", "duty", "type", "Role", "Duty"]);
-      const externalId = pick(row, ["id", "rota_id", "assignment_id", "external_id"]);
+      // Rotamap puts the AM/PM label on session.rota_label or shift.rota_label.
+      const sessRaw =
+        pick(row, [
+          "session.rota_label", "shift.rota_label",
+          "session.name", "shift.name",
+          "session", "session_half", "half", "Session", "period", "shift", "time",
+          "start_time",
+        ]);
+      const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
+      const personExtId = pick(row, [
+        "person.local_id", "person.esr_employee_number", "person.assignment_number",
+        "person_id", "local_id", "staff_id", "user_id",
+      ]);
+      const personFirst = pick(row, ["person.first_name"]);
+      const personLast = pick(row, ["person.last_name"]);
+      const personName =
+        pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
+        ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+      const theatreName = pick(row, [
+        "place.name", "place.external_code",
+        "theatre", "location", "room", "Theatre", "list", "Location",
+      ]);
+      const specialtyName = pick(row, [
+        "slot_speciality", "service.local_name", "service.long_name",
+        "specialty", "speciality", "service", "Specialty", "Service",
+      ]);
+      const consultantName = pick(row, [
+        "slot_titles", "consultant", "surgeon", "surgical_consultant", "Consultant",
+      ]);
+      const roleRaw = pick(row, [
+        "role.name", "assignment_type.name", "place_category.name",
+        "role", "duty", "type", "Role", "Duty",
+      ]);
+      const externalId =
+        pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
+        (personExtId && dateRaw && sessRaw ? `${personExtId}|${dateRaw}|${sessRaw}` : null);
 
       const session_date = normaliseDate(dateRaw);
       const session = normaliseSession(sessRaw);
