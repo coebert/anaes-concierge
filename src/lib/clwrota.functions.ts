@@ -458,6 +458,8 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
           clwrota_external_id?: string;
           gmc_number?: string;
           start_date?: string;
+          grade?: "consultant" | "sas" | "trainee";
+          training_level?: string;
           active: boolean;
         } = {
           id: crypto.randomUUID(),
@@ -468,6 +470,8 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         if (externalId) newRow.clwrota_external_id = externalId;
         if (gmc) newRow.gmc_number = gmc;
         if (startDate) newRow.start_date = startDate;
+        if (derivedGrade) newRow.grade = derivedGrade;
+        if (roleRaw) newRow.training_level = roleRaw;
 
         const { data: insData, error: insErr } = await supabaseAdmin
           .from("profiles")
