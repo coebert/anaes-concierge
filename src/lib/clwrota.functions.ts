@@ -135,8 +135,7 @@ async function fetchReport(url: string, apiKey: string) {
   const res = await fetch(finalUrl, {
     method: "GET",
     headers: {
-      // Send both header forms in case the deployment prefers either.
-      Authorization: `Token ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       Accept: "application/json, text/csv;q=0.9",
     },
   });
