@@ -16,6 +16,83 @@ export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
 });
 
+type StaffWithPlan = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  grade: string | null;
+  training_level: string | null;
+  active: boolean | null;
+  job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
+};
+
+function StaffGroup({
+  title,
+  staff,
+  onEdit,
+}: {
+  title: string;
+  staff: StaffWithPlan[];
+  onEdit: (id: string) => void;
+}) {
+  if (!staff.length) return null;
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        {title} ({staff.length})
+      </h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Details</TableHead>
+            <TableHead>LTFT</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-16"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {staff.map((p) => (
+            <TableRow key={p.id}>
+              <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{p.email}</TableCell>
+              <TableCell>
+                {p.grade === "consultant" && p.job_plan ? (
+                  <span className="text-sm">{p.job_plan.total_pas} PAs</span>
+                ) : p.grade === "trainee" && p.training_level ? (
+                  <Badge variant="secondary">{p.training_level}</Badge>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
+              <TableCell>
+                {p.job_plan?.ltft ? (
+                  <Badge>{p.job_plan.ltft_percentage ?? ""}%</Badge>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Full time</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {p.active ? (
+                  <Badge variant="default">active</Badge>
+                ) : (
+                  <Badge variant="destructive">inactive</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <Button size="icon" variant="ghost" onClick={() => onEdit(p.id)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function AdminStaffPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
