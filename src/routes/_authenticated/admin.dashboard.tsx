@@ -482,6 +482,124 @@ function AdminDashboardPage() {
             </Card>
           </section>
 
+          {/* Solo trainee lists — monthly */}
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  Solo trainee lists — last 12 months
+                </h2>
+                {soloStats && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {soloStats.totalSolo} solo of {soloStats.totalLists} daytime theatre lists
+                    {soloStats.totalLists > 0 && (
+                      <> ({Math.round((soloStats.totalSolo / soloStats.totalLists) * 1000) / 10}%)</>
+                    )} · {BUCKET_LABEL[bucket]}
+                  </p>
+                )}
+              </div>
+              <div className="w-48">
+                <label className="mb-1 block text-xs text-muted-foreground">Training grade</label>
+                <Select value={bucket} onValueChange={(v) => setBucket(v as TraineeBucket)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All trainees</SelectItem>
+                    <SelectItem value="junior">CT2–ST4</SelectItem>
+                    <SelectItem value="senior">ST5–ST8+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {soloLoading || !soloStats ? (
+              <div className="text-sm text-muted-foreground">Loading solo trainee data…</div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Solo lists per month</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={soloStats.chart} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                          <Tooltip
+                            formatter={(value: number, name: string) =>
+                              [value, name === "soloLists" ? "Solo lists" : name === "totalLists" ? "Total daytime lists" : name]
+                            }
+                          />
+                          <Legend formatter={(v) => v === "soloLists" ? "Solo" : "Total daytime"} />
+                          <Bar dataKey="totalLists" fill="hsl(var(--muted-foreground))" opacity={0.35} />
+                          <Bar dataKey="soloLists" fill="hsl(var(--primary))" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Avg % solo of trainee daytime lists</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={soloStats.chart} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
+                          <Tooltip formatter={(v: number) => [`${v}%`, "Avg % solo"]} />
+                          <Line type="monotone" dataKey="avgPctSolo" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="lg:col-span-2">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Per-trainee summary (12 months)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {soloStats.traineeRows.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No data for this grade bucket.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="text-left text-xs uppercase text-muted-foreground">
+                            <tr>
+                              <th className="py-2 pr-3">Trainee</th>
+                              <th className="py-2 pr-3">Level</th>
+                              <th className="py-2 pr-3 text-right">Solo</th>
+                              <th className="py-2 pr-3 text-right">Daytime lists</th>
+                              <th className="py-2 pr-3 text-right">% solo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {soloStats.traineeRows.map((r) => (
+                              <tr key={r.id} className="border-t">
+                                <td className="py-1.5 pr-3">{r.full_name || "—"}</td>
+                                <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
+                                <td className="py-1.5 pr-3 text-right">{r.solo}</td>
+                                <td className="py-1.5 pr-3 text-right">{r.total}</td>
+                                <td className="py-1.5 pr-3 text-right font-medium">{r.pct}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </section>
+
+
+
           {/* Available list */}
           <section className="space-y-3">
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
