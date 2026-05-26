@@ -294,10 +294,10 @@ function CellDialog({
   const [specialtyId, setSpecialtyId] = useState<string>("");
   const [consultant, setConsultant] = useState<string>("");
 
-  useMemo(() => {
+  useEffect(() => {
     setSpecialtyId(ts?.specialty_id ?? "");
     setConsultant(ts?.surgical_consultant ?? "");
-  }, [ts?.id]);
+  }, [ts?.id, ts?.specialty_id, ts?.surgical_consultant]);
 
   const saveSession = useMutation({
     mutationFn: async () => {
