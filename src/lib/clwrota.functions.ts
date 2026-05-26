@@ -194,6 +194,10 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
+    return performStaffSync();
+  });
+
+export async function performStaffSync() {
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin
