@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { composeName } from "@/lib/utils";
 import { toast } from "sonner";
 import { createStaffMember } from "@/lib/admin-staff.functions";
 
