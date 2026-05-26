@@ -28,6 +28,8 @@ import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
+import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -130,6 +132,17 @@ const AuthenticatedAdminSettingsRoute =
     path: '/admin/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminRulesRoute = AuthenticatedAdminRulesRouteImport.update({
+  id: '/admin/rules',
+  path: '/admin/rules',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminJobPlansRoute =
+  AuthenticatedAdminJobPlansRouteImport.update({
+    id: '/admin/job-plans',
+    path: '/admin/job-plans',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCalendarStaffStaffIdRoute =
   AuthenticatedCalendarStaffStaffIdRouteImport.update({
     id: '/staff/$staffId',
@@ -148,6 +161,8 @@ export interface FileRoutesByFullPath {
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
@@ -168,6 +183,8 @@ export interface FileRoutesByTo {
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
@@ -191,6 +208,8 @@ export interface FileRoutesById {
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
@@ -214,6 +233,8 @@ export interface FileRouteTypes {
     | '/me'
     | '/trainees'
     | '/api/chat'
+    | '/admin/job-plans'
+    | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/theatres'
@@ -234,6 +255,8 @@ export interface FileRouteTypes {
     | '/trainees'
     | '/api/chat'
     | '/'
+    | '/admin/job-plans'
+    | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/theatres'
@@ -256,6 +279,8 @@ export interface FileRouteTypes {
     | '/_authenticated/trainees'
     | '/api/chat'
     | '/_authenticated/'
+    | '/_authenticated/admin/job-plans'
+    | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
     | '/_authenticated/admin/theatres'
@@ -410,6 +435,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/rules': {
+      id: '/_authenticated/admin/rules'
+      path: '/admin/rules'
+      fullPath: '/admin/rules'
+      preLoaderRoute: typeof AuthenticatedAdminRulesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/job-plans': {
+      id: '/_authenticated/admin/job-plans'
+      path: '/admin/job-plans'
+      fullPath: '/admin/job-plans'
+      preLoaderRoute: typeof AuthenticatedAdminJobPlansRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/calendar/staff/$staffId': {
       id: '/_authenticated/calendar/staff/$staffId'
       path: '/staff/$staffId'
@@ -467,6 +506,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
+  AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
@@ -481,6 +522,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
+  AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,

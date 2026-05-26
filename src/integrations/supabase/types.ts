@@ -447,6 +447,66 @@ export type Database = {
           },
         ]
       }
+      rota_rules: {
+        Row: {
+          allow_back_to_back_oncall: boolean
+          default_dcc_pas: number
+          default_spa_pas: number
+          default_total_pas: number
+          honour_fixed_sessions: boolean
+          id: number
+          ltft_round_to: number
+          max_consecutive_days: number
+          max_sessions_per_week: number
+          min_rest_hours: number
+          notes: string | null
+          oncall_pa_credit: number
+          post_nights_off_days: number
+          sessions_per_pa: number
+          updated_at: string
+          updated_by: string | null
+          weekend_pa_credit: number
+        }
+        Insert: {
+          allow_back_to_back_oncall?: boolean
+          default_dcc_pas?: number
+          default_spa_pas?: number
+          default_total_pas?: number
+          honour_fixed_sessions?: boolean
+          id?: number
+          ltft_round_to?: number
+          max_consecutive_days?: number
+          max_sessions_per_week?: number
+          min_rest_hours?: number
+          notes?: string | null
+          oncall_pa_credit?: number
+          post_nights_off_days?: number
+          sessions_per_pa?: number
+          updated_at?: string
+          updated_by?: string | null
+          weekend_pa_credit?: number
+        }
+        Update: {
+          allow_back_to_back_oncall?: boolean
+          default_dcc_pas?: number
+          default_spa_pas?: number
+          default_total_pas?: number
+          honour_fixed_sessions?: boolean
+          id?: number
+          ltft_round_to?: number
+          max_consecutive_days?: number
+          max_sessions_per_week?: number
+          min_rest_hours?: number
+          notes?: string | null
+          oncall_pa_credit?: number
+          post_nights_off_days?: number
+          sessions_per_pa?: number
+          updated_at?: string
+          updated_by?: string | null
+          weekend_pa_credit?: number
+        }
+        Relationships: []
+      }
       specialties: {
         Row: {
           created_at: string
