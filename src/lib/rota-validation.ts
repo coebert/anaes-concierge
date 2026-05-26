@@ -57,7 +57,11 @@ export interface Profile {
   grade: "consultant" | "sas" | "trainee" | null;
   training_level: string | null;
   rotation_end_date?: string | null;
+  /** Weekdays (0=Mon..6=Sun) on which this LTFT staff member is contractually off. */
+  ltft_days_off?: number[] | null;
 }
+
+const DAY_LABELS_MON_FIRST = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const DCC_ROLES: RotaRole[] = ["solo", "supervised", "supervising", "on_call"];
 
@@ -130,6 +134,17 @@ export function validateAssignment(args: {
       severity: "error",
       message: `After trainee's rotation end date (${formatDateGB(profile.rotation_end_date)}).`,
     });
+  }
+
+  // 2c. LTFT fixed weekly day off — block assignment on contractually-off weekdays.
+  if (profile?.ltft_days_off && profile.ltft_days_off.length) {
+    const dow = dayIndexMonFirst(date);
+    if (profile.ltft_days_off.includes(dow)) {
+      issues.push({
+        severity: "error",
+        message: `LTFT fixed day off (${DAY_LABELS_MON_FIRST[dow]}) — not available.`,
+      });
+    }
   }
 
   // 3. Trainee assigned 'supervised' must have a supervising consultant on the same list (warning only)

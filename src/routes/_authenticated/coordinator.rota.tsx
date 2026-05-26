@@ -158,7 +158,7 @@ function RotaGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name,grade,training_level,rotation_end_date")
+        .select("id,full_name,grade,training_level,rotation_end_date,ltft_days_off")
         .eq("active", true)
         .order("full_name");
       if (error) throw error;
