@@ -57,7 +57,11 @@ export interface Profile {
   grade: "consultant" | "sas" | "trainee" | null;
   training_level: string | null;
   rotation_end_date?: string | null;
+  /** Weekdays (0=Mon..6=Sun) on which this LTFT staff member is contractually off. */
+  ltft_days_off?: number[] | null;
 }
+
+const DAY_LABELS_MON_FIRST = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const DCC_ROLES: RotaRole[] = ["solo", "supervised", "supervising", "on_call"];
 
