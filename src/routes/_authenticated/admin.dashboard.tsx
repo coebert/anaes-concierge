@@ -814,6 +814,30 @@ function AdminDashboardPage() {
               ))}
             </div>
           </section>
+
+          {/* Per-trainee individual metrics */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Per-trainee metrics (all-time)
+            </h2>
+            {traineeMetricsLoading ? (
+              <div className="text-sm text-muted-foreground">Loading trainee metrics…</div>
+            ) : traineeMetricRows.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No active trainees on record.</div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {traineeMetricRows.map(({ trainee, metrics }) => (
+                  <TraineeMetricsCard
+                    key={trainee.id}
+                    title={trainee.full_name || "—"}
+                    subtitle={trainee.training_level ?? "No level set"}
+                    metrics={metrics}
+                    startDate={trainee.start_date}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>
