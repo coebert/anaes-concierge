@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, parseDateLocal, formatDateLongGB } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import {
   validateAssignment, worstSeverity,
@@ -229,7 +229,10 @@ function RotaGridPage() {
           </Button>
           <Input
             type="date" value={iso(weekStart)}
-            onChange={(e) => setWeekStart(startOfWeek(new Date(e.target.value)))}
+            onChange={(e) => {
+              const d = parseDateLocal(e.target.value);
+              if (d) setWeekStart(startOfWeek(d));
+            }}
             className="h-8 w-40"
           />
           <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
@@ -540,9 +543,7 @@ function CellDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const dateLabel = new Date(date).toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  const dateLabel = formatDateLongGB(date);
 
   return (
     <Dialog open onOpenChange={onOpenChange}>

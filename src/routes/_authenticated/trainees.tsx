@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { todayISO } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
   component: TraineesGuard,
@@ -53,7 +54,7 @@ function TraineesPage() {
       if (e2) throw e2;
       if (e3) throw e3;
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const traineeIds = (trainees ?? []).map((t) => t.id);
       let assignments: Array<{
         staff_id: string;

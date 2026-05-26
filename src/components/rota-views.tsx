@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, parseDateLocal } from "@/lib/utils";
 
 type SessionHalf = "am" | "pm";
 
@@ -128,7 +128,10 @@ export function WeekPicker({
       </Button>
       <Input
         type="date" value={iso(weekStart)}
-        onChange={(e) => onChange(startOfWeek(new Date(e.target.value)))}
+        onChange={(e) => {
+          const d = parseDateLocal(e.target.value);
+          if (d) onChange(startOfWeek(d));
+        }}
         className="h-8 w-40"
       />
       <Button variant="outline" size="sm" onClick={() => onChange(addDays(weekStart, 7))}>

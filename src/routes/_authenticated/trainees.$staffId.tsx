@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { computeProgress } from "@/lib/competency-utils";
 import { ArrowLeft } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   component: TraineeDetailPage,
@@ -22,7 +22,7 @@ function TraineeDetailPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["trainee-detail", staffId],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const [
         { data: profile, error: e1 },
         { data: assignments, error: e2 },
@@ -193,7 +193,7 @@ function TraineeDetailPage() {
                   const ts = a.theatre_session_id ? data.tsMap.get(a.theatre_session_id) : null;
                   return (
                     <TableRow key={a.id}>
-                      <TableCell>{format(new Date(a.session_date), "EEE dd/MM/yyyy")}</TableCell>
+                      <TableCell>{formatDateWithWeekdayGB(a.session_date)}</TableCell>
                       <TableCell className="capitalize">{a.session}</TableCell>
                       <TableCell>{ts ? data.theatreMap.get(ts.theatre_id) ?? "—" : "—"}</TableCell>
                       <TableCell>

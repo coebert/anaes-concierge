@@ -9,7 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { formatDateGB } from "@/lib/utils";
+import { formatDateGB, todayISO } from "@/lib/utils";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
@@ -38,9 +38,6 @@ const LEAVE_LABEL: Record<LeaveType, string> = {
   other: "Other",
 };
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function AdminDashboardPage() {
   const { hasRole, loading } = useAuth();
