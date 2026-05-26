@@ -410,7 +410,6 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
             className={cn(
               "text-xl font-semibold",
               profile?.grade === "consultant" && "font-bold",
-              profile?.grade === "trainee" && "text-blue-600 dark:text-blue-400",
             )}
           >
             {profile?.full_name ?? "Staff member"}
