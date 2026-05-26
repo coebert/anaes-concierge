@@ -23,6 +23,7 @@ interface Props {
 const TYPES = ["annual", "study", "compassionate", "sick", "parental", "other"] as const;
 
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
+  const notify = useServerFn(notifyLeaveSubmitted);
   const { user } = useAuth();
   const [type, setType] = useState<(typeof TYPES)[number]>("annual");
   const [startDate, setStartDate] = useState("");
