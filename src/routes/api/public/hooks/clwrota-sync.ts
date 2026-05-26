@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { performStaffSync, performRotaSync } from "@/lib/clwrota.functions";
 
 /**
  * Cron-triggered full CLWRota resync (staff + rota).
@@ -14,6 +13,11 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
         if (!expected || apiKey !== expected) {
           return new Response("Unauthorized", { status: 401 });
         }
+
+        // Dynamic import — keeps server-only modules out of the client bundle.
+        const { performStaffSync, performRotaSync } = await import(
+          "@/lib/clwrota.functions"
+        );
 
         const result: {
           staff?: unknown;
