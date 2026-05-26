@@ -21,6 +21,8 @@ import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
 } from "@/lib/rota-validation";
+import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 type SessionHalf = "am" | "pm";
 type RotaRole =
@@ -513,6 +515,48 @@ function CellDialog({
     : [];
   const blocking = candidateIssues.some((i) => i.severity === "error");
 
+  // Custom-rule violation check (calls Lovable AI to evaluate plain-English rules).
+  const checkRules = useServerFn(checkCustomRuleViolations);
+  const [customIssues, setCustomIssues] = useState<Issue[]>([]);
+  useEffect(() => {
+    if (!newStaff) { setCustomIssues([]); return; }
+    let cancelled = false;
+    const ctx = contextAssignments
+      .filter((a) => a.staff_id === newStaff)
+      .map((a) => ({
+        session_date: a.session_date,
+        session: a.session,
+        role_on_list: a.role_on_list as string,
+      }));
+    const t = setTimeout(async () => {
+      try {
+        const res = await checkRules({
+          data: {
+            staffId: newStaff,
+            date,
+            session,
+            role: newRole,
+            contextAssignments: ctx,
+          },
+        });
+        if (cancelled) return;
+        setCustomIssues(
+          (res.violations ?? []).map((v) => ({
+            severity: "warning" as const,
+            message: `Custom rule — ${v.summary}: ${v.reason} (Rule: "${v.ruleText}")`,
+          })),
+        );
+      } catch {
+        if (!cancelled) setCustomIssues([]);
+      }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newStaff, newRole, date, session]);
+
+  const allCandidateIssues = [...candidateIssues, ...customIssues];
+
+
   // Validation summary per existing assignment in this cell
   const issuesFor = (staffId: string, role: RotaRole) =>
     validateAssignment({
@@ -719,14 +763,14 @@ function CellDialog({
                     <Plus className="mr-1 h-4 w-4" />Assign
                   </Button>
                 </div>
-                {newStaff && candidateIssues.length > 0 && (
+                {newStaff && allCandidateIssues.length > 0 && (
                   <div className="rounded-md border bg-muted/30 p-2 space-y-1">
                     <div className="text-xs font-medium flex items-center gap-1.5">
-                      <SeverityIcon severity={worstSeverity(candidateIssues) ?? "info"} />
+                      <SeverityIcon severity={worstSeverity(allCandidateIssues) ?? "info"} />
                       Validation
                     </div>
                     <ul className="space-y-0.5 text-[11px]">
-                      {candidateIssues.map((i, idx) => (
+                      {allCandidateIssues.map((i, idx) => (
                         <li key={idx} className={cn(
                           "flex items-start gap-1.5",
                           i.severity === "error" && "text-destructive",

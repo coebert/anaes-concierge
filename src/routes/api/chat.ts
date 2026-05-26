@@ -19,10 +19,17 @@ If the user asks about something outside the app's data, say so and suggest who 
 
 ADMIN MUTATIONS: If (and only if) the calling user is an admin, you have additional tools to make
 changes: create/update/delete rota assignments, update job plans (PAs, LTFT status and percentage),
-and update staff profile details (grade, training level, active status). Use \`find_staff\` to resolve
-names to staff IDs before calling a mutation. Always confirm the intended change in your reply,
-state what was changed, and warn about any potential TCS or double-booking implications you notice.
-If the user is not an admin and asks for a change, politely explain you cannot make changes for them.`;
+update staff profile details (grade, training level, active status), and manage CUSTOM WORKING-PATTERN
+RULES that the department wants you to remember (e.g. "Dr Smith always has the morning off after an
+overnight on-call"). Use \`find_staff\` to resolve names to staff IDs before calling a mutation.
+Always confirm the intended change in your reply, state what was changed, and warn about any potential
+TCS, double-booking or custom-rule implications you notice.
+
+CUSTOM RULES: When an admin states a working-pattern rule, call \`create_custom_rule\` to persist it.
+Always factor the CURRENT CUSTOM RULES (listed below if any) into any rota writing or amendments you
+suggest or make. If asked to break one, push back and ask the admin to confirm. If the user is not an
+admin and asks for a change, politely explain you cannot make changes for them.`;
+
 
 function getAdminClient() {
   const url = process.env.SUPABASE_URL!;
@@ -240,8 +247,123 @@ function buildAdminTools() {
         return { ok: true };
       },
     }),
+
+    list_custom_rules: tool({
+      description:
+        "ADMIN ONLY. List the active custom working-pattern rules. Optionally filter by staff_id or grade.",
+      inputSchema: z.object({
+        staff_id: z.string().uuid().optional(),
+        grade: z.enum(["consultant", "sas", "trainee"]).optional(),
+      }),
+      execute: async ({ staff_id, grade }) => {
+        let q = admin
+          .from("custom_rota_rules")
+          .select("id,scope,staff_id,grade,summary,rule_text,active,created_at")
+          .eq("active", true)
+          .order("created_at", { ascending: false });
+        if (staff_id) q = q.or(`staff_id.eq.${staff_id},scope.eq.department`);
+        if (grade) q = q.or(`grade.eq.${grade},scope.eq.department`);
+        const { data, error } = await q;
+        if (error) return { error: error.message };
+        return { rules: data ?? [] };
+      },
+    }),
+
+    create_custom_rule: tool({
+      description:
+        "ADMIN ONLY. Persist a new custom working-pattern rule so it is remembered across sessions and factored into future rota work. Scope is 'staff' (one person), 'grade' (e.g. all trainees), or 'department' (everyone). Provide a short `summary` (≤80 chars) for display and the full `rule_text` capturing the rule.",
+      inputSchema: z.object({
+        scope: z.enum(["staff", "grade", "department"]),
+        staff_id: z.string().uuid().optional(),
+        grade: z.enum(["consultant", "sas", "trainee"]).optional(),
+        summary: z.string().min(3).max(120),
+        rule_text: z.string().min(5).max(1000),
+      }),
+      execute: async (input) => {
+        if (input.scope === "staff" && !input.staff_id)
+          return { error: "staff_id is required when scope is 'staff'" };
+        if (input.scope === "grade" && !input.grade)
+          return { error: "grade is required when scope is 'grade'" };
+        const { data, error } = await admin
+          .from("custom_rota_rules")
+          .insert({
+            scope: input.scope,
+            staff_id: input.scope === "staff" ? input.staff_id : null,
+            grade: input.scope === "grade" ? input.grade : null,
+            summary: input.summary,
+            rule_text: input.rule_text,
+          })
+          .select("id")
+          .maybeSingle();
+        if (error) return { error: error.message };
+        return { ok: true, id: data?.id };
+      },
+    }),
+
+    update_custom_rule: tool({
+      description:
+        "ADMIN ONLY. Edit an existing custom rule (summary, rule_text, active flag).",
+      inputSchema: z.object({
+        id: z.string().uuid(),
+        summary: z.string().min(3).max(120).optional(),
+        rule_text: z.string().min(5).max(1000).optional(),
+        active: z.boolean().optional(),
+      }),
+      execute: async ({ id, ...patch }) => {
+        const clean = Object.fromEntries(
+          Object.entries(patch).filter(([, v]) => v !== undefined),
+        );
+        if (!Object.keys(clean).length) return { error: "No fields to update" };
+        const { error } = await admin.from("custom_rota_rules").update(clean).eq("id", id);
+        if (error) return { error: error.message };
+        return { ok: true };
+      },
+    }),
+
+    delete_custom_rule: tool({
+      description: "ADMIN ONLY. Remove a custom working-pattern rule by id.",
+      inputSchema: z.object({ id: z.string().uuid() }),
+      execute: async ({ id }) => {
+        const { error } = await admin.from("custom_rota_rules").delete().eq("id", id);
+        if (error) return { error: error.message };
+        return { ok: true };
+      },
+    }),
   };
 }
+
+async function buildAdminCustomRulesPreamble(): Promise<string> {
+  const admin = getAdminClient();
+  const { data } = await admin
+    .from("custom_rota_rules")
+    .select("id,scope,staff_id,grade,summary,rule_text")
+    .eq("active", true)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (!data?.length) return "";
+  const staffIds = Array.from(
+    new Set(data.filter((r) => r.staff_id).map((r) => r.staff_id as string)),
+  );
+  const nameMap = new Map<string, string>();
+  if (staffIds.length) {
+    const { data: profs } = await admin
+      .from("profiles")
+      .select("id,full_name")
+      .in("id", staffIds);
+    for (const p of profs ?? []) nameMap.set(p.id, p.full_name);
+  }
+  const lines = data.map((r) => {
+    const who =
+      r.scope === "staff"
+        ? `[${nameMap.get(r.staff_id ?? "") ?? "unknown staff"}]`
+        : r.scope === "grade"
+          ? `[grade: ${r.grade}]`
+          : "[department]";
+    return `- ${who} ${r.summary} — ${r.rule_text}`;
+  });
+  return `\n\nCURRENT CUSTOM RULES (factor these into any rota suggestions or edits):\n${lines.join("\n")}`;
+}
+
 
 function buildTools(userId: string, isAdminUser: boolean) {
   const admin = getAdminClient();
@@ -444,13 +566,17 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createLovableAiGatewayProvider(apiKey);
         const model = gateway("google/gemini-3-flash-preview");
 
+        const adminUser = await isAdmin(userId);
+        const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
+
         const result = streamText({
           model,
-          system: SYSTEM_PROMPT,
+          system: SYSTEM_PROMPT + rulesPreamble,
           messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId, await isAdmin(userId)),
+          tools: buildTools(userId, adminUser),
           stopWhen: stepCountIs(50),
         });
+
 
         return result.toUIMessageStreamResponse({
           originalMessages: uiMessages,
