@@ -824,7 +824,7 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
             .maybeSingle();
           if (existingSess?.id) {
             theatreSessionId = existingSess.id;
-            const patch: Record<string, unknown> = {};
+            const patch: { specialty_id?: string; surgical_consultant?: string } = {};
             if (specialtyId) patch.specialty_id = specialtyId;
             if (consultantName) patch.surgical_consultant = consultantName;
             if (Object.keys(patch).length) {
