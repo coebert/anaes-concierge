@@ -55,7 +55,11 @@ export const createStaffMember = createServerFn({ method: "POST" })
     if (!userId) return { error: "User was created but no id was returned." };
 
     // Update profile fields the trigger doesn't set.
-    const profilePatch: Record<string, unknown> = { full_name: data.full_name };
+    const profilePatch: {
+      full_name: string;
+      grade?: "consultant" | "sas" | "trainee" | null;
+      training_level?: string | null;
+    } = { full_name: data.full_name };
     if (data.grade !== undefined) profilePatch.grade = data.grade;
     if (data.training_level !== undefined) profilePatch.training_level = data.training_level;
 
