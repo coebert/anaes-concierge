@@ -303,7 +303,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                     {a.role_on_list}
                                   </Badge>
                                   {staffName(a.staff_id)}
-                                  {isTrainee && sp?.training_level ? ` (${sp.training_level})` : ""}
+                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
                                 </Link>
                               );
                             })}
@@ -413,13 +413,13 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
             )}
           >
             {profile?.full_name ?? "Staff member"}
-            {profile?.grade === "trainee" && profile?.training_level
-              ? ` (${profile.training_level})`
+            {profile?.grade === "trainee"
+              ? ` (${profile?.training_level || "Level unknown"})`
               : ""}
           </h2>
           <p className="text-sm text-muted-foreground">
             {profile?.grade ?? "—"}
-            {profile?.training_level ? ` · ${profile.training_level}` : ""}
+            {profile?.grade === "trainee" ? ` · ${profile?.training_level || "Level unknown"}` : ""}
             {profile?.email ? ` · ${profile.email}` : ""}
           </p>
         </div>

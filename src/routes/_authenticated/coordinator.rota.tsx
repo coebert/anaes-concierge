@@ -338,7 +338,7 @@ function RotaGridPage() {
                                       {a.role_on_list}
                                     </Badge>
                                     {staffName(a.staff_id)}
-                                    {isTrainee && sp?.training_level ? ` (${sp.training_level})` : ""}
+                                    {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
                                   </div>
                                 );
                               })}
@@ -749,7 +749,7 @@ function CellDialog({
                                     )}
                                   >
                                     {sp.full_name}
-                                    {isTrainee && sp.training_level ? ` (${sp.training_level})` : ""}
+                                    {isTrainee ? ` (${sp.training_level || "Level unknown"})` : ""}
                                   </span>
                                 );
                               })()}
