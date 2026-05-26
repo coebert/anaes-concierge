@@ -250,7 +250,13 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       }
 
       matched++;
-      const patch: Record<string, unknown> = {};
+      const patch: {
+        full_name?: string;
+        clwrota_external_id?: string;
+        gmc_number?: string;
+        start_date?: string;
+        active?: boolean;
+      } = {};
       if (fullName) patch.full_name = fullName;
       if (externalId) patch.clwrota_external_id = externalId;
       if (gmc) patch.gmc_number = gmc;
