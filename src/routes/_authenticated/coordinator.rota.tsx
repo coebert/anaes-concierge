@@ -74,13 +74,25 @@ function RotaGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id,specialties(name)")
+        .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id")
         .gte("session_date", startIso)
         .lte("session_date", endIso);
       if (error) throw error;
       return data;
     },
   });
+
+  const { data: specialtiesList } = useQuery({
+    queryKey: ["specialties-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("specialties").select("id,name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const specialtyName = (id: string | null) =>
+    id ? specialtiesList?.find((s) => s.id === id)?.name : undefined;
 
   const { data: assignments } = useQuery({
     queryKey: ["assignments", startIso, endIso],
