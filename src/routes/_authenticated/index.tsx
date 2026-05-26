@@ -3,16 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   CalendarDays, ClipboardList, GraduationCap, MessageSquare,
   Building2, Users, Briefcase, SlidersHorizontal, Grid3x3,
-  CalendarRange, ArrowRight, Stethoscope,
+  CalendarRange, Stethoscope,
 } from "lucide-react";
-import { computeProgress } from "@/lib/competency-utils";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
