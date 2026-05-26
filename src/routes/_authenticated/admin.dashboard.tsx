@@ -527,11 +527,12 @@ function AdminDashboardPage() {
                           <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                           <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                           <Tooltip
-                            formatter={(value: number, name: string) =>
-                              [value, name === "soloLists" ? "Solo lists" : name === "totalLists" ? "Total daytime lists" : name]
-                            }
+                            formatter={(value: number, name: string) => {
+                              const label = name === "soloLists" ? "Solo lists" : name === "totalLists" ? "Total daytime lists" : name;
+                              return [value, label];
+                            }}
                           />
-                          <Legend formatter={(v) => v === "soloLists" ? "Solo" : "Total daytime"} />
+                          <Legend formatter={(v: string) => (v === "soloLists" ? "Solo" : "Total daytime")} />
                           <Bar dataKey="totalLists" fill="hsl(var(--muted-foreground))" opacity={0.35} />
                           <Bar dataKey="soloLists" fill="hsl(var(--primary))" />
                         </BarChart>
