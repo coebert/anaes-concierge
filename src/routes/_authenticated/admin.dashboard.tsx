@@ -9,12 +9,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { formatDateGB, todayISO } from "@/lib/utils";
+import { formatDateGB, getSurname, todayISO } from "@/lib/utils";
 import {
   buildConsultantSessionSet,
   isSoloTraineeAssignment,
   type SoloProfile,
 } from "@/lib/solo-stats";
+import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
@@ -165,6 +167,76 @@ function AdminDashboardPage() {
       };
     },
   });
+
+  const { data: traineeMetricsData, isLoading: traineeMetricsLoading } = useQuery({
+    queryKey: ["admin-dashboard-trainee-metrics"],
+    queryFn: async () => {
+      const today = todayISO();
+      const { data: trainees, error: e1 } = await supabase
+        .from("profiles")
+        .select("id, full_name, training_level, start_date")
+        .eq("grade", "trainee")
+        .eq("active", true)
+        .order("full_name");
+      if (e1) throw e1;
+      const ids = (trainees ?? []).map((t) => t.id);
+      if (!ids.length) {
+        return { trainees: [], assignmentsByStaff: new Map(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>() };
+      }
+      const [{ data: assignments, error: e2 }, { data: specs, error: e3 }] = await Promise.all([
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, role_on_list, session, duty_type, theatre_session_id, session_date")
+          .in("staff_id", ids)
+          .lte("session_date", today),
+        supabase.from("specialties").select("id, name"),
+      ]);
+      if (e2) throw e2;
+      if (e3) throw e3;
+      const tsIds = Array.from(
+        new Set((assignments ?? []).map((a) => a.theatre_session_id).filter(Boolean) as string[]),
+      );
+      const tsSpecMap = new Map<string, string | null>();
+      if (tsIds.length) {
+        const { data: ts, error: e4 } = await supabase
+          .from("theatre_sessions")
+          .select("id, specialty_id")
+          .in("id", tsIds);
+        if (e4) throw e4;
+        for (const t of ts ?? []) tsSpecMap.set(t.id, t.specialty_id ?? null);
+      }
+      const specNameMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
+      const assignmentsByStaff = new Map<string, typeof assignments>();
+      for (const a of assignments ?? []) {
+        const arr = assignmentsByStaff.get(a.staff_id) ?? [];
+        arr.push(a);
+        assignmentsByStaff.set(a.staff_id, arr);
+      }
+      return { trainees: trainees ?? [], assignmentsByStaff, tsSpecMap, specNameMap };
+    },
+  });
+
+  const traineeMetricRows = useMemo(() => {
+    if (!traineeMetricsData) return [];
+    return traineeMetricsData.trainees
+      .map((t) => ({
+        trainee: t,
+        metrics: computeTraineeMetrics(
+          traineeMetricsData.assignmentsByStaff.get(t.id) ?? [],
+          t.start_date,
+          traineeMetricsData.tsSpecMap,
+          traineeMetricsData.specNameMap,
+        ),
+      }))
+      .sort((a, b) => {
+        const aSur = getSurname(a.trainee.full_name).toLowerCase();
+        const bSur = getSurname(b.trainee.full_name).toLowerCase();
+        if (aSur < bSur) return -1;
+        if (aSur > bSur) return 1;
+        return 0;
+      });
+  }, [traineeMetricsData]);
+
 
   const soloStats = useMemo(() => {
     if (!soloMonthly) return null;
@@ -385,7 +457,7 @@ function AdminDashboardPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rota dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Rota audit data</h1>
           <p className="text-sm text-muted-foreground">
             Daily overview of assignments, leave and availability — {formatDateGB(date)}
           </p>
@@ -741,6 +813,30 @@ function AdminDashboardPage() {
                 </Card>
               ))}
             </div>
+          </section>
+
+          {/* Per-trainee individual metrics */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Per-trainee metrics (all-time)
+            </h2>
+            {traineeMetricsLoading ? (
+              <div className="text-sm text-muted-foreground">Loading trainee metrics…</div>
+            ) : traineeMetricRows.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No active trainees on record.</div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {traineeMetricRows.map(({ trainee, metrics }) => (
+                  <TraineeMetricsCard
+                    key={trainee.id}
+                    title={trainee.full_name || "—"}
+                    subtitle={trainee.training_level ?? "No level set"}
+                    metrics={metrics}
+                    startDate={trainee.start_date}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         </>
       )}
