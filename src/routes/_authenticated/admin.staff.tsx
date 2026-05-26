@@ -33,12 +33,6 @@ type StaffWithPlan = {
   job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
 };
 
-function getSurname(fullName: string | null): string {
-  if (!fullName) return "";
-  const parts = fullName.trim().split(/\s+/);
-  return parts[parts.length - 1] || fullName;
-}
-
 function sortBySurnameDesc(a: StaffWithPlan, b: StaffWithPlan): number {
   const aSurname = getSurname(a.full_name).toLowerCase();
   const bSurname = getSurname(b.full_name).toLowerCase();
