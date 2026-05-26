@@ -127,6 +127,22 @@ function RotaGridPage() {
     },
   });
 
+  // Wider window for TCS rolling checks (±21 days around the displayed week).
+  const ctxStartIso = iso(addDays(days[0], -21));
+  const ctxEndIso = iso(addDays(days[days.length - 1], 21));
+  const { data: contextAssignments } = useQuery({
+    queryKey: ["assignments-context", ctxStartIso, ctxEndIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,theatre_session_id,role_on_list")
+        .gte("session_date", ctxStartIso)
+        .lte("session_date", ctxEndIso);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: staff } = useQuery({
     queryKey: ["staff-active"],
     queryFn: async () => {
@@ -316,6 +332,7 @@ function RotaGridPage() {
           staff={staff ?? []}
           weekDates={days.map(iso)}
           weekAssignments={assignments ?? []}
+          contextAssignments={contextAssignments ?? []}
           jobPlans={jobPlans ?? []}
           leave={leave ?? []}
           fixedSessions={fixedSessions ?? []}
@@ -338,13 +355,17 @@ const DEFAULT_RULES: RotaRules = {
 
 function CellDialog({
   theatreId, theatreName, date, session, onOpenChange, staff,
-  weekDates, weekAssignments, jobPlans, leave, fixedSessions, rules,
+  weekDates, weekAssignments, contextAssignments, jobPlans, leave, fixedSessions, rules,
 }: {
   theatreId: string; theatreName: string; date: string; session: SessionHalf;
   onOpenChange: (o: boolean) => void;
   staff: Profile[];
   weekDates: string[];
   weekAssignments: {
+    id: string; staff_id: string; session: SessionHalf; session_date: string;
+    theatre_session_id: string | null; role_on_list: RotaRole;
+  }[];
+  contextAssignments: {
     id: string; staff_id: string; session: SessionHalf; session_date: string;
     theatre_session_id: string | null; role_on_list: RotaRole;
   }[];
@@ -449,6 +470,7 @@ function CellDialog({
         session,
         weekDates,
         weekAssignments,
+        contextAssignments,
         profiles: staff,
         jobPlans,
         leave,
@@ -468,6 +490,9 @@ function CellDialog({
       weekDates,
       // exclude the current assignment so it doesn't clash with itself
       weekAssignments: weekAssignments.filter(
+        (a) => !(a.staff_id === staffId && a.session_date === date && a.session === session),
+      ),
+      contextAssignments: contextAssignments.filter(
         (a) => !(a.staff_id === staffId && a.session_date === date && a.session === session),
       ),
       profiles: staff,
