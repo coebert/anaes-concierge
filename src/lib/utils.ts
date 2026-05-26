@@ -143,3 +143,11 @@ export function composeName(parts: {
     .filter(Boolean)
     .join(" ");
 }
+
+/** Extract surname (last word) from a full name. */
+export function getSurname(fullName: string | null | undefined): string {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1] || fullName;
+}
+

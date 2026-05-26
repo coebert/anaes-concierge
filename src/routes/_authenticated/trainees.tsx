@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO } from "@/lib/utils";
+import { todayISO, getSurname } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
   component: TraineesGuard,
@@ -131,6 +131,13 @@ function TraineesPage() {
           ? Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length)
           : null;
         return { trainee: t, progress, overall };
+      })
+      .sort((a, b) => {
+        const aSurname = getSurname(a.trainee.full_name).toLowerCase();
+        const bSurname = getSurname(b.trainee.full_name).toLowerCase();
+        if (aSurname < bSurname) return 1;
+        if (aSurname > bSurname) return -1;
+        return 0;
       });
   }, [data, filter]);
 

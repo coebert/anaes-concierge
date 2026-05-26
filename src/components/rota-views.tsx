@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
-import { cn, parseDateLocal } from "@/lib/utils";
+import { cn, parseDateLocal, getSurname } from "@/lib/utils";
 
 type SessionHalf = "am" | "pm";
 
@@ -503,7 +503,15 @@ export function StaffPicker({
         <SelectValue placeholder="Jump to staff…" />
       </SelectTrigger>
       <SelectContent>
-        {data?.map((s) => (
+        {data
+          ?.sort((a, b) => {
+            const aSurname = getSurname(a.full_name).toLowerCase();
+            const bSurname = getSurname(b.full_name).toLowerCase();
+            if (aSurname < bSurname) return 1;
+            if (aSurname > bSurname) return -1;
+            return 0;
+          })
+          .map((s) => (
           <SelectItem key={s.id} value={s.id}>
             {s.full_name} {s.grade ? `(${s.grade})` : ""}
           </SelectItem>

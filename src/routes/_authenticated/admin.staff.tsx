@@ -17,7 +17,7 @@ import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { Pencil, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO } from "@/lib/utils";
+import { todayISO, getSurname } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
@@ -32,12 +32,6 @@ type StaffWithPlan = {
   active: boolean | null;
   job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
 };
-
-function getSurname(fullName: string | null): string {
-  if (!fullName) return "";
-  const parts = fullName.trim().split(/\s+/);
-  return parts[parts.length - 1] || fullName;
-}
 
 function sortBySurnameDesc(a: StaffWithPlan, b: StaffWithPlan): number {
   const aSurname = getSurname(a.full_name).toLowerCase();
