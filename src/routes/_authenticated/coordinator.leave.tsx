@@ -28,6 +28,7 @@ interface LeaveRow {
   conflict_notes: string | null;
   decision_notes: string | null;
   decided_at: string | null;
+  reserve_listed_at: string | null;
   created_at: string;
 }
 
