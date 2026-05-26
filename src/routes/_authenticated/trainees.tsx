@@ -11,10 +11,26 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
-  component: TraineesPage,
+  component: TraineesGuard,
 });
+
+function TraineesGuard() {
+  const { hasRole, grade, loading } = useAuth();
+  if (loading) return null;
+  if (!hasRole("admin") && grade !== "trainee") {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Trainee progress is only available to trainees and administrators.
+        </CardContent>
+      </Card>
+    );
+  }
+  return <TraineesPage />;
+}
 
 function TraineesPage() {
   const [filter, setFilter] = useState("");
