@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 type SessionHalf = "am" | "pm";
 type RotaRole =
-  | "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching";
+  | "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session";
 
 export const Route = createFileRoute("/_authenticated/coordinator/rota")({
   beforeLoad: async () => {
