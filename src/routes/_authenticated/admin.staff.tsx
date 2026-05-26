@@ -31,6 +31,20 @@ type StaffWithPlan = {
   job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
 };
 
+function getSurname(fullName: string | null): string {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1] || fullName;
+}
+
+function sortBySurnameDesc(a: StaffWithPlan, b: StaffWithPlan): number {
+  const aSurname = getSurname(a.full_name).toLowerCase();
+  const bSurname = getSurname(b.full_name).toLowerCase();
+  if (aSurname < bSurname) return 1;
+  if (aSurname > bSurname) return -1;
+  return 0;
+}
+
 function StaffGroup({
   title,
   staff,
@@ -41,6 +55,7 @@ function StaffGroup({
   onEdit: (id: string) => void;
 }) {
   if (!staff.length) return null;
+  const sorted = [...staff].sort(sortBySurnameDesc);
   return (
     <div>
       <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -58,7 +73,7 @@ function StaffGroup({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {staff.map((p) => (
+          {sorted.map((p) => (
             <TableRow key={p.id}>
               <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
               <TableCell className="text-muted-foreground">{p.email}</TableCell>
