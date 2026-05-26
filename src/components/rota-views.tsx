@@ -406,7 +406,18 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">{profile?.full_name ?? "Staff member"}</h2>
+          <h2
+            className={cn(
+              "text-xl font-semibold",
+              profile?.grade === "consultant" && "font-bold",
+              profile?.grade === "trainee" && "text-blue-600 dark:text-blue-400",
+            )}
+          >
+            {profile?.full_name ?? "Staff member"}
+            {profile?.grade === "trainee" && profile?.training_level
+              ? ` (${profile.training_level})`
+              : ""}
+          </h2>
           <p className="text-sm text-muted-foreground">
             {profile?.grade ?? "—"}
             {profile?.training_level ? ` · ${profile.training_level}` : ""}
