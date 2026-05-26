@@ -209,12 +209,15 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
               rows={2}
             />
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => decide("approved")} disabled={acting}>
                 <Check className="mr-1 h-4 w-4" /> Approve
               </Button>
               <Button size="sm" variant="destructive" onClick={() => decide("rejected")} disabled={acting}>
                 <X className="mr-1 h-4 w-4" /> Reject
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => decide("rejected", true)} disabled={acting}>
+                Reject & place on reserve list
               </Button>
             </div>
           </>
