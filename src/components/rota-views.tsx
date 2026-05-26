@@ -274,7 +274,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                       >
                         {ts ? (
                           <div className="space-y-1">
-                            {spec && <div className="font-medium truncate">{spec}</div>}
+                            {spec && <div className="font-bold truncate text-green-600 dark:text-green-400">{spec}</div>}
                             {ts.surgical_consultant && (
                               <div className="text-[10px] text-muted-foreground truncate">
                                 {ts.surgical_consultant}
