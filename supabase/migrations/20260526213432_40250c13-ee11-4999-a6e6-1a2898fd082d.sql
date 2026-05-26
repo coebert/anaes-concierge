@@ -1,0 +1,1 @@
+DELETE FROM public.rota_change_log;
