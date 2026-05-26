@@ -77,20 +77,32 @@ export type Database = {
         Row: {
           id: number
           last_error: string | null
+          last_pulled_rows: number | null
           last_status: string | null
           last_sync_at: string | null
+          leave_report_url: string | null
+          rota_report_url: string | null
+          staff_report_url: string | null
         }
         Insert: {
           id?: number
           last_error?: string | null
+          last_pulled_rows?: number | null
           last_status?: string | null
           last_sync_at?: string | null
+          leave_report_url?: string | null
+          rota_report_url?: string | null
+          staff_report_url?: string | null
         }
         Update: {
           id?: number
           last_error?: string | null
+          last_pulled_rows?: number | null
           last_status?: string | null
           last_sync_at?: string | null
+          leave_report_url?: string | null
+          rota_report_url?: string | null
+          staff_report_url?: string | null
         }
         Relationships: []
       }
