@@ -567,7 +567,8 @@ export async function performStaffSync() {
       sampleKeys,
       emailDiagnostics,
     };
-  });
+}
+
 
 
 async function fetchReport(url: string, apiKey: string) {
