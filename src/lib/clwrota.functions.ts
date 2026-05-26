@@ -256,9 +256,10 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
 
     let matched = 0;
     let updated = 0;
-    let inserted = 0;
-    const unmatched: string[] = [];
-    const errors: string[] = [];
+    let unchangedCount = 0;
+    const insertedList: Array<{ name: string; email: string }> = [];
+    const skipped: Array<{ label: string; reason: string }> = [];
+    const errors: Array<{ label: string; error: string }> = [];
 
     for (const row of rows) {
       const email = pick(row, ["email", "email_address", "Email"]);
@@ -275,8 +276,10 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       const startDate = pick(row, ["start_date", "employment_start", "Start Date"]);
       const endDate = pick(row, ["end_date", "employment_end", "End Date"]);
 
+      const label = fullName || email || `(row with keys: ${Object.keys(row).slice(0, 5).join(",")})`;
+
       if (!email) {
-        if (fullName) unmatched.push(`${fullName} (no email)`);
+        skipped.push({ label, reason: "no email in CLWRota row" });
         continue;
       }
 
@@ -288,9 +291,6 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       const profileId = byEmail.get(email.toLowerCase());
 
       if (!profileId) {
-        // Create a new profile so the person shows up in the coordinator
-        // staff list. They won't have a login until invited separately —
-        // the profile id is just a placeholder uuid until then.
         const newRow: {
           id: string;
           email: string;
@@ -315,9 +315,9 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
           .select("id")
           .single();
         if (insErr) {
-          errors.push(`${email} (insert): ${insErr.message}`);
+          errors.push({ label: `${label} <${email}>`, error: `insert: ${insErr.message}` });
         } else {
-          inserted++;
+          insertedList.push({ name: fullName || email, email });
           if (insData?.id) byEmail.set(email.toLowerCase(), insData.id);
         }
         continue;
@@ -337,25 +337,31 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       if (startDate) patch.start_date = startDate;
       if (isEndedPast) patch.active = false;
 
-      if (Object.keys(patch).length === 0) continue;
+      if (Object.keys(patch).length === 0) {
+        unchangedCount++;
+        continue;
+      }
 
       const { error: upErr } = await supabaseAdmin
         .from("profiles")
         .update(patch)
         .eq("id", profileId);
       if (upErr) {
-        errors.push(`${email}: ${upErr.message}`);
+        errors.push({ label: `${label} <${email}>`, error: `update: ${upErr.message}` });
       } else {
         updated++;
       }
     }
 
-    const summary = `Staff sync: ${rows.length} rows · ${matched} matched · ${updated} updated · ${inserted} added · ${unmatched.length} skipped`;
+    const inserted = insertedList.length;
+    const summary = `Staff sync: ${rows.length} rows · ${inserted} added · ${updated} updated · ${unchangedCount} unchanged · ${skipped.length} skipped · ${errors.length} errors`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
       id: 1,
       last_sync_at: new Date().toISOString(),
       last_status: errors.length ? "staff_partial" : "staff_success",
-      last_error: errors.length ? errors.slice(0, 5).join("; ") : null,
+      last_error: errors.length
+        ? errors.slice(0, 5).map((e) => `${e.label}: ${e.error}`).join("; ")
+        : null,
       last_pulled_rows: rows.length,
     });
 
@@ -365,8 +371,10 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
       total: rows.length,
       matched,
       updated,
-      inserted,
-      unmatched,
+      insertedCount: inserted,
+      insertedList,
+      unchangedCount,
+      skipped,
       errors,
       rawPreview,
       sampleKeys,
