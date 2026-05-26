@@ -141,6 +141,7 @@ function AdminDashboardPage() {
           .select("staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id")
           .eq("duty_type", "theatre")
           .in("session", ["am", "pm"])
+          .not("theatre_session_id", "is", null)
           .gte("session_date", startISO)
           .lte("session_date", endISO),
       ]);
@@ -175,14 +176,14 @@ function AdminDashboardPage() {
       }
     }
 
-    // For each theatre session occurrence, determine if a consultant is assigned.
-    // Group key: theatre_session_id OR fall back to date|session|staff-less key (no session id -> treat as standalone).
+    // A trainee list counts as "solo" only when we can confirm no consultant
+    // shares the same theatre_session_id. Assignments without a
+    // theatre_session_id are excluded from the query above because we cannot
+    // reliably group them with their consultant counterpart.
     const consultantOnSession = new Set<string>();
-    const sessionKey = (a: typeof soloMonthly.assignments[number]) =>
-      a.theatre_session_id ?? `noid:${a.session_date}:${a.session}:${a.staff_id}`;
     for (const a of soloMonthly.assignments) {
-      if (gradeById.get(a.staff_id) === "consultant") {
-        consultantOnSession.add(sessionKey(a));
+      if (a.theatre_session_id && gradeById.get(a.staff_id) === "consultant") {
+        consultantOnSession.add(a.theatre_session_id);
       }
     }
 
@@ -203,7 +204,7 @@ function AdminDashboardPage() {
       const ma = monthAgg.get(monthKey);
       if (!ma) continue;
       ma.total += 1;
-      const hasConsultant = consultantOnSession.has(sessionKey(a));
+      const hasConsultant = a.theatre_session_id ? consultantOnSession.has(a.theatre_session_id) : false;
       const isSolo = !hasConsultant && !a.supervisor_id && a.role_on_list === "solo";
       if (isSolo) ma.solo += 1;
 
