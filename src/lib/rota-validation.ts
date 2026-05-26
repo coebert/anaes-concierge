@@ -1,4 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
+import { formatDateGB } from "@/lib/utils";
 
 export type Severity = "error" | "warning" | "info";
 export interface Issue {
@@ -127,7 +128,7 @@ export function validateAssignment(args: {
   if (profile?.grade === "trainee" && profile.rotation_end_date && date > profile.rotation_end_date) {
     issues.push({
       severity: "error",
-      message: `After trainee's rotation end date (${profile.rotation_end_date}).`,
+      message: `After trainee's rotation end date (${formatDateGB(profile.rotation_end_date)}).`,
     });
   }
 

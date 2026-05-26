@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { computeLeaveConflicts, countWorkingDays, type LeaveConflict } from "@/lib/leave-utils";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveSubmitted } from "@/lib/leave-notifications.functions";
+import { formatDateGB } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -78,7 +79,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
     const conflictNotes =
       ownConflicts.length > 0
         ? `${ownConflicts.length} clinical session(s) need cover: ${ownConflicts
-            .map((c) => `${c.date} ${c.session.toUpperCase()} ${c.theatre ?? ""}`.trim())
+            .map((c) => `${formatDateGB(c.date)} ${c.session.toUpperCase()} ${c.theatre ?? ""}`.trim())
             .join("; ")}`
         : null;
 
@@ -198,7 +199,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
                 <ul className="mt-1 list-disc pl-5 text-xs">
                   {ownConflicts.map((c, i) => (
                     <li key={i}>
-                      {c.date} · {c.session.toUpperCase()} · {c.theatre ?? "—"} ({c.role})
+                      {formatDateGB(c.date)} · {c.session.toUpperCase()} · {c.theatre ?? "—"} ({c.role})
                     </li>
                   ))}
                 </ul>
@@ -212,7 +213,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               <AlertTitle>Colleagues already on approved leave</AlertTitle>
               <AlertDescription>
                 <ul className="mt-1 list-disc pl-5 text-xs">
-                  {[...new Set(otherConflicts.map((c) => `${c.date} · ${c.staffName}`))].map((s) => (
+                  {[...new Set(otherConflicts.map((c) => `${formatDateGB(c.date)} · ${c.staffName}`))].map((s) => (
                     <li key={s}>{s}</li>
                   ))}
                 </ul>

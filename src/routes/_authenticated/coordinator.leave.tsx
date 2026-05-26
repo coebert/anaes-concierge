@@ -187,7 +187,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
                     <AlertDescription>
                       <ul className="mt-1 list-disc pl-5 text-xs">
                         {ownConflicts.map((c, i) => (
-                          <li key={i}>{c.date} · {c.session.toUpperCase()} · {c.theatre ?? "—"} ({c.role})</li>
+                          <li key={i}>{formatDateGB(c.date)} · {c.session.toUpperCase()} · {c.theatre ?? "—"} ({c.role})</li>
                         ))}
                       </ul>
                     </AlertDescription>

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { formatDateGB } from "@/lib/utils";
 import {
   ViewModeToggle, PeriodNav, buildDays, type ViewMode,
 } from "@/components/rota-views";
@@ -174,7 +175,7 @@ function TheatreGridPage() {
                   <th className="sticky left-0 z-10 bg-card p-2 text-left font-medium">Theatre</th>
                   {days.map((d, i) => (
                     <th key={i} colSpan={2} className="border-l p-2 text-center font-medium">
-                      {DAY_SHORT[d.getDay()]} <span className="text-muted-foreground">{isoDate(d).slice(5)}</span>
+                      {DAY_SHORT[d.getDay()]} <span className="text-muted-foreground">{formatDateGB(isoDate(d)).slice(0, 5)}</span>
                     </th>
                   ))}
                 </tr>
