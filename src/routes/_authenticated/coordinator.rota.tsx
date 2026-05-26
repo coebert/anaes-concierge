@@ -87,19 +87,10 @@ function RotaGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,session,session_date,theatre_session_id,role_on_list,supervisor_id,profiles!rota_assignments_staff_id_fkey(full_name)")
+        .select("id,staff_id,session,session_date,theatre_session_id,role_on_list,supervisor_id")
         .gte("session_date", startIso)
         .lte("session_date", endIso);
-      if (error) {
-        // Fallback without join if FK alias unknown
-        const r2 = await supabase
-          .from("rota_assignments")
-          .select("id,staff_id,session,session_date,theatre_session_id,role_on_list,supervisor_id")
-          .gte("session_date", startIso)
-          .lte("session_date", endIso);
-        if (r2.error) throw r2.error;
-        return r2.data as typeof data;
-      }
+      if (error) throw error;
       return data;
     },
   });
