@@ -104,6 +104,7 @@ function AdminStaffPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -135,6 +136,7 @@ function AdminStaffPage() {
   });
 
   const filtered = data?.filter((p) => {
+    if (!showInactive && p.active === false) return false;
     if (!filter) return true;
     const q = filter.toLowerCase();
     return (
