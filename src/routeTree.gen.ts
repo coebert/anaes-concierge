@@ -29,6 +29,7 @@ import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_au
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
+import { Route as AuthenticatedAdminTcsAuditRouteImport } from './routes/_authenticated/admin.tcs-audit'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
@@ -144,6 +145,12 @@ const AuthenticatedAdminTheatreGridRoute =
     path: '/admin/theatre-grid',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminTcsAuditRoute =
+  AuthenticatedAdminTcsAuditRouteImport.update({
+    id: '/admin/tcs-audit',
+    path: '/admin/tcs-audit',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminStaffRoute = AuthenticatedAdminStaffRouteImport.update({
   id: '/admin/staff',
   path: '/admin/staff',
@@ -209,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
@@ -237,6 +245,7 @@ export interface FileRoutesByTo {
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
@@ -268,6 +277,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/_authenticated/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/tcs-audit'
     | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/tcs-audit'
     | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
@@ -357,6 +369,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
+    | '/_authenticated/admin/tcs-audit'
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
     | '/_authenticated/chat/$conversationId'
@@ -520,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTheatreGridRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/tcs-audit': {
+      id: '/_authenticated/admin/tcs-audit'
+      path: '/admin/tcs-audit'
+      fullPath: '/admin/tcs-audit'
+      preLoaderRoute: typeof AuthenticatedAdminTcsAuditRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/staff': {
       id: '/_authenticated/admin/staff'
       path: '/admin/staff'
@@ -633,6 +653,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
+  AuthenticatedAdminTcsAuditRoute: typeof AuthenticatedAdminTcsAuditRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
@@ -654,6 +675,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
+  AuthenticatedAdminTcsAuditRoute: AuthenticatedAdminTcsAuditRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
@@ -676,13 +698,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
