@@ -470,6 +470,7 @@ function CellDialog({
         session,
         weekDates,
         weekAssignments,
+        contextAssignments,
         profiles: staff,
         jobPlans,
         leave,
