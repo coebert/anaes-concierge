@@ -11,6 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import {
+  buildConsultantSessionSet,
+  isSoloTraineeAssignment,
+  type SoloProfile,
+} from "@/lib/solo-stats";
+import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
 } from "lucide-react";
