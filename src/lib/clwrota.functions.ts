@@ -1094,4 +1094,5 @@ export async function performRotaSync() {
       unmatchedTheatres: Array.from(unmatchedTheatres),
       unmatchedStaff: Array.from(unmatchedStaff),
     };
-  });
+}
+
