@@ -209,8 +209,8 @@ function RotaGridPage() {
                         >
                           {ts ? (
                             <div className="space-y-1">
-                              {ts.specialties?.name && (
-                                <div className="font-medium truncate">{ts.specialties.name}</div>
+                              {specialtyName(ts.specialty_id) && (
+                                <div className="font-medium truncate">{specialtyName(ts.specialty_id)}</div>
                               )}
                               {ts.surgical_consultant && (
                                 <div className="text-[10px] text-muted-foreground truncate">
