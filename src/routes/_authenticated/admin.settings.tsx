@@ -14,6 +14,7 @@ import {
   saveClwRotaSettings,
   testClwRotaConnection,
   runClwRotaSync,
+  syncClwRotaStaff,
 } from "@/lib/clwrota.functions";
 import { formatDateGB } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ function SettingsPage() {
   const saveSettings = useServerFn(saveClwRotaSettings);
   const testConn = useServerFn(testClwRotaConnection);
   const runSync = useServerFn(runClwRotaSync);
+  const syncStaff = useServerFn(syncClwRotaStaff);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
@@ -79,6 +81,18 @@ function SettingsPage() {
       if (res.ok) toast.success(res.message);
       else toast.error(res.message);
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const staffMut = useMutation({
+    mutationFn: () => syncStaff({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(res.message);
+      else toast.warning(res.message);
+      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+      void qc.invalidateQueries({ queryKey: ["staff"] });
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -194,8 +208,48 @@ function SettingsPage() {
                 )}
                 Run pull sync now
               </Button>
+              <Button
+                variant="default"
+                onClick={() => staffMut.mutate()}
+                disabled={staffMut.isPending || !credsOk || !staffUrl.trim()}
+              >
+                {staffMut.isPending ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                )}
+                Sync staff now
+              </Button>
             </div>
           </div>
+
+          {staffMut.data && (
+            <div className="rounded-md border border-border p-3 text-xs space-y-2">
+              <div className="font-medium">Last staff sync</div>
+              <div className="text-muted-foreground">
+                {staffMut.data.total} rows · {staffMut.data.matched} matched ·{" "}
+                {staffMut.data.updated} updated · {staffMut.data.unmatched.length} unmatched
+              </div>
+              {staffMut.data.unmatched.length > 0 && (
+                <div>
+                  <div className="font-medium text-foreground">Unmatched (need to be invited first):</div>
+                  <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                    {staffMut.data.unmatched.slice(0, 20).map((u) => (
+                      <li key={u}>{u}</li>
+                    ))}
+                    {staffMut.data.unmatched.length > 20 && (
+                      <li>…and {staffMut.data.unmatched.length - 20} more</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+              {staffMut.data.errors && staffMut.data.errors.length > 0 && (
+                <div className="text-destructive">
+                  Errors: {staffMut.data.errors.join("; ")}
+                </div>
+              )}
+            </div>
+          )}
 
           {settings?.last_sync_at && (
             <div className="rounded-md border border-border p-3 text-sm">
