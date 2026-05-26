@@ -143,8 +143,11 @@ export function WeekPicker({
 
 /* --------------------- Global read-only grid --------------------- */
 
-export function GlobalWeekGrid({ weekStart }: { weekStart: Date }) {
-  const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date; days?: Date[] }) {
+  const days = useMemo(
+    () => daysProp ?? Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)),
+    [weekStart, daysProp],
+  );
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
