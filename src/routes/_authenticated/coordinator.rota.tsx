@@ -480,7 +480,7 @@ function CellDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: assigns, refetch: refetchAssigns } = useQuery({
+  const { data: rawAssigns, refetch: refetchAssigns } = useQuery({
     queryKey: ["assigns", theatreId, date, session, ts?.id],
     enabled: !!ts?.id,
     queryFn: async () => {
@@ -492,6 +492,19 @@ function CellDialog({
       return data;
     },
   });
+
+  const gradeRank = (g: string | null | undefined) =>
+    g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
+  const staffByIdLocal = (id: string) => staff.find((s) => s.id === id);
+  const assigns = useMemo(
+    () =>
+      [...(rawAssigns ?? [])].sort(
+        (a, b) =>
+          gradeRank(staffByIdLocal(a.staff_id)?.grade) -
+          gradeRank(staffByIdLocal(b.staff_id)?.grade),
+      ),
+    [rawAssigns, staff],
+  );
 
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
