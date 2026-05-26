@@ -25,6 +25,7 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   roles?: Array<"admin" | "rota_coordinator" | "staff">;
+  traineeOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -32,12 +33,12 @@ const NAV: NavItem[] = [
   { to: "/calendar", label: "Global calendar", icon: CalendarDays },
   { to: "/me", label: "My rota", icon: CalendarRange },
   { to: "/leave", label: "Leave", icon: ClipboardList },
-  { to: "/trainees", label: "Trainees", icon: GraduationCap },
+  { to: "/trainees", label: "Trainees", icon: GraduationCap, traineeOnly: true },
   { to: "/chat", label: "AI assistant", icon: MessageSquare },
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin", "rota_coordinator"] },
+  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin"] },
   { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
   { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
@@ -48,7 +49,7 @@ const ADMIN_NAV: NavItem[] = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { signOut, user, roles, hasRole } = useAuth();
+  const { signOut, user, roles, hasRole, grade } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,16 +58,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     void navigate({ to: "/login" });
   };
 
+  const isAdmin = hasRole("admin");
+  const visibleMain = NAV.filter(
+    (i) => !i.traineeOnly || isAdmin || grade === "trainee",
+  );
   const visibleAdmin = ADMIN_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
 
-  const roleLabel =
-    roles.includes("admin")
-      ? "Admin"
-      : roles.includes("rota_coordinator")
-      ? "Coordinator"
-      : "Staff";
+  const roleLabel = isAdmin
+    ? "Admin"
+    : roles.includes("rota_coordinator")
+    ? "Coordinator"
+    : grade === "trainee"
+    ? "Trainee"
+    : grade === "consultant"
+    ? "Consultant"
+    : grade === "sas"
+    ? "SAS"
+    : "Staff";
 
   return (
     <div className="flex min-h-screen bg-muted/30">
@@ -82,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-6 px-2 py-4 text-sm">
-          <NavSection items={NAV} currentPath={location.pathname} />
+          <NavSection items={visibleMain} currentPath={location.pathname} />
           {visibleAdmin.length > 0 && (
             <div className="space-y-1">
               <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">

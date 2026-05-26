@@ -16,6 +16,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
@@ -30,8 +31,23 @@ export const Route = createFileRoute("/_authenticated/coordinator/rota")({
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/login" });
   },
-  component: RotaGridPage,
+  component: RotaGridGuard,
 });
+
+function RotaGridGuard() {
+  const { hasRole, loading } = useAuth();
+  if (loading) return null;
+  if (!hasRole("admin")) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Only administrators can edit the rota.
+        </CardContent>
+      </Card>
+    );
+  }
+  return <RotaGridPage />;
+}
 
 /* ---------- Date helpers ---------- */
 function startOfWeek(d: Date) {
