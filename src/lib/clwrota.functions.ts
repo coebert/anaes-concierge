@@ -256,6 +256,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
         // staff list. They won't have a login until invited separately —
         // the profile id is just a placeholder uuid until then.
         const newRow: {
+          id: string;
           email: string;
           full_name: string;
           clwrota_external_id?: string;
@@ -263,6 +264,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
           start_date?: string;
           active: boolean;
         } = {
+          id: crypto.randomUUID(),
           email,
           full_name: fullName || email,
           active: !isEndedPast,
