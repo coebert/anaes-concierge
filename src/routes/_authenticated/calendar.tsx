@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, buildDays,
   type ViewMode,
