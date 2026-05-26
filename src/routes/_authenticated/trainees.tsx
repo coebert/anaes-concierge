@@ -54,7 +54,7 @@ function TraineesPage() {
       if (e2) throw e2;
       if (e3) throw e3;
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const traineeIds = (trainees ?? []).map((t) => t.id);
       let assignments: Array<{
         staff_id: string;
