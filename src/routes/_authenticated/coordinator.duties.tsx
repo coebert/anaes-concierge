@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatDateLongGB, formatDateGB, parseDateLocal, todayISO } from "@/lib/utils";
+import { formatDateLongGB, formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/coordinator/duties")({
   component: DutiesPage,
@@ -85,7 +85,7 @@ interface StaffRow {
 
 function DutiesPage() {
   const qc = useQueryClient();
-  const [anchor, setAnchor] = useState<Date>(() => startOfWeek(parseDateLocal(todayISO()) ?? new Date()));
+  const [anchor, setAnchor] = useState<Date>(() => startOfWeek(new Date()));
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(anchor, i)), [anchor]);
   const startIso = isoLocal(days[0]);
@@ -215,7 +215,7 @@ function DutiesPage() {
             <Button variant="outline" size="icon" onClick={() => setAnchor(addDays(anchor, -7))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setAnchor(startOfWeek(parseDateLocal(todayISO()) ?? new Date()))}>
+            <Button variant="secondary" size="sm" onClick={() => setAnchor(startOfWeek(new Date()))}>
               This week
             </Button>
             <Button variant="outline" size="icon" onClick={() => setAnchor(addDays(anchor, 7))}>
