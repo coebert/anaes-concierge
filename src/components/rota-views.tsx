@@ -308,7 +308,10 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                     {showRoleBadge && (
                                       <Badge
                                         variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                        className="mr-1 px-1 py-0 text-[9px]"
+                                        className={cn(
+                                          "mr-1 px-1 py-0 text-[9px]",
+                                          a.role_on_list === "solo" && "bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-400",
+                                        )}
                                       >
                                         {a.role_on_list}
                                       </Badge>
