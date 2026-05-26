@@ -298,20 +298,47 @@ function RotaGridPage() {
           session={cellOpen.session}
           onOpenChange={(o) => !o && setCellOpen(null)}
           staff={staff ?? []}
+          weekDates={days.map(iso)}
+          weekAssignments={assignments ?? []}
+          jobPlans={jobPlans ?? []}
+          leave={leave ?? []}
+          fixedSessions={fixedSessions ?? []}
+          rules={rules ?? DEFAULT_RULES}
         />
       )}
     </div>
   );
 }
 
+const DEFAULT_RULES: RotaRules = {
+  sessions_per_pa: 1,
+  max_sessions_per_week: 10,
+  max_consecutive_days: 7,
+  honour_fixed_sessions: true,
+  allow_back_to_back_oncall: false,
+};
+
 /* ----------------------- Cell dialog ----------------------- */
 
 function CellDialog({
   theatreId, theatreName, date, session, onOpenChange, staff,
+  weekDates, weekAssignments, jobPlans, leave, fixedSessions, rules,
 }: {
   theatreId: string; theatreName: string; date: string; session: SessionHalf;
   onOpenChange: (o: boolean) => void;
-  staff: { id: string; full_name: string; grade: string | null }[];
+  staff: Profile[];
+  weekDates: string[];
+  weekAssignments: {
+    id: string; staff_id: string; session: SessionHalf; session_date: string;
+    theatre_session_id: string | null; role_on_list: RotaRole;
+  }[];
+  jobPlans: {
+    staff_id: string; total_pas: number; dcc_pas: number; spa_pas: number;
+    ltft: boolean; ltft_percentage: number | null; valid_from: string; valid_to: string | null;
+  }[];
+  leave: { staff_id: string; start_date: string; end_date: string; status: string }[];
+  fixedSessions: { staff_id: string; day_of_week: number; session: SessionHalf }[];
+  rules: RotaRules;
 }) {
   const qc = useQueryClient();
 
