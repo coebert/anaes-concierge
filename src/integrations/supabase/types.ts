@@ -14,16 +14,640 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          parts: Json
+          role: Database["public"]["Enums"]["chat_role"]
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          parts: Json
+          role: Database["public"]["Enums"]["chat_role"]
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          parts?: Json
+          role?: Database["public"]["Enums"]["chat_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clwrota_sync_state: {
+        Row: {
+          id: number
+          last_error: string | null
+          last_status: string | null
+          last_sync_at: string | null
+        }
+        Insert: {
+          id?: number
+          last_error?: string | null
+          last_status?: string | null
+          last_sync_at?: string | null
+        }
+        Update: {
+          id?: number
+          last_error?: string | null
+          last_status?: string | null
+          last_sync_at?: string | null
+        }
+        Relationships: []
+      }
+      email_inbound_log: {
+        Row: {
+          body_text: string | null
+          error: string | null
+          from_email: string
+          id: string
+          matched_user_id: string | null
+          received_at: string
+          reply_text: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          body_text?: string | null
+          error?: string | null
+          from_email: string
+          id?: string
+          matched_user_id?: string | null
+          received_at?: string
+          reply_text?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          body_text?: string | null
+          error?: string | null
+          from_email?: string
+          id?: string
+          matched_user_id?: string | null
+          received_at?: string
+          reply_text?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
+      fixed_sessions: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          description: string | null
+          id: string
+          session: Database["public"]["Enums"]["session_half"]
+          staff_id: string
+          theatre_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          description?: string | null
+          id?: string
+          session: Database["public"]["Enums"]["session_half"]
+          staff_id: string
+          theatre_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          description?: string | null
+          id?: string
+          session?: Database["public"]["Enums"]["session_half"]
+          staff_id?: string
+          theatre_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_sessions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_sessions_theatre_fk"
+            columns: ["theatre_id"]
+            isOneToOne: false
+            referencedRelation: "theatres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_plans: {
+        Row: {
+          created_at: string
+          dcc_pas: number
+          id: string
+          ltft: boolean
+          ltft_percentage: number | null
+          notes: string | null
+          on_call_commitment: string | null
+          spa_pas: number
+          staff_id: string
+          total_pas: number
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          dcc_pas?: number
+          id?: string
+          ltft?: boolean
+          ltft_percentage?: number | null
+          notes?: string | null
+          on_call_commitment?: string | null
+          spa_pas?: number
+          staff_id: string
+          total_pas?: number
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          dcc_pas?: number
+          id?: string
+          ltft?: boolean
+          ltft_percentage?: number | null
+          notes?: string | null
+          on_call_commitment?: string | null
+          spa_pas?: number
+          staff_id?: string
+          total_pas?: number
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_plans_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_allowances: {
+        Row: {
+          annual_days: number
+          created_at: string
+          id: string
+          leave_year_start: string
+          staff_id: string
+          study_days: number
+          updated_at: string
+        }
+        Insert: {
+          annual_days?: number
+          created_at?: string
+          id?: string
+          leave_year_start: string
+          staff_id: string
+          study_days?: number
+          updated_at?: string
+        }
+        Update: {
+          annual_days?: number
+          created_at?: string
+          id?: string
+          leave_year_start?: string
+          staff_id?: string
+          study_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_allowances_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          conflict_notes: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          end_date: string
+          half_day_end: Database["public"]["Enums"]["session_half"] | null
+          half_day_start: Database["public"]["Enums"]["session_half"] | null
+          id: string
+          reason: string | null
+          staff_id: string
+          start_date: string
+          status: Database["public"]["Enums"]["leave_status"]
+          type: Database["public"]["Enums"]["leave_type"]
+          updated_at: string
+        }
+        Insert: {
+          conflict_notes?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          end_date: string
+          half_day_end?: Database["public"]["Enums"]["session_half"] | null
+          half_day_start?: Database["public"]["Enums"]["session_half"] | null
+          id?: string
+          reason?: string | null
+          staff_id: string
+          start_date: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          type: Database["public"]["Enums"]["leave_type"]
+          updated_at?: string
+        }
+        Update: {
+          conflict_notes?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          end_date?: string
+          half_day_end?: Database["public"]["Enums"]["session_half"] | null
+          half_day_start?: Database["public"]["Enums"]["session_half"] | null
+          id?: string
+          reason?: string | null
+          staff_id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          type?: Database["public"]["Enums"]["leave_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active: boolean
+          clwrota_external_id: string | null
+          created_at: string
+          email: string
+          full_name: string
+          gmc_number: string | null
+          grade: Database["public"]["Enums"]["staff_grade"] | null
+          id: string
+          start_date: string | null
+          training_level: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          clwrota_external_id?: string | null
+          created_at?: string
+          email: string
+          full_name?: string
+          gmc_number?: string | null
+          grade?: Database["public"]["Enums"]["staff_grade"] | null
+          id: string
+          start_date?: string | null
+          training_level?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          clwrota_external_id?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          gmc_number?: string | null
+          grade?: Database["public"]["Enums"]["staff_grade"] | null
+          id?: string
+          start_date?: string | null
+          training_level?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rota_assignments: {
+        Row: {
+          clwrota_external_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          role_on_list: Database["public"]["Enums"]["rota_role"]
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          source: Database["public"]["Enums"]["rota_source"]
+          staff_id: string
+          supervisor_id: string | null
+          theatre_session_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          clwrota_external_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          role_on_list?: Database["public"]["Enums"]["rota_role"]
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          source?: Database["public"]["Enums"]["rota_source"]
+          staff_id: string
+          supervisor_id?: string | null
+          theatre_session_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clwrota_external_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          role_on_list?: Database["public"]["Enums"]["rota_role"]
+          session?: Database["public"]["Enums"]["session_half"]
+          session_date?: string
+          source?: Database["public"]["Enums"]["rota_source"]
+          staff_id?: string
+          supervisor_id?: string | null
+          theatre_session_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_assignments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_assignments_theatre_session_id_fkey"
+            columns: ["theatre_session_id"]
+            isOneToOne: false
+            referencedRelation: "theatre_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      specialties: {
+        Row: {
+          created_at: string
+          id: string
+          is_trainee_bucket: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_trainee_bucket?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_trainee_bucket?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      theatre_sessions: {
+        Row: {
+          clwrota_external_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          specialty_id: string | null
+          surgical_consultant: string | null
+          theatre_id: string
+          updated_at: string
+        }
+        Insert: {
+          clwrota_external_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          specialty_id?: string | null
+          surgical_consultant?: string | null
+          theatre_id: string
+          updated_at?: string
+        }
+        Update: {
+          clwrota_external_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session?: Database["public"]["Enums"]["session_half"]
+          session_date?: string
+          specialty_id?: string | null
+          surgical_consultant?: string | null
+          theatre_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theatre_sessions_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "specialties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theatre_sessions_theatre_id_fkey"
+            columns: ["theatre_id"]
+            isOneToOne: false
+            referencedRelation: "theatres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theatres: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["theatre_kind"]
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["theatre_kind"]
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["theatre_kind"]
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      trainee_targets: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          required_sessions: number
+          required_solo: number
+          required_supervised: number
+          specialty_id: string
+          training_level: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          required_sessions?: number
+          required_solo?: number
+          required_supervised?: number
+          specialty_id: string
+          training_level: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          required_sessions?: number
+          required_solo?: number
+          required_supervised?: number
+          specialty_id?: string
+          training_level?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainee_targets_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "specialties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_is_coordinator_or_admin: { Args: never; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "rota_coordinator" | "staff"
+      chat_role: "user" | "assistant" | "system"
+      leave_status: "pending" | "approved" | "rejected" | "cancelled"
+      leave_type:
+        | "annual"
+        | "study"
+        | "compassionate"
+        | "sick"
+        | "parental"
+        | "other"
+      rota_role:
+        | "solo"
+        | "supervised"
+        | "supervising"
+        | "on_call"
+        | "non_clinical"
+        | "teaching"
+        | "admin_session"
+      rota_source: "manual" | "clwrota"
+      session_half: "am" | "pm"
+      staff_grade: "consultant" | "sas" | "trainee"
+      theatre_kind: "main" | "day_surgery"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +774,31 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "rota_coordinator", "staff"],
+      chat_role: ["user", "assistant", "system"],
+      leave_status: ["pending", "approved", "rejected", "cancelled"],
+      leave_type: [
+        "annual",
+        "study",
+        "compassionate",
+        "sick",
+        "parental",
+        "other",
+      ],
+      rota_role: [
+        "solo",
+        "supervised",
+        "supervising",
+        "on_call",
+        "non_clinical",
+        "teaching",
+        "admin_session",
+      ],
+      rota_source: ["manual", "clwrota"],
+      session_half: ["am", "pm"],
+      staff_grade: ["consultant", "sas", "trainee"],
+      theatre_kind: ["main", "day_surgery"],
+    },
   },
 } as const
