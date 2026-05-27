@@ -168,6 +168,10 @@ function SettingsPage() {
                 Import rota, leave, and staff data from CLWRota into this app.
                 Credentials are stored as backend secrets.
               </CardDescription>
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" />
+                Historical data is preserved across syncs — only adds or updates
+              </div>
             </div>
             <Badge variant={credsOk ? "default" : "destructive"}>
               {credsOk ? "Credentials set" : "Missing credentials"}

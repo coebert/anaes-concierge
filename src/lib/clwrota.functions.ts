@@ -854,6 +854,11 @@ function classifyDutyType(
  * email/external id/name, theatres by name, specialties by name (created on
  * demand). Rows that can't be matched are reported as skipped so the field
  * mapping can be tuned.
+ *
+ * HISTORICAL-DATA SAFEGUARD: this function never deletes rows.
+ * It only upserts theatre_sessions and rota_assignments keyed by natural
+ * identifiers, so old/historical assignments outside the synced date window
+ * are preserved for auditing.
  */
 export const syncClwRotaRota = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -864,6 +869,14 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
 
 export async function performRotaSync() {
     const { apiKey } = getEnv();
+
+    // --- Historical-data safeguard: record pre-sync counts ---------------
+    const { count: preCount, error: preCountErr } = await supabaseAdmin
+      .from("rota_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("source", "clwrota");
+    if (preCountErr) throw new Error(preCountErr.message);
+    const preSyncCount = preCount ?? 0;
 
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
@@ -1199,6 +1212,19 @@ export async function performRotaSync() {
       skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
     }
 
+    // --- Historical-data safeguard: verify no rows were deleted ------------
+    const { count: postCount, error: postCountErr } = await supabaseAdmin
+      .from("rota_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("source", "clwrota");
+    if (postCountErr) {
+      errors.push({ label: "(historical safeguard)", error: postCountErr.message });
+    } else if ((postCount ?? 0) < preSyncCount) {
+      errors.push({
+        label: "(historical safeguard)",
+        error: `Historical data loss detected: pre-sync count ${preSyncCount}, post-sync count ${postCount ?? 0}`,
+      });
+    }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
