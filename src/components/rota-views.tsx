@@ -501,15 +501,10 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
 export function StaffPicker({
   value, onChange,
 }: { value?: string; onChange: (id: string) => void }) {
+  const listActive = useServerFn(listActiveStaffSafe);
   const { data } = useQuery({
-    queryKey: ["staff-active"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade")
-        .eq("active", true).order("full_name");
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["staff-active-safe"],
+    queryFn: () => listActive(),
   });
   return (
     <Select value={value} onValueChange={onChange}>
