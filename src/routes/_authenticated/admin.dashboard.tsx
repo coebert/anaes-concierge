@@ -131,6 +131,105 @@ function AdminDashboardPage() {
     },
   });
 
+  const { data: annualLeaveStats } = useQuery({
+    queryKey: ["admin-dashboard-annual-leave-monthly"],
+    queryFn: async () => {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const startISO = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
+      const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+
+      const [profilesRes, allowRes, leaveRes] = await Promise.all([
+        supabase.from("profiles").select("id, grade, active").in("grade", ["consultant", "trainee"]).eq("active", true),
+        supabase.from("leave_allowances").select("staff_id, annual_days"),
+        supabase
+          .from("leave_requests")
+          .select("staff_id, start_date, end_date, half_day_start, half_day_end")
+          .eq("status", "approved")
+          .eq("type", "annual")
+          .lte("start_date", endISO)
+          .gte("end_date", startISO),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (allowRes.error) throw allowRes.error;
+      if (leaveRes.error) throw leaveRes.error;
+
+      const months: { key: string; label: string; year: number; month: number }[] = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+        months.push({
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+          label: d.toLocaleString("en-GB", { month: "short", year: "2-digit" }),
+          year: d.getFullYear(),
+          month: d.getMonth(),
+        });
+      }
+
+      const gradeById = new Map<string, "consultant" | "trainee">();
+      for (const p of profilesRes.data ?? []) {
+        if (p.grade === "consultant" || p.grade === "trainee") gradeById.set(p.id, p.grade);
+      }
+      const allowanceById = new Map<string, number>();
+      for (const a of allowRes.data ?? []) {
+        if (a.annual_days && Number(a.annual_days) > 0) allowanceById.set(a.staff_id, Number(a.annual_days));
+      }
+
+      // days taken per staff per month (weekdays only, with half-day handling)
+      const daysTaken = new Map<string, Map<string, number>>(); // staffId -> monthKey -> days
+      for (const l of leaveRes.data ?? []) {
+        if (!gradeById.has(l.staff_id)) continue;
+        const s = new Date(l.start_date + "T00:00:00Z");
+        const e = new Date(l.end_date + "T00:00:00Z");
+        for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+          const dow = d.getUTCDay();
+          if (dow === 0 || dow === 6) continue;
+          const iso = d.toISOString().slice(0, 10);
+          let inc = 1;
+          if (iso === l.start_date && l.half_day_start) inc -= 0.5;
+          if (iso === l.end_date && l.half_day_end) inc -= 0.5;
+          if (inc <= 0) continue;
+          const mk = iso.slice(0, 7);
+          let inner = daysTaken.get(l.staff_id);
+          if (!inner) { inner = new Map(); daysTaken.set(l.staff_id, inner); }
+          inner.set(mk, (inner.get(mk) ?? 0) + inc);
+        }
+      }
+
+      const chart = months.map((m) => {
+        const acc: Record<"consultant" | "trainee", { sumPct: number; n: number }> = {
+          consultant: { sumPct: 0, n: 0 },
+          trainee: { sumPct: 0, n: 0 },
+        };
+        for (const [staffId, grade] of gradeById) {
+          const allowance = allowanceById.get(staffId);
+          if (!allowance) continue;
+          const taken = daysTaken.get(staffId)?.get(m.key) ?? 0;
+          acc[grade].sumPct += (taken / allowance) * 100;
+          acc[grade].n += 1;
+        }
+        return {
+          label: m.label,
+          consultantPct: acc.consultant.n > 0 ? Math.round((acc.consultant.sumPct / acc.consultant.n) * 10) / 10 : 0,
+          traineePct: acc.trainee.n > 0 ? Math.round((acc.trainee.sumPct / acc.trainee.n) * 10) / 10 : 0,
+        };
+      });
+
+      const avg = (key: "consultantPct" | "traineePct") => {
+        const vals = chart.map((r) => r[key]);
+        return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : 0;
+      };
+
+      return {
+        chart,
+        consultantAvg: avg("consultantPct"),
+        traineeAvg: avg("traineePct"),
+        consultantsTracked: Array.from(gradeById.entries()).filter(([id, g]) => g === "consultant" && allowanceById.has(id)).length,
+        traineesTracked: Array.from(gradeById.entries()).filter(([id, g]) => g === "trainee" && allowanceById.has(id)).length,
+      };
+    },
+  });
+
   const [bucket, setBucket] = useState<TraineeBucket>("all");
   const [showOnlyActive, setShowOnlyActive] = useState(false);
   const [expandedTrainee, setExpandedTrainee] = useState<string | null>(null);
@@ -694,6 +793,69 @@ function AdminDashboardPage() {
               </CardContent>
             </Card>
           </section>
+
+          {/* Annual leave taken per month */}
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  Annual leave taken — last 12 months
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Average % of each person's annual allowance used per month, by grade.
+                  {annualLeaveStats && (
+                    <> Tracking {annualLeaveStats.consultantsTracked} consultant(s) and {annualLeaveStats.traineesTracked} trainee(s) with a recorded allowance.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            {!annualLeaveStats ? (
+              <div className="text-sm text-muted-foreground">Loading annual leave data…</div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Consultants — monthly avg</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-semibold tabular-nums">{annualLeaveStats.consultantAvg}%</div>
+                    <p className="text-xs text-muted-foreground">of annual allowance / month (12-mo avg)</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Trainees — monthly avg</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-semibold tabular-nums">{annualLeaveStats.traineeAvg}%</div>
+                    <p className="text-xs text-muted-foreground">of annual allowance / month (12-mo avg)</p>
+                  </CardContent>
+                </Card>
+                <Card className="lg:col-span-3">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Monthly trend</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={annualLeaveStats.chart} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} unit="%" />
+                          <Tooltip formatter={(v: number, name: string) => [`${v}%`, name === "consultantPct" ? "Consultants" : "Trainees"]} />
+                          <Legend formatter={(v: string) => (v === "consultantPct" ? "Consultants" : "Trainees")} />
+                          <Line type="monotone" dataKey="consultantPct" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="traineePct" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </section>
+
+
 
           {/* Trainees solo */}
           <section className="space-y-3">
