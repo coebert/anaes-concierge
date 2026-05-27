@@ -482,7 +482,10 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
     }),
 
     get_team_on_call_today: tool({
-      description: "Find who is on-call across the department today.",
+      description:
+        canSeeColleagueNames
+          ? "Find who is on-call across the department today (names, grades, sessions)."
+          : "Count on-call cover across the department today. Returns grades and sessions only — colleague names are restricted to coordinators/admins.",
       inputSchema: z.object({}),
       execute: async () => {
         const today = todayISO();
@@ -500,10 +503,12 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         return {
           date: today,
           on_call: (data ?? []).map((r) => ({
-            name: pmap.get(r.staff_id)?.full_name ?? "Unknown",
+            name: canSeeColleagueNames
+              ? pmap.get(r.staff_id)?.full_name ?? "Unknown"
+              : "Withheld",
             grade: pmap.get(r.staff_id)?.grade ?? null,
             session: r.session,
-            notes: r.notes,
+            notes: canSeeColleagueNames ? r.notes : null,
           })),
         };
       },
@@ -511,6 +516,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
   };
   return isAdminUser ? { ...baseTools, ...buildAdminTools() } : baseTools;
 }
+
 
 const ChatBody = z.object({
   messages: z.array(z.any()),
