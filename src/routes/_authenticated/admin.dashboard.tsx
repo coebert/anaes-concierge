@@ -18,6 +18,7 @@ import {
   type SoloProfile,
 } from "@/lib/solo-stats";
 import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
