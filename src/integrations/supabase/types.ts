@@ -604,6 +604,8 @@ export type Database = {
           oncall_pa_credit: number
           post_nights_off_days: number
           sessions_per_pa: number
+          trainee_at_risk_pct: number
+          trainee_behind_pct: number
           updated_at: string
           updated_by: string | null
           weekend_pa_credit: number
@@ -623,6 +625,8 @@ export type Database = {
           oncall_pa_credit?: number
           post_nights_off_days?: number
           sessions_per_pa?: number
+          trainee_at_risk_pct?: number
+          trainee_behind_pct?: number
           updated_at?: string
           updated_by?: string | null
           weekend_pa_credit?: number
@@ -642,6 +646,8 @@ export type Database = {
           oncall_pa_credit?: number
           post_nights_off_days?: number
           sessions_per_pa?: number
+          trainee_at_risk_pct?: number
+          trainee_behind_pct?: number
           updated_at?: string
           updated_by?: string | null
           weekend_pa_credit?: number
