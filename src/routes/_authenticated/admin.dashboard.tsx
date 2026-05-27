@@ -378,7 +378,12 @@ function AdminDashboardPage() {
           onCallPct: oc.total > 0 ? Math.round((oc.onCall / oc.total) * 1000) / 10 : 0,
         };
       })
-      .sort((a, b) => b.pct - a.pct || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+      .sort((a, b) => {
+        // Inactive trainees (zero daytime lists) go to the bottom
+        if (a.total === 0 && b.total > 0) return 1;
+        if (a.total > 0 && b.total === 0) return -1;
+        return b.pct - a.pct || (a.full_name ?? "").localeCompare(b.full_name ?? "");
+      });
 
     const totalSolo = chart.reduce((s, r) => s + r.soloLists, 0);
     const totalLists = chart.reduce((s, r) => s + r.totalLists, 0);
