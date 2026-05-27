@@ -854,6 +854,11 @@ function classifyDutyType(
  * email/external id/name, theatres by name, specialties by name (created on
  * demand). Rows that can't be matched are reported as skipped so the field
  * mapping can be tuned.
+ *
+ * HISTORICAL-DATA SAFEGUARD: this function never deletes rows.
+ * It only upserts theatre_sessions and rota_assignments keyed by natural
+ * identifiers, so old/historical assignments outside the synced date window
+ * are preserved for auditing.
  */
 export const syncClwRotaRota = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -864,6 +869,14 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
 
 export async function performRotaSync() {
     const { apiKey } = getEnv();
+
+    // --- Historical-data safeguard: record pre-sync counts ---------------
+    const { data: preCountRow, error: preCountErr } = await supabaseAdmin
+      .from("rota_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("source", "clwrota");
+    if (preCountErr) throw new Error(preCountErr.message);
+    const preSyncCount = preCountRow.count ?? 0;
 
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
