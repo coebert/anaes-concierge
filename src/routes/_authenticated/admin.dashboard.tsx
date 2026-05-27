@@ -264,7 +264,7 @@ function AdminDashboardPage() {
       soloMonthly.profiles.map((p) => [p.id, { id: p.id, grade: p.grade ?? null }]),
     );
     const consultantOnSession = buildConsultantSessionSet(
-      soloMonthly.assignments,
+      soloMonthly.theatreAssignments,
       profilesById,
     );
 
@@ -290,7 +290,7 @@ function AdminDashboardPage() {
       isSolo: boolean;
     }> = [];
 
-    for (const a of soloMonthly.assignments) {
+    for (const a of soloMonthly.theatreAssignments) {
       const t = traineeIds.get(a.staff_id);
       if (!t || !inBucket(t.bucket)) continue;
       const monthKey = a.session_date.slice(0, 7);
