@@ -51,7 +51,7 @@ function TraineeDetailPage() {
       );
       const supIds = Array.from(
         new Set(
-          (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[),
+          (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[],
         ),
       );
       const [{ profile, supervisors: sups }, { data: ts }] = await Promise.all([
