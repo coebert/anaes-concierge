@@ -375,7 +375,7 @@ async function buildAdminCustomRulesPreamble(): Promise<string> {
 }
 
 
-function buildTools(userId: string, isAdminUser: boolean) {
+function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
   const admin = getAdminClient();
   const baseTools = {
     get_my_upcoming_rota: tool({
