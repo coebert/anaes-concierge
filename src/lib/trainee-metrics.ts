@@ -14,6 +14,8 @@ export type TraineeMetrics = {
   soloLists: number;
   supervisedLists: number;
   totalClinical: number;
+  onCallLists: number;
+  totalAssignments: number;
   specialtyBreakdown: Array<{ name: string; count: number; percent: number }>;
 };
 
