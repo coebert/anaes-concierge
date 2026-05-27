@@ -1212,6 +1212,19 @@ export async function performRotaSync() {
       skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
     }
 
+    // --- Historical-data safeguard: verify no rows were deleted ------------
+    const { count: postCount, error: postCountErr } = await supabaseAdmin
+      .from("rota_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("source", "clwrota");
+    if (postCountErr) {
+      errors.push({ label: "(historical safeguard)", error: postCountErr.message });
+    } else if ((postCount ?? 0) < preSyncCount) {
+      errors.push({
+        label: "(historical safeguard)",
+        error: `Historical data loss detected: pre-sync count ${preSyncCount}, post-sync count ${postCount ?? 0}`,
+      });
+    }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
