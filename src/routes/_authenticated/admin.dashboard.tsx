@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -23,6 +23,7 @@ import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
+  ChevronDown, ChevronRight,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -132,6 +133,7 @@ function AdminDashboardPage() {
 
   const [bucket, setBucket] = useState<TraineeBucket>("all");
   const [showOnlyActive, setShowOnlyActive] = useState(false);
+  const [expandedTrainee, setExpandedTrainee] = useState<string | null>(null);
 
   const { data: soloMonthly, isLoading: soloLoading } = useQuery({
     queryKey: ["admin-dashboard-solo-monthly"],
@@ -243,14 +245,22 @@ function AdminDashboardPage() {
 
   // Per-trainee progress against curriculum targets (12-month window from traineeMetricsData)
   const progressByStaff = useMemo(() => {
-    const out = new Map<string, { overall: number | null; unmet: number; totalTargets: number }>();
+    const out = new Map<
+      string,
+      {
+        overall: number | null;
+        unmet: number;
+        totalTargets: number;
+        progress: ReturnType<typeof computeProgress>;
+      }
+    >();
     if (!traineeMetricsData || !traineeTargets) return out;
     for (const t of traineeMetricsData.trainees) {
       const targetsForLevel = traineeTargets.targets.filter(
         (tg) => tg.training_level === t.training_level,
       );
       if (!targetsForLevel.length) {
-        out.set(t.id, { overall: null, unmet: 0, totalTargets: 0 });
+        out.set(t.id, { overall: null, unmet: 0, totalTargets: 0, progress: [] });
         continue;
       }
       const enriched = targetsForLevel.map((tg) => ({
@@ -271,7 +281,7 @@ function AdminDashboardPage() {
       const progress = computeProgress(enriched, assigns);
       const overall = Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length);
       const unmet = progress.filter((p) => p.percent < 100).length;
-      out.set(t.id, { overall, unmet, totalTargets: progress.length });
+      out.set(t.id, { overall, unmet, totalTargets: progress.length, progress });
     }
     return out;
   }, [traineeMetricsData, traineeTargets]);
@@ -796,6 +806,7 @@ function AdminDashboardPage() {
                         <table className="w-full text-sm">
                           <thead className="text-left text-xs uppercase text-muted-foreground">
                             <tr>
+                              <th className="py-2 pr-2 w-6" />
                               <th className="py-2 pr-3">Trainee</th>
                               <th className="py-2 pr-3">Level</th>
                               <th className="py-2 pr-3 text-right">Solo</th>
@@ -816,47 +827,137 @@ function AdminDashboardPage() {
                                   isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 75;
                                 const atRisk =
                                   isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 50;
+                                const canExpand = !!prog && prog.totalTargets > 0;
+                                const isExpanded = expandedTrainee === r.id;
                                 return (
-                                  <tr
-                                    key={r.id}
-                                    className={`border-t ${atRisk ? "bg-destructive/5" : behind ? "bg-amber-500/5" : ""}`}
-                                  >
-                                    <td className="py-1.5 pr-3">
-                                      <span className={!isActive ? "text-muted-foreground" : ""}>
-                                        {r.full_name || "—"}
-                                      </span>
-                                      {!isActive && (
-                                        <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
-                                      )}
-                                      {atRisk && (
-                                        <Badge variant="destructive" className="ml-2 text-[10px] gap-1">
-                                          <AlertTriangle className="h-3 w-3" />
-                                          At risk · {prog!.overall}%
-                                        </Badge>
-                                      )}
-                                      {behind && !atRisk && (
-                                        <Badge
-                                          variant="outline"
-                                          className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
-                                        >
-                                          <AlertTriangle className="h-3 w-3" />
-                                          Behind · {prog!.overall}%
-                                        </Badge>
-                                      )}
-                                      {isActive && prog && prog.totalTargets > 0 && prog.unmet > 0 && !behind && (
-                                        <Badge variant="secondary" className="ml-2 text-[10px]">
-                                          {prog.unmet}/{prog.totalTargets} targets unmet
-                                        </Badge>
-                                      )}
-                                    </td>
-                                    <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.solo}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.total}</td>
-                                    <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
-                                    <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
-                                  </tr>
+                                  <Fragment key={r.id}>
+                                    <tr
+                                      className={`border-t ${canExpand ? "cursor-pointer hover:bg-muted/40" : ""} ${atRisk ? "bg-destructive/5" : behind ? "bg-amber-500/5" : ""}`}
+                                      onClick={() =>
+                                        canExpand &&
+                                        setExpandedTrainee(isExpanded ? null : r.id)
+                                      }
+                                    >
+                                      <td className="py-1.5 pr-2 text-muted-foreground">
+                                        {canExpand ? (
+                                          isExpanded ? (
+                                            <ChevronDown className="h-4 w-4" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4" />
+                                          )
+                                        ) : null}
+                                      </td>
+                                      <td className="py-1.5 pr-3">
+                                        <span className={!isActive ? "text-muted-foreground" : ""}>
+                                          {r.full_name || "—"}
+                                        </span>
+                                        {!isActive && (
+                                          <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
+                                        )}
+                                        {atRisk && (
+                                          <Badge variant="destructive" className="ml-2 text-[10px] gap-1">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            At risk · {prog!.overall}%
+                                          </Badge>
+                                        )}
+                                        {behind && !atRisk && (
+                                          <Badge
+                                            variant="outline"
+                                            className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+                                          >
+                                            <AlertTriangle className="h-3 w-3" />
+                                            Behind · {prog!.overall}%
+                                          </Badge>
+                                        )}
+                                        {isActive && prog && prog.totalTargets > 0 && prog.unmet > 0 && !behind && (
+                                          <Badge variant="secondary" className="ml-2 text-[10px]">
+                                            {prog.unmet}/{prog.totalTargets} targets unmet
+                                          </Badge>
+                                        )}
+                                      </td>
+                                      <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.solo}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.total}</td>
+                                      <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                      <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
+                                    </tr>
+                                    {isExpanded && prog && (
+                                      <tr className="border-t bg-muted/20">
+                                        <td />
+                                        <td colSpan={8} className="py-3 pr-3">
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-medium text-muted-foreground">
+                                              Training targets ({r.level || "—"}) — {prog.totalTargets - prog.unmet}/{prog.totalTargets} met
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                              <table className="w-full text-xs">
+                                                <thead className="text-left text-muted-foreground">
+                                                  <tr>
+                                                    <th className="py-1 pr-3">Specialty</th>
+                                                    <th className="py-1 pr-3 text-right">Solo</th>
+                                                    <th className="py-1 pr-3 text-right">Supervised</th>
+                                                    <th className="py-1 pr-3 text-right">Total</th>
+                                                    <th className="py-1 pr-3 text-right">Progress</th>
+                                                    <th className="py-1 pr-3">Status</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {prog.progress
+                                                    .slice()
+                                                    .sort((a, b) => a.percent - b.percent)
+                                                    .map((p) => {
+                                                      const reqTotal =
+                                                        p.required_sessions ||
+                                                        p.required_solo + p.required_supervised;
+                                                      const unmet = p.percent < 100;
+                                                      return (
+                                                        <tr key={p.specialty_id} className="border-t border-muted">
+                                                          <td className="py-1 pr-3">{p.specialty_name}</td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums">
+                                                            <span className={p.done_solo < p.required_solo ? "text-destructive font-medium" : ""}>
+                                                              {p.done_solo}
+                                                            </span>
+                                                            <span className="text-muted-foreground"> / {p.required_solo}</span>
+                                                          </td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums">
+                                                            <span className={p.done_supervised < p.required_supervised ? "text-destructive font-medium" : ""}>
+                                                              {p.done_supervised}
+                                                            </span>
+                                                            <span className="text-muted-foreground"> / {p.required_supervised}</span>
+                                                          </td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums">
+                                                            <span className={p.done_total < reqTotal ? "text-destructive font-medium" : ""}>
+                                                              {p.done_total}
+                                                            </span>
+                                                            <span className="text-muted-foreground"> / {reqTotal}</span>
+                                                          </td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums font-medium">
+                                                            {p.percent}%
+                                                          </td>
+                                                          <td className="py-1 pr-3">
+                                                            {unmet ? (
+                                                              <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">
+                                                                Unmet
+                                                              </Badge>
+                                                            ) : (
+                                                              <Badge variant="secondary" className="text-[10px]">
+                                                                Met
+                                                              </Badge>
+                                                            )}
+                                                          </td>
+                                                        </tr>
+                                                      );
+                                                    })}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
                                 );
                               })}
                           </tbody>
