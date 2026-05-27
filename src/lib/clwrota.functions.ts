@@ -120,8 +120,52 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Rewrite the CLWRota report URL so the date window always extends at least
+ * 12 months past today. CLWRota report URLs are generated with a fixed
+ * `start_date` / `end_date` window — without this, scheduled syncs would
+ * silently stop returning future rows as time passes.
+ *
+ * - `end_date` is pushed forward to max(existing, today + 12 months).
+ * - `start_date` is preserved so historical context isn't lost; if it would
+ *   end up after `end_date` (shouldn't happen) it's clamped to today.
+ */
+export function withRollingFutureWindow(rawUrl: string, monthsAhead = 12): string {
+  try {
+    const u = new URL(rawUrl);
+    const params = u.searchParams;
+    if (!params.has("start_date") && !params.has("end_date")) return rawUrl;
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const minEnd = new Date(today);
+    minEnd.setUTCMonth(minEnd.getUTCMonth() + monthsAhead);
+
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+    const currentEndStr = params.get("end_date");
+    const currentEnd = currentEndStr ? new Date(`${currentEndStr}T00:00:00Z`) : null;
+    const newEnd =
+      currentEnd && !Number.isNaN(currentEnd.getTime()) && currentEnd > minEnd
+        ? currentEnd
+        : minEnd;
+    params.set("end_date", fmt(newEnd));
+
+    const currentStartStr = params.get("start_date");
+    const currentStart = currentStartStr ? new Date(`${currentStartStr}T00:00:00Z`) : null;
+    if (currentStart && !Number.isNaN(currentStart.getTime()) && currentStart > newEnd) {
+      params.set("start_date", fmt(today));
+    }
+
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 async function fetchReportRaw(url: string, apiKey: string): Promise<string> {
-  const res = await fetch(url, {
+  const effectiveUrl = withRollingFutureWindow(url);
+  const res = await fetch(effectiveUrl, {
     method: "GET",
     headers: { "X-Auth": apiKey, Accept: "application/json, text/csv;q=0.9" },
   });
