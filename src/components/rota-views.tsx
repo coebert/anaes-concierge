@@ -349,14 +349,12 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
+  const lookupStaff = useServerFn(listStaffByIdsSafe);
   const { data: profile } = useQuery({
-    queryKey: ["profile", staffId],
+    queryKey: ["profile-safe", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade,training_level")
-        .eq("id", staffId).maybeSingle();
-      if (error) throw error;
-      return data;
+      const rows = await lookupStaff({ data: { ids: [staffId] } });
+      return rows[0] ?? null;
     },
   });
 
