@@ -20,7 +20,7 @@ export function TraineeMetricsCard({ metrics, startDate, title = "Metrics", subt
     totalAssignments,
     specialtyBreakdown,
   } = metrics;
-  const onCallPct = totalAssignments > 0 ? Math.round((onCallLists / totalAssignments) * 1000) / 10 : 0;
+  const onCallPct = totalAssignments > 0 ? Math.round((onCallLists / totalAssignments) * 1000) / 10 : null;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -43,7 +43,7 @@ export function TraineeMetricsCard({ metrics, startDate, title = "Metrics", subt
           <Metric label="Solo lists" value={soloLists.toString()} />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Metric label="On-call" value={onCallLists.toString()} sub={`${onCallPct}% of total`} />
+          <Metric label="On-call" value={onCallLists.toString()} sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"} />
           <Metric label="Total assignments" value={totalAssignments.toString()} />
           <Metric label="Clinical lists" value={metrics.totalClinical.toString()} />
           <Metric label="Non-clinical" value={(totalAssignments - metrics.totalClinical).toString()} />
