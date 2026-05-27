@@ -156,6 +156,19 @@ function RulesPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Trainee progress thresholds</CardTitle>
+          <CardDescription>
+            Overall % against curriculum targets at which trainees are flagged on the admin dashboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <Field label="At risk below (%)">{num("trainee_at_risk_pct", "1")}</Field>
+          <Field label="Behind below (%)">{num("trainee_behind_pct", "1")}</Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">On-call credit</CardTitle>
           <CardDescription>PA credit awarded for on-call and weekend duties.</CardDescription>
         </CardHeader>
