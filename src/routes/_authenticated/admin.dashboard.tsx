@@ -731,6 +731,9 @@ function AdminDashboardPage() {
                               <th className="py-2 pr-3 text-right">Solo</th>
                               <th className="py-2 pr-3 text-right">Daytime lists</th>
                               <th className="py-2 pr-3 text-right">% solo</th>
+                              <th className="py-2 pr-3 text-right">On-call</th>
+                              <th className="py-2 pr-3 text-right">Total</th>
+                              <th className="py-2 pr-3 text-right">% on-call</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -741,6 +744,9 @@ function AdminDashboardPage() {
                                 <td className="py-1.5 pr-3 text-right">{r.solo}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.total}</td>
                                 <td className="py-1.5 pr-3 text-right font-medium">{r.pct}%</td>
+                                <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                <td className="py-1.5 pr-3 text-right font-medium">{r.onCallPct}%</td>
                               </tr>
                             ))}
                           </tbody>
