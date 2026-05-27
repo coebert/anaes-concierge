@@ -809,25 +809,56 @@ function AdminDashboardPage() {
                           <tbody>
                             {soloStats.traineeRows
                               .filter((r) => !showOnlyActive || r.total > 0)
-                              .map((r) => (
-                                <tr key={r.id} className="border-t">
-                                  <td className="py-1.5 pr-3">
-                                    <span className={r.total === 0 ? "text-muted-foreground" : ""}>
-                                      {r.full_name || "—"}
-                                    </span>
-                                    {r.total === 0 && (
-                                      <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
-                                    )}
-                                  </td>
-                                  <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.solo}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.total}</td>
-                                  <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
-                                  <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
-                                </tr>
-                              ))}
+                              .map((r) => {
+                                const prog = progressByStaff.get(r.id);
+                                const isActive = r.total > 0;
+                                const behind =
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 75;
+                                const atRisk =
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 50;
+                                return (
+                                  <tr
+                                    key={r.id}
+                                    className={`border-t ${atRisk ? "bg-destructive/5" : behind ? "bg-amber-500/5" : ""}`}
+                                  >
+                                    <td className="py-1.5 pr-3">
+                                      <span className={!isActive ? "text-muted-foreground" : ""}>
+                                        {r.full_name || "—"}
+                                      </span>
+                                      {!isActive && (
+                                        <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
+                                      )}
+                                      {atRisk && (
+                                        <Badge variant="destructive" className="ml-2 text-[10px] gap-1">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          At risk · {prog!.overall}%
+                                        </Badge>
+                                      )}
+                                      {behind && !atRisk && (
+                                        <Badge
+                                          variant="outline"
+                                          className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+                                        >
+                                          <AlertTriangle className="h-3 w-3" />
+                                          Behind · {prog!.overall}%
+                                        </Badge>
+                                      )}
+                                      {isActive && prog && prog.totalTargets > 0 && prog.unmet > 0 && !behind && (
+                                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                                          {prog.unmet}/{prog.totalTargets} targets unmet
+                                        </Badge>
+                                      )}
+                                    </td>
+                                    <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.solo}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.total}</td>
+                                    <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                    <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </table>
                       </div>
