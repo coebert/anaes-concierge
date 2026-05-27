@@ -67,6 +67,16 @@ async function isAdmin(userId: string) {
   return !!data;
 }
 
+async function isCoordinatorOrAdmin(userId: string) {
+  const admin = getAdminClient();
+  const { data } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "rota_coordinator"]);
+  return (data ?? []).length > 0;
+}
+
 function buildAdminTools() {
   const admin = getAdminClient();
   return {
