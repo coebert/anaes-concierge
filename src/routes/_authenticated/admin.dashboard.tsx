@@ -351,10 +351,21 @@ function AdminDashboardPage() {
       };
     });
 
+    const perTraineeOnCall = new Map<string, { onCall: number; total: number }>();
+    for (const a of soloMonthly.allAssignments) {
+      const t = traineeIds.get(a.staff_id);
+      if (!t || !inBucket(t.bucket)) continue;
+      const pt = perTraineeOnCall.get(a.staff_id) ?? { onCall: 0, total: 0 };
+      pt.total += 1;
+      if (a.duty_type === "on-call") pt.onCall += 1;
+      perTraineeOnCall.set(a.staff_id, pt);
+    }
+
     const traineeRows = Array.from(traineeIds.entries())
       .filter(([, t]) => inBucket(t.bucket))
       .map(([id, t]) => {
         const v = perTrainee.get(id) ?? { solo: 0, total: 0 };
+        const oc = perTraineeOnCall.get(id) ?? { onCall: 0, total: 0 };
         return {
           id,
           full_name: t.full_name,
@@ -362,6 +373,9 @@ function AdminDashboardPage() {
           solo: v.solo,
           total: v.total,
           pct: v.total > 0 ? Math.round((v.solo / v.total) * 1000) / 10 : 0,
+          onCall: oc.onCall,
+          totalAll: oc.total,
+          onCallPct: oc.total > 0 ? Math.round((oc.onCall / oc.total) * 1000) / 10 : 0,
         };
       })
       .sort((a, b) => b.pct - a.pct || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
