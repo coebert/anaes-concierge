@@ -243,14 +243,22 @@ function AdminDashboardPage() {
 
   // Per-trainee progress against curriculum targets (12-month window from traineeMetricsData)
   const progressByStaff = useMemo(() => {
-    const out = new Map<string, { overall: number | null; unmet: number; totalTargets: number }>();
+    const out = new Map<
+      string,
+      {
+        overall: number | null;
+        unmet: number;
+        totalTargets: number;
+        progress: ReturnType<typeof computeProgress>;
+      }
+    >();
     if (!traineeMetricsData || !traineeTargets) return out;
     for (const t of traineeMetricsData.trainees) {
       const targetsForLevel = traineeTargets.targets.filter(
         (tg) => tg.training_level === t.training_level,
       );
       if (!targetsForLevel.length) {
-        out.set(t.id, { overall: null, unmet: 0, totalTargets: 0 });
+        out.set(t.id, { overall: null, unmet: 0, totalTargets: 0, progress: [] });
         continue;
       }
       const enriched = targetsForLevel.map((tg) => ({
@@ -271,7 +279,7 @@ function AdminDashboardPage() {
       const progress = computeProgress(enriched, assigns);
       const overall = Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length);
       const unmet = progress.filter((p) => p.percent < 100).length;
-      out.set(t.id, { overall, unmet, totalTargets: progress.length });
+      out.set(t.id, { overall, unmet, totalTargets: progress.length, progress });
     }
     return out;
   }, [traineeMetricsData, traineeTargets]);
