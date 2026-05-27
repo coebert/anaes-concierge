@@ -844,9 +844,9 @@ function AdminDashboardPage() {
                                 const prog = progressByStaff.get(r.id);
                                 const isActive = r.total > 0;
                                 const behind =
-                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 75;
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < behindPct;
                                 const atRisk =
-                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 50;
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < atRiskPct;
                                 const canExpand = !!prog && prog.totalTargets > 0;
                                 const isExpanded = expandedTrainee === r.id;
                                 return (
