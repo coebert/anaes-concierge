@@ -28,6 +28,8 @@ type Rules = {
   honour_fixed_sessions: boolean;
   allow_back_to_back_oncall: boolean;
   post_nights_off_days: number;
+  trainee_at_risk_pct: number;
+  trainee_behind_pct: number;
   notes: string;
 };
 
@@ -45,6 +47,8 @@ const DEFAULTS: Rules = {
   honour_fixed_sessions: true,
   allow_back_to_back_oncall: false,
   post_nights_off_days: 2,
+  trainee_at_risk_pct: 50,
+  trainee_behind_pct: 75,
   notes: "",
 };
 
@@ -81,6 +85,8 @@ function RulesPage() {
         honour_fixed_sessions: data.honour_fixed_sessions,
         allow_back_to_back_oncall: data.allow_back_to_back_oncall,
         post_nights_off_days: Number(data.post_nights_off_days),
+        trainee_at_risk_pct: Number((data as { trainee_at_risk_pct?: number }).trainee_at_risk_pct ?? 50),
+        trainee_behind_pct: Number((data as { trainee_behind_pct?: number }).trainee_behind_pct ?? 75),
         notes: data.notes ?? "",
       });
     }
@@ -145,6 +151,19 @@ function RulesPage() {
           <Field label="Max consecutive days">{num("max_consecutive_days", "1")}</Field>
           <Field label="Min rest hours">{num("min_rest_hours", "1")}</Field>
           <Field label="Post-nights off days">{num("post_nights_off_days", "1")}</Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Trainee progress thresholds</CardTitle>
+          <CardDescription>
+            Overall % against curriculum targets at which trainees are flagged on the admin dashboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <Field label="At risk below (%)">{num("trainee_at_risk_pct", "1")}</Field>
+          <Field label="Behind below (%)">{num("trainee_behind_pct", "1")}</Field>
         </CardContent>
       </Card>
 

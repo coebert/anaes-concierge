@@ -243,6 +243,26 @@ function AdminDashboardPage() {
     },
   });
 
+  const { data: rotaRules } = useQuery({
+    queryKey: ["rota-rules-thresholds"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_rules")
+        .select("trainee_at_risk_pct, trainee_behind_pct")
+        .eq("id", 1)
+        .maybeSingle();
+      if (error) throw error;
+      const row = (data ?? {}) as { trainee_at_risk_pct?: number; trainee_behind_pct?: number };
+      return {
+        atRiskPct: Number(row.trainee_at_risk_pct ?? 50),
+        behindPct: Number(row.trainee_behind_pct ?? 75),
+      };
+    },
+  });
+  const atRiskPct = rotaRules?.atRiskPct ?? 50;
+  const behindPct = rotaRules?.behindPct ?? 75;
+
+
   // Per-trainee progress against curriculum targets (12-month window from traineeMetricsData)
   const progressByStaff = useMemo(() => {
     const out = new Map<
@@ -824,9 +844,9 @@ function AdminDashboardPage() {
                                 const prog = progressByStaff.get(r.id);
                                 const isActive = r.total > 0;
                                 const behind =
-                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 75;
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < behindPct;
                                 const atRisk =
-                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 50;
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < atRiskPct;
                                 const canExpand = !!prog && prog.totalTargets > 0;
                                 const isExpanded = expandedTrainee === r.id;
                                 return (
