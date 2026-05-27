@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { listTraineesForOverview } from "@/lib/staff-directory.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,21 +38,16 @@ function TraineesGuard() {
 function TraineesPage() {
   const [filter, setFilter] = useState("");
 
+  const fetchTrainees = useServerFn(listTraineesForOverview);
   const { data, isLoading } = useQuery({
     queryKey: ["trainees-overview"],
     queryFn: async () => {
-      const [{ data: trainees, error: e1 }, { data: targets, error: e2 }, { data: specs, error: e3 }] =
+      const [trainees, { data: targets, error: e2 }, { data: specs, error: e3 }] =
         await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id,full_name,email,training_level,active")
-            .eq("grade", "trainee")
-            .eq("active", true)
-            .order("full_name"),
+          fetchTrainees(),
           supabase.from("trainee_targets").select("*"),
           supabase.from("specialties").select("id,name"),
         ]);
-      if (e1) throw e1;
       if (e2) throw e2;
       if (e3) throw e3;
 

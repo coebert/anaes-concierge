@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  listActiveStaffSafe,
+  listStaffByIdsSafe,
+} from "@/lib/staff-directory.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -194,14 +199,10 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
+  const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
-    queryKey: ["staff-active-with-grade"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade,training_level").eq("active", true);
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["staff-active-with-grade-safe"],
+    queryFn: () => listActive(),
   });
 
   const { data: specs } = useQuery({
@@ -348,14 +349,12 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
+  const lookupStaff = useServerFn(listStaffByIdsSafe);
   const { data: profile } = useQuery({
-    queryKey: ["profile", staffId],
+    queryKey: ["profile-safe", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade,training_level")
-        .eq("id", staffId).maybeSingle();
-      if (error) throw error;
-      return data;
+      const rows = await lookupStaff({ data: { ids: [staffId] } });
+      return rows[0] ?? null;
     },
   });
 
@@ -502,15 +501,10 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
 export function StaffPicker({
   value, onChange,
 }: { value?: string; onChange: (id: string) => void }) {
+  const listActive = useServerFn(listActiveStaffSafe);
   const { data } = useQuery({
-    queryKey: ["staff-active"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade")
-        .eq("active", true).order("full_name");
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["staff-active-safe"],
+    queryFn: () => listActive(),
   });
   return (
     <Select value={value} onValueChange={onChange}>
