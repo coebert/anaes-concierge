@@ -871,12 +871,12 @@ export async function performRotaSync() {
     const { apiKey } = getEnv();
 
     // --- Historical-data safeguard: record pre-sync counts ---------------
-    const { data: preCountRow, error: preCountErr } = await supabaseAdmin
+    const { count: preCount, error: preCountErr } = await supabaseAdmin
       .from("rota_assignments")
       .select("id", { count: "exact", head: true })
       .eq("source", "clwrota");
     if (preCountErr) throw new Error(preCountErr.message);
-    const preSyncCount = preCountRow.count ?? 0;
+    const preSyncCount = preCount ?? 0;
 
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
