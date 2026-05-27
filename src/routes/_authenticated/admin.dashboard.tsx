@@ -357,7 +357,7 @@ function AdminDashboardPage() {
       if (!t || !inBucket(t.bucket)) continue;
       const pt = perTraineeOnCall.get(a.staff_id) ?? { onCall: 0, total: 0 };
       pt.total += 1;
-      if (a.duty_type === "on-call") pt.onCall += 1;
+      if (a.duty_type !== "theatre") pt.onCall += 1;
       perTraineeOnCall.set(a.staff_id, pt);
     }
 

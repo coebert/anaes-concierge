@@ -36,7 +36,7 @@ export function computeTraineeMetrics(
   ).length;
   const soloLists = assignments.filter((a) => a.role_on_list === "solo").length;
   const supervisedLists = assignments.filter((a) => a.role_on_list === "supervised").length;
-  const onCallLists = assignments.filter((a) => a.duty_type === "on-call").length;
+  const onCallLists = assignments.filter((a) => a.duty_type !== "theatre" && a.duty_type !== null).length;
   const totalAssignments = assignments.length;
 
   const clinical = assignments.filter((a) =>
