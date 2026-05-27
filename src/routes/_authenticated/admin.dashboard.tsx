@@ -139,7 +139,7 @@ function AdminDashboardPage() {
       const startISO = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
-      const [profilesRes, assignmentsRes] = await Promise.all([
+      const [profilesRes, theatreRes, allRes] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, full_name, grade, training_level"),
@@ -151,9 +151,15 @@ function AdminDashboardPage() {
           .not("theatre_session_id", "is", null)
           .gte("session_date", startISO)
           .lte("session_date", endISO),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, duty_type, session_date")
+          .gte("session_date", startISO)
+          .lte("session_date", endISO),
       ]);
       if (profilesRes.error) throw profilesRes.error;
-      if (assignmentsRes.error) throw assignmentsRes.error;
+      if (theatreRes.error) throw theatreRes.error;
+      if (allRes.error) throw allRes.error;
 
       const months: string[] = [];
       for (let i = 0; i < 12; i++) {
@@ -162,7 +168,8 @@ function AdminDashboardPage() {
       }
       return {
         profiles: profilesRes.data ?? [],
-        assignments: assignmentsRes.data ?? [],
+        theatreAssignments: theatreRes.data ?? [],
+        allAssignments: allRes.data ?? [],
         months,
       };
     },
@@ -257,7 +264,7 @@ function AdminDashboardPage() {
       soloMonthly.profiles.map((p) => [p.id, { id: p.id, grade: p.grade ?? null }]),
     );
     const consultantOnSession = buildConsultantSessionSet(
-      soloMonthly.assignments,
+      soloMonthly.theatreAssignments,
       profilesById,
     );
 
@@ -283,7 +290,7 @@ function AdminDashboardPage() {
       isSolo: boolean;
     }> = [];
 
-    for (const a of soloMonthly.assignments) {
+    for (const a of soloMonthly.theatreAssignments) {
       const t = traineeIds.get(a.staff_id);
       if (!t || !inBucket(t.bucket)) continue;
       const monthKey = a.session_date.slice(0, 7);
@@ -344,10 +351,21 @@ function AdminDashboardPage() {
       };
     });
 
+    const perTraineeOnCall = new Map<string, { onCall: number; total: number }>();
+    for (const a of soloMonthly.allAssignments) {
+      const t = traineeIds.get(a.staff_id);
+      if (!t || !inBucket(t.bucket)) continue;
+      const pt = perTraineeOnCall.get(a.staff_id) ?? { onCall: 0, total: 0 };
+      pt.total += 1;
+      if (a.duty_type !== "theatre") pt.onCall += 1;
+      perTraineeOnCall.set(a.staff_id, pt);
+    }
+
     const traineeRows = Array.from(traineeIds.entries())
       .filter(([, t]) => inBucket(t.bucket))
       .map(([id, t]) => {
         const v = perTrainee.get(id) ?? { solo: 0, total: 0 };
+        const oc = perTraineeOnCall.get(id) ?? { onCall: 0, total: 0 };
         return {
           id,
           full_name: t.full_name,
@@ -355,6 +373,9 @@ function AdminDashboardPage() {
           solo: v.solo,
           total: v.total,
           pct: v.total > 0 ? Math.round((v.solo / v.total) * 1000) / 10 : 0,
+          onCall: oc.onCall,
+          totalAll: oc.total,
+          onCallPct: oc.total > 0 ? Math.round((oc.onCall / oc.total) * 1000) / 10 : 0,
         };
       })
       .sort((a, b) => b.pct - a.pct || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
@@ -710,6 +731,9 @@ function AdminDashboardPage() {
                               <th className="py-2 pr-3 text-right">Solo</th>
                               <th className="py-2 pr-3 text-right">Daytime lists</th>
                               <th className="py-2 pr-3 text-right">% solo</th>
+                              <th className="py-2 pr-3 text-right">On-call</th>
+                              <th className="py-2 pr-3 text-right">Total</th>
+                              <th className="py-2 pr-3 text-right">% on-call</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -720,6 +744,9 @@ function AdminDashboardPage() {
                                 <td className="py-1.5 pr-3 text-right">{r.solo}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.total}</td>
                                 <td className="py-1.5 pr-3 text-right font-medium">{r.pct}%</td>
+                                <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                <td className="py-1.5 pr-3 text-right font-medium">{r.onCallPct}%</td>
                               </tr>
                             ))}
                           </tbody>

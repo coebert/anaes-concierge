@@ -14,6 +14,8 @@ export type TraineeMetrics = {
   soloLists: number;
   supervisedLists: number;
   totalClinical: number;
+  onCallLists: number;
+  totalAssignments: number;
   specialtyBreakdown: Array<{ name: string; count: number; percent: number }>;
 };
 
@@ -34,6 +36,8 @@ export function computeTraineeMetrics(
   ).length;
   const soloLists = assignments.filter((a) => a.role_on_list === "solo").length;
   const supervisedLists = assignments.filter((a) => a.role_on_list === "supervised").length;
+  const onCallLists = assignments.filter((a) => a.duty_type !== "theatre" && a.duty_type !== null).length;
+  const totalAssignments = assignments.length;
 
   const clinical = assignments.filter((a) =>
     ["solo", "supervised", "supervising"].includes(a.role_on_list),
@@ -61,6 +65,8 @@ export function computeTraineeMetrics(
     soloLists,
     supervisedLists,
     totalClinical,
+    onCallLists,
+    totalAssignments,
     specialtyBreakdown,
   };
 }
