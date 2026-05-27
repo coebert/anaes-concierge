@@ -28,6 +28,8 @@ type Rules = {
   honour_fixed_sessions: boolean;
   allow_back_to_back_oncall: boolean;
   post_nights_off_days: number;
+  trainee_at_risk_pct: number;
+  trainee_behind_pct: number;
   notes: string;
 };
 
@@ -45,6 +47,8 @@ const DEFAULTS: Rules = {
   honour_fixed_sessions: true,
   allow_back_to_back_oncall: false,
   post_nights_off_days: 2,
+  trainee_at_risk_pct: 50,
+  trainee_behind_pct: 75,
   notes: "",
 };
 
