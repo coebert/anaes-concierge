@@ -739,7 +739,14 @@ function AdminDashboardPage() {
                           <tbody>
                             {soloStats.traineeRows.map((r) => (
                               <tr key={r.id} className="border-t">
-                                <td className="py-1.5 pr-3">{r.full_name || "—"}</td>
+                                <td className="py-1.5 pr-3">
+                                  <span className={r.total === 0 ? "text-muted-foreground" : ""}>
+                                    {r.full_name || "—"}
+                                  </span>
+                                  {r.total === 0 && (
+                                    <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
+                                  )}
+                                </td>
                                 <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.solo}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.total}</td>
