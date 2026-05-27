@@ -260,12 +260,14 @@ function AdminDashboardPage() {
         required_supervised: tg.required_supervised,
         required_sessions: tg.required_sessions,
       }));
-      const assigns = (traineeMetricsData.assignmentsByStaff.get(t.id) ?? []).map((a) => ({
-        specialty_id: a.theatre_session_id
-          ? traineeMetricsData.tsSpecMap.get(a.theatre_session_id) ?? null
-          : null,
-        role_on_list: a.role_on_list,
-      }));
+      const assigns = (traineeMetricsData.assignmentsByStaff.get(t.id) ?? []).map(
+        (a: { theatre_session_id: string | null; role_on_list: string }) => ({
+          specialty_id: a.theatre_session_id
+            ? traineeMetricsData.tsSpecMap.get(a.theatre_session_id) ?? null
+            : null,
+          role_on_list: a.role_on_list,
+        }),
+      );
       const progress = computeProgress(enriched, assigns);
       const overall = Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length);
       const unmet = progress.filter((p) => p.percent < 100).length;
