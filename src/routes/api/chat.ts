@@ -447,7 +447,11 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               theatre: ts ? theatreMap.get(ts.theatre_id) ?? null : null,
               specialty: ts?.specialty_id ? specMap.get(ts.specialty_id) ?? null : null,
               surgeon: ts?.surgical_consultant ?? null,
-              supervisor: a.supervisor_id ? supMap.get(a.supervisor_id) ?? null : null,
+              supervisor: a.supervisor_id
+                ? canSeeColleagueNames
+                  ? supMap.get(a.supervisor_id) ?? null
+                  : "Withheld"
+                : null,
               notes: a.notes,
             };
           }),
