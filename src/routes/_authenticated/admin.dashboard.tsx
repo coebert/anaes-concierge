@@ -794,6 +794,69 @@ function AdminDashboardPage() {
             </Card>
           </section>
 
+          {/* Annual leave taken per month */}
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                  Annual leave taken — last 12 months
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Average % of each person's annual allowance used per month, by grade.
+                  {annualLeaveStats && (
+                    <> Tracking {annualLeaveStats.consultantsTracked} consultant(s) and {annualLeaveStats.traineesTracked} trainee(s) with a recorded allowance.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            {!annualLeaveStats ? (
+              <div className="text-sm text-muted-foreground">Loading annual leave data…</div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Consultants — monthly avg</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-semibold tabular-nums">{annualLeaveStats.consultantAvg}%</div>
+                    <p className="text-xs text-muted-foreground">of annual allowance / month (12-mo avg)</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Trainees — monthly avg</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-semibold tabular-nums">{annualLeaveStats.traineeAvg}%</div>
+                    <p className="text-xs text-muted-foreground">of annual allowance / month (12-mo avg)</p>
+                  </CardContent>
+                </Card>
+                <Card className="lg:col-span-3">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Monthly trend</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={annualLeaveStats.chart} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} unit="%" />
+                          <Tooltip formatter={(v: number, name: string) => [`${v}%`, name === "consultantPct" ? "Consultants" : "Trainees"]} />
+                          <Legend formatter={(v: string) => (v === "consultantPct" ? "Consultants" : "Trainees")} />
+                          <Line type="monotone" dataKey="consultantPct" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                          <Line type="monotone" dataKey="traineePct" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </section>
+
+
+
           {/* Trainees solo */}
           <section className="space-y-3">
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
