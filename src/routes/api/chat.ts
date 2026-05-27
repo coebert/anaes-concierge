@@ -67,6 +67,16 @@ async function isAdmin(userId: string) {
   return !!data;
 }
 
+async function isCoordinatorOrAdmin(userId: string) {
+  const admin = getAdminClient();
+  const { data } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "rota_coordinator"]);
+  return (data ?? []).length > 0;
+}
+
 function buildAdminTools() {
   const admin = getAdminClient();
   return {
@@ -365,7 +375,7 @@ async function buildAdminCustomRulesPreamble(): Promise<string> {
 }
 
 
-function buildTools(userId: string, isAdminUser: boolean) {
+function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
   const admin = getAdminClient();
   const baseTools = {
     get_my_upcoming_rota: tool({
@@ -437,7 +447,11 @@ function buildTools(userId: string, isAdminUser: boolean) {
               theatre: ts ? theatreMap.get(ts.theatre_id) ?? null : null,
               specialty: ts?.specialty_id ? specMap.get(ts.specialty_id) ?? null : null,
               surgeon: ts?.surgical_consultant ?? null,
-              supervisor: a.supervisor_id ? supMap.get(a.supervisor_id) ?? null : null,
+              supervisor: a.supervisor_id
+                ? canSeeColleagueNames
+                  ? supMap.get(a.supervisor_id) ?? null
+                  : "Withheld"
+                : null,
               notes: a.notes,
             };
           }),
@@ -468,7 +482,10 @@ function buildTools(userId: string, isAdminUser: boolean) {
     }),
 
     get_team_on_call_today: tool({
-      description: "Find who is on-call across the department today.",
+      description:
+        canSeeColleagueNames
+          ? "Find who is on-call across the department today (names, grades, sessions)."
+          : "Count on-call cover across the department today. Returns grades and sessions only — colleague names are restricted to coordinators/admins.",
       inputSchema: z.object({}),
       execute: async () => {
         const today = todayISO();
@@ -486,10 +503,12 @@ function buildTools(userId: string, isAdminUser: boolean) {
         return {
           date: today,
           on_call: (data ?? []).map((r) => ({
-            name: pmap.get(r.staff_id)?.full_name ?? "Unknown",
+            name: canSeeColleagueNames
+              ? pmap.get(r.staff_id)?.full_name ?? "Unknown"
+              : "Withheld",
             grade: pmap.get(r.staff_id)?.grade ?? null,
             session: r.session,
-            notes: r.notes,
+            notes: canSeeColleagueNames ? r.notes : null,
           })),
         };
       },
@@ -497,6 +516,7 @@ function buildTools(userId: string, isAdminUser: boolean) {
   };
   return isAdminUser ? { ...baseTools, ...buildAdminTools() } : baseTools;
 }
+
 
 const ChatBody = z.object({
   messages: z.array(z.any()),
@@ -567,13 +587,17 @@ export const Route = createFileRoute("/api/chat")({
         const model = gateway("google/gemini-3-flash-preview");
 
         const adminUser = await isAdmin(userId);
+        const canSeeColleagueNames = adminUser || (await isCoordinatorOrAdmin(userId));
         const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
+        const privacyPreamble = canSeeColleagueNames
+          ? ""
+          : "\n\nPRIVACY: The current user is NOT a coordinator or admin. You MUST NOT reveal, guess, or infer the names of other staff members. If a tool returns a name as 'Withheld', report it as withheld; never substitute a real name. Decline politely if the user asks you to identify a colleague (e.g. 'who is on call?', 'who supervised me?', 'who is in theatre 3?'), and suggest they contact a rota coordinator.";
 
         const result = streamText({
           model,
-          system: SYSTEM_PROMPT + rulesPreamble,
+          system: SYSTEM_PROMPT + rulesPreamble + privacyPreamble,
           messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId, adminUser),
+          tools: buildTools(userId, adminUser, canSeeColleagueNames),
           stopWhen: stepCountIs(50),
         });
 
