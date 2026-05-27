@@ -132,6 +132,7 @@ function AdminDashboardPage() {
 
   const [bucket, setBucket] = useState<TraineeBucket>("all");
   const [showOnlyActive, setShowOnlyActive] = useState(false);
+  const [expandedTrainee, setExpandedTrainee] = useState<string | null>(null);
 
   const { data: soloMonthly, isLoading: soloLoading } = useQuery({
     queryKey: ["admin-dashboard-solo-monthly"],
