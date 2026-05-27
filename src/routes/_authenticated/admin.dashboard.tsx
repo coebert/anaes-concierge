@@ -9,6 +9,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { formatDateGB, getSurname, todayISO } from "@/lib/utils";
 import {
   buildConsultantSessionSet,
@@ -128,6 +130,7 @@ function AdminDashboardPage() {
   });
 
   const [bucket, setBucket] = useState<TraineeBucket>("all");
+  const [showOnlyActive, setShowOnlyActive] = useState(false);
 
   const { data: soloMonthly, isLoading: soloLoading } = useQuery({
     queryKey: ["admin-dashboard-solo-monthly"],
@@ -721,7 +724,19 @@ function AdminDashboardPage() {
 
                 <Card className="lg:col-span-2">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Per-trainee summary (12 months)</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">Per-trainee summary (12 months)</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="show-only-active"
+                          checked={showOnlyActive}
+                          onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+                        />
+                        <Label htmlFor="show-only-active" className="text-xs font-normal cursor-pointer">
+                          Show only active
+                        </Label>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {soloStats.traineeRows.length === 0 ? (
@@ -742,25 +757,27 @@ function AdminDashboardPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {soloStats.traineeRows.map((r) => (
-                              <tr key={r.id} className="border-t">
-                                <td className="py-1.5 pr-3">
-                                  <span className={r.total === 0 ? "text-muted-foreground" : ""}>
-                                    {r.full_name || "—"}
-                                  </span>
-                                  {r.total === 0 && (
-                                    <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
-                                  )}
-                                </td>
-                                <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
-                                <td className="py-1.5 pr-3 text-right">{r.solo}</td>
-                                <td className="py-1.5 pr-3 text-right">{r.total}</td>
-                                <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
-                                <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
-                                <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
-                                <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
-                              </tr>
-                            ))}
+                            {soloStats.traineeRows
+                              .filter((r) => !showOnlyActive || r.total > 0)
+                              .map((r) => (
+                                <tr key={r.id} className="border-t">
+                                  <td className="py-1.5 pr-3">
+                                    <span className={r.total === 0 ? "text-muted-foreground" : ""}>
+                                      {r.full_name || "—"}
+                                    </span>
+                                    {r.total === 0 && (
+                                      <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
+                                    )}
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
+                                  <td className="py-1.5 pr-3 text-right">{r.solo}</td>
+                                  <td className="py-1.5 pr-3 text-right">{r.total}</td>
+                                  <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
+                                  <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                  <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                  <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
+                                </tr>
+                              ))}
                           </tbody>
                         </table>
                       </div>
