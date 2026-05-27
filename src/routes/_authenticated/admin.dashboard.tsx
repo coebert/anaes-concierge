@@ -168,7 +168,8 @@ function AdminDashboardPage() {
       }
       return {
         profiles: profilesRes.data ?? [],
-        assignments: assignmentsRes.data ?? [],
+        theatreAssignments: theatreRes.data ?? [],
+        allAssignments: allRes.data ?? [],
         months,
       };
     },
