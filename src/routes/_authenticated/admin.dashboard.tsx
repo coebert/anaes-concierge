@@ -344,9 +344,10 @@ function AdminDashboardPage() {
       };
     });
 
-    const traineeRows = Array.from(perTrainee.entries())
-      .map(([id, v]) => {
-        const t = traineeIds.get(id)!;
+    const traineeRows = Array.from(traineeIds.entries())
+      .filter(([, t]) => inBucket(t.bucket))
+      .map(([id, t]) => {
+        const v = perTrainee.get(id) ?? { solo: 0, total: 0 };
         return {
           id,
           full_name: t.full_name,
@@ -356,7 +357,7 @@ function AdminDashboardPage() {
           pct: v.total > 0 ? Math.round((v.solo / v.total) * 1000) / 10 : 0,
         };
       })
-      .sort((a, b) => b.pct - a.pct);
+      .sort((a, b) => b.pct - a.pct || (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 
     const totalSolo = chart.reduce((s, r) => s + r.soloLists, 0);
     const totalLists = chart.reduce((s, r) => s + r.totalLists, 0);
