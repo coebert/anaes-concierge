@@ -85,6 +85,8 @@ function RulesPage() {
         honour_fixed_sessions: data.honour_fixed_sessions,
         allow_back_to_back_oncall: data.allow_back_to_back_oncall,
         post_nights_off_days: Number(data.post_nights_off_days),
+        trainee_at_risk_pct: Number((data as { trainee_at_risk_pct?: number }).trainee_at_risk_pct ?? 50),
+        trainee_behind_pct: Number((data as { trainee_behind_pct?: number }).trainee_behind_pct ?? 75),
         notes: data.notes ?? "",
       });
     }
