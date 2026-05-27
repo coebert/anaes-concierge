@@ -139,7 +139,7 @@ function AdminDashboardPage() {
       const startISO = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
-      const [profilesRes, assignmentsRes] = await Promise.all([
+      const [profilesRes, theatreRes, allRes] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, full_name, grade, training_level"),
@@ -151,9 +151,15 @@ function AdminDashboardPage() {
           .not("theatre_session_id", "is", null)
           .gte("session_date", startISO)
           .lte("session_date", endISO),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, duty_type, session_date")
+          .gte("session_date", startISO)
+          .lte("session_date", endISO),
       ]);
       if (profilesRes.error) throw profilesRes.error;
-      if (assignmentsRes.error) throw assignmentsRes.error;
+      if (theatreRes.error) throw theatreRes.error;
+      if (allRes.error) throw allRes.error;
 
       const months: string[] = [];
       for (let i = 0; i < 12; i++) {
