@@ -806,6 +806,7 @@ function AdminDashboardPage() {
                         <table className="w-full text-sm">
                           <thead className="text-left text-xs uppercase text-muted-foreground">
                             <tr>
+                              <th className="py-2 pr-2 w-6" />
                               <th className="py-2 pr-3">Trainee</th>
                               <th className="py-2 pr-3">Level</th>
                               <th className="py-2 pr-3 text-right">Solo</th>
@@ -826,47 +827,137 @@ function AdminDashboardPage() {
                                   isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 75;
                                 const atRisk =
                                   isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 50;
+                                const canExpand = !!prog && prog.totalTargets > 0;
+                                const isExpanded = expandedTrainee === r.id;
                                 return (
-                                  <tr
-                                    key={r.id}
-                                    className={`border-t ${atRisk ? "bg-destructive/5" : behind ? "bg-amber-500/5" : ""}`}
-                                  >
-                                    <td className="py-1.5 pr-3">
-                                      <span className={!isActive ? "text-muted-foreground" : ""}>
-                                        {r.full_name || "—"}
-                                      </span>
-                                      {!isActive && (
-                                        <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
-                                      )}
-                                      {atRisk && (
-                                        <Badge variant="destructive" className="ml-2 text-[10px] gap-1">
-                                          <AlertTriangle className="h-3 w-3" />
-                                          At risk · {prog!.overall}%
-                                        </Badge>
-                                      )}
-                                      {behind && !atRisk && (
-                                        <Badge
-                                          variant="outline"
-                                          className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
-                                        >
-                                          <AlertTriangle className="h-3 w-3" />
-                                          Behind · {prog!.overall}%
-                                        </Badge>
-                                      )}
-                                      {isActive && prog && prog.totalTargets > 0 && prog.unmet > 0 && !behind && (
-                                        <Badge variant="secondary" className="ml-2 text-[10px]">
-                                          {prog.unmet}/{prog.totalTargets} targets unmet
-                                        </Badge>
-                                      )}
-                                    </td>
-                                    <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.solo}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.total}</td>
-                                    <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
-                                    <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
-                                    <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
-                                  </tr>
+                                  <Fragment key={r.id}>
+                                    <tr
+                                      className={`border-t ${canExpand ? "cursor-pointer hover:bg-muted/40" : ""} ${atRisk ? "bg-destructive/5" : behind ? "bg-amber-500/5" : ""}`}
+                                      onClick={() =>
+                                        canExpand &&
+                                        setExpandedTrainee(isExpanded ? null : r.id)
+                                      }
+                                    >
+                                      <td className="py-1.5 pr-2 text-muted-foreground">
+                                        {canExpand ? (
+                                          isExpanded ? (
+                                            <ChevronDown className="h-4 w-4" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4" />
+                                          )
+                                        ) : null}
+                                      </td>
+                                      <td className="py-1.5 pr-3">
+                                        <span className={!isActive ? "text-muted-foreground" : ""}>
+                                          {r.full_name || "—"}
+                                        </span>
+                                        {!isActive && (
+                                          <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
+                                        )}
+                                        {atRisk && (
+                                          <Badge variant="destructive" className="ml-2 text-[10px] gap-1">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            At risk · {prog!.overall}%
+                                          </Badge>
+                                        )}
+                                        {behind && !atRisk && (
+                                          <Badge
+                                            variant="outline"
+                                            className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+                                          >
+                                            <AlertTriangle className="h-3 w-3" />
+                                            Behind · {prog!.overall}%
+                                          </Badge>
+                                        )}
+                                        {isActive && prog && prog.totalTargets > 0 && prog.unmet > 0 && !behind && (
+                                          <Badge variant="secondary" className="ml-2 text-[10px]">
+                                            {prog.unmet}/{prog.totalTargets} targets unmet
+                                          </Badge>
+                                        )}
+                                      </td>
+                                      <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.solo}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.total}</td>
+                                      <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                      <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                      <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
+                                    </tr>
+                                    {isExpanded && prog && (
+                                      <tr className="border-t bg-muted/20">
+                                        <td />
+                                        <td colSpan={8} className="py-3 pr-3">
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-medium text-muted-foreground">
+                                              Training targets ({r.level || "—"}) — {prog.totalTargets - prog.unmet}/{prog.totalTargets} met
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                              <table className="w-full text-xs">
+                                                <thead className="text-left text-muted-foreground">
+                                                  <tr>
+                                                    <th className="py-1 pr-3">Specialty</th>
+                                                    <th className="py-1 pr-3 text-right">Solo</th>
+                                                    <th className="py-1 pr-3 text-right">Supervised</th>
+                                                    <th className="py-1 pr-3 text-right">Total</th>
+                                                    <th className="py-1 pr-3 text-right">Progress</th>
+                                                    <th className="py-1 pr-3">Status</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {prog.progress
+                                                    .slice()
+                                                    .sort((a, b) => a.percent - b.percent)
+                                                    .map((p) => {
+                                                      const reqTotal =
+                                                        p.required_sessions ||
+                                                        p.required_solo + p.required_supervised;
+                                                      const unmet = p.percent < 100;
+                                                      return (
+                                                        <tr key={p.specialty_id} className="border-t border-muted">
+                                                          <td className="py-1 pr-3">{p.specialty_name}</td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums">
+                                                            <span className={p.done_solo < p.required_solo ? "text-destructive font-medium" : ""}>
+                                                              {p.done_solo}
+                                                            </span>
+                                                            <span className="text-muted-foreground"> / {p.required_solo}</span>
+                                                          </td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums">
+                                                            <span className={p.done_supervised < p.required_supervised ? "text-destructive font-medium" : ""}>
+                                                              {p.done_supervised}
+                                                            </span>
+                                                            <span className="text-muted-foreground"> / {p.required_supervised}</span>
+                                                          </td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums">
+                                                            <span className={p.done_total < reqTotal ? "text-destructive font-medium" : ""}>
+                                                              {p.done_total}
+                                                            </span>
+                                                            <span className="text-muted-foreground"> / {reqTotal}</span>
+                                                          </td>
+                                                          <td className="py-1 pr-3 text-right tabular-nums font-medium">
+                                                            {p.percent}%
+                                                          </td>
+                                                          <td className="py-1 pr-3">
+                                                            {unmet ? (
+                                                              <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">
+                                                                Unmet
+                                                              </Badge>
+                                                            ) : (
+                                                              <Badge variant="secondary" className="text-[10px]">
+                                                                Met
+                                                              </Badge>
+                                                            )}
+                                                          </td>
+                                                        </tr>
+                                                      );
+                                                    })}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
                                 );
                               })}
                           </tbody>
