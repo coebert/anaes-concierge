@@ -587,13 +587,17 @@ export const Route = createFileRoute("/api/chat")({
         const model = gateway("google/gemini-3-flash-preview");
 
         const adminUser = await isAdmin(userId);
+        const canSeeColleagueNames = adminUser || (await isCoordinatorOrAdmin(userId));
         const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
+        const privacyPreamble = canSeeColleagueNames
+          ? ""
+          : "\n\nPRIVACY: The current user is NOT a coordinator or admin. You MUST NOT reveal, guess, or infer the names of other staff members. If a tool returns a name as 'Withheld', report it as withheld; never substitute a real name. Decline politely if the user asks you to identify a colleague (e.g. 'who is on call?', 'who supervised me?', 'who is in theatre 3?'), and suggest they contact a rota coordinator.";
 
         const result = streamText({
           model,
-          system: SYSTEM_PROMPT + rulesPreamble,
+          system: SYSTEM_PROMPT + rulesPreamble + privacyPreamble,
           messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId, adminUser),
+          tools: buildTools(userId, adminUser, canSeeColleagueNames),
           stopWhen: stepCountIs(50),
         });
 
