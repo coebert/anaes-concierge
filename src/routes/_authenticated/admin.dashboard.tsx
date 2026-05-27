@@ -227,6 +227,53 @@ function AdminDashboardPage() {
     },
   });
 
+  const { data: traineeTargets } = useQuery({
+    queryKey: ["admin-dashboard-trainee-targets"],
+    queryFn: async () => {
+      const [{ data: targets, error: e1 }, { data: specs, error: e2 }] = await Promise.all([
+        supabase.from("trainee_targets").select("*"),
+        supabase.from("specialties").select("id, name"),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+      const specMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
+      return { targets: targets ?? [], specMap };
+    },
+  });
+
+  // Per-trainee progress against curriculum targets (12-month window from traineeMetricsData)
+  const progressByStaff = useMemo(() => {
+    const out = new Map<string, { overall: number | null; unmet: number; totalTargets: number }>();
+    if (!traineeMetricsData || !traineeTargets) return out;
+    for (const t of traineeMetricsData.trainees) {
+      const targetsForLevel = traineeTargets.targets.filter(
+        (tg) => tg.training_level === t.training_level,
+      );
+      if (!targetsForLevel.length) {
+        out.set(t.id, { overall: null, unmet: 0, totalTargets: 0 });
+        continue;
+      }
+      const enriched = targetsForLevel.map((tg) => ({
+        specialty_id: tg.specialty_id,
+        specialty_name: traineeTargets.specMap.get(tg.specialty_id) ?? "Unknown",
+        required_solo: tg.required_solo,
+        required_supervised: tg.required_supervised,
+        required_sessions: tg.required_sessions,
+      }));
+      const assigns = (traineeMetricsData.assignmentsByStaff.get(t.id) ?? []).map((a) => ({
+        specialty_id: a.theatre_session_id
+          ? traineeMetricsData.tsSpecMap.get(a.theatre_session_id) ?? null
+          : null,
+        role_on_list: a.role_on_list,
+      }));
+      const progress = computeProgress(enriched, assigns);
+      const overall = Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length);
+      const unmet = progress.filter((p) => p.percent < 100).length;
+      out.set(t.id, { overall, unmet, totalTargets: progress.length });
+    }
+    return out;
+  }, [traineeMetricsData, traineeTargets]);
+
   const traineeMetricRows = useMemo(() => {
     if (!traineeMetricsData) return [];
     return traineeMetricsData.trainees
