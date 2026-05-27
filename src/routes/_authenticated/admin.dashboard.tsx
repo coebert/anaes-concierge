@@ -750,10 +750,10 @@ function AdminDashboardPage() {
                                 <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.solo}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.total}</td>
-                                <td className="py-1.5 pr-3 text-right font-medium">{r.pct}%</td>
+                                <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
                                 <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
-                                <td className="py-1.5 pr-3 text-right font-medium">{r.onCallPct}%</td>
+                                <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
                               </tr>
                             ))}
                           </tbody>
