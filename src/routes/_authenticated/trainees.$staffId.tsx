@@ -20,22 +20,17 @@ export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
 
 function TraineeDetailPage() {
   const { staffId } = Route.useParams();
+  const fetchProfile = useServerFn(getTraineeProfileWithSupervisors);
 
   const { data, isLoading } = useQuery({
     queryKey: ["trainee-detail", staffId],
     queryFn: async () => {
       const today = todayISO();
       const [
-        { data: profile, error: e1 },
         { data: assignments, error: e2 },
         { data: targets, error: e3 },
         { data: specs, error: e4 },
       ] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,email,training_level,grade,start_date")
-          .eq("id", staffId)
-          .single(),
         supabase
           .from("rota_assignments")
           .select("id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type")
@@ -45,7 +40,6 @@ function TraineeDetailPage() {
         supabase.from("trainee_targets").select("*"),
         supabase.from("specialties").select("id,name"),
       ]);
-      if (e1) throw e1;
       if (e2) throw e2;
       if (e3) throw e3;
       if (e4) throw e4;
@@ -57,18 +51,16 @@ function TraineeDetailPage() {
       );
       const supIds = Array.from(
         new Set(
-          (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[],
+          (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[),
         ),
       );
-      const [{ data: ts }, { data: sups }] = await Promise.all([
+      const [{ profile, supervisors: sups }, { data: ts }] = await Promise.all([
+        fetchProfile({ data: { staffId, supervisorIds: supIds } }),
         tsIds.length
           ? supabase
               .from("theatre_sessions")
               .select("id,specialty_id,surgical_consultant,theatre_id")
               .in("id", tsIds)
-          : Promise.resolve({ data: [] as any[] }),
-        supIds.length
-          ? supabase.from("profiles").select("id,full_name").in("id", supIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
       const theatreIds = Array.from(new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean)));
@@ -87,6 +79,7 @@ function TraineeDetailPage() {
       };
     },
   });
+
 
   const progress = useMemo(() => {
     if (!data?.profile) return [];
