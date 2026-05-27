@@ -23,6 +23,7 @@ import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
+  ChevronDown, ChevronRight,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
