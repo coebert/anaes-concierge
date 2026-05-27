@@ -199,14 +199,10 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
+  const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
-    queryKey: ["staff-active-with-grade"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles").select("id,full_name,grade,training_level").eq("active", true);
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["staff-active-with-grade-safe"],
+    queryFn: () => listActive(),
   });
 
   const { data: specs } = useQuery({
