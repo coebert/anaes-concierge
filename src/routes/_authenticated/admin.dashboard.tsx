@@ -18,6 +18,7 @@ import {
   type SoloProfile,
 } from "@/lib/solo-stats";
 import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
@@ -225,6 +226,55 @@ function AdminDashboardPage() {
       return { trainees: trainees ?? [], assignmentsByStaff, tsSpecMap, specNameMap };
     },
   });
+
+  const { data: traineeTargets } = useQuery({
+    queryKey: ["admin-dashboard-trainee-targets"],
+    queryFn: async () => {
+      const [{ data: targets, error: e1 }, { data: specs, error: e2 }] = await Promise.all([
+        supabase.from("trainee_targets").select("*"),
+        supabase.from("specialties").select("id, name"),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+      const specMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
+      return { targets: targets ?? [], specMap };
+    },
+  });
+
+  // Per-trainee progress against curriculum targets (12-month window from traineeMetricsData)
+  const progressByStaff = useMemo(() => {
+    const out = new Map<string, { overall: number | null; unmet: number; totalTargets: number }>();
+    if (!traineeMetricsData || !traineeTargets) return out;
+    for (const t of traineeMetricsData.trainees) {
+      const targetsForLevel = traineeTargets.targets.filter(
+        (tg) => tg.training_level === t.training_level,
+      );
+      if (!targetsForLevel.length) {
+        out.set(t.id, { overall: null, unmet: 0, totalTargets: 0 });
+        continue;
+      }
+      const enriched = targetsForLevel.map((tg) => ({
+        specialty_id: tg.specialty_id,
+        specialty_name: traineeTargets.specMap.get(tg.specialty_id) ?? "Unknown",
+        required_solo: tg.required_solo,
+        required_supervised: tg.required_supervised,
+        required_sessions: tg.required_sessions,
+      }));
+      const assigns = (traineeMetricsData.assignmentsByStaff.get(t.id) ?? []).map(
+        (a: { theatre_session_id: string | null; role_on_list: string }) => ({
+          specialty_id: a.theatre_session_id
+            ? traineeMetricsData.tsSpecMap.get(a.theatre_session_id) ?? null
+            : null,
+          role_on_list: a.role_on_list,
+        }),
+      );
+      const progress = computeProgress(enriched, assigns);
+      const overall = Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length);
+      const unmet = progress.filter((p) => p.percent < 100).length;
+      out.set(t.id, { overall, unmet, totalTargets: progress.length });
+    }
+    return out;
+  }, [traineeMetricsData, traineeTargets]);
 
   const traineeMetricRows = useMemo(() => {
     if (!traineeMetricsData) return [];
@@ -759,25 +809,56 @@ function AdminDashboardPage() {
                           <tbody>
                             {soloStats.traineeRows
                               .filter((r) => !showOnlyActive || r.total > 0)
-                              .map((r) => (
-                                <tr key={r.id} className="border-t">
-                                  <td className="py-1.5 pr-3">
-                                    <span className={r.total === 0 ? "text-muted-foreground" : ""}>
-                                      {r.full_name || "—"}
-                                    </span>
-                                    {r.total === 0 && (
-                                      <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
-                                    )}
-                                  </td>
-                                  <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.solo}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.total}</td>
-                                  <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
-                                  <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
-                                  <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
-                                </tr>
-                              ))}
+                              .map((r) => {
+                                const prog = progressByStaff.get(r.id);
+                                const isActive = r.total > 0;
+                                const behind =
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 75;
+                                const atRisk =
+                                  isActive && prog && prog.totalTargets > 0 && prog.overall !== null && prog.overall < 50;
+                                return (
+                                  <tr
+                                    key={r.id}
+                                    className={`border-t ${atRisk ? "bg-destructive/5" : behind ? "bg-amber-500/5" : ""}`}
+                                  >
+                                    <td className="py-1.5 pr-3">
+                                      <span className={!isActive ? "text-muted-foreground" : ""}>
+                                        {r.full_name || "—"}
+                                      </span>
+                                      {!isActive && (
+                                        <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>
+                                      )}
+                                      {atRisk && (
+                                        <Badge variant="destructive" className="ml-2 text-[10px] gap-1">
+                                          <AlertTriangle className="h-3 w-3" />
+                                          At risk · {prog!.overall}%
+                                        </Badge>
+                                      )}
+                                      {behind && !atRisk && (
+                                        <Badge
+                                          variant="outline"
+                                          className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+                                        >
+                                          <AlertTriangle className="h-3 w-3" />
+                                          Behind · {prog!.overall}%
+                                        </Badge>
+                                      )}
+                                      {isActive && prog && prog.totalTargets > 0 && prog.unmet > 0 && !behind && (
+                                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                                          {prog.unmet}/{prog.totalTargets} targets unmet
+                                        </Badge>
+                                      )}
+                                    </td>
+                                    <td className="py-1.5 pr-3 text-muted-foreground">{r.level || "—"}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.solo}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.total}</td>
+                                    <td className="py-1.5 pr-3 text-right font-medium">{r.total > 0 ? `${r.pct}%` : "N/A"}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.onCall}</td>
+                                    <td className="py-1.5 pr-3 text-right">{r.totalAll}</td>
+                                    <td className="py-1.5 pr-3 text-right font-medium">{r.totalAll > 0 ? `${r.onCallPct}%` : "N/A"}</td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </table>
                       </div>
