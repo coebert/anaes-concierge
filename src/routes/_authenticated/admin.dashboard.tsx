@@ -724,7 +724,19 @@ function AdminDashboardPage() {
 
                 <Card className="lg:col-span-2">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Per-trainee summary (12 months)</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">Per-trainee summary (12 months)</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="show-only-active"
+                          checked={showOnlyActive}
+                          onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+                        />
+                        <Label htmlFor="show-only-active" className="text-xs font-normal cursor-pointer">
+                          Show only active
+                        </Label>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {soloStats.traineeRows.length === 0 ? (
