@@ -1120,12 +1120,28 @@ export async function performRotaSync() {
         session_date,
         session,
         duty_type: dutyType,
-        // Non-theatre duties are always on-call style; theatre rows keep the parsed role.
-        role_on_list: dutyType === "theatre" ? normaliseRole(roleRaw) : "on_call",
+        // Theatre rows keep the parsed role. Non-patient-facing scheduled
+        // activities (SPA / admin / teaching / non-clinical) record an
+        // appropriate non-clinical role. Everything else (on-call, ICU,
+        // obstetrics, CIC) is on-call style.
+        role_on_list:
+          dutyType === "theatre"
+            ? normaliseRole(roleRaw)
+            : dutyType === "spa" || dutyType === "admin"
+              ? "admin_session"
+              : dutyType === "teaching"
+                ? "teaching"
+                : dutyType === "non_clinical"
+                  ? "non_clinical"
+                  : "on_call",
         source: "clwrota",
         theatre_session_key: theatreSessionKey,
         clwrota_external_id: externalId,
-        notes: consultantName ? `Surgeon: ${consultantName}` : null,
+        notes: NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
+          ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
+          : consultantName
+            ? `Surgeon: ${consultantName}`
+            : null,
       });
     }
 
