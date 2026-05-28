@@ -201,6 +201,42 @@ export function ensureLeaveReportFields(rawUrl: string): string {
   }
 }
 
+/**
+ * Force a CLWRota report URL's date window to a bounded operational range.
+ *
+ * The rota report can otherwise span 12+ months (every row of every
+ * theatre + on-call assignment for the whole department), which causes
+ * the upstream CLWRota fetch and the chunked Supabase upserts to exceed
+ * the Worker's gateway timeout ("upstream timeout"). Historical rows
+ * already synced into `rota_assignments` are preserved by the
+ * non-destructive upsert path, so narrowing the live sync window is safe.
+ */
+export function clampDateWindow(
+  rawUrl: string,
+  { daysBack = 30, daysAhead = 120 }: { daysBack?: number; daysAhead?: number } = {},
+): string {
+  if (!rawUrl) return rawUrl;
+  try {
+    const u = new URL(rawUrl);
+    if (!u.searchParams.has("start_date") && !u.searchParams.has("end_date")) {
+      return rawUrl;
+    }
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setUTCDate(start.getUTCDate() - daysBack);
+    const end = new Date(today);
+    end.setUTCDate(end.getUTCDate() + daysAhead);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    u.searchParams.set("start_date", fmt(start));
+    u.searchParams.set("end_date", fmt(end));
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+
 
 
 async function fetchReportRaw(url: string, apiKey: string): Promise<string> {
@@ -1011,7 +1047,8 @@ export async function performRotaSync() {
     let rawPreview = "";
     let sampleKeys: string[] = [];
     try {
-      const text = await fetchReportRaw(url, apiKey);
+      const text = await fetchReportRaw(clampDateWindow(url), apiKey);
+
       rawPreview = text.slice(0, 500);
       rows = parseRows(text);
       if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
