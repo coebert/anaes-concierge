@@ -58,6 +58,8 @@ function SettingsPage() {
   const runSync = useServerFn(runClwRotaSync);
   const syncStaff = useServerFn(syncClwRotaStaff);
   const syncRota = useServerFn(syncClwRotaRota);
+  const syncLeave = useServerFn(syncClwRotaLeave);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
