@@ -20,15 +20,17 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
         }
 
         // Dynamic import — keeps server-only modules out of the client bundle.
-        const { performStaffSync, performRotaSync } = await import(
+        const { performStaffSync, performRotaSync, performLeaveSync } = await import(
           "@/lib/clwrota.functions"
         );
 
         const result: {
           staff?: unknown;
           rota?: unknown;
+          leave?: unknown;
           staffError?: string;
           rotaError?: string;
+          leaveError?: string;
         } = {};
 
         try {
@@ -43,11 +45,18 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           result.rotaError = e instanceof Error ? e.message : String(e);
         }
 
-        const ok = !result.staffError && !result.rotaError;
+        try {
+          result.leave = await performLeaveSync();
+        } catch (e) {
+          result.leaveError = e instanceof Error ? e.message : String(e);
+        }
+
+        const ok = !result.staffError && !result.rotaError && !result.leaveError;
         return new Response(JSON.stringify({ ok, ...result }), {
           status: ok ? 200 : 500,
           headers: { "Content-Type": "application/json" },
         });
+
       },
     },
   },
