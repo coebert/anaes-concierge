@@ -799,13 +799,24 @@ type ResolvedDutyType =
   | "icu_consultant_oncall"
   | "general_consultant_oncall"
   | "registrar_oncall"
-  | "sho_oncall";
+  | "sho_oncall"
+  | "spa"
+  | "admin"
+  | "teaching"
+  | "non_clinical";
+
+const NON_PATIENT_FACING_DUTY_TYPES: ReadonlySet<ResolvedDutyType> = new Set([
+  "spa",
+  "admin",
+  "teaching",
+  "non_clinical",
+]);
 
 /**
  * Classify a CLWRota row as a non-theatre duty (on-call, obstetrics, ICU,
- * consultant in charge) based on the free-text label fields plus the staff
- * member's grade/training level. Returns "theatre" when nothing matches —
- * the row stays as a theatre list assignment.
+ * consultant in charge, SPA, admin, teaching, non-clinical) based on the
+ * free-text label fields plus the staff member's grade/training level.
+ * Returns "theatre" only when nothing matches.
  */
 function classifyDutyType(
   labels: Array<string | null | undefined>,
@@ -819,6 +830,20 @@ function classifyDutyType(
     const tl = (trainingLevel ?? "").toUpperCase();
     return tl === "CT1" || tl === "CT2" || tl === "ACCS1" || tl === "ACCS2" || tl === "ACCS3";
   })();
+
+  // Non-patient-facing scheduled activities — check first so labels like
+  // "SPA" or "Admin" are preserved rather than swallowed by a generic match.
+  if (/\bspa\b/.test(text) || text.includes("supporting professional")) return "spa";
+  if (text.includes("teach") || text.includes("education") || text.includes("training session"))
+    return "teaching";
+  if (
+    text.includes("admin") ||
+    text.includes("management") ||
+    text.includes("audit") ||
+    text.includes("appraisal") ||
+    text.includes("governance")
+  )
+    return "admin";
 
   if (text.includes("consultant in charge") || /\bcic\b/.test(text)) return "consultant_in_charge";
 
@@ -843,6 +868,10 @@ function classifyDutyType(
     if (grade === "trainee") return isJuniorTrainee ? "sho_oncall" : "registrar_oncall";
     return "registrar_oncall";
   }
+
+  // Catch-all for explicitly non-clinical scheduled time.
+  if ((text.includes("non") && text.includes("clin")) || text.includes("study"))
+    return "non_clinical";
 
   return "theatre";
 }
@@ -1091,12 +1120,28 @@ export async function performRotaSync() {
         session_date,
         session,
         duty_type: dutyType,
-        // Non-theatre duties are always on-call style; theatre rows keep the parsed role.
-        role_on_list: dutyType === "theatre" ? normaliseRole(roleRaw) : "on_call",
+        // Theatre rows keep the parsed role. Non-patient-facing scheduled
+        // activities (SPA / admin / teaching / non-clinical) record an
+        // appropriate non-clinical role. Everything else (on-call, ICU,
+        // obstetrics, CIC) is on-call style.
+        role_on_list:
+          dutyType === "theatre"
+            ? normaliseRole(roleRaw)
+            : dutyType === "spa" || dutyType === "admin"
+              ? "admin_session"
+              : dutyType === "teaching"
+                ? "teaching"
+                : dutyType === "non_clinical"
+                  ? "non_clinical"
+                  : "on_call",
         source: "clwrota",
         theatre_session_key: theatreSessionKey,
         clwrota_external_id: externalId,
-        notes: consultantName ? `Surgeon: ${consultantName}` : null,
+        notes: NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
+          ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
+          : consultantName
+            ? `Surgeon: ${consultantName}`
+            : null,
       });
     }
 

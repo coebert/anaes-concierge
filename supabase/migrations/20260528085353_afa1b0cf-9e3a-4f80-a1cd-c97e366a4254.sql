@@ -1,0 +1,4 @@
+ALTER TYPE duty_type ADD VALUE IF NOT EXISTS 'spa';
+ALTER TYPE duty_type ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE duty_type ADD VALUE IF NOT EXISTS 'teaching';
+ALTER TYPE duty_type ADD VALUE IF NOT EXISTS 'non_clinical';

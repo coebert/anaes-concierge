@@ -855,6 +855,10 @@ export type Database = {
         | "general_consultant_oncall"
         | "registrar_oncall"
         | "sho_oncall"
+        | "spa"
+        | "admin"
+        | "teaching"
+        | "non_clinical"
       leave_status: "pending" | "approved" | "rejected" | "cancelled"
       leave_type:
         | "annual"
@@ -1017,6 +1021,10 @@ export const Constants = {
         "general_consultant_oncall",
         "registrar_oncall",
         "sho_oncall",
+        "spa",
+        "admin",
+        "teaching",
+        "non_clinical",
       ],
       leave_status: ["pending", "approved", "rejected", "cancelled"],
       leave_type: [
