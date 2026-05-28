@@ -16,7 +16,9 @@ import {
   runClwRotaSync,
   syncClwRotaStaff,
   syncClwRotaRota,
+  syncClwRotaLeave,
 } from "@/lib/clwrota.functions";
+
 import { formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
