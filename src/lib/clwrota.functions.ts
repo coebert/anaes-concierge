@@ -1435,7 +1435,7 @@ export async function performLeaveSync() {
     unmatchedStaff: [] as string[],
   };
 
-  const url = settings?.leave_report_url;
+  const url = ensureLeaveReportFields(settings?.leave_report_url ?? "");
   if (!url) return { ...emptyResult, message: "No leave report URL configured." };
 
   let rows: Record<string, unknown>[];
