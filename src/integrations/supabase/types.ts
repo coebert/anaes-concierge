@@ -358,6 +358,7 @@ export type Database = {
       }
       leave_requests: {
         Row: {
+          clwrota_external_id: string | null
           conflict_notes: string | null
           created_at: string
           decided_at: string | null
@@ -376,6 +377,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clwrota_external_id?: string | null
           conflict_notes?: string | null
           created_at?: string
           decided_at?: string | null
@@ -394,6 +396,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clwrota_external_id?: string | null
           conflict_notes?: string | null
           created_at?: string
           decided_at?: string | null

@@ -1331,3 +1331,263 @@ export async function performRotaSync() {
     };
 }
 
+// =====================================================================
+// Leave sync
+// =====================================================================
+
+type LeaveType = "annual" | "study" | "compassionate" | "sick" | "parental" | "other";
+type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+function classifyLeaveType(raw: string | null): LeaveType {
+  const s = (raw ?? "").toLowerCase();
+  if (!s) return "other";
+  if (s.includes("annual") || s.includes("holiday") || s === "al" || s.includes("vacation"))
+    return "annual";
+  if (s.includes("study") || s.includes("conference") || s.includes("course") || s === "sl")
+    return "study";
+  if (s.includes("compassion") || s.includes("bereave")) return "compassionate";
+  if (s.includes("sick") || s.includes("illness")) return "sick";
+  if (s.includes("matern") || s.includes("patern") || s.includes("parental") || s.includes("adopt"))
+    return "parental";
+  return "other";
+}
+
+function classifyLeaveStatus(raw: string | null): LeaveStatus {
+  const s = (raw ?? "").toLowerCase().trim();
+  if (!s) return "approved"; // CLWRota-published leave is already approved
+  if (s.includes("approve") || s.includes("confirm") || s.includes("granted") || s === "ok")
+    return "approved";
+  if (s.includes("reject") || s.includes("deny") || s.includes("declined")) return "rejected";
+  if (s.includes("cancel") || s.includes("withdrawn")) return "cancelled";
+  if (s.includes("pending") || s.includes("request") || s.includes("await")) return "pending";
+  return "approved";
+}
+
+/**
+ * Pull leave from the configured CLWRota leave report URL and upsert into
+ * `leave_requests`, keyed by `clwrota_external_id`.
+ *
+ * HISTORICAL-DATA SAFEGUARD: this function never deletes rows. Old leave
+ * outside the synced window is preserved for auditing.
+ */
+export const syncClwRotaLeave = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    return performLeaveSync();
+  });
+
+export async function performLeaveSync() {
+  const { apiKey } = getEnv();
+
+  // Pre-sync count for the historical-data safeguard.
+  const { count: preCount, error: preCountErr } = await supabaseAdmin
+    .from("leave_requests")
+    .select("id", { count: "exact", head: true })
+    .not("clwrota_external_id", "is", null);
+  if (preCountErr) throw new Error(preCountErr.message);
+  const preSyncCount = preCount ?? 0;
+
+  const { data: settings, error: loadErr } = await supabaseAdmin
+    .from("clwrota_sync_state")
+    .select("leave_report_url")
+    .eq("id", 1)
+    .maybeSingle();
+  if (loadErr) throw new Error(loadErr.message);
+
+  const emptyResult = {
+    ok: false as boolean,
+    message: "",
+    total: 0,
+    upserted: 0,
+    skipped: [] as Array<{ label: string; reason: string }>,
+    errors: [] as Array<{ label: string; error: string }>,
+    rawPreview: "",
+    sampleKeys: [] as string[],
+    unmatchedStaff: [] as string[],
+  };
+
+  const url = settings?.leave_report_url;
+  if (!url) return { ...emptyResult, message: "No leave report URL configured." };
+
+  let rows: Record<string, unknown>[];
+  let rawPreview = "";
+  let sampleKeys: string[] = [];
+  try {
+    const text = await fetchReportRaw(url, apiKey);
+    rawPreview = text.slice(0, 500);
+    rows = parseRows(text);
+    if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await supabaseAdmin.from("clwrota_sync_state").upsert({
+      id: 1,
+      last_sync_at: new Date().toISOString(),
+      last_status: "leave_fetch_failed",
+      last_error: msg,
+    });
+    throw new Error(msg);
+  }
+
+  if (rows.length === 0) {
+    await supabaseAdmin.from("clwrota_sync_state").upsert({
+      id: 1,
+      last_sync_at: new Date().toISOString(),
+      last_status: "leave_no_rows",
+      last_error: `Leave URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`,
+      last_pulled_rows: 0,
+    });
+    return { ...emptyResult, message: "Leave URL returned 0 rows.", rawPreview, sampleKeys };
+  }
+
+  // Build staff lookup maps.
+  const { data: profiles, error: profErr } = await supabaseAdmin
+    .from("profiles")
+    .select("id, email, full_name, clwrota_external_id");
+  if (profErr) throw new Error(profErr.message);
+
+  const profByEmail = new Map<string, string>();
+  const profByExtId = new Map<string, string>();
+  const profByName = new Map<string, string>();
+  for (const p of profiles ?? []) {
+    if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
+    if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
+    if (p.full_name) profByName.set(p.full_name.toLowerCase().trim(), p.id);
+  }
+
+  const skipped: Array<{ label: string; reason: string }> = [];
+  const errors: Array<{ label: string; error: string }> = [];
+  const unmatchedStaff = new Set<string>();
+
+  type LeaveDraft = {
+    staff_id: string;
+    type: LeaveType;
+    start_date: string;
+    end_date: string;
+    status: LeaveStatus;
+    reason: string | null;
+    clwrota_external_id: string;
+  };
+  const draftsByExtId = new Map<string, LeaveDraft>();
+
+  for (const row of rows) {
+    const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
+    const personExtId = pick(row, [
+      "person.local_id", "person.esr_employee_number", "person.assignment_number",
+      "person_id", "local_id", "staff_id", "user_id",
+    ]);
+    const personFirst = pick(row, ["person.first_name"]);
+    const personLast = pick(row, ["person.last_name"]);
+    const personName =
+      pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
+      ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+
+    const startRaw = pick(row, [
+      "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
+    ]);
+    const endRaw = pick(row, [
+      "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
+    ]);
+    const typeRaw = pick(row, [
+      "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
+      "absence_type", "type", "Type", "reason_category", "kind",
+    ]);
+    const statusRaw = pick(row, [
+      "status.name", "status", "state", "Status", "approval_status",
+    ]);
+    const reasonText = pick(row, [
+      "reason", "comment", "comments", "notes", "description", "Notes",
+    ]);
+    const externalId =
+      pick(row, ["id", "leave_id", "request_id", "external_id"]) ??
+      (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
+
+    const start_date = normaliseDate(startRaw);
+    const end_date = normaliseDate(endRaw);
+    const label = `${startRaw ?? "?"} → ${endRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
+
+    if (!start_date) { skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` }); continue; }
+    if (!end_date)   { skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` }); continue; }
+    if (end_date < start_date) { skipped.push({ label, reason: `end_date < start_date` }); continue; }
+    if (!externalId) { skipped.push({ label, reason: "no stable external id" }); continue; }
+
+    let staffId: string | undefined;
+    if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
+    if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
+    if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
+    if (!staffId) {
+      unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
+      skipped.push({
+        label,
+        reason: `staff not found (email=${personEmail ?? "-"}, extId=${personExtId ?? "-"}, name=${personName ?? "-"})`,
+      });
+      continue;
+    }
+
+    draftsByExtId.set(externalId, {
+      staff_id: staffId,
+      type: classifyLeaveType(typeRaw),
+      start_date,
+      end_date,
+      status: classifyLeaveStatus(statusRaw),
+      reason: reasonText,
+      clwrota_external_id: externalId,
+    });
+  }
+
+  const drafts = Array.from(draftsByExtId.values());
+
+  // Upsert in chunks, keyed by clwrota_external_id. Never delete.
+  const CHUNK = 1000;
+  let upserted = 0;
+  for (let i = 0; i < drafts.length; i += CHUNK) {
+    const chunk = drafts.slice(i, i + CHUNK);
+    const { error: upErr } = await supabaseAdmin
+      .from("leave_requests")
+      .upsert(chunk, { onConflict: "clwrota_external_id" });
+    if (upErr) {
+      errors.push({ label: `(leave_requests chunk ${i}-${i + chunk.length})`, error: upErr.message });
+      continue;
+    }
+    upserted += chunk.length;
+  }
+
+  // Historical-data safeguard.
+  const { count: postCount, error: postCountErr } = await supabaseAdmin
+    .from("leave_requests")
+    .select("id", { count: "exact", head: true })
+    .not("clwrota_external_id", "is", null);
+  if (postCountErr) {
+    errors.push({ label: "(historical safeguard)", error: postCountErr.message });
+  } else if ((postCount ?? 0) < preSyncCount) {
+    errors.push({
+      label: "(historical safeguard)",
+      error: `Historical leave loss: pre ${preSyncCount}, post ${postCount ?? 0}`,
+    });
+  }
+
+  const summary = `Leave sync: ${rows.length} rows · ${upserted} upserted · ${skipped.length} skipped · ${errors.length} errors`;
+  await supabaseAdmin.from("clwrota_sync_state").upsert({
+    id: 1,
+    last_sync_at: new Date().toISOString(),
+    last_status: errors.length ? "leave_partial" : "leave_success",
+    last_error: errors.length
+      ? errors.slice(0, 5).map((e) => `${e.label}: ${e.error}`).join("; ")
+      : null,
+    last_pulled_rows: rows.length,
+  });
+
+  return {
+    ok: errors.length === 0,
+    message: summary,
+    total: rows.length,
+    upserted,
+    skipped,
+    errors,
+    rawPreview,
+    sampleKeys,
+    unmatchedStaff: Array.from(unmatchedStaff),
+  };
+}
+
+

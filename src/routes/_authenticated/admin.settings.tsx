@@ -16,7 +16,9 @@ import {
   runClwRotaSync,
   syncClwRotaStaff,
   syncClwRotaRota,
+  syncClwRotaLeave,
 } from "@/lib/clwrota.functions";
+
 import { formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
@@ -56,6 +58,8 @@ function SettingsPage() {
   const runSync = useServerFn(runClwRotaSync);
   const syncStaff = useServerFn(syncClwRotaStaff);
   const syncRota = useServerFn(syncClwRotaRota);
+  const syncLeave = useServerFn(syncClwRotaLeave);
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
@@ -136,6 +140,19 @@ function SettingsPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const leaveMut = useMutation({
+    mutationFn: () => syncLeave({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(res.message);
+      else toast.warning(res.message);
+      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+      void qc.invalidateQueries({ queryKey: ["leave-requests"] });
+      void qc.invalidateQueries({ queryKey: ["leave"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   if (isLoading) {
     return (
@@ -276,8 +293,97 @@ function SettingsPage() {
                 )}
                 Sync rota now
               </Button>
+              <Button
+                variant="default"
+                onClick={() => leaveMut.mutate()}
+                disabled={leaveMut.isPending || !credsOk || !leaveUrl.trim()}
+              >
+                {leaveMut.isPending ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                )}
+                Sync leave now
+              </Button>
             </div>
           </div>
+
+          {leaveMut.data && (
+            <div className="rounded-md border border-border p-3 text-xs space-y-3">
+              <div className="font-medium text-sm">Last leave sync results</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Stat label="Rows pulled" value={leaveMut.data.total} />
+                <Stat label="Upserted" value={leaveMut.data.upserted} tone="success" />
+                <Stat
+                  label="Skipped / errors"
+                  value={leaveMut.data.skipped.length + leaveMut.data.errors.length}
+                  tone={leaveMut.data.errors.length ? "danger" : undefined}
+                />
+              </div>
+
+              {leaveMut.data.unmatchedStaff.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Unmatched staff ({leaveMut.data.unmatchedStaff.length})
+                  </summary>
+                  <div className="mt-2 break-all text-muted-foreground">
+                    {leaveMut.data.unmatchedStaff.join(", ")}
+                  </div>
+                </details>
+              )}
+
+              {leaveMut.data.skipped.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Skipped rows ({leaveMut.data.skipped.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-muted-foreground">
+                    {leaveMut.data.skipped.slice(0, 200).map((s, i) => (
+                      <li key={i}>
+                        {s.label} — <span className="italic">{s.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {leaveMut.data.errors.length > 0 && (
+                <details open className="rounded border border-destructive/40 p-2">
+                  <summary className="cursor-pointer font-medium text-destructive">
+                    Errors ({leaveMut.data.errors.length})
+                  </summary>
+                  <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-destructive">
+                    {leaveMut.data.errors.map((e, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{e.label}</span> — {e.error}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {leaveMut.data.sampleKeys.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Detected CLWRota columns ({leaveMut.data.sampleKeys.length})
+                  </summary>
+                  <div className="mt-2 break-all text-muted-foreground">
+                    {leaveMut.data.sampleKeys.join(", ")}
+                  </div>
+                </details>
+              )}
+
+              {leaveMut.data.rawPreview && leaveMut.data.total === 0 && (
+                <div>
+                  <div className="font-medium text-foreground">Response preview:</div>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/40 p-2 text-[10px]">
+                    {leaveMut.data.rawPreview}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
 
           {rotaMut.data && (
             <div className="rounded-md border border-border p-3 text-xs space-y-3">
