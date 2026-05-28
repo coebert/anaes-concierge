@@ -171,37 +171,24 @@ export function withRollingFutureWindow(rawUrl: string, monthsAhead = 12): strin
  * silently dropping all rows. We always add the fields the sync needs.
  */
 export function ensureLeaveReportFields(rawUrl: string): string {
-  // The CLWRota `leave_events` endpoint ONLY returns event/cost fields
-  // (start_time, end_time, date, duration, *_cost, leave_year*, rota_status,
-  // hospital_holiday_name, is_over_hospital_holiday). It does NOT expose
-  // person, leave_type, or status fields — requesting any of those produces
-  // a 400 Bad Request that aborts the whole webhook.
-  //
-  // For staff-matchable leave we need a different endpoint (typically
-  // `query/leaves` instead of `query/leave_events`). Until the coordinator
-  // configures that URL, we leave the URL untouched so the report at least
-  // succeeds and the rota/staff syncs are not blocked.
+  // CLWRota's `leave_events` endpoint supports person.*, leave_type.*,
+  // leave_request.* and leave_submittal.* — but NOT a top-level
+  // `status.name` or `reason`. Status lives on `leave_request.state`
+  // (or `leave_submittal.state`); free-text on `leave_request.details`.
+  // Requesting an unknown field returns 400 and aborts the whole sync.
   if (!rawUrl) return rawUrl;
+  const required = [
+    "start_time", "end_time", "date", "duration",
+    "person.email", "person.local_id", "person.esr_employee_number",
+    "person.first_name", "person.last_name", "person.rota_name",
+    "leave_type.name",
+    "leave_request.local_id", "leave_request.state",
+    "leave_request.start_date", "leave_request.end_date",
+    "leave_request.details",
+    "leave_submittal.state",
+  ];
   try {
     const u = new URL(rawUrl);
-    if (u.pathname.includes("/leave_events")) {
-      // Only ensure the date columns we rely on are present; never add
-      // person/leave_type/status to a leave_events URL.
-      const existing = u.searchParams.get("fields");
-      const set = new Set(
-        (existing ?? "").split(",").map((s) => s.trim()).filter(Boolean),
-      );
-      for (const f of ["start_time", "end_time", "date", "duration"]) set.add(f);
-      u.searchParams.set("fields", Array.from(set).join(","));
-      return u.toString();
-    }
-    // Non-leave_events endpoints (e.g. `leaves`) do expose person/type/status.
-    const required = [
-      "start_time", "end_time", "date", "duration",
-      "person.email", "person.local_id", "person.esr_employee_number",
-      "person.first_name", "person.last_name", "person.rota_name",
-      "leave_type.name", "status.name", "reason",
-    ];
     const existing = u.searchParams.get("fields");
     const set = new Set(
       (existing ?? "").split(",").map((s) => s.trim()).filter(Boolean),
@@ -213,6 +200,7 @@ export function ensureLeaveReportFields(rawUrl: string): string {
     return rawUrl;
   }
 }
+
 
 
 async function fetchReportRaw(url: string, apiKey: string): Promise<string> {
