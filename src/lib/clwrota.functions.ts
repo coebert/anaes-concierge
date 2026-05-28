@@ -1512,9 +1512,11 @@ export async function performLeaveSync() {
 
     const startRaw = pick(row, [
       "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
+      "start_time", "date",
     ]);
     const endRaw = pick(row, [
       "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
+      "end_time", "date",
     ]);
     const typeRaw = pick(row, [
       "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
