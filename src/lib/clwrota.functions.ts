@@ -163,6 +163,34 @@ export function withRollingFutureWindow(rawUrl: string, monthsAhead = 12): strin
   }
 }
 
+/**
+ * CLWRota leave_events report only returns the fields requested in the
+ * `fields=` query param. Coordinators have historically configured the URL
+ * with only cost/date metadata and no person identifier or leave-type
+ * fields — making every returned row impossible to match to a profile and
+ * silently dropping all rows. We always add the fields the sync needs.
+ */
+export function ensureLeaveReportFields(rawUrl: string): string {
+  const required = [
+    "start_time", "end_time", "date", "duration",
+    "person.email", "person.local_id", "person.esr_employee_number",
+    "person.first_name", "person.last_name", "person.rota_name",
+    "leave_type.name", "status.name", "reason",
+  ];
+  try {
+    const u = new URL(rawUrl);
+    const existing = u.searchParams.get("fields");
+    const set = new Set(
+      (existing ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    );
+    for (const f of required) set.add(f);
+    u.searchParams.set("fields", Array.from(set).join(","));
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 async function fetchReportRaw(url: string, apiKey: string): Promise<string> {
   const effectiveUrl = withRollingFutureWindow(url);
   const res = await fetch(effectiveUrl, {
@@ -1407,7 +1435,7 @@ export async function performLeaveSync() {
     unmatchedStaff: [] as string[],
   };
 
-  const url = settings?.leave_report_url;
+  const url = ensureLeaveReportFields(settings?.leave_report_url ?? "");
   if (!url) return { ...emptyResult, message: "No leave report URL configured." };
 
   let rows: Record<string, unknown>[];
@@ -1484,9 +1512,11 @@ export async function performLeaveSync() {
 
     const startRaw = pick(row, [
       "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
+      "start_time", "date",
     ]);
     const endRaw = pick(row, [
       "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
+      "end_time", "date",
     ]);
     const typeRaw = pick(row, [
       "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
