@@ -322,15 +322,21 @@ export async function performStaffSync() {
       };
     }
 
-    // Load existing profiles once, indexed by lower-cased email.
+    // Load existing profiles once, indexed by lower-cased email AND by
+    // CLWRota external id so we can fall back when the email in CLWRota has
+    // changed (otherwise the insert path trips profiles_clwrota_external_id_key).
     const { data: profiles, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, email");
+      .select("id, email, clwrota_external_id");
     if (profErr) throw new Error(profErr.message);
     const byEmail = new Map<string, string>();
+    const byExtId = new Map<string, { id: string; email: string | null }>();
     for (const p of profiles ?? []) {
       if (p.email) byEmail.set(p.email.toLowerCase(), p.id);
+      if (p.clwrota_external_id)
+        byExtId.set(String(p.clwrota_external_id), { id: p.id, email: p.email ?? null });
     }
+
 
     let matched = 0;
     let updated = 0;
@@ -504,7 +510,22 @@ export async function performStaffSync() {
         !Number.isNaN(Date.parse(endDate)) &&
         Date.parse(endDate) < Date.now();
 
-      const profileId = byEmail.get(emailLower);
+      let profileId = byEmail.get(emailLower);
+
+      // Fall back to clwrota_external_id when the email in CLWRota has changed
+      // for an already-known staff member. Without this we'd try to INSERT a
+      // new profile carrying the same external id and hit the unique constraint
+      // profiles_clwrota_external_id_key.
+      if (!profileId && externalId) {
+        const byExt = byExtId.get(externalId);
+        if (byExt) {
+          profileId = byExt.id;
+          // Refresh maps so a later row in this run sees the new linkage.
+          byEmail.set(emailLower, byExt.id);
+          if (byExt.email) byEmail.delete(byExt.email.toLowerCase());
+          byExtId.set(externalId, { id: byExt.id, email: emailTrimmed });
+        }
+      }
 
       if (!profileId) {
         const newRow: {
@@ -541,14 +562,19 @@ export async function performStaffSync() {
           });
         } else {
           insertedList.push({ name: fullName || emailTrimmed, email: emailTrimmed });
-          if (insData?.id) byEmail.set(emailLower, insData.id);
+          if (insData?.id) {
+            byEmail.set(emailLower, insData.id);
+            if (externalId) byExtId.set(externalId, { id: insData.id, email: emailTrimmed });
+          }
         }
         continue;
       }
 
+
       matched++;
       const patch: {
         full_name?: string;
+        email?: string;
         clwrota_external_id?: string;
         gmc_number?: string;
         start_date?: string;
@@ -558,6 +584,14 @@ export async function performStaffSync() {
       } = {};
       if (fullName) patch.full_name = fullName;
       if (externalId) patch.clwrota_external_id = externalId;
+      // If we matched this row via external id, the email in CLWRota differs
+      // from the stored one — propagate the new email.
+      if (externalId) {
+        const tracked = byExtId.get(externalId);
+        if (tracked && tracked.id === profileId && (tracked.email ?? "").toLowerCase() !== emailLower) {
+          patch.email = emailTrimmed;
+        }
+      }
       if (gmc) patch.gmc_number = gmc;
       if (startDate) patch.start_date = startDate;
       if (derivedGrade) patch.grade = derivedGrade;
