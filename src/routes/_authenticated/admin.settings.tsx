@@ -141,6 +141,19 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const leaveMut = useMutation({
+    mutationFn: () => syncLeave({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(res.message);
+      else toast.warning(res.message);
+      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
+      void qc.invalidateQueries({ queryKey: ["leave-requests"] });
+      void qc.invalidateQueries({ queryKey: ["leave"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center">
