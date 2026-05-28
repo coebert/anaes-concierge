@@ -1535,14 +1535,17 @@ export async function performLeaveSync() {
       "absence_type", "type", "Type", "reason_category", "kind",
     ]);
     const statusRaw = pick(row, [
+      "leave_request.state", "leave_submittal.state",
       "status.name", "status", "state", "Status", "approval_status",
     ]);
     const reasonText = pick(row, [
+      "leave_request.details", "leave_submittal.admin_notes",
       "reason", "comment", "comments", "notes", "description", "Notes",
     ]);
     const externalId =
-      pick(row, ["id", "leave_id", "request_id", "external_id"]) ??
+      pick(row, ["leave_request.local_id", "id", "leave_id", "request_id", "external_id"]) ??
       (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
+
 
     const start_date = normaliseDate(startRaw);
     const end_date = normaliseDate(endRaw);
