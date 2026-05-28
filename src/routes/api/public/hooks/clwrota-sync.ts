@@ -51,11 +51,14 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           result.leaveError = e instanceof Error ? e.message : String(e);
         }
 
-        const ok = !result.staffError && !result.rotaError && !result.leaveError;
+        // Leave sync is best-effort — a misconfigured leave_report_url must
+        // NOT mark the whole cron job (staff + rota) as failed.
+        const ok = !result.staffError && !result.rotaError;
         return new Response(JSON.stringify({ ok, ...result }), {
           status: ok ? 200 : 500,
           headers: { "Content-Type": "application/json" },
         });
+
 
       },
     },
