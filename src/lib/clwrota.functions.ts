@@ -574,6 +574,7 @@ export async function performStaffSync() {
       matched++;
       const patch: {
         full_name?: string;
+        email?: string;
         clwrota_external_id?: string;
         gmc_number?: string;
         start_date?: string;
@@ -583,6 +584,14 @@ export async function performStaffSync() {
       } = {};
       if (fullName) patch.full_name = fullName;
       if (externalId) patch.clwrota_external_id = externalId;
+      // If we matched this row via external id, the email in CLWRota differs
+      // from the stored one — propagate the new email.
+      if (externalId) {
+        const tracked = byExtId.get(externalId);
+        if (tracked && tracked.id === profileId && (tracked.email ?? "").toLowerCase() !== emailLower) {
+          patch.email = emailTrimmed;
+        }
+      }
       if (gmc) patch.gmc_number = gmc;
       if (startDate) patch.start_date = startDate;
       if (derivedGrade) patch.grade = derivedGrade;
