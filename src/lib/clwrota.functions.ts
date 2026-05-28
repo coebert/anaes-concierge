@@ -322,15 +322,21 @@ export async function performStaffSync() {
       };
     }
 
-    // Load existing profiles once, indexed by lower-cased email.
+    // Load existing profiles once, indexed by lower-cased email AND by
+    // CLWRota external id so we can fall back when the email in CLWRota has
+    // changed (otherwise the insert path trips profiles_clwrota_external_id_key).
     const { data: profiles, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, email");
+      .select("id, email, clwrota_external_id");
     if (profErr) throw new Error(profErr.message);
     const byEmail = new Map<string, string>();
+    const byExtId = new Map<string, { id: string; email: string | null }>();
     for (const p of profiles ?? []) {
       if (p.email) byEmail.set(p.email.toLowerCase(), p.id);
+      if (p.clwrota_external_id)
+        byExtId.set(String(p.clwrota_external_id), { id: p.id, email: p.email ?? null });
     }
+
 
     let matched = 0;
     let updated = 0;
