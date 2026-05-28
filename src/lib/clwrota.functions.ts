@@ -510,7 +510,22 @@ export async function performStaffSync() {
         !Number.isNaN(Date.parse(endDate)) &&
         Date.parse(endDate) < Date.now();
 
-      const profileId = byEmail.get(emailLower);
+      let profileId = byEmail.get(emailLower);
+
+      // Fall back to clwrota_external_id when the email in CLWRota has changed
+      // for an already-known staff member. Without this we'd try to INSERT a
+      // new profile carrying the same external id and hit the unique constraint
+      // profiles_clwrota_external_id_key.
+      if (!profileId && externalId) {
+        const byExt = byExtId.get(externalId);
+        if (byExt) {
+          profileId = byExt.id;
+          // Refresh maps so a later row in this run sees the new linkage.
+          byEmail.set(emailLower, byExt.id);
+          if (byExt.email) byEmail.delete(byExt.email.toLowerCase());
+          byExtId.set(externalId, { id: byExt.id, email: emailTrimmed });
+        }
+      }
 
       if (!profileId) {
         const newRow: {
@@ -547,10 +562,14 @@ export async function performStaffSync() {
           });
         } else {
           insertedList.push({ name: fullName || emailTrimmed, email: emailTrimmed });
-          if (insData?.id) byEmail.set(emailLower, insData.id);
+          if (insData?.id) {
+            byEmail.set(emailLower, insData.id);
+            if (externalId) byExtId.set(externalId, { id: insData.id, email: emailTrimmed });
+          }
         }
         continue;
       }
+
 
       matched++;
       const patch: {
