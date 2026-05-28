@@ -26,7 +26,11 @@ type DutyType =
   | "icu_consultant_oncall"
   | "general_consultant_oncall"
   | "registrar_oncall"
-  | "sho_oncall";
+  | "sho_oncall"
+  | "spa"
+  | "admin"
+  | "teaching"
+  | "non_clinical";
 
 interface DutyConfig {
   type: DutyType;
@@ -46,6 +50,10 @@ const DUTY_CONFIG: DutyConfig[] = [
   { type: "general_consultant_oncall", label: "General consultant on-call", slots: ALL_SLOTS },
   { type: "registrar_oncall", label: "Registrar on-call", slots: ALL_SLOTS },
   { type: "sho_oncall", label: "SHO on-call", slots: ALL_SLOTS },
+  { type: "spa", label: "SPA (Supporting Professional Activities)", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
+  { type: "admin", label: "Admin / management", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
+  { type: "teaching", label: "Teaching", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
+  { type: "non_clinical", label: "Other non-clinical", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
 ];
 
 const SLOT_LABEL: Record<Slot, string> = { am: "AM", pm: "PM", eve: "Eve", night: "Night" };
