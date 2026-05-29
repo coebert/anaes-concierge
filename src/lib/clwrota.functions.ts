@@ -829,22 +829,16 @@ async function fetchReport(url: string, apiKey: string) {
   if (!res.ok) {
     throw new Error(`CLWRota report failed: ${res.status} ${text.slice(0, 200)}`);
   }
-  // Try JSON first, fall back to CSV row count.
+  // Count rows using the shared parser so the dashboard reflects ingestable
+  // rows (handles Rotamap's {columns, rows} shape).
   let rows = 0;
   try {
-    const parsed = JSON.parse(text);
-    rows = Array.isArray(parsed)
-      ? parsed.length
-      : Array.isArray(parsed?.data)
-        ? parsed.data.length
-        : Array.isArray(parsed?.rows)
-          ? parsed.rows.length
-          : 0;
+    rows = parseRows(text).length;
   } catch {
-    // CSV — count non-empty lines minus header
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
     rows = Math.max(0, lines.length - 1);
   }
+
   return { rows, bytes: text.length };
 }
 
