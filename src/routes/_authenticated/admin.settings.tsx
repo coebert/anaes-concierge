@@ -667,33 +667,6 @@ function SettingsPage() {
             </div>
           )}
 
-          {syncMut.data?.details && syncMut.data.details.length > 0 && (
-            <div className="rounded-md border border-border p-3 text-xs">
-              <div className="mb-1 font-medium">This run:</div>
-              <ul className="space-y-1">
-                {syncMut.data.details.map((d) => (
-                  <li key={d.name} className="flex justify-between gap-2">
-                    <span className="capitalize">{d.name}</span>
-                    <span className="text-muted-foreground">
-                      {d.error ? (
-                        <span className="text-destructive">{d.error}</span>
-                      ) : (
-                        `${d.rows} rows · ${d.bytes} bytes`
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Note: this initial release fetches and counts rows from the
-            configured CLWRota report URLs and records the result. Mapping the
-            pulled rows into local rota / leave / staff records will be wired up
-            once we see a sample payload from your CLWRota deployment — the
-            field names vary per organisation.
-          </p>
         </CardContent>
       </Card>
     </div>
