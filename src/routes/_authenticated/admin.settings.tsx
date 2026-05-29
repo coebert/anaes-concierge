@@ -289,12 +289,6 @@ function SettingsPage() {
                 {saveMut.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                 Save settings
               </Button>
-
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
-                {saveMut.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                Save URLs
-              </Button>
               <Button
                 variant="outline"
                 onClick={() => testMut.mutate()}
