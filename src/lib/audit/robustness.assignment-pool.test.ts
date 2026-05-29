@@ -62,7 +62,7 @@ function makeChain(table: string) {
     in: () => chain,
     then: (onfulfilled) =>
       Promise.resolve({
-        data: (fixture as Record<string, Row[]>)[table] ?? [],
+        data: (fixture as unknown as Record<string, Row[]>)[table] ?? [],
         error: null,
       }).then(onfulfilled),
   };
