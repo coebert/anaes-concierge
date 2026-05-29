@@ -4,14 +4,20 @@ import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus } from "lucide-react";
+import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee } from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
-import { loadDayDetail, riskColor, type DayDetailSession, type HalfDayCapacity } from "@/lib/audit/robustness";
-
+import {
+  loadDayDetail, riskColor, riskLabel,
+  type DayDetailSession, type HalfDayCapacity, type OtherDutyDetail,
+} from "@/lib/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
   component: DayDetailPage,
 });
+
+function formatDuty(d: string): string {
+  return d.replace(/_/g, " ");
+}
 
 function DayDetailPage() {
   const { date } = Route.useParams();
@@ -41,17 +47,16 @@ function DayDetailPage() {
           {formatDateGB(data.date)}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Per-session coverage and the people pulling headroom down.
+          Per-session coverage. Lists need a consultant (or ST6/ST7 solo).
+          SAS and junior trainees pair with a consultant but cannot solo-cover.
         </p>
       </header>
 
-      {/* Headroom summary */}
       <div className="grid gap-4 sm:grid-cols-2">
         <HalfSummary label="AM" h={data.am} />
         <HalfSummary label="PM" h={data.pm} />
       </div>
 
-      {/* Theatre session lists */}
       <div className="grid gap-4 lg:grid-cols-2">
         <SessionsCard title="AM theatre lists" sessions={amSessions} />
         <SessionsCard title="PM theatre lists" sessions={pmSessions} />
@@ -64,79 +69,173 @@ function DayDetailPage() {
         </div>
       )}
 
-      {/* Headroom drag-down lists */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+      {(data.consultantsOnSpa.am.length > 0 || data.consultantsOnSpa.pm.length > 0) && (
+        <Card className="border-orange-500/40">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <UserMinus className="h-4 w-4 text-red-500" />
-              On approved leave ({data.onLeave.length})
+              <Coffee className="h-4 w-4 text-orange-500" />
+              Consultants on SPA (flexible cover)
             </CardTitle>
-            <CardDescription>Each of these drops headroom by 1.</CardDescription>
+            <CardDescription>
+              Could be redeployed onto a list, but pulling them disrupts their
+              SPA time and should be flagged.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {data.onLeave.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Nobody.</div>
-            ) : (
-              <ul className="space-y-1 text-sm">
-                {data.onLeave.map((l) => (
-                  <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
-                    <span>{l.staffName}</span>
-                    <span className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline" className="capitalize">{l.grade}</Badge>
-                      <Badge variant="secondary">{l.type}</Badge>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <SpaList label="AM" people={data.consultantsOnSpa.am} />
+            <SpaList label="PM" people={data.consultantsOnSpa.pm} />
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              LTFT day off ({data.ltftOff.length})
-            </CardTitle>
-            <CardDescription>Contracted non-working day for this weekday.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {data.ltftOff.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Nobody.</div>
-            ) : (
-              <ul className="space-y-1 text-sm">
-                {data.ltftOff.map((l) => (
-                  <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
-                    <span>{l.staffName}</span>
-                    <Badge variant="outline" className="capitalize text-xs">{l.grade}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <PeopleCard
+          title={`On approved leave (${data.onLeave.length})`}
+          icon={<UserMinus className="h-4 w-4 text-red-500" />}
+          description="Annual / study / sick — unavailable all day."
+        >
+          {data.onLeave.length === 0 ? (
+            <Empty />
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {data.onLeave.map((l) => (
+                <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
+                  <span>{l.staffName}</span>
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
+                    <Badge variant="secondary" className="text-[10px]">{l.type}</Badge>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </PeopleCard>
+
+        <PeopleCard
+          title={`On other duties (${data.onOtherDuty.length})`}
+          icon={<Briefcase className="h-4 w-4 text-blue-500" />}
+          description="On-call, ICU, obstetrics, teaching, admin — not available for lists."
+        >
+          {data.onOtherDuty.length === 0 ? (
+            <Empty />
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {data.onOtherDuty.map((l) => (
+                <li key={l.staffId + l.duty} className="flex items-center justify-between rounded border px-2 py-1">
+                  <span>{l.staffName}</span>
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
+                    <Badge variant="outline" className="text-[10px] capitalize">{formatDuty(l.duty)}</Badge>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </PeopleCard>
+
+        <PeopleCard
+          title={`LTFT day off (${data.ltftOff.length})`}
+          icon={<ClipboardList className="h-4 w-4 text-muted-foreground" />}
+          description="Contracted non-working day."
+        >
+          {data.ltftOff.length === 0 ? (
+            <Empty />
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {data.ltftOff.map((l) => (
+                <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
+                  <span>{l.staffName}</span>
+                  <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </PeopleCard>
       </div>
     </div>
   );
 }
 
-function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
+function Empty() {
+  return <div className="text-sm text-muted-foreground">Nobody.</div>;
+}
 
+function GradeBadge({ grade, trainingLevel }: { grade: string; trainingLevel: string | null }) {
+  const label = grade === "trainee" && trainingLevel ? trainingLevel : grade;
+  return <Badge variant="outline" className="text-[10px] capitalize">{label}</Badge>;
+}
+
+function SpaList({ label, people }: { label: string; people: OtherDutyDetail[] }) {
+  return (
+    <div>
+      <div className="mb-1 text-xs font-medium text-muted-foreground">{label}</div>
+      {people.length === 0 ? (
+        <div className="text-sm text-muted-foreground">—</div>
+      ) : (
+        <ul className="space-y-1 text-sm">
+          {people.map((p) => (
+            <li key={p.staffId} className="rounded border border-orange-500/30 bg-orange-500/5 px-2 py-1">
+              {p.staffName}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PeopleCard({
+  title, icon, description, children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">{icon}{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
+function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
           <span>{label}</span>
           <span className={cn("rounded px-2 py-0.5 text-xs font-medium", riskColor(h.risk))}>
-            headroom {h.headroom}
+            {riskLabel(h.risk)} · headroom {h.headroom}
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-2 text-center text-xs">
-        <Stat label="Required" value={h.required} />
-        <Stat label="Available" value={h.available} />
-        <Stat label="Unfilled" value={h.unfilled} />
+      <CardContent className="space-y-2">
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <Stat label="Lists" value={h.required} />
+          <Stat label="Solo-capable" value={h.soloCapable} />
+          <Stat label="Unfilled" value={h.unfilled} />
+        </div>
+        <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
+          <Stat label="Consultants" value={h.consultantsAvailable} />
+          <Stat label="ST6/7" value={h.seniorTraineesAvailable} />
+          <Stat label="SAS" value={h.sasAvailable} />
+          <Stat label="Jr trainees" value={h.juniorTraineesAvailable} />
+        </div>
+        {h.consultantsOnSpa > 0 && (
+          <div className="rounded border border-orange-500/40 bg-orange-500/10 px-2 py-1 text-xs">
+            <Coffee className="mr-1 inline h-3 w-3 text-orange-600" />
+            {h.consultantsOnSpa} consultant(s) on SPA — flexible cover available
+            {h.risk === "spa_required" && " (REQUIRED to fill the gap)"}.
+          </div>
+        )}
+        <div className="text-[11px] text-muted-foreground">
+          {h.onLeave} on leave · {h.onOtherDuty} on other duties (on-call / ICU / obs / teaching)
+        </div>
       </CardContent>
     </Card>
   );
@@ -191,9 +290,7 @@ function SessionsCard({ title, sessions }: { title: string; sessions: DayDetailS
                       <span>{a.staffName}</span>
                       <span className="flex items-center gap-1.5 text-muted-foreground">
                         <span className="capitalize">{a.role}</span>
-                        <Badge variant="outline" className="text-[10px] capitalize">
-                          {a.grade}
-                        </Badge>
+                        <GradeBadge grade={a.grade} trainingLevel={a.trainingLevel} />
                       </span>
                     </li>
                   ))}
