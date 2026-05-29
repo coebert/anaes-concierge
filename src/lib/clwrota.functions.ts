@@ -1303,7 +1303,9 @@ export async function performRotaSync() {
         [consultantName, roleRaw, specialtyName, theatreName],
         prof?.grade,
         prof?.training_level,
+        dutyMappings,
       );
+
 
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
