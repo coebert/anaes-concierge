@@ -241,18 +241,65 @@ export function clampDateWindow(
 
 
 
-async function fetchReportRaw(url: string, apiKey: string): Promise<string> {
-  const effectiveUrl = withRollingFutureWindow(url);
-  const res = await fetch(effectiveUrl, {
-    method: "GET",
-    headers: { "X-Auth": apiKey, Accept: "application/json, text/csv;q=0.9" },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`CLWRota report failed: ${res.status} ${text.slice(0, 200)}`);
+/**
+ * True if the error/response indicates a transient upstream timeout or
+ * temporary gateway failure that's worth retrying.
+ */
+function isTransientUpstreamError(status: number, body: string, err?: unknown): boolean {
+  if (status === 408 || status === 502 || status === 503 || status === 504 || status === 524 || status === 522) {
+    return true;
   }
-  return text;
+  const haystack = `${body} ${err instanceof Error ? err.message : ""}`.toLowerCase();
+  return (
+    haystack.includes("upstream timeout") ||
+    haystack.includes("gateway timeout") ||
+    haystack.includes("etimedout") ||
+    haystack.includes("econnreset") ||
+    haystack.includes("network connection lost") ||
+    haystack.includes("fetch failed")
+  );
 }
+
+async function fetchReportRaw(
+  url: string,
+  apiKey: string,
+  { maxAttempts = 4, baseDelayMs = 1000 }: { maxAttempts?: number; baseDelayMs?: number } = {},
+): Promise<string> {
+  const effectiveUrl = withRollingFutureWindow(url);
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(effectiveUrl, {
+        method: "GET",
+        headers: { "X-Auth": apiKey, Accept: "application/json, text/csv;q=0.9" },
+      });
+      const text = await res.text();
+      if (res.ok) return text;
+
+      const transient = isTransientUpstreamError(res.status, text);
+      const errMsg = `CLWRota report failed: ${res.status} ${text.slice(0, 200)}`;
+      if (!transient || attempt === maxAttempts) {
+        throw new Error(errMsg);
+      }
+      lastErr = new Error(errMsg);
+    } catch (err) {
+      // Network-level failure (fetch threw). Retry if transient.
+      const transient = isTransientUpstreamError(0, "", err);
+      if (!transient || attempt === maxAttempts) throw err;
+      lastErr = err;
+    }
+    // Exponential backoff with jitter: 1s, 2s, 4s, 8s … capped at 15s.
+    const delay = Math.min(15000, baseDelayMs * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+    console.warn(
+      `[clwrota] transient fetch failure on attempt ${attempt}/${maxAttempts}, retrying in ${delay}ms`,
+      lastErr instanceof Error ? lastErr.message : lastErr,
+    );
+    await new Promise((r) => setTimeout(r, delay));
+  }
+  // Unreachable, but keeps TS happy.
+  throw lastErr instanceof Error ? lastErr : new Error("CLWRota report failed");
+}
+
 
 function parseRows(text: string): Record<string, unknown>[] {
   // Try JSON first.
