@@ -40,7 +40,8 @@ function RobustnessPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Rota robustness</h1>
           <p className="text-sm text-muted-foreground">
             Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks.
-            Headroom = staff available – theatre lists needing cover.
+            Headroom = consultants + ST6/7 trainees available, minus theatre lists.
+            On-call, ICU, obstetrics, teaching, admin, leave and LTFT days are excluded.
           </p>
         </div>
         <Badge variant="secondary">{formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}</Badge>
