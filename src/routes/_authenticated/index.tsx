@@ -137,14 +137,14 @@ function AuditDashboard() {
             body="Heatmap of approved + pending leave across the calendar; predict surge weeks and recurring hot spots."
             stat={`${data?.leaveSoon ?? "—"} leave items next 90d`}
           />
-
           <PillarCard
-            to="/admin/dashboard"
+            to="/robustness"
             icon={ShieldAlert}
             title="Rota robustness"
             body="Coverage headroom per session; what-if simulator for sickness scenarios and trainee displacement."
-            stat="Coming soon · rota safety lens"
+            stat="Forward-looking risk report"
           />
+
         </div>
       </section>
 
