@@ -239,7 +239,6 @@ function SettingsPage() {
                 onChange={(e) => setLeaveUrl(e.target.value)}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="staff-url">Staff report URL</Label>
               <Input
@@ -249,6 +248,47 @@ function SettingsPage() {
                 onChange={(e) => setStaffUrl(e.target.value)}
               />
             </div>
+
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+              <div>
+                <div className="text-sm font-medium">Rota sync date window</div>
+                <p className="text-xs text-muted-foreground">
+                  Narrows the rota fetch to a rolling window around today so the
+                  upstream call completes within the gateway timeout. Historical
+                  rows already synced are preserved.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="days-back">Days back</Label>
+                  <Input
+                    id="days-back"
+                    type="number"
+                    min={0}
+                    max={3650}
+                    value={daysBack}
+                    onChange={(e) => setDaysBack(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="days-ahead">Days ahead</Label>
+                  <Input
+                    id="days-ahead"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={daysAhead}
+                    onChange={(e) => setDaysAhead(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+                {saveMut.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Save settings
+              </Button>
 
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
