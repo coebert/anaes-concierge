@@ -795,7 +795,24 @@ export async function performStaffSync() {
         : null,
       last_pulled_rows: rows.length,
     });
+
+    return {
+      ok: errors.length === 0,
+      message: summary,
+      total: rows.length,
+      matched,
+      updated,
+      insertedCount: inserted,
+      insertedList,
+      unchangedCount,
+      skipped,
+      errors,
+      rawPreview,
+      sampleKeys,
+      emailDiagnostics,
+    };
 }
+
 
 
 
