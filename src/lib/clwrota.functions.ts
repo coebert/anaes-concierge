@@ -106,6 +106,8 @@ const SettingsSchema = z.object({
   rota_report_url: urlOrNull,
   leave_report_url: urlOrNull,
   staff_report_url: urlOrNull,
+  sync_days_back: z.coerce.number().int().min(0).max(3650).default(30),
+  sync_days_ahead: z.coerce.number().int().min(1).max(3650).default(120),
 });
 
 export const saveClwRotaSettings = createServerFn({ method: "POST" })
