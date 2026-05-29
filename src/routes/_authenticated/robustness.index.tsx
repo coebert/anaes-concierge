@@ -251,7 +251,14 @@ type StatProps = {
   tone: "amber" | "red" | "emerald";
 };
 
-function Stat(props: StatProps) {
+function UnfilledBadge({ count }: { count: number }) {
+  if (count === 0) return <span className="text-muted-foreground">0</span>;
+  return (
+    <span className="inline-flex items-center justify-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+      {count}
+    </span>
+  );
+}
   const { label, value, tone } = props;
   const Icon = props.icon;
   const toneClass = tone === "red"
