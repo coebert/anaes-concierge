@@ -307,15 +307,47 @@ function parseRows(text: string): Record<string, unknown>[] {
     const parsed = JSON.parse(text);
     if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
     if (parsed && typeof parsed === "object") {
-      // Common Rotamap shapes: { data: [...] }, { rows: [...] }, { results: [...] },
-      // or a top-level key matching the report name e.g. { staff: [...] }, { people: [...] }.
       const obj = parsed as Record<string, unknown>;
+
+      // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
+      // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
+      // pick() lookups work.
+      const cols = obj["columns"];
+      const rowsRaw = obj["rows"];
+      if (
+        Array.isArray(cols) && cols.length > 0 &&
+        typeof cols[0] === "object" && cols[0] !== null &&
+        "field_name" in (cols[0] as Record<string, unknown>) &&
+        Array.isArray(rowsRaw)
+      ) {
+        const fieldNames = (cols as Array<Record<string, unknown>>).map(
+          (c) => String(c.field_name ?? ""),
+        );
+        // If rows are already keyed objects, return as-is.
+        if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
+          return rowsRaw as Record<string, unknown>[];
+        }
+        return (rowsRaw as unknown[]).map((r) => {
+          const out: Record<string, unknown> = {};
+          if (Array.isArray(r)) {
+            fieldNames.forEach((name, i) => {
+              if (name) out[name] = r[i];
+            });
+          }
+          return out;
+        });
+      }
+
+      // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] },
+      // or a top-level key matching the report name e.g. { staff: [...] }, { people: [...] }.
       for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
         if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[];
       }
-      // Fallback: first array-valued property anywhere at the top level.
-      for (const v of Object.values(obj)) {
-        if (Array.isArray(v) && v.length && typeof v[0] === "object") {
+      // Fallback: first array-valued property anywhere at the top level whose
+      // elements are non-array objects (avoids picking `columns` metadata).
+      for (const [k, v] of Object.entries(obj)) {
+        if (k === "columns") continue;
+        if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
           return v as Record<string, unknown>[];
         }
       }
@@ -336,6 +368,7 @@ function parseRows(text: string): Record<string, unknown>[] {
     });
   }
 }
+
 
 function pick(row: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {
