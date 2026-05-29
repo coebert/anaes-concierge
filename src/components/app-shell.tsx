@@ -186,9 +186,7 @@ function BackButton() {
     </div>
   );
 }
-    </div>
-  );
-}
+
 
 
 function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
