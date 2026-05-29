@@ -142,26 +142,61 @@ function SettingsPage() {
 
   const syncAllMut = useMutation({
     mutationFn: async () => {
-      // Run sequentially: staff first (so rota assignments can match people),
-      // then rota, then leave.
-      const staff = staffUrl.trim() ? await staffMut.mutateAsync() : null;
-      const rota = rotaUrl.trim() ? await rotaMut.mutateAsync() : null;
-      const leave = leaveUrl.trim() ? await leaveMut.mutateAsync() : null;
-      return { staff, rota, leave };
+      // Run each step independently so a single failure (e.g. a Cloudflare
+      // CPU/timeout 502 on the heaviest dataset) doesn't abort the other
+      // steps. Order is staff → rota → leave so rota assignments can match
+      // freshly-synced people.
+      const runStep = async <T,>(
+        name: "staff" | "rota" | "leave",
+        urlValue: string,
+        fn: () => Promise<T>,
+      ): Promise<{ name: string; ok: boolean; message: string; data?: T }> => {
+        if (!urlValue.trim()) {
+          return { name, ok: true, message: "skipped (no URL configured)" };
+        }
+        try {
+          const data = await fn();
+          const msg =
+            data && typeof data === "object" && "message" in data
+              ? String((data as { message: unknown }).message)
+              : "done";
+          const ok =
+            data && typeof data === "object" && "ok" in data
+              ? Boolean((data as { ok: unknown }).ok)
+              : true;
+          return { name, ok, message: msg, data };
+        } catch (err) {
+          const raw = err instanceof Error ? err.message : String(err);
+          // Worker 502s come through as opaque "Load failed" / fetch errors;
+          // surface a clearer hint.
+          const friendly = /load failed|fetch|502|cpu time/i.test(raw)
+            ? `${raw} — the upstream sync exceeded the worker time limit. Try syncing this dataset on its own.`
+            : raw;
+          return { name, ok: false, message: friendly };
+        }
+      };
+
+      const staff = await runStep("staff", staffUrl, () => staffMut.mutateAsync());
+      const rota = await runStep("rota", rotaUrl, () => rotaMut.mutateAsync());
+      const leave = await runStep("leave", leaveUrl, () => leaveMut.mutateAsync());
+      return [staff, rota, leave];
     },
-    onSuccess: ({ staff, rota, leave }) => {
-      const parts: string[] = [];
-      if (staff) parts.push(`staff: ${staff.message}`);
-      if (rota) parts.push(`rota: ${rota.message}`);
-      if (leave) parts.push(`leave: ${leave.message}`);
-      if (!parts.length) {
-        toast.warning("No report URLs configured.");
+    onSuccess: (results) => {
+      const failed = results.filter((r) => !r.ok);
+      const summary = results
+        .map((r) => `${r.name}: ${r.ok ? "✓" : "✗"} ${r.message}`)
+        .join(" · ");
+      if (failed.length === 0) {
+        toast.success(`Sync complete — ${summary}`);
+      } else if (failed.length === results.length) {
+        toast.error(`Sync failed — ${summary}`);
       } else {
-        toast.success(`Sync complete — ${parts.join(" · ")}`);
+        toast.warning(`Partial sync — ${summary}`);
       }
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
 
 
