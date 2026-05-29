@@ -162,15 +162,18 @@ export function BreakdownCard({
                         <li
                           key={p.staffId}
                           className={cn(
-                            "flex items-center justify-between gap-2 rounded border border-l-[3px] bg-background/60 px-2 py-1",
+                            "flex flex-col gap-1 rounded border border-l-[3px] bg-background/60 px-2 py-1",
                             entryBorder
                           )}
                         >
-                          <span className="flex items-center gap-1.5">
-                            <span className="font-medium text-sm">{p.staffName}</span>
-                            <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
-                          </span>
-                          <span className="text-right text-muted-foreground">{p.reason}</span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5">
+                              <span className="font-medium text-sm">{p.staffName}</span>
+                              <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
+                            </span>
+                            <span className="text-right text-muted-foreground">{p.reason}</span>
+                          </div>
+                          {p.trainingNote ? <TrainingNoteBadge note={p.trainingNote} /> : null}
                         </li>
                       );
                     })}
