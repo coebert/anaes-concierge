@@ -285,15 +285,25 @@ export async function computeRobustness(
       filledMap.set(date, cur);
     }
 
-    // Any non-theatre duty that day takes the person off the pool.
-    if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+    // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
+    // clinic, future activities) for a specific half-day is removed from
+    // that half's pool.
+    const isClinicalList = poolSets.clinicalList.has(dt);
+
+    if (isClinicalList && a.theatre_session_id && (sess === "am" || sess === "pm")) {
+      const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
+      (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id as string);
+      filledMap.set(date, cur);
+    }
+
+    if (poolSets.unavailable.has(dt)) {
       const set = dailyUnavailable.get(date) ?? new Set<string>();
       set.add(sid);
       dailyUnavailable.set(date, set);
-    } else if (FLEX_DUTY_TYPES.has(dt)) {
+    } else if (poolSets.flex.has(dt)) {
       const key = `${date}|${sess}`;
       const sm = staffStateByDateSession.get(key) ?? new Map<string, AsnState>();
-      // SPA only flags the specific session it covers
+      // SPA-style flex only flags the specific half-day it covers
       if (sess === "am" || sess === "pm") {
         sm.set(sid, "spa");
         staffStateByDateSession.set(key, sm);
@@ -301,7 +311,7 @@ export async function computeRobustness(
         set.add(sid);
         dailySpa.set(`${date}|${sess}`, set);
       }
-    } else if (dt === "theatre" && (sess === "am" || sess === "pm")) {
+    } else if (isClinicalList && (sess === "am" || sess === "pm")) {
       const key = `${date}|${sess}`;
       const sm = staffStateByDateSession.get(key) ?? new Map<string, AsnState>();
       sm.set(sid, "theatre");
