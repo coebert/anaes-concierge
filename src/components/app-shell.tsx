@@ -40,10 +40,12 @@ const NAV: NavItem[] = [
   { to: "/trainees", label: "Trainee audit", icon: GraduationCap, traineeOnly: true },
   { to: "/leave", label: "My leave", icon: ClipboardList },
   { to: "/leave/forecast", label: "Leave forecast", icon: Activity, roles: ["admin", "rota_coordinator"] },
+  { to: "/robustness", label: "Robustness", icon: ShieldCheck, roles: ["admin", "rota_coordinator"] },
   { to: "/calendar", label: "Global calendar", icon: CalendarDays },
   { to: "/me", label: "My rota", icon: CalendarRange },
   { to: "/account", label: "My account", icon: UserCircle },
 ];
+
 
 
 // Coordinator tools: AI-assisted rota writing, custom rules, manual editor.

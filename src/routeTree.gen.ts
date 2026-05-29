@@ -21,8 +21,10 @@ import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as AuthenticatedRobustnessIndexRouteImport } from './routes/_authenticated/robustness.index'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
+import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave.forecast'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
@@ -99,6 +101,12 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedRobustnessIndexRoute =
+  AuthenticatedRobustnessIndexRouteImport.update({
+    id: '/robustness/',
+    path: '/robustness/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -109,6 +117,12 @@ const AuthenticatedTraineesStaffIdRoute =
     id: '/$staffId',
     path: '/$staffId',
     getParentRoute: () => AuthenticatedTraineesRoute,
+  } as any)
+const AuthenticatedRobustnessSimulateRoute =
+  AuthenticatedRobustnessSimulateRouteImport.update({
+    id: '/robustness/simulate',
+    path: '/robustness/simulate',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedLeaveForecastRoute =
   AuthenticatedLeaveForecastRouteImport.update({
@@ -231,8 +245,10 @@ export interface FileRoutesByFullPath {
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
+  '/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
@@ -261,8 +277,10 @@ export interface FileRoutesByTo {
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/chat': typeof AuthenticatedChatIndexRoute
+  '/robustness': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
@@ -294,8 +312,10 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
+  '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
@@ -327,8 +347,10 @@ export interface FileRouteTypes {
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/leave/forecast'
+    | '/robustness/simulate'
     | '/trainees/$staffId'
     | '/chat/'
+    | '/robustness/'
     | '/calendar/staff/$staffId'
     | '/api/public/hooks/clwrota-sync'
   fileRoutesByTo: FileRoutesByTo
@@ -357,8 +379,10 @@ export interface FileRouteTypes {
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/leave/forecast'
+    | '/robustness/simulate'
     | '/trainees/$staffId'
     | '/chat'
+    | '/robustness'
     | '/calendar/staff/$staffId'
     | '/api/public/hooks/clwrota-sync'
   id:
@@ -389,8 +413,10 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/leave/forecast'
+    | '/_authenticated/robustness/simulate'
     | '/_authenticated/trainees/$staffId'
     | '/_authenticated/chat/'
+    | '/_authenticated/robustness/'
     | '/_authenticated/calendar/staff/$staffId'
     | '/api/public/hooks/clwrota-sync'
   fileRoutesById: FileRoutesById
@@ -490,6 +516,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/robustness/': {
+      id: '/_authenticated/robustness/'
+      path: '/robustness'
+      fullPath: '/robustness/'
+      preLoaderRoute: typeof AuthenticatedRobustnessIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/chat/': {
       id: '/_authenticated/chat/'
       path: '/'
@@ -503,6 +536,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/trainees/$staffId'
       preLoaderRoute: typeof AuthenticatedTraineesStaffIdRouteImport
       parentRoute: typeof AuthenticatedTraineesRoute
+    }
+    '/_authenticated/robustness/simulate': {
+      id: '/_authenticated/robustness/simulate'
+      path: '/robustness/simulate'
+      fullPath: '/robustness/simulate'
+      preLoaderRoute: typeof AuthenticatedRobustnessSimulateRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/leave/forecast': {
       id: '/_authenticated/leave/forecast'
@@ -690,6 +730,8 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
+  AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
+  AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -712,6 +754,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
+  AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
+  AuthenticatedRobustnessIndexRoute: AuthenticatedRobustnessIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
