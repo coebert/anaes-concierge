@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -21,6 +21,7 @@ import {
   UserCircle,
   Activity,
   Wrench,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -155,11 +156,37 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 min-w-0">
-        <div className="mx-auto max-w-7xl p-4 md:p-8">{children}</div>
+        <div className="mx-auto max-w-7xl p-4 md:p-8">
+          {location.pathname !== "/" && <BackButton />}
+          {children}
+        </div>
       </main>
     </div>
   );
 }
+
+function BackButton() {
+  const router = useRouter();
+  const navigate = useNavigate();
+  const canGoBack = router.history.length > 1;
+  return (
+    <div className="mb-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          if (canGoBack) router.history.back();
+          else void navigate({ to: "/" });
+        }}
+        className="-ml-2 text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="mr-1.5 h-4 w-4" />
+        Back
+      </Button>
+    </div>
+  );
+}
+
 
 
 function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
