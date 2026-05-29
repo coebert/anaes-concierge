@@ -131,12 +131,13 @@ function AuditDashboard() {
             stat={`${data?.trainees ?? "—"} active trainees`}
           />
           <PillarCard
-            to="/leave"
+            to="/leave/forecast"
             icon={ClipboardList}
             title="Leave pressure"
             body="Heatmap of approved + pending leave across the calendar; predict surge weeks and recurring hot spots."
             stat={`${data?.leaveSoon ?? "—"} leave items next 90d`}
           />
+
           <PillarCard
             to="/admin/dashboard"
             icon={ShieldAlert}
