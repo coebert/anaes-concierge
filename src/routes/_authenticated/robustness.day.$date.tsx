@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee, Info, CheckCircle2, XCircle, Ban } from "lucide-react";
+import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee } from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
   loadDayDetail, riskColor, riskLabel,
   type DayDetailSession, type HalfDayCapacity, type OtherDutyDetail,
-  type HalfBreakdown, type StaffStatusEntry, type StaffStatusCategory,
 } from "@/lib/audit/robustness";
+import { BreakdownCard } from "@/components/robustness/BreakdownCard";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
   component: DayDetailPage,
@@ -333,128 +333,6 @@ function SessionsCard({ title, sessions }: { title: string; sessions: DayDetailS
               )}
             </div>
           ))
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================================
-// Per-half-day staff breakdown — explains why each person counts
-// as free, SPA, or excluded.
-// ============================================================
-
-const CATEGORY_META: Record<
-  StaffStatusCategory,
-  { label: string; tone: string; icon: React.ReactNode; order: number }
-> = {
-  free_consultant: {
-    label: "Free consultants (solo-capable)",
-    tone: "border-emerald-500/40 bg-emerald-500/5",
-    icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
-    order: 1,
-  },
-  free_senior_trainee: {
-    label: "Free senior trainees ST6–8 (solo-capable)",
-    tone: "border-emerald-500/40 bg-emerald-500/5",
-    icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
-    order: 2,
-  },
-  on_spa: {
-    label: "Consultants on SPA (flexible cover)",
-    tone: "border-orange-500/40 bg-orange-500/5",
-    icon: <Coffee className="h-4 w-4 text-orange-600" />,
-    order: 3,
-  },
-  free_junior_trainee: {
-    label: "Free junior trainees (need supervision)",
-    tone: "border-sky-500/30 bg-sky-500/5",
-    icon: <Info className="h-4 w-4 text-sky-600" />,
-    order: 4,
-  },
-  free_sas: {
-    label: "Free SAS (pair with consultant)",
-    tone: "border-sky-500/30 bg-sky-500/5",
-    icon: <Info className="h-4 w-4 text-sky-600" />,
-    order: 5,
-  },
-  on_clinical_list: {
-    label: "Excluded — already covering a list",
-    tone: "border-slate-500/30 bg-slate-500/5",
-    icon: <ClipboardList className="h-4 w-4 text-slate-500" />,
-    order: 6,
-  },
-  on_excluded_duty: {
-    label: "Excluded — ICU / obstetrics / on-call / teaching / admin",
-    tone: "border-blue-500/30 bg-blue-500/5",
-    icon: <Ban className="h-4 w-4 text-blue-600" />,
-    order: 7,
-  },
-  on_leave: {
-    label: "Excluded — on approved leave",
-    tone: "border-red-500/30 bg-red-500/5",
-    icon: <UserMinus className="h-4 w-4 text-red-500" />,
-    order: 8,
-  },
-  ltft_off: {
-    label: "Excluded — LTFT non-working day",
-    tone: "border-muted bg-muted/30",
-    icon: <XCircle className="h-4 w-4 text-muted-foreground" />,
-    order: 9,
-  },
-};
-
-function BreakdownCard({ label, breakdown }: { label: string; breakdown: HalfBreakdown }) {
-  // Group by category, preserving CATEGORY_META.order.
-  const groups = new Map<StaffStatusCategory, StaffStatusEntry[]>();
-  for (const e of breakdown.entries) {
-    const arr = groups.get(e.category) ?? [];
-    arr.push(e);
-    groups.set(e.category, arr);
-  }
-  const orderedCats = (Object.keys(CATEGORY_META) as StaffStatusCategory[])
-    .sort((a, b) => CATEGORY_META[a].order - CATEGORY_META[b].order)
-    .filter((c) => (groups.get(c)?.length ?? 0) > 0);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{label}</CardTitle>
-        <CardDescription>
-          Every active staff member classified for this half-day, with the exact reason.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {orderedCats.length === 0 ? (
-          <Empty />
-        ) : (
-          orderedCats.map((cat) => {
-            const meta = CATEGORY_META[cat];
-            const people = groups.get(cat) ?? [];
-            return (
-              <details key={cat} className={cn("rounded-md border p-2", meta.tone)} open={cat.startsWith("free_") || cat === "on_spa"}>
-                <summary className="cursor-pointer text-sm font-medium flex items-center gap-2 select-none">
-                  {meta.icon}
-                  <span>{meta.label}</span>
-                  <Badge variant="secondary" className="ml-auto text-[10px]">{people.length}</Badge>
-                </summary>
-                <ul className="mt-2 space-y-1 text-xs">
-                  {people.map((p) => (
-                    <li
-                      key={p.staffId}
-                      className="flex items-center justify-between gap-2 rounded border bg-background/60 px-2 py-1"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className="font-medium text-sm">{p.staffName}</span>
-                        <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
-                      </span>
-                      <span className="text-right text-muted-foreground">{p.reason}</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            );
-          })
         )}
       </CardContent>
     </Card>
