@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ClipboardList, UserMinus, Coffee, Info, CheckCircle2, XCircle, Ban } from "lucide-react";
+import { ClipboardList, UserMinus, Coffee, Info, CheckCircle2, XCircle, Ban, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   HalfBreakdown, HalfDayCapacity, StaffStatusEntry, StaffStatusCategory,
