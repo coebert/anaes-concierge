@@ -187,6 +187,48 @@ export type Database = {
         }
         Relationships: []
       }
+      duty_type_mappings: {
+        Row: {
+          active: boolean
+          created_at: string
+          duty_type: Database["public"]["Enums"]["duty_type"]
+          grade_filter: string | null
+          id: string
+          match_type: string
+          notes: string | null
+          pattern: string
+          priority: number
+          trainee_seniority_filter: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          duty_type: Database["public"]["Enums"]["duty_type"]
+          grade_filter?: string | null
+          id?: string
+          match_type?: string
+          notes?: string | null
+          pattern: string
+          priority?: number
+          trainee_seniority_filter?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          duty_type?: Database["public"]["Enums"]["duty_type"]
+          grade_filter?: string | null
+          id?: string
+          match_type?: string
+          notes?: string | null
+          pattern?: string
+          priority?: number
+          trainee_seniority_filter?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_inbound_log: {
         Row: {
           body_text: string | null

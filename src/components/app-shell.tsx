@@ -68,7 +68,9 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
   { to: "/admin/theatres", label: "Theatres", icon: Building2, roles: ["admin"] },
   { to: "/admin/theatre-grid", label: "Theatre grid", icon: Grid3x3, roles: ["admin"] },
+  { to: "/admin/duty-mappings", label: "Duty mappings", icon: Wrench, roles: ["admin"] },
   { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
