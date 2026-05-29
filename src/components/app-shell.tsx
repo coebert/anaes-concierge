@@ -83,6 +83,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibleAdmin = ADMIN_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
+  const visibleCoord = COORDINATOR_NAV.filter(
+    (i) => !i.roles || i.roles.some((r) => hasRole(r)),
+  );
+  const visibleAdmin = ADMIN_NAV.filter(
+    (i) => !i.roles || i.roles.some((r) => hasRole(r)),
+  );
 
   const roleLabel = isAdmin
     ? "Admin"
@@ -104,17 +110,28 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Stethoscope className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">Anaesthetics Rota</div>
+            <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
             <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-6 px-2 py-4 text-sm">
+        <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4 text-sm">
           <NavSection items={visibleMain} currentPath={location.pathname} />
+
+          {visibleCoord.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Wrench className="h-3 w-3" />
+                Coordinator tools
+              </div>
+              <NavSection items={visibleCoord} currentPath={location.pathname} />
+            </div>
+          )}
+
           {visibleAdmin.length > 0 && (
             <div className="space-y-1">
               <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Coordination
+                Administration
               </div>
               <NavSection items={visibleAdmin} currentPath={location.pathname} />
             </div>
@@ -126,6 +143,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="truncate font-medium">{user?.email}</div>
             <div className="text-xs text-muted-foreground">{roleLabel}</div>
           </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
+      </aside>
+
+      <main className="flex-1 min-w-0">
+        <div className="mx-auto max-w-7xl p-4 md:p-8">{children}</div>
+      </main>
+    </div>
+  );
+}
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             Sign out
