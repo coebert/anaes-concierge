@@ -508,6 +508,8 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   const { days } = await computeRobustness(date, date);
   const day = days[0];
 
+  const poolSets = await loadDutyPoolSets();
+
   const [
     { data: theatreSessions },
     { data: profiles },
