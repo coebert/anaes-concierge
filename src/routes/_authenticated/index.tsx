@@ -331,3 +331,29 @@ function ActionCard({
     </Link>
   );
 }
+
+function PillarCard({
+  to, icon: Icon, title, body, stat,
+}: { to: string; icon: typeof Users; title: string; body: string; stat: string }) {
+  return (
+    <Link to={to} className="group">
+      <Card className="h-full transition-all group-hover:border-primary/60 group-hover:shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base">{title}</CardTitle>
+              <CardDescription className="text-xs">{stat}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{body}</p>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
