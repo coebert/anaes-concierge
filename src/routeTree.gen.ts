@@ -40,6 +40,7 @@ import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
+import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -212,6 +213,12 @@ const ApiPublicHooksClwrotaSyncRoute =
     path: '/api/public/hooks/clwrota-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedRobustnessDayDateRoute =
+  AuthenticatedRobustnessDayDateRouteImport.update({
+    id: '/robustness/day/$date',
+    path: '/robustness/day/$date',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCalendarStaffStaffIdRoute =
   AuthenticatedCalendarStaffStaffIdRouteImport.update({
     id: '/staff/$staffId',
@@ -250,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
+  '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRoutesByTo {
@@ -282,6 +290,7 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatIndexRoute
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
+  '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRoutesById {
@@ -317,6 +326,7 @@ export interface FileRoutesById {
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
+  '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRouteTypes {
@@ -352,6 +362,7 @@ export interface FileRouteTypes {
     | '/chat/'
     | '/robustness/'
     | '/calendar/staff/$staffId'
+    | '/robustness/day/$date'
     | '/api/public/hooks/clwrota-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/robustness'
     | '/calendar/staff/$staffId'
+    | '/robustness/day/$date'
     | '/api/public/hooks/clwrota-sync'
   id:
     | '__root__'
@@ -418,6 +430,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chat/'
     | '/_authenticated/robustness/'
     | '/_authenticated/calendar/staff/$staffId'
+    | '/_authenticated/robustness/day/$date'
     | '/api/public/hooks/clwrota-sync'
   fileRoutesById: FileRoutesById
 }
@@ -649,6 +662,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksClwrotaSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/robustness/day/$date': {
+      id: '/_authenticated/robustness/day/$date'
+      path: '/robustness/day/$date'
+      fullPath: '/robustness/day/$date'
+      preLoaderRoute: typeof AuthenticatedRobustnessDayDateRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/calendar/staff/$staffId': {
       id: '/_authenticated/calendar/staff/$staffId'
       path: '/staff/$staffId'
@@ -732,6 +752,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
   AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
+  AuthenticatedRobustnessDayDateRoute: typeof AuthenticatedRobustnessDayDateRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -756,6 +777,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
   AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
   AuthenticatedRobustnessIndexRoute: AuthenticatedRobustnessIndexRoute,
+  AuthenticatedRobustnessDayDateRoute: AuthenticatedRobustnessDayDateRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

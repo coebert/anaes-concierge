@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus } from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
 import { loadDayDetail, riskColor, type DayDetailSession } from "@/lib/audit/robustness";
+import { loadDayDetail, riskColor, type DayDetailSession, type HalfDayCapacity } from "@/lib/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
   component: DayDetailPage,
@@ -120,7 +121,8 @@ function DayDetailPage() {
   );
 }
 
-function HalfSummary({ label, h }: { label: string; h: ReturnType<typeof Object> extends never ? never : import("@/lib/audit/robustness").HalfDayCapacity }) {
+function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
+
   return (
     <Card>
       <CardHeader className="pb-2">
