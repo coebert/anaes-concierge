@@ -657,17 +657,18 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
       const ha = halfAssn[half].get(id);
       if (ha?.kind === "theatre") {
         const info = tsInfoById.get(ha.theatreSessionId);
-        const where = info
-          ? `${info.theatreName}${info.specialty ? ` (${info.specialty})` : ""}`
-          : "a theatre list";
+        const sessionLabel = half.toUpperCase(); // AM / PM
+        const specialty = info?.specialty ?? "specialty not mapped";
+        const theatre = info?.theatreName ?? "a theatre list";
         entries.push({
           ...ref,
           category: "on_clinical_list",
-          reason: `Covering ${where}`,
+          reason: `Covering ${theatre} — ${sessionLabel} · ${specialty}`,
           countsToSolo: false,
         });
         continue;
       }
+
       if (ha?.kind === "spa" && p.grade === "consultant") {
         entries.push({
           ...ref,
