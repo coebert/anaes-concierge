@@ -518,8 +518,15 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 }
 
 
+const ChatMessage = z.object({
+  id: z.string().optional(),
+  role: z.enum(["system", "user", "assistant"]),
+  parts: z.array(z.record(z.any())).optional(),
+  content: z.string().optional(),
+}).passthrough();
+
 const ChatBody = z.object({
-  messages: z.array(z.any()),
+  messages: z.array(ChatMessage).min(1).max(500),
   conversationId: z.string().uuid(),
 });
 
@@ -539,12 +546,17 @@ export const Route = createFileRoute("/api/chat")({
 
         let body: z.infer<typeof ChatBody>;
         try {
-          body = ChatBody.parse(await request.json());
-        } catch {
-          return new Response("Invalid body", { status: 400 });
+          const raw = await request.json();
+          body = ChatBody.parse(raw);
+        } catch (e) {
+          const msg = e instanceof z.ZodError
+            ? e.errors.slice(0, 3).map((x) => `${x.path.join(".") || "(root)"}: ${x.message}`).join("; ")
+            : "Malformed JSON";
+          return new Response(`Invalid body: ${msg}`, { status: 400 });
         }
+
         const { messages, conversationId } = body;
-        const uiMessages = messages as UIMessage[];
+        const uiMessages = messages as unknown as UIMessage[];
 
         const admin = getAdminClient();
         // Confirm conversation belongs to user
