@@ -149,13 +149,24 @@ export interface SupervisorExposure {
   totalSupervisedSessions: number;
   diversityIndex: number;   // distinctSupervisors / totalSupervisedSessions, 0..1
   narrowExposure: boolean;  // distinctSupervisors < 3 AND totalSupervisedSessions >= 6
-  rows: SupervisorExposureRow[];
-}
-
 export function computeSupervisorExposure(args: {
   assignments: AuditAssignment[];
-  supNames: Map<string, string>;
+  supNames: Map<string, string | null>;
   narrowThreshold?: number;
+}): SupervisorExposure {
+  const { assignments, supNames, narrowThreshold = 3 } = args;
+  const counts = new Map<string, number>();
+  let totalSup = 0;
+  for (const a of assignments) {
+    if (a.role_on_list !== "supervised") continue;
+    if (!a.supervisor_id) continue;
+    counts.set(a.supervisor_id, (counts.get(a.supervisor_id) ?? 0) + 1);
+    totalSup++;
+  }
+  const rows: SupervisorExposureRow[] = Array.from(counts.entries())
+    .map(([id, n]) => ({
+      supervisor_id: id,
+      supervisor_name: supNames.get(id) ?? "Unknown",
 }): SupervisorExposure {
   const { assignments, supNames, narrowThreshold = 3 } = args;
   const counts = new Map<string, number>();
