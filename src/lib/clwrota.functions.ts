@@ -973,7 +973,7 @@ export function normaliseSession(raw: string | null): SessionHalf | null {
   return null;
 }
 
-function normaliseDate(raw: string | null): string | null {
+export function normaliseDate(raw: string | null): string | null {
   if (!raw) return null;
   const s = raw.trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
