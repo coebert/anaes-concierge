@@ -59,8 +59,12 @@ export function isSeniorTrainee(trainingLevel: string | null | undefined): boole
   return t === "ST6" || t === "ST7" || t === "ST8";
 }
 
-/** Duty types that take a person out of the theatre-cover pool entirely. */
-const UNAVAILABLE_DUTY_TYPES = new Set<string>([
+/**
+ * Built-in fallback classification used only if the `duty_type_pool_rules`
+ * settings table is empty or unreachable. Admins can override every entry
+ * via /admin/duty-categories.
+ */
+const DEFAULT_UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "icu_consultant_oncall",
   "general_consultant_oncall",
   "registrar_oncall",
@@ -74,9 +78,43 @@ const UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "non_clinical",
   "admin",
 ]);
+const DEFAULT_FLEX_DUTY_TYPES = new Set<string>(["spa"]);
+const DEFAULT_CLINICAL_LIST_DUTY_TYPES = new Set<string>(["theatre"]);
 
-/** Duty types that COULD be redeployed onto a list but should be flagged. */
-const FLEX_DUTY_TYPES = new Set<string>(["spa"]);
+export interface DutyPoolSets {
+  /** Duty types treated as "covering a clinical list" — excluded from pool. */
+  clinicalList: Set<string>;
+  /** Duty types treated as unavailable all day. */
+  unavailable: Set<string>;
+  /** Duty types treated as flexible cover (SPA-style). */
+  flex: Set<string>;
+}
+
+async function loadDutyPoolSets(): Promise<DutyPoolSets> {
+  const { data } = await supabase
+    .from("duty_type_pool_rules")
+    .select("duty_type, category");
+  const rows = (data ?? []) as Array<{ duty_type: string; category: string }>;
+  if (rows.length === 0) {
+    return {
+      clinicalList: new Set(DEFAULT_CLINICAL_LIST_DUTY_TYPES),
+      unavailable: new Set(DEFAULT_UNAVAILABLE_DUTY_TYPES),
+      flex: new Set(DEFAULT_FLEX_DUTY_TYPES),
+    };
+  }
+  const sets: DutyPoolSets = {
+    clinicalList: new Set(),
+    unavailable: new Set(),
+    flex: new Set(),
+  };
+  for (const r of rows) {
+    if (r.category === "clinical_list") sets.clinicalList.add(r.duty_type);
+    else if (r.category === "excluded") sets.unavailable.add(r.duty_type);
+    else if (r.category === "flex") sets.flex.add(r.duty_type);
+  }
+  return sets;
+}
+
 
 /**
  * Pure risk classifier. Exported for unit testing.
