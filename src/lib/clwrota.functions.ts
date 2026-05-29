@@ -1017,6 +1017,8 @@ export async function performRotaSync() {
       .select("id", { count: "exact", head: true })
       .eq("source", "clwrota");
     if (preCountErr) throw new Error(preCountErr.message);
+    const preSyncCount = preCount ?? 0;
+
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
       .select("rota_report_url, sync_days_back, sync_days_ahead")
