@@ -16,18 +16,35 @@ interface Fixture {
   leave_requests: Row[];
   theatre_sessions: Row[];
   rota_assignments: Row[];
+  duty_type_pool_rules: Row[];
 }
+
+const DEFAULT_POOL_RULES: Row[] = [
+  { duty_type: "theatre", category: "clinical_list" },
+  { duty_type: "spa", category: "flex" },
+  { duty_type: "icu_consultant_oncall", category: "excluded" },
+  { duty_type: "general_consultant_oncall", category: "excluded" },
+  { duty_type: "registrar_oncall", category: "excluded" },
+  { duty_type: "sho_oncall", category: "excluded" },
+  { duty_type: "icu_trainee", category: "excluded" },
+  { duty_type: "icu_ct2_plus", category: "excluded" },
+  { duty_type: "obstetrics", category: "excluded" },
+  { duty_type: "obstetrics_2nd", category: "excluded" },
+  { duty_type: "consultant_in_charge", category: "excluded" },
+  { duty_type: "teaching", category: "excluded" },
+  { duty_type: "non_clinical", category: "excluded" },
+  { duty_type: "admin", category: "excluded" },
+];
 
 let fixture: Fixture = {
   profiles: [],
   leave_requests: [],
   theatre_sessions: [],
   rota_assignments: [],
+  duty_type_pool_rules: DEFAULT_POOL_RULES,
 };
 
-function makeChain(table: keyof Fixture) {
-  // Every query method returns the same chainable thenable; await resolves
-  // to { data: rows, error: null } using the current fixture for that table.
+function makeChain(table: string) {
   const chain: {
     select: () => typeof chain;
     eq: () => typeof chain;
@@ -44,7 +61,10 @@ function makeChain(table: keyof Fixture) {
     gte: () => chain,
     in: () => chain,
     then: (onfulfilled) =>
-      Promise.resolve({ data: fixture[table], error: null }).then(onfulfilled),
+      Promise.resolve({
+        data: (fixture as Record<string, Row[]>)[table] ?? [],
+        error: null,
+      }).then(onfulfilled),
   };
   return chain;
 }
