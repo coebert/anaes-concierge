@@ -156,19 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
-          </Button>
-        </div>
-      </aside>
 
-      <main className="flex-1 min-w-0">
-        <div className="mx-auto max-w-7xl p-4 md:p-8">{children}</div>
-      </main>
-    </div>
-  );
-}
 
 function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
   return (
