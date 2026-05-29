@@ -608,7 +608,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   }
 
   type HalfAssn =
-    | { kind: "theatre"; theatreSessionId: string }
+    | { kind: "theatre"; theatreSessionId: string; role: string | null }
     | { kind: "spa" }
     | undefined;
   const halfAssn: Record<SessionHalf, Map<string, HalfAssn>> = {
@@ -627,11 +627,101 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     if (sess !== "am" && sess !== "pm") continue;
     const half = sess as SessionHalf;
     if (dt === "theatre" && a.theatre_session_id) {
-      halfAssn[half].set(sid, { kind: "theatre", theatreSessionId: a.theatre_session_id as string });
+      halfAssn[half].set(sid, {
+        kind: "theatre",
+        theatreSessionId: a.theatre_session_id as string,
+        role: (a.role_on_list as string | null) ?? null,
+      });
     } else if (FLEX_DUTY_TYPES.has(dt)) {
       if (!halfAssn[half].has(sid)) halfAssn[half].set(sid, { kind: "spa" });
     }
   }
+
+  // Index trainee targets by training_level for quick lookup.
+  type TargetRow = {
+    training_level: string;
+    specialty_id: string;
+    required_sessions: number;
+    required_solo: number;
+    required_supervised: number;
+  };
+  const targetsByLevel = new Map<string, TargetRow[]>();
+  for (const t of (traineeTargets ?? []) as TargetRow[]) {
+    const lvl = (t.training_level ?? "").trim().toUpperCase();
+    if (!lvl) continue;
+    const arr = targetsByLevel.get(lvl) ?? [];
+    arr.push(t);
+    targetsByLevel.set(lvl, arr);
+  }
+
+  // Build trainingNote for a trainee in this half-day.
+  const traineeNote = (
+    ref: PersonRef,
+    state:
+      | { kind: "theatre"; specialtyId: string | null; specialtyName: string | null; role: string | null }
+      | { kind: "free" }
+      | { kind: "excluded"; reason: string },
+  ): StaffStatusEntry["trainingNote"] => {
+    if (ref.grade !== "trainee") return undefined;
+    const lvl = (ref.trainingLevel ?? "").trim().toUpperCase();
+    const targets = lvl ? targetsByLevel.get(lvl) ?? [] : [];
+
+    if (state.kind === "free") {
+      return {
+        tone: "neutral",
+        label: "No training session today",
+        detail: lvl
+          ? `${lvl} has ${targets.length} documented subspecialty target${targets.length === 1 ? "" : "s"}. Today's free slot does not advance any of them.`
+          : "No training level recorded — cannot match against subspecialty targets.",
+      };
+    }
+    if (state.kind === "excluded") {
+      return {
+        tone: "neutral",
+        label: `${state.reason} — outside theatre targets`,
+        detail: "Non-theatre duty: does not advance subspecialty / solo / supervised list counts.",
+      };
+    }
+    // theatre list
+    const specName = state.specialtyName ?? "unmapped specialty";
+    if (!lvl) {
+      return {
+        tone: "neutral",
+        label: `On ${specName} list — no training level on file`,
+        detail: "Cannot check against trainee_targets without a training level.",
+      };
+    }
+    if (targets.length === 0) {
+      return {
+        tone: "neutral",
+        label: `No ${lvl} targets recorded`,
+        detail: `Add rows in trainee_targets for ${lvl} to track ${specName} progress.`,
+      };
+    }
+    const match = state.specialtyId
+      ? targets.find((t) => t.specialty_id === state.specialtyId)
+      : undefined;
+    if (!match) {
+      return {
+        tone: "miss",
+        label: `${specName} is not a ${lvl} subspecialty target`,
+        detail: `Required ${lvl} subspecialties: ${targets
+          .map((t) => specialtyNameById.get(t.specialty_id) ?? "?")
+          .join(", ")}.`,
+      };
+    }
+    const role = (state.role ?? "").toLowerCase();
+    const isSolo = role === "solo";
+    const isSupervised = role === "supervised" || role === "supervisee" || role === "trainee";
+    const counts: string[] = [`session (target ${match.required_sessions})`];
+    if (isSolo && match.required_solo > 0) counts.push(`solo (target ${match.required_solo})`);
+    if (isSupervised && match.required_supervised > 0) counts.push(`supervised (target ${match.required_supervised})`);
+    return {
+      tone: "good",
+      label: `Counts toward ${specName}: ${isSolo ? "solo" : isSupervised ? "supervised" : "session"}`,
+      detail: `${lvl} ${specName} — advances ${counts.join(" + ")}.`,
+    };
+  };
 
   const buildBreakdown = (half: SessionHalf): HalfBreakdown => {
     const entries: StaffStatusEntry[] = [];
