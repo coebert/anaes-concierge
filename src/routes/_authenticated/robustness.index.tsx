@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
-import { computeRobustness, riskColor } from "@/lib/audit/robustness";
+import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/")({
   component: RobustnessPage,
