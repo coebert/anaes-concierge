@@ -63,9 +63,10 @@ function DayDetailPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <BreakdownCard label="AM staff breakdown" breakdown={data.amBreakdown} />
-          <BreakdownCard label="PM staff breakdown" breakdown={data.pmBreakdown} />
+          <BreakdownCard label="AM staff breakdown" breakdown={data.amBreakdown} h={data.am} />
+          <BreakdownCard label="PM staff breakdown" breakdown={data.pmBreakdown} h={data.pm} />
         </div>
+
 
         <div className="grid gap-4 lg:grid-cols-2">
           <SessionsCard title="AM theatre lists" sessions={amSessions} />
