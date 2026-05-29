@@ -146,6 +146,30 @@ function SettingsPage() {
       // CPU/timeout 502 on the heaviest dataset) doesn't abort the other
       // steps. Order is staff → rota → leave so rota assignments can match
       // freshly-synced people.
+      const syncStartedAt = Date.now();
+      const waitForStepStatus = async (name: "staff" | "rota" | "leave") => {
+        const successStatus = `${name}_success`;
+        const terminalPrefixes = [`${name}_partial`, `${name}_fetch_failed`, `${name}_no_rows`];
+        for (let attempt = 0; attempt < 45; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const latest = await getSettings();
+          const settings = latest.settings;
+          const status = settings?.last_status ?? "";
+          const updatedAt = settings?.last_sync_at ? Date.parse(settings.last_sync_at) : 0;
+          if (updatedAt && updatedAt < syncStartedAt - 1000) continue;
+          if (status === successStatus) {
+            return { ok: true, message: "completed after the request timeout" };
+          }
+          if (terminalPrefixes.some((prefix) => status.startsWith(prefix))) {
+            return {
+              ok: false,
+              message: settings?.last_error || status || "sync ended with errors",
+            };
+          }
+        }
+        return { ok: false, message: "timed out waiting for completion status" };
+      };
+
       const runStep = async <T,>(
         name: "staff" | "rota" | "leave",
         urlValue: string,
@@ -169,6 +193,10 @@ function SettingsPage() {
           const raw = err instanceof Error ? err.message : String(err);
           // Worker 502s come through as opaque "Load failed" / fetch errors;
           // surface a clearer hint.
+          if (/load failed|fetch|502|504|timeout|cpu time|upstream/i.test(raw)) {
+            const settled = await waitForStepStatus(name);
+            return { name, ok: settled.ok, message: settled.message };
+          }
           const friendly = /load failed|fetch|502|cpu time/i.test(raw)
             ? `${raw} — the upstream sync exceeded the worker time limit. Try syncing this dataset on its own.`
             : raw;
