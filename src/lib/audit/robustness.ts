@@ -201,28 +201,31 @@ export async function computeRobustness(
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
 ): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
-  const [{ data: profiles }, { data: leave }, { data: theatreSessions }, { data: assignments }] =
+  const [poolSets, [{ data: profiles }, { data: leave }, { data: theatreSessions }, { data: assignments }]] =
     await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, grade, training_level, ltft_days_off")
-        .eq("active", true),
-      supabase
-        .from("leave_requests")
-        .select("staff_id, start_date, end_date, status")
-        .eq("status", "approved")
-        .lte("start_date", rangeEnd)
-        .gte("end_date", rangeStart),
-      supabase
-        .from("theatre_sessions")
-        .select("session_date, session")
-        .gte("session_date", rangeStart)
-        .lte("session_date", rangeEnd),
-      supabase
-        .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, theatre_session_id")
-        .gte("session_date", rangeStart)
-        .lte("session_date", rangeEnd),
+      loadDutyPoolSets(),
+      Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, grade, training_level, ltft_days_off")
+          .eq("active", true),
+        supabase
+          .from("leave_requests")
+          .select("staff_id, start_date, end_date, status")
+          .eq("status", "approved")
+          .lte("start_date", rangeEnd)
+          .gte("end_date", rangeStart),
+        supabase
+          .from("theatre_sessions")
+          .select("session_date, session")
+          .gte("session_date", rangeStart)
+          .lte("session_date", rangeEnd),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, session_date, session, duty_type, theatre_session_id")
+          .gte("session_date", rangeStart)
+          .lte("session_date", rangeEnd),
+      ]),
     ]);
 
   const staff = (profiles ?? []) as Array<{
