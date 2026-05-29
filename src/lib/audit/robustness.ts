@@ -594,11 +594,15 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   };
 
   // ----- Per-half-day per-staff breakdown -----
-  const tsInfoById = new Map<string, { theatreName: string; specialty: string | null }>();
+  const tsInfoById = new Map<
+    string,
+    { theatreName: string; specialty: string | null; specialtyId: string | null }
+  >();
   for (const t of ts) {
     tsInfoById.set(t.id as string, {
       theatreName: theatreNameById.get(t.theatre_id as string) ?? "—",
       specialty: t.specialty_id ? specialtyNameById.get(t.specialty_id as string) ?? null : null,
+      specialtyId: (t.specialty_id as string | null) ?? null,
     });
   }
 
