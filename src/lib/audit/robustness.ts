@@ -677,19 +677,19 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     const sid = a.staff_id as string;
     const dt = a.duty_type as string;
     const sess = a.session as string;
-    if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+    if (poolSets.unavailable.has(dt)) {
       if (!excludedAllDay.has(sid)) excludedAllDay.set(sid, dt);
       continue;
     }
     if (sess !== "am" && sess !== "pm") continue;
     const half = sess as SessionHalf;
-    if (dt === "theatre" && a.theatre_session_id) {
+    if (poolSets.clinicalList.has(dt) && a.theatre_session_id) {
       halfAssn[half].set(sid, {
         kind: "theatre",
         theatreSessionId: a.theatre_session_id as string,
         role: (a.role_on_list as string | null) ?? null,
       });
-    } else if (FLEX_DUTY_TYPES.has(dt)) {
+    } else if (poolSets.flex.has(dt)) {
       if (!halfAssn[half].has(sid)) halfAssn[half].set(sid, { kind: "spa" });
     }
   }
