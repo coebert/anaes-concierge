@@ -80,9 +80,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibleMain = NAV.filter(
     (i) => !i.traineeOnly || isAdmin || grade === "trainee",
   );
-  const visibleAdmin = ADMIN_NAV.filter(
-    (i) => !i.roles || i.roles.some((r) => hasRole(r)),
-  );
   const visibleCoord = COORDINATOR_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
