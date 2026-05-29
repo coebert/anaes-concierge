@@ -114,15 +114,28 @@ export interface HalfDayInputs {
 
 /**
  * Pure derivation of a HalfDayCapacity from the available staff buckets.
- * `soloCapable` = consultants + senior trainees (ST6/ST7/ST8). SAS and
- * junior trainees are tracked but NOT counted toward solo cover — junior
- * trainees can only work supervised, and SAS are excluded from solo
- * baseline. Consultants on SPA only count via `headroomWithSpa`.
+ *
+ * Available buckets (`consultantsAvailable`, `seniorTraineesAvailable`,
+ * `juniorTraineesAvailable`, `sasAvailable`) are people who are NOT on
+ * leave, NOT on an excluded duty (ICU, obstetrics, on-call, teaching,
+ * admin, CIC), and NOT already covering a clinical list (theatre / POAC
+ * / pain clinic / any other theatre_session). They are truly free.
+ *
+ * `consultantsOnSpa` are consultants on SPA time — flexible cover only,
+ * counted in `headroomWithSpa` but not in baseline `headroom`.
+ *
+ * `soloCapable` = free consultants + free senior trainees (ST6/ST7/ST8).
+ * SAS and junior trainees are tracked but NOT counted toward solo cover.
+ *
+ * `headroom` = `soloCapable - unfilled` (lists still needing cover).
+ * When `unfilled` is omitted it falls back to `required` for legacy
+ * call sites in the tests.
  */
 export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
   const soloCapable = i.consultantsAvailable + i.seniorTraineesAvailable;
-  const headroom = soloCapable - i.required;
-  const headroomWithSpa = soloCapable + i.consultantsOnSpa - i.required;
+  const unfilled = Math.max(0, i.unfilled ?? i.required);
+  const headroom = soloCapable - unfilled;
+  const headroomWithSpa = soloCapable + i.consultantsOnSpa - unfilled;
   return {
     required: i.required,
     soloCapable,
@@ -136,7 +149,7 @@ export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
     headroom,
     headroomWithSpa,
     risk: classifyRisk(headroom, headroomWithSpa),
-    unfilled: Math.max(0, i.unfilled ?? 0),
+    unfilled,
   };
 }
 
