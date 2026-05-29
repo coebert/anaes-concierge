@@ -303,52 +303,28 @@ function SettingsPage() {
                 Test connection
               </Button>
               <Button
-                variant="secondary"
-                onClick={() => syncMut.mutate()}
-                disabled={syncMut.isPending || !credsOk}
-              >
-                {syncMut.isPending ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                )}
-                Run pull sync now
-              </Button>
-              <Button
                 variant="default"
-                onClick={() => staffMut.mutate()}
-                disabled={staffMut.isPending || !credsOk || !staffUrl.trim()}
+                onClick={() => syncAllMut.mutate()}
+                disabled={
+                  syncAllMut.isPending ||
+                  !credsOk ||
+                  (!staffUrl.trim() && !rotaUrl.trim() && !leaveUrl.trim())
+                }
               >
-                {staffMut.isPending ? (
+                {syncAllMut.isPending ? (
                   <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
                 )}
-                Sync staff now
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => rotaMut.mutate()}
-                disabled={rotaMut.isPending || !credsOk || !rotaUrl.trim()}
-              >
-                {rotaMut.isPending ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                )}
-                Sync rota now
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => leaveMut.mutate()}
-                disabled={leaveMut.isPending || !credsOk || !leaveUrl.trim()}
-              >
-                {leaveMut.isPending ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                )}
-                Sync leave now
+                {syncAllMut.isPending
+                  ? staffMut.isPending
+                    ? "Syncing staff…"
+                    : rotaMut.isPending
+                      ? "Syncing rota…"
+                      : leaveMut.isPending
+                        ? "Syncing leave…"
+                        : "Syncing…"
+                  : "Sync all from CLWRota"}
               </Button>
             </div>
           </div>
