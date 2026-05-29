@@ -6,7 +6,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
 
