@@ -1002,7 +1002,7 @@ export function normaliseRole(
   return "solo";
 }
 
-type ResolvedDutyType =
+export type ResolvedDutyType =
   | "theatre"
   | "consultant_in_charge"
   | "obstetrics"
