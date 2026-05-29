@@ -184,8 +184,14 @@ function RobustnessPage() {
                           <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onLeave}</td>
                           <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onOtherDuty}</td>
                           <td className="px-2 py-1.5 text-center">{d.am.required}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <UnfilledBadge count={d.am.unfilled} />
+                          </td>
                           <td className="px-2 py-1.5 text-center">{renderCell(d.am)}</td>
                           <td className="px-2 py-1.5 text-center">{d.pm.required}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <UnfilledBadge count={d.pm.unfilled} />
+                          </td>
                           <td className="px-2 py-1.5 text-center">{renderCell(d.pm)}</td>
                           <td className="px-2 py-1.5 text-xs text-muted-foreground">
                             {notes.length === 0 ? "—" : notes.join(" · ")}
