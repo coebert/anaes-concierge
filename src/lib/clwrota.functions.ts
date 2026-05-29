@@ -943,9 +943,9 @@ export const runClwRotaSync = createServerFn({ method: "POST" })
 // Rota sync
 // =====================================================================
 
-type SessionHalf = "am" | "pm" | "eve" | "night";
+export type SessionHalf = "am" | "pm" | "eve" | "night";
 
-function normaliseSession(raw: string | null): SessionHalf | null {
+export function normaliseSession(raw: string | null): SessionHalf | null {
   if (!raw) return null;
   const s = raw.trim().toLowerCase();
   if (s === "am" || s.includes("morning") || s.startsWith("a.m")) return "am";
@@ -973,7 +973,7 @@ function normaliseSession(raw: string | null): SessionHalf | null {
   return null;
 }
 
-function normaliseDate(raw: string | null): string | null {
+export function normaliseDate(raw: string | null): string | null {
   if (!raw) return null;
   const s = raw.trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
@@ -988,7 +988,7 @@ function normaliseDate(raw: string | null): string | null {
   return null;
 }
 
-function normaliseRole(
+export function normaliseRole(
   raw: string | null,
 ): "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session" {
   const s = (raw ?? "").trim().toLowerCase();
@@ -1002,7 +1002,7 @@ function normaliseRole(
   return "solo";
 }
 
-type ResolvedDutyType =
+export type ResolvedDutyType =
   | "theatre"
   | "consultant_in_charge"
   | "obstetrics"
@@ -1072,7 +1072,7 @@ function mappingMatches(
  * Classify a CLWRota row as a non-theatre duty using admin-configured
  * mappings (priority asc). Falls back to "theatre" when nothing matches.
  */
-function classifyDutyType(
+export function classifyDutyType(
   labels: Array<string | null | undefined>,
   grade: string | null | undefined,
   trainingLevel: string | null | undefined,
