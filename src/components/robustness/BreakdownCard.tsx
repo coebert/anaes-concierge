@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ClipboardList, UserMinus, Coffee, Info, CheckCircle2, XCircle, Ban } from "lucide-react";
+import { ClipboardList, UserMinus, Coffee, Info, CheckCircle2, XCircle, Ban, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   HalfBreakdown, HalfDayCapacity, StaffStatusEntry, StaffStatusCategory,
@@ -162,15 +162,18 @@ export function BreakdownCard({
                         <li
                           key={p.staffId}
                           className={cn(
-                            "flex items-center justify-between gap-2 rounded border border-l-[3px] bg-background/60 px-2 py-1",
+                            "flex flex-col gap-1 rounded border border-l-[3px] bg-background/60 px-2 py-1",
                             entryBorder
                           )}
                         >
-                          <span className="flex items-center gap-1.5">
-                            <span className="font-medium text-sm">{p.staffName}</span>
-                            <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
-                          </span>
-                          <span className="text-right text-muted-foreground">{p.reason}</span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5">
+                              <span className="font-medium text-sm">{p.staffName}</span>
+                              <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
+                            </span>
+                            <span className="text-right text-muted-foreground">{p.reason}</span>
+                          </div>
+                          {p.trainingNote ? <TrainingNoteBadge note={p.trainingNote} /> : null}
                         </li>
                       );
                     })}
@@ -196,6 +199,37 @@ function MetricChip({ metric, count, suffix }: { metric: MetricKey; count: numbe
       </TooltipTrigger>
       <TooltipContent side="top">
         <p className="max-w-[20rem] text-xs">{m.explainer}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function TrainingNoteBadge({
+  note,
+}: {
+  note: NonNullable<StaffStatusEntry["trainingNote"]>;
+}) {
+  const toneClass =
+    note.tone === "good"
+      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+      : note.tone === "miss"
+        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40"
+        : "bg-muted text-muted-foreground border-border";
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex w-fit items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] cursor-help",
+            toneClass
+          )}
+        >
+          <GraduationCap className="h-3 w-3" />
+          {note.label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        <p className="max-w-[22rem] text-xs">{note.detail}</p>
       </TooltipContent>
     </Tooltip>
   );
