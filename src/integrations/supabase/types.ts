@@ -229,6 +229,30 @@ export type Database = {
         }
         Relationships: []
       }
+      duty_type_pool_rules: {
+        Row: {
+          category: string
+          created_at: string
+          duty_type: Database["public"]["Enums"]["duty_type"]
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          duty_type: Database["public"]["Enums"]["duty_type"]
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          duty_type?: Database["public"]["Enums"]["duty_type"]
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_inbound_log: {
         Row: {
           body_text: string | null

@@ -59,8 +59,12 @@ export function isSeniorTrainee(trainingLevel: string | null | undefined): boole
   return t === "ST6" || t === "ST7" || t === "ST8";
 }
 
-/** Duty types that take a person out of the theatre-cover pool entirely. */
-const UNAVAILABLE_DUTY_TYPES = new Set<string>([
+/**
+ * Built-in fallback classification used only if the `duty_type_pool_rules`
+ * settings table is empty or unreachable. Admins can override every entry
+ * via /admin/duty-categories.
+ */
+const DEFAULT_UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "icu_consultant_oncall",
   "general_consultant_oncall",
   "registrar_oncall",
@@ -74,9 +78,43 @@ const UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "non_clinical",
   "admin",
 ]);
+const DEFAULT_FLEX_DUTY_TYPES = new Set<string>(["spa"]);
+const DEFAULT_CLINICAL_LIST_DUTY_TYPES = new Set<string>(["theatre"]);
 
-/** Duty types that COULD be redeployed onto a list but should be flagged. */
-const FLEX_DUTY_TYPES = new Set<string>(["spa"]);
+export interface DutyPoolSets {
+  /** Duty types treated as "covering a clinical list" — excluded from pool. */
+  clinicalList: Set<string>;
+  /** Duty types treated as unavailable all day. */
+  unavailable: Set<string>;
+  /** Duty types treated as flexible cover (SPA-style). */
+  flex: Set<string>;
+}
+
+async function loadDutyPoolSets(): Promise<DutyPoolSets> {
+  const { data } = await supabase
+    .from("duty_type_pool_rules")
+    .select("duty_type, category");
+  const rows = (data ?? []) as Array<{ duty_type: string; category: string }>;
+  if (rows.length === 0) {
+    return {
+      clinicalList: new Set(DEFAULT_CLINICAL_LIST_DUTY_TYPES),
+      unavailable: new Set(DEFAULT_UNAVAILABLE_DUTY_TYPES),
+      flex: new Set(DEFAULT_FLEX_DUTY_TYPES),
+    };
+  }
+  const sets: DutyPoolSets = {
+    clinicalList: new Set(),
+    unavailable: new Set(),
+    flex: new Set(),
+  };
+  for (const r of rows) {
+    if (r.category === "clinical_list") sets.clinicalList.add(r.duty_type);
+    else if (r.category === "excluded") sets.unavailable.add(r.duty_type);
+    else if (r.category === "flex") sets.flex.add(r.duty_type);
+  }
+  return sets;
+}
+
 
 /**
  * Pure risk classifier. Exported for unit testing.
@@ -163,28 +201,31 @@ export async function computeRobustness(
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
 ): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
-  const [{ data: profiles }, { data: leave }, { data: theatreSessions }, { data: assignments }] =
+  const [poolSets, [{ data: profiles }, { data: leave }, { data: theatreSessions }, { data: assignments }]] =
     await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, grade, training_level, ltft_days_off")
-        .eq("active", true),
-      supabase
-        .from("leave_requests")
-        .select("staff_id, start_date, end_date, status")
-        .eq("status", "approved")
-        .lte("start_date", rangeEnd)
-        .gte("end_date", rangeStart),
-      supabase
-        .from("theatre_sessions")
-        .select("session_date, session")
-        .gte("session_date", rangeStart)
-        .lte("session_date", rangeEnd),
-      supabase
-        .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, theatre_session_id")
-        .gte("session_date", rangeStart)
-        .lte("session_date", rangeEnd),
+      loadDutyPoolSets(),
+      Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, grade, training_level, ltft_days_off")
+          .eq("active", true),
+        supabase
+          .from("leave_requests")
+          .select("staff_id, start_date, end_date, status")
+          .eq("status", "approved")
+          .lte("start_date", rangeEnd)
+          .gte("end_date", rangeStart),
+        supabase
+          .from("theatre_sessions")
+          .select("session_date, session")
+          .gte("session_date", rangeStart)
+          .lte("session_date", rangeEnd),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, session_date, session, duty_type, theatre_session_id")
+          .gte("session_date", rangeStart)
+          .lte("session_date", rangeEnd),
+      ]),
     ]);
 
   const staff = (profiles ?? []) as Array<{
@@ -244,15 +285,25 @@ export async function computeRobustness(
       filledMap.set(date, cur);
     }
 
-    // Any non-theatre duty that day takes the person off the pool.
-    if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+    // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
+    // clinic, future activities) for a specific half-day is removed from
+    // that half's pool.
+    const isClinicalList = poolSets.clinicalList.has(dt);
+
+    if (isClinicalList && a.theatre_session_id && (sess === "am" || sess === "pm")) {
+      const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
+      (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id as string);
+      filledMap.set(date, cur);
+    }
+
+    if (poolSets.unavailable.has(dt)) {
       const set = dailyUnavailable.get(date) ?? new Set<string>();
       set.add(sid);
       dailyUnavailable.set(date, set);
-    } else if (FLEX_DUTY_TYPES.has(dt)) {
+    } else if (poolSets.flex.has(dt)) {
       const key = `${date}|${sess}`;
       const sm = staffStateByDateSession.get(key) ?? new Map<string, AsnState>();
-      // SPA only flags the specific session it covers
+      // SPA-style flex only flags the specific half-day it covers
       if (sess === "am" || sess === "pm") {
         sm.set(sid, "spa");
         staffStateByDateSession.set(key, sm);
@@ -260,7 +311,7 @@ export async function computeRobustness(
         set.add(sid);
         dailySpa.set(`${date}|${sess}`, set);
       }
-    } else if (dt === "theatre" && (sess === "am" || sess === "pm")) {
+    } else if (isClinicalList && (sess === "am" || sess === "pm")) {
       const key = `${date}|${sess}`;
       const sm = staffStateByDateSession.get(key) ?? new Map<string, AsnState>();
       sm.set(sid, "theatre");
@@ -457,6 +508,8 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   const { days } = await computeRobustness(date, date);
   const day = days[0];
 
+  const poolSets = await loadDutyPoolSets();
+
   const [
     { data: theatreSessions },
     { data: profiles },
@@ -547,9 +600,9 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         trainingLevel: prof?.training_level ?? null,
       });
       asnByTheatreSession.set(a.theatre_session_id as string, arr);
-    } else if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+    } else if (poolSets.unavailable.has(dt)) {
       otherDutyMap.set(sid + "|" + dt, { ...mkRef(sid), duty: dt, session: sess });
-    } else if (FLEX_DUTY_TYPES.has(dt) && (sess === "am" || sess === "pm")) {
+    } else if (poolSets.flex.has(dt) && (sess === "am" || sess === "pm")) {
       const ref = mkRef(sid);
       if ((profById.get(sid)?.grade ?? "unknown") === "consultant") {
         (sess === "am" ? spa.am : spa.pm).push({ ...ref, duty: dt, session: sess });
@@ -624,19 +677,19 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     const sid = a.staff_id as string;
     const dt = a.duty_type as string;
     const sess = a.session as string;
-    if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+    if (poolSets.unavailable.has(dt)) {
       if (!excludedAllDay.has(sid)) excludedAllDay.set(sid, dt);
       continue;
     }
     if (sess !== "am" && sess !== "pm") continue;
     const half = sess as SessionHalf;
-    if (dt === "theatre" && a.theatre_session_id) {
+    if (poolSets.clinicalList.has(dt) && a.theatre_session_id) {
       halfAssn[half].set(sid, {
         kind: "theatre",
         theatreSessionId: a.theatre_session_id as string,
         role: (a.role_on_list as string | null) ?? null,
       });
-    } else if (FLEX_DUTY_TYPES.has(dt)) {
+    } else if (poolSets.flex.has(dt)) {
       if (!halfAssn[half].has(sid)) halfAssn[half].set(sid, { kind: "spa" });
     }
   }
