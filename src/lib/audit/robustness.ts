@@ -303,16 +303,11 @@ export async function computeRobustness(
       juniorTrainees -= fromJuniors;
       seniorTrainees = sub(seniorTrainees, traineeKnockdown - fromJuniors);
 
-      const soloCapable = consultants + seniorTrainees;
-      const headroom = soloCapable - req;
-      const headroomWithSpa = soloCapable + consultantsOnSpa - req;
-
       const onLeaveCount = offToday.size + extraStaffOff.size
         + Object.values(extraByGrade).reduce((a, b) => a + b, 0);
 
-      return {
+      return computeHalfDayCapacity({
         required: req,
-        soloCapable,
         consultantsAvailable: consultants,
         seniorTraineesAvailable: seniorTrainees,
         juniorTraineesAvailable: juniorTrainees,
@@ -320,11 +315,9 @@ export async function computeRobustness(
         consultantsOnSpa,
         onLeave: onLeaveCount,
         onOtherDuty: otherDutyToday.size,
-        headroom,
-        headroomWithSpa,
-        risk: classify(headroom, headroomWithSpa),
         unfilled: Math.max(0, req - (filledMap.get(date)?.[half]?.size ?? 0)),
-      };
+      });
+
     };
 
     const required = requiredMap.get(date) ?? { am: 0, pm: 0 };
