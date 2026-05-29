@@ -8,9 +8,11 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 
+import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
+import { installCacheBuster, maybeCacheBust } from "@/lib/cache-buster";
 
 function NotFoundComponent() {
   return (
