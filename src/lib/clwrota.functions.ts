@@ -794,22 +794,16 @@ export async function performStaffSync() {
         ? errors.slice(0, 5).map((e) => `${e.label}: ${e.error}`).join("; ")
         : null,
       last_pulled_rows: rows.length,
-    });
+  // Count rows using the same parser the per-report syncs use so the dashboard
+  // reflects real ingestable rows (handles Rotamap's {columns, rows} shape).
+  let rows = 0;
+  try {
+    rows = parseRows(text).length;
+  } catch {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    rows = Math.max(0, lines.length - 1);
+  }
 
-    return {
-      ok: errors.length === 0,
-      message: summary,
-      total: rows.length,
-      matched,
-      updated,
-      insertedCount: inserted,
-      insertedList,
-      unchangedCount,
-      skipped,
-      errors,
-      rawPreview,
-      sampleKeys,
-      emailDiagnostics,
     };
 }
 
