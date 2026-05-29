@@ -74,12 +74,72 @@ const UNAVAILABLE_DUTY_TYPES = new Set<string>([
 /** Duty types that COULD be redeployed onto a list but should be flagged. */
 const FLEX_DUTY_TYPES = new Set<string>(["spa"]);
 
-function classify(headroom: number, headroomWithSpa: number): HalfDayCapacity["risk"] {
+/**
+ * Pure risk classifier. Exported for unit testing.
+ *
+ * - shortfall: not enough solo-capable staff even after redeploying SPA
+ * - spa_required: shortfall closes only by pulling a consultant off SPA
+ * - tight: covered but headroom is at or below RISK_TIGHT
+ * - ok: comfortable headroom
+ */
+export function classifyRisk(
+  headroom: number,
+  headroomWithSpa: number,
+): HalfDayCapacity["risk"] {
   if (headroom < 0 && headroomWithSpa >= 0) return "spa_required";
   if (headroom < 0) return "shortfall";
   if (headroom <= RISK_TIGHT) return "tight";
   return "ok";
 }
+
+// Backwards-compatible internal alias.
+const classify = classifyRisk;
+
+/**
+ * Inputs for the pure half-day capacity calculation. Exported so the
+ * derivation of soloCapable / headroom / headroomWithSpa / risk can be
+ * unit-tested independently of the database.
+ */
+export interface HalfDayInputs {
+  required: number;
+  consultantsAvailable: number;
+  seniorTraineesAvailable: number;
+  juniorTraineesAvailable: number;
+  sasAvailable: number;
+  consultantsOnSpa: number;
+  onLeave: number;
+  onOtherDuty: number;
+  unfilled?: number;
+}
+
+/**
+ * Pure derivation of a HalfDayCapacity from the available staff buckets.
+ * `soloCapable` = consultants + senior trainees (ST6/ST7/ST8). SAS and
+ * junior trainees are tracked but NOT counted toward solo cover — junior
+ * trainees can only work supervised, and SAS are excluded from solo
+ * baseline. Consultants on SPA only count via `headroomWithSpa`.
+ */
+export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
+  const soloCapable = i.consultantsAvailable + i.seniorTraineesAvailable;
+  const headroom = soloCapable - i.required;
+  const headroomWithSpa = soloCapable + i.consultantsOnSpa - i.required;
+  return {
+    required: i.required,
+    soloCapable,
+    consultantsAvailable: i.consultantsAvailable,
+    seniorTraineesAvailable: i.seniorTraineesAvailable,
+    juniorTraineesAvailable: i.juniorTraineesAvailable,
+    sasAvailable: i.sasAvailable,
+    consultantsOnSpa: i.consultantsOnSpa,
+    onLeave: i.onLeave,
+    onOtherDuty: i.onOtherDuty,
+    headroom,
+    headroomWithSpa,
+    risk: classifyRisk(headroom, headroomWithSpa),
+    unfilled: Math.max(0, i.unfilled ?? 0),
+  };
+}
+
 
 export async function computeRobustness(
   rangeStart: string,
