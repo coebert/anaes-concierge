@@ -556,7 +556,7 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const { messages, conversationId } = body;
-        const uiMessages = messages as UIMessage[];
+        const uiMessages = messages as unknown as UIMessage[];
 
         const admin = getAdminClient();
         // Confirm conversation belongs to user
