@@ -756,6 +756,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
           category: "on_excluded_duty",
           reason: formatDutyLabel(exDuty),
           countsToSolo: false,
+          trainingNote: traineeNote(ref, { kind: "excluded", reason: formatDutyLabel(exDuty) }),
         });
         continue;
       }
@@ -770,6 +771,12 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
           category: "on_clinical_list",
           reason: `Covering ${theatre} — ${sessionLabel} · ${specialty}`,
           countsToSolo: false,
+          trainingNote: traineeNote(ref, {
+            kind: "theatre",
+            specialtyId: info?.specialtyId ?? null,
+            specialtyName: info?.specialty ?? null,
+            role: ha.role,
+          }),
         });
         continue;
       }
@@ -783,7 +790,11 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         });
         continue;
       }
-      entries.push(freeEntry(ref));
+      const fe = freeEntry(ref);
+      if (ref.grade === "trainee") {
+        fe.trainingNote = traineeNote(ref, { kind: "free" });
+      }
+      entries.push(fe);
     }
     entries.sort((a, b) => a.staffName.localeCompare(b.staffName));
     return { session: half, entries };
