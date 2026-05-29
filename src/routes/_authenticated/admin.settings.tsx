@@ -69,12 +69,16 @@ function SettingsPage() {
   const [rotaUrl, setRotaUrl] = useState("");
   const [leaveUrl, setLeaveUrl] = useState("");
   const [staffUrl, setStaffUrl] = useState("");
+  const [daysBack, setDaysBack] = useState("30");
+  const [daysAhead, setDaysAhead] = useState("120");
 
   useEffect(() => {
     if (data?.settings) {
       setRotaUrl(data.settings.rota_report_url ?? "");
       setLeaveUrl(data.settings.leave_report_url ?? "");
       setStaffUrl(data.settings.staff_report_url ?? "");
+      setDaysBack(String(data.settings.sync_days_back ?? 30));
+      setDaysAhead(String(data.settings.sync_days_ahead ?? 120));
     }
   }, [data?.settings]);
 
@@ -85,10 +89,12 @@ function SettingsPage() {
           rota_report_url: rotaUrl.trim() || null,
           leave_report_url: leaveUrl.trim() || null,
           staff_report_url: staffUrl.trim() || null,
+          sync_days_back: Number(daysBack) || 30,
+          sync_days_ahead: Number(daysAhead) || 120,
         },
       }),
     onSuccess: () => {
-      toast.success("Report URLs saved");
+      toast.success("Settings saved");
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
     },
     onError: (e: Error) => toast.error(e.message),
