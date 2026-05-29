@@ -11,18 +11,22 @@ export interface ExtraAbsence {
 
 export interface HalfDayCapacity {
   required: number;
-  /** Staff that can solo-cover a daytime list (consultant or senior trainee). */
+  /** Solo-capable staff free to deploy (consultant or ST6/ST7/ST8). */
   soloCapable: number;
+  /** Consultants free to deploy — NOT on leave, on excluded duties, on SPA, or already covering a list. */
   consultantsAvailable: number;
-  seniorTraineesAvailable: number; // ST6/ST7 — can solo-cover
-  juniorTraineesAvailable: number; // pair with consultant only
+  /** ST6/ST7/ST8 trainees free to deploy — solo-capable. */
+  seniorTraineesAvailable: number;
+  /** Junior trainees free to deploy — supervised only, do not count toward solo cover. */
+  juniorTraineesAvailable: number;
+  /** SAS doctors free to deploy — tracked but do not count toward solo cover. */
   sasAvailable: number;
-  /** Consultants currently on SPA — can be flexed onto a list, but flag it. */
+  /** Consultants on SPA time — flexible cover (counted only in `headroomWithSpa`). */
   consultantsOnSpa: number;
   onLeave: number;
   onOtherDuty: number; // on-call, ICU, obstetrics, teaching, non-clinical, admin, CIC
-  headroom: number; // soloCapable - required (SPA NOT counted)
-  headroomWithSpa: number; // (soloCapable + consultantsOnSpa) - required
+  headroom: number; // soloCapable - unfilled (SPA NOT counted)
+  headroomWithSpa: number; // (soloCapable + consultantsOnSpa) - unfilled
   risk: "ok" | "tight" | "shortfall" | "spa_required";
   unfilled: number;
 }
