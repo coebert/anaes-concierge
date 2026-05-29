@@ -18,7 +18,7 @@ export type RoleOnList =
 
 export interface AuditAssignment {
   id?: string;
-  staff_id: string;
+  staff_id?: string;
   session_date: string;
   session: string;
   role_on_list: RoleOnList;
@@ -27,7 +27,6 @@ export interface AuditAssignment {
   duty_type?: string | null;
   locally_modified?: boolean | null;
 }
-
 export interface AuditTheatreSession {
   id: string;
   specialty_id: string | null;
