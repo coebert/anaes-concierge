@@ -1072,7 +1072,7 @@ function mappingMatches(
  * Classify a CLWRota row as a non-theatre duty using admin-configured
  * mappings (priority asc). Falls back to "theatre" when nothing matches.
  */
-function classifyDutyType(
+export function classifyDutyType(
   labels: Array<string | null | undefined>,
   grade: string | null | undefined,
   trainingLevel: string | null | undefined,
