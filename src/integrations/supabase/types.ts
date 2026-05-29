@@ -119,6 +119,8 @@ export type Database = {
           leave_report_url: string | null
           rota_report_url: string | null
           staff_report_url: string | null
+          sync_days_ahead: number
+          sync_days_back: number
         }
         Insert: {
           id?: number
@@ -129,6 +131,8 @@ export type Database = {
           leave_report_url?: string | null
           rota_report_url?: string | null
           staff_report_url?: string | null
+          sync_days_ahead?: number
+          sync_days_back?: number
         }
         Update: {
           id?: number
@@ -139,6 +143,8 @@ export type Database = {
           leave_report_url?: string | null
           rota_report_url?: string | null
           staff_report_url?: string | null
+          sync_days_ahead?: number
+          sync_days_back?: number
         }
         Relationships: []
       }
