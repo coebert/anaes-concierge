@@ -582,6 +582,107 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     onOtherDuty: 0, headroom: 0, headroomWithSpa: 0, risk: "ok", unfilled: 0,
   };
 
+  // ----- Per-half-day per-staff breakdown -----
+  const tsInfoById = new Map<string, { theatreName: string; specialty: string | null }>();
+  for (const t of ts) {
+    tsInfoById.set(t.id as string, {
+      theatreName: theatreNameById.get(t.theatre_id as string) ?? "—",
+      specialty: t.specialty_id ? specialtyNameById.get(t.specialty_id as string) ?? null : null,
+    });
+  }
+
+  const leaveTypeByStaff = new Map<string, string>();
+  for (const l of leave ?? []) {
+    leaveTypeByStaff.set(l.staff_id as string, l.type as string);
+  }
+
+  type HalfAssn =
+    | { kind: "theatre"; theatreSessionId: string }
+    | { kind: "spa" }
+    | undefined;
+  const halfAssn: Record<SessionHalf, Map<string, HalfAssn>> = {
+    am: new Map(),
+    pm: new Map(),
+  };
+  const excludedAllDay = new Map<string, string>(); // staff -> duty
+  for (const a of assignments ?? []) {
+    const sid = a.staff_id as string;
+    const dt = a.duty_type as string;
+    const sess = a.session as string;
+    if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+      if (!excludedAllDay.has(sid)) excludedAllDay.set(sid, dt);
+      continue;
+    }
+    if (sess !== "am" && sess !== "pm") continue;
+    const half = sess as SessionHalf;
+    if (dt === "theatre" && a.theatre_session_id) {
+      halfAssn[half].set(sid, { kind: "theatre", theatreSessionId: a.theatre_session_id as string });
+    } else if (FLEX_DUTY_TYPES.has(dt)) {
+      if (!halfAssn[half].has(sid)) halfAssn[half].set(sid, { kind: "spa" });
+    }
+  }
+
+  const buildBreakdown = (half: SessionHalf): HalfBreakdown => {
+    const entries: StaffStatusEntry[] = [];
+    for (const [id, p] of profById.entries()) {
+      const ref: PersonRef = {
+        staffId: id,
+        staffName: p.full_name,
+        grade: p.grade,
+        trainingLevel: p.training_level,
+      };
+      if (leaveTypeByStaff.has(id)) {
+        entries.push({
+          ...ref,
+          category: "on_leave",
+          reason: `${leaveTypeByStaff.get(id)} leave (approved)`,
+          countsToSolo: false,
+        });
+        continue;
+      }
+      if (p.ltft_days_off.includes(dow)) {
+        entries.push({ ...ref, category: "ltft_off", reason: "LTFT non-working day", countsToSolo: false });
+        continue;
+      }
+      const exDuty = excludedAllDay.get(id);
+      if (exDuty) {
+        entries.push({
+          ...ref,
+          category: "on_excluded_duty",
+          reason: formatDutyLabel(exDuty),
+          countsToSolo: false,
+        });
+        continue;
+      }
+      const ha = halfAssn[half].get(id);
+      if (ha?.kind === "theatre") {
+        const info = tsInfoById.get(ha.theatreSessionId);
+        const where = info
+          ? `${info.theatreName}${info.specialty ? ` (${info.specialty})` : ""}`
+          : "a theatre list";
+        entries.push({
+          ...ref,
+          category: "on_clinical_list",
+          reason: `Covering ${where}`,
+          countsToSolo: false,
+        });
+        continue;
+      }
+      if (ha?.kind === "spa" && p.grade === "consultant") {
+        entries.push({
+          ...ref,
+          category: "on_spa",
+          reason: "Scheduled SPA — flexible cover",
+          countsToSolo: false,
+        });
+        continue;
+      }
+      entries.push(freeEntry(ref));
+    }
+    entries.sort((a, b) => a.staffName.localeCompare(b.staffName));
+    return { session: half, entries };
+  };
+
   return {
     date,
     dow,
@@ -592,5 +693,41 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     consultantsOnSpa: spa,
     am: day?.am ?? empty,
     pm: day?.pm ?? empty,
+    amBreakdown: buildBreakdown("am"),
+    pmBreakdown: buildBreakdown("pm"),
   };
+}
+
+function freeEntry(ref: PersonRef): StaffStatusEntry {
+  if (ref.grade === "consultant") {
+    return { ...ref, category: "free_consultant", reason: "Free — no leave, duty, or list assignment", countsToSolo: true };
+  }
+  if (ref.grade === "trainee") {
+    if (isSeniorTrainee(ref.trainingLevel)) {
+      return { ...ref, category: "free_senior_trainee", reason: `Free senior trainee (${ref.trainingLevel}) — solo-capable`, countsToSolo: true };
+    }
+    return { ...ref, category: "free_junior_trainee", reason: `Free junior trainee (${ref.trainingLevel ?? "—"}) — needs supervision`, countsToSolo: false };
+  }
+  if (ref.grade === "sas") {
+    return { ...ref, category: "free_sas", reason: "Free SAS — pairs with a consultant", countsToSolo: false };
+  }
+  return { ...ref, category: "free_consultant", reason: "Free (grade unknown)", countsToSolo: false };
+}
+
+function formatDutyLabel(dt: string): string {
+  const map: Record<string, string> = {
+    icu_consultant_oncall: "ICU consultant on-call",
+    general_consultant_oncall: "General consultant on-call",
+    registrar_oncall: "Registrar on-call",
+    sho_oncall: "SHO on-call",
+    icu_trainee: "ICU trainee",
+    icu_ct2_plus: "ICU (CT2+)",
+    obstetrics: "Obstetrics",
+    obstetrics_2nd: "Obstetrics (2nd on)",
+    consultant_in_charge: "Consultant in charge",
+    teaching: "Teaching",
+    non_clinical: "Non-clinical",
+    admin: "Admin",
+  };
+  return map[dt] ?? dt.replace(/_/g, " ");
 }
