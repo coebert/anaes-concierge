@@ -106,6 +106,8 @@ const SettingsSchema = z.object({
   rota_report_url: urlOrNull,
   leave_report_url: urlOrNull,
   staff_report_url: urlOrNull,
+  sync_days_back: z.coerce.number().int().min(0).max(3650).default(30),
+  sync_days_ahead: z.coerce.number().int().min(1).max(3650).default(120),
 });
 
 export const saveClwRotaSettings = createServerFn({ method: "POST" })
@@ -1019,12 +1021,14 @@ export async function performRotaSync() {
 
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
-      .select("rota_report_url")
+      .select("rota_report_url, sync_days_back, sync_days_ahead")
       .eq("id", 1)
       .maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
 
     const url = settings?.rota_report_url;
+    const daysBack = settings?.sync_days_back ?? 30;
+    const daysAhead = settings?.sync_days_ahead ?? 120;
     const emptyResult = {
       ok: false as boolean,
       message: "",
@@ -1047,7 +1051,8 @@ export async function performRotaSync() {
     let rawPreview = "";
     let sampleKeys: string[] = [];
     try {
-      const text = await fetchReportRaw(clampDateWindow(url), apiKey);
+      const text = await fetchReportRaw(clampDateWindow(url, { daysBack, daysAhead }), apiKey);
+
 
       rawPreview = text.slice(0, 500);
       rows = parseRows(text);
