@@ -122,8 +122,10 @@ function RobustnessPage() {
                       <ThTooltip label="Off" tooltip="Staff on approved leave (annual, study, sick) — excluded from availability." />
                       <ThTooltip label="Other duties" tooltip="Staff on on-call, ICU, obstetrics, teaching, admin or CIC — excluded from availability." />
                       <th className="px-2 py-1 text-center font-medium">AM lists</th>
+                      <ThTooltip label="AM unfilled" tooltip="Theatre lists with no anaesthetist assigned (AM)." />
                       <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
                       <th className="px-2 py-1 text-center font-medium">PM lists</th>
+                      <ThTooltip label="PM unfilled" tooltip="Theatre lists with no anaesthetist assigned (PM)." />
                       <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
                       <th className="px-2 py-1 text-left font-medium">Notes</th>
                     </tr>
@@ -182,8 +184,14 @@ function RobustnessPage() {
                           <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onLeave}</td>
                           <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onOtherDuty}</td>
                           <td className="px-2 py-1.5 text-center">{d.am.required}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <UnfilledBadge count={d.am.unfilled} />
+                          </td>
                           <td className="px-2 py-1.5 text-center">{renderCell(d.am)}</td>
                           <td className="px-2 py-1.5 text-center">{d.pm.required}</td>
+                          <td className="px-2 py-1.5 text-center">
+                            <UnfilledBadge count={d.pm.unfilled} />
+                          </td>
                           <td className="px-2 py-1.5 text-center">{renderCell(d.pm)}</td>
                           <td className="px-2 py-1.5 text-xs text-muted-foreground">
                             {notes.length === 0 ? "—" : notes.join(" · ")}
@@ -242,6 +250,15 @@ type StatProps = {
   icon: typeof Activity;
   tone: "amber" | "red" | "emerald";
 };
+
+function UnfilledBadge({ count }: { count: number }) {
+  if (count === 0) return <span className="text-muted-foreground">0</span>;
+  return (
+    <span className="inline-flex items-center justify-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+      {count}
+    </span>
+  );
+}
 
 function Stat(props: StatProps) {
   const { label, value, tone } = props;
