@@ -13,7 +13,6 @@ import {
   getClwRotaSettings,
   saveClwRotaSettings,
   testClwRotaConnection,
-  runClwRotaSync,
   syncClwRotaStaff,
   syncClwRotaRota,
   syncClwRotaLeave,
