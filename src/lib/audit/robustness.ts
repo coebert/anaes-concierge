@@ -201,3 +201,156 @@ export function riskColor(risk: HalfDayCapacity["risk"]): string {
   if (risk === "tight") return "bg-amber-400/80";
   return "bg-emerald-300/50";
 }
+
+// ============= Per-day drilldown =============
+
+export interface DayDetailSession {
+  id: string;
+  session: SessionHalf;
+  theatreName: string;
+  specialty: string | null;
+  surgicalConsultant: string | null;
+  assignments: Array<{
+    staffName: string;
+    role: string;
+    grade: Grade;
+  }>;
+  unfilled: boolean;
+}
+
+export interface LeaveDetail {
+  staffId: string;
+  staffName: string;
+  grade: Grade;
+  type: string;
+  status: string;
+}
+
+export interface DayDetail {
+  date: string;
+  dow: number;
+  sessions: DayDetailSession[]; // theatre sessions that day
+  onLeave: LeaveDetail[];
+  ltftOff: Array<{ staffId: string; staffName: string; grade: Grade }>;
+  am: HalfDayCapacity;
+  pm: HalfDayCapacity;
+}
+
+export async function loadDayDetail(date: string): Promise<DayDetail> {
+  // Reuse the headline computation for the headroom + availability counts.
+  const { days } = await computeRobustness(date, date);
+  const day = days[0];
+
+  const [
+    { data: theatreSessions },
+    { data: profiles },
+    { data: leave },
+    { data: assignments },
+  ] = await Promise.all([
+    supabase
+      .from("theatre_sessions")
+      .select("id, session, theatre_id, specialty_id, surgical_consultant")
+      .eq("session_date", date),
+    supabase
+      .from("profiles")
+      .select("id, full_name, grade, ltft_days_off, active")
+      .eq("active", true),
+    supabase
+      .from("leave_requests")
+      .select("staff_id, type, status")
+      .eq("status", "approved")
+      .lte("start_date", date)
+      .gte("end_date", date),
+    supabase
+      .from("rota_assignments")
+      .select("staff_id, theatre_session_id, role_on_list, duty_type, session")
+      .eq("duty_type", "theatre")
+      .eq("session_date", date),
+  ]);
+
+  const ts = theatreSessions ?? [];
+  const theatreIds = [...new Set(ts.map((t) => t.theatre_id).filter(Boolean))] as string[];
+  const specialtyIds = [...new Set(ts.map((t) => t.specialty_id).filter(Boolean))] as string[];
+
+  const [{ data: theatres }, { data: specialties }] = await Promise.all([
+    theatreIds.length
+      ? supabase.from("theatres").select("id, name").in("id", theatreIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+    specialtyIds.length
+      ? supabase.from("specialties").select("id, name").in("id", specialtyIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+  ]);
+
+  const theatreNameById = new Map((theatres ?? []).map((t) => [t.id, t.name]));
+  const specialtyNameById = new Map((specialties ?? []).map((s) => [s.id, s.name]));
+
+  const profById = new Map(
+    (profiles ?? []).map((p) => [
+      p.id as string,
+      {
+        full_name: p.full_name as string,
+        grade: (p.grade as Grade) ?? "unknown",
+        ltft_days_off: (p.ltft_days_off ?? []) as number[],
+      },
+    ]),
+  );
+
+  // Group assignments by theatre_session_id.
+  const asnByTheatreSession = new Map<
+    string,
+    Array<{ staffName: string; role: string; grade: Grade }>
+  >();
+  for (const a of assignments ?? []) {
+    if (!a.theatre_session_id) continue;
+    const prof = profById.get(a.staff_id as string);
+    const arr = asnByTheatreSession.get(a.theatre_session_id as string) ?? [];
+    arr.push({
+      staffName: prof?.full_name ?? "Unknown",
+      role: a.role_on_list as string,
+      grade: prof?.grade ?? "unknown",
+    });
+    asnByTheatreSession.set(a.theatre_session_id as string, arr);
+  }
+
+  const sessions: DayDetailSession[] = ts.map((t) => {
+    const asns = asnByTheatreSession.get(t.id as string) ?? [];
+    return {
+      id: t.id as string,
+      session: t.session as SessionHalf,
+      theatreName: theatreNameById.get(t.theatre_id as string) ?? "—",
+      specialty: t.specialty_id ? specialtyNameById.get(t.specialty_id as string) ?? null : null,
+      surgicalConsultant: (t.surgical_consultant as string | null) ?? null,
+      assignments: asns,
+      unfilled: asns.length === 0,
+    };
+  }).sort((a, b) =>
+    a.session === b.session ? a.theatreName.localeCompare(b.theatreName) : a.session === "am" ? -1 : 1,
+  );
+
+  const onLeave: LeaveDetail[] = (leave ?? []).map((l) => {
+    const prof = profById.get(l.staff_id as string);
+    return {
+      staffId: l.staff_id as string,
+      staffName: prof?.full_name ?? "Unknown",
+      grade: prof?.grade ?? "unknown",
+      type: l.type as string,
+      status: l.status as string,
+    };
+  }).sort((a, b) => a.staffName.localeCompare(b.staffName));
+
+  const dow = new Date(date + "T00:00:00Z").getUTCDay();
+  const ltftOff = [...profById.entries()]
+    .filter(([, p]) => p.ltft_days_off.includes(dow))
+    .map(([id, p]) => ({ staffId: id, staffName: p.full_name, grade: p.grade }))
+    .sort((a, b) => a.staffName.localeCompare(b.staffName));
+
+  return {
+    date,
+    dow,
+    sessions,
+    onLeave,
+    ltftOff,
+    am: day?.am ?? { required: 0, available: 0, byGrade: {} as Record<Grade, number>, onLeave: 0, headroom: 0, risk: "ok", unfilled: 0 },
+    pm: day?.pm ?? { required: 0, available: 0, byGrade: {} as Record<Grade, number>, onLeave: 0, headroom: 0, risk: "ok", unfilled: 0 },
+  };
+}
