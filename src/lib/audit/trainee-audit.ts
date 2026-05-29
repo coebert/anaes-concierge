@@ -242,7 +242,7 @@ export function computeFullAudit(args: {
   assignments: AuditAssignment[];
   tsById: Map<string, AuditTheatreSession>;
   specNames: Map<string, string>;
-  supNames: Map<string, string>;
+  supNames: Map<string, string | null>;
   targets: AuditTarget[];
 }): FullAudit {
   return {
