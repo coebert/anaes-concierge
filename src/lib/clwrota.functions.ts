@@ -945,7 +945,7 @@ export const runClwRotaSync = createServerFn({ method: "POST" })
 
 type SessionHalf = "am" | "pm" | "eve" | "night";
 
-function normaliseSession(raw: string | null): SessionHalf | null {
+export function normaliseSession(raw: string | null): SessionHalf | null {
   if (!raw) return null;
   const s = raw.trim().toLowerCase();
   if (s === "am" || s.includes("morning") || s.startsWith("a.m")) return "am";
