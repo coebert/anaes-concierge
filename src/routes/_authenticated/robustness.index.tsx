@@ -104,7 +104,16 @@ function RobustnessPage() {
                 <tbody>
                   {days.map((d) => (
                     <tr key={d.date} className="border-t">
-                      <td className="px-2 py-1.5">{formatDateGB(d.date)}</td>
+                      <td className="px-2 py-1.5">
+                        <Link
+                          to="/robustness/day/$date"
+                          params={{ date: d.date }}
+                          className="text-primary hover:underline"
+                        >
+                          {formatDateGB(d.date)}
+                        </Link>
+                      </td>
+
                       <td className="px-2 py-1.5 text-muted-foreground">{d.am.onLeave}</td>
                       <td className="px-2 py-1.5 text-center">{d.am.required}</td>
                       <td className="px-2 py-1.5 text-center">
