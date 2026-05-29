@@ -988,7 +988,7 @@ export function normaliseDate(raw: string | null): string | null {
   return null;
 }
 
-function normaliseRole(
+export function normaliseRole(
   raw: string | null,
 ): "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session" {
   const s = (raw ?? "").trim().toLowerCase();
