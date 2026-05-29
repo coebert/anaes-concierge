@@ -79,8 +79,9 @@ function RobustnessPage() {
         <CardHeader>
           <CardTitle className="text-base">Daily coverage headroom</CardTitle>
           <CardDescription>
-            Each cell shows available staff minus lists needing cover.
-            Green = comfortable, amber = tight, red = shortfall.
+            Each cell shows solo-capable staff (consultant or ST6/7) minus lists.
+            Green = OK, amber = tight, orange = SPA consultant needed to fill,
+            red = true shortfall.
           </CardDescription>
         </CardHeader>
         <CardContent>
