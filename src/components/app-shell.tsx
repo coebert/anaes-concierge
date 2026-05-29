@@ -19,6 +19,8 @@ import {
   Grid3x3,
   UserPlus,
   UserCircle,
+  Activity,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,26 +33,34 @@ interface NavItem {
   traineeOnly?: boolean;
 }
 
+// Primary nav: audit-first. The app exists to surface insights from synced
+// CLWRota data — trainee experience, leave pressure, rota robustness.
 const NAV: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/", label: "Audit dashboard", icon: LayoutDashboard },
+  { to: "/trainees", label: "Trainee audit", icon: GraduationCap, traineeOnly: true },
+  { to: "/leave", label: "Leave", icon: ClipboardList },
   { to: "/calendar", label: "Global calendar", icon: CalendarDays },
   { to: "/me", label: "My rota", icon: CalendarRange },
-  { to: "/leave", label: "Leave", icon: ClipboardList },
-  { to: "/trainees", label: "Trainees", icon: GraduationCap, traineeOnly: true },
-  { to: "/chat", label: "AI assistant", icon: MessageSquare },
   { to: "/account", label: "My account", icon: UserCircle },
 ];
 
-const ADMIN_NAV: NavItem[] = [
-  { to: "/admin/dashboard", label: "Rota audit data", icon: Grid3x3, roles: ["admin"] },
-  { to: "/admin/tcs-audit", label: "TCS 2016 audit", icon: ShieldCheck, roles: ["admin"] },
-  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin"] },
+// Coordinator tools: AI-assisted rota writing, custom rules, manual editor.
+// Kept available but de-emphasised — the app's primary purpose is auditing
+// existing CLWRota data, not generating new rotas.
+const COORDINATOR_NAV: NavItem[] = [
+  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin", "rota_coordinator"] },
   { to: "/coordinator/duties", label: "Duties & on-call", icon: Stethoscope, roles: ["admin", "rota_coordinator"] },
   { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
+  { to: "/chat", label: "AI assistant", icon: MessageSquare, roles: ["admin", "rota_coordinator"] },
+  { to: "/admin/rules", label: "Working rules", icon: SlidersHorizontal, roles: ["admin"] },
+];
+
+const ADMIN_NAV: NavItem[] = [
+  { to: "/admin/dashboard", label: "Rota audit data", icon: Activity, roles: ["admin"] },
+  { to: "/admin/tcs-audit", label: "TCS 2016 audit", icon: ShieldCheck, roles: ["admin"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
   { to: "/admin/access-requests", label: "Access requests", icon: UserPlus, roles: ["admin"] },
   { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
-  { to: "/admin/rules", label: "Working rules", icon: SlidersHorizontal, roles: ["admin"] },
   { to: "/admin/theatres", label: "Theatres", icon: Building2, roles: ["admin"] },
   { to: "/admin/theatre-grid", label: "Theatre grid", icon: Grid3x3, roles: ["admin"] },
   { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
@@ -69,6 +79,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isAdmin = hasRole("admin");
   const visibleMain = NAV.filter(
     (i) => !i.traineeOnly || isAdmin || grade === "trainee",
+  );
+  const visibleCoord = COORDINATOR_NAV.filter(
+    (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
   const visibleAdmin = ADMIN_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
@@ -94,17 +107,28 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Stethoscope className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">Anaesthetics Rota</div>
+            <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
             <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-6 px-2 py-4 text-sm">
+        <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4 text-sm">
           <NavSection items={visibleMain} currentPath={location.pathname} />
+
+          {visibleCoord.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Wrench className="h-3 w-3" />
+                Coordinator tools
+              </div>
+              <NavSection items={visibleCoord} currentPath={location.pathname} />
+            </div>
+          )}
+
           {visibleAdmin.length > 0 && (
             <div className="space-y-1">
               <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Coordination
+                Administration
               </div>
               <NavSection items={visibleAdmin} currentPath={location.pathname} />
             </div>
@@ -129,6 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 
 function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
   return (

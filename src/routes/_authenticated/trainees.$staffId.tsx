@@ -4,16 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTraineeProfileWithSupervisors } from "@/lib/staff-directory.functions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { computeProgress } from "@/lib/competency-utils";
-import { ArrowLeft } from "lucide-react";
+import { computeFullAudit, type AuditAssignment, type AuditTheatreSession, type AuditTarget } from "@/lib/audit/trainee-audit";
+import { ArrowLeft, AlertTriangle, Sparkles, Users } from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
-
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   component: TraineeDetailPage,
 });
@@ -105,6 +105,18 @@ function TraineeDetailPage() {
     );
   }, [data]);
 
+  const audit = useMemo(() => {
+    if (!data?.profile) return null;
+    return computeFullAudit({
+      trainingLevel: data.profile.training_level ?? null,
+      assignments: data.assignments as AuditAssignment[],
+      tsById: data.tsMap as Map<string, AuditTheatreSession>,
+      specNames: data.specMap,
+      supNames: data.supMap,
+      targets: data.targets as AuditTarget[],
+    });
+  }, [data]);
+
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data?.profile) return <p>Not found.</p>;
 
@@ -128,6 +140,8 @@ function TraineeDetailPage() {
           {data.profile.training_level ?? "No level set"} · {data.profile.email}
         </p>
       </div>
+
+      {audit && <AuditLenses audit={audit} />}
 
 
       <Card>
@@ -214,3 +228,120 @@ function TraineeDetailPage() {
     </div>
   );
 }
+
+function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) {
+  const { breadth, soloMix, supervisorExposure, displacement } = audit;
+  const deficits = breadth.filter((b) => b.status === "deficit");
+  const overs = breadth.filter((b) => b.status === "over");
+  const soloPct = Math.round(soloMix.soloRatio * 100);
+  const targetSoloPct = Math.round(soloMix.targetSoloRatio * 100);
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-primary" /> Specialty breadth
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {deficits.length} deficit · {overs.length} over-exposed · {breadth.length - deficits.length - overs.length} on track
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {breadth.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No targets defined for this level.</p>
+          ) : (
+            <ul className="space-y-1.5 text-xs">
+              {breadth.slice(0, 6).map((b) => (
+                <li key={b.specialty_id} className="flex items-center justify-between gap-2">
+                  <span className="truncate">{b.specialty_name}</span>
+                  <Badge
+                    variant={b.status === "deficit" ? "destructive" : b.status === "over" ? "secondary" : "default"}
+                    className="shrink-0"
+                  >
+                    {b.done}/{b.target} · {b.percent}%
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Solo vs supervised mix</CardTitle>
+          <CardDescription className="text-xs">
+            Actual {soloPct}% solo · target {targetSoloPct}%
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Progress value={soloPct} className="h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Solo: <strong className="text-foreground">{soloMix.solo}</strong></span>
+            <span>Supervised: <strong className="text-foreground">{soloMix.supervised}</strong></span>
+            <span className={soloMix.gap < -0.1 ? "text-amber-600" : soloMix.gap > 0.15 ? "text-amber-600" : ""}>
+              Gap: {(soloMix.gap * 100).toFixed(0)}%
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4 text-primary" /> Supervisor exposure
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {supervisorExposure.distinctSupervisors} distinct · {supervisorExposure.totalSupervisedSessions} supervised sessions
+            {supervisorExposure.narrowExposure && (
+              <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+                <AlertTriangle className="h-3 w-3" /> narrow exposure
+              </span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {supervisorExposure.rows.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No named supervisor sessions yet.</p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {supervisorExposure.rows.slice(0, 5).map((r) => (
+                <li key={r.supervisor_id} className="flex justify-between">
+                  <span className="truncate">{r.supervisor_name}</span>
+                  <span className="text-muted-foreground">{r.sessions}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-amber-600" /> Training-list displacement
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {displacement.displacedSessions} displaced · ~{displacement.approxHoursLost}h of training lost
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {displacement.recentDisplacements.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No displacement detected in this window.</p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {displacement.recentDisplacements.map((d, i) => (
+                <li key={i} className="flex justify-between">
+                  <span>{formatDateWithWeekdayGB(d.session_date)}</span>
+                  <span className="capitalize text-muted-foreground">{d.session}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
