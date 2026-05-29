@@ -943,7 +943,7 @@ export const runClwRotaSync = createServerFn({ method: "POST" })
 // Rota sync
 // =====================================================================
 
-type SessionHalf = "am" | "pm" | "eve" | "night";
+export type SessionHalf = "am" | "pm" | "eve" | "night";
 
 export function normaliseSession(raw: string | null): SessionHalf | null {
   if (!raw) return null;
