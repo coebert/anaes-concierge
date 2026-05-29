@@ -3,15 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Card, CardContent, CardHeader, CardTitle,
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   CalendarDays, ClipboardList, GraduationCap, MessageSquare,
-  Building2, Users, Briefcase, SlidersHorizontal, Grid3x3,
-  CalendarRange, Stethoscope,
+  Briefcase, CalendarRange, Stethoscope, Activity, AlertTriangle,
+  RefreshCw, ShieldAlert, Users,
 } from "lucide-react";
-import { todayISO, addDaysISO } from "@/lib/utils";
+import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
@@ -22,7 +22,7 @@ function DashboardPage() {
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
-  if (hasRole("admin")) return <AdminDashboard />;
+  if (hasRole("admin") || hasRole("rota_coordinator")) return <AuditDashboard />;
   if (grade === "trainee") return <TraineeDashboard />;
   return <ConsultantSasDashboard />;
 }
@@ -57,70 +57,121 @@ function Header({ subtitle }: { subtitle: string }) {
   );
 }
 
-/* ---------- ADMIN ---------- */
-function AdminDashboard() {
+/* ---------- AUDIT DASHBOARD (admin + coordinator) ---------- */
+function AuditDashboard() {
+  const today = todayISO();
+  const in90 = addDaysISO(90);
+
   const { data } = useQuery({
-    queryKey: ["admin-dashboard"],
+    queryKey: ["audit-dashboard"],
     queryFn: async () => {
-      const [staff, pendingLeave, theatres, trainees] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("active", true),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("theatres").select("id", { count: "exact", head: true }).eq("active", true),
-        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("active", true).eq("grade", "trainee"),
+      const [trainees, leaveSoon, sync, rotaRows] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true })
+          .eq("active", true).eq("grade", "trainee"),
+        supabase.from("leave_requests").select("id", { count: "exact", head: true })
+          .in("status", ["approved", "pending"])
+          .gte("start_date", today).lte("start_date", in90),
+        supabase.from("clwrota_sync_state").select("last_sync_at, last_status, last_error")
+          .eq("id", 1).maybeSingle(),
+        supabase.from("rota_assignments").select("id", { count: "exact", head: true })
+          .gte("session_date", today).lte("session_date", in90),
       ]);
       return {
-        staff: staff.count ?? 0,
-        pendingLeave: pendingLeave.count ?? 0,
-        theatres: theatres.count ?? 0,
         trainees: trainees.count ?? 0,
+        leaveSoon: leaveSoon.count ?? 0,
+        rotaRows: rotaRows.count ?? 0,
+        sync: sync.data ?? null,
       };
     },
   });
 
+  const syncOk = data?.sync?.last_status?.includes("success") ?? false;
+  const syncWarning = data?.sync && !syncOk;
+
   return (
     <div className="space-y-6">
-      <Header subtitle="Administrator workspace" />
+      <Header subtitle="Audit workspace — synced from CLWRota" />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Active staff" value={data?.staff ?? "—"} icon={Users} />
-        <Stat label="Pending leave" value={data?.pendingLeave ?? "—"} icon={ClipboardList} />
-        <Stat label="Trainees" value={data?.trainees ?? "—"} icon={GraduationCap} />
-        <Stat label="Theatres" value={data?.theatres ?? "—"} icon={Building2} />
-      </div>
+      {/* Sync freshness banner */}
+      <Card className={syncWarning ? "border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20" : ""}>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+              {syncWarning ? <AlertTriangle className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
+            </div>
+            <div>
+              <div className="text-sm font-medium">
+                {data?.sync?.last_sync_at
+                  ? `Last sync: ${formatDateGB(data.sync.last_sync_at)}`
+                  : "No sync recorded yet"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Status: {data?.sync?.last_status ?? "—"}
+                {data?.sync?.last_error ? ` · ${data.sync.last_error.slice(0, 80)}` : ""}
+              </div>
+            </div>
+          </div>
+          <Link to="/admin/settings" className="text-xs font-medium text-primary hover:underline">
+            Sync settings →
+          </Link>
+        </CardContent>
+      </Card>
 
+      {/* Audit pillars */}
       <section className="space-y-3">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Configuration
+          Audit pillars
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ActionCard to="/admin/dashboard" icon={Grid3x3}
-            title="Rota audit data" body="Daily overview, late changes, solo trainee detection and per-trainee metrics." />
-          <ActionCard to="/coordinator/rota" icon={CalendarRange}
-            title="Rota editor" body="Assign staff to theatre sessions with live rule validation." />
-          <ActionCard to="/coordinator/leave" icon={ClipboardList}
-            title="Approve leave" body="Review and decide pending leave requests." />
-          <ActionCard to="/admin/job-plans" icon={Briefcase}
-            title="Job plans" body="Configure PAs, LTFT and weekly fixed sessions." />
-          <ActionCard to="/admin/rules" icon={SlidersHorizontal}
-            title="Working rules" body="Safety constraints and PA conversion rules." />
-          <ActionCard to="/admin/theatre-grid" icon={Grid3x3}
-            title="Theatre grid" body="AM/PM theatre sessions by day with specialty links." />
-          <ActionCard to="/admin/staff" icon={Users}
-            title="Staff" body="Manage profiles, grades and roles." />
+          <PillarCard
+            to="/trainees"
+            icon={GraduationCap}
+            title="Trainee experience"
+            body="Specialty breadth, solo/supervised mix, named supervisor exposure, and training-list displacement against curriculum targets."
+            stat={`${data?.trainees ?? "—"} active trainees`}
+          />
+          <PillarCard
+            to="/leave"
+            icon={ClipboardList}
+            title="Leave pressure"
+            body="Heatmap of approved + pending leave across the calendar; predict surge weeks and recurring hot spots."
+            stat={`${data?.leaveSoon ?? "—"} leave items next 90d`}
+          />
+          <PillarCard
+            to="/admin/dashboard"
+            icon={ShieldAlert}
+            title="Rota robustness"
+            body="Coverage headroom per session; what-if simulator for sickness scenarios and trainee displacement."
+            stat="Coming soon · rota safety lens"
+          />
         </div>
       </section>
 
+      {/* At-a-glance */}
       <section className="space-y-3">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Overview
+          At-a-glance
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Synced rota items (next 90d)" value={data?.rotaRows ?? "—"} icon={Activity} />
+          <Stat label="Active trainees" value={data?.trainees ?? "—"} icon={GraduationCap} />
+          <Stat label="Leave next 90d" value={data?.leaveSoon ?? "—"} icon={ClipboardList} />
+          <Stat label="Sync status" value={syncOk ? "Healthy" : "Check"} icon={RefreshCw} />
+        </div>
+      </section>
+
+      {/* Coordinator tools (de-emphasised) */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Coordinator tools
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ActionCard to="/calendar" icon={CalendarDays}
-            title="Global calendar" body="Full theatre grid view by day, week or month." />
-          <ActionCard to="/trainees" icon={GraduationCap}
-            title="Trainee progress" body="Subspecialty exposure against curriculum targets." />
+          <ActionCard to="/coordinator/rota" icon={CalendarRange}
+            title="Rota editor" body="Manual edits and AI-assisted candidate suggestions." />
+          <ActionCard to="/coordinator/leave" icon={ClipboardList}
+            title="Approve leave" body="Review and decide pending leave requests." />
           <ActionCard to="/chat" icon={MessageSquare}
-            title="AI assistant" body="Ask plain-English questions about rotas and leave." />
+            title="AI assistant" body="Plain-English questions about rotas, leave and training." />
         </div>
       </section>
     </div>
