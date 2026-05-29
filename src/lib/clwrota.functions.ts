@@ -1568,11 +1568,15 @@ export async function performLeaveSync() {
   const url = ensureLeaveReportFields(settings?.leave_report_url ?? "");
   if (!url) return { ...emptyResult, message: "No leave report URL configured." };
 
+  // CLWRota's leave_events endpoint can otherwise span many years and time
+  // out the Worker before any row is upserted. Mirror the rota-sync window.
+  const boundedUrl = clampDateWindow(url, { daysBack: 60, daysAhead: 240 });
+
   let rows: Record<string, unknown>[];
   let rawPreview = "";
   let sampleKeys: string[] = [];
   try {
-    const text = await fetchReportRaw(url, apiKey);
+    const text = await fetchReportRaw(boundedUrl, apiKey);
     rawPreview = text.slice(0, 500);
     rows = parseRows(text);
     if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
