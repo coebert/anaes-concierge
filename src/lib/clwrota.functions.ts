@@ -1050,8 +1050,7 @@ export async function performRotaSync() {
     let sampleKeys: string[] = [];
     try {
       const text = await fetchReportRaw(clampDateWindow(url, { daysBack, daysAhead }), apiKey);
-    try {
-      const text = await fetchReportRaw(clampDateWindow(url), apiKey);
+
 
       rawPreview = text.slice(0, 500);
       rows = parseRows(text);
