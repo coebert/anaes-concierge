@@ -77,12 +77,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     await signOut();
     void navigate({ to: "/login" });
   };
+  const isAdmin = hasRole("admin");
   const visibleMain = NAV.filter(
     (i) =>
       (!i.traineeOnly || isAdmin || grade === "trainee") &&
       (!i.roles || i.roles.some((r) => hasRole(r))),
   );
-  const isAdminFlag = isAdmin; void isAdminFlag;
+
 
   const visibleCoord = COORDINATOR_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
