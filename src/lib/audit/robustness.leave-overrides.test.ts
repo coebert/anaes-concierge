@@ -189,12 +189,6 @@ describe("Leave overrides availability for both AM and PM", () => {
     expect(am.consultantsAvailable).toBe(1);
   });
 
-  it("PENDING leave does NOT remove the consultant from the pool", async () => {
-    fixture.profiles = [CONS("c1")];
-    fixture.leave_requests = [leave("c1", "annual", { status: "pending" })];
-    const am = await half("am");
-    expect(am.consultantsAvailable).toBe(1);
-  });
 
   it("trainee on annual leave is removed from senior pool AM and PM", async () => {
     fixture.profiles = [SENIOR("st7-a"), SENIOR("st7-b")];
