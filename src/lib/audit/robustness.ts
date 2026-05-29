@@ -424,6 +424,13 @@ export interface StaffStatusEntry extends PersonRef {
   reason: string;
   /** Whether this person counts toward soloCapable for the half-day. */
   countsToSolo: boolean;
+  /** For trainees: whether this half-day advances a documented subspecialty / solo / supervised training target. */
+  trainingNote?: {
+    tone: "good" | "neutral" | "miss";
+    label: string;
+    /** Detailed tooltip — target context, role, what counts. */
+    detail: string;
+  };
 }
 
 export interface HalfBreakdown {
