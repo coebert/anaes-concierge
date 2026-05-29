@@ -63,9 +63,15 @@ function DayDetailPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
+          <BreakdownCard label="AM staff breakdown" breakdown={data.amBreakdown} />
+          <BreakdownCard label="PM staff breakdown" breakdown={data.pmBreakdown} />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
           <SessionsCard title="AM theatre lists" sessions={amSessions} />
           <SessionsCard title="PM theatre lists" sessions={pmSessions} />
         </div>
+
 
         {totalUnfilled > 0 && (
           <div className="rounded-md border border-amber-500/40 bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
