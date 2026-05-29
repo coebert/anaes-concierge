@@ -1017,16 +1017,16 @@ export async function performRotaSync() {
       .select("id", { count: "exact", head: true })
       .eq("source", "clwrota");
     if (preCountErr) throw new Error(preCountErr.message);
-    const preSyncCount = preCount ?? 0;
-
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
-      .select("rota_report_url")
+      .select("rota_report_url, sync_days_back, sync_days_ahead")
       .eq("id", 1)
       .maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
 
     const url = settings?.rota_report_url;
+    const daysBack = settings?.sync_days_back ?? 30;
+    const daysAhead = settings?.sync_days_ahead ?? 120;
     const emptyResult = {
       ok: false as boolean,
       message: "",
@@ -1048,6 +1048,8 @@ export async function performRotaSync() {
     let rows: Record<string, unknown>[];
     let rawPreview = "";
     let sampleKeys: string[] = [];
+    try {
+      const text = await fetchReportRaw(clampDateWindow(url, { daysBack, daysAhead }), apiKey);
     try {
       const text = await fetchReportRaw(clampDateWindow(url), apiKey);
 
