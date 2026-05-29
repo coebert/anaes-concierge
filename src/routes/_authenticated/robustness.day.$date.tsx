@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee, Info } from "lucide-react";
+import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee, Info, CheckCircle2, XCircle, Ban } from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
   loadDayDetail, riskColor, riskLabel,
   type DayDetailSession, type HalfDayCapacity, type OtherDutyDetail,
+  type HalfBreakdown, type StaffStatusEntry, type StaffStatusCategory,
 } from "@/lib/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
