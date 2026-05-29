@@ -230,14 +230,16 @@ function LegendItem({ color, label, description }: { color: string; label: strin
   );
 }
 
-function Stat({
-  label, value, icon: Icon, tone,
-}: {
+type StatProps = {
   label: string;
   value: number | string;
   icon: typeof Activity;
   tone: "amber" | "red" | "emerald";
-}) {
+};
+
+function Stat(props: StatProps) {
+  const { label, value, tone } = props;
+  const Icon = props.icon;
   const toneClass = tone === "red"
     ? "bg-red-500/10 text-red-600"
     : tone === "amber"
