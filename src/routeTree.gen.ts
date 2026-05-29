@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HealthRouteImport } from './routes/health'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -23,6 +24,7 @@ import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedRobustnessIndexRouteImport } from './routes/_authenticated/robustness.index'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
+import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave.forecast'
@@ -57,6 +59,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -113,6 +120,11 @@ const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedChatRoute,
+} as any)
+const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
+  id: '/api/public/health',
+  path: '/api/public/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedTraineesStaffIdRoute =
   AuthenticatedTraineesStaffIdRouteImport.update({
@@ -235,6 +247,7 @@ const AuthenticatedCalendarStaffStaffIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -262,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
@@ -269,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
 }
 export interface FileRoutesByTo {
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -296,6 +311,7 @@ export interface FileRoutesByTo {
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/chat': typeof AuthenticatedChatIndexRoute
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
@@ -305,6 +321,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -333,6 +350,7 @@ export interface FileRoutesById {
   '/_authenticated/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
@@ -343,6 +361,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/health'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -370,6 +389,7 @@ export interface FileRouteTypes {
     | '/leave/forecast'
     | '/robustness/simulate'
     | '/trainees/$staffId'
+    | '/api/public/health'
     | '/chat/'
     | '/robustness/'
     | '/calendar/staff/$staffId'
@@ -377,6 +397,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/clwrota-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/health'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -404,6 +425,7 @@ export interface FileRouteTypes {
     | '/leave/forecast'
     | '/robustness/simulate'
     | '/trainees/$staffId'
+    | '/api/public/health'
     | '/chat'
     | '/robustness'
     | '/calendar/staff/$staffId'
@@ -412,6 +434,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/health'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -440,6 +463,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leave/forecast'
     | '/_authenticated/robustness/simulate'
     | '/_authenticated/trainees/$staffId'
+    | '/api/public/health'
     | '/_authenticated/chat/'
     | '/_authenticated/robustness/'
     | '/_authenticated/calendar/staff/$staffId'
@@ -449,10 +473,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  HealthRoute: typeof HealthRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksClwrotaSyncRoute: typeof ApiPublicHooksClwrotaSyncRoute
 }
 
@@ -477,6 +503,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -555,6 +588,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/chat/'
       preLoaderRoute: typeof AuthenticatedChatIndexRouteImport
       parentRoute: typeof AuthenticatedChatRoute
+    }
+    '/api/public/health': {
+      id: '/api/public/health'
+      path: '/api/public/health'
+      fullPath: '/api/public/health'
+      preLoaderRoute: typeof ApiPublicHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/trainees/$staffId': {
       id: '/_authenticated/trainees/$staffId'
@@ -808,12 +848,24 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  HealthRoute: HealthRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksClwrotaSyncRoute: ApiPublicHooksClwrotaSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
