@@ -5,6 +5,13 @@ import { validateJson } from "@/lib/json-validation";
 
 const version = "1.0.0";
 
+interface HealthResponse {
+  status: "healthy" | "degraded" | "unhealthy";
+  timestamp: string;
+  version: string;
+  checks: HealthCheck[];
+}
+
 interface HealthCheck {
   name: string;
   status: "ok" | "warning" | "error";
