@@ -462,6 +462,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     { data: profiles },
     { data: leave },
     { data: assignments },
+    { data: traineeTargets },
   ] = await Promise.all([
     supabase
       .from("theatre_sessions")
@@ -481,6 +482,9 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
       .from("rota_assignments")
       .select("staff_id, theatre_session_id, role_on_list, duty_type, session")
       .eq("session_date", date),
+    supabase
+      .from("trainee_targets")
+      .select("training_level, specialty_id, required_sessions, required_solo, required_supervised"),
   ]);
 
   const ts = theatreSessions ?? [];
