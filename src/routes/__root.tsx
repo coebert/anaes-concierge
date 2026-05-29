@@ -40,6 +40,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 
+  // If this looks like a stale-artifact error, automatically hard-reload once.
+  useEffect(() => {
+    maybeCacheBust(error);
+  }, [error]);
+
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
