@@ -11,18 +11,22 @@ export interface ExtraAbsence {
 
 export interface HalfDayCapacity {
   required: number;
-  /** Staff that can solo-cover a daytime list (consultant or senior trainee). */
+  /** Solo-capable staff free to deploy (consultant or ST6/ST7/ST8). */
   soloCapable: number;
+  /** Consultants free to deploy — NOT on leave, on excluded duties, on SPA, or already covering a list. */
   consultantsAvailable: number;
-  seniorTraineesAvailable: number; // ST6/ST7 — can solo-cover
-  juniorTraineesAvailable: number; // pair with consultant only
+  /** ST6/ST7/ST8 trainees free to deploy — solo-capable. */
+  seniorTraineesAvailable: number;
+  /** Junior trainees free to deploy — supervised only, do not count toward solo cover. */
+  juniorTraineesAvailable: number;
+  /** SAS doctors free to deploy — tracked but do not count toward solo cover. */
   sasAvailable: number;
-  /** Consultants currently on SPA — can be flexed onto a list, but flag it. */
+  /** Consultants on SPA time — flexible cover (counted only in `headroomWithSpa`). */
   consultantsOnSpa: number;
   onLeave: number;
   onOtherDuty: number; // on-call, ICU, obstetrics, teaching, non-clinical, admin, CIC
-  headroom: number; // soloCapable - required (SPA NOT counted)
-  headroomWithSpa: number; // (soloCapable + consultantsOnSpa) - required
+  headroom: number; // soloCapable - unfilled (SPA NOT counted)
+  headroomWithSpa: number; // (soloCapable + consultantsOnSpa) - unfilled
   risk: "ok" | "tight" | "shortfall" | "spa_required";
   unfilled: number;
 }
@@ -114,15 +118,28 @@ export interface HalfDayInputs {
 
 /**
  * Pure derivation of a HalfDayCapacity from the available staff buckets.
- * `soloCapable` = consultants + senior trainees (ST6/ST7/ST8). SAS and
- * junior trainees are tracked but NOT counted toward solo cover — junior
- * trainees can only work supervised, and SAS are excluded from solo
- * baseline. Consultants on SPA only count via `headroomWithSpa`.
+ *
+ * Available buckets (`consultantsAvailable`, `seniorTraineesAvailable`,
+ * `juniorTraineesAvailable`, `sasAvailable`) are people who are NOT on
+ * leave, NOT on an excluded duty (ICU, obstetrics, on-call, teaching,
+ * admin, CIC), and NOT already covering a clinical list (theatre / POAC
+ * / pain clinic / any other theatre_session). They are truly free.
+ *
+ * `consultantsOnSpa` are consultants on SPA time — flexible cover only,
+ * counted in `headroomWithSpa` but not in baseline `headroom`.
+ *
+ * `soloCapable` = free consultants + free senior trainees (ST6/ST7/ST8).
+ * SAS and junior trainees are tracked but NOT counted toward solo cover.
+ *
+ * `headroom` = `soloCapable - unfilled` (lists still needing cover).
+ * When `unfilled` is omitted it falls back to `required` for legacy
+ * call sites in the tests.
  */
 export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
   const soloCapable = i.consultantsAvailable + i.seniorTraineesAvailable;
-  const headroom = soloCapable - i.required;
-  const headroomWithSpa = soloCapable + i.consultantsOnSpa - i.required;
+  const unfilled = Math.max(0, i.unfilled ?? i.required);
+  const headroom = soloCapable - unfilled;
+  const headroomWithSpa = soloCapable + i.consultantsOnSpa - unfilled;
   return {
     required: i.required,
     soloCapable,
@@ -136,7 +153,7 @@ export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
     headroom,
     headroomWithSpa,
     risk: classifyRisk(headroom, headroomWithSpa),
-    unfilled: Math.max(0, i.unfilled ?? 0),
+    unfilled,
   };
 }
 
@@ -268,7 +285,9 @@ export async function computeRobustness(
     const otherDutyToday = dailyUnavailable.get(date) ?? new Set<string>();
 
     const mkHalf = (req: number, half: SessionHalf): HalfDayCapacity => {
-      const spaThisHalf = dailySpa.get(`${date}|${half}`) ?? new Set<string>();
+      const halfKey = `${date}|${half}`;
+      const spaThisHalf = dailySpa.get(halfKey) ?? new Set<string>();
+      const stateThisHalf = staffStateByDateSession.get(halfKey) ?? new Map<string, AsnState>();
       let consultants = 0, seniorTrainees = 0, juniorTrainees = 0, sas = 0;
       let consultantsOnSpa = 0;
       const extraRemainingByGrade: Record<Grade, number> = { ...extraByGrade };
@@ -281,13 +300,17 @@ export async function computeRobustness(
 
         const grade = (s.grade as Grade) ?? "unknown";
         const isSpa = spaThisHalf.has(s.id);
+        // Anyone already on a clinical list this half-day (theatre/POAC/
+        // pain clinic — any theatre_session) is NOT free to redeploy.
+        const onClinicalList = stateThisHalf.get(s.id) === "theatre";
 
         if (grade === "consultant") {
           if (isSpa) consultantsOnSpa += 1;
-          else consultants += 1;
+          else if (!onClinicalList) consultants += 1;
         } else if (grade === "sas") {
-          sas += 1;
+          if (!onClinicalList) sas += 1;
         } else if (grade === "trainee") {
+          if (onClinicalList) continue;
           if (isSeniorTrainee(s.training_level)) seniorTrainees += 1;
           else juniorTrainees += 1;
         }
@@ -306,6 +329,9 @@ export async function computeRobustness(
       const onLeaveCount = offToday.size + extraStaffOff.size
         + Object.values(extraByGrade).reduce((a, b) => a + b, 0);
 
+      const filledCount = filledMap.get(date)?.[half]?.size ?? 0;
+      const unfilled = Math.max(0, req - filledCount);
+
       return computeHalfDayCapacity({
         required: req,
         consultantsAvailable: consultants,
@@ -315,7 +341,7 @@ export async function computeRobustness(
         consultantsOnSpa,
         onLeave: onLeaveCount,
         onOtherDuty: otherDutyToday.size,
-        unfilled: Math.max(0, req - (filledMap.get(date)?.[half]?.size ?? 0)),
+        unfilled,
       });
 
     };

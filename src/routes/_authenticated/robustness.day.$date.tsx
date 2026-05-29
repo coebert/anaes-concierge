@@ -234,14 +234,14 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
       <CardContent className="space-y-2">
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <Stat label="Lists" value={h.required} tooltip="Theatre lists scheduled for this half-day." />
-          <Stat label="Solo-capable" value={h.soloCapable} tooltip="Consultants + ST6/7 trainees available. These are the only staff who can lead a daytime list alone." />
+          <Stat label="Solo-capable" value={h.soloCapable} tooltip="Free consultants + ST6/7/8 trainees not already on a list. Only these can lead a new list alone." />
           <Stat label="Unfilled" value={h.unfilled} tooltip="Lists with no staff assigned yet." />
         </div>
         <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
-          <Stat label="Consultants" value={h.consultantsAvailable} tooltip="Consultants not on leave, other duties, or SPA." />
-          <Stat label="ST6/7" value={h.seniorTraineesAvailable} tooltip="ST6/ST7 trainees — count as solo-capable." />
-          <Stat label="SAS" value={h.sasAvailable} tooltip="SAS doctors — available but do not count toward headroom (cannot solo-cover)." />
-          <Stat label="Jr trainees" value={h.juniorTraineesAvailable} tooltip="Junior trainees (ST1–ST5) — can pair with a consultant but cannot lead a list alone." />
+          <Stat label="Consultants" value={h.consultantsAvailable} tooltip="Consultants free to deploy — not on leave, other duties, SPA, or already covering a list (theatre / POAC / pain clinic / any other clinical activity)." />
+          <Stat label="ST6/7/8" value={h.seniorTraineesAvailable} tooltip="Senior trainees free to deploy — count as solo-capable. Trainees already covering a list or on ICU/obstetrics are excluded." />
+          <Stat label="SAS" value={h.sasAvailable} tooltip="SAS doctors free to deploy — do not count toward headroom (cannot solo-cover)." />
+          <Stat label="Jr trainees" value={h.juniorTraineesAvailable} tooltip="Junior trainees (ST1–ST5) free to deploy — can pair with a consultant but cannot lead a list alone." />
         </div>
         {h.consultantsOnSpa > 0 && (
           <div className="rounded border border-orange-500/40 bg-orange-500/10 px-2 py-1 text-xs">

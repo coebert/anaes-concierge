@@ -96,7 +96,7 @@ function RobustnessPage() {
             </div>
             <div className="rounded-md bg-muted/40 p-2.5 text-muted-foreground">
               <strong className="text-foreground">Who is counted as available?</strong>{" "}
-              Consultants, SAS doctors, and trainees <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin, or CIC duties. ST6/ST7 trainees count as solo-capable; junior trainees and SAS doctors do <em>not</em> count toward headroom (they can pair with a consultant but cannot lead a list alone).
+              Consultants and trainees who are <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em> already covering a clinical list (theatre, POAC, pain clinic or any other theatre_session). ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors are shown for context but do <em>not</em> count toward headroom. Consultants on SPA are reported separately — they only close the gap as flexible cover.
             </div>
           </CardContent>
         </Card>
@@ -105,8 +105,7 @@ function RobustnessPage() {
           <CardHeader>
             <CardTitle className="text-base">Daily coverage headroom</CardTitle>
             <CardDescription>
-              Each cell shows solo-capable staff (consultant or ST6/7) minus lists.
-              Click a date to see the full breakdown for that day.
+              Each cell shows the spare solo-capable headroom, with a breakdown underneath: <span className="font-mono">consultants · SPA · senior trainees</span>. Click a date to see the full breakdown.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -123,9 +122,9 @@ function RobustnessPage() {
                       <ThTooltip label="Off" tooltip="Staff on approved leave (annual, study, sick) — excluded from availability." />
                       <ThTooltip label="Other duties" tooltip="Staff on on-call, ICU, obstetrics, teaching, admin or CIC — excluded from availability." />
                       <th className="px-2 py-1 text-center font-medium">AM lists</th>
-                      <ThTooltip label="AM headroom" tooltip="Solo-capable staff available in the AM minus theatre lists scheduled." />
+                      <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
                       <th className="px-2 py-1 text-center font-medium">PM lists</th>
-                      <ThTooltip label="PM headroom" tooltip="Solo-capable staff available in the PM minus theatre lists scheduled." />
+                      <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
                       <th className="px-2 py-1 text-left font-medium">Notes</th>
                     </tr>
                   </thead>
@@ -140,6 +139,35 @@ function RobustnessPage() {
                       } else if (spa > 0) {
                         notes.push(`${spa} on SPA (flex)`);
                       }
+                      const renderCell = (h: typeof d.am) => (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex flex-col items-center gap-0.5 cursor-help">
+                              <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium", riskColor(h.risk))}>
+                                {h.headroom}
+                              </span>
+                              <span className="text-[10px] leading-none text-muted-foreground tabular-nums">
+                                {h.consultantsAvailable}c · {h.consultantsOnSpa}s · {h.seniorTraineesAvailable}t
+                              </span>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="max-w-[18rem]">
+                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs {h.unfilled} unfilled list(s).
+                              <br />
+                              <span className="text-muted-foreground">
+                                Free consultants: {h.consultantsAvailable} ·
+                                Consultants on SPA: {h.consultantsOnSpa} ·
+                                Free senior trainees: {h.seniorTraineesAvailable} ·
+                                Junior trainees: {h.juniorTraineesAvailable} ·
+                                SAS: {h.sasAvailable}
+                                <br />
+                                Staff already covering theatre, POAC, pain clinic or any other clinical activity — and anyone on ICU, obstetrics, on-call, teaching, admin or CIC — are excluded from these counts.
+                              </span>
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
                       return (
                         <tr key={d.date} className="border-t">
                           <td className="px-2 py-1.5">
@@ -154,31 +182,9 @@ function RobustnessPage() {
                           <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onLeave}</td>
                           <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onOtherDuty}</td>
                           <td className="px-2 py-1.5 text-center">{d.am.required}</td>
-                          <td className="px-2 py-1.5 text-center">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium cursor-help", riskColor(d.am.risk))}>
-                                  {d.am.headroom}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">
-                                <p className="max-w-[16rem]">{riskLabel(d.am.risk)} — {d.am.soloCapable} solo-capable vs {d.am.required} lists. {d.am.consultantsOnSpa > 0 ? `${d.am.consultantsOnSpa} consultant(s) on SPA.` : ""}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
+                          <td className="px-2 py-1.5 text-center">{renderCell(d.am)}</td>
                           <td className="px-2 py-1.5 text-center">{d.pm.required}</td>
-                          <td className="px-2 py-1.5 text-center">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium cursor-help", riskColor(d.pm.risk))}>
-                                  {d.pm.headroom}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">
-                                <p className="max-w-[16rem]">{riskLabel(d.pm.risk)} — {d.pm.soloCapable} solo-capable vs {d.pm.required} lists. {d.pm.consultantsOnSpa > 0 ? `${d.pm.consultantsOnSpa} consultant(s) on SPA.` : ""}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
+                          <td className="px-2 py-1.5 text-center">{renderCell(d.pm)}</td>
                           <td className="px-2 py-1.5 text-xs text-muted-foreground">
                             {notes.length === 0 ? "—" : notes.join(" · ")}
                           </td>
