@@ -54,7 +54,6 @@ function SettingsPage() {
   const getSettings = useServerFn(getClwRotaSettings);
   const saveSettings = useServerFn(saveClwRotaSettings);
   const testConn = useServerFn(testClwRotaConnection);
-  const testConn = useServerFn(testClwRotaConnection);
   const syncStaff = useServerFn(syncClwRotaStaff);
   const syncRota = useServerFn(syncClwRotaRota);
   const syncLeave = useServerFn(syncClwRotaLeave);
