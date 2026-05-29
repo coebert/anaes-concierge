@@ -4,7 +4,10 @@ import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee } from "lucide-react";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee, Info } from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
   loadDayDetail, riskColor, riskLabel,
@@ -35,124 +38,126 @@ function DayDetailPage() {
   const totalUnfilled = data.sessions.filter((s) => s.unfilled).length;
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <div className="text-xs">
-          <Link to="/robustness" className="text-muted-foreground hover:underline">
-            <ChevronLeft className="mr-1 inline h-3 w-3" />
-            Back to robustness report
-          </Link>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <header className="space-y-1">
+          <div className="text-xs">
+            <Link to="/robustness" className="text-muted-foreground hover:underline">
+              <ChevronLeft className="mr-1 inline h-3 w-3" />
+              Back to robustness report
+            </Link>
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {formatDateGB(data.date)}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Per-session coverage. Lists need a consultant (or ST6/ST7 solo).
+            SAS and junior trainees pair with a consultant but cannot solo-cover.
+          </p>
+        </header>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <HalfSummary label="AM" h={data.am} />
+          <HalfSummary label="PM" h={data.pm} />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {formatDateGB(data.date)}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Per-session coverage. Lists need a consultant (or ST6/ST7 solo).
-          SAS and junior trainees pair with a consultant but cannot solo-cover.
-        </p>
-      </header>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <HalfSummary label="AM" h={data.am} />
-        <HalfSummary label="PM" h={data.pm} />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SessionsCard title="AM theatre lists" sessions={amSessions} />
-        <SessionsCard title="PM theatre lists" sessions={pmSessions} />
-      </div>
-
-      {totalUnfilled > 0 && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
-          <AlertTriangle className="mr-1 inline h-4 w-4 text-amber-600" />
-          {totalUnfilled} theatre session(s) have no staff assigned yet.
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SessionsCard title="AM theatre lists" sessions={amSessions} />
+          <SessionsCard title="PM theatre lists" sessions={pmSessions} />
         </div>
-      )}
 
-      {(data.consultantsOnSpa.am.length > 0 || data.consultantsOnSpa.pm.length > 0) && (
-        <Card className="border-orange-500/40">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Coffee className="h-4 w-4 text-orange-500" />
-              Consultants on SPA (flexible cover)
-            </CardTitle>
-            <CardDescription>
-              Could be redeployed onto a list, but pulling them disrupts their
-              SPA time and should be flagged.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <SpaList label="AM" people={data.consultantsOnSpa.am} />
-            <SpaList label="PM" people={data.consultantsOnSpa.pm} />
-          </CardContent>
-        </Card>
-      )}
+        {totalUnfilled > 0 && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
+            <AlertTriangle className="mr-1 inline h-4 w-4 text-amber-600" />
+            {totalUnfilled} theatre session(s) have no staff assigned yet.
+          </div>
+        )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <PeopleCard
-          title={`On approved leave (${data.onLeave.length})`}
-          icon={<UserMinus className="h-4 w-4 text-red-500" />}
-          description="Annual / study / sick — unavailable all day."
-        >
-          {data.onLeave.length === 0 ? (
-            <Empty />
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {data.onLeave.map((l) => (
-                <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
-                  <span>{l.staffName}</span>
-                  <span className="flex items-center gap-1.5 text-xs">
+        {(data.consultantsOnSpa.am.length > 0 || data.consultantsOnSpa.pm.length > 0) && (
+          <Card className="border-orange-500/40">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Coffee className="h-4 w-4 text-orange-500" />
+                Consultants on SPA (flexible cover)
+              </CardTitle>
+              <CardDescription>
+                Could be redeployed onto a list, but pulling them disrupts their
+                SPA time and should be flagged.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              <SpaList label="AM" people={data.consultantsOnSpa.am} />
+              <SpaList label="PM" people={data.consultantsOnSpa.pm} />
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <PeopleCard
+            title={`On approved leave (${data.onLeave.length})`}
+            icon={<UserMinus className="h-4 w-4 text-red-500" />}
+            description="Annual / study / sick — unavailable all day."
+          >
+            {data.onLeave.length === 0 ? (
+              <Empty />
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {data.onLeave.map((l) => (
+                  <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
+                    <span>{l.staffName}</span>
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
+                      <Badge variant="secondary" className="text-[10px]">{l.type}</Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PeopleCard>
+
+          <PeopleCard
+            title={`On other duties (${data.onOtherDuty.length})`}
+            icon={<Briefcase className="h-4 w-4 text-blue-500" />}
+            description="On-call, ICU, obstetrics, teaching, admin — not available for lists."
+          >
+            {data.onOtherDuty.length === 0 ? (
+              <Empty />
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {data.onOtherDuty.map((l) => (
+                  <li key={l.staffId + l.duty} className="flex items-center justify-between rounded border px-2 py-1">
+                    <span>{l.staffName}</span>
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
+                      <Badge variant="outline" className="text-[10px] capitalize">{formatDuty(l.duty)}</Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PeopleCard>
+
+          <PeopleCard
+            title={`LTFT day off (${data.ltftOff.length})`}
+            icon={<ClipboardList className="h-4 w-4 text-muted-foreground" />}
+            description="Contracted non-working day."
+          >
+            {data.ltftOff.length === 0 ? (
+              <Empty />
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {data.ltftOff.map((l) => (
+                  <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
+                    <span>{l.staffName}</span>
                     <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
-                    <Badge variant="secondary" className="text-[10px]">{l.type}</Badge>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </PeopleCard>
-
-        <PeopleCard
-          title={`On other duties (${data.onOtherDuty.length})`}
-          icon={<Briefcase className="h-4 w-4 text-blue-500" />}
-          description="On-call, ICU, obstetrics, teaching, admin — not available for lists."
-        >
-          {data.onOtherDuty.length === 0 ? (
-            <Empty />
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {data.onOtherDuty.map((l) => (
-                <li key={l.staffId + l.duty} className="flex items-center justify-between rounded border px-2 py-1">
-                  <span>{l.staffName}</span>
-                  <span className="flex items-center gap-1.5 text-xs">
-                    <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
-                    <Badge variant="outline" className="text-[10px] capitalize">{formatDuty(l.duty)}</Badge>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </PeopleCard>
-
-        <PeopleCard
-          title={`LTFT day off (${data.ltftOff.length})`}
-          icon={<ClipboardList className="h-4 w-4 text-muted-foreground" />}
-          description="Contracted non-working day."
-        >
-          {data.ltftOff.length === 0 ? (
-            <Empty />
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {data.ltftOff.map((l) => (
-                <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
-                  <span>{l.staffName}</span>
-                  <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </PeopleCard>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PeopleCard>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
@@ -209,22 +214,34 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
           <span>{label}</span>
-          <span className={cn("rounded px-2 py-0.5 text-xs font-medium", riskColor(h.risk))}>
-            {riskLabel(h.risk)} · headroom {h.headroom}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn("rounded px-2 py-0.5 text-xs font-medium cursor-help", riskColor(h.risk))}>
+                {riskLabel(h.risk)} · headroom {h.headroom}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="max-w-[18rem]">
+                {riskLabel(h.risk)}: {h.soloCapable} solo-capable staff vs {h.required} lists.
+                {h.consultantsOnSpa > 0 && ` ${h.consultantsOnSpa} consultant(s) on SPA could be flexed.`}
+                {h.risk === "spa_required" && " A consultant currently on SPA would need to be pulled onto a list to fill the gap."}
+                {h.risk === "shortfall" && " Even redeploying all SPA consultants would not cover every list."}
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <Stat label="Lists" value={h.required} />
-          <Stat label="Solo-capable" value={h.soloCapable} />
-          <Stat label="Unfilled" value={h.unfilled} />
+          <Stat label="Lists" value={h.required} tooltip="Theatre lists scheduled for this half-day." />
+          <Stat label="Solo-capable" value={h.soloCapable} tooltip="Consultants + ST6/7 trainees available. These are the only staff who can lead a daytime list alone." />
+          <Stat label="Unfilled" value={h.unfilled} tooltip="Lists with no staff assigned yet." />
         </div>
         <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
-          <Stat label="Consultants" value={h.consultantsAvailable} />
-          <Stat label="ST6/7" value={h.seniorTraineesAvailable} />
-          <Stat label="SAS" value={h.sasAvailable} />
-          <Stat label="Jr trainees" value={h.juniorTraineesAvailable} />
+          <Stat label="Consultants" value={h.consultantsAvailable} tooltip="Consultants not on leave, other duties, or SPA." />
+          <Stat label="ST6/7" value={h.seniorTraineesAvailable} tooltip="ST6/ST7 trainees — count as solo-capable." />
+          <Stat label="SAS" value={h.sasAvailable} tooltip="SAS doctors — available but do not count toward headroom (cannot solo-cover)." />
+          <Stat label="Jr trainees" value={h.juniorTraineesAvailable} tooltip="Junior trainees (ST1–ST5) — can pair with a consultant but cannot lead a list alone." />
         </div>
         {h.consultantsOnSpa > 0 && (
           <div className="rounded border border-orange-500/40 bg-orange-500/10 px-2 py-1 text-xs">
@@ -241,12 +258,23 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
+function Stat({ label, value, tooltip }: { label: string; value: number; tooltip?: string }) {
+  const content = (
     <div className="rounded bg-muted/40 p-2">
       <div className="text-muted-foreground">{label}</div>
       <div className="text-base font-semibold">{value}</div>
     </div>
+  );
+  if (!tooltip) return content;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="cursor-help">{content}</div>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <p className="max-w-[16rem]">{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
