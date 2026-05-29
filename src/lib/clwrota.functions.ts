@@ -1000,69 +1000,78 @@ const NON_PATIENT_FACING_DUTY_TYPES: ReadonlySet<ResolvedDutyType> = new Set([
   "non_clinical",
 ]);
 
+export type DutyTypeMappingRow = {
+  duty_type: ResolvedDutyType;
+  pattern: string;
+  match_type: "substring" | "word" | "regex";
+  grade_filter: "consultant" | "sas" | "trainee" | null;
+  trainee_seniority_filter: "junior" | "senior" | null;
+  priority: number;
+  active: boolean;
+};
+
+function isJuniorTraineeLevel(trainingLevel: string | null | undefined): boolean {
+  const tl = (trainingLevel ?? "").toUpperCase();
+  return tl === "CT1" || tl === "CT2" || tl === "ACCS1" || tl === "ACCS2" || tl === "ACCS3";
+}
+
+function mappingMatches(
+  mapping: DutyTypeMappingRow,
+  text: string,
+  grade: string | null | undefined,
+  trainingLevel: string | null | undefined,
+): boolean {
+  if (mapping.grade_filter && grade !== mapping.grade_filter) return false;
+  if (mapping.trainee_seniority_filter) {
+    if (grade !== "trainee") return false;
+    const junior = isJuniorTraineeLevel(trainingLevel);
+    if (mapping.trainee_seniority_filter === "junior" && !junior) return false;
+    if (mapping.trainee_seniority_filter === "senior" && junior) return false;
+  }
+  const p = mapping.pattern.toLowerCase();
+  switch (mapping.match_type) {
+    case "substring":
+      return text.includes(p);
+    case "word":
+      return new RegExp(`\\b${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text);
+    case "regex":
+      try {
+        return new RegExp(mapping.pattern, "i").test(text);
+      } catch {
+        return false;
+      }
+  }
+}
+
 /**
- * Classify a CLWRota row as a non-theatre duty (on-call, obstetrics, ICU,
- * consultant in charge, SPA, admin, teaching, non-clinical) based on the
- * free-text label fields plus the staff member's grade/training level.
- * Returns "theatre" only when nothing matches.
+ * Classify a CLWRota row as a non-theatre duty using admin-configured
+ * mappings (priority asc). Falls back to "theatre" when nothing matches.
  */
 function classifyDutyType(
   labels: Array<string | null | undefined>,
   grade: string | null | undefined,
   trainingLevel: string | null | undefined,
+  mappings: DutyTypeMappingRow[],
 ): ResolvedDutyType {
   const text = labels.filter(Boolean).join(" ").toLowerCase();
   if (!text) return "theatre";
-
-  const isJuniorTrainee = (() => {
-    const tl = (trainingLevel ?? "").toUpperCase();
-    return tl === "CT1" || tl === "CT2" || tl === "ACCS1" || tl === "ACCS2" || tl === "ACCS3";
-  })();
-
-  // Non-patient-facing scheduled activities — check first so labels like
-  // "SPA" or "Admin" are preserved rather than swallowed by a generic match.
-  if (/\bspa\b/.test(text) || text.includes("supporting professional")) return "spa";
-  if (text.includes("teach") || text.includes("education") || text.includes("training session"))
-    return "teaching";
-  if (
-    text.includes("admin") ||
-    text.includes("management") ||
-    text.includes("audit") ||
-    text.includes("appraisal") ||
-    text.includes("governance")
-  )
-    return "admin";
-
-  if (text.includes("consultant in charge") || /\bcic\b/.test(text)) return "consultant_in_charge";
-
-  if (text.includes("obstet")) {
-    if (/\b(2nd|second)\b/.test(text)) return "obstetrics_2nd";
-    return "obstetrics";
+  for (const m of mappings) {
+    if (!m.active) continue;
+    if (mappingMatches(m, text, grade, trainingLevel)) return m.duty_type;
   }
-
-  const mentionsIcu =
-    text.includes("icu") || text.includes("intensive") || text.includes("critical care");
-  if (mentionsIcu) {
-    if (grade === "consultant") return "icu_consultant_oncall";
-    if (grade === "trainee") return isJuniorTrainee ? "icu_trainee" : "icu_ct2_plus";
-    return "icu_ct2_plus"; // SAS or unknown — closest fit
-  }
-
-  const mentionsOnCall =
-    text.includes("on call") || text.includes("on-call") || text.includes("oncall");
-  if (mentionsOnCall) {
-    if (grade === "consultant") return "general_consultant_oncall";
-    if (grade === "sas") return "registrar_oncall";
-    if (grade === "trainee") return isJuniorTrainee ? "sho_oncall" : "registrar_oncall";
-    return "registrar_oncall";
-  }
-
-  // Catch-all for explicitly non-clinical scheduled time.
-  if ((text.includes("non") && text.includes("clin")) || text.includes("study"))
-    return "non_clinical";
-
   return "theatre";
 }
+
+async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("duty_type_mappings")
+    .select("duty_type, pattern, match_type, grade_filter, trainee_seniority_filter, priority, active")
+    .eq("active", true)
+    .order("priority", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DutyTypeMappingRow[];
+}
+
 
 
 /**
