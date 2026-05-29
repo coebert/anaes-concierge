@@ -301,58 +301,26 @@ async function fetchReportRaw(
 }
 
 
+// Top-level JSON shape we can ingest: either an array of row objects, or an
+// object that contains rows under a known wrapper key (Rotamap central_api,
+// generic { data: [...] }, etc.). Validated permissively — individual row
+// fields are picked downstream via pick() with fallbacks.
+const RotamapCentralApiSchema = z.object({
+  columns: z.array(z.object({ field_name: z.unknown() }).passthrough()).min(1),
+  rows: z.array(z.unknown()),
+}).passthrough();
+
+const RowsWrapperSchema = z.union([
+  z.array(z.record(z.unknown())),
+  RotamapCentralApiSchema,
+  z.record(z.unknown()), // generic wrapper — we'll probe known keys below
+]);
+
 function parseRows(text: string): Record<string, unknown>[] {
   // Try JSON first.
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) return parsed as Record<string, unknown>[];
-    if (parsed && typeof parsed === "object") {
-      const obj = parsed as Record<string, unknown>;
-
-      // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
-      // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
-      // pick() lookups work.
-      const cols = obj["columns"];
-      const rowsRaw = obj["rows"];
-      if (
-        Array.isArray(cols) && cols.length > 0 &&
-        typeof cols[0] === "object" && cols[0] !== null &&
-        "field_name" in (cols[0] as Record<string, unknown>) &&
-        Array.isArray(rowsRaw)
-      ) {
-        const fieldNames = (cols as Array<Record<string, unknown>>).map(
-          (c) => String(c.field_name ?? ""),
-        );
-        // If rows are already keyed objects, return as-is.
-        if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
-          return rowsRaw as Record<string, unknown>[];
-        }
-        return (rowsRaw as unknown[]).map((r) => {
-          const out: Record<string, unknown> = {};
-          if (Array.isArray(r)) {
-            fieldNames.forEach((name, i) => {
-              if (name) out[name] = r[i];
-            });
-          }
-          return out;
-        });
-      }
-
-      // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] },
-      // or a top-level key matching the report name e.g. { staff: [...] }, { people: [...] }.
-      for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
-        if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[];
-      }
-      // Fallback: first array-valued property anywhere at the top level whose
-      // elements are non-array objects (avoids picking `columns` metadata).
-      for (const [k, v] of Object.entries(obj)) {
-        if (k === "columns") continue;
-        if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
-          return v as Record<string, unknown>[];
-        }
-      }
-    }
-    return [];
+    parsed = JSON.parse(text);
   } catch {
     // CSV fallback — naive parse (no quoted commas). Good enough for Rotamap reports.
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -367,6 +335,63 @@ function parseRows(text: string): Record<string, unknown>[] {
       return obj;
     });
   }
+
+  // Valid JSON — validate against a permissive top-level schema. If the
+  // payload isn't one of the shapes we know how to read, throw a clear error
+  // rather than silently returning [].
+  const validated = RowsWrapperSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new Error(
+      `Unrecognised CLWRota JSON shape (expected array, central_api object, or wrapped rows). ` +
+      `Details: ${validated.error.errors.slice(0, 3).map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`).join("; ")}`,
+    );
+  }
+
+  if (Array.isArray(validated.data)) return validated.data as Record<string, unknown>[];
+
+  const obj = validated.data as Record<string, unknown>;
+
+  // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
+  // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
+  // pick() lookups work.
+  const cols = obj["columns"];
+  const rowsRaw = obj["rows"];
+  if (
+    Array.isArray(cols) && cols.length > 0 &&
+    typeof cols[0] === "object" && cols[0] !== null &&
+    "field_name" in (cols[0] as Record<string, unknown>) &&
+    Array.isArray(rowsRaw)
+  ) {
+    const fieldNames = (cols as Array<Record<string, unknown>>).map(
+      (c) => String(c.field_name ?? ""),
+    );
+    if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
+      return rowsRaw as Record<string, unknown>[];
+    }
+    return (rowsRaw as unknown[]).map((r) => {
+      const out: Record<string, unknown> = {};
+      if (Array.isArray(r)) {
+        fieldNames.forEach((name, i) => {
+          if (name) out[name] = r[i];
+        });
+      }
+      return out;
+    });
+  }
+
+  // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] }, etc.
+  for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
+    if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[];
+  }
+  // Fallback: first array-valued property anywhere at the top level whose
+  // elements are non-array objects (avoids picking `columns` metadata).
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === "columns") continue;
+    if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
+      return v as Record<string, unknown>[];
+    }
+  }
+  return [];
 }
 
 
