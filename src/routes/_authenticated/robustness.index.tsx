@@ -95,47 +95,57 @@ function RobustnessPage() {
                 <thead className="text-muted-foreground">
                   <tr>
                     <th className="px-2 py-1 text-left font-medium">Date</th>
-                    <th className="px-2 py-1 text-left font-medium">On leave</th>
+                    <th className="px-2 py-1 text-center font-medium">Off</th>
+                    <th className="px-2 py-1 text-center font-medium">Other duties</th>
                     <th className="px-2 py-1 text-center font-medium">AM lists</th>
                     <th className="px-2 py-1 text-center font-medium">AM headroom</th>
                     <th className="px-2 py-1 text-center font-medium">PM lists</th>
                     <th className="px-2 py-1 text-center font-medium">PM headroom</th>
-                    <th className="px-2 py-1 text-left font-medium">Unfilled</th>
+                    <th className="px-2 py-1 text-left font-medium">Notes</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {days.map((d) => (
-                    <tr key={d.date} className="border-t">
-                      <td className="px-2 py-1.5">
-                        <Link
-                          to="/robustness/day/$date"
-                          params={{ date: d.date }}
-                          className="text-primary hover:underline"
-                        >
-                          {formatDateGB(d.date)}
-                        </Link>
-                      </td>
-
-                      <td className="px-2 py-1.5 text-muted-foreground">{d.am.onLeave}</td>
-                      <td className="px-2 py-1.5 text-center">{d.am.required}</td>
-                      <td className="px-2 py-1.5 text-center">
-                        <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium", riskColor(d.am.risk))}>
-                          {d.am.headroom}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 text-center">{d.pm.required}</td>
-                      <td className="px-2 py-1.5 text-center">
-                        <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium", riskColor(d.pm.risk))}>
-                          {d.pm.headroom}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1.5 text-muted-foreground">
-                        {d.am.unfilled + d.pm.unfilled > 0
-                          ? `${d.am.unfilled + d.pm.unfilled} session(s)`
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {days.map((d) => {
+                    const spa = d.am.consultantsOnSpa + d.pm.consultantsOnSpa;
+                    const unfilled = d.am.unfilled + d.pm.unfilled;
+                    const notes: string[] = [];
+                    if (unfilled > 0) notes.push(`${unfilled} unfilled`);
+                    if (d.am.risk === "spa_required" || d.pm.risk === "spa_required") {
+                      notes.push("SPA cover needed");
+                    } else if (spa > 0) {
+                      notes.push(`${spa} on SPA (flex)`);
+                    }
+                    return (
+                      <tr key={d.date} className="border-t">
+                        <td className="px-2 py-1.5">
+                          <Link
+                            to="/robustness/day/$date"
+                            params={{ date: d.date }}
+                            className="text-primary hover:underline"
+                          >
+                            {formatDateGB(d.date)}
+                          </Link>
+                        </td>
+                        <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onLeave}</td>
+                        <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onOtherDuty}</td>
+                        <td className="px-2 py-1.5 text-center">{d.am.required}</td>
+                        <td className="px-2 py-1.5 text-center">
+                          <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium", riskColor(d.am.risk))} title={riskLabel(d.am.risk)}>
+                            {d.am.headroom}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-center">{d.pm.required}</td>
+                        <td className="px-2 py-1.5 text-center">
+                          <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium", riskColor(d.pm.risk))} title={riskLabel(d.pm.risk)}>
+                            {d.pm.headroom}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-xs text-muted-foreground">
+                          {notes.length === 0 ? "—" : notes.join(" · ")}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
