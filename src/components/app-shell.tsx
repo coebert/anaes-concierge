@@ -82,9 +82,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       (!i.traineeOnly || isAdmin || grade === "trainee") &&
       (!i.roles || i.roles.some((r) => hasRole(r))),
   );
+  const isAdminFlag = isAdmin; void isAdminFlag;
 
-    (i) => !i.traineeOnly || isAdmin || grade === "trainee",
-  );
   const visibleCoord = COORDINATOR_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
