@@ -133,10 +133,11 @@ describe("computeHalfDayCapacity", () => {
   });
 
   it("handles zero-required half-days (e.g. weekends, no lists)", () => {
-    const cap = computeHalfDayCapacity({ ...base, required: 0, consultantsAvailable: 1 });
-    expect(cap.headroom).toBe(1);
+    const cap = computeHalfDayCapacity({ ...base, required: 0, consultantsAvailable: 3 });
+    expect(cap.headroom).toBe(3);
     expect(cap.risk).toBe("ok");
   });
+
 
   it("a half full of SAS and juniors with no consultants reports shortfall, not spa_required", () => {
     const cap = computeHalfDayCapacity({
