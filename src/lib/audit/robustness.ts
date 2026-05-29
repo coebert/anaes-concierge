@@ -600,9 +600,9 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         trainingLevel: prof?.training_level ?? null,
       });
       asnByTheatreSession.set(a.theatre_session_id as string, arr);
-    } else if (UNAVAILABLE_DUTY_TYPES.has(dt)) {
+    } else if (poolSets.unavailable.has(dt)) {
       otherDutyMap.set(sid + "|" + dt, { ...mkRef(sid), duty: dt, session: sess });
-    } else if (FLEX_DUTY_TYPES.has(dt) && (sess === "am" || sess === "pm")) {
+    } else if (poolSets.flex.has(dt) && (sess === "am" || sess === "pm")) {
       const ref = mkRef(sid);
       if ((profById.get(sid)?.grade ?? "unknown") === "consultant") {
         (sess === "am" ? spa.am : spa.pm).push({ ...ref, duty: dt, session: sess });
