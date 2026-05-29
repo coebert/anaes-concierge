@@ -259,6 +259,8 @@ function UnfilledBadge({ count }: { count: number }) {
     </span>
   );
 }
+
+function Stat(props: StatProps) {
   const { label, value, tone } = props;
   const Icon = props.icon;
   const toneClass = tone === "red"
