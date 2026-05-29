@@ -105,6 +105,18 @@ function TraineeDetailPage() {
     );
   }, [data]);
 
+  const audit = useMemo(() => {
+    if (!data?.profile) return null;
+    return computeFullAudit({
+      trainingLevel: data.profile.training_level ?? null,
+      assignments: data.assignments as AuditAssignment[],
+      tsById: data.tsMap as Map<string, AuditTheatreSession>,
+      specNames: data.specMap,
+      supNames: data.supMap,
+      targets: data.targets as AuditTarget[],
+    });
+  }, [data]);
+
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!data?.profile) return <p>Not found.</p>;
 
@@ -128,6 +140,8 @@ function TraineeDetailPage() {
           {data.profile.training_level ?? "No level set"} · {data.profile.email}
         </p>
       </div>
+
+      {audit && <AuditLenses audit={audit} />}
 
 
       <Card>
