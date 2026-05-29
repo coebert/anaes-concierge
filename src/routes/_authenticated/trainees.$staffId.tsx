@@ -4,16 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getTraineeProfileWithSupervisors } from "@/lib/staff-directory.functions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { computeProgress } from "@/lib/competency-utils";
-import { ArrowLeft } from "lucide-react";
+import { computeFullAudit, type AuditAssignment, type AuditTheatreSession, type AuditTarget } from "@/lib/audit/trainee-audit";
+import { ArrowLeft, AlertTriangle, Sparkles, Users } from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
-
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   component: TraineeDetailPage,
 });
