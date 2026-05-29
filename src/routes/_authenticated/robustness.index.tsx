@@ -96,7 +96,7 @@ function RobustnessPage() {
             </div>
             <div className="rounded-md bg-muted/40 p-2.5 text-muted-foreground">
               <strong className="text-foreground">Who is counted as available?</strong>{" "}
-              Consultants, SAS doctors, and trainees <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin, or CIC duties. ST6/ST7 trainees count as solo-capable; junior trainees and SAS doctors do <em>not</em> count toward headroom (they can pair with a consultant but cannot lead a list alone).
+              Consultants and trainees who are <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em> already covering a clinical list (theatre, POAC, pain clinic or any other theatre_session). ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors are shown for context but do <em>not</em> count toward headroom. Consultants on SPA are reported separately — they only close the gap as flexible cover.
             </div>
           </CardContent>
         </Card>
@@ -105,8 +105,7 @@ function RobustnessPage() {
           <CardHeader>
             <CardTitle className="text-base">Daily coverage headroom</CardTitle>
             <CardDescription>
-              Each cell shows solo-capable staff (consultant or ST6/7) minus lists.
-              Click a date to see the full breakdown for that day.
+              Each cell shows the spare solo-capable headroom, with a breakdown underneath: <span className="font-mono">consultants · SPA · senior trainees</span>. Click a date to see the full breakdown.
             </CardDescription>
           </CardHeader>
           <CardContent>
