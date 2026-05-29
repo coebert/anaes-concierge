@@ -406,6 +406,31 @@ export interface OtherDutyDetail extends PersonRef {
   session: string;
 }
 
+/** Per-half-day classification of every active staff member. */
+export type StaffStatusCategory =
+  | "free_consultant"
+  | "free_senior_trainee"
+  | "free_junior_trainee"
+  | "free_sas"
+  | "on_spa"
+  | "on_clinical_list"
+  | "on_excluded_duty"
+  | "on_leave"
+  | "ltft_off";
+
+export interface StaffStatusEntry extends PersonRef {
+  category: StaffStatusCategory;
+  /** Human-readable reason, e.g. "Covering Theatre 3 (Orthopaedics)", "ICU consultant on-call", "Annual leave". */
+  reason: string;
+  /** Whether this person counts toward soloCapable for the half-day. */
+  countsToSolo: boolean;
+}
+
+export interface HalfBreakdown {
+  session: SessionHalf;
+  entries: StaffStatusEntry[];
+}
+
 export interface DayDetail {
   date: string;
   dow: number;
@@ -416,7 +441,10 @@ export interface DayDetail {
   consultantsOnSpa: { am: OtherDutyDetail[]; pm: OtherDutyDetail[] };
   am: HalfDayCapacity;
   pm: HalfDayCapacity;
+  amBreakdown: HalfBreakdown;
+  pmBreakdown: HalfBreakdown;
 }
+
 
 export async function loadDayDetail(date: string): Promise<DayDetail> {
   const { days } = await computeRobustness(date, date);
