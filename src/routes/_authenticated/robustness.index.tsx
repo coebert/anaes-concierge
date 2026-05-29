@@ -37,18 +37,19 @@ function RobustnessPage() {
   const shortfalls = days.filter((d) => d.am.risk === "shortfall" || d.pm.risk === "shortfall");
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rota robustness</h1>
-          <p className="text-sm text-muted-foreground">
-            Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks.
-            Headroom = consultants + ST6/7 trainees available, minus theatre lists.
-            On-call, ICU, obstetrics, teaching, admin, leave and LTFT days are excluded.
-          </p>
-        </div>
-        <Badge variant="secondary">{formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}</Badge>
-      </header>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Rota robustness</h1>
+            <p className="text-sm text-muted-foreground">
+              Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks.
+              Headroom = consultants + ST6/7 trainees available, minus theatre lists.
+              On-call, ICU, obstetrics, teaching, admin, leave and LTFT days are excluded.
+            </p>
+          </div>
+          <Badge variant="secondary">{formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}</Badge>
+        </header>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}>
