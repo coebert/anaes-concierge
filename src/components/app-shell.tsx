@@ -38,11 +38,13 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/", label: "Audit dashboard", icon: LayoutDashboard },
   { to: "/trainees", label: "Trainee audit", icon: GraduationCap, traineeOnly: true },
-  { to: "/leave", label: "Leave", icon: ClipboardList },
+  { to: "/leave", label: "My leave", icon: ClipboardList },
+  { to: "/leave/forecast", label: "Leave forecast", icon: Activity, roles: ["admin", "rota_coordinator"] },
   { to: "/calendar", label: "Global calendar", icon: CalendarDays },
   { to: "/me", label: "My rota", icon: CalendarRange },
   { to: "/account", label: "My account", icon: UserCircle },
 ];
+
 
 // Coordinator tools: AI-assisted rota writing, custom rules, manual editor.
 // Kept available but de-emphasised — the app's primary purpose is auditing
