@@ -148,6 +148,7 @@ beforeEach(() => {
     leave_requests: [],
     theatre_sessions: [],
     rota_assignments: [],
+    duty_type_pool_rules: DEFAULT_POOL_RULES,
   };
 });
 
