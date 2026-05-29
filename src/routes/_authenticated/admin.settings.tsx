@@ -13,7 +13,6 @@ import {
   getClwRotaSettings,
   saveClwRotaSettings,
   testClwRotaConnection,
-  runClwRotaSync,
   syncClwRotaStaff,
   syncClwRotaRota,
   syncClwRotaLeave,
@@ -55,11 +54,9 @@ function SettingsPage() {
   const getSettings = useServerFn(getClwRotaSettings);
   const saveSettings = useServerFn(saveClwRotaSettings);
   const testConn = useServerFn(testClwRotaConnection);
-  const runSync = useServerFn(runClwRotaSync);
   const syncStaff = useServerFn(syncClwRotaStaff);
   const syncRota = useServerFn(syncClwRotaRota);
   const syncLeave = useServerFn(syncClwRotaLeave);
-
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
@@ -112,52 +109,60 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const syncMut = useMutation({
-    mutationFn: () => runSync({}),
-    onSuccess: (res) => {
-      if (res.ok) toast.success(res.message);
-      else toast.error(res.message);
-      void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const staffMut = useMutation({
     mutationFn: () => syncStaff({}),
     onSuccess: (res) => {
-      if (res.ok) toast.success(res.message);
-      else toast.warning(res.message);
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["staff"] });
       void qc.invalidateQueries({ queryKey: ["profiles"] });
+      return res;
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const rotaMut = useMutation({
     mutationFn: () => syncRota({}),
     onSuccess: (res) => {
-      if (res.ok) toast.success(res.message);
-      else toast.warning(res.message);
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["rota"] });
       void qc.invalidateQueries({ queryKey: ["rota-assignments"] });
       void qc.invalidateQueries({ queryKey: ["theatre-sessions"] });
+      return res;
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const leaveMut = useMutation({
     mutationFn: () => syncLeave({}),
     onSuccess: (res) => {
-      if (res.ok) toast.success(res.message);
-      else toast.warning(res.message);
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["leave-requests"] });
       void qc.invalidateQueries({ queryKey: ["leave"] });
+      return res;
+    },
+  });
+
+  const syncAllMut = useMutation({
+    mutationFn: async () => {
+      // Run sequentially: staff first (so rota assignments can match people),
+      // then rota, then leave.
+      const staff = staffUrl.trim() ? await staffMut.mutateAsync() : null;
+      const rota = rotaUrl.trim() ? await rotaMut.mutateAsync() : null;
+      const leave = leaveUrl.trim() ? await leaveMut.mutateAsync() : null;
+      return { staff, rota, leave };
+    },
+    onSuccess: ({ staff, rota, leave }) => {
+      const parts: string[] = [];
+      if (staff) parts.push(`staff: ${staff.message}`);
+      if (rota) parts.push(`rota: ${rota.message}`);
+      if (leave) parts.push(`leave: ${leave.message}`);
+      if (!parts.length) {
+        toast.warning("No report URLs configured.");
+      } else {
+        toast.success(`Sync complete — ${parts.join(" · ")}`);
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
 
   if (isLoading) {
@@ -298,52 +303,28 @@ function SettingsPage() {
                 Test connection
               </Button>
               <Button
-                variant="secondary"
-                onClick={() => syncMut.mutate()}
-                disabled={syncMut.isPending || !credsOk}
-              >
-                {syncMut.isPending ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                )}
-                Run pull sync now
-              </Button>
-              <Button
                 variant="default"
-                onClick={() => staffMut.mutate()}
-                disabled={staffMut.isPending || !credsOk || !staffUrl.trim()}
+                onClick={() => syncAllMut.mutate()}
+                disabled={
+                  syncAllMut.isPending ||
+                  !credsOk ||
+                  (!staffUrl.trim() && !rotaUrl.trim() && !leaveUrl.trim())
+                }
               >
-                {staffMut.isPending ? (
+                {syncAllMut.isPending ? (
                   <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
                 )}
-                Sync staff now
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => rotaMut.mutate()}
-                disabled={rotaMut.isPending || !credsOk || !rotaUrl.trim()}
-              >
-                {rotaMut.isPending ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                )}
-                Sync rota now
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => leaveMut.mutate()}
-                disabled={leaveMut.isPending || !credsOk || !leaveUrl.trim()}
-              >
-                {leaveMut.isPending ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                )}
-                Sync leave now
+                {syncAllMut.isPending
+                  ? staffMut.isPending
+                    ? "Syncing staff…"
+                    : rotaMut.isPending
+                      ? "Syncing rota…"
+                      : leaveMut.isPending
+                        ? "Syncing leave…"
+                        : "Syncing…"
+                  : "Sync all from CLWRota"}
               </Button>
             </div>
           </div>
@@ -686,33 +667,6 @@ function SettingsPage() {
             </div>
           )}
 
-          {syncMut.data?.details && syncMut.data.details.length > 0 && (
-            <div className="rounded-md border border-border p-3 text-xs">
-              <div className="mb-1 font-medium">This run:</div>
-              <ul className="space-y-1">
-                {syncMut.data.details.map((d) => (
-                  <li key={d.name} className="flex justify-between gap-2">
-                    <span className="capitalize">{d.name}</span>
-                    <span className="text-muted-foreground">
-                      {d.error ? (
-                        <span className="text-destructive">{d.error}</span>
-                      ) : (
-                        `${d.rows} rows · ${d.bytes} bytes`
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Note: this initial release fetches and counts rows from the
-            configured CLWRota report URLs and records the result. Mapping the
-            pulled rows into local rota / leave / staff records will be wired up
-            once we see a sample payload from your CLWRota deployment — the
-            field names vary per organisation.
-          </p>
         </CardContent>
       </Card>
     </div>
