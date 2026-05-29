@@ -148,18 +148,32 @@ export function BreakdownCard({
                     </Tooltip>
                   </summary>
                   <ul className="mt-2 space-y-1 text-xs">
-                    {people.map((p) => (
-                      <li
-                        key={p.staffId}
-                        className="flex items-center justify-between gap-2 rounded border bg-background/60 px-2 py-1"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span className="font-medium text-sm">{p.staffName}</span>
-                          <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
-                        </span>
-                        <span className="text-right text-muted-foreground">{p.reason}</span>
-                      </li>
-                    ))}
+                    {people.map((p) => {
+                      const entryMetric = meta.metric;
+                      const entryBorder =
+                        entryMetric === "headroom"
+                          ? "border-l-emerald-500"
+                          : entryMetric === "headroomWithSpa"
+                            ? "border-l-orange-500"
+                            : entryMetric === "supervisedOnly"
+                              ? "border-l-sky-500"
+                              : "border-l-muted-foreground/40";
+                      return (
+                        <li
+                          key={p.staffId}
+                          className={cn(
+                            "flex items-center justify-between gap-2 rounded border border-l-[3px] bg-background/60 px-2 py-1",
+                            entryBorder
+                          )}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span className="font-medium text-sm">{p.staffName}</span>
+                            <GradeBadge grade={p.grade} trainingLevel={p.trainingLevel} />
+                          </span>
+                          <span className="text-right text-muted-foreground">{p.reason}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </details>
               );
