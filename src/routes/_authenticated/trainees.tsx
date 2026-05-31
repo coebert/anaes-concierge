@@ -15,6 +15,8 @@ import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO, getSurname } from "@/lib/utils";
+import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
+import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
   component: TraineesGuard,
@@ -53,23 +55,24 @@ function TraineesPage() {
 
       const today = todayISO();
       const traineeIds = (trainees ?? []).map((t) => t.id);
-      let assignments: Array<{
+      let allAssignments: Array<{
         staff_id: string;
         role_on_list: string;
+        session: string;
+        duty_type: string | null;
         theatre_session_id: string | null;
       }> = [];
       if (traineeIds.length) {
         const { data: rows, error: e4 } = await supabase
           .from("rota_assignments")
-          .select("staff_id,role_on_list,theatre_session_id,session_date")
+          .select("staff_id,role_on_list,session,duty_type,theatre_session_id,session_date")
           .in("staff_id", traineeIds)
-          .lte("session_date", today)
-          .in("role_on_list", ["solo", "supervised"]);
+          .lte("session_date", today);
         if (e4) throw e4;
-        assignments = rows ?? [];
+        allAssignments = (rows ?? []) as typeof allAssignments;
       }
       const tsIds = Array.from(
-        new Set(assignments.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
+        new Set(allAssignments.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
       );
       let tsMap = new Map<string, string | null>();
       if (tsIds.length) {
@@ -82,11 +85,11 @@ function TraineesPage() {
       }
 
       const specMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
-      return {
-        trainees: trainees ?? [],
-        targets: targets ?? [],
-        specMap,
-        assignmentsByStaff: assignments.reduce<Record<string, Array<{ specialty_id: string | null; role_on_list: string }>>>(
+
+      // Competency progress only counts clinical lists (solo/supervised) up to today.
+      const clinicalByStaff = allAssignments
+        .filter((a) => a.role_on_list === "solo" || a.role_on_list === "supervised")
+        .reduce<Record<string, Array<{ specialty_id: string | null; role_on_list: string }>>>(
           (acc, a) => {
             (acc[a.staff_id] ||= []).push({
               specialty_id: a.theatre_session_id ? tsMap.get(a.theatre_session_id) ?? null : null,
@@ -95,7 +98,26 @@ function TraineesPage() {
             return acc;
           },
           {},
-        ),
+        );
+
+      // All assignments grouped per staff for metric cards.
+      const allByStaff = allAssignments.reduce<Record<string, MetricAssignment[]>>((acc, a) => {
+        (acc[a.staff_id] ||= []).push({
+          role_on_list: a.role_on_list,
+          session: a.session,
+          duty_type: a.duty_type,
+          theatre_session_id: a.theatre_session_id,
+        });
+        return acc;
+      }, {});
+
+      return {
+        trainees: trainees ?? [],
+        targets: targets ?? [],
+        specMap,
+        tsSpecMap: tsMap,
+        assignmentsByStaff: clinicalByStaff,
+        allAssignmentsByStaff: allByStaff,
       };
     },
   });
@@ -138,6 +160,21 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
+  const metricRows = useMemo(() => {
+    if (!data) return [];
+    return rows.map(({ trainee }) => ({
+      trainee,
+      metrics: computeTraineeMetrics(
+        data.allAssignmentsByStaff[trainee.id] ?? [],
+        trainee.start_date,
+        data.tsSpecMap,
+        data.specMap,
+        Date.now(),
+        (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+      ),
+    }));
+  }, [data, rows]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
@@ -154,6 +191,33 @@ function TraineesPage() {
           className="max-w-xs"
         />
       </div>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Trainee summary</h2>
+          <p className="text-xs text-muted-foreground">
+            Time at Salisbury, time remaining, specialty mix, solo daytime %, and on-call share.
+          </p>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading metrics…</p>
+        ) : metricRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No trainees on record.</p>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {metricRows.map(({ trainee, metrics }) => (
+              <TraineeMetricsCard
+                key={trainee.id}
+                title={trainee.full_name || trainee.email || "—"}
+                subtitle={trainee.training_level ?? "No level set"}
+                metrics={metrics}
+                startDate={trainee.start_date}
+                rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <Card>
         <CardHeader>

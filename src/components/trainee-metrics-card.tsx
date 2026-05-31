@@ -6,21 +6,24 @@ import type { TraineeMetrics } from "@/lib/trainee-metrics";
 type Props = {
   metrics: TraineeMetrics;
   startDate: string | null | undefined;
+  rotationEndDate?: string | null | undefined;
   title?: string;
   subtitle?: string;
 };
 
-export function TraineeMetricsCard({ metrics, startDate, title = "Metrics", subtitle }: Props) {
+export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title = "Metrics", subtitle }: Props) {
   const {
     weeksAtSalisbury,
+    weeksRemaining,
     daytimeLists,
     soloLists,
+    soloDaytimePct,
     supervisedLists,
     onCallLists,
+    onCallPct,
     totalAssignments,
     specialtyBreakdown,
   } = metrics;
-  const onCallPct = totalAssignments > 0 ? Math.round((onCallLists / totalAssignments) * 1000) / 10 : null;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -38,15 +41,27 @@ export function TraineeMetricsCard({ metrics, startDate, title = "Metrics", subt
                 : "no start date set"
             }
           />
+          <Metric
+            label="Time left"
+            value={weeksRemaining === null ? "—" : `${weeksRemaining} wk`}
+            sub={
+              rotationEndDate
+                ? `until ${formatDateWithWeekdayGB(rotationEndDate)}`
+                : "no rotation end date"
+            }
+          />
           <Metric label="Daytime lists" value={daytimeLists.toString()} sub="theatre AM/PM" />
-          <Metric label="Directly supervised" value={supervisedLists.toString()} />
-          <Metric label="Solo lists" value={soloLists.toString()} />
+          <Metric
+            label="Solo daytime lists"
+            value={soloDaytimePct === null ? "—" : `${soloDaytimePct}%`}
+            sub={`${metrics.soloDaytimeLists} of ${daytimeLists}`}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Metric label="Directly supervised" value={supervisedLists.toString()} />
+          <Metric label="Solo lists (all)" value={soloLists.toString()} />
           <Metric label="On-call" value={onCallLists.toString()} sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"} />
           <Metric label="Total assignments" value={totalAssignments.toString()} />
-          <Metric label="Clinical lists" value={metrics.totalClinical.toString()} />
-          <Metric label="Non-clinical" value={(totalAssignments - metrics.totalClinical).toString()} />
         </div>
 
         <div>

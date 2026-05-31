@@ -70,7 +70,7 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
     await assertAdminOrTrainee(context.supabase, context.userId);
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id,full_name,email,training_level,active,start_date,grade")
+      .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade")
       .eq("grade", "trainee")
       .eq("active", true)
       .order("full_name");
