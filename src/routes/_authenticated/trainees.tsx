@@ -352,3 +352,60 @@ function TraineesPage() {
     </div>
   );
 }
+
+function DateField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  clearable,
+}: {
+  label: string;
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  placeholder: string;
+  clearable?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "h-9 min-w-[160px] justify-start text-left font-normal",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            <span className="mr-1 text-xs uppercase tracking-wide text-muted-foreground">
+              {label}
+            </span>
+            {value ? format(value, "PPP") : <span>{placeholder}</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={onChange}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+      {clearable && value ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onChange(undefined)}
+          aria-label={`Clear ${label}`}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      ) : null}
+    </div>
+  );
+}
