@@ -69,6 +69,7 @@ function SettingsPage() {
   const [staffUrl, setStaffUrl] = useState("");
   const [daysBack, setDaysBack] = useState("30");
   const [daysAhead, setDaysAhead] = useState("120");
+  const [autoReclassifySolo, setAutoReclassifySolo] = useState(false);
 
   useEffect(() => {
     if (data?.settings) {
