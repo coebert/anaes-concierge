@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, CheckCircle2, XCircle, RefreshCw, Plug } from "lucide-react";
 import {
   getClwRotaSettings,
@@ -68,6 +69,7 @@ function SettingsPage() {
   const [staffUrl, setStaffUrl] = useState("");
   const [daysBack, setDaysBack] = useState("30");
   const [daysAhead, setDaysAhead] = useState("120");
+  const [autoReclassifySolo, setAutoReclassifySolo] = useState(false);
 
   useEffect(() => {
     if (data?.settings) {
@@ -76,6 +78,7 @@ function SettingsPage() {
       setStaffUrl(data.settings.staff_report_url ?? "");
       setDaysBack(String(data.settings.sync_days_back ?? 30));
       setDaysAhead(String(data.settings.sync_days_ahead ?? 120));
+      setAutoReclassifySolo(Boolean((data.settings as { auto_reclassify_trainee_solo?: boolean }).auto_reclassify_trainee_solo));
     }
   }, [data?.settings]);
 
@@ -88,6 +91,7 @@ function SettingsPage() {
           staff_report_url: staffUrl.trim() || null,
           sync_days_back: Number(daysBack) || 30,
           sync_days_ahead: Number(daysAhead) || 120,
+          auto_reclassify_trainee_solo: autoReclassifySolo,
         },
       }),
     onSuccess: () => {
@@ -349,6 +353,26 @@ function SettingsPage() {
                     onChange={(e) => setDaysAhead(e.target.value)}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="auto-reclassify-solo" className="text-sm font-medium">
+                    Auto-reclassify trainee solo lists
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    During each rota sync, set any trainee marked "solo" on a
+                    theatre session that also has a consultant rostered to
+                    "supervised". Locally-modified rows are preserved.
+                  </p>
+                </div>
+                <Switch
+                  id="auto-reclassify-solo"
+                  checked={autoReclassifySolo}
+                  onCheckedChange={setAutoReclassifySolo}
+                />
               </div>
             </div>
 

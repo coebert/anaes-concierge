@@ -111,6 +111,7 @@ export type Database = {
       }
       clwrota_sync_state: {
         Row: {
+          auto_reclassify_trainee_solo: boolean
           id: number
           last_error: string | null
           last_pulled_rows: number | null
@@ -123,6 +124,7 @@ export type Database = {
           sync_days_back: number
         }
         Insert: {
+          auto_reclassify_trainee_solo?: boolean
           id?: number
           last_error?: string | null
           last_pulled_rows?: number | null
@@ -135,6 +137,7 @@ export type Database = {
           sync_days_back?: number
         }
         Update: {
+          auto_reclassify_trainee_solo?: boolean
           id?: number
           last_error?: string | null
           last_pulled_rows?: number | null
