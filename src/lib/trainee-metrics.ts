@@ -10,11 +10,15 @@ export type MetricAssignment = {
 
 export type TraineeMetrics = {
   weeksAtSalisbury: number | null;
+  weeksRemaining: number | null;
   daytimeLists: number;
   soloLists: number;
+  soloDaytimeLists: number;
+  soloDaytimePct: number | null;
   supervisedLists: number;
   totalClinical: number;
   onCallLists: number;
+  onCallPct: number | null;
   totalAssignments: number;
   specialtyBreakdown: Array<{ name: string; count: number; percent: number }>;
 };
@@ -25,19 +29,32 @@ export function computeTraineeMetrics(
   specialtyIdBySession: Map<string, string | null | undefined>,
   specialtyNameById: Map<string, string>,
   now: number = Date.now(),
+  rotationEndDate: string | null | undefined = null,
 ): TraineeMetrics {
   const start = startDate ? new Date(startDate) : null;
   const weeksAtSalisbury = start
     ? Math.max(0, Math.floor((now - start.getTime()) / (1000 * 60 * 60 * 24 * 7)))
     : null;
+  const end = rotationEndDate ? new Date(rotationEndDate) : null;
+  const weeksRemaining = end
+    ? Math.max(0, Math.ceil((end.getTime() - now) / (1000 * 60 * 60 * 24 * 7)))
+    : null;
 
-  const daytimeLists = assignments.filter(
+  const daytimeAssignments = assignments.filter(
     (a) => a.duty_type === "theatre" && (a.session === "am" || a.session === "pm"),
-  ).length;
+  );
+  const daytimeLists = daytimeAssignments.length;
   const soloLists = assignments.filter((a) => a.role_on_list === "solo").length;
+  const soloDaytimeLists = daytimeAssignments.filter((a) => a.role_on_list === "solo").length;
+  const soloDaytimePct = daytimeLists > 0
+    ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10
+    : null;
   const supervisedLists = assignments.filter((a) => a.role_on_list === "supervised").length;
   const onCallLists = assignments.filter((a) => a.duty_type !== "theatre" && a.duty_type !== null).length;
   const totalAssignments = assignments.length;
+  const onCallPct = totalAssignments > 0
+    ? Math.round((onCallLists / totalAssignments) * 1000) / 10
+    : null;
 
   const clinical = assignments.filter((a) =>
     ["solo", "supervised", "supervising"].includes(a.role_on_list),
@@ -61,11 +78,15 @@ export function computeTraineeMetrics(
 
   return {
     weeksAtSalisbury,
+    weeksRemaining,
     daytimeLists,
     soloLists,
+    soloDaytimeLists,
+    soloDaytimePct,
     supervisedLists,
     totalClinical,
     onCallLists,
+    onCallPct,
     totalAssignments,
     specialtyBreakdown,
   };
