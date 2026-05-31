@@ -58,7 +58,6 @@ function TraineesPage() {
       if (e2) throw e2;
       if (e3) throw e3;
 
-      const today = todayISO();
       const traineeIds = (trainees ?? []).map((t) => t.id);
       let allAssignments: Array<{
         staff_id: string;
@@ -66,13 +65,13 @@ function TraineesPage() {
         session: string;
         duty_type: string | null;
         theatre_session_id: string | null;
+        session_date: string;
       }> = [];
       if (traineeIds.length) {
         const { data: rows, error: e4 } = await supabase
           .from("rota_assignments")
           .select("staff_id,role_on_list,session,duty_type,theatre_session_id,session_date")
-          .in("staff_id", traineeIds)
-          .lte("session_date", today);
+          .in("staff_id", traineeIds);
         if (e4) throw e4;
         allAssignments = (rows ?? []) as typeof allAssignments;
       }
