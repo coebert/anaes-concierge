@@ -178,9 +178,9 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
-  const fromISO = fromDate ? format(fromDate, "yyyy-MM-dd") : null;
-  const toISO = toDate ? format(toDate, "yyyy-MM-dd") : todayISO();
-  const asOfMs = toDate ? toDate.getTime() : Date.now();
+  const fromISO = debouncedFrom ? format(debouncedFrom, "yyyy-MM-dd") : null;
+  const toISO = debouncedTo ? format(debouncedTo, "yyyy-MM-dd") : todayISO();
+  const asOfMs = debouncedTo ? debouncedTo.getTime() : Date.now();
 
   const metricRows = useMemo(() => {
     if (!data) return [];
