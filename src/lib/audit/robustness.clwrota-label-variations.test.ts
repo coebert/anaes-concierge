@@ -343,15 +343,31 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
       .toBe("theatre");
   });
 
-  it("substring patterns are case-insensitive but whitespace-literal", () => {
+  it("substring patterns tolerate casing, whitespace runs, and hyphen/underscore/slash variants", () => {
     expect(classifyDutyType(["   tHeAtRe   5   "], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
     // Single-spaced "On Call" matches.
     expect(classifyDutyType([" On Call "], "consultant", null, PROD_MAPPINGS))
       .toBe("general_consultant_oncall");
-    // Double-spaced does NOT match the literal "on call" substring → falls through.
+    // Double-spaced "ON  CALL" now normalises to "on call" and matches.
     expect(classifyDutyType(["ON  CALL"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
+      .toBe("general_consultant_oncall");
+    // Tabs + newlines collapse to a single space too.
+    expect(classifyDutyType(["On\t\nCall"], "consultant", null, PROD_MAPPINGS))
+      .toBe("general_consultant_oncall");
+    // Hyphenated, underscored, and slashed variants all match.
+    for (const variant of ["on-call", "On-Call", "ON-CALL", "on_call", "on/call", "on--call"]) {
+      expect(classifyDutyType([variant], "consultant", null, PROD_MAPPINGS))
+        .toBe("general_consultant_oncall");
+    }
+    // Combined: hyphen + double space + uppercase → still classifies.
+    expect(classifyDutyType(["ICU  Consultant-On-Call"], "consultant", null, PROD_MAPPINGS))
+      .toBe("icu_consultant_oncall");
+    // Trainee variants also pick up "on-call" via the registrar/SHO rules.
+    expect(classifyDutyType(["On-Call - Reg"], "trainee", "ST6", PROD_MAPPINGS))
+      .toBe("registrar_oncall");
+    expect(classifyDutyType(["On_Call"], "trainee", "CT1", PROD_MAPPINGS))
+      .toBe("sho_oncall");
   });
 });
 
