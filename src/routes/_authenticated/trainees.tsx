@@ -44,6 +44,8 @@ function TraineesGuard() {
 
 function TraineesPage() {
   const [filter, setFilter] = useState("");
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
   const fetchTrainees = useServerFn(listTraineesForOverview);
   const { data, isLoading } = useQuery({
