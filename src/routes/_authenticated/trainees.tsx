@@ -15,6 +15,8 @@ import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO, getSurname } from "@/lib/utils";
+import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
+import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
   component: TraineesGuard,
