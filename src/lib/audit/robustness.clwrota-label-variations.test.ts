@@ -341,11 +341,15 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
       .toBe("theatre");
   });
 
-  it("noisy whitespace and mixed casing are normalised", () => {
+  it("substring patterns are case-insensitive but whitespace-literal", () => {
     expect(classifyDutyType(["   tHeAtRe   5   "], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
-    expect(classifyDutyType(["  ON  CALL  "], "consultant", null, PROD_MAPPINGS))
+    // Single-spaced "On Call" matches.
+    expect(classifyDutyType([" On Call "], "consultant", null, PROD_MAPPINGS))
       .toBe("general_consultant_oncall");
+    // Double-spaced does NOT match the literal "on call" substring → falls through.
+    expect(classifyDutyType(["ON  CALL"], "consultant", null, PROD_MAPPINGS))
+      .toBe("theatre");
   });
 });
 
