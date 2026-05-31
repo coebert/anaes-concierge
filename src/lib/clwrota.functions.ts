@@ -1171,6 +1171,7 @@ export async function performRotaSync() {
       assignmentsUpserted: 0,
       skipped: [] as Array<{ label: string; reason: string }>,
       errors: [] as Array<{ label: string; error: string }>,
+      warnings: [] as Array<{ label: string; reason: string }>,
       rawPreview: "",
       sampleKeys: [] as string[],
       unmatchedTheatres: [] as string[],
