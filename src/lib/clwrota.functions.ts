@@ -1534,7 +1534,7 @@ export async function performRotaSync() {
         const { data: rowsForCheck, error: checkErr } = await supabaseAdmin
           .from("rota_assignments")
           .select(
-            "staff_id,role_on_list,theatre_session_id,session_date,profiles!inner(grade,full_name,email)",
+            "staff_id,role_on_list,theatre_session_id,session_date,profiles!rota_assignments_staff_id_fkey(grade,full_name,email)",
           )
           .in("theatre_session_id", chunk);
         if (checkErr) {
