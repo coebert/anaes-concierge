@@ -1549,7 +1549,7 @@ export async function performRotaSync() {
           profiles: { grade: string | null; full_name: string | null; email: string | null };
         };
         const bySession = new Map<string, Row[]>();
-        for (const r of (rowsForCheck ?? []) as Row[]) {
+        for (const r of (rowsForCheck ?? []) as unknown as Row[]) {
           if (!r.theatre_session_id) continue;
           (bySession.get(r.theatre_session_id) ?? bySession.set(r.theatre_session_id, []).get(r.theatre_session_id)!).push(r);
         }
