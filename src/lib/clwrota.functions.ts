@@ -1040,6 +1040,22 @@ function isJuniorTraineeLevel(trainingLevel: string | null | undefined): boolean
   return tl === "CT1" || tl === "CT2" || tl === "ACCS1" || tl === "ACCS2" || tl === "ACCS3";
 }
 
+/**
+ * Normalise free-text labels and patterns so the classifier is robust to
+ * casing, surrounding whitespace, internal whitespace runs (e.g. "ON  CALL"),
+ * and common separators that humans use interchangeably with spaces — hyphens,
+ * underscores, slashes (e.g. "on-call", "on_call", "on/call"). NB: regex
+ * patterns are NOT normalised — authors of `match_type: "regex"` rules are
+ * expected to handle their own whitespace/hyphen variants explicitly.
+ */
+export function normaliseClassifierText(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[-_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function mappingMatches(
   mapping: DutyTypeMappingRow,
   text: string,
@@ -1053,12 +1069,15 @@ function mappingMatches(
     if (mapping.trainee_seniority_filter === "junior" && !junior) return false;
     if (mapping.trainee_seniority_filter === "senior" && junior) return false;
   }
-  const p = mapping.pattern.toLowerCase();
   switch (mapping.match_type) {
-    case "substring":
+    case "substring": {
+      const p = normaliseClassifierText(mapping.pattern);
       return text.includes(p);
-    case "word":
+    }
+    case "word": {
+      const p = normaliseClassifierText(mapping.pattern);
       return new RegExp(`\\b${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text);
+    }
     case "regex":
       try {
         return new RegExp(mapping.pattern, "i").test(text);
@@ -1071,6 +1090,10 @@ function mappingMatches(
 /**
  * Classify a CLWRota row as a non-theatre duty using admin-configured
  * mappings (priority asc). Falls back to "theatre" when nothing matches.
+ *
+ * Input labels are normalised (lowercased, hyphens/underscores/slashes
+ * collapsed to spaces, whitespace runs collapsed) before matching so that
+ * "ON  CALL", "On-Call", and "on call" all behave identically.
  */
 export function classifyDutyType(
   labels: Array<string | null | undefined>,
@@ -1078,7 +1101,8 @@ export function classifyDutyType(
   trainingLevel: string | null | undefined,
   mappings: DutyTypeMappingRow[],
 ): ResolvedDutyType {
-  const text = labels.filter(Boolean).join(" ").toLowerCase();
+  const joined = labels.filter(Boolean).join(" ");
+  const text = normaliseClassifierText(joined);
   if (!text) return "theatre";
   for (const m of mappings) {
     if (!m.active) continue;

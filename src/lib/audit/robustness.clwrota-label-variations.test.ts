@@ -256,12 +256,13 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
     expect(classifyDutyType(["spa"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
     expect(classifyDutyType(["SPA — Audit"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
     expect(classifyDutyType(["Personal SPA"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
-    // "Spain", "Spacious" must NOT trigger the SPA mapping (word boundary).
-    // And "on-call" (hyphen) doesn't match the literal "on call" substring → theatre.
-    expect(classifyDutyType(["Spain on-call cover"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
+    // "Spain", "Spacious" must NOT trigger the SPA mapping (word boundary)…
     expect(classifyDutyType(["Spacious Theatre 1"], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
+    // …but the hyphenated "on-call" now normalises to "on call" and matches
+    // the general_consultant_oncall substring rule (higher priority than SPA).
+    expect(classifyDutyType(["Spain on-call cover"], "consultant", null, PROD_MAPPINGS))
+      .toBe("general_consultant_oncall");
   });
 
   it("on-call variants route by grade + seniority (priority order)", () => {
@@ -342,15 +343,31 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
       .toBe("theatre");
   });
 
-  it("substring patterns are case-insensitive but whitespace-literal", () => {
+  it("substring patterns tolerate casing, whitespace runs, and hyphen/underscore/slash variants", () => {
     expect(classifyDutyType(["   tHeAtRe   5   "], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
     // Single-spaced "On Call" matches.
     expect(classifyDutyType([" On Call "], "consultant", null, PROD_MAPPINGS))
       .toBe("general_consultant_oncall");
-    // Double-spaced does NOT match the literal "on call" substring → falls through.
+    // Double-spaced "ON  CALL" now normalises to "on call" and matches.
     expect(classifyDutyType(["ON  CALL"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
+      .toBe("general_consultant_oncall");
+    // Tabs + newlines collapse to a single space too.
+    expect(classifyDutyType(["On\t\nCall"], "consultant", null, PROD_MAPPINGS))
+      .toBe("general_consultant_oncall");
+    // Hyphenated, underscored, and slashed variants all match.
+    for (const variant of ["on-call", "On-Call", "ON-CALL", "on_call", "on/call", "on--call"]) {
+      expect(classifyDutyType([variant], "consultant", null, PROD_MAPPINGS))
+        .toBe("general_consultant_oncall");
+    }
+    // Combined: hyphen + double space + uppercase → still classifies.
+    expect(classifyDutyType(["ICU  Consultant-On-Call"], "consultant", null, PROD_MAPPINGS))
+      .toBe("icu_consultant_oncall");
+    // Trainee variants also pick up "on-call" via the registrar/SHO rules.
+    expect(classifyDutyType(["On-Call - Reg"], "trainee", "ST6", PROD_MAPPINGS))
+      .toBe("registrar_oncall");
+    expect(classifyDutyType(["On_Call"], "trainee", "CT1", PROD_MAPPINGS))
+      .toBe("sho_oncall");
   });
 });
 
@@ -401,18 +418,18 @@ describe("CLWRota label variations → no-headroom-for-theatre invariant", () =>
     expect(am.headroom).toBe(1);
   });
 
-  it("'Spain on-call cover' — hyphenated 'on-call' does NOT match SPA word and falls through to theatre", async () => {
+  it("'Spain on-call cover' — hyphenated 'on-call' now classifies as general_consultant_oncall (excluded, not a theatre list)", async () => {
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2")];
     ingestClwRota([
       { date: DATE, session: "AM", person: { local_id: "c1", grade: "consultant" },
         rota: { name: "Spain on-call cover", location: "Misc" }, role: "Solo" },
     ]);
     const am = await half("am");
-    // Word boundary on SPA rejects "Spain"; "on-call" (hyphen) does not match
-    // the "on call" substring → row defaults to theatre, c1 fills a list.
+    // Word boundary on SPA still rejects "Spain"; the normalised "on call"
+    // substring now wins → c1 is excluded all day, no theatre list created.
     expect(am.consultantsAvailable).toBe(1); // c2 free
     expect(am.consultantsOnSpa).toBe(0);
-    expect(am.required).toBe(1);
+    expect(am.required).toBe(0);
   });
 
   it("'Personal SPA' label routes to flex pool, not free pool", async () => {
