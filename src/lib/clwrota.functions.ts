@@ -108,6 +108,7 @@ const SettingsSchema = z.object({
   staff_report_url: urlOrNull,
   sync_days_back: z.coerce.number().int().min(0).max(3650).default(30),
   sync_days_ahead: z.coerce.number().int().min(1).max(3650).default(120),
+  auto_reclassify_trainee_solo: z.coerce.boolean().default(false),
 });
 
 export const saveClwRotaSettings = createServerFn({ method: "POST" })
