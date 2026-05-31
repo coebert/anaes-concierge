@@ -170,6 +170,7 @@ function TraineesPage() {
   const fromISO = fromDate ? format(fromDate, "yyyy-MM-dd") : null;
   const toISO = toDate ? format(toDate, "yyyy-MM-dd") : todayISO();
   const asOfMs = toDate ? toDate.getTime() : Date.now();
+  const isInvalidRange = fromDate && toDate ? fromDate > toDate : false;
 
   const metricRows = useMemo(() => {
     if (!data) return [];
