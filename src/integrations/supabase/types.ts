@@ -666,6 +666,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rota_reclassification_log: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          from_role: Database["public"]["Enums"]["rota_role"]
+          id: string
+          reason: string | null
+          sync_run_id: string
+          to_role: Database["public"]["Enums"]["rota_role"]
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          from_role: Database["public"]["Enums"]["rota_role"]
+          id?: string
+          reason?: string | null
+          sync_run_id: string
+          to_role: Database["public"]["Enums"]["rota_role"]
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          from_role?: Database["public"]["Enums"]["rota_role"]
+          id?: string
+          reason?: string | null
+          sync_run_id?: string
+          to_role?: Database["public"]["Enums"]["rota_role"]
+        }
+        Relationships: []
+      }
       rota_rules: {
         Row: {
           allow_back_to_back_oncall: boolean
