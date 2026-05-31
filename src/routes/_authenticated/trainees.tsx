@@ -104,13 +104,14 @@ function TraineesPage() {
           {},
         );
 
-      // All assignments grouped per staff for metric cards.
+      // All assignments grouped per staff for metric cards (date-filtered client-side).
       const allByStaff = allAssignments.reduce<Record<string, MetricAssignment[]>>((acc, a) => {
         (acc[a.staff_id] ||= []).push({
           role_on_list: a.role_on_list,
           session: a.session,
           duty_type: a.duty_type,
           theatre_session_id: a.theatre_session_id,
+          session_date: a.session_date,
         });
         return acc;
       }, {});
