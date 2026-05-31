@@ -167,20 +167,33 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
+  const fromISO = fromDate ? format(fromDate, "yyyy-MM-dd") : null;
+  const toISO = toDate ? format(toDate, "yyyy-MM-dd") : todayISO();
+  const asOfMs = toDate ? toDate.getTime() : Date.now();
+
   const metricRows = useMemo(() => {
     if (!data) return [];
-    return rows.map(({ trainee }) => ({
-      trainee,
-      metrics: computeTraineeMetrics(
-        data.allAssignmentsByStaff[trainee.id] ?? [],
-        trainee.start_date,
-        data.tsSpecMap,
-        data.specMap,
-        Date.now(),
-        (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
-      ),
-    }));
-  }, [data, rows]);
+    return rows.map(({ trainee }) => {
+      const all = data.allAssignmentsByStaff[trainee.id] ?? [];
+      const filtered = all.filter((a) => {
+        const d = a.session_date ?? "";
+        if (fromISO && d < fromISO) return false;
+        if (d > toISO) return false;
+        return true;
+      });
+      return {
+        trainee,
+        metrics: computeTraineeMetrics(
+          filtered,
+          trainee.start_date,
+          data.tsSpecMap,
+          data.specMap,
+          asOfMs,
+          (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+        ),
+      };
+    });
+  }, [data, rows, fromISO, toISO, asOfMs]);
 
   return (
     <div className="space-y-4">
