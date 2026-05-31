@@ -1588,6 +1588,7 @@ export async function performRotaSync() {
           .join(", ")}${suspectByStaff.size > 8 ? ", …" : ""}`;
 
         if (autoReclassify && suspectIds.length > 0) {
+          const syncRunId = crypto.randomUUID();
           const UPD_CHUNK = 200;
           let reclassified = 0;
           for (let i = 0; i < suspectIds.length; i += UPD_CHUNK) {
@@ -1600,11 +1601,25 @@ export async function performRotaSync() {
               errors.push({ label: "(auto-reclassify trainee solo)", error: updErr.message });
               break;
             }
+            const { error: logErr } = await supabaseAdmin
+              .from("rota_reclassification_log")
+              .insert(
+                idChunk.map((id) => ({
+                  sync_run_id: syncRunId,
+                  assignment_id: id,
+                  from_role: "solo",
+                  to_role: "supervised",
+                  reason: "consultant on same theatre_session_id",
+                })),
+              );
+            if (logErr) {
+              errors.push({ label: "(auto-reclassify log)", error: logErr.message });
+            }
             reclassified += idChunk.length;
           }
           warnings.push({
             label: "Auto-reclassified trainee solo lists (consultant also on session)",
-            reason: `${reclassified} of ${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s) set to supervised: ${summaryList}`,
+            reason: `${reclassified} of ${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s) set to supervised (sync run ${syncRunId}): ${summaryList}`,
           });
         } else {
           warnings.push({
