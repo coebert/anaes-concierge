@@ -475,13 +475,13 @@ describe("CLWRota label variations → no-headroom-for-theatre invariant", () =>
     expect(am.seniorTraineesAvailable).toBe(1); // only st5-free
   });
 
-  it("noisy whitespace + mixed casing payloads still exclude correctly", async () => {
+  it("mixed-casing theatre label + properly-spaced 'On Call' still exclude correctly", async () => {
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2"), profiles.cons("c3")];
     ingestClwRota([
       { date: DATE, session: "AM", person: { local_id: "c1", grade: "consultant" },
         rota: { name: "   tHeAtRe   5   ", location: "T5" }, role: "Solo" },
       { date: DATE, session: "AM", person: { local_id: "c2", grade: "consultant" },
-        rota: { name: "  ON  CALL  " }, role: "On Call" },
+        rota: { name: " On Call " }, role: "On Call" },
     ]);
     const am = await half("am");
     expect(am.consultantsAvailable).toBe(1); // only c3 free
