@@ -1244,6 +1244,7 @@ export async function performRotaSync() {
 
     const skipped: Array<{ label: string; reason: string }> = [];
     const errors: Array<{ label: string; error: string }> = [];
+    const warnings: Array<{ label: string; reason: string }> = [];
     const unmatchedTheatres = new Set<string>();
     const unmatchedStaff = new Set<string>();
 
