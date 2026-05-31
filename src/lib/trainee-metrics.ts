@@ -6,6 +6,7 @@ export type MetricAssignment = {
   session: string;
   duty_type?: string | null;
   theatre_session_id: string | null;
+  session_date?: string | null;
 };
 
 export type TraineeMetrics = {
