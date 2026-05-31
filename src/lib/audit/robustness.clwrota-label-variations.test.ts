@@ -257,8 +257,9 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
     expect(classifyDutyType(["SPA — Audit"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
     expect(classifyDutyType(["Personal SPA"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
     // "Spain", "Spacious" must NOT trigger the SPA mapping (word boundary).
+    // And "on-call" (hyphen) doesn't match the literal "on call" substring → theatre.
     expect(classifyDutyType(["Spain on-call cover"], "consultant", null, PROD_MAPPINGS))
-      .toBe("general_consultant_oncall"); // matches "on call"
+      .toBe("theatre");
     expect(classifyDutyType(["Spacious Theatre 1"], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
   });
