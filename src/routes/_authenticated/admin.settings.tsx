@@ -356,6 +356,26 @@ function SettingsPage() {
               </div>
             </div>
 
+            <div className="rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="auto-reclassify-solo" className="text-sm font-medium">
+                    Auto-reclassify trainee solo lists
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    During each rota sync, set any trainee marked "solo" on a
+                    theatre session that also has a consultant rostered to
+                    "supervised". Locally-modified rows are preserved.
+                  </p>
+                </div>
+                <Switch
+                  id="auto-reclassify-solo"
+                  checked={autoReclassifySolo}
+                  onCheckedChange={setAutoReclassifySolo}
+                />
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
                 {saveMut.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
