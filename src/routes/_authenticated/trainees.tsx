@@ -225,14 +225,28 @@ function TraineesPage() {
             <DateField
               label="From"
               value={fromDate}
-              onChange={setFromDate}
+              onChange={(d) => {
+                if (d && toDate && d > toDate) {
+                  setFromDate(toDate);
+                  setToDate(d);
+                } else {
+                  setFromDate(d);
+                }
+              }}
               placeholder="Start"
               clearable
             />
             <DateField
               label="To"
               value={toDate}
-              onChange={setToDate}
+              onChange={(d) => {
+                if (d && fromDate && d < fromDate) {
+                  setToDate(fromDate);
+                  setFromDate(d);
+                } else {
+                  setToDate(d);
+                }
+              }}
               placeholder="Today"
             />
             <Button
