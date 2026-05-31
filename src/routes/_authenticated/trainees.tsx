@@ -47,6 +47,17 @@ function TraineesPage() {
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
+  const [debouncedFrom, setDebouncedFrom] = useState<Date | undefined>(undefined);
+  const [debouncedTo, setDebouncedTo] = useState<Date | undefined>(new Date());
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebouncedFrom(fromDate);
+      setDebouncedTo(toDate);
+    }, 350);
+    return () => clearTimeout(id);
+  }, [fromDate, toDate]);
+
   const fetchTrainees = useServerFn(listTraineesForOverview);
   const { data, isLoading } = useQuery({
     queryKey: ["trainees-overview"],
