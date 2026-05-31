@@ -78,6 +78,7 @@ function SettingsPage() {
       setStaffUrl(data.settings.staff_report_url ?? "");
       setDaysBack(String(data.settings.sync_days_back ?? 30));
       setDaysAhead(String(data.settings.sync_days_ahead ?? 120));
+      setAutoReclassifySolo(Boolean((data.settings as { auto_reclassify_trainee_solo?: boolean }).auto_reclassify_trainee_solo));
     }
   }, [data?.settings]);
 
