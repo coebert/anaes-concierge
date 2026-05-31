@@ -124,6 +124,101 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
   });
 
 /**
+ * List recent auto-reclassification sync runs (most recent first) with the
+ * number of rows changed. Used by the admin UI to offer per-run undo.
+ */
+export const listReclassificationRuns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data, error } = await supabaseAdmin
+      .from("rota_reclassification_log")
+      .select("sync_run_id, created_at, from_role, to_role")
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (error) throw new Error(error.message);
+    const byRun = new Map<
+      string,
+      { sync_run_id: string; created_at: string; count: number; from_role: string; to_role: string }
+    >();
+    for (const r of data ?? []) {
+      const existing = byRun.get(r.sync_run_id);
+      if (existing) {
+        existing.count += 1;
+        if (r.created_at > existing.created_at) existing.created_at = r.created_at;
+      } else {
+        byRun.set(r.sync_run_id, {
+          sync_run_id: r.sync_run_id,
+          created_at: r.created_at,
+          count: 1,
+          from_role: r.from_role,
+          to_role: r.to_role,
+        });
+      }
+    }
+    return {
+      runs: Array.from(byRun.values()).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
+    };
+  });
+
+/**
+ * Undo a single auto-reclassification sync run: for every logged change in
+ * the run, revert the assignment back to its previous role — but only when
+ * the current role still equals what the auto-reclassify set it to, so we
+ * never clobber a subsequent manual change. Log entries are deleted on
+ * success so the run no longer appears as undoable.
+ */
+export const undoReclassificationRun = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ sync_run_id: z.string().uuid() }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { data: entries, error: loadErr } = await supabaseAdmin
+      .from("rota_reclassification_log")
+      .select("id, assignment_id, from_role, to_role")
+      .eq("sync_run_id", data.sync_run_id);
+    if (loadErr) throw new Error(loadErr.message);
+    if (!entries || entries.length === 0) {
+      return { ok: true, reverted: 0, skipped: 0, deletedLogRows: 0 };
+    }
+
+    let reverted = 0;
+    let skipped = 0;
+    const revertedLogIds: string[] = [];
+    for (const e of entries) {
+      const { data: upd, error: updErr } = await supabaseAdmin
+        .from("rota_assignments")
+        .update({ role_on_list: e.from_role })
+        .eq("id", e.assignment_id)
+        .eq("role_on_list", e.to_role)
+        .select("id");
+      if (updErr) throw new Error(updErr.message);
+      if (upd && upd.length > 0) {
+        reverted += 1;
+        revertedLogIds.push(e.id);
+      } else {
+        skipped += 1;
+      }
+    }
+
+    let deletedLogRows = 0;
+    if (revertedLogIds.length > 0) {
+      const DEL_CHUNK = 200;
+      for (let i = 0; i < revertedLogIds.length; i += DEL_CHUNK) {
+        const idChunk = revertedLogIds.slice(i, i + DEL_CHUNK);
+        const { error: delErr } = await supabaseAdmin
+          .from("rota_reclassification_log")
+          .delete()
+          .in("id", idChunk);
+        if (delErr) throw new Error(delErr.message);
+        deletedLogRows += idChunk.length;
+      }
+    }
+    return { ok: true, reverted, skipped, deletedLogRows };
+  });
+
+
+/**
  * Rewrite the CLWRota report URL so the date window always extends at least
  * 12 months past today. CLWRota report URLs are generated with a fixed
  * `start_date` / `end_date` window — without this, scheduled syncs would
