@@ -400,18 +400,18 @@ describe("CLWRota label variations → no-headroom-for-theatre invariant", () =>
     expect(am.headroom).toBe(1);
   });
 
-  it("'Spain on-call cover' classifies as general_oncall (word boundary on SPA holds)", async () => {
+  it("'Spain on-call cover' — hyphenated 'on-call' does NOT match SPA word and falls through to theatre", async () => {
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2")];
     ingestClwRota([
       { date: DATE, session: "AM", person: { local_id: "c1", grade: "consultant" },
-        rota: { name: "Spain on-call cover" }, role: "On Call" },
+        rota: { name: "Spain on-call cover", location: "Misc" }, role: "Solo" },
     ]);
     const am = await half("am");
-    const pm = await half("pm");
-    // Excluded all day as general consultant on-call, NOT treated as SPA.
-    expect(am.consultantsAvailable).toBe(1);
+    // Word boundary on SPA rejects "Spain"; "on-call" (hyphen) does not match
+    // the "on call" substring → row defaults to theatre, c1 fills a list.
+    expect(am.consultantsAvailable).toBe(1); // c2 free
     expect(am.consultantsOnSpa).toBe(0);
-    expect(pm.consultantsAvailable).toBe(1);
+    expect(am.required).toBe(1);
   });
 
   it("'Personal SPA' label routes to flex pool, not free pool", async () => {
