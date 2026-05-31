@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +46,17 @@ function TraineesPage() {
   const [filter, setFilter] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
+
+  const [debouncedFrom, setDebouncedFrom] = useState<Date | undefined>(undefined);
+  const [debouncedTo, setDebouncedTo] = useState<Date | undefined>(new Date());
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebouncedFrom(fromDate);
+      setDebouncedTo(toDate);
+    }, 350);
+    return () => clearTimeout(id);
+  }, [fromDate, toDate]);
 
   const fetchTrainees = useServerFn(listTraineesForOverview);
   const { data, isLoading } = useQuery({
@@ -167,9 +178,9 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
-  const fromISO = fromDate ? format(fromDate, "yyyy-MM-dd") : null;
-  const toISO = toDate ? format(toDate, "yyyy-MM-dd") : todayISO();
-  const asOfMs = toDate ? toDate.getTime() : Date.now();
+  const fromISO = debouncedFrom ? format(debouncedFrom, "yyyy-MM-dd") : null;
+  const toISO = debouncedTo ? format(debouncedTo, "yyyy-MM-dd") : todayISO();
+  const asOfMs = debouncedTo ? debouncedTo.getTime() : Date.now();
 
   const metricRows = useMemo(() => {
     if (!data) return [];
