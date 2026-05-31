@@ -1531,12 +1531,13 @@ export async function performRotaSync() {
       );
       const SUSPECT_CHUNK = 200;
       const suspectByStaff = new Map<string, { name: string; sessions: Set<string> }>();
+      const suspectIds: string[] = [];
       for (let i = 0; i < upsertedSessionIds.length; i += SUSPECT_CHUNK) {
         const chunk = upsertedSessionIds.slice(i, i + SUSPECT_CHUNK);
         const { data: rowsForCheck, error: checkErr } = await supabaseAdmin
           .from("rota_assignments")
           .select(
-            "staff_id,role_on_list,theatre_session_id,session_date,profiles!rota_assignments_staff_id_fkey(grade,full_name,email)",
+            "id,staff_id,role_on_list,theatre_session_id,session_date,locally_modified,profiles!rota_assignments_staff_id_fkey(grade,full_name,email)",
           )
           .in("theatre_session_id", chunk);
         if (checkErr) {
@@ -1544,10 +1545,12 @@ export async function performRotaSync() {
           break;
         }
         type Row = {
+          id: string;
           staff_id: string;
           role_on_list: string;
           theatre_session_id: string | null;
           session_date: string | null;
+          locally_modified: boolean | null;
           profiles: { grade: string | null; full_name: string | null; email: string | null };
         };
         const bySession = new Map<string, Row[]>();
@@ -1567,6 +1570,8 @@ export async function performRotaSync() {
               };
               entry.sessions.add(r.theatre_session_id!);
               suspectByStaff.set(key, entry);
+              // Only auto-reclassify rows that haven't been manually overridden.
+              if (!r.locally_modified) suspectIds.push(r.id);
             }
           }
         }
@@ -1576,15 +1581,36 @@ export async function performRotaSync() {
           (n, e) => n + e.sessions.size,
           0,
         );
-        warnings.push({
-          label: "Suspicious solo lists (consultant also on session)",
-          reason: `${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s): ${
-            Array.from(suspectByStaff.values())
-              .slice(0, 8)
-              .map((e) => `${e.name} (${e.sessions.size})`)
-              .join(", ")
-          }${suspectByStaff.size > 8 ? ", …" : ""}`,
-        });
+        const summaryList = `${Array.from(suspectByStaff.values())
+          .slice(0, 8)
+          .map((e) => `${e.name} (${e.sessions.size})`)
+          .join(", ")}${suspectByStaff.size > 8 ? ", …" : ""}`;
+
+        if (autoReclassify && suspectIds.length > 0) {
+          const UPD_CHUNK = 200;
+          let reclassified = 0;
+          for (let i = 0; i < suspectIds.length; i += UPD_CHUNK) {
+            const idChunk = suspectIds.slice(i, i + UPD_CHUNK);
+            const { error: updErr } = await supabaseAdmin
+              .from("rota_assignments")
+              .update({ role_on_list: "supervised" })
+              .in("id", idChunk);
+            if (updErr) {
+              errors.push({ label: "(auto-reclassify trainee solo)", error: updErr.message });
+              break;
+            }
+            reclassified += idChunk.length;
+          }
+          warnings.push({
+            label: "Auto-reclassified trainee solo lists (consultant also on session)",
+            reason: `${reclassified} of ${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s) set to supervised: ${summaryList}`,
+          });
+        } else {
+          warnings.push({
+            label: "Suspicious solo lists (consultant also on session)",
+            reason: `${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s): ${summaryList}`,
+          });
+        }
       }
     } catch (e) {
       errors.push({
