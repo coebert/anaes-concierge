@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { CalendarIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { listTraineesForOverview } from "@/lib/staff-directory.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +13,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO, getSurname } from "@/lib/utils";
+import { cn, todayISO, getSurname } from "@/lib/utils";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
@@ -39,6 +44,8 @@ function TraineesGuard() {
 
 function TraineesPage() {
   const [filter, setFilter] = useState("");
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
   const fetchTrainees = useServerFn(listTraineesForOverview);
   const { data, isLoading } = useQuery({
@@ -53,7 +60,6 @@ function TraineesPage() {
       if (e2) throw e2;
       if (e3) throw e3;
 
-      const today = todayISO();
       const traineeIds = (trainees ?? []).map((t) => t.id);
       let allAssignments: Array<{
         staff_id: string;
@@ -61,13 +67,13 @@ function TraineesPage() {
         session: string;
         duty_type: string | null;
         theatre_session_id: string | null;
+        session_date: string;
       }> = [];
       if (traineeIds.length) {
         const { data: rows, error: e4 } = await supabase
           .from("rota_assignments")
           .select("staff_id,role_on_list,session,duty_type,theatre_session_id,session_date")
-          .in("staff_id", traineeIds)
-          .lte("session_date", today);
+          .in("staff_id", traineeIds);
         if (e4) throw e4;
         allAssignments = (rows ?? []) as typeof allAssignments;
       }
@@ -100,13 +106,14 @@ function TraineesPage() {
           {},
         );
 
-      // All assignments grouped per staff for metric cards.
+      // All assignments grouped per staff for metric cards (date-filtered client-side).
       const allByStaff = allAssignments.reduce<Record<string, MetricAssignment[]>>((acc, a) => {
         (acc[a.staff_id] ||= []).push({
           role_on_list: a.role_on_list,
           session: a.session,
           duty_type: a.duty_type,
           theatre_session_id: a.theatre_session_id,
+          session_date: a.session_date,
         });
         return acc;
       }, {});
@@ -160,20 +167,33 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
+  const fromISO = fromDate ? format(fromDate, "yyyy-MM-dd") : null;
+  const toISO = toDate ? format(toDate, "yyyy-MM-dd") : todayISO();
+  const asOfMs = toDate ? toDate.getTime() : Date.now();
+
   const metricRows = useMemo(() => {
     if (!data) return [];
-    return rows.map(({ trainee }) => ({
-      trainee,
-      metrics: computeTraineeMetrics(
-        data.allAssignmentsByStaff[trainee.id] ?? [],
-        trainee.start_date,
-        data.tsSpecMap,
-        data.specMap,
-        Date.now(),
-        (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
-      ),
-    }));
-  }, [data, rows]);
+    return rows.map(({ trainee }) => {
+      const all = data.allAssignmentsByStaff[trainee.id] ?? [];
+      const filtered = all.filter((a) => {
+        const d = a.session_date ?? "";
+        if (fromISO && d < fromISO) return false;
+        if (d > toISO) return false;
+        return true;
+      });
+      return {
+        trainee,
+        metrics: computeTraineeMetrics(
+          filtered,
+          trainee.start_date,
+          data.tsSpecMap,
+          data.specMap,
+          asOfMs,
+          (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+        ),
+      };
+    });
+  }, [data, rows, fromISO, toISO, asOfMs]);
 
   return (
     <div className="space-y-4">
@@ -193,12 +213,44 @@ function TraineesPage() {
       </div>
 
       <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Trainee summary</h2>
-          <p className="text-xs text-muted-foreground">
-            Time at Salisbury, time remaining, specialty mix, solo daytime %, and on-call share.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Trainee summary</h2>
+            <p className="text-xs text-muted-foreground">
+              Time at Salisbury, time remaining, specialty mix, solo daytime %, and on-call share.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <DateField
+              label="From"
+              value={fromDate}
+              onChange={setFromDate}
+              placeholder="Start"
+              clearable
+            />
+            <DateField
+              label="To"
+              value={toDate}
+              onChange={setToDate}
+              placeholder="Today"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFromDate(undefined);
+                setToDate(new Date());
+              }}
+            >
+              Reset
+            </Button>
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          {fromISO
+            ? `Counting assignments from ${fromISO} through ${toISO}.`
+            : `Counting all assignments up to ${toISO}.`}
+        </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
         ) : metricRows.length === 0 ? (
@@ -297,6 +349,63 @@ function TraineesPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function DateField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  clearable,
+}: {
+  label: string;
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  placeholder: string;
+  clearable?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "h-9 min-w-[160px] justify-start text-left font-normal",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            <span className="mr-1 text-xs uppercase tracking-wide text-muted-foreground">
+              {label}
+            </span>
+            {value ? format(value, "PPP") : <span>{placeholder}</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={onChange}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+      {clearable && value ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => onChange(undefined)}
+          aria-label={`Clear ${label}`}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      ) : null}
     </div>
   );
 }
