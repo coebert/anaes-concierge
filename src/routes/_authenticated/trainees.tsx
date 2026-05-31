@@ -178,9 +178,14 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
-  const fromISO = debouncedFrom ? format(debouncedFrom, "yyyy-MM-dd") : null;
-  const toISO = debouncedTo ? format(debouncedTo, "yyyy-MM-dd") : todayISO();
-  const asOfMs = debouncedTo ? debouncedTo.getTime() : Date.now();
+  const { fromISO, toISO, asOfMs } = useMemo(() => {
+    const to = debouncedTo ?? new Date();
+    return {
+      fromISO: debouncedFrom ? format(debouncedFrom, "yyyy-MM-dd") : null,
+      toISO: format(to, "yyyy-MM-dd"),
+      asOfMs: to.getTime(),
+    };
+  }, [debouncedFrom, debouncedTo]);
 
   const metricRows = useMemo(() => {
     if (!data) return [];
