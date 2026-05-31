@@ -1155,10 +1155,12 @@ export async function performRotaSync() {
 
     const { data: settings, error: loadErr } = await supabaseAdmin
       .from("clwrota_sync_state")
-      .select("rota_report_url, sync_days_back, sync_days_ahead")
+      .select("rota_report_url, sync_days_back, sync_days_ahead, auto_reclassify_trainee_solo")
       .eq("id", 1)
       .maybeSingle();
     if (loadErr) throw new Error(loadErr.message);
+    const autoReclassify = settings?.auto_reclassify_trainee_solo ?? false;
+
 
     const url = settings?.rota_report_url;
     const daysBack = settings?.sync_days_back ?? 30;
