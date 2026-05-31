@@ -256,12 +256,13 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
     expect(classifyDutyType(["spa"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
     expect(classifyDutyType(["SPA — Audit"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
     expect(classifyDutyType(["Personal SPA"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
-    // "Spain", "Spacious" must NOT trigger the SPA mapping (word boundary).
-    // And "on-call" (hyphen) doesn't match the literal "on call" substring → theatre.
-    expect(classifyDutyType(["Spain on-call cover"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
+    // "Spain", "Spacious" must NOT trigger the SPA mapping (word boundary)…
     expect(classifyDutyType(["Spacious Theatre 1"], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
+    // …but the hyphenated "on-call" now normalises to "on call" and matches
+    // the general_consultant_oncall substring rule (higher priority than SPA).
+    expect(classifyDutyType(["Spain on-call cover"], "consultant", null, PROD_MAPPINGS))
+      .toBe("general_consultant_oncall");
   });
 
   it("on-call variants route by grade + seniority (priority order)", () => {
