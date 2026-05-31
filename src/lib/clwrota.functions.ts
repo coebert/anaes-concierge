@@ -1513,6 +1513,84 @@ export async function performRotaSync() {
       skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
     }
 
+    // --- Suspicious solo-rate validation ---------------------------------
+    // A trainee marked "solo" on a theatre session that also has a consultant
+    // assigned is almost certainly not actually solo — the clwrota feed
+    // defaults role_on_list to "solo" when it can't determine supervision.
+    // Flag these so coordinators can correct them before they distort
+    // trainee metrics.
+    try {
+      const upsertedSessionIds = Array.from(
+        new Set(
+          uniqueAssignments
+            .map((a) => a.theatre_session_id)
+            .filter((v): v is string => Boolean(v)),
+        ),
+      );
+      const SUSPECT_CHUNK = 200;
+      const suspectByStaff = new Map<string, { name: string; sessions: Set<string> }>();
+      for (let i = 0; i < upsertedSessionIds.length; i += SUSPECT_CHUNK) {
+        const chunk = upsertedSessionIds.slice(i, i + SUSPECT_CHUNK);
+        const { data: rowsForCheck, error: checkErr } = await supabaseAdmin
+          .from("rota_assignments")
+          .select(
+            "staff_id,role_on_list,theatre_session_id,session_date,profiles!inner(grade,full_name,email)",
+          )
+          .in("theatre_session_id", chunk);
+        if (checkErr) {
+          errors.push({ label: "(solo-rate validation)", error: checkErr.message });
+          break;
+        }
+        type Row = {
+          staff_id: string;
+          role_on_list: string;
+          theatre_session_id: string | null;
+          session_date: string | null;
+          profiles: { grade: string | null; full_name: string | null; email: string | null };
+        };
+        const bySession = new Map<string, Row[]>();
+        for (const r of (rowsForCheck ?? []) as Row[]) {
+          if (!r.theatre_session_id) continue;
+          (bySession.get(r.theatre_session_id) ?? bySession.set(r.theatre_session_id, []).get(r.theatre_session_id)!).push(r);
+        }
+        for (const sessionRows of bySession.values()) {
+          const hasConsultant = sessionRows.some((r) => r.profiles?.grade === "consultant");
+          if (!hasConsultant) continue;
+          for (const r of sessionRows) {
+            if (r.profiles?.grade === "trainee" && r.role_on_list === "solo") {
+              const key = r.staff_id;
+              const entry = suspectByStaff.get(key) ?? {
+                name: r.profiles.full_name || r.profiles.email || r.staff_id,
+                sessions: new Set<string>(),
+              };
+              entry.sessions.add(r.theatre_session_id!);
+              suspectByStaff.set(key, entry);
+            }
+          }
+        }
+      }
+      if (suspectByStaff.size > 0) {
+        const totalSuspect = Array.from(suspectByStaff.values()).reduce(
+          (n, e) => n + e.sessions.size,
+          0,
+        );
+        warnings.push({
+          label: "Suspicious solo lists (consultant also on session)",
+          reason: `${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s): ${
+            Array.from(suspectByStaff.values())
+              .slice(0, 8)
+              .map((e) => `${e.name} (${e.sessions.size})`)
+              .join(", ")
+          }${suspectByStaff.size > 8 ? ", …" : ""}`,
+        });
+      }
+    } catch (e) {
+      errors.push({
+        label: "(solo-rate validation)",
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
     // --- Historical-data safeguard: verify no rows were deleted ------------
     const { count: postCount, error: postCountErr } = await supabaseAdmin
       .from("rota_assignments")
@@ -1527,14 +1605,20 @@ export async function performRotaSync() {
       });
     }
 
-    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${errors.length} errors`;
+    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
       id: 1,
       last_sync_at: new Date().toISOString(),
-      last_status: errors.length ? "rota_partial" : "rota_success",
+      last_status: errors.length
+        ? "rota_partial"
+        : warnings.length
+          ? "rota_success_with_warnings"
+          : "rota_success",
       last_error: errors.length
         ? errors.slice(0, 5).map((e) => `${e.label}: ${e.error}`).join("; ")
-        : null,
+        : warnings.length
+          ? warnings.slice(0, 3).map((w) => `${w.label}: ${w.reason}`).join("; ")
+          : null,
       last_pulled_rows: rows.length,
     });
 
@@ -1545,6 +1629,7 @@ export async function performRotaSync() {
       sessionsUpserted,
       assignmentsUpserted,
       skipped,
+      warnings,
       errors,
       rawPreview,
       sampleKeys,
