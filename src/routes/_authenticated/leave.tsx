@@ -55,7 +55,7 @@ const ACTIVE_STATUSES = new Set(["approved", "pending"]);
 
 /** A leave row covers a given date if start_date <= date <= end_date. */
 function leaveCoversDate(r: LeaveRow, isoDate: string): boolean {
-  return r.start_date <= isoDate && r.end_date <= r.end_date && isoDate <= r.end_date;
+  return r.start_date <= isoDate && isoDate <= r.end_date;
 }
 
 function gradeLabel(grade: string | null | undefined): string {
