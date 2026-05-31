@@ -260,22 +260,13 @@ function TraineesPage() {
             </Button>
           </div>
         </div>
-        {isInvalidRange && (
-          <p className="text-sm font-medium text-red-600">
-            The start date must be on or before the end date.
-          </p>
-        )}
         <p className="text-xs text-muted-foreground">
-          {fromISO && !isInvalidRange
+          {fromISO
             ? `Counting assignments from ${fromISO} through ${toISO}.`
-            : !isInvalidRange
-              ? `Counting all assignments up to ${toISO}.`
-              : "Please correct the date range to see metrics."}
+            : `Counting all assignments up to ${toISO}.`}
         </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
-        ) : isInvalidRange ? (
-          <p className="text-sm text-muted-foreground">Metrics hidden until a valid range is selected.</p>
         ) : metricRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No trainees on record.</p>
         ) : (
