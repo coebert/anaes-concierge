@@ -91,6 +91,7 @@ function SettingsPage() {
           staff_report_url: staffUrl.trim() || null,
           sync_days_back: Number(daysBack) || 30,
           sync_days_ahead: Number(daysAhead) || 120,
+          auto_reclassify_trainee_solo: autoReclassifySolo,
         },
       }),
     onSuccess: () => {
