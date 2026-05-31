@@ -107,9 +107,13 @@ function TraineesPage() {
       // "solo" on import from clwrota, which otherwise inflates solo %.)
       const consultantSessionIds = new Set<string>();
       if (tsIds.length) {
+        // rota_assignments has TWO FKs to profiles (staff_id + supervisor_id),
+        // so PostgREST can't auto-resolve `profiles!inner` — disambiguate via
+        // the staff_id FK constraint name. Without this hint the embed throws
+        // and the whole query errors out, leaving the page empty.
         const { data: tsAssigns, error: e6 } = await supabase
           .from("rota_assignments")
-          .select("theatre_session_id,staff_id,profiles!inner(grade)")
+          .select("theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
           .in("theatre_session_id", tsIds)
           .eq("profiles.grade", "consultant");
         if (e6) throw e6;
