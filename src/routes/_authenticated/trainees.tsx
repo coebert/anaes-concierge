@@ -192,6 +192,33 @@ function TraineesPage() {
         />
       </div>
 
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Trainee summary</h2>
+          <p className="text-xs text-muted-foreground">
+            Time at Salisbury, time remaining, specialty mix, solo daytime %, and on-call share.
+          </p>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading metrics…</p>
+        ) : metricRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No trainees on record.</p>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {metricRows.map(({ trainee, metrics }) => (
+              <TraineeMetricsCard
+                key={trainee.id}
+                title={trainee.full_name || trainee.email || "—"}
+                subtitle={trainee.training_level ?? "No level set"}
+                metrics={metrics}
+                startDate={trainee.start_date}
+                rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">All trainees</CardTitle>
