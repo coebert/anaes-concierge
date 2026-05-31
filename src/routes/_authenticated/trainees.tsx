@@ -101,6 +101,28 @@ function TraineesPage() {
         tsMap = new Map((ts ?? []).map((s) => [s.id, s.specialty_id]));
       }
 
+      // Determine which theatre sessions have a consultant assigned — a trainee
+      // marked "solo" on such a session is in fact supervised, so we should not
+      // count it as a solo list. (rota_assignments.role_on_list defaults to
+      // "solo" on import from clwrota, which otherwise inflates solo %.)
+      const consultantSessionIds = new Set<string>();
+      if (tsIds.length) {
+        const { data: tsAssigns, error: e6 } = await supabase
+          .from("rota_assignments")
+          .select("theatre_session_id,staff_id,profiles!inner(grade)")
+          .in("theatre_session_id", tsIds)
+          .eq("profiles.grade", "consultant");
+        if (e6) throw e6;
+        for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+          if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
+        }
+      }
+
+      const effectiveRole = (a: { role_on_list: string; theatre_session_id: string | null }) =>
+        a.role_on_list === "solo" && a.theatre_session_id && consultantSessionIds.has(a.theatre_session_id)
+          ? "supervised"
+          : a.role_on_list;
+
       const specMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
 
       // Competency progress only counts clinical lists (solo/supervised) up to today.
@@ -110,7 +132,7 @@ function TraineesPage() {
           (acc, a) => {
             (acc[a.staff_id] ||= []).push({
               specialty_id: a.theatre_session_id ? tsMap.get(a.theatre_session_id) ?? null : null,
-              role_on_list: a.role_on_list,
+              role_on_list: effectiveRole(a),
             });
             return acc;
           },
@@ -120,7 +142,7 @@ function TraineesPage() {
       // All assignments grouped per staff for metric cards (date-filtered client-side).
       const allByStaff = allAssignments.reduce<Record<string, MetricAssignment[]>>((acc, a) => {
         (acc[a.staff_id] ||= []).push({
-          role_on_list: a.role_on_list,
+          role_on_list: effectiveRole(a),
           session: a.session,
           duty_type: a.duty_type,
           theatre_session_id: a.theatre_session_id,
