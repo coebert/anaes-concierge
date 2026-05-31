@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { CalendarIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { listTraineesForOverview } from "@/lib/staff-directory.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +13,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO, getSurname } from "@/lib/utils";
+import { cn, todayISO, getSurname } from "@/lib/utils";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
