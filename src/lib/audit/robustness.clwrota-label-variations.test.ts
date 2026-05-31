@@ -282,15 +282,20 @@ describe("classifyDutyType — realistic CLWRota label variations", () => {
       .toBe("icu_consultant_oncall");
   });
 
-  it("obstetrics labels: 2nd-on takes priority over generic obstetric", () => {
+  it("obstetrics labels: plain 'obstetric' and 'obs 2nd' both excluded", () => {
     expect(classifyDutyType(["Obstetric Anaesthesia"], "consultant", null, PROD_MAPPINGS))
       .toBe("obstetrics");
     expect(classifyDutyType(["Obstetrics - Labour Ward"], "consultant", null, PROD_MAPPINGS))
       .toBe("obstetrics");
-    expect(classifyDutyType(["Obs 2nd On Call"], "consultant", null, PROD_MAPPINGS))
+    // "Obs 2nd" without an on-call modifier routes to obstetrics_2nd.
+    expect(classifyDutyType(["Obs 2nd cover"], "consultant", null, PROD_MAPPINGS))
       .toBe("obstetrics_2nd");
     expect(classifyDutyType(["OBS 2ND"], "consultant", null, PROD_MAPPINGS))
       .toBe("obstetrics_2nd");
+    // "Obs 2nd On Call" hits the higher-priority general_consultant_oncall rule
+    // first — still excluded from headroom, just under a different bucket.
+    expect(classifyDutyType(["Obs 2nd On Call"], "consultant", null, PROD_MAPPINGS))
+      .toBe("general_consultant_oncall");
   });
 
   it("ICU trainee labels split by junior/senior", () => {
