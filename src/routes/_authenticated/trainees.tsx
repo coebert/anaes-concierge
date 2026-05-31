@@ -213,12 +213,44 @@ function TraineesPage() {
       </div>
 
       <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Trainee summary</h2>
-          <p className="text-xs text-muted-foreground">
-            Time at Salisbury, time remaining, specialty mix, solo daytime %, and on-call share.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Trainee summary</h2>
+            <p className="text-xs text-muted-foreground">
+              Time at Salisbury, time remaining, specialty mix, solo daytime %, and on-call share.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <DateField
+              label="From"
+              value={fromDate}
+              onChange={setFromDate}
+              placeholder="Start"
+              clearable
+            />
+            <DateField
+              label="To"
+              value={toDate}
+              onChange={setToDate}
+              placeholder="Today"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFromDate(undefined);
+                setToDate(new Date());
+              }}
+            >
+              Reset
+            </Button>
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          {fromISO
+            ? `Counting assignments from ${fromISO} through ${toISO}.`
+            : `Counting all assignments up to ${toISO}.`}
+        </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
         ) : metricRows.length === 0 ? (
