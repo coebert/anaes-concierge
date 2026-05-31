@@ -160,6 +160,21 @@ function TraineesPage() {
       });
   }, [data, filter]);
 
+  const metricRows = useMemo(() => {
+    if (!data) return [];
+    return rows.map(({ trainee }) => ({
+      trainee,
+      metrics: computeTraineeMetrics(
+        data.allAssignmentsByStaff[trainee.id] ?? [],
+        trainee.start_date,
+        data.tsSpecMap,
+        data.specMap,
+        Date.now(),
+        (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+      ),
+    }));
+  }, [data, rows]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
