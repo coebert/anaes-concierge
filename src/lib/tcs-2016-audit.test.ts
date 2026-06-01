@@ -213,4 +213,39 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     expect(rule?.status).toBe("fail");
     expect(rule?.detail).toMatch(/8/);
   });
+
+  it("R4 flags night → next-day long shift as a cross-night rest-gap", () => {
+    // Single night Mon, then long PM Tue. Both isLong (night=11h, PM not
+    // long unless merged with AM, so use a long all-day stretch on Tue).
+    const asgs = [
+      mk("2026-05-25", "night"),                  // Mon night
+      mk("2026-05-26", "am"), mk("2026-05-26", "pm"), mk("2026-05-26", "eve"), // Tue AM+PM+eve = 13h
+    ];
+    const r = auditTcs2016(asgs);
+    const rule = r.rules.find((x) => x.id === "max_5_long");
+    const notes = rule?.evidence?.notes ?? [];
+    expect(notes.some((n) => /also breaches R7/.test(n))).toBe(true);
+  });
+
+  it("DST: rotation spanning a UK clock change still produces stable dates", () => {
+    // UK DST started Sun 2026-03-29. Cover 14 days Mon-Sun across it.
+    const dates = [
+      "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27",
+      "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03",
+    ];
+    const asgs = dates.flatMap((d) => [mk(d, "am"), mk(d, "pm")]);
+    const r = auditTcs2016(asgs, {
+      windowStartISO: "2026-03-23",
+      windowEndISO: "2026-04-05",
+    });
+    // Window dates round-trip exactly (no DST drift to ±1 day).
+    expect(r.windowStart).toBe("2026-03-23");
+    expect(r.windowEnd).toBe("2026-04-03");
+    expect(r.requestedWindowStart).toBe("2026-03-23");
+    expect(r.requestedWindowEnd).toBe("2026-04-05");
+    // Every shift's stored date equals the date we put in (no off-by-one).
+    for (const s of r.shifts) {
+      expect(dates).toContain(s.date);
+    }
+  });
 });

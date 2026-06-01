@@ -400,10 +400,27 @@ export function auditTcs2016(
     }
     lastLongIdx = k;
   }
-  const longRunShifts =
+  const longRunRaw =
     bestRunStart >= 0
-      ? shifts.slice(bestRunStart, bestRunEnd + 1).filter((s) => s.isLong).map(summarise)
+      ? shifts.slice(bestRunStart, bestRunEnd + 1).filter((s) => s.isLong)
       : [];
+  const longRunShifts = longRunRaw.map(summarise);
+  // Cross-night evidence: flag night → next-day-long transitions inside the
+  // run that also breach the 11 h rest rule. These shouldn't just read as
+  // "two long shifts in a row" — they're also rest-gap breaches and the
+  // user needs both pieces of context in one place.
+  const crossNightNotes: string[] = [];
+  for (let q = 1; q < longRunRaw.length; q++) {
+    const prev = longRunRaw[q - 1];
+    const cur = longRunRaw[q];
+    if (!prev.isNight || cur.isNight) continue;
+    const gapH = (cur.startMs - prev.endMs) / MS_HOUR;
+    if (gapH < 11) {
+      crossNightNotes.push(
+        `Night ending ${prev.date} → long ${cur.date} ${cur.session}: only ${gapH.toFixed(1)} h rest (also breaches R7)`,
+      );
+    }
+  }
   rules.push({
     id: "max_5_long",
     label: "Max 5 consecutive long shifts (>10h)",
@@ -416,7 +433,10 @@ export function auditTcs2016(
             windowStart: longRunShifts[0].date,
             windowEnd: longRunShifts[longRunShifts.length - 1].date,
             shifts: longRunShifts,
-            notes: [`Longest unbroken run of >10 h shifts: ${maxRunLong} day(s)`],
+            notes: [
+              `Longest unbroken run of >10 h shifts: ${maxRunLong} day(s)`,
+              ...crossNightNotes,
+            ],
           },
   });
 
