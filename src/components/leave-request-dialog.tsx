@@ -21,7 +21,7 @@ interface Props {
   onSubmitted?: () => void;
 }
 
-const TYPES = ["annual", "study", "compassionate", "sick", "parental", "other"] as const;
+const TYPES = ["annual", "study", "professional", "compassionate", "sick", "parental", "other"] as const;
 
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const notify = useServerFn(notifyLeaveSubmitted);
