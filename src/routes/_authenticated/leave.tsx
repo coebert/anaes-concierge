@@ -46,10 +46,12 @@ interface AllowanceRow {
   leave_year_start: string; // YYYY-MM-DD
   annual_days: number;
   study_days: number;
+  professional_days: number;
 }
 
 const DEFAULT_ANNUAL = 27;
 const DEFAULT_STUDY = 10;
+const DEFAULT_PROFESSIONAL = 5;
 
 /**
  * Working-day length of a leave request (Mon–Fri only), with half-day
