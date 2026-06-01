@@ -38,6 +38,7 @@ import { Route as AuthenticatedAdminTcsAuditRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
+import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
@@ -203,6 +204,12 @@ const AuthenticatedAdminRulesRoute = AuthenticatedAdminRulesRouteImport.update({
   path: '/admin/rules',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminRotaGapsRoute =
+  AuthenticatedAdminRotaGapsRouteImport.update({
+    id: '/admin/rota-gaps',
+    path: '/admin/rota-gaps',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminJobPlansRoute =
   AuthenticatedAdminJobPlansRouteImport.update({
     id: '/admin/job-plans',
@@ -270,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -307,6 +315,7 @@ export interface FileRoutesByTo {
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -347,6 +356,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
     | '/admin/job-plans'
+    | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
     | '/admin/job-plans'
+    | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
@@ -463,6 +475,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
     | '/_authenticated/admin/job-plans'
+    | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
@@ -700,6 +713,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRulesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/rota-gaps': {
+      id: '/_authenticated/admin/rota-gaps'
+      path: '/admin/rota-gaps'
+      fullPath: '/admin/rota-gaps'
+      preLoaderRoute: typeof AuthenticatedAdminRotaGapsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/job-plans': {
       id: '/_authenticated/admin/job-plans'
       path: '/admin/job-plans'
@@ -823,6 +843,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
+  AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
@@ -850,6 +871,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
+  AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
