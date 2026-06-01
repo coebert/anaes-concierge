@@ -247,6 +247,11 @@ function TcsAuditPage() {
                         {trainee.training_level && (
                           <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
                         )}
+                        {audit.ltftFraction < 1 && (
+                          <Badge variant="outline" className="ml-2">
+                            LTFT {(audit.ltftFraction * 100).toFixed(0)}%
+                          </Badge>
+                        )}
                       </CardTitle>
                       <OverallBadge overall={audit.overall} reason={reason} />
                     </div>
@@ -259,6 +264,12 @@ function TcsAuditPage() {
                           : reason === "rotation_ended" && endISO
                             ? `rotation ended ${formatDateGB(endISO)}`
                             : "no rota data synced for this trainee"}
+                      {audit.requestedWindowStart && audit.requestedWindowEnd && audit.windowStart && audit.windowEnd &&
+                        (audit.requestedWindowStart !== audit.windowStart || audit.requestedWindowEnd !== audit.windowEnd) && (
+                          <span className="ml-1 italic">
+                            (audit window {formatDateGB(audit.requestedWindowStart)} → {formatDateGB(audit.requestedWindowEnd)} — clamped to shift data)
+                          </span>
+                        )}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
