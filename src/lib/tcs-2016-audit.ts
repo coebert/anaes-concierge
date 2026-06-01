@@ -490,7 +490,7 @@ export function auditTcs2016(
   for (let k = 0; k < days.length; k++) {
     const d = days[k];
     const dMs = dateAtHour(d, 0);
-    if (prevDay !== null && (dMs - prevDay === MS_DAY || onlyLeaveBetween(prevDay, dMs))) {
+    if (prevDay !== null && (dMs - prevDay === MS_DAY || onlyBridgedBetween(prevDay, dMs))) {
       runDays += 1;
     } else {
       runDays = 1;
