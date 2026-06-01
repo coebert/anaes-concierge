@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   classifyLeaveType,
   classifyLeaveStatus,
+  DEFAULT_LEAVE_STATUS,
   looksLikeProfessionalReason,
 } from "./clwrota-leave-classify";
 import { summariseStaffLeave, remaining } from "./leave-allowances";
