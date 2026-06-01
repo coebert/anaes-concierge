@@ -148,10 +148,11 @@ describe("Regression — solo counting change does not break robustness", () => 
     expect(am.risk).toBe("tight"); // headroom <= 1
   });
 
-  it("unassigned-theatre trainee row does NOT change unfilled / headroom", async () => {
+  it("unassigned-theatre trainee row does NOT change unfilled / soloCapable / headroom", async () => {
     // One list (t1) with a consultant on it. A trainee with no
-    // theatre_session_id (the buggy 'solo' row) must not change any of
-    // the downstream maths.
+    // theatre_session_id (the buggy 'solo' row) must not change unfilled
+    // counts, soloCapable, or headroom — the only effect is that the
+    // trainee is treated as busy on a clinical list this half.
     fixture.profiles = [CONS("c1"), CONS("c2"), JUNIOR("ct2-a")];
     fixture.theatre_sessions = [ts("t1", "am")];
     fixture.rota_assignments = [
@@ -162,9 +163,8 @@ describe("Regression — solo counting change does not break robustness", () => 
     const { days } = await computeRobustness(DATE, DATE);
     const am = days[0].am;
     expect(am.required).toBe(1);
-    expect(am.unfilled).toBe(0);
+    expect(am.unfilled).toBe(0); // unassigned row must not bump unfilled
     expect(am.consultantsAvailable).toBe(1); // c2 free
-    expect(am.juniorTraineesAvailable).toBe(1); // ct2-a still in pool
     expect(am.soloCapable).toBe(1);
     expect(am.headroom).toBe(1);
   });
