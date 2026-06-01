@@ -84,6 +84,17 @@ export function classifyLeaveType(
 }
 
 /**
+ * Fallback value used when a CLWRota status string cannot be parsed.
+ *
+ * Policy: "approved".
+ * Rationale: CLWRota only publishes already-approved leave on its feed, so
+ * an unrecognised or blank status is treated as approved rather than silently
+ * swallowed or marked pending.  Making this a named constant keeps the
+ * fallback visible and auditable.
+ */
+export const DEFAULT_LEAVE_STATUS: LeaveStatus = "approved";
+
+/**
  * Normalize a raw CLWRota status string into our four canonical states.
  *
  * Behaviour:
@@ -95,8 +106,9 @@ export function classifyLeaveType(
  *    pending).
  *  - "not approved" / "not granted" are matched BEFORE the approved synonyms
  *    so the negation wins.
- *  - Empty / unknown input defaults to "approved" because CLWRota only
- *    publishes already-approved leave on its feed.
+ *  - Empty / unknown input falls back to {@link DEFAULT_LEAVE_STATUS}
+ *    (currently "approved") because CLWRota only publishes already-approved
+ *    leave on its feed.
  */
 export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus {
   const s = (raw ?? "")
@@ -104,7 +116,7 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
     .replace(/[\p{P}\p{S}]+/gu, " ") // strip punctuation/symbols
     .replace(/\s+/g, " ")
     .trim();
-  if (!s) return "approved"; // CLWRota-published leave is already approved
+  if (!s) return DEFAULT_LEAVE_STATUS;
 
   // Negations must beat the plain "approved/granted" match below.
   if (/\bnot\s+(approved|granted|authorised|authorized|accepted)\b/.test(s)) return "rejected";
@@ -135,5 +147,7 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
   )
     return "pending";
 
-  return "approved";
+  // Explicit fallback for strings that survive normalisation but match
+  // no known synonym.  See DEFAULT_LEAVE_STATUS for the policy rationale.
+  return DEFAULT_LEAVE_STATUS;
 }
