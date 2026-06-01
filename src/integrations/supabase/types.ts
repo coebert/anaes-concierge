@@ -399,6 +399,7 @@ export type Database = {
           created_at: string
           id: string
           leave_year_start: string
+          professional_days: number
           staff_id: string
           study_days: number
           updated_at: string
@@ -408,6 +409,7 @@ export type Database = {
           created_at?: string
           id?: string
           leave_year_start: string
+          professional_days?: number
           staff_id: string
           study_days?: number
           updated_at?: string
@@ -417,6 +419,7 @@ export type Database = {
           created_at?: string
           id?: string
           leave_year_start?: string
+          professional_days?: number
           staff_id?: string
           study_days?: number
           updated_at?: string
@@ -975,6 +978,7 @@ export type Database = {
         | "sick"
         | "parental"
         | "other"
+        | "professional"
       rota_role:
         | "solo"
         | "supervised"
@@ -1142,6 +1146,7 @@ export const Constants = {
         "sick",
         "parental",
         "other",
+        "professional",
       ],
       rota_role: [
         "solo",
