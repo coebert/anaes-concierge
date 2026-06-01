@@ -1964,7 +1964,7 @@ export async function performLeaveSync() {
 
     draftsByExtId.set(externalId, {
       staff_id: staffId,
-      type: classifyLeaveType(typeRaw),
+      type: classifyLeaveType(typeRaw, reasonText),
       start_date,
       end_date,
       status: classifyLeaveStatus(statusRaw),
