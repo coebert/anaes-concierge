@@ -22,6 +22,7 @@ import {
   Activity,
   Wrench,
   ArrowLeft,
+  CalendarX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,7 @@ const COORDINATOR_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/dashboard", label: "Rota audit data", icon: Activity, roles: ["admin"] },
   { to: "/admin/tcs-audit", label: "TCS 2016 audit", icon: ShieldCheck, roles: ["admin"] },
+  { to: "/admin/rota-gaps", label: "Rota gaps", icon: CalendarX, roles: ["admin"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
   { to: "/admin/access-requests", label: "Access requests", icon: UserPlus, roles: ["admin"] },
   { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
