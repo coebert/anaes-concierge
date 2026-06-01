@@ -1786,7 +1786,10 @@ export async function performRotaSync() {
 import {
   classifyLeaveType,
   classifyLeaveStatus,
+  type LeaveType,
+  type LeaveStatus,
 } from "./clwrota-leave-classify";
+
 
 
 /**
