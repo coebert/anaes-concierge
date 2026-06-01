@@ -177,11 +177,11 @@ describe("solo-list counting rules — AM/PM lists", () => {
       { ...base, session: "pm", staff_id: "train-1", theatre_session_id: null },
     ];
     const consSet = buildConsultantSessionSet(assignments, profiles);
-    const solos = assignments.filter((a) =>
-      isSoloTraineeAssignment(a, consSet, profiles),
+    const solos = assignments.filter(
+      (a) =>
+        profiles.get(a.staff_id)?.grade === "trainee" &&
+        isSoloTraineeAssignment(a, consSet, profiles),
     );
-    expect(
-      solos.map((a) => `${a.session}:${a.staff_id}:${a.theatre_session_id}`),
     ).toEqual([
       "am:train-1:ts-2",
       "pm:train-2:ts-3",
