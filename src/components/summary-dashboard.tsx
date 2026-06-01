@@ -336,6 +336,34 @@ export function SummaryDashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* Not scheduled today — consultants / SAS / trainees with no rota
+              entry at all, excluding leave and LTFT contractual days off.
+              SPA/admin counts as scheduled, so those people don't appear. */}
+          <NotScheduledCard
+            title="Consultants not scheduled today"
+            tone="text-emerald-600"
+            loading={nwLoading}
+            entries={notWorking?.consultants ?? []}
+            today={today}
+            showLevel={false}
+          />
+          <NotScheduledCard
+            title="SAS not scheduled today"
+            tone="text-indigo-600"
+            loading={nwLoading}
+            entries={notWorking?.sas ?? []}
+            today={today}
+            showLevel={false}
+          />
+          <NotScheduledCard
+            title="Trainees not scheduled today"
+            tone="text-fuchsia-600"
+            loading={nwLoading}
+            entries={notWorking?.trainees ?? []}
+            today={today}
+            showLevel
+          />
         </div>
 
         {/* Per-day list coverage breakdown */}
