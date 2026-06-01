@@ -157,7 +157,7 @@ function LeavePage() {
         .eq("active", true),
       supabase
         .from("leave_allowances")
-        .select("staff_id, leave_year_start, annual_days, study_days"),
+        .select("staff_id, leave_year_start, annual_days, study_days, professional_days"),
       supabase
         .from("leave_requests")
         .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
