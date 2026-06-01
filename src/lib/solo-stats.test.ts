@@ -112,3 +112,81 @@ describe("solo-trainee detection", () => {
     expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(true);
   });
 });
+
+describe("solo-list counting rules — AM/PM lists", () => {
+  it("excludes trainees with no theatre_session_id (unassigned theatre) on AM and PM", () => {
+    const assignments: SoloAssignment[] = [
+      { ...base, session: "am", staff_id: "train-1", theatre_session_id: null },
+      { ...base, session: "pm", staff_id: "train-2", theatre_session_id: null },
+    ];
+    const consSet = buildConsultantSessionSet(assignments, profiles);
+    const solos = assignments.filter((a) =>
+      isSoloTraineeAssignment(a, consSet, profiles),
+    );
+    expect(solos).toEqual([]);
+  });
+
+  it("counts AM and PM trainees on specific theatre lists with no consultant", () => {
+    const assignments: SoloAssignment[] = [
+      { ...base, session: "am", staff_id: "train-1", theatre_session_id: "ts-am" },
+      { ...base, session: "pm", staff_id: "train-2", theatre_session_id: "ts-pm" },
+    ];
+    const consSet = buildConsultantSessionSet(assignments, profiles);
+    const solos = assignments.filter((a) =>
+      isSoloTraineeAssignment(a, consSet, profiles),
+    );
+    expect(solos.map((a) => `${a.session}:${a.staff_id}`)).toEqual([
+      "am:train-1",
+      "pm:train-2",
+    ]);
+  });
+
+  it("AM with consultant on same list is not solo; PM trainee alone on a list is solo", () => {
+    const assignments: SoloAssignment[] = [
+      { ...base, session: "am", staff_id: "cons-1", theatre_session_id: "ts-am" },
+      { ...base, session: "am", staff_id: "train-1", theatre_session_id: "ts-am" },
+      { ...base, session: "pm", staff_id: "train-2", theatre_session_id: "ts-pm" },
+      { ...base, session: "pm", staff_id: "train-1", theatre_session_id: null },
+    ];
+    const consSet = buildConsultantSessionSet(assignments, profiles);
+    const solos = assignments.filter((a) =>
+      isSoloTraineeAssignment(a, consSet, profiles),
+    );
+    expect(solos.map((a) => `${a.session}:${a.staff_id}`)).toEqual([
+      "pm:train-2",
+    ]);
+  });
+
+  it("AM consultant on ts-1 does not exempt a different PM trainee on ts-2", () => {
+    const assignments: SoloAssignment[] = [
+      { ...base, session: "am", staff_id: "cons-1", theatre_session_id: "ts-1" },
+      { ...base, session: "pm", staff_id: "train-1", theatre_session_id: "ts-2" },
+    ];
+    const consSet = buildConsultantSessionSet(assignments, profiles);
+    expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(true);
+  });
+
+  it("mixed batch: only specifically-listed trainees without a consultant on the list are counted", () => {
+    const assignments: SoloAssignment[] = [
+      { ...base, session: "am", staff_id: "train-1", theatre_session_id: null },
+      { ...base, session: "am", staff_id: "cons-1", theatre_session_id: "ts-1" },
+      { ...base, session: "am", staff_id: "train-2", theatre_session_id: "ts-1" },
+      { ...base, session: "am", staff_id: "train-1", theatre_session_id: "ts-2" },
+      { ...base, session: "pm", staff_id: "sas-1", theatre_session_id: "ts-3" },
+      { ...base, session: "pm", staff_id: "train-2", theatre_session_id: "ts-3" },
+      { ...base, session: "pm", staff_id: "train-1", theatre_session_id: null },
+    ];
+    const consSet = buildConsultantSessionSet(assignments, profiles);
+    const solos = assignments.filter(
+      (a) =>
+        profiles.get(a.staff_id)?.grade === "trainee" &&
+        isSoloTraineeAssignment(a, consSet, profiles),
+    );
+    expect(
+      solos.map((a) => `${a.session}:${a.staff_id}:${a.theatre_session_id}`),
+    ).toEqual([
+      "am:train-1:ts-2",
+      "pm:train-2:ts-3",
+    ]);
+  });
+});
