@@ -282,3 +282,156 @@ describe("end-to-end: CLWRota sync → allowance balances stay correct after bac
     expect(s2.other).toEqual(summary.other);
   });
 });
+
+/**
+ * Large fixture-driven sweep of real-world CLWRota status strings.
+ *
+ * These mirror the kinds of values we have actually observed (or expect to
+ * observe) in the upstream feed: different casing, surrounding punctuation,
+ * stray whitespace/symbols, trailing approver names, and common synonyms.
+ * Each entry is a single source-of-truth assertion that the classifier
+ * normalises and maps consistently — if any of these flips, an entire
+ * category of inputs has silently drifted.
+ */
+describe("classifyLeaveStatus — real-world fixture sweep", () => {
+  type Status = ReturnType<typeof classifyLeaveStatus>;
+  const fixtures: Array<[string, Status]> = [
+    // --- approved: casing + punctuation ---
+    ["Approved", "approved"],
+    ["APPROVED", "approved"],
+    ["approved", "approved"],
+    ["  approved  ", "approved"],
+    ["approved.", "approved"],
+    ["approved!", "approved"],
+    ["[Approved]", "approved"],
+    ["(approved)", "approved"],
+    ["approved\t\n", "approved"],
+    ["approved ✓", "approved"],
+    ["approved — Dr Smith", "approved"],
+    ["approved by Dr. Smith", "approved"],
+    ["approved/confirmed", "approved"],
+    // --- approved: synonyms ---
+    ["Granted", "approved"],
+    ["GRANTED.", "approved"],
+    ["granted ✓", "approved"],
+    ["Accepted", "approved"],
+    ["accepted.", "approved"],
+    ["Confirmed", "approved"],
+    ["CONFIRMED!", "approved"],
+    ["Authorised", "approved"],
+    ["AUTHORIZED", "approved"],
+    ["authorised.", "approved"],
+    ["Signed off", "approved"],
+    ["signed-off", "approved"],
+    ["Signed Off.", "approved"],
+    ["OK", "approved"],
+    ["ok!", "approved"],
+    ["Ok.", "approved"],
+    ["Okay", "approved"],
+    ["Okay :)", "approved"],
+    ["Yes", "approved"],
+    ["YES", "approved"],
+    ["yes - confirmed", "approved"],
+
+    // --- rejected: casing + punctuation ---
+    ["Rejected", "rejected"],
+    ["REJECTED!", "rejected"],
+    ["rejected.", "rejected"],
+    ["[rejected]", "rejected"],
+    ["  rejected  ", "rejected"],
+    // --- rejected: synonyms ---
+    ["Declined", "rejected"],
+    ["DECLINED", "rejected"],
+    ["declined.", "rejected"],
+    ["Denied", "rejected"],
+    ["denied.", "rejected"],
+    ["Denied!", "rejected"],
+    ["Refused", "rejected"],
+    ["refused.", "rejected"],
+    ["No", "rejected"],
+    ["NO!", "rejected"],
+    ["no.", "rejected"],
+    // --- rejected: negations (must beat 'approved') ---
+    ["Not approved", "rejected"],
+    ["NOT APPROVED", "rejected"],
+    ["not approved.", "rejected"],
+    ["not-approved", "rejected"],
+    ["Not granted.", "rejected"],
+    ["not authorised", "rejected"],
+    ["NOT AUTHORIZED", "rejected"],
+    ["not accepted", "rejected"],
+
+    // --- cancelled: casing + punctuation ---
+    ["Cancelled", "cancelled"],
+    ["CANCELLED!", "cancelled"],
+    ["cancelled.", "cancelled"],
+    ["  cancelled  ", "cancelled"],
+    ["Canceled", "cancelled"],
+    ["canceled.", "cancelled"],
+    // --- cancelled: synonyms ---
+    ["Withdrawn", "cancelled"],
+    ["WITHDRAWN", "cancelled"],
+    ["withdrawn.", "cancelled"],
+    ["Withdraw", "cancelled"],
+    ["Void", "cancelled"],
+    ["Voided", "cancelled"],
+    ["void.", "cancelled"],
+    ["Revoked", "cancelled"],
+    ["revoked!", "cancelled"],
+    ["Removed", "cancelled"],
+    ["removed.", "cancelled"],
+    ["Deleted", "cancelled"],
+    ["DELETED", "cancelled"],
+
+    // --- pending: casing + punctuation ---
+    ["Pending", "pending"],
+    ["PENDING", "pending"],
+    ["pending.", "pending"],
+    ["  pending...  ", "pending"],
+    ["Pending approval", "pending"],
+    ["pending review", "pending"],
+    // --- pending: synonyms ---
+    ["Awaiting", "pending"],
+    ["Awaiting approval", "pending"],
+    ["awaiting decision", "pending"],
+    ["Requested", "pending"],
+    ["REQUESTED!", "pending"],
+    ["Request.", "pending"],
+    ["Submitted", "pending"],
+    ["submitted.", "pending"],
+    ["SUBMITTED", "pending"],
+    ["In review", "pending"],
+    ["in-review", "pending"],
+    ["IN REVIEW", "pending"],
+    ["Under review", "pending"],
+    ["TBC", "pending"],
+    ["tbc.", "pending"],
+    ["Tbc", "pending"],
+    ["TBD", "pending"],
+    ["TBD!", "pending"],
+    ["Unconfirmed", "pending"],
+    ["unconfirmed.", "pending"],
+    ["Open", "pending"],
+    ["OPEN", "pending"],
+    ["open.", "pending"],
+
+    // --- empty / whitespace / pure-punct → default approved
+    //     (CLWRota only publishes approved leave) ---
+    ["", "approved"],
+    ["   ", "approved"],
+    ["\t\n", "approved"],
+    ["...", "approved"],
+    ["—", "approved"],
+  ];
+
+  it.each(fixtures)("maps %j → %s", (input, expected) => {
+    expect(classifyLeaveStatus(input)).toBe(expected);
+  });
+
+  it("never returns an unexpected value across the entire fixture set", () => {
+    const allowed: Status[] = ["approved", "pending", "rejected", "cancelled"];
+    for (const [input] of fixtures) {
+      expect(allowed).toContain(classifyLeaveStatus(input));
+    }
+  });
+});
