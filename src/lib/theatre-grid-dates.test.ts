@@ -59,7 +59,7 @@ describe("theatre-grid-dates: local-date parsing", () => {
     expect(weekdayShort(null)).toBe("");
     expect(weekdayShort("garbage")).toBe("");
     expect(warn).toHaveBeenCalled();
-    expect(warn.mock.calls.some((c) => String(c[0]).includes("[theatre-grid]"))).toBe(true);
+    expect(warn.mock.calls.some((c: unknown[]) => String(c[0]).includes("[theatre-grid]"))).toBe(true);
   });
 });
 
