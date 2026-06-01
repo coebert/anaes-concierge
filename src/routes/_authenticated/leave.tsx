@@ -46,10 +46,12 @@ interface AllowanceRow {
   leave_year_start: string; // YYYY-MM-DD
   annual_days: number;
   study_days: number;
+  professional_days: number;
 }
 
 const DEFAULT_ANNUAL = 27;
 const DEFAULT_STUDY = 10;
+const DEFAULT_PROFESSIONAL = 5;
 
 /**
  * Working-day length of a leave request (Mon–Fri only), with half-day
@@ -155,7 +157,7 @@ function LeavePage() {
         .eq("active", true),
       supabase
         .from("leave_allowances")
-        .select("staff_id, leave_year_start, annual_days, study_days"),
+        .select("staff_id, leave_year_start, annual_days, study_days, professional_days"),
       supabase
         .from("leave_requests")
         .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
@@ -278,8 +280,10 @@ function LeavePage() {
       yearStartISO: string;
       annualAllowance: number;
       studyAllowance: number;
+      professionalAllowance: number;
       annual: Bucket;
       study: Bucket;
+      professional: Bucket;
       other: Bucket;
     };
     const out: Summary[] = [];
@@ -288,9 +292,11 @@ function LeavePage() {
       const yearStartISO = a?.leave_year_start ?? defaultYearStartISO;
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
-      const buckets: Record<"annual" | "study" | "other", Bucket> = {
+      const professionalAllowance = Number(a?.professional_days ?? DEFAULT_PROFESSIONAL);
+      const buckets: Record<"annual" | "study" | "professional" | "other", Bucket> = {
         annual: { taken: 0, booked: 0 },
         study: { taken: 0, booked: 0 },
+        professional: { taken: 0, booked: 0 },
         other: { taken: 0, booked: 0 },
       };
       for (const r of yearLeave) {
@@ -298,8 +304,11 @@ function LeavePage() {
         if (!leaveOverlapsYear(r, yearStartISO)) continue;
         const days = leaveWorkingDays(r);
         if (days <= 0) continue;
-        const bucketKey: "annual" | "study" | "other" =
-          r.type === "annual" ? "annual" : r.type === "study" ? "study" : "other";
+        const bucketKey: "annual" | "study" | "professional" | "other" =
+          r.type === "annual" ? "annual"
+          : r.type === "study" ? "study"
+          : r.type === "professional" ? "professional"
+          : "other";
         if (r.status === "approved") buckets[bucketKey].taken += days;
         else if (r.status === "pending") buckets[bucketKey].booked += days;
       }
@@ -308,8 +317,10 @@ function LeavePage() {
         yearStartISO,
         annualAllowance,
         studyAllowance,
+        professionalAllowance,
         annual: buckets.annual,
         study: buckets.study,
+        professional: buckets.professional,
         other: buckets.other,
       });
     }
@@ -567,7 +578,7 @@ function LeavePage() {
                 <CardDescription>
                   Days taken (approved) + booked (pending) vs annual allowance for the
                   current leave year. Counts working days (Mon–Fri); half-day requests
-                  count as 0.5. Study covers professional / study leave.
+                  count as 0.5. Study and professional leave are tracked separately.
                 </CardDescription>
               </div>
               <Input
@@ -595,6 +606,9 @@ function LeavePage() {
                         <TableHead className="text-right">Study taken/booked</TableHead>
                         <TableHead className="text-right">Study allowance</TableHead>
                         <TableHead className="text-right">Study remaining</TableHead>
+                        <TableHead className="text-right">Professional taken/booked</TableHead>
+                        <TableHead className="text-right">Professional allowance</TableHead>
+                        <TableHead className="text-right">Professional remaining</TableHead>
                         <TableHead className="text-right" title="Sick / parental / compassionate / other — informational only, not deducted from an allowance">Other taken/booked</TableHead>
                         <TableHead className="text-xs text-muted-foreground">Leave year</TableHead>
                       </TableRow>
@@ -605,6 +619,8 @@ function LeavePage() {
                         const annualRem = s.annualAllowance - annualUsed;
                         const studyUsed = s.study.taken + s.study.booked;
                         const studyRem = s.studyAllowance - studyUsed;
+                        const profUsed = s.professional.taken + s.professional.booked;
+                        const profRem = s.professionalAllowance - profUsed;
                         const otherUsed = s.other.taken + s.other.booked;
                         const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
                         const remTone = (rem: number) =>
@@ -632,6 +648,15 @@ function LeavePage() {
                             </TableCell>
                             <TableCell className={cn("text-right tabular-nums", remTone(studyRem))}>
                               {fmt(studyRem)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(s.professional.taken)} / {fmt(s.professional.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.professionalAllowance)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(profRem))}>
+                              {fmt(profRem)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-muted-foreground">
                               {fmt(s.other.taken)} / {fmt(s.other.booked)}
