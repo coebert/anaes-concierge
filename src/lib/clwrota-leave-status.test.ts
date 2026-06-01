@@ -132,6 +132,19 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
     expect(s.annual.booked + s.study.booked + s.professional.booked).toBe(0);
   });
 
+  it("unknown status strings still fall back to approved and deduct allowance", () => {
+    const rows = buildRows([
+      { typeRaw: "Annual Leave", reason: null, statusRaw: "qwerty", start: "2026-04-06", end: "2026-04-08" },   // 3
+      { typeRaw: "Study Leave", reason: null, statusRaw: "12345", start: "2026-05-04", end: "2026-05-04" },     // 1
+      { typeRaw: "Study Leave", reason: "Teaching on STIVA", statusRaw: "🚀", start: "2026-06-08", end: "2026-06-08" }, // 1
+    ]);
+    const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
+    expect(s.annual.taken).toBe(3);
+    expect(s.study.taken).toBe(1);
+    expect(s.professional.taken).toBe(1);
+    expect(s.annual.booked + s.study.booked + s.professional.booked).toBe(0);
+  });
+
   it("flipping a row's status from approved → cancelled on resync removes the deduction", () => {
     // Simulates the nightly sync re-receiving the same `clwrota_external_id`
     // with an updated status — the aggregator must reflect the new status
