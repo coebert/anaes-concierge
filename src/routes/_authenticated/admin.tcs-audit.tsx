@@ -139,9 +139,24 @@ function TcsAuditPage() {
           else if (endISO && endISO < todayISO) reason = "rotation_ended";
           else reason = "no_sync";
         }
+        // Reference window for R1 averaging: the user-selected lookback
+        // (or rotation start if 'all') clamped to the rotation window and
+        // to today. This stops a sparse dataset / leave block from
+        // artificially deflating the WTD average.
+        const lookbackStart = data.sinceISO ?? startISO ?? todayISO;
+        const refStart = [startISO ?? lookbackStart, lookbackStart]
+          .filter(Boolean)
+          .sort()
+          .reverse()[0]; // later of the two
+        const refEnd = [endISO ?? todayISO, todayISO].sort()[0]; // earlier of the two
+        const leaveDates = data.leaveByStaff.get(t.id) ?? new Set<string>();
         return {
           trainee: t,
-          audit: auditTcs2016(inRotation),
+          audit: auditTcs2016(inRotation, {
+            windowStartISO: refStart,
+            windowEndISO: refEnd,
+            leaveDates,
+          }),
           reason,
           startISO,
           endISO,
