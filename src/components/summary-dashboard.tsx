@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldAlert, UserMinus, GraduationCap, MapPin } from "lucide-react";
+import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
@@ -130,37 +130,40 @@ export function SummaryDashboard() {
               ) : days.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No weekdays in the next 7 days.</div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {days.map((d) => {
-                    const risk = worstRisk(d.am.risk, d.pm.risk);
-                    const headroom = Math.min(d.am.headroom, d.pm.headroom);
-                    return (
-                      <Tooltip key={d.date}>
-                        <TooltipTrigger asChild>
-                          <Link
-                            to="/robustness/day/$date"
-                            params={{ date: d.date }}
-                            className={cn(
-                              "flex min-w-[5.5rem] flex-col items-center rounded-md border px-3 py-2 text-xs transition-colors hover:border-primary/60",
-                              riskColor(risk),
-                            )}
-                          >
-                            <span className="font-medium">{shortDay(d.date)}</span>
-                            <span className="text-[10px] opacity-80">headroom {headroom}</span>
-                            <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p className="text-xs">
-                            {formatDateGB(d.date)}<br />
-                            AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, {d.am.unfilled} unfilled)<br />
-                            PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, {d.pm.unfilled} unfilled)
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {days.map((d) => {
+                      const risk = worstRisk(d.am.risk, d.pm.risk);
+                      const headroom = Math.min(d.am.headroom, d.pm.headroom);
+                      return (
+                        <Tooltip key={d.date}>
+                          <TooltipTrigger asChild>
+                            <Link
+                              to="/robustness/day/$date"
+                              params={{ date: d.date }}
+                              className={cn(
+                                "flex min-w-[5.5rem] flex-col items-center rounded-md border px-3 py-2 text-xs transition-colors hover:border-primary/60",
+                                riskColor(risk),
+                              )}
+                            >
+                              <span className="font-medium">{shortDay(d.date)}</span>
+                              <span className="text-[10px] opacity-80">headroom {headroom}</span>
+                              <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-xs">
+                              {formatDateGB(d.date)}<br />
+                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, {d.am.unfilled} unfilled)<br />
+                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, {d.pm.unfilled} unfilled)
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                  <RobustnessLegend />
+                </>
               )}
             </CardContent>
           </Card>
@@ -248,6 +251,54 @@ export function SummaryDashboard() {
         </div>
       </section>
     </TooltipProvider>
+  );
+}
+
+function LegendSwatch({ color, label, description }: { color: string; label: string; description: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className={cn("mt-0.5 inline-block h-3 w-3 shrink-0 rounded-sm", color)} />
+      <div className="leading-tight">
+        <span className="text-xs font-medium">{label}</span>
+        <p className="text-[10px] text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function RobustnessLegend() {
+  return (
+    <div className="mt-3 rounded-md border bg-muted/30 px-3 py-2">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Info className="h-3.5 w-3.5" />
+        How rota robustness is calculated
+      </div>
+      <p className="mb-2 text-[10px] text-muted-foreground leading-relaxed">
+        Robustness compares solo-capable staff (consultants + senior trainees ST6–ST8 who are free) against unfilled theatre lists. Junior trainees and SAS doctors are tracked but do not count toward solo cover. Each day shows the worst half (AM or PM).
+      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
+        <LegendSwatch
+          color="bg-emerald-300/50"
+          label="OK"
+          description="Comfortable headroom (>1 spare solo-capable person)."
+        />
+        <LegendSwatch
+          color="bg-amber-400/80"
+          label="Tight"
+          description="Covered, but headroom is 0 or 1."
+        />
+        <LegendSwatch
+          color="bg-orange-400/80"
+          label="SPA needed"
+          description="Shortfall closes only by pulling a consultant off SPA time."
+        />
+        <LegendSwatch
+          color="bg-red-500/80"
+          label="Shortfall"
+          description="Not enough solo-capable staff even after redeploying SPA."
+        />
+      </div>
+    </div>
   );
 }
 
