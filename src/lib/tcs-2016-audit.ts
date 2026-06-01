@@ -23,12 +23,33 @@ export type AuditAssignment = {
 
 export type RuleStatus = "pass" | "fail" | "warn" | "indeterminate";
 
+export type ShiftSummary = {
+  date: string;          // session_date (night shifts: the day it starts)
+  session: Session;
+  hours: number;
+  duty_type: string;
+  isNight: boolean;
+  isLong: boolean;
+  isWeekend: boolean;
+};
+
+export type RuleEvidence = {
+  /** Optional date-range the rule examined for its peak/worst result. */
+  windowStart?: string;
+  windowEnd?: string;
+  /** The shifts that drove the rule's result (peak window, longest run, breaches). */
+  shifts: ShiftSummary[];
+  /** Free-form rows of structured detail — gap pairs, weekend pairs, etc. */
+  notes?: string[];
+};
+
 export type RuleResult = {
   id: string;
   label: string;
   status: RuleStatus;
   detail: string;
   breaches?: Array<{ date: string; note: string }>;
+  evidence?: RuleEvidence;
 };
 
 export type AuditResult = {
@@ -38,6 +59,8 @@ export type AuditResult = {
   windowStart: string | null;
   windowEnd: string | null;
   rules: RuleResult[];
+  /** Every merged shift fed into the audit, in chronological order. */
+  shifts: ShiftSummary[];
 };
 
 const SESSION_HOURS: Record<Session, number> = { am: 5, pm: 5, eve: 3, night: 11 };
