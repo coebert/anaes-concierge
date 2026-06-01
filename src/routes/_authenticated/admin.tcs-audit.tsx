@@ -240,12 +240,48 @@ function TcsAuditPage() {
   );
 }
 
-function OverallBadge({ overall }: { overall: "compliant" | "non_compliant" | "insufficient_data" }) {
+type ReasonCode = "not_started" | "rotation_ended" | "no_sync" | null;
+
+function OverallBadge({
+  overall,
+  reason,
+}: {
+  overall: "compliant" | "non_compliant" | "insufficient_data";
+  reason?: ReasonCode;
+}) {
   if (overall === "compliant")
     return <Badge className="bg-emerald-600 hover:bg-emerald-600">Compliant</Badge>;
   if (overall === "non_compliant")
     return <Badge variant="destructive">Non-compliant</Badge>;
+  if (reason === "not_started") return <Badge variant="outline">Pre-rotation</Badge>;
+  if (reason === "rotation_ended") return <Badge variant="outline">Rotation ended</Badge>;
+  if (reason === "no_sync") return <Badge variant="outline">No rota synced</Badge>;
   return <Badge variant="outline">Insufficient data</Badge>;
+}
+
+function ReasonBanner({
+  reason,
+  startISO,
+  endISO,
+}: {
+  reason: Exclude<ReasonCode, null>;
+  startISO: string | null;
+  endISO: string | null;
+}) {
+  const msg =
+    reason === "not_started"
+      ? `This trainee's rotation has not started yet${startISO ? ` (starts ${formatDateGB(startISO)})` : ""}. The audit will run once they begin.`
+      : reason === "rotation_ended"
+        ? `This trainee's rotation ended${endISO ? ` on ${formatDateGB(endISO)}` : ""}, before the selected reference period. Widen the reference period to audit their past rota.`
+        : "No rota assignments have been synced for this trainee within the reference period. Check the CLWRota sync or the trainee's rota source.";
+  return (
+    <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+      <div className="flex items-start gap-2">
+        <HelpCircle className="mt-0.5 h-4 w-4" />
+        <span>{msg}</span>
+      </div>
+    </div>
+  );
 }
 
 function RuleIcon({ status }: { status: RuleStatus }) {
