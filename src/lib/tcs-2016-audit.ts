@@ -196,6 +196,8 @@ export function auditTcs2016(
   options: AuditOptions = {},
 ): AuditResult {
   const leaveDates = options.leaveDates ?? new Set<string>();
+  const ltftOffDows = new Set<number>(options.ltftDaysOff ?? []);
+  const ltftFraction = ltftWorkingWeekdays(options.ltftDaysOff) / 5;
   // Only "working" duty assignments — exclude leave/admin/teaching markers
   // that are not actually working shifts. (role_on_list 'non_clinical',
   // 'teaching', 'admin_session' are still working hours under TCS, so we
@@ -208,6 +210,9 @@ export function auditTcs2016(
       totalHours: 0,
       windowStart: null,
       windowEnd: null,
+      requestedWindowStart: options.windowStartISO ?? null,
+      requestedWindowEnd: options.windowEndISO ?? null,
+      ltftFraction,
       shifts: [],
       rules: [
         {
