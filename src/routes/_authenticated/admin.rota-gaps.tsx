@@ -111,7 +111,19 @@ function RotaGapsPage() {
         const endISO = [t.rotation_end_date ?? today, today].sort()[0]; // earlier of the two
         const ltft = (t.ltft_days_off ?? []) as number[];
         const report = computeRotaGaps(dates, startISO, endISO, ltft);
-        return { trainee: t, report };
+        // Classification uses the full audit window (lookback → today) so
+        // pre-rotation and rotation-ended days appear as their own buckets
+        // rather than being silently clipped.
+        const auditStart = data.since ?? t.start_date ?? today;
+        const classified = classifyRotaGaps(
+          dates,
+          auditStart,
+          today,
+          t.start_date ?? null,
+          t.rotation_end_date ?? null,
+          ltft,
+        );
+        return { trainee: t, report, classified };
       })
       .filter((r) => {
         if (filter) {
