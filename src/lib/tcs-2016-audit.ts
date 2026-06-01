@@ -465,8 +465,10 @@ export function auditTcs2016(
           },
   });
 
-  // R6 — Max 7 consecutive days worked. Leave days bridge a run because
-  // annual / study leave does not count as a rostered day off under TCS.
+  // R6 — Max 7 consecutive days worked. Leave days and contracted LTFT
+  // non-working days both bridge a run: annual / study leave does not count
+  // as a rostered day off under TCS, and an LTFT day off only counts as
+  // rest if no working shift bookends it as part of a single stretch.
   const days = Array.from(new Set(shifts.map((s) => s.date))).sort();
   let runDays = 0;
   let maxRunDays = 0;
@@ -474,12 +476,14 @@ export function auditTcs2016(
   let dayRunStart = 0;
   let bestDayStart = 0;
   let bestDayEnd = 0;
-  const onlyLeaveBetween = (prevMs: number, curMs: number): boolean => {
-    // Every calendar day strictly between prev and cur must be a leave day.
+  const onlyBridgedBetween = (prevMs: number, curMs: number): boolean => {
+    // Every calendar day strictly between prev and cur must be either a
+    // leave day or an LTFT contracted day off.
     if (curMs - prevMs <= MS_DAY) return true;
     for (let t = prevMs + MS_DAY; t < curMs; t += MS_DAY) {
       const iso = new Date(t).toISOString().slice(0, 10);
-      if (!leaveDates.has(iso)) return false;
+      const dow = new Date(t).getUTCDay();
+      if (!leaveDates.has(iso) && !ltftOffDows.has(dow)) return false;
     }
     return true;
   };
