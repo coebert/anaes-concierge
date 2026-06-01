@@ -81,12 +81,27 @@ function LeavePage() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
+    // Scope to a relevant window so we never hit Supabase's default 1000-row
+    // cap and silently drop rows covering "today" (which happened when there
+    // were >1000 future rows ordered by start_date DESC). We keep ~60 days of
+    // history for the "All upcoming" tab and a generous future horizon for
+    // planning. .range() raises the row ceiling as a belt-and-braces guard.
+    const today = new Date();
+    const windowStart = new Date(today);
+    windowStart.setDate(windowStart.getDate() - 60);
+    const windowEnd = new Date(today);
+    windowEnd.setFullYear(windowEnd.getFullYear() + 2);
+    const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
+
     // Rely on RLS: staff see own rows; coords/admins see everyone.
     const [leaveRes, profRes] = await Promise.all([
       supabase
         .from("leave_requests")
         .select("*")
-        .order("start_date", { ascending: false }),
+        .gte("end_date", fmtIso(windowStart))
+        .lte("start_date", fmtIso(windowEnd))
+        .order("start_date", { ascending: true })
+        .range(0, 4999),
       supabase
         .from("profiles")
         .select("id, full_name, grade")
