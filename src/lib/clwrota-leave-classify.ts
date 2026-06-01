@@ -101,11 +101,19 @@ export const DEFAULT_LEAVE_STATUS: LeaveStatus = "approved";
  *  - Trims, lower-cases, collapses internal whitespace and strips surrounding
  *    punctuation so "  Approved.  " and "APPROVED" both match.
  *  - Recognises an extended synonym set for each state (e.g. "auth(orised)",
- *    "ok", "signed off" → approved; "refused", "not approved" → rejected;
- *    "void", "revoked" → cancelled; "in review", "tbc", "submitted" →
- *    pending).
- *  - "not approved" / "not granted" are matched BEFORE the approved synonyms
- *    so the negation wins.
+ *    "ok", "signed off" → approved; "refused", "not approved", "turned down"
+ *    → rejected; "void", "revoked", "rescinded" → cancelled; "in review",
+ *    "tbc", "on hold", "with hr" → pending).
+ *  - Also recognises a targeted set of non-English status words seen on UK
+ *    NHS rota imports where admins paste from third-party HR tooling
+ *    (French, German, Spanish, Italian, Polish, Welsh). The list is
+ *    deliberately small — extend it via regression tests, not silently.
+ *  - "not approved" / "not granted" / "not permitted" are matched BEFORE the
+ *    approved synonyms so the negation wins.
+ *  - Multi-word UK-admin phrases ("turned down", "on hold", "with hr",
+ *    "called off", "for review", "awaiting authorisation") are matched
+ *    before the single-word regexes so the phrase wins over an incidental
+ *    keyword inside it.
  *  - Empty / unknown input falls back to {@link DEFAULT_LEAVE_STATUS}
  *    (currently "approved") because CLWRota only publishes already-approved
  *    leave on its feed.
@@ -118,30 +126,64 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
     .trim();
   if (!s) return DEFAULT_LEAVE_STATUS;
 
-  // Negations must beat the plain "approved/granted" match below.
-  if (/\bnot\s+(approved|granted|authorised|authorized|accepted)\b/.test(s)) return "rejected";
+  // Negations must beat the plain "approved/granted/permitted" match below.
+  if (
+    /\bnot\s+(approved|granted|authorised|authorized|accepted|permitted|allowed|sanctioned|agreed)\b/.test(
+      s,
+    )
+  )
+    return "rejected";
+
+  // Multi-word UK-admin phrases — checked before single-word regexes so a
+  // phrase like "turned down" is not partially matched as "down".
+  if (/\b(turned down|knocked back|sent back|not going ahead)\b/.test(s)) return "rejected";
+  if (/\b(called off|pulled from rota|rolled back)\b/.test(s)) return "cancelled";
+  if (
+    /\b(on hold|for review|under consideration|awaiting (approval|authorisation|authorization|sign[- ]?off|decision)|with (hr|manager|line manager|rota|admin)|to be confirmed|to be decided|in the queue)\b/.test(
+      s,
+    )
+  )
+    return "pending";
 
   if (
-    /\b(approved?|approve|granted?|grant|authoris(ed|e)|authoriz(ed|e)|accepted?|confirmed?|confirm|signed off|sign off|ok|okay|yes|y)\b/.test(
+    /\b(approved?|approve|granted?|grant|authoris(ed|e)|authoriz(ed|e)|accepted?|confirmed?|confirm|signed off|sign off|sanctioned?|endorsed?|ratified?|cleared?|permitted?|allowed?|agreed?|passed?|ok|okay|yes|y)\b/.test(
+      s,
+    ) ||
+    // Non-English approved synonyms (French, German, Spanish, Italian,
+    // Polish, Welsh) — common on UK NHS rota imports. We anchor on
+    // whitespace boundaries rather than \b because \b is ASCII-only in
+    // JavaScript regex, so it fails next to accented letters like "é".
+    /(?:^|\s)(?:approuv[ée]e?|accept[ée]e?|valid[ée]e?|genehmigt|bewilligt|zugestimmt|aprobad[oa]|aprovad[oa]|aceptad[oa]|approvat[oa]|accettat[oa]|zatwierdzon[ya]|zaakceptowan[ya]|cymeradwyo|cymeradwywyd|derbyniwyd)(?=\s|$)/.test(
       s,
     )
   )
     return "approved";
 
   if (
-    /\b(rejected?|reject|denied?|deny|declined?|decline|refused?|refuse|no)\b/.test(s)
+    /\b(rejected?|reject|denied?|deny|declined?|decline|refused?|refuse|disallowed?|vetoed?|blocked?|dismissed?|no)\b/.test(
+      s,
+    ) ||
+    /(?:^|\s)(?:refus[ée]e?|rejet[ée]e?|abgelehnt|verweigert|rechazad[oa]|denegad[oa]|rifiutat[oa]|respint[oa]|odrzucon[ya]|odmowa|gwrthod|gwrthodwyd)(?=\s|$)/.test(
+      s,
+    )
   )
     return "rejected";
 
   if (
-    /\b(cancelled?|canceled?|cancel|withdrawn|withdraw|void(ed)?|revoked?|revoke|removed?|deleted?)\b/.test(
+    /\b(cancelled?|canceled?|cancel|withdrawn|withdraw|void(ed)?|revoked?|revoke|removed?|deleted?|rescinded?|scrapped?|abandoned?)\b/.test(
+      s,
+    ) ||
+    /(?:^|\s)(?:annul[ée]e?|annull?at[oa]|storniert|abgesagt|cancelad[oa]|anulad[oa]|annullat[oa]|anulowan[ya]|wycofan[ya]|diddymwyd)(?=\s|$)/.test(
       s,
     )
   )
     return "cancelled";
 
   if (
-    /\b(pending|request(ed)?|await(ing)?|submitted?|submit|review(ing)?|in review|tbc|tbd|unconfirmed|open)\b/.test(
+    /\b(pending|request(ed)?|await(ing)?|submitted?|submit|review(ing)?|in review|tbc|tbd|unconfirmed|open|outstanding|queued)\b/.test(
+      s,
+    ) ||
+    /(?:^|\s)(?:en attente|en cours|ausstehend|in bearbeitung|pendiente|en espera|en revisi[óo]n|in attesa|in sospeso|oczekuj[ąa]c[ye]?|w trakcie|aros|yn aros)(?=\s|$)/.test(
       s,
     )
   )

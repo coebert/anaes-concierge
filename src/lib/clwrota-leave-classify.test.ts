@@ -477,3 +477,165 @@ describe("classifyLeaveStatus — unknown / unrecognised strings fall back consi
     expect(DEFAULT_LEAVE_STATUS).toBe("approved");
   });
 });
+
+/**
+ * Targeted coverage for UK admin language variants and common non-English
+ * status words seen on real CLWRota imports (NHS rotas occasionally include
+ * staff pasting from French / German / Spanish / Italian / Polish / Welsh
+ * HR tooling).  Keep this list deliberately small — it documents the
+ * tokens we have agreed to support, not every conceivable translation.
+ */
+describe("classifyLeaveStatus — UK admin phrases & non-English variants", () => {
+  type Status = ReturnType<typeof classifyLeaveStatus>;
+
+  const ukAdminFixtures: Array<[string, Status]> = [
+    // Approved — UK admin synonyms
+    ["Agreed", "approved"],
+    ["agreed by rota lead", "approved"],
+    ["Sanctioned", "approved"],
+    ["Endorsed by clinical director", "approved"],
+    ["Ratified at JLNC", "approved"],
+    ["Cleared", "approved"],
+    ["Permitted", "approved"],
+    ["Allowed", "approved"],
+    ["Passed", "approved"],
+    ["Signed off — Dr. Smith", "approved"],
+
+    // Rejected — UK admin synonyms & multi-word
+    ["Turned down", "rejected"],
+    ["turned down by HR", "rejected"],
+    ["Knocked back", "rejected"],
+    ["Sent back", "rejected"],
+    ["Not going ahead", "rejected"],
+    ["Vetoed", "rejected"],
+    ["Blocked", "rejected"],
+    ["Disallowed", "rejected"],
+    ["Dismissed", "rejected"],
+    ["Not permitted", "rejected"],
+    ["Not allowed", "rejected"],
+    ["Not sanctioned", "rejected"],
+    ["Not agreed", "rejected"],
+
+    // Cancelled — UK admin synonyms
+    ["Rescinded", "cancelled"],
+    ["Scrapped", "cancelled"],
+    ["Abandoned", "cancelled"],
+    ["Called off", "cancelled"],
+    ["Pulled from rota", "cancelled"],
+    ["Rolled back", "cancelled"],
+
+    // Pending — UK admin phrases
+    ["On hold", "pending"],
+    ["For review", "pending"],
+    ["Under consideration", "pending"],
+    ["Awaiting approval", "pending"],
+    ["Awaiting authorisation", "pending"],
+    ["awaiting sign-off", "pending"],
+    ["Awaiting sign off", "pending"],
+    ["Awaiting decision", "pending"],
+    ["With HR", "pending"],
+    ["with manager", "pending"],
+    ["With line manager", "pending"],
+    ["With rota", "pending"],
+    ["With admin", "pending"],
+    ["To be confirmed", "pending"],
+    ["To be decided", "pending"],
+    ["In the queue", "pending"],
+    ["Outstanding", "pending"],
+    ["Queued", "pending"],
+  ];
+
+  const nonEnglishFixtures: Array<[string, Status]> = [
+    // French
+    ["Approuvé", "approved"],
+    ["approuvée", "approved"],
+    ["Accepté", "approved"],
+    ["Validé", "approved"],
+    ["Refusé", "rejected"],
+    ["rejetée", "rejected"],
+    ["Annulé", "cancelled"],
+    ["annulée", "cancelled"],
+    ["En attente", "pending"],
+    ["En cours", "pending"],
+
+    // German
+    ["Genehmigt", "approved"],
+    ["Bewilligt", "approved"],
+    ["Zugestimmt", "approved"],
+    ["Abgelehnt", "rejected"],
+    ["Verweigert", "rejected"],
+    ["Storniert", "cancelled"],
+    ["Abgesagt", "cancelled"],
+    ["Ausstehend", "pending"],
+    ["In Bearbeitung", "pending"],
+
+    // Spanish
+    ["Aprobado", "approved"],
+    ["Aprobada", "approved"],
+    ["Aceptado", "approved"],
+    ["Rechazado", "rejected"],
+    ["Denegado", "rejected"],
+    ["Cancelado", "cancelled"],
+    ["Anulado", "cancelled"],
+    ["Pendiente", "pending"],
+    ["En espera", "pending"],
+    ["En revisión", "pending"],
+
+    // Italian
+    ["Approvato", "approved"],
+    ["Accettato", "approved"],
+    ["Rifiutato", "rejected"],
+    ["Respinto", "rejected"],
+    ["Annullato", "cancelled"],
+    ["In attesa", "pending"],
+    ["In sospeso", "pending"],
+
+    // Polish
+    ["Zatwierdzony", "approved"],
+    ["Zaakceptowany", "approved"],
+    ["Odrzucony", "rejected"],
+    ["Odmowa", "rejected"],
+    ["Anulowany", "cancelled"],
+    ["Wycofany", "cancelled"],
+    ["Oczekujące", "pending"],
+    ["W trakcie", "pending"],
+
+    // Welsh
+    ["Cymeradwyo", "approved"],
+    ["Cymeradwywyd", "approved"],
+    ["Derbyniwyd", "approved"],
+    ["Gwrthod", "rejected"],
+    ["Gwrthodwyd", "rejected"],
+    ["Diddymwyd", "cancelled"],
+    ["Yn aros", "pending"],
+  ];
+
+  it.each(ukAdminFixtures)(
+    "UK admin: %s → %s",
+    (input, expected) => {
+      expect(classifyLeaveStatus(input)).toBe(expected);
+    },
+  );
+
+  it.each(nonEnglishFixtures)(
+    "non-English: %s → %s",
+    (input, expected) => {
+      expect(classifyLeaveStatus(input)).toBe(expected);
+    },
+  );
+
+  it("treats non-English variants case- and punctuation-insensitively", () => {
+    expect(classifyLeaveStatus("  APPROUVÉ.  ")).toBe("approved");
+    expect(classifyLeaveStatus("** Abgelehnt! **")).toBe("rejected");
+    expect(classifyLeaveStatus("[anulowany]")).toBe("cancelled");
+    expect(classifyLeaveStatus("  en   attente  ")).toBe("pending");
+  });
+
+  it("UK negation phrases beat the bare approved verb inside them", () => {
+    // Guard against regression: 'not sanctioned' must NOT match 'sanctioned'.
+    expect(classifyLeaveStatus("Not sanctioned")).toBe("rejected");
+    expect(classifyLeaveStatus("Not permitted")).toBe("rejected");
+    expect(classifyLeaveStatus("Not allowed")).toBe("rejected");
+    expect(classifyLeaveStatus("Not agreed")).toBe("rejected");
+  });
+});
