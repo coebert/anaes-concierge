@@ -104,6 +104,11 @@ export function SummaryDashboard() {
     },
   );
 
+  const { data: listCoverage, isLoading: cLoading } = useQuery({
+    queryKey: ["summary-list-coverage", today, in6],
+    queryFn: () => computeListCoverage(today, in6),
+  });
+
   const days = robustness?.days ?? [];
 
   return (
