@@ -150,12 +150,14 @@ function TcsAuditPage() {
           .reverse()[0]; // later of the two
         const refEnd = [endISO ?? todayISO, todayISO].sort()[0]; // earlier of the two
         const leaveDates = data.leaveByStaff.get(t.id) ?? new Set<string>();
+        const ltftDaysOff = Array.isArray(t.ltft_days_off) ? t.ltft_days_off.map(Number) : [];
         return {
           trainee: t,
           audit: auditTcs2016(inRotation, {
             windowStartISO: refStart,
             windowEndISO: refEnd,
             leaveDates,
+            ltftDaysOff,
           }),
           reason,
           startISO,
