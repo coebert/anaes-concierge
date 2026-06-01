@@ -511,7 +511,12 @@ export function auditTcs2016(
     evidence: rest11Shifts.length === 0 ? undefined : { shifts: rest11Shifts, notes: rest11Notes },
   });
 
-  // R8 — Minimum 46h continuous rest after a run of ≥3 nights
+  // R8 — Minimum 46h continuous rest after ANY run of night shifts.
+  //
+  // TCS 2016 Schedule 3 paragraph 13 mandates 46 h rest following any
+  // period of consecutive night shifts (including a single night). The
+  // previous implementation only fired for runs of ≥3 nights, which let
+  // single- and double-night blocks slip through silently.
   const rest46Breaches: Array<{ date: string; note: string }> = [];
   const rest46Shifts: ShiftSummary[] = [];
   const rest46Notes: string[] = [];
@@ -521,16 +526,16 @@ export function auditTcs2016(
       let j = i;
       while (j + 1 < shifts.length && shifts[j + 1].isNight) j++;
       const runLen = j - i + 1;
-      if (runLen >= 3 && j + 1 < shifts.length) {
+      if (j + 1 < shifts.length) {
         const gapH = (shifts[j + 1].startMs - shifts[j].endMs) / MS_HOUR;
         if (gapH < 46) {
           rest46Breaches.push({
             date: shifts[j].date,
-            note: `Only ${gapH.toFixed(1)} h rest after ${runLen} consecutive nights`,
+            note: `Only ${gapH.toFixed(1)} h rest after ${runLen} consecutive night${runLen === 1 ? "" : "s"}`,
           });
           for (let k = i; k <= j + 1; k++) rest46Shifts.push(summarise(shifts[k]));
           rest46Notes.push(
-            `${shifts[i].date} → ${shifts[j].date} (${runLen} nights), then ${shifts[j + 1].date} ${shifts[j + 1].session}: gap ${gapH.toFixed(1)} h`,
+            `${shifts[i].date} → ${shifts[j].date} (${runLen} night${runLen === 1 ? "" : "s"}), then ${shifts[j + 1].date} ${shifts[j + 1].session}: gap ${gapH.toFixed(1)} h`,
           );
         }
       }
@@ -541,15 +546,16 @@ export function auditTcs2016(
   }
   rules.push({
     id: "rest_46h_post_nights",
-    label: "Min 46h continuous rest after ≥3 consecutive nights",
+    label: "Min 46h continuous rest after any night shift run",
     status: rest46Breaches.length === 0 ? "pass" : "fail",
     detail:
       rest46Breaches.length === 0
         ? "No short post-nights rest gaps detected"
-        : `${rest46Breaches.length} gap(s) under 46 h`,
+        : `${rest46Breaches.length} gap(s) under 46 h after a night run`,
     breaches: rest46Breaches.slice(0, 5),
     evidence: rest46Shifts.length === 0 ? undefined : { shifts: rest46Shifts, notes: rest46Notes },
   });
+
 
   // R9 — No more than 1 weekend in 2 worked
   const weekendsWorked = new Set<string>();
