@@ -105,15 +105,16 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
   }
   for (const [date, arr] of byDate) {
     arr.sort((a, b) => a.startMs - b.startMs);
+    const totalH = arr.reduce((s, x) => s + x.hours, 0);
     const merged: Shift = {
       date,
       startMs: arr[0].startMs,
       endMs: arr[arr.length - 1].endMs,
-      hours: arr.reduce((s, x) => s + x.hours, 0),
+      hours: totalH,
       session: arr[0].session,
       duty_type: arr.map((x) => x.duty_type).join("+"),
       isNight: false,
-      isLong: arr.reduce((s, x) => s + x.hours, 0) >= 10,
+      isLong: totalH > 10,
       isWeekend: arr[0].isWeekend,
     };
     out.push(merged);
