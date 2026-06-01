@@ -59,7 +59,8 @@ export function SummaryDashboard() {
         .eq("session_date", today)
         .eq("role_on_list", "solo")
         .eq("duty_type", "theatre")
-        .eq("profiles.grade", "trainee");
+        .eq("profiles.grade", "trainee")
+        .not("theatre_session_id", "is", null);
       if (error) throw error;
       const rows = (assigns ?? []) as Array<{
         id: string; staff_id: string; theatre_session_id: string | null;
@@ -67,6 +68,7 @@ export function SummaryDashboard() {
       }>;
       const tsIds = Array.from(new Set(rows.map((r) => r.theatre_session_id).filter(Boolean) as string[]));
       const theatreById = new Map<string, string>();
+      const consultantSessionIds = new Set<string>();
       if (tsIds.length > 0) {
         const { data: ts } = await supabase
           .from("theatre_sessions")
@@ -75,14 +77,27 @@ export function SummaryDashboard() {
         for (const r of (ts ?? []) as Array<{ id: string; theatres: { name: string } }>) {
           theatreById.set(r.id, r.theatres.name);
         }
+        // Exclude sessions that also have a consultant assigned — those aren't solo.
+        const { data: coAssigns } = await supabase
+          .from("rota_assignments")
+          .select("theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
+          .eq("session_date", today)
+          .eq("duty_type", "theatre")
+          .in("theatre_session_id", tsIds)
+          .eq("profiles.grade", "consultant");
+        for (const r of (coAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+          if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
+        }
       }
-      return rows.map((r) => ({
-        id: r.id,
-        staffId: r.staff_id,
-        name: r.profiles.full_name,
-        trainingLevel: r.profiles.training_level,
-        theatre: r.theatre_session_id ? theatreById.get(r.theatre_session_id) ?? "Unknown theatre" : "Unassigned theatre",
-      }));
+      return rows
+        .filter((r) => r.theatre_session_id && !consultantSessionIds.has(r.theatre_session_id))
+        .map((r) => ({
+          id: r.id,
+          staffId: r.staff_id,
+          name: r.profiles.full_name,
+          trainingLevel: r.profiles.training_level,
+          theatre: theatreById.get(r.theatre_session_id!) ?? "Unknown theatre",
+        }));
     },
   });
 
