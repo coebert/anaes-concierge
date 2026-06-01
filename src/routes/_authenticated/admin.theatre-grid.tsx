@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
-import { formatDateGB, toISODateLocal, parseDateLocal } from "@/lib/utils";
+import { formatDateGB } from "@/lib/utils";
+import { isoDate, weekdayShort } from "@/lib/theatre-grid-dates";
 import {
   ViewModeToggle, PeriodNav, buildDays, type ViewMode,
 } from "@/components/rota-views";
@@ -21,34 +22,6 @@ export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
 
 type Sess = "am" | "pm";
 const SESSIONS: Sess[] = ["am", "pm"];
-const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/**
- * Defensive local-date ISO formatter.
- * Always treats the input as a local date (never UTC) and logs a warning
- * if an invalid Date is encountered, returning "" so downstream queries
- * fail loudly rather than silently using a wrong date.
- */
-function isoDate(d: Date | string | null | undefined): string {
-  const parsed = d instanceof Date ? d : parseDateLocal(d);
-  if (!parsed || Number.isNaN(parsed.getTime())) {
-    console.warn("[theatre-grid] invalid date encountered:", d);
-    return "";
-  }
-  return toISODateLocal(parsed);
-}
-
-/** Weekday label derived from the same local-date interpretation as isoDate. */
-function weekdayShort(d: Date): string {
-  if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
-    console.warn("[theatre-grid] invalid date for weekday label:", d);
-    return "";
-  }
-  // Re-parse via toISODateLocal -> parseDateLocal so the label always matches
-  // the iso string we display next to it (avoids UTC/local drift).
-  const local = parseDateLocal(toISODateLocal(d));
-  return local ? DAY_SHORT[local.getDay()] : "";
-}
 
 type SessionRow = {
   id: string;
