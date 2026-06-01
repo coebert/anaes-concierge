@@ -38,7 +38,7 @@ export function SummaryDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leave_requests")
-        .select("id,type,staff_id,profiles!inner(full_name,grade)")
+        .select("id,type,staff_id,profiles!leave_requests_staff_id_fkey!inner(full_name,grade)")
         .eq("status", "approved")
         .lte("start_date", today)
         .gte("end_date", today);
