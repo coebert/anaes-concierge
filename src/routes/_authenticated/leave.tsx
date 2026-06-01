@@ -558,6 +558,98 @@ function LeavePage() {
           </Card>
         </TabsContent>
 
+        {/* ---------------- Allowances ---------------- */}
+        <TabsContent value="allowances">
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-end justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Leave allowances</CardTitle>
+                <CardDescription>
+                  Days taken (approved) + booked (pending) vs annual allowance for the
+                  current leave year. Counts working days (Mon–Fri); half-day requests
+                  count as 0.5. Study covers professional / study leave.
+                </CardDescription>
+              </div>
+              <Input
+                value={allowanceFilter}
+                onChange={(e) => setAllowanceFilter(e.target.value)}
+                placeholder="Filter by name / grade…"
+                className="w-[260px]"
+              />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : allowanceVisible.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No staff to show.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead className="text-right" title="Annual taken (approved) / booked (pending)">Annual taken/booked</TableHead>
+                        <TableHead className="text-right">Annual allowance</TableHead>
+                        <TableHead className="text-right">Annual remaining</TableHead>
+                        <TableHead className="text-right">Study taken/booked</TableHead>
+                        <TableHead className="text-right">Study allowance</TableHead>
+                        <TableHead className="text-right">Study remaining</TableHead>
+                        <TableHead className="text-right" title="Sick / parental / compassionate / other — informational only, not deducted from an allowance">Other taken/booked</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Leave year</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allowanceVisible.map((s) => {
+                        const annualUsed = s.annual.taken + s.annual.booked;
+                        const annualRem = s.annualAllowance - annualUsed;
+                        const studyUsed = s.study.taken + s.study.booked;
+                        const studyRem = s.studyAllowance - studyUsed;
+                        const otherUsed = s.other.taken + s.other.booked;
+                        const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
+                        const remTone = (rem: number) =>
+                          rem < 0 ? "text-destructive font-semibold"
+                          : rem <= 2 ? "text-amber-600 font-medium"
+                          : "";
+                        return (
+                          <TableRow key={s.profile.id}>
+                            <TableCell className="font-medium">{s.profile.full_name}</TableCell>
+                            <TableCell>{gradeLabel(s.profile.grade)}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(s.annual.taken)} / {fmt(s.annual.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.annualAllowance)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(annualRem))}>
+                              {fmt(annualRem)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(s.study.taken)} / {fmt(s.study.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.studyAllowance)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(studyRem))}>
+                              {fmt(studyRem)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.other.taken)} / {fmt(s.other.booked)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground font-mono">
+                              {formatDateGB(s.yearStartISO)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ---------------- My requests (original view) ---------------- */}
         <TabsContent value="mine">
           <Card>
