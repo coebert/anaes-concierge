@@ -12,6 +12,7 @@ import {
   RefreshCw, ShieldAlert, Users,
 } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
+import { SummaryDashboard } from "@/components/summary-dashboard";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
@@ -116,6 +117,8 @@ function AuditDashboard() {
           </Link>
         </CardContent>
       </Card>
+
+      <SummaryDashboard />
 
       {/* Audit pillars */}
       <section className="space-y-3">
