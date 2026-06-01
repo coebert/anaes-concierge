@@ -36,6 +36,7 @@ function TcsAuditPage() {
     queryKey: ["tcs-audit", lookback],
     queryFn: async () => {
       const today = new Date();
+      const todayISO = today.toISOString().slice(0, 10);
       const since =
         lookback === "all"
           ? null
@@ -43,26 +44,40 @@ function TcsAuditPage() {
 
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, training_level")
+        .select("id, full_name, training_level, start_date, rotation_end_date")
         .eq("grade", "trainee")
         .eq("active", true)
         .order("full_name");
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
-      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>() };
+      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>(), todayISO };
 
-      let q = supabase
-        .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, role_on_list")
-        .in("staff_id", ids)
-        .order("session_date", { ascending: true })
-        .range(0, 9999);
-      if (since) q = q.gte("session_date", since);
-      const { data: assignments, error: e2 } = await q;
-      if (e2) throw e2;
+      // Fetch in pages of 1000 to avoid Supabase's default row cap silently
+      // truncating high-volume trainees (a single .range(0, 9999) request
+      // can still be capped server-side).
+      const PAGE = 1000;
+      const all: Array<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string }> = [];
+      let offset = 0;
+      // Loop until a page returns fewer than PAGE rows.
+      while (true) {
+        let q = supabase
+          .from("rota_assignments")
+          .select("staff_id, session_date, session, duty_type, role_on_list")
+          .in("staff_id", ids)
+          .order("session_date", { ascending: true })
+          .range(offset, offset + PAGE - 1);
+        if (since) q = q.gte("session_date", since);
+        const { data: page, error: e2 } = await q;
+        if (e2) throw e2;
+        const rows = page ?? [];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+        offset += PAGE;
+        if (offset > 50_000) break; // hard safety stop
+      }
 
       const map = new Map<string, AuditAssignment[]>();
-      for (const a of assignments ?? []) {
+      for (const a of all) {
         const arr = map.get(a.staff_id) ?? [];
         arr.push({
           session_date: a.session_date,
@@ -72,7 +87,7 @@ function TcsAuditPage() {
         });
         map.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff: map };
+      return { trainees: trainees ?? [], assignmentsByStaff: map, todayISO };
     },
   });
 
