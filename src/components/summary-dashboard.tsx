@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks } from "lucide-react";
+import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks, CalendarOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskColor, riskLabel } from "@/lib/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
