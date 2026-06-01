@@ -150,8 +150,10 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
       s,
     ) ||
     // Non-English approved synonyms (French, German, Spanish, Italian,
-    // Polish, Welsh) — common on UK NHS rota imports.
-    /\b(approuv[ée]e?|accept[ée]e?|valid[ée]e?|genehmigt|bewilligt|zugestimmt|aprobad[oa]|aprovad[oa]|aceptad[oa]|approvat[oa]|accettat[oa]|zatwierdzon[ya]|zaakceptowan[ya]|cymeradwyo|cymeradwywyd|derbyniwyd)\b/.test(
+    // Polish, Welsh) — common on UK NHS rota imports. We anchor on
+    // whitespace boundaries rather than \b because \b is ASCII-only in
+    // JavaScript regex, so it fails next to accented letters like "é".
+    /(?:^|\s)(?:approuv[ée]e?|accept[ée]e?|valid[ée]e?|genehmigt|bewilligt|zugestimmt|aprobad[oa]|aprovad[oa]|aceptad[oa]|approvat[oa]|accettat[oa]|zatwierdzon[ya]|zaakceptowan[ya]|cymeradwyo|cymeradwywyd|derbyniwyd)(?=\s|$)/.test(
       s,
     )
   )
@@ -161,7 +163,7 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
     /\b(rejected?|reject|denied?|deny|declined?|decline|refused?|refuse|disallowed?|vetoed?|blocked?|dismissed?|no)\b/.test(
       s,
     ) ||
-    /\b(refus[ée]e?|rejet[ée]e?|abgelehnt|verweigert|rechazad[oa]|denegad[oa]|rifiutat[oa]|respint[oa]|odrzucon[ya]|odmowa|gwrthod|gwrthodwyd)\b/.test(
+    /(?:^|\s)(?:refus[ée]e?|rejet[ée]e?|abgelehnt|verweigert|rechazad[oa]|denegad[oa]|rifiutat[oa]|respint[oa]|odrzucon[ya]|odmowa|gwrthod|gwrthodwyd)(?=\s|$)/.test(
       s,
     )
   )
@@ -171,7 +173,7 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
     /\b(cancelled?|canceled?|cancel|withdrawn|withdraw|void(ed)?|revoked?|revoke|removed?|deleted?|rescinded?|scrapped?|abandoned?)\b/.test(
       s,
     ) ||
-    /\b(annul[ée]e?|annull?at[oa]|storniert|abgesagt|cancelad[oa]|anulad[oa]|annullat[oa]|anulowan[ya]|wycofan[ya]|diddymwyd)\b/.test(
+    /(?:^|\s)(?:annul[ée]e?|annull?at[oa]|storniert|abgesagt|cancelad[oa]|anulad[oa]|annullat[oa]|anulowan[ya]|wycofan[ya]|diddymwyd)(?=\s|$)/.test(
       s,
     )
   )
@@ -181,7 +183,7 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
     /\b(pending|request(ed)?|await(ing)?|submitted?|submit|review(ing)?|in review|tbc|tbd|unconfirmed|open|outstanding|queued)\b/.test(
       s,
     ) ||
-    /\b(en attente|en cours|ausstehend|in bearbeitung|pendiente|en espera|en revisi[óo]n|in attesa|in sospeso|oczekuj[ąa]c[ye]?|w trakcie|aros|yn aros)\b/.test(
+    /(?:^|\s)(?:en attente|en cours|ausstehend|in bearbeitung|pendiente|en espera|en revisi[óo]n|in attesa|in sospeso|oczekuj[ąa]c[ye]?|w trakcie|aros|yn aros)(?=\s|$)/.test(
       s,
     )
   )
