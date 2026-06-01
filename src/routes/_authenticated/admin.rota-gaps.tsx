@@ -313,3 +313,63 @@ function Stat({
     </Card>
   );
 }
+
+const KIND_TONE: Record<GapKind, string> = {
+  pre_rotation: "bg-muted text-muted-foreground",
+  rotation_ended: "bg-muted text-muted-foreground",
+  ltft_off: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  sync_missing: "bg-destructive/10 text-destructive",
+};
+
+function ClassifiedSection({
+  report,
+}: {
+  report: ReturnType<typeof classifyRotaGaps>;
+}) {
+  const total =
+    report.counts.pre_rotation +
+    report.counts.rotation_ended +
+    report.counts.ltft_off +
+    report.counts.sync_missing;
+  if (total === 0) return null;
+  return (
+    <CardContent className="border-t pt-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-medium text-muted-foreground">Classification:</span>
+        {(Object.keys(GAP_KIND_LABEL) as GapKind[]).map((k) => (
+          <Badge key={k} variant="outline" className={`gap-1 ${KIND_TONE[k]}`}>
+            {GAP_KIND_LABEL[k]}: {report.counts[k]}
+          </Badge>
+        ))}
+      </div>
+      {report.ranges.length > 0 && (
+        <ul className="divide-y rounded-md border">
+          {report.ranges.map((r) => (
+            <ClassifiedRangeRow key={`${r.kind}-${r.startISO}-${r.endISO}`} range={r} />
+          ))}
+        </ul>
+      )}
+    </CardContent>
+  );
+}
+
+function ClassifiedRangeRow({ range }: { range: ClassifiedGapRange }) {
+  const single = range.startISO === range.endISO;
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+      <span className="flex items-center gap-2">
+        <Badge variant="outline" className={`px-1 py-0 text-[10px] ${KIND_TONE[range.kind]}`}>
+          {GAP_KIND_LABEL[range.kind]}
+        </Badge>
+        <span className="font-mono">
+          {single
+            ? formatDateGB(range.startISO)
+            : `${formatDateGB(range.startISO)} → ${formatDateGB(range.endISO)}`}
+        </span>
+      </span>
+      <span className="text-xs text-muted-foreground">
+        {range.days} day{range.days === 1 ? "" : "s"}
+      </span>
+    </li>
+  );
+}
