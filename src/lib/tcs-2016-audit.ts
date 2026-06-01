@@ -673,6 +673,9 @@ export function auditTcs2016(
     totalHours,
     windowStart,
     windowEnd,
+    requestedWindowStart: options.windowStartISO ?? null,
+    requestedWindowEnd: options.windowEndISO ?? null,
+    ltftFraction,
     rules,
     shifts: shifts.map(summarise),
   };
