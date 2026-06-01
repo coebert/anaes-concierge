@@ -93,11 +93,34 @@ function TcsAuditPage() {
 
   const rows = useMemo(() => {
     if (!data) return [];
+    const todayISO = data.todayISO;
     return data.trainees
-      .map((t) => ({
-        trainee: t,
-        audit: auditTcs2016(data.assignmentsByStaff.get(t.id) ?? []),
-      }))
+      .map((t) => {
+        const all = data.assignmentsByStaff.get(t.id) ?? [];
+        // Clamp the audit window to the trainee's actual rotation dates so
+        // we don't report "no data" for trainees who haven't started yet
+        // (start_date in the future) or whose rotation has ended.
+        const startISO = t.start_date ?? null;
+        const endISO = t.rotation_end_date ?? null;
+        const inRotation = all.filter((a) => {
+          if (startISO && a.session_date < startISO) return false;
+          if (endISO && a.session_date > endISO) return false;
+          return true;
+        });
+        let reason: "not_started" | "rotation_ended" | "no_sync" | null = null;
+        if (inRotation.length === 0) {
+          if (startISO && startISO > todayISO) reason = "not_started";
+          else if (endISO && endISO < todayISO) reason = "rotation_ended";
+          else reason = "no_sync";
+        }
+        return {
+          trainee: t,
+          audit: auditTcs2016(inRotation),
+          reason,
+          startISO,
+          endISO,
+        };
+      })
       .filter((r) => {
         if (!filter) return true;
         const q = filter.toLowerCase();
