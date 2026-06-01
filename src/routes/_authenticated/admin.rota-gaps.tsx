@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { computeRotaGaps, type GapRange } from "@/lib/rota-gaps";
+import {
+  computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
+  type GapRange, type ClassifiedGapRange, type GapKind,
+} from "@/lib/rota-gaps";
 import { getSurname, formatDateGB, todayISO } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
 
