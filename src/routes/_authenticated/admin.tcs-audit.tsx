@@ -44,7 +44,7 @@ function TcsAuditPage() {
 
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, training_level, start_date, rotation_end_date")
+        .select("id, full_name, training_level, start_date, rotation_end_date, ltft_days_off")
         .eq("grade", "trainee")
         .eq("active", true)
         .order("full_name");
