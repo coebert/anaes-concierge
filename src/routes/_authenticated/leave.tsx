@@ -41,6 +41,44 @@ interface ProfileRow {
   grade: string | null;
 }
 
+interface AllowanceRow {
+  staff_id: string;
+  leave_year_start: string; // YYYY-MM-DD
+  annual_days: number;
+  study_days: number;
+}
+
+const DEFAULT_ANNUAL = 27;
+const DEFAULT_STUDY = 10;
+
+/**
+ * Working-day length of a leave request (Mon–Fri only), with half-day
+ * markers reducing the total by 0.5 each. Mirrors how NHS leave allowances
+ * are conventionally expressed.
+ */
+function leaveWorkingDays(r: Pick<LeaveRow, "start_date" | "end_date" | "half_day_start" | "half_day_end">): number {
+  let count = 0;
+  const start = new Date(r.start_date + "T00:00:00Z");
+  const end = new Date(r.end_date + "T00:00:00Z");
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const dow = d.getUTCDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  if (r.half_day_start) count -= 0.5;
+  if (r.half_day_end) count -= 0.5;
+  return Math.max(0, count);
+}
+
+/** Returns true if the leave window overlaps [yearStart, yearStart + 1y). */
+function leaveOverlapsYear(r: Pick<LeaveRow, "start_date" | "end_date">, yearStartISO: string): boolean {
+  const yStart = new Date(yearStartISO + "T00:00:00Z");
+  const yEnd = new Date(yStart);
+  yEnd.setUTCFullYear(yEnd.getUTCFullYear() + 1);
+  const lStart = new Date(r.start_date + "T00:00:00Z");
+  const lEnd = new Date(r.end_date + "T00:00:00Z");
+  return lStart < yEnd && lEnd >= yStart;
+}
+
 export const Route = createFileRoute("/_authenticated/leave")({
   component: LeavePage,
 });
