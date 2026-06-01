@@ -280,8 +280,10 @@ function LeavePage() {
       yearStartISO: string;
       annualAllowance: number;
       studyAllowance: number;
+      professionalAllowance: number;
       annual: Bucket;
       study: Bucket;
+      professional: Bucket;
       other: Bucket;
     };
     const out: Summary[] = [];
@@ -290,9 +292,11 @@ function LeavePage() {
       const yearStartISO = a?.leave_year_start ?? defaultYearStartISO;
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
-      const buckets: Record<"annual" | "study" | "other", Bucket> = {
+      const professionalAllowance = Number(a?.professional_days ?? DEFAULT_PROFESSIONAL);
+      const buckets: Record<"annual" | "study" | "professional" | "other", Bucket> = {
         annual: { taken: 0, booked: 0 },
         study: { taken: 0, booked: 0 },
+        professional: { taken: 0, booked: 0 },
         other: { taken: 0, booked: 0 },
       };
       for (const r of yearLeave) {
@@ -300,8 +304,11 @@ function LeavePage() {
         if (!leaveOverlapsYear(r, yearStartISO)) continue;
         const days = leaveWorkingDays(r);
         if (days <= 0) continue;
-        const bucketKey: "annual" | "study" | "other" =
-          r.type === "annual" ? "annual" : r.type === "study" ? "study" : "other";
+        const bucketKey: "annual" | "study" | "professional" | "other" =
+          r.type === "annual" ? "annual"
+          : r.type === "study" ? "study"
+          : r.type === "professional" ? "professional"
+          : "other";
         if (r.status === "approved") buckets[bucketKey].taken += days;
         else if (r.status === "pending") buckets[bucketKey].booked += days;
       }
@@ -310,8 +317,10 @@ function LeavePage() {
         yearStartISO,
         annualAllowance,
         studyAllowance,
+        professionalAllowance,
         annual: buckets.annual,
         study: buckets.study,
+        professional: buckets.professional,
         other: buckets.other,
       });
     }
