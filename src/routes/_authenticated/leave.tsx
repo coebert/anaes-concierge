@@ -108,6 +108,10 @@ function LeavePage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
+  // Year-scoped leave rows (separate from `rows` so the calendar / upcoming
+  // tabs aren't ballooned by historical data they don't need).
+  const [yearLeave, setYearLeave] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -115,6 +119,7 @@ function LeavePage() {
   const [pickedDate, setPickedDate] = useState<Date>(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [nameFilter, setNameFilter] = useState("");
+  const [allowanceFilter, setAllowanceFilter] = useState("");
 
   const load = async () => {
     if (!user) return;
@@ -129,10 +134,14 @@ function LeavePage() {
     windowStart.setDate(windowStart.getDate() - 60);
     const windowEnd = new Date(today);
     windowEnd.setFullYear(windowEnd.getFullYear() + 2);
+    // Allowance tab needs up to 13 months of history (longest realistic leave
+    // year window) to compute year-to-date taken/booked totals.
+    const yearLookback = new Date(today);
+    yearLookback.setDate(yearLookback.getDate() - 400);
     const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
 
     // Rely on RLS: staff see own rows; coords/admins see everyone.
-    const [leaveRes, profRes] = await Promise.all([
+    const [leaveRes, profRes, allowRes, yearLeaveRes] = await Promise.all([
       supabase
         .from("leave_requests")
         .select("*")
@@ -144,11 +153,25 @@ function LeavePage() {
         .from("profiles")
         .select("id, full_name, grade")
         .eq("active", true),
+      supabase
+        .from("leave_allowances")
+        .select("staff_id, leave_year_start, annual_days, study_days"),
+      supabase
+        .from("leave_requests")
+        .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
+        .in("status", ["approved", "pending"])
+        .gte("end_date", fmtIso(yearLookback))
+        .order("start_date", { ascending: true })
+        .range(0, 9999),
     ]);
     if (leaveRes.error) toast.error(leaveRes.error.message);
     if (profRes.error) toast.error(profRes.error.message);
+    if (allowRes.error) toast.error(allowRes.error.message);
+    if (yearLeaveRes.error) toast.error(yearLeaveRes.error.message);
     setRows((leaveRes.data ?? []) as LeaveRow[]);
     setProfiles((profRes.data ?? []) as ProfileRow[]);
+    setAllowances((allowRes.data ?? []) as AllowanceRow[]);
+    setYearLeave((yearLeaveRes.data ?? []) as LeaveRow[]);
     setLoading(false);
   };
 
