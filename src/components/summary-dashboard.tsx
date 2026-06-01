@@ -559,3 +559,52 @@ function LeaveNameList({ entries }: { entries: Array<{ name: string; type: strin
     </ul>
   );
 }
+
+function NotScheduledCard({
+  title,
+  tone,
+  loading,
+  entries,
+  today,
+  showLevel,
+}: {
+  title: string;
+  tone: string;
+  loading: boolean;
+  entries: Array<{ id: string; name: string; trainingLevel: string | null }>;
+  today: string;
+  showLevel: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CalendarOff className={cn("h-4 w-4", tone)} />
+          {title}
+          <Badge variant="secondary" className="ml-auto">{entries.length}</Badge>
+        </CardTitle>
+        <CardDescription>
+          No rota entry for {formatDateGB(today)} (SPA/admin excluded).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : entries.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Everyone is scheduled today.</div>
+        ) : (
+          <ul className="space-y-0.5 text-xs text-muted-foreground">
+            {entries.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-2">
+                <span className="text-foreground">{e.name}</span>
+                {showLevel && e.trainingLevel ? (
+                  <span className="capitalize">{e.trainingLevel}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
