@@ -56,8 +56,14 @@ export type AuditResult = {
   overall: "compliant" | "non_compliant" | "insufficient_data";
   totalShifts: number;
   totalHours: number;
+  /** First / last shift date actually present in the data (may be narrower than the requested window). */
   windowStart: string | null;
   windowEnd: string | null;
+  /** The reference window the audit was *asked* to cover, before clamping to shift data. */
+  requestedWindowStart: string | null;
+  requestedWindowEnd: string | null;
+  /** LTFT pro-rata fraction applied (1 = full-time, 0.8 = 4 days/wk, etc.). */
+  ltftFraction: number;
   rules: RuleResult[];
   /** Every merged shift fed into the audit, in chronological order. */
   shifts: ShiftSummary[];
@@ -168,13 +174,30 @@ export type AuditOptions = {
   windowStartISO?: string;
   windowEndISO?: string;
   leaveDates?: Set<string>;
+  /**
+   * Weekday numbers (0 = Sun … 6 = Sat) the trainee is contracted NOT to
+   * work because they are Less Than Full Time. Used to (a) pro-rate the
+   * 48 h/week R1 cap and (b) bridge consecutive-day runs (R6) across
+   * non-working days, since an LTFT day off is not a rostered rest day
+   * in the TCS-2016 sense.
+   */
+  ltftDaysOff?: number[];
 };
+
+/** Count of contracted weekdays per LTFT week (excluding weekends), capped at 5. */
+function ltftWorkingWeekdays(ltftDaysOff: number[] | undefined): number {
+  if (!ltftDaysOff || ltftDaysOff.length === 0) return 5;
+  const off = new Set(ltftDaysOff.filter((d) => d >= 1 && d <= 5));
+  return Math.max(0, 5 - off.size);
+}
 
 export function auditTcs2016(
   assignments: AuditAssignment[],
   options: AuditOptions = {},
 ): AuditResult {
   const leaveDates = options.leaveDates ?? new Set<string>();
+  const ltftOffDows = new Set<number>(options.ltftDaysOff ?? []);
+  const ltftFraction = ltftWorkingWeekdays(options.ltftDaysOff) / 5;
   // Only "working" duty assignments — exclude leave/admin/teaching markers
   // that are not actually working shifts. (role_on_list 'non_clinical',
   // 'teaching', 'admin_session' are still working hours under TCS, so we
@@ -187,6 +210,9 @@ export function auditTcs2016(
       totalHours: 0,
       windowStart: null,
       windowEnd: null,
+      requestedWindowStart: options.windowStartISO ?? null,
+      requestedWindowEnd: options.windowEndISO ?? null,
+      ltftFraction,
       shifts: [],
       rules: [
         {
@@ -259,28 +285,38 @@ export function auditTcs2016(
     leaveInWindow > 0
       ? ` (excluded ${leaveInWindow} leave day${leaveInWindow === 1 ? "" : "s"})`
       : "";
+  // LTFT: scale the 48 h/week cap pro-rata (e.g. 0.6 FTE → 28.8 h/week).
+  const ltftThreshold = 48 * ltftFraction;
+  const ltftNote =
+    ltftFraction < 1
+      ? ` · LTFT ${(ltftFraction * 100).toFixed(0)}% → cap ${ltftThreshold.toFixed(1)} h/wk`
+      : "";
   rules.push({
     id: "avg_48h",
-    label: "Average ≤ 48h / week (over reference period)",
+    label:
+      ltftFraction < 1
+        ? `Average ≤ ${ltftThreshold.toFixed(1)}h / week (LTFT pro-rata)`
+        : "Average ≤ 48h / week (over reference period)",
     status:
       spanWeeks < 4
         ? "indeterminate"
-        : avgWeekly <= 48
+        : avgWeekly <= ltftThreshold
           ? "pass"
           : "fail",
     detail:
       spanWeeks < 4
-        ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)`
-        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} working day${spanDays === 1 ? "" : "s"})${leaveNote}`,
+        ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)${ltftNote}`
+        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} working day${spanDays === 1 ? "" : "s"})${leaveNote}${ltftNote}`,
     evidence: {
       windowStart: refStartISO,
       windowEnd: refEndISO,
       shifts: shifts.map(summarise),
       notes: [
-        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} contracted day(s) ≈ ${spanWeeks.toFixed(1)} weeks${leaveNote}`,
+        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} contracted day(s) ≈ ${spanWeeks.toFixed(1)} weeks${leaveNote}${ltftNote}`,
       ],
     },
   });
+
 
 
   // R2 — Max 72h in any rolling 7 consecutive days
@@ -429,8 +465,10 @@ export function auditTcs2016(
           },
   });
 
-  // R6 — Max 7 consecutive days worked. Leave days bridge a run because
-  // annual / study leave does not count as a rostered day off under TCS.
+  // R6 — Max 7 consecutive days worked. Leave days and contracted LTFT
+  // non-working days both bridge a run: annual / study leave does not count
+  // as a rostered day off under TCS, and an LTFT day off only counts as
+  // rest if no working shift bookends it as part of a single stretch.
   const days = Array.from(new Set(shifts.map((s) => s.date))).sort();
   let runDays = 0;
   let maxRunDays = 0;
@@ -438,19 +476,21 @@ export function auditTcs2016(
   let dayRunStart = 0;
   let bestDayStart = 0;
   let bestDayEnd = 0;
-  const onlyLeaveBetween = (prevMs: number, curMs: number): boolean => {
-    // Every calendar day strictly between prev and cur must be a leave day.
+  const onlyBridgedBetween = (prevMs: number, curMs: number): boolean => {
+    // Every calendar day strictly between prev and cur must be either a
+    // leave day or an LTFT contracted day off.
     if (curMs - prevMs <= MS_DAY) return true;
     for (let t = prevMs + MS_DAY; t < curMs; t += MS_DAY) {
       const iso = new Date(t).toISOString().slice(0, 10);
-      if (!leaveDates.has(iso)) return false;
+      const dow = new Date(t).getUTCDay();
+      if (!leaveDates.has(iso) && !ltftOffDows.has(dow)) return false;
     }
     return true;
   };
   for (let k = 0; k < days.length; k++) {
     const d = days[k];
     const dMs = dateAtHour(d, 0);
-    if (prevDay !== null && (dMs - prevDay === MS_DAY || onlyLeaveBetween(prevDay, dMs))) {
+    if (prevDay !== null && (dMs - prevDay === MS_DAY || onlyBridgedBetween(prevDay, dMs))) {
       runDays += 1;
     } else {
       runDays = 1;
@@ -633,6 +673,9 @@ export function auditTcs2016(
     totalHours,
     windowStart,
     windowEnd,
+    requestedWindowStart: options.windowStartISO ?? null,
+    requestedWindowEnd: options.windowEndISO ?? null,
+    ltftFraction,
     rules,
     shifts: shifts.map(summarise),
   };
