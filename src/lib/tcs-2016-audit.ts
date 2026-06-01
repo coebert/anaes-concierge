@@ -429,7 +429,8 @@ export function auditTcs2016(
           },
   });
 
-  // R6 — Max 7 consecutive days worked
+  // R6 — Max 7 consecutive days worked. Leave days bridge a run because
+  // annual / study leave does not count as a rostered day off under TCS.
   const days = Array.from(new Set(shifts.map((s) => s.date))).sort();
   let runDays = 0;
   let maxRunDays = 0;
@@ -437,10 +438,19 @@ export function auditTcs2016(
   let dayRunStart = 0;
   let bestDayStart = 0;
   let bestDayEnd = 0;
+  const onlyLeaveBetween = (prevMs: number, curMs: number): boolean => {
+    // Every calendar day strictly between prev and cur must be a leave day.
+    if (curMs - prevMs <= MS_DAY) return true;
+    for (let t = prevMs + MS_DAY; t < curMs; t += MS_DAY) {
+      const iso = new Date(t).toISOString().slice(0, 10);
+      if (!leaveDates.has(iso)) return false;
+    }
+    return true;
+  };
   for (let k = 0; k < days.length; k++) {
     const d = days[k];
     const dMs = dateAtHour(d, 0);
-    if (prevDay !== null && dMs - prevDay === MS_DAY) {
+    if (prevDay !== null && (dMs - prevDay === MS_DAY || onlyLeaveBetween(prevDay, dMs))) {
       runDays += 1;
     } else {
       runDays = 1;
@@ -453,6 +463,7 @@ export function auditTcs2016(
     }
     prevDay = dMs;
   }
+
   const dayRunDates = days.slice(bestDayStart, bestDayEnd + 1);
   const dayRunShifts = dayRunDates.flatMap((d) => shiftsByDate.get(d) ?? []).map(summarise);
   rules.push({
