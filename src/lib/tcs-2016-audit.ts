@@ -149,7 +149,32 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
 const MS_HOUR = 3_600_000;
 const MS_DAY = 86_400_000;
 
-export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
+/**
+ * Optional context that materially changes how the audit is computed.
+ *
+ *  - `windowStartISO` / `windowEndISO`: the reference period the audit was
+ *    asked to cover (lookback clamped to the trainee's rotation). When
+ *    supplied, R1 (average ≤ 48 h/week) divides by this period — not by
+ *    the span between the first and last shift — so sparse data and
+ *    leave blocks no longer artificially deflate the average.
+ *  - `leaveDates`: set of `YYYY-MM-DD` strings the trainee was on approved
+ *    leave. Leave days are (a) subtracted from R1's denominator (TCS 2016
+ *    averaging excludes annual / study leave) and (b) treated as bridging
+ *    days for R6 ("max 7 consecutive days") — leave doesn't count as a
+ *    rostered day off, so a working stretch interrupted only by leave is
+ *    still one continuous working period.
+ */
+export type AuditOptions = {
+  windowStartISO?: string;
+  windowEndISO?: string;
+  leaveDates?: Set<string>;
+};
+
+export function auditTcs2016(
+  assignments: AuditAssignment[],
+  options: AuditOptions = {},
+): AuditResult {
+  const leaveDates = options.leaveDates ?? new Set<string>();
   // Only "working" duty assignments — exclude leave/admin/teaching markers
   // that are not actually working shifts. (role_on_list 'non_clinical',
   // 'teaching', 'admin_session' are still working hours under TCS, so we
