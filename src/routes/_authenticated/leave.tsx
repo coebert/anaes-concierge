@@ -41,6 +41,44 @@ interface ProfileRow {
   grade: string | null;
 }
 
+interface AllowanceRow {
+  staff_id: string;
+  leave_year_start: string; // YYYY-MM-DD
+  annual_days: number;
+  study_days: number;
+}
+
+const DEFAULT_ANNUAL = 27;
+const DEFAULT_STUDY = 10;
+
+/**
+ * Working-day length of a leave request (Mon–Fri only), with half-day
+ * markers reducing the total by 0.5 each. Mirrors how NHS leave allowances
+ * are conventionally expressed.
+ */
+function leaveWorkingDays(r: Pick<LeaveRow, "start_date" | "end_date" | "half_day_start" | "half_day_end">): number {
+  let count = 0;
+  const start = new Date(r.start_date + "T00:00:00Z");
+  const end = new Date(r.end_date + "T00:00:00Z");
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const dow = d.getUTCDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  if (r.half_day_start) count -= 0.5;
+  if (r.half_day_end) count -= 0.5;
+  return Math.max(0, count);
+}
+
+/** Returns true if the leave window overlaps [yearStart, yearStart + 1y). */
+function leaveOverlapsYear(r: Pick<LeaveRow, "start_date" | "end_date">, yearStartISO: string): boolean {
+  const yStart = new Date(yearStartISO + "T00:00:00Z");
+  const yEnd = new Date(yStart);
+  yEnd.setUTCFullYear(yEnd.getUTCFullYear() + 1);
+  const lStart = new Date(r.start_date + "T00:00:00Z");
+  const lEnd = new Date(r.end_date + "T00:00:00Z");
+  return lStart < yEnd && lEnd >= yStart;
+}
+
 export const Route = createFileRoute("/_authenticated/leave")({
   component: LeavePage,
 });
@@ -70,6 +108,10 @@ function LeavePage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
+  // Year-scoped leave rows (separate from `rows` so the calendar / upcoming
+  // tabs aren't ballooned by historical data they don't need).
+  const [yearLeave, setYearLeave] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -77,6 +119,7 @@ function LeavePage() {
   const [pickedDate, setPickedDate] = useState<Date>(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [nameFilter, setNameFilter] = useState("");
+  const [allowanceFilter, setAllowanceFilter] = useState("");
 
   const load = async () => {
     if (!user) return;
@@ -91,10 +134,14 @@ function LeavePage() {
     windowStart.setDate(windowStart.getDate() - 60);
     const windowEnd = new Date(today);
     windowEnd.setFullYear(windowEnd.getFullYear() + 2);
+    // Allowance tab needs up to 13 months of history (longest realistic leave
+    // year window) to compute year-to-date taken/booked totals.
+    const yearLookback = new Date(today);
+    yearLookback.setDate(yearLookback.getDate() - 400);
     const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
 
     // Rely on RLS: staff see own rows; coords/admins see everyone.
-    const [leaveRes, profRes] = await Promise.all([
+    const [leaveRes, profRes, allowRes, yearLeaveRes] = await Promise.all([
       supabase
         .from("leave_requests")
         .select("*")
@@ -106,11 +153,25 @@ function LeavePage() {
         .from("profiles")
         .select("id, full_name, grade")
         .eq("active", true),
+      supabase
+        .from("leave_allowances")
+        .select("staff_id, leave_year_start, annual_days, study_days"),
+      supabase
+        .from("leave_requests")
+        .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
+        .in("status", ["approved", "pending"])
+        .gte("end_date", fmtIso(yearLookback))
+        .order("start_date", { ascending: true })
+        .range(0, 9999),
     ]);
     if (leaveRes.error) toast.error(leaveRes.error.message);
     if (profRes.error) toast.error(profRes.error.message);
+    if (allowRes.error) toast.error(allowRes.error.message);
+    if (yearLeaveRes.error) toast.error(yearLeaveRes.error.message);
     setRows((leaveRes.data ?? []) as LeaveRow[]);
     setProfiles((profRes.data ?? []) as ProfileRow[]);
+    setAllowances((allowRes.data ?? []) as AllowanceRow[]);
+    setYearLeave((yearLeaveRes.data ?? []) as LeaveRow[]);
     setLoading(false);
   };
 
@@ -194,6 +255,78 @@ function LeavePage() {
       .sort((a, b) => a.start_date.localeCompare(b.start_date));
   }, [activeRows]);
 
+  // --- Allowance summary: per-staff balances for the current leave year. ---
+  // Default leave year start: April 1st of the current (or prior, if before
+  // April) calendar year — the NHS convention. Per-staff overrides come from
+  // leave_allowances.leave_year_start.
+  const defaultYearStartISO = useMemo(() => {
+    const t = new Date();
+    const year = t.getUTCMonth() >= 3 ? t.getUTCFullYear() : t.getUTCFullYear() - 1;
+    return `${year}-04-01`;
+  }, []);
+
+  const allowanceByStaff = useMemo(() => {
+    const m = new Map<string, AllowanceRow>();
+    for (const a of allowances) m.set(a.staff_id, a);
+    return m;
+  }, [allowances]);
+
+  const allowanceRows = useMemo(() => {
+    type Bucket = { taken: number; booked: number };
+    type Summary = {
+      profile: ProfileRow;
+      yearStartISO: string;
+      annualAllowance: number;
+      studyAllowance: number;
+      annual: Bucket;
+      study: Bucket;
+      other: Bucket;
+    };
+    const out: Summary[] = [];
+    for (const p of profiles) {
+      const a = allowanceByStaff.get(p.id);
+      const yearStartISO = a?.leave_year_start ?? defaultYearStartISO;
+      const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
+      const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
+      const buckets: Record<"annual" | "study" | "other", Bucket> = {
+        annual: { taken: 0, booked: 0 },
+        study: { taken: 0, booked: 0 },
+        other: { taken: 0, booked: 0 },
+      };
+      for (const r of yearLeave) {
+        if (r.staff_id !== p.id) continue;
+        if (!leaveOverlapsYear(r, yearStartISO)) continue;
+        const days = leaveWorkingDays(r);
+        if (days <= 0) continue;
+        const bucketKey: "annual" | "study" | "other" =
+          r.type === "annual" ? "annual" : r.type === "study" ? "study" : "other";
+        if (r.status === "approved") buckets[bucketKey].taken += days;
+        else if (r.status === "pending") buckets[bucketKey].booked += days;
+      }
+      out.push({
+        profile: p,
+        yearStartISO,
+        annualAllowance,
+        studyAllowance,
+        annual: buckets.annual,
+        study: buckets.study,
+        other: buckets.other,
+      });
+    }
+    return out.sort((a, b) => a.profile.full_name.localeCompare(b.profile.full_name));
+  }, [profiles, yearLeave, allowanceByStaff, defaultYearStartISO]);
+
+  const allowanceVisible = useMemo(() => {
+    const q = allowanceFilter.trim().toLowerCase();
+    if (!q) return allowanceRows;
+    return allowanceRows.filter(
+      (r) =>
+        r.profile.full_name.toLowerCase().includes(q) ||
+        gradeLabel(r.profile.grade).toLowerCase().includes(q),
+    );
+  }, [allowanceRows, allowanceFilter]);
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -213,6 +346,7 @@ function LeavePage() {
         <TabsList>
           <TabsTrigger value="calendar">Department calendar</TabsTrigger>
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
+          <TabsTrigger value="allowances">Allowances</TabsTrigger>
           <TabsTrigger value="mine">My requests</TabsTrigger>
         </TabsList>
 
@@ -419,6 +553,98 @@ function LeavePage() {
                     })}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ---------------- Allowances ---------------- */}
+        <TabsContent value="allowances">
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-end justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Leave allowances</CardTitle>
+                <CardDescription>
+                  Days taken (approved) + booked (pending) vs annual allowance for the
+                  current leave year. Counts working days (Mon–Fri); half-day requests
+                  count as 0.5. Study covers professional / study leave.
+                </CardDescription>
+              </div>
+              <Input
+                value={allowanceFilter}
+                onChange={(e) => setAllowanceFilter(e.target.value)}
+                placeholder="Filter by name / grade…"
+                className="w-[260px]"
+              />
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : allowanceVisible.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No staff to show.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead className="text-right" title="Annual taken (approved) / booked (pending)">Annual taken/booked</TableHead>
+                        <TableHead className="text-right">Annual allowance</TableHead>
+                        <TableHead className="text-right">Annual remaining</TableHead>
+                        <TableHead className="text-right">Study taken/booked</TableHead>
+                        <TableHead className="text-right">Study allowance</TableHead>
+                        <TableHead className="text-right">Study remaining</TableHead>
+                        <TableHead className="text-right" title="Sick / parental / compassionate / other — informational only, not deducted from an allowance">Other taken/booked</TableHead>
+                        <TableHead className="text-xs text-muted-foreground">Leave year</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allowanceVisible.map((s) => {
+                        const annualUsed = s.annual.taken + s.annual.booked;
+                        const annualRem = s.annualAllowance - annualUsed;
+                        const studyUsed = s.study.taken + s.study.booked;
+                        const studyRem = s.studyAllowance - studyUsed;
+                        const otherUsed = s.other.taken + s.other.booked;
+                        const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
+                        const remTone = (rem: number) =>
+                          rem < 0 ? "text-destructive font-semibold"
+                          : rem <= 2 ? "text-amber-600 font-medium"
+                          : "";
+                        return (
+                          <TableRow key={s.profile.id}>
+                            <TableCell className="font-medium">{s.profile.full_name}</TableCell>
+                            <TableCell>{gradeLabel(s.profile.grade)}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(s.annual.taken)} / {fmt(s.annual.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.annualAllowance)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(annualRem))}>
+                              {fmt(annualRem)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(s.study.taken)} / {fmt(s.study.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.studyAllowance)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(studyRem))}>
+                              {fmt(studyRem)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.other.taken)} / {fmt(s.other.booked)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground font-mono">
+                              {formatDateGB(s.yearStartISO)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
