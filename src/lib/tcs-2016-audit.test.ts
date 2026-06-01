@@ -173,4 +173,44 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     const rule = r.rules.find((x) => x.id === "avg_48h");
     expect(rule?.detail).toMatch(/excluded 5 leave days/);
   });
+
+  it("LTFT 0.6 trainee gets a pro-rata 28.8 h/week cap on R1", () => {
+    // 8 weeks of Mon/Tue/Wed AM+PM (30 h/wk) — over a full-time 48 h cap
+    // this passes; pro-rated to 28.8 h it must FAIL.
+    const startMon = new Date("2026-05-25T00:00:00Z"); // Monday
+    const asgs: AuditAssignment[] = [];
+    for (let w = 0; w < 8; w++) {
+      for (let dOffset = 0; dOffset < 3; dOffset++) {
+        const t = new Date(startMon.getTime() + (w * 7 + dOffset) * 86_400_000);
+        const iso = t.toISOString().slice(0, 10);
+        asgs.push(mk(iso, "am"), mk(iso, "pm"));
+      }
+    }
+    const r = auditTcs2016(asgs, {
+      windowStartISO: "2026-05-25",
+      windowEndISO: "2026-07-19",
+      ltftDaysOff: [4, 5], // Thu, Fri off → 3/5 = 0.6 FTE
+    });
+    expect(r.ltftFraction).toBeCloseTo(0.6, 5);
+    const rule = r.rules.find((x) => x.id === "avg_48h");
+    expect(rule?.status).toBe("fail");
+    expect(rule?.label).toMatch(/LTFT pro-rata/);
+    expect(rule?.detail).toMatch(/28\.8 h\/wk/);
+  });
+
+  it("LTFT off-days bridge consecutive-day runs in R6", () => {
+    // Trainee LTFT with Wednesdays off. Mon, Tue, Thu, Fri, Sat, Sun, Mon, Tue
+    // worked → run = 8 (because Wed bridges), should FAIL R6.
+    const dates = [
+      "2026-05-25", "2026-05-26",              // Mon, Tue
+      // Wed 27 is LTFT off → bridged
+      "2026-05-28", "2026-05-29", "2026-05-30", "2026-05-31", // Thu-Sun
+      "2026-06-01", "2026-06-02",              // Mon, Tue
+    ];
+    const asgs = dates.map((d) => mk(d, "am"));
+    const r = auditTcs2016(asgs, { ltftDaysOff: [3] }); // Wed
+    const rule = r.rules.find((x) => x.id === "max_7_consec_days");
+    expect(rule?.status).toBe("fail");
+    expect(rule?.detail).toMatch(/8/);
+  });
 });
