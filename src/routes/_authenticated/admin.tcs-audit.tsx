@@ -193,7 +193,7 @@ function TcsAuditPage() {
             <Card><CardContent className="p-4 text-sm text-muted-foreground">No trainees on record.</CardContent></Card>
           ) : (
             <div className="space-y-4">
-              {rows.map(({ trainee, audit }) => (
+              {rows.map(({ trainee, audit, reason, startISO, endISO }) => (
                 <Card key={trainee.id}>
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -203,22 +203,32 @@ function TcsAuditPage() {
                           <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
                         )}
                       </CardTitle>
-                      <OverallBadge overall={audit.overall} />
+                      <OverallBadge overall={audit.overall} reason={reason} />
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {audit.totalShifts} shift(s) · {audit.totalHours} h ·{" "}
                       {audit.windowStart && audit.windowEnd
                         ? `${formatDateGB(audit.windowStart)} → ${formatDateGB(audit.windowEnd)}`
-                        : "no data"}
+                        : reason === "not_started" && startISO
+                          ? `rotation starts ${formatDateGB(startISO)}`
+                          : reason === "rotation_ended" && endISO
+                            ? `rotation ended ${formatDateGB(endISO)}`
+                            : "no rota data synced for this trainee"}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {audit.rules.map((r) => (
-                        <RuleCard key={r.id} rule={r} />
-                      ))}
-                    </div>
-                    <AllSessionsDrilldown audit={audit} />
+                    {reason ? (
+                      <ReasonBanner reason={reason} startISO={startISO} endISO={endISO} />
+                    ) : (
+                      <>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {audit.rules.map((r) => (
+                            <RuleCard key={r.id} rule={r} />
+                          ))}
+                        </div>
+                        <AllSessionsDrilldown audit={audit} />
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               ))}
