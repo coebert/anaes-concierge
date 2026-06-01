@@ -167,7 +167,7 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     ]);
     const r = auditTcs2016(a, {
       windowStartISO: "2026-05-25",
-      windowEndISO: "2026-06-21", // 4 weeks
+      windowEndISO: "2026-07-19", // ~8 weeks
       leaveDates: leave,
     });
     const rule = r.rules.find((x) => x.id === "avg_48h");
