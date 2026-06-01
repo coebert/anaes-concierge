@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { computeRotaGaps, type GapRange } from "@/lib/rota-gaps";
+import {
+  computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
+  type GapRange, type ClassifiedGapRange, type GapKind,
+} from "@/lib/rota-gaps";
 import { getSurname, formatDateGB, todayISO } from "@/lib/utils";
 import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
 
@@ -108,7 +111,19 @@ function RotaGapsPage() {
         const endISO = [t.rotation_end_date ?? today, today].sort()[0]; // earlier of the two
         const ltft = (t.ltft_days_off ?? []) as number[];
         const report = computeRotaGaps(dates, startISO, endISO, ltft);
-        return { trainee: t, report };
+        // Classification uses the full audit window (lookback → today) so
+        // pre-rotation and rotation-ended days appear as their own buckets
+        // rather than being silently clipped.
+        const auditStart = data.since ?? t.start_date ?? today;
+        const classified = classifyRotaGaps(
+          dates,
+          auditStart,
+          today,
+          t.start_date ?? null,
+          t.rotation_end_date ?? null,
+          ltft,
+        );
+        return { trainee: t, report, classified };
       })
       .filter((r) => {
         if (filter) {
@@ -197,7 +212,7 @@ function RotaGapsPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {rows.map(({ trainee, report }) => (
+              {rows.map(({ trainee, report, classified }) => (
                 <Card key={trainee.id}>
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -236,6 +251,7 @@ function RotaGapsPage() {
                       </ul>
                     </CardContent>
                   )}
+                  <ClassifiedSection report={classified} />
                 </Card>
               ))}
             </div>
@@ -295,5 +311,65 @@ function Stat({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+const KIND_TONE: Record<GapKind, string> = {
+  pre_rotation: "bg-muted text-muted-foreground",
+  rotation_ended: "bg-muted text-muted-foreground",
+  ltft_off: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  sync_missing: "bg-destructive/10 text-destructive",
+};
+
+function ClassifiedSection({
+  report,
+}: {
+  report: ReturnType<typeof classifyRotaGaps>;
+}) {
+  const total =
+    report.counts.pre_rotation +
+    report.counts.rotation_ended +
+    report.counts.ltft_off +
+    report.counts.sync_missing;
+  if (total === 0) return null;
+  return (
+    <CardContent className="border-t pt-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-medium text-muted-foreground">Classification:</span>
+        {(Object.keys(GAP_KIND_LABEL) as GapKind[]).map((k) => (
+          <Badge key={k} variant="outline" className={`gap-1 ${KIND_TONE[k]}`}>
+            {GAP_KIND_LABEL[k]}: {report.counts[k]}
+          </Badge>
+        ))}
+      </div>
+      {report.ranges.length > 0 && (
+        <ul className="divide-y rounded-md border">
+          {report.ranges.map((r) => (
+            <ClassifiedRangeRow key={`${r.kind}-${r.startISO}-${r.endISO}`} range={r} />
+          ))}
+        </ul>
+      )}
+    </CardContent>
+  );
+}
+
+function ClassifiedRangeRow({ range }: { range: ClassifiedGapRange }) {
+  const single = range.startISO === range.endISO;
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+      <span className="flex items-center gap-2">
+        <Badge variant="outline" className={`px-1 py-0 text-[10px] ${KIND_TONE[range.kind]}`}>
+          {GAP_KIND_LABEL[range.kind]}
+        </Badge>
+        <span className="font-mono">
+          {single
+            ? formatDateGB(range.startISO)
+            : `${formatDateGB(range.startISO)} → ${formatDateGB(range.endISO)}`}
+        </span>
+      </span>
+      <span className="text-xs text-muted-foreground">
+        {range.days} day{range.days === 1 ? "" : "s"}
+      </span>
+    </li>
   );
 }

@@ -61,3 +61,63 @@ describe("computeRotaGaps", () => {
     expect(r.totalExpectedDays).toBe(0);
   });
 });
+
+import { classifyRotaGaps } from "./rota-gaps";
+
+describe("classifyRotaGaps", () => {
+  it("buckets days outside the rotation as pre/post and inside as sync/ltft", () => {
+    // Audit window 2025-06-02 Mon → 2025-06-15 Sun
+    // Rotation:    2025-06-04 Wed → 2025-06-11 Wed
+    // No assignments at all.
+    const r = classifyRotaGaps(
+      new Set(),
+      "2025-06-02",
+      "2025-06-15",
+      "2025-06-04",
+      "2025-06-11",
+      [],
+    );
+    expect(r.counts.pre_rotation).toBe(2);  // Mon 02, Tue 03
+    expect(r.counts.rotation_ended).toBe(4); // Thu 12, Fri 13, Sat 14, Sun 15
+    expect(r.counts.ltft_off).toBe(2);       // Sat 07, Sun 08
+    expect(r.counts.sync_missing).toBe(6);   // Wed 04 → Wed 11 minus weekend
+    // Ranges are contiguous-by-kind:
+    const kinds = r.ranges.map((x) => x.kind);
+    expect(kinds).toEqual([
+      "pre_rotation",
+      "sync_missing",
+      "ltft_off",
+      "sync_missing",
+      "rotation_ended",
+    ]);
+  });
+
+  it("treats a shifted day as a break", () => {
+    const r = classifyRotaGaps(
+      new Set(["2025-06-04"]),
+      "2025-06-02",
+      "2025-06-06",
+      "2025-06-02",
+      "2025-06-06",
+      [],
+    );
+    // Mon/Tue sync_missing, Wed worked, Thu/Fri sync_missing
+    expect(r.ranges).toHaveLength(2);
+    expect(r.ranges[0]).toMatchObject({ kind: "sync_missing", days: 2, startISO: "2025-06-02" });
+    expect(r.ranges[1]).toMatchObject({ kind: "sync_missing", days: 2, startISO: "2025-06-05" });
+  });
+
+  it("respects LTFT days off", () => {
+    // Trainee never works Wednesday.
+    const r = classifyRotaGaps(
+      new Set(),
+      "2025-06-02",
+      "2025-06-06",
+      "2025-06-02",
+      "2025-06-06",
+      [3],
+    );
+    expect(r.counts.ltft_off).toBe(1);
+    expect(r.counts.sync_missing).toBe(4);
+  });
+});
