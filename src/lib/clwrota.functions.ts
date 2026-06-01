@@ -1781,33 +1781,16 @@ export async function performRotaSync() {
 // Leave sync
 // =====================================================================
 
-type LeaveType = "annual" | "study" | "compassionate" | "sick" | "parental" | "other";
-type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+// Pure classifiers are in their own module so they can be unit-tested and so
+// the professional-vs-study split survives every CLWRota upsert.
+import {
+  classifyLeaveType,
+  classifyLeaveStatus,
+  type LeaveType,
+  type LeaveStatus,
+} from "./clwrota-leave-classify";
 
-function classifyLeaveType(raw: string | null): LeaveType {
-  const s = (raw ?? "").toLowerCase();
-  if (!s) return "other";
-  if (s.includes("annual") || s.includes("holiday") || s === "al" || s.includes("vacation"))
-    return "annual";
-  if (s.includes("study") || s.includes("conference") || s.includes("course") || s === "sl")
-    return "study";
-  if (s.includes("compassion") || s.includes("bereave")) return "compassionate";
-  if (s.includes("sick") || s.includes("illness")) return "sick";
-  if (s.includes("matern") || s.includes("patern") || s.includes("parental") || s.includes("adopt"))
-    return "parental";
-  return "other";
-}
 
-function classifyLeaveStatus(raw: string | null): LeaveStatus {
-  const s = (raw ?? "").toLowerCase().trim();
-  if (!s) return "approved"; // CLWRota-published leave is already approved
-  if (s.includes("approve") || s.includes("confirm") || s.includes("granted") || s === "ok")
-    return "approved";
-  if (s.includes("reject") || s.includes("deny") || s.includes("declined")) return "rejected";
-  if (s.includes("cancel") || s.includes("withdrawn")) return "cancelled";
-  if (s.includes("pending") || s.includes("request") || s.includes("await")) return "pending";
-  return "approved";
-}
 
 /**
  * Pull leave from the configured CLWRota leave report URL and upsert into
@@ -1981,7 +1964,7 @@ export async function performLeaveSync() {
 
     draftsByExtId.set(externalId, {
       staff_id: staffId,
-      type: classifyLeaveType(typeRaw),
+      type: classifyLeaveType(typeRaw, reasonText),
       start_date,
       end_date,
       status: classifyLeaveStatus(statusRaw),
