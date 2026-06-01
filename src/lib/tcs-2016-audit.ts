@@ -82,7 +82,9 @@ function toShift(a: AuditAssignment): Shift {
     session: a.session,
     duty_type: a.duty_type,
     isNight: a.session === "night",
-    isLong: hours >= 10,
+    // TCS 2016: a "long shift" lasts MORE than 10 hours. A standard AM+PM
+    // theatre day merges to exactly 10 h and must not be counted as long.
+    isLong: hours > 10,
     isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
   };
 }
