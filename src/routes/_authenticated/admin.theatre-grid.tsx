@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
-import { formatDateGB } from "@/lib/utils";
+import { formatDateGB, toISODateLocal } from "@/lib/utils";
 import {
   ViewModeToggle, PeriodNav, buildDays, type ViewMode,
 } from "@/components/rota-views";
@@ -24,7 +24,7 @@ const SESSIONS: Sess[] = ["am", "pm"];
 const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return toISODateLocal(d);
 }
 
 type SessionRow = {
