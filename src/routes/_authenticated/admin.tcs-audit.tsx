@@ -184,10 +184,11 @@ function TcsAuditPage() {
         <div className="text-sm text-muted-foreground">Running audit…</div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <Stat icon={ShieldCheck} tone="ok" label="Compliant" value={compliantCount} />
             <Stat icon={ShieldAlert} tone="bad" label="Non-compliant" value={breachCount} />
-            <Stat icon={HelpCircle} tone="muted" label="Insufficient data" value={indetCount} />
+            <Stat icon={HelpCircle} tone="muted" label="No rota synced" value={noDataCount} />
+            <Stat icon={HelpCircle} tone="muted" label="Pre/post rotation" value={preRotationCount} />
           </div>
 
           {rows.length === 0 ? (
