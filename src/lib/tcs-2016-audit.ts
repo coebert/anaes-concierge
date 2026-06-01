@@ -234,10 +234,31 @@ export function auditTcs2016(
 
   const rules: RuleResult[] = [];
 
-  // R1 — Max 48h/week averaged over the rota's reference period (full window here).
-  const spanDays = Math.max(1, Math.round((shifts[shifts.length - 1].endMs - shifts[0].startMs) / MS_DAY));
+  // R1 — Max 48h/week averaged over the rota's reference period.
+  //
+  // The reference period is the supplied audit window (lookback clamped to
+  // rotation) when available, otherwise the span of recorded shifts. Days
+  // the trainee was on approved leave are subtracted from the denominator
+  // because TCS 2016 Schedule 3 paragraph 12 excludes annual / study /
+  // sick leave from the WTD average.
+  const refStartISO = options.windowStartISO ?? windowStart;
+  const refEndISO = options.windowEndISO ?? windowEnd;
+  const refSpanDaysRaw = Math.max(
+    1,
+    Math.round((dateAtHour(refEndISO, 0) - dateAtHour(refStartISO, 0)) / MS_DAY) + 1,
+  );
+  // Count only leave days that fall inside the reference period.
+  let leaveInWindow = 0;
+  for (const d of leaveDates) {
+    if (d >= refStartISO && d <= refEndISO) leaveInWindow += 1;
+  }
+  const spanDays = Math.max(1, refSpanDaysRaw - leaveInWindow);
   const spanWeeks = spanDays / 7;
   const avgWeekly = totalHours / spanWeeks;
+  const leaveNote =
+    leaveInWindow > 0
+      ? ` (excluded ${leaveInWindow} leave day${leaveInWindow === 1 ? "" : "s"})`
+      : "";
   rules.push({
     id: "avg_48h",
     label: "Average ≤ 48h / week (over reference period)",
@@ -250,16 +271,17 @@ export function auditTcs2016(
     detail:
       spanWeeks < 4
         ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)`
-        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} d)`,
+        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} working day${spanDays === 1 ? "" : "s"})${leaveNote}`,
     evidence: {
-      windowStart,
-      windowEnd,
+      windowStart: refStartISO,
+      windowEnd: refEndISO,
       shifts: shifts.map(summarise),
       notes: [
-        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} day(s) ≈ ${spanWeeks.toFixed(1)} weeks`,
+        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} contracted day(s) ≈ ${spanWeeks.toFixed(1)} weeks${leaveNote}`,
       ],
     },
   });
+
 
   // R2 — Max 72h in any rolling 7 consecutive days
   let max72 = 0;
