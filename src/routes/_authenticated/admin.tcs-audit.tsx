@@ -235,3 +235,108 @@ function Stat({
     </Card>
   );
 }
+
+const SESSION_LABEL: Record<ShiftSummary["session"], string> = {
+  am: "AM (08:00–13:00)",
+  pm: "PM (13:00–18:00)",
+  eve: "Eve (18:00–21:00)",
+  night: "Night (21:00–08:00 +1)",
+};
+
+function ShiftRow({ s }: { s: ShiftSummary }) {
+  const tags: string[] = [];
+  if (s.isNight) tags.push("night");
+  if (s.isLong) tags.push("long >10h");
+  if (s.isWeekend) tags.push("weekend");
+  return (
+    <li className="grid grid-cols-[110px_140px_1fr_auto] items-center gap-2 border-b py-1 text-xs last:border-b-0">
+      <span className="font-mono">{formatDateGB(s.date)}</span>
+      <span className="text-muted-foreground">{SESSION_LABEL[s.session]}</span>
+      <span className="truncate" title={s.duty_type}>{s.duty_type || "—"}</span>
+      <span className="flex items-center gap-1">
+        <span className="tabular-nums">{s.hours} h</span>
+        {tags.map((t) => (
+          <Badge key={t} variant="outline" className="px-1 py-0 text-[10px]">{t}</Badge>
+        ))}
+      </span>
+    </li>
+  );
+}
+
+function RuleCard({ rule }: { rule: RuleResult }) {
+  const [open, setOpen] = useState(false);
+  const hasEvidence = !!rule.evidence && rule.evidence.shifts.length > 0;
+  return (
+    <div className="rounded-md border p-2 text-sm">
+      <div className="flex items-start gap-2">
+        <RuleIcon status={rule.status} />
+        <div className="flex-1">
+          <div className="font-medium">{rule.label}</div>
+          <div className="text-xs text-muted-foreground">{rule.detail}</div>
+          {rule.breaches && rule.breaches.length > 0 && (
+            <ul className="mt-1 list-disc pl-4 text-xs text-destructive">
+              {rule.breaches.map((b, i) => (
+                <li key={i}>{b.note}</li>
+              ))}
+            </ul>
+          )}
+          {hasEvidence && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {open ? "Hide" : "Show"} sessions used ({rule.evidence!.shifts.length})
+            </button>
+          )}
+        </div>
+      </div>
+      {open && hasEvidence && (
+        <div className="mt-2 rounded-md bg-muted/40 p-2">
+          {rule.evidence!.windowStart && rule.evidence!.windowEnd && (
+            <div className="mb-1 text-[11px] text-muted-foreground">
+              Window: {formatDateGB(rule.evidence!.windowStart)} → {formatDateGB(rule.evidence!.windowEnd)}
+            </div>
+          )}
+          {rule.evidence!.notes && rule.evidence!.notes.length > 0 && (
+            <ul className="mb-2 list-disc pl-4 text-[11px] text-muted-foreground">
+              {rule.evidence!.notes.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          )}
+          <ul className="max-h-64 overflow-y-auto">
+            {rule.evidence!.shifts.map((s, i) => (
+              <ShiftRow key={`${s.date}-${s.session}-${i}`} s={s} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AllSessionsDrilldown({ audit }: { audit: AuditResult }) {
+  const [open, setOpen] = useState(false);
+  if (audit.shifts.length === 0) return null;
+  return (
+    <div className="rounded-md border bg-muted/20 p-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {open ? "Hide" : "Show"} all {audit.shifts.length} session(s) used in this audit
+      </button>
+      {open && (
+        <ul className="mt-2 max-h-80 overflow-y-auto px-1">
+          {audit.shifts.map((s, i) => (
+            <ShiftRow key={`${s.date}-${s.session}-${i}`} s={s} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
