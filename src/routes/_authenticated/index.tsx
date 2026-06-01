@@ -71,7 +71,7 @@ function AuditDashboard() {
           .eq("active", true).eq("grade", "trainee"),
         supabase.from("leave_requests").select("id", { count: "exact", head: true })
           .in("status", ["approved", "pending"])
-          .gte("start_date", today).lte("start_date", in90),
+          .lte("start_date", in90).gte("end_date", today),
         supabase.from("clwrota_sync_state").select("last_sync_at, last_status, last_error")
           .eq("id", 1).maybeSingle(),
         supabase.from("rota_assignments").select("id", { count: "exact", head: true })
