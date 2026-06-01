@@ -124,6 +124,74 @@ export function SummaryDashboard() {
     queryFn: () => computeListCoverage(today, in6),
   });
 
+  // Staff who are NOT scheduled to work today — no rota assignment at all,
+  // not on approved leave, and not on an LTFT contractual day off. SPA/admin
+  // (and every other duty_type) counts as "scheduled", so those people are
+  // intentionally excluded from these lists.
+  const { data: notWorking, isLoading: nwLoading } = useQuery({
+    queryKey: ["summary-not-working-today", today],
+    queryFn: async () => {
+      const [staffRes, assignRes, leaveRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id,full_name,grade,training_level,ltft_days_off,rotation_end_date")
+          .eq("active", true)
+          .in("grade", ["consultant", "sas", "trainee"]),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id")
+          .eq("session_date", today),
+        supabase
+          .from("leave_requests")
+          .select("staff_id")
+          .eq("status", "approved")
+          .lte("start_date", today)
+          .gte("end_date", today),
+      ]);
+      if (staffRes.error) throw staffRes.error;
+      if (assignRes.error) throw assignRes.error;
+      if (leaveRes.error) throw leaveRes.error;
+
+      const assignedIds = new Set((assignRes.data ?? []).map((a) => a.staff_id));
+      const leaveIds = new Set((leaveRes.data ?? []).map((l) => l.staff_id));
+      // Match the rota's Mon-first day-of-week convention used by
+      // ltft_days_off (see rota-validation.ts:dayIndexMonFirst).
+      const js = new Date(today + "T00:00:00").getDay();
+      const dowMonFirst = (js + 6) % 7;
+
+      type Entry = { id: string; name: string; trainingLevel: string | null };
+      const buckets: { consultants: Entry[]; sas: Entry[]; trainees: Entry[] } = {
+        consultants: [],
+        sas: [],
+        trainees: [],
+      };
+
+      const rows = (staffRes.data ?? []) as Array<{
+        id: string;
+        full_name: string;
+        grade: string | null;
+        training_level: string | null;
+        ltft_days_off: number[] | null;
+        rotation_end_date: string | null;
+      }>;
+      for (const p of rows) {
+        if (assignedIds.has(p.id)) continue;
+        if (leaveIds.has(p.id)) continue;
+        if ((p.ltft_days_off ?? []).includes(dowMonFirst)) continue;
+        // Trainees past their rotation end date have left the department.
+        if (p.grade === "trainee" && p.rotation_end_date && today > p.rotation_end_date) continue;
+        const entry: Entry = { id: p.id, name: p.full_name, trainingLevel: p.training_level };
+        if (p.grade === "consultant") buckets.consultants.push(entry);
+        else if (p.grade === "sas") buckets.sas.push(entry);
+        else if (p.grade === "trainee") buckets.trainees.push(entry);
+      }
+      for (const k of ["consultants", "sas", "trainees"] as const) {
+        buckets[k].sort((a, b) => a.name.localeCompare(b.name));
+      }
+      return buckets;
+    },
+  });
+
   const days = robustness?.days ?? [];
 
   return (
