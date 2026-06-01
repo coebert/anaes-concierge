@@ -119,3 +119,129 @@ export function computeRotaGaps(
     windowEndISO,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Classified gap report
+// ---------------------------------------------------------------------------
+
+/**
+ * Why a particular day in the audit window has no rota assignment.
+ *
+ * - `pre_rotation`     – before the trainee's recorded `start_date`
+ * - `rotation_ended`   – after the trainee's `rotation_end_date`
+ * - `ltft_off`         – a weekend or contracted LTFT non-working day inside
+ *                        the rotation window (expected to be empty)
+ * - `sync_missing`     – a weekday inside the rotation window that the
+ *                        trainee should be working: a real CLWRota sync gap
+ */
+export type GapKind =
+  | "pre_rotation"
+  | "rotation_ended"
+  | "ltft_off"
+  | "sync_missing";
+
+export interface ClassifiedGapRange {
+  kind: GapKind;
+  startISO: string;
+  endISO: string;
+  /** Inclusive number of calendar days in the range. */
+  days: number;
+}
+
+export interface ClassifiedGapReport {
+  ranges: ClassifiedGapRange[];
+  counts: Record<GapKind, number>;
+  windowStartISO: string;
+  windowEndISO: string;
+}
+
+/**
+ * Walk every day in the audit window and bucket missing-assignment days into
+ * one of four reasons. Days that have at least one shift break a run.
+ * Contiguous days of the SAME kind are grouped into one range.
+ */
+export function classifyRotaGaps(
+  assignmentDates: Set<string>,
+  auditStartISO: string,
+  auditEndISO: string,
+  rotationStartISO: string | null,
+  rotationEndISO: string | null,
+  ltftDaysOff: number[] = [],
+): ClassifiedGapReport {
+  const start = parseDateLocal(auditStartISO);
+  const end = parseDateLocal(auditEndISO);
+  const empty: ClassifiedGapReport = {
+    ranges: [],
+    counts: { pre_rotation: 0, rotation_ended: 0, ltft_off: 0, sync_missing: 0 },
+    windowStartISO: auditStartISO,
+    windowEndISO: auditEndISO,
+  };
+  if (!start || !end || start.getTime() > end.getTime()) return empty;
+
+  const rotStart = rotationStartISO ? parseDateLocal(rotationStartISO) : null;
+  const rotEnd = rotationEndISO ? parseDateLocal(rotationEndISO) : null;
+  const offSet = new Set<number>([0, 6, ...ltftDaysOff]);
+
+  const counts: Record<GapKind, number> = {
+    pre_rotation: 0, rotation_ended: 0, ltft_off: 0, sync_missing: 0,
+  };
+  const ranges: ClassifiedGapRange[] = [];
+  let curKind: GapKind | null = null;
+  let curStart: Date | null = null;
+  let curEnd: Date | null = null;
+
+  const flush = () => {
+    if (curKind && curStart && curEnd) {
+      ranges.push({
+        kind: curKind,
+        startISO: toISO(curStart),
+        endISO: toISO(curEnd),
+        days: Math.round((curEnd.getTime() - curStart.getTime()) / MS_DAY) + 1,
+      });
+    }
+    curKind = null;
+    curStart = null;
+    curEnd = null;
+  };
+
+  for (let t = start.getTime(); t <= end.getTime(); t += MS_DAY) {
+    const d = new Date(t);
+    const iso = toISO(d);
+
+    if (assignmentDates.has(iso)) {
+      flush();
+      continue;
+    }
+
+    let kind: GapKind;
+    if (rotStart && d.getTime() < rotStart.getTime()) {
+      kind = "pre_rotation";
+    } else if (rotEnd && d.getTime() > rotEnd.getTime()) {
+      kind = "rotation_ended";
+    } else if (offSet.has(d.getDay())) {
+      kind = "ltft_off";
+    } else {
+      kind = "sync_missing";
+    }
+
+    counts[kind] += 1;
+    if (curKind === kind) {
+      curEnd = d;
+    } else {
+      flush();
+      curKind = kind;
+      curStart = d;
+      curEnd = d;
+    }
+  }
+  flush();
+
+  return { ranges, counts, windowStartISO: auditStartISO, windowEndISO: auditEndISO };
+}
+
+export const GAP_KIND_LABEL: Record<GapKind, string> = {
+  pre_rotation: "Pre-rotation",
+  rotation_ended: "Rotation ended",
+  ltft_off: "LTFT / weekend off",
+  sync_missing: "Sync missing",
+};
