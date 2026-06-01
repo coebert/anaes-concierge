@@ -285,28 +285,38 @@ export function auditTcs2016(
     leaveInWindow > 0
       ? ` (excluded ${leaveInWindow} leave day${leaveInWindow === 1 ? "" : "s"})`
       : "";
+  // LTFT: scale the 48 h/week cap pro-rata (e.g. 0.6 FTE → 28.8 h/week).
+  const ltftThreshold = 48 * ltftFraction;
+  const ltftNote =
+    ltftFraction < 1
+      ? ` · LTFT ${(ltftFraction * 100).toFixed(0)}% → cap ${ltftThreshold.toFixed(1)} h/wk`
+      : "";
   rules.push({
     id: "avg_48h",
-    label: "Average ≤ 48h / week (over reference period)",
+    label:
+      ltftFraction < 1
+        ? `Average ≤ ${ltftThreshold.toFixed(1)}h / week (LTFT pro-rata)`
+        : "Average ≤ 48h / week (over reference period)",
     status:
       spanWeeks < 4
         ? "indeterminate"
-        : avgWeekly <= 48
+        : avgWeekly <= ltftThreshold
           ? "pass"
           : "fail",
     detail:
       spanWeeks < 4
-        ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)`
-        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} working day${spanDays === 1 ? "" : "s"})${leaveNote}`,
+        ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)${ltftNote}`
+        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} working day${spanDays === 1 ? "" : "s"})${leaveNote}${ltftNote}`,
     evidence: {
       windowStart: refStartISO,
       windowEnd: refEndISO,
       shifts: shifts.map(summarise),
       notes: [
-        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} contracted day(s) ≈ ${spanWeeks.toFixed(1)} weeks${leaveNote}`,
+        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} contracted day(s) ≈ ${spanWeeks.toFixed(1)} weeks${leaveNote}${ltftNote}`,
       ],
     },
   });
+
 
 
   // R2 — Max 72h in any rolling 7 consecutive days
