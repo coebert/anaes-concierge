@@ -255,6 +255,78 @@ function LeavePage() {
       .sort((a, b) => a.start_date.localeCompare(b.start_date));
   }, [activeRows]);
 
+  // --- Allowance summary: per-staff balances for the current leave year. ---
+  // Default leave year start: April 1st of the current (or prior, if before
+  // April) calendar year — the NHS convention. Per-staff overrides come from
+  // leave_allowances.leave_year_start.
+  const defaultYearStartISO = useMemo(() => {
+    const t = new Date();
+    const year = t.getUTCMonth() >= 3 ? t.getUTCFullYear() : t.getUTCFullYear() - 1;
+    return `${year}-04-01`;
+  }, []);
+
+  const allowanceByStaff = useMemo(() => {
+    const m = new Map<string, AllowanceRow>();
+    for (const a of allowances) m.set(a.staff_id, a);
+    return m;
+  }, [allowances]);
+
+  const allowanceRows = useMemo(() => {
+    type Bucket = { taken: number; booked: number };
+    type Summary = {
+      profile: ProfileRow;
+      yearStartISO: string;
+      annualAllowance: number;
+      studyAllowance: number;
+      annual: Bucket;
+      study: Bucket;
+      other: Bucket;
+    };
+    const out: Summary[] = [];
+    for (const p of profiles) {
+      const a = allowanceByStaff.get(p.id);
+      const yearStartISO = a?.leave_year_start ?? defaultYearStartISO;
+      const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
+      const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
+      const buckets: Record<"annual" | "study" | "other", Bucket> = {
+        annual: { taken: 0, booked: 0 },
+        study: { taken: 0, booked: 0 },
+        other: { taken: 0, booked: 0 },
+      };
+      for (const r of yearLeave) {
+        if (r.staff_id !== p.id) continue;
+        if (!leaveOverlapsYear(r, yearStartISO)) continue;
+        const days = leaveWorkingDays(r);
+        if (days <= 0) continue;
+        const bucketKey: "annual" | "study" | "other" =
+          r.type === "annual" ? "annual" : r.type === "study" ? "study" : "other";
+        if (r.status === "approved") buckets[bucketKey].taken += days;
+        else if (r.status === "pending") buckets[bucketKey].booked += days;
+      }
+      out.push({
+        profile: p,
+        yearStartISO,
+        annualAllowance,
+        studyAllowance,
+        annual: buckets.annual,
+        study: buckets.study,
+        other: buckets.other,
+      });
+    }
+    return out.sort((a, b) => a.profile.full_name.localeCompare(b.profile.full_name));
+  }, [profiles, yearLeave, allowanceByStaff, defaultYearStartISO]);
+
+  const allowanceVisible = useMemo(() => {
+    const q = allowanceFilter.trim().toLowerCase();
+    if (!q) return allowanceRows;
+    return allowanceRows.filter(
+      (r) =>
+        r.profile.full_name.toLowerCase().includes(q) ||
+        gradeLabel(r.profile.grade).toLowerCase().includes(q),
+    );
+  }, [allowanceRows, allowanceFilter]);
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
