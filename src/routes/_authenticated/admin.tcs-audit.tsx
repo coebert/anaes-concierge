@@ -36,6 +36,7 @@ function TcsAuditPage() {
     queryKey: ["tcs-audit", lookback],
     queryFn: async () => {
       const today = new Date();
+      const todayISO = today.toISOString().slice(0, 10);
       const since =
         lookback === "all"
           ? null
@@ -43,26 +44,40 @@ function TcsAuditPage() {
 
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, training_level")
+        .select("id, full_name, training_level, start_date, rotation_end_date")
         .eq("grade", "trainee")
         .eq("active", true)
         .order("full_name");
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
-      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>() };
+      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>(), todayISO };
 
-      let q = supabase
-        .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, role_on_list")
-        .in("staff_id", ids)
-        .order("session_date", { ascending: true })
-        .range(0, 9999);
-      if (since) q = q.gte("session_date", since);
-      const { data: assignments, error: e2 } = await q;
-      if (e2) throw e2;
+      // Fetch in pages of 1000 to avoid Supabase's default row cap silently
+      // truncating high-volume trainees (a single .range(0, 9999) request
+      // can still be capped server-side).
+      const PAGE = 1000;
+      const all: Array<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string }> = [];
+      let offset = 0;
+      // Loop until a page returns fewer than PAGE rows.
+      while (true) {
+        let q = supabase
+          .from("rota_assignments")
+          .select("staff_id, session_date, session, duty_type, role_on_list")
+          .in("staff_id", ids)
+          .order("session_date", { ascending: true })
+          .range(offset, offset + PAGE - 1);
+        if (since) q = q.gte("session_date", since);
+        const { data: page, error: e2 } = await q;
+        if (e2) throw e2;
+        const rows = page ?? [];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+        offset += PAGE;
+        if (offset > 50_000) break; // hard safety stop
+      }
 
       const map = new Map<string, AuditAssignment[]>();
-      for (const a of assignments ?? []) {
+      for (const a of all) {
         const arr = map.get(a.staff_id) ?? [];
         arr.push({
           session_date: a.session_date,
@@ -72,17 +87,40 @@ function TcsAuditPage() {
         });
         map.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff: map };
+      return { trainees: trainees ?? [], assignmentsByStaff: map, todayISO };
     },
   });
 
   const rows = useMemo(() => {
     if (!data) return [];
+    const todayISO = data.todayISO;
     return data.trainees
-      .map((t) => ({
-        trainee: t,
-        audit: auditTcs2016(data.assignmentsByStaff.get(t.id) ?? []),
-      }))
+      .map((t) => {
+        const all = data.assignmentsByStaff.get(t.id) ?? [];
+        // Clamp the audit window to the trainee's actual rotation dates so
+        // we don't report "no data" for trainees who haven't started yet
+        // (start_date in the future) or whose rotation has ended.
+        const startISO = t.start_date ?? null;
+        const endISO = t.rotation_end_date ?? null;
+        const inRotation = all.filter((a) => {
+          if (startISO && a.session_date < startISO) return false;
+          if (endISO && a.session_date > endISO) return false;
+          return true;
+        });
+        let reason: "not_started" | "rotation_ended" | "no_sync" | null = null;
+        if (inRotation.length === 0) {
+          if (startISO && startISO > todayISO) reason = "not_started";
+          else if (endISO && endISO < todayISO) reason = "rotation_ended";
+          else reason = "no_sync";
+        }
+        return {
+          trainee: t,
+          audit: auditTcs2016(inRotation),
+          reason,
+          startISO,
+          endISO,
+        };
+      })
       .filter((r) => {
         if (!filter) return true;
         const q = filter.toLowerCase();
@@ -106,9 +144,10 @@ function TcsAuditPage() {
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
-  const compliantCount = rows.filter((r) => r.audit.overall === "compliant").length;
+  const compliantCount = rows.filter((r) => r.audit.overall === "compliant" && !r.reason).length;
   const breachCount = rows.filter((r) => r.audit.overall === "non_compliant").length;
-  const indetCount = rows.filter((r) => r.audit.overall === "insufficient_data").length;
+  const noDataCount = rows.filter((r) => r.reason === "no_sync").length;
+  const preRotationCount = rows.filter((r) => r.reason === "not_started" || r.reason === "rotation_ended").length;
 
   return (
     <div className="space-y-6">
@@ -145,17 +184,18 @@ function TcsAuditPage() {
         <div className="text-sm text-muted-foreground">Running audit…</div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <Stat icon={ShieldCheck} tone="ok" label="Compliant" value={compliantCount} />
             <Stat icon={ShieldAlert} tone="bad" label="Non-compliant" value={breachCount} />
-            <Stat icon={HelpCircle} tone="muted" label="Insufficient data" value={indetCount} />
+            <Stat icon={HelpCircle} tone="muted" label="No rota synced" value={noDataCount} />
+            <Stat icon={HelpCircle} tone="muted" label="Pre/post rotation" value={preRotationCount} />
           </div>
 
           {rows.length === 0 ? (
             <Card><CardContent className="p-4 text-sm text-muted-foreground">No trainees on record.</CardContent></Card>
           ) : (
             <div className="space-y-4">
-              {rows.map(({ trainee, audit }) => (
+              {rows.map(({ trainee, audit, reason, startISO, endISO }) => (
                 <Card key={trainee.id}>
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -165,22 +205,32 @@ function TcsAuditPage() {
                           <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
                         )}
                       </CardTitle>
-                      <OverallBadge overall={audit.overall} />
+                      <OverallBadge overall={audit.overall} reason={reason} />
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {audit.totalShifts} shift(s) · {audit.totalHours} h ·{" "}
                       {audit.windowStart && audit.windowEnd
                         ? `${formatDateGB(audit.windowStart)} → ${formatDateGB(audit.windowEnd)}`
-                        : "no data"}
+                        : reason === "not_started" && startISO
+                          ? `rotation starts ${formatDateGB(startISO)}`
+                          : reason === "rotation_ended" && endISO
+                            ? `rotation ended ${formatDateGB(endISO)}`
+                            : "no rota data synced for this trainee"}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {audit.rules.map((r) => (
-                        <RuleCard key={r.id} rule={r} />
-                      ))}
-                    </div>
-                    <AllSessionsDrilldown audit={audit} />
+                    {reason ? (
+                      <ReasonBanner reason={reason} startISO={startISO} endISO={endISO} />
+                    ) : (
+                      <>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {audit.rules.map((r) => (
+                            <RuleCard key={r.id} rule={r} />
+                          ))}
+                        </div>
+                        <AllSessionsDrilldown audit={audit} />
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -192,12 +242,48 @@ function TcsAuditPage() {
   );
 }
 
-function OverallBadge({ overall }: { overall: "compliant" | "non_compliant" | "insufficient_data" }) {
+type ReasonCode = "not_started" | "rotation_ended" | "no_sync" | null;
+
+function OverallBadge({
+  overall,
+  reason,
+}: {
+  overall: "compliant" | "non_compliant" | "insufficient_data";
+  reason?: ReasonCode;
+}) {
   if (overall === "compliant")
     return <Badge className="bg-emerald-600 hover:bg-emerald-600">Compliant</Badge>;
   if (overall === "non_compliant")
     return <Badge variant="destructive">Non-compliant</Badge>;
+  if (reason === "not_started") return <Badge variant="outline">Pre-rotation</Badge>;
+  if (reason === "rotation_ended") return <Badge variant="outline">Rotation ended</Badge>;
+  if (reason === "no_sync") return <Badge variant="outline">No rota synced</Badge>;
   return <Badge variant="outline">Insufficient data</Badge>;
+}
+
+function ReasonBanner({
+  reason,
+  startISO,
+  endISO,
+}: {
+  reason: Exclude<ReasonCode, null>;
+  startISO: string | null;
+  endISO: string | null;
+}) {
+  const msg =
+    reason === "not_started"
+      ? `This trainee's rotation has not started yet${startISO ? ` (starts ${formatDateGB(startISO)})` : ""}. The audit will run once they begin.`
+      : reason === "rotation_ended"
+        ? `This trainee's rotation ended${endISO ? ` on ${formatDateGB(endISO)}` : ""}, before the selected reference period. Widen the reference period to audit their past rota.`
+        : "No rota assignments have been synced for this trainee within the reference period. Check the CLWRota sync or the trainee's rota source.";
+  return (
+    <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+      <div className="flex items-start gap-2">
+        <HelpCircle className="mt-0.5 h-4 w-4" />
+        <span>{msg}</span>
+      </div>
+    </div>
+  );
 }
 
 function RuleIcon({ status }: { status: RuleStatus }) {
