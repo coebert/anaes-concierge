@@ -130,38 +130,40 @@ export function SummaryDashboard() {
               ) : days.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No weekdays in the next 7 days.</div>
               ) : (
-              <div className="flex flex-wrap gap-2">
-                  {days.map((d) => {
-                    const risk = worstRisk(d.am.risk, d.pm.risk);
-                    const headroom = Math.min(d.am.headroom, d.pm.headroom);
-                    return (
-                      <Tooltip key={d.date}>
-                        <TooltipTrigger asChild>
-                          <Link
-                            to="/robustness/day/$date"
-                            params={{ date: d.date }}
-                            className={cn(
-                              "flex min-w-[5.5rem] flex-col items-center rounded-md border px-3 py-2 text-xs transition-colors hover:border-primary/60",
-                              riskColor(risk),
-                            )}
-                          >
-                            <span className="font-medium">{shortDay(d.date)}</span>
-                            <span className="text-[10px] opacity-80">headroom {headroom}</span>
-                            <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          <p className="text-xs">
-                            {formatDateGB(d.date)}<br />
-                            AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, {d.am.unfilled} unfilled)<br />
-                            PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, {d.pm.unfilled} unfilled)
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-                <RobustnessLegend />
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {days.map((d) => {
+                      const risk = worstRisk(d.am.risk, d.pm.risk);
+                      const headroom = Math.min(d.am.headroom, d.pm.headroom);
+                      return (
+                        <Tooltip key={d.date}>
+                          <TooltipTrigger asChild>
+                            <Link
+                              to="/robustness/day/$date"
+                              params={{ date: d.date }}
+                              className={cn(
+                                "flex min-w-[5.5rem] flex-col items-center rounded-md border px-3 py-2 text-xs transition-colors hover:border-primary/60",
+                                riskColor(risk),
+                              )}
+                            >
+                              <span className="font-medium">{shortDay(d.date)}</span>
+                              <span className="text-[10px] opacity-80">headroom {headroom}</span>
+                              <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-xs">
+                              {formatDateGB(d.date)}<br />
+                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, {d.am.unfilled} unfilled)<br />
+                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, {d.pm.unfilled} unfilled)
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                  <RobustnessLegend />
+                </>
               )}
             </CardContent>
           </Card>
