@@ -174,7 +174,22 @@ export type AuditOptions = {
   windowStartISO?: string;
   windowEndISO?: string;
   leaveDates?: Set<string>;
+  /**
+   * Weekday numbers (0 = Sun … 6 = Sat) the trainee is contracted NOT to
+   * work because they are Less Than Full Time. Used to (a) pro-rate the
+   * 48 h/week R1 cap and (b) bridge consecutive-day runs (R6) across
+   * non-working days, since an LTFT day off is not a rostered rest day
+   * in the TCS-2016 sense.
+   */
+  ltftDaysOff?: number[];
 };
+
+/** Count of contracted weekdays per LTFT week (excluding weekends), capped at 5. */
+function ltftWorkingWeekdays(ltftDaysOff: number[] | undefined): number {
+  if (!ltftDaysOff || ltftDaysOff.length === 0) return 5;
+  const off = new Set(ltftDaysOff.filter((d) => d >= 1 && d <= 5));
+  return Math.max(0, 5 - off.size);
+}
 
 export function auditTcs2016(
   assignments: AuditAssignment[],
