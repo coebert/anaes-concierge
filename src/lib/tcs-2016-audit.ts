@@ -181,10 +181,35 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
   const windowEnd = shifts[shifts.length - 1].date;
   const totalHours = shifts.reduce((s, x) => s + x.hours, 0);
 
+  const summarise = (s: Shift): ShiftSummary => ({
+    date: s.date,
+    session: s.session,
+    hours: s.hours,
+    duty_type: s.duty_type,
+    isNight: s.isNight,
+    isLong: s.isLong,
+    isWeekend: s.isWeekend,
+  });
+  const shiftsByDate = new Map<string, Shift[]>();
+  for (const s of shifts) {
+    const arr = shiftsByDate.get(s.date) ?? [];
+    arr.push(s);
+    shiftsByDate.set(s.date, arr);
+  }
+  const shiftsInDayRange = (firstDate: string, lastDate: string): Shift[] => {
+    const startMs = dateAtHour(firstDate, 0);
+    const endMs = dateAtHour(lastDate, 0);
+    return shifts.filter((s) => {
+      const dMs = dateAtHour(s.date, 0);
+      return dMs >= startMs && dMs <= endMs;
+    });
+  };
+  const addDaysISO = (iso: string, n: number): string =>
+    new Date(dateAtHour(iso, 0) + n * MS_DAY).toISOString().slice(0, 10);
+
   const rules: RuleResult[] = [];
 
   // R1 — Max 48h/week averaged over the rota's reference period (full window here).
-  // Only meaningful with ≥4 weeks of data; otherwise mark indeterminate.
   const spanDays = Math.max(1, Math.round((shifts[shifts.length - 1].endMs - shifts[0].startMs) / MS_DAY));
   const spanWeeks = spanDays / 7;
   const avgWeekly = totalHours / spanWeeks;
@@ -201,10 +226,19 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
       spanWeeks < 4
         ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)`
         : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} d)`,
+    evidence: {
+      windowStart,
+      windowEnd,
+      shifts: shifts.map(summarise),
+      notes: [
+        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} day(s) ≈ ${spanWeeks.toFixed(1)} weeks`,
+      ],
+    },
   });
 
   // R2 — Max 72h in any rolling 7 consecutive days
   let max72 = 0;
+  let peak72Start = 0;
   const max72Breaches: Array<{ date: string; note: string }> = [];
   for (let i = 0; i < shifts.length; i++) {
     const windowEndMs = shifts[i].startMs + 7 * MS_DAY;
@@ -212,17 +246,28 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     for (let j = i; j < shifts.length && shifts[j].startMs < windowEndMs; j++) {
       hSum += shifts[j].hours;
     }
-    if (hSum > max72) max72 = hSum;
+    if (hSum > max72) {
+      max72 = hSum;
+      peak72Start = i;
+    }
     if (hSum > 72) {
       max72Breaches.push({ date: shifts[i].date, note: `${hSum} h in 7-day window starting ${shifts[i].date}` });
     }
   }
+  const peak72WindowStart = shifts[peak72Start].date;
+  const peak72WindowEnd = addDaysISO(peak72WindowStart, 6);
   rules.push({
     id: "max_72h_7d",
     label: "Max 72h in any 7 consecutive days",
     status: max72 <= 72 ? "pass" : "fail",
     detail: `Peak: ${max72} h in a rolling 7-day window`,
     breaches: max72Breaches.slice(0, 5),
+    evidence: {
+      windowStart: peak72WindowStart,
+      windowEnd: peak72WindowEnd,
+      shifts: shiftsInDayRange(peak72WindowStart, peak72WindowEnd).map(summarise),
+      notes: [`Peak 7-day window: ${peak72WindowStart} → ${peak72WindowEnd} = ${max72} h`],
+    },
   });
 
   // R3 — Max 13h per shift
@@ -236,91 +281,164 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
         ? `All ${shifts.length} shifts ≤ 13 h`
         : `${long13.length} shift(s) exceed 13 h`,
     breaches: long13.slice(0, 5).map((s) => ({ date: s.date, note: `${s.hours} h shift` })),
+    evidence:
+      long13.length === 0
+        ? undefined
+        : { shifts: long13.map(summarise), notes: long13.map((s) => `${s.date} ${s.session}: ${s.hours} h`) },
   });
 
   // R4 — Max 5 consecutive long shifts (>10h)
-  // "Consecutive" means on consecutive calendar days. A rest day, a
-  // non-long working day, or any gap in the rota resets the run — otherwise
-  // a trainee with only AM+PM weekdays would appear to be on an unbroken
-  // long-shift streak across months.
   let runLong = 0;
   let maxRunLong = 0;
-  let prevLongMs: number | null = null;
-  for (const s of shifts) {
-    const dMs = dateAtHour(s.date, 0);
+  let runStart = -1;
+  let bestRunStart = -1;
+  let bestRunEnd = -1;
+  let lastLongIdx = -1;
+  for (let k = 0; k < shifts.length; k++) {
+    const s = shifts[k];
     if (!s.isLong) {
       runLong = 0;
-      prevLongMs = null;
+      runStart = -1;
+      lastLongIdx = -1;
       continue;
     }
-    if (prevLongMs !== null && dMs - prevLongMs === MS_DAY) {
+    const dMs = dateAtHour(s.date, 0);
+    const prevMs = lastLongIdx >= 0 ? dateAtHour(shifts[lastLongIdx].date, 0) : null;
+    if (prevMs !== null && dMs - prevMs === MS_DAY) {
       runLong += 1;
     } else {
       runLong = 1;
+      runStart = k;
     }
-    if (runLong > maxRunLong) maxRunLong = runLong;
-    prevLongMs = dMs;
+    if (runLong > maxRunLong) {
+      maxRunLong = runLong;
+      bestRunStart = runStart;
+      bestRunEnd = k;
+    }
+    lastLongIdx = k;
   }
+  const longRunShifts =
+    bestRunStart >= 0
+      ? shifts.slice(bestRunStart, bestRunEnd + 1).filter((s) => s.isLong).map(summarise)
+      : [];
   rules.push({
     id: "max_5_long",
     label: "Max 5 consecutive long shifts (>10h)",
     status: maxRunLong <= 5 ? "pass" : "fail",
     detail: `Longest run of consecutive long shifts: ${maxRunLong}`,
+    evidence:
+      longRunShifts.length === 0
+        ? undefined
+        : {
+            windowStart: longRunShifts[0].date,
+            windowEnd: longRunShifts[longRunShifts.length - 1].date,
+            shifts: longRunShifts,
+            notes: [`Longest unbroken run of >10 h shifts: ${maxRunLong} day(s)`],
+          },
   });
 
   // R5 — Max 4 consecutive night shifts (consecutive calendar days)
   let runNight = 0;
   let maxRunNight = 0;
-  let prevNightMs: number | null = null;
-  for (const s of shifts) {
+  let nightStart = -1;
+  let bestNightStart = -1;
+  let bestNightEnd = -1;
+  let lastNightIdx = -1;
+  for (let k = 0; k < shifts.length; k++) {
+    const s = shifts[k];
     if (!s.isNight) continue;
     const dMs = dateAtHour(s.date, 0);
-    if (prevNightMs !== null && dMs - prevNightMs === MS_DAY) {
+    const prevMs = lastNightIdx >= 0 ? dateAtHour(shifts[lastNightIdx].date, 0) : null;
+    if (prevMs !== null && dMs - prevMs === MS_DAY) {
       runNight += 1;
     } else {
       runNight = 1;
+      nightStart = k;
     }
-    if (runNight > maxRunNight) maxRunNight = runNight;
-    prevNightMs = dMs;
+    if (runNight > maxRunNight) {
+      maxRunNight = runNight;
+      bestNightStart = nightStart;
+      bestNightEnd = k;
+    }
+    lastNightIdx = k;
   }
+  const nightRunShifts =
+    bestNightStart >= 0
+      ? shifts.slice(bestNightStart, bestNightEnd + 1).filter((s) => s.isNight).map(summarise)
+      : [];
   rules.push({
     id: "max_4_nights",
     label: "Max 4 consecutive night shifts",
     status: maxRunNight <= 4 ? "pass" : "fail",
     detail: `Longest run of nights: ${maxRunNight}`,
+    evidence:
+      nightRunShifts.length === 0
+        ? undefined
+        : {
+            windowStart: nightRunShifts[0].date,
+            windowEnd: nightRunShifts[nightRunShifts.length - 1].date,
+            shifts: nightRunShifts,
+            notes: [`Longest unbroken run of nights: ${maxRunNight} day(s)`],
+          },
   });
 
   // R6 — Max 7 consecutive days worked
+  const days = Array.from(new Set(shifts.map((s) => s.date))).sort();
   let runDays = 0;
   let maxRunDays = 0;
   let prevDay: number | null = null;
-  const days = Array.from(new Set(shifts.map((s) => s.date))).sort();
-  for (const d of days) {
+  let dayRunStart = 0;
+  let bestDayStart = 0;
+  let bestDayEnd = 0;
+  for (let k = 0; k < days.length; k++) {
+    const d = days[k];
     const dMs = dateAtHour(d, 0);
     if (prevDay !== null && dMs - prevDay === MS_DAY) {
       runDays += 1;
     } else {
       runDays = 1;
+      dayRunStart = k;
     }
-    if (runDays > maxRunDays) maxRunDays = runDays;
+    if (runDays > maxRunDays) {
+      maxRunDays = runDays;
+      bestDayStart = dayRunStart;
+      bestDayEnd = k;
+    }
     prevDay = dMs;
   }
+  const dayRunDates = days.slice(bestDayStart, bestDayEnd + 1);
+  const dayRunShifts = dayRunDates.flatMap((d) => shiftsByDate.get(d) ?? []).map(summarise);
   rules.push({
     id: "max_7_consec_days",
     label: "Max 7 consecutive days worked",
     status: maxRunDays <= 7 ? "pass" : "fail",
     detail: `Longest run of consecutive working days: ${maxRunDays}`,
+    evidence:
+      dayRunDates.length === 0
+        ? undefined
+        : {
+            windowStart: dayRunDates[0],
+            windowEnd: dayRunDates[dayRunDates.length - 1],
+            shifts: dayRunShifts,
+            notes: [
+              `${maxRunDays} consecutive working days: ${dayRunDates[0]} → ${dayRunDates[dayRunDates.length - 1]}`,
+            ],
+          },
   });
 
   // R7 — Minimum 11h rest between shifts
   const rest11Breaches: Array<{ date: string; note: string }> = [];
-  for (let i = 1; i < shifts.length; i++) {
-    const gapH = (shifts[i].startMs - shifts[i - 1].endMs) / MS_HOUR;
+  const rest11Shifts: ShiftSummary[] = [];
+  const rest11Notes: string[] = [];
+  for (let i2 = 1; i2 < shifts.length; i2++) {
+    const gapH = (shifts[i2].startMs - shifts[i2 - 1].endMs) / MS_HOUR;
     if (gapH < 11) {
-      rest11Breaches.push({
-        date: shifts[i].date,
-        note: `${gapH.toFixed(1)} h rest after previous shift on ${shifts[i - 1].date}`,
-      });
+      const note = `${gapH.toFixed(1)} h rest after previous shift on ${shifts[i2 - 1].date}`;
+      rest11Breaches.push({ date: shifts[i2].date, note });
+      rest11Shifts.push(summarise(shifts[i2 - 1]), summarise(shifts[i2]));
+      rest11Notes.push(
+        `${shifts[i2 - 1].date} ${shifts[i2 - 1].session} → ${shifts[i2].date} ${shifts[i2].session}: gap ${gapH.toFixed(1)} h`,
+      );
     }
   }
   rules.push({
@@ -332,11 +450,13 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
         ? "No short-rest gaps detected"
         : `${rest11Breaches.length} gap(s) under 11 h`,
     breaches: rest11Breaches.slice(0, 5),
+    evidence: rest11Shifts.length === 0 ? undefined : { shifts: rest11Shifts, notes: rest11Notes },
   });
 
-  // R8 — Minimum 46h continuous rest after a run of ≥3 nights or ≥4 long shifts
+  // R8 — Minimum 46h continuous rest after a run of ≥3 nights
   const rest46Breaches: Array<{ date: string; note: string }> = [];
-  // walk runs of nights
+  const rest46Shifts: ShiftSummary[] = [];
+  const rest46Notes: string[] = [];
   let i = 0;
   while (i < shifts.length) {
     if (shifts[i].isNight) {
@@ -350,6 +470,10 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
             date: shifts[j].date,
             note: `Only ${gapH.toFixed(1)} h rest after ${runLen} consecutive nights`,
           });
+          for (let k = i; k <= j + 1; k++) rest46Shifts.push(summarise(shifts[k]));
+          rest46Notes.push(
+            `${shifts[i].date} → ${shifts[j].date} (${runLen} nights), then ${shifts[j + 1].date} ${shifts[j + 1].session}: gap ${gapH.toFixed(1)} h`,
+          );
         }
       }
       i = j + 1;
@@ -366,37 +490,48 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
         ? "No short post-nights rest gaps detected"
         : `${rest46Breaches.length} gap(s) under 46 h`,
     breaches: rest46Breaches.slice(0, 5),
+    evidence: rest46Shifts.length === 0 ? undefined : { shifts: rest46Shifts, notes: rest46Notes },
   });
 
-  // R9 — No more than 1 weekend in 2 worked (i.e. at most every other weekend)
-  //   Definition: a "worked weekend" is any Sat or Sun with at least one shift.
-  const weekendsWorked = new Set<string>(); // ISO-week-year key of the weekend
+  // R9 — No more than 1 weekend in 2 worked
+  const weekendsWorked = new Set<string>();
   for (const s of shifts) {
     if (!s.isWeekend) continue;
     const d = new Date(s.startMs);
-    // Use the Saturday date of that weekend as the key
-    const day = d.getUTCDay(); // 6=Sat, 0=Sun
+    const day = d.getUTCDay();
     const satMs = day === 6 ? s.startMs : s.startMs - MS_DAY;
     weekendsWorked.add(new Date(satMs).toISOString().slice(0, 10));
   }
   const sortedWE = Array.from(weekendsWorked).sort();
-  let backToBack = 0;
+  const backToBackPairs: Array<[string, string]> = [];
   for (let k = 1; k < sortedWE.length; k++) {
     const prev = new Date(sortedWE[k - 1] + "T00:00:00Z").getTime();
     const cur = new Date(sortedWE[k] + "T00:00:00Z").getTime();
-    if (cur - prev === 7 * MS_DAY) backToBack++;
+    if (cur - prev === 7 * MS_DAY) backToBackPairs.push([sortedWE[k - 1], sortedWE[k]]);
   }
+  const weekendShifts = shifts.filter((s) => s.isWeekend).map(summarise);
   rules.push({
     id: "weekend_freq",
     label: "No more than 1 weekend in 2 worked",
-    status: backToBack === 0 ? "pass" : "fail",
+    status: backToBackPairs.length === 0 ? "pass" : "fail",
     detail:
       `${weekendsWorked.size} weekend(s) worked in window` +
-      (backToBack ? ` · ${backToBack} back-to-back weekend pair(s)` : ""),
+      (backToBackPairs.length ? ` · ${backToBackPairs.length} back-to-back weekend pair(s)` : ""),
+    evidence:
+      weekendShifts.length === 0
+        ? undefined
+        : {
+            shifts: weekendShifts,
+            notes:
+              backToBackPairs.length > 0
+                ? backToBackPairs.map(([a, b]) => `Back-to-back: weekend of ${a} & weekend of ${b}`)
+                : [`Worked weekends (Sat keys): ${sortedWE.join(", ")}`],
+          },
   });
 
   // R10 — Max 8 days worked in any 14
   let max8in14 = 0;
+  let peak14Start = 0;
   for (let k = 0; k < days.length; k++) {
     const startMs = dateAtHour(days[k], 0);
     let count = 0;
@@ -405,13 +540,24 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
       if (dMs - startMs >= 14 * MS_DAY) break;
       count++;
     }
-    if (count > max8in14) max8in14 = count;
+    if (count > max8in14) {
+      max8in14 = count;
+      peak14Start = k;
+    }
   }
+  const peak14StartDate = days[peak14Start];
+  const peak14EndDate = addDaysISO(peak14StartDate, 13);
   rules.push({
     id: "max_8_in_14",
     label: "Max 8 days worked in any 14",
     status: max8in14 <= 8 ? "pass" : "fail",
     detail: `Peak: ${max8in14} working days in a rolling 14-day window`,
+    evidence: {
+      windowStart: peak14StartDate,
+      windowEnd: peak14EndDate,
+      shifts: shiftsInDayRange(peak14StartDate, peak14EndDate).map(summarise),
+      notes: [`${max8in14} working day(s) in the 14-day window ${peak14StartDate} → ${peak14EndDate}`],
+    },
   });
 
   const hasFail = rules.some((r) => r.status === "fail");
@@ -424,5 +570,6 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     windowStart,
     windowEnd,
     rules,
+    shifts: shifts.map(summarise),
   };
 }
