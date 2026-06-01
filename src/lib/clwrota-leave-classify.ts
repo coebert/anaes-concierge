@@ -88,7 +88,8 @@ export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus
   if (!s) return "approved"; // CLWRota-published leave is already approved
   if (s.includes("approve") || s.includes("confirm") || s.includes("granted") || s === "ok")
     return "approved";
-  if (s.includes("reject") || s.includes("deny") || s.includes("declined")) return "rejected";
+  if (s.includes("reject") || s.includes("deny") || s.includes("deni") || s.includes("declined"))
+    return "rejected";
   if (s.includes("cancel") || s.includes("withdrawn")) return "cancelled";
   if (s.includes("pending") || s.includes("request") || s.includes("await")) return "pending";
   return "approved";
