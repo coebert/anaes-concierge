@@ -162,6 +162,7 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
       totalHours: 0,
       windowStart: null,
       windowEnd: null,
+      shifts: [],
       rules: [
         {
           id: "no_data",
