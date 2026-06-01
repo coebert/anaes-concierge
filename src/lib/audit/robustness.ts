@@ -409,6 +409,139 @@ export async function computeRobustness(
   return { days, totalStaffByGrade };
 }
 
+/* --------------------------------------------------------------------------
+ * Per-list coverage breakdown (solo-capable vs supervised vs unfilled)
+ * ----------------------------------------------------------------------- */
+
+export interface HalfDayListCoverage {
+  total: number;
+  /** Lists with at least one consultant or senior trainee assigned. */
+  soloCapable: number;
+  /** Filled lists with only junior trainees / SAS (no solo-capable staff). */
+  supervised: number;
+  /** Lists with no assignments at all. */
+  unfilled: number;
+  /** Whether the half-day is classified as spa_required. */
+  spaNeeded: boolean;
+}
+
+export interface DayListCoverage {
+  date: string;
+  dow: number;
+  am: HalfDayListCoverage;
+  pm: HalfDayListCoverage;
+}
+
+export async function computeListCoverage(
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<DayListCoverage[]> {
+  const { data: sessions } = await supabase
+    .from("theatre_sessions")
+    .select("id, session_date, session")
+    .gte("session_date", rangeStart)
+    .lte("session_date", rangeEnd);
+
+  const tsIds = (sessions ?? []).map((s) => s.id as string);
+
+  let asns: Array<{
+    theatre_session_id: string;
+    session_date: string;
+    session: string;
+    profiles: { grade: string | null; training_level: string | null };
+  }> = [];
+
+  if (tsIds.length > 0) {
+    const { data } = await supabase
+      .from("rota_assignments")
+      .select(
+        `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
+      )
+      .in("theatre_session_id", tsIds)
+      .eq("duty_type", "theatre");
+    asns = (data ?? []) as typeof asns;
+  }
+
+  // Map theatre_session_id -> set of assigned staff grades/levels
+  const coverageBySession = new Map<
+    string,
+    { hasSolo: boolean; hasSupervised: boolean }
+  >();
+  for (const a of asns) {
+    const tsId = a.theatre_session_id;
+    const cur = coverageBySession.get(tsId) ?? {
+      hasSolo: false,
+      hasSupervised: false,
+    };
+    const grade = a.profiles.grade;
+    const level = a.profiles.training_level;
+    if (grade === "consultant" || (grade === "trainee" && isSeniorTrainee(level))) {
+      cur.hasSolo = true;
+    } else if (grade === "trainee" || grade === "sas") {
+      cur.hasSupervised = true;
+    }
+    coverageBySession.set(tsId, cur);
+  }
+
+  // Also need SPA-needed flags from robustness
+  const { days } = await computeRobustness(rangeStart, rangeEnd);
+
+  // Build per-date required totals
+  const requiredMap = new Map<string, { am: number; pm: number }>();
+  for (const s of sessions ?? []) {
+    const r = requiredMap.get(s.session_date as string) ?? { am: 0, pm: 0 };
+    const half = s.session as string;
+    if (half === "am") r.am += 1;
+    if (half === "pm") r.pm += 1;
+    requiredMap.set(s.session_date as string, r);
+  }
+
+  // Group sessions by date + session
+  const sessionIdsByHalf = new Map<string, Set<string>>();
+  for (const s of sessions ?? []) {
+    const key = `${s.session_date as string}|${s.session as string}`;
+    const set = sessionIdsByHalf.get(key) ?? new Set<string>();
+    set.add(s.id as string);
+    sessionIdsByHalf.set(key, set);
+  }
+
+  const out: DayListCoverage[] = [];
+  for (const date of eachWeekday(rangeStart, rangeEnd)) {
+    const dow = new Date(date + "T00:00:00Z").getUTCDay();
+    const dayRobust = days.find((d) => d.date === date);
+
+    const mkHalf = (half: SessionHalf): HalfDayListCoverage => {
+      const halfKey = `${date}|${half}`;
+      const tsIdsInHalf = sessionIdsByHalf.get(halfKey) ?? new Set<string>();
+      let soloCapable = 0;
+      let supervised = 0;
+      let unfilled = 0;
+      for (const tsId of tsIdsInHalf) {
+        const cov = coverageBySession.get(tsId);
+        if (cov?.hasSolo) soloCapable += 1;
+        else if (cov?.hasSupervised) supervised += 1;
+        else unfilled += 1;
+      }
+      return {
+        total: tsIdsInHalf.size,
+        soloCapable,
+        supervised,
+        unfilled,
+        spaNeeded: dayRobust?.[half].risk === "spa_required",
+      };
+    };
+
+    out.push({
+      date,
+      dow,
+      am: mkHalf("am"),
+      pm: mkHalf("pm"),
+    });
+  }
+
+  return out;
+}
+
 export function riskColor(risk: HalfDayCapacity["risk"]): string {
   if (risk === "shortfall") return "bg-red-500/80 text-white";
   if (risk === "spa_required") return "bg-orange-400/80 text-white";

@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info } from "lucide-react";
+import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
+import { computeRobustness, computeListCoverage, riskColor, riskLabel } from "@/lib/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -103,6 +103,11 @@ export function SummaryDashboard() {
       trainees: { total: 0, byType: {} as Record<string, number>, entries: [] as Array<{ name: string; type: string }> },
     },
   );
+
+  const { data: listCoverage, isLoading: cLoading } = useQuery({
+    queryKey: ["summary-list-coverage", today, in6],
+    queryFn: () => computeListCoverage(today, in6),
+  });
 
   const days = robustness?.days ?? [];
 
@@ -249,6 +254,122 @@ export function SummaryDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Per-day list coverage breakdown */}
+        <Card className="lg:col-span-3">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-primary" />
+              List coverage breakdown — next 7 days
+            </CardTitle>
+            <CardDescription>
+              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA-needed sessions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {cLoading ? (
+              <div className="text-sm text-muted-foreground">Loading…</div>
+            ) : (listCoverage?.length ?? 0) === 0 ? (
+              <div className="text-sm text-muted-foreground">No data for the next 7 days.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs text-muted-foreground">
+                      <th className="pb-2 pr-4 font-medium">Day</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Lists</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Solo-capable</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Unfilled</th>
+                      <th className="pb-2 font-medium">SPA needed</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {listCoverage!.map((d) => {
+                      const totalLists = d.am.total + d.pm.total;
+                      const totalSolo = d.am.soloCapable + d.pm.soloCapable;
+                      const totalUnfilled = d.am.unfilled + d.pm.unfilled;
+                      const spaHalves: string[] = [];
+                      if (d.am.spaNeeded) spaHalves.push("AM");
+                      if (d.pm.spaNeeded) spaHalves.push("PM");
+                      return (
+                        <tr key={d.date}>
+                          <td className="py-2 pr-4">
+                            <Link
+                              to="/robustness/day/$date"
+                              params={{ date: d.date }}
+                              className="font-medium hover:underline"
+                            >
+                              {shortDay(d.date)}
+                            </Link>
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">{totalLists}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">
+                                  AM: {d.am.total} lists<br />
+                                  PM: {d.pm.total} lists
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn("cursor-help", totalSolo < totalLists - totalUnfilled && "text-amber-600 font-medium")}>
+                                  {totalSolo}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">
+                                  AM: {d.am.soloCapable} solo-capable<br />
+                                  PM: {d.pm.soloCapable} solo-capable
+                                  {(d.am.supervised + d.pm.supervised) > 0 && (
+                                    <><br />Total supervised: {d.am.supervised + d.pm.supervised}</>
+                                  )}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn("cursor-help", totalUnfilled > 0 && "text-red-600 font-medium")}>
+                                  {totalUnfilled}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">
+                                  AM: {d.am.unfilled} unfilled<br />
+                                  PM: {d.pm.unfilled} unfilled
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          <td className="py-2">
+                            {spaHalves.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {spaHalves.map((h) => (
+                                  <Badge key={h} variant="outline" className="text-[10px] border-orange-400/60 text-orange-700 bg-orange-50 dark:bg-orange-950/30">
+                                    {h} SPA needed
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
     </TooltipProvider>
   );
