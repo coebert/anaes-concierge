@@ -54,7 +54,9 @@ function TcsAuditPage() {
       let q = supabase
         .from("rota_assignments")
         .select("staff_id, session_date, session, duty_type, role_on_list")
-        .in("staff_id", ids);
+        .in("staff_id", ids)
+        .order("session_date", { ascending: true })
+        .range(0, 9999);
       if (since) q = q.gte("session_date", since);
       const { data: assignments, error: e2 } = await q;
       if (e2) throw e2;

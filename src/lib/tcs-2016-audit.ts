@@ -82,7 +82,9 @@ function toShift(a: AuditAssignment): Shift {
     session: a.session,
     duty_type: a.duty_type,
     isNight: a.session === "night",
-    isLong: hours >= 10,
+    // TCS 2016: a "long shift" lasts MORE than 10 hours. A standard AM+PM
+    // theatre day merges to exactly 10 h and must not be counted as long.
+    isLong: hours > 10,
     isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
   };
 }
@@ -103,15 +105,16 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
   }
   for (const [date, arr] of byDate) {
     arr.sort((a, b) => a.startMs - b.startMs);
+    const totalH = arr.reduce((s, x) => s + x.hours, 0);
     const merged: Shift = {
       date,
       startMs: arr[0].startMs,
       endMs: arr[arr.length - 1].endMs,
-      hours: arr.reduce((s, x) => s + x.hours, 0),
+      hours: totalH,
       session: arr[0].session,
       duty_type: arr.map((x) => x.duty_type).join("+"),
       isNight: false,
-      isLong: arr.reduce((s, x) => s + x.hours, 0) >= 10,
+      isLong: totalH > 10,
       isWeekend: arr[0].isWeekend,
     };
     out.push(merged);
@@ -211,26 +214,50 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     breaches: long13.slice(0, 5).map((s) => ({ date: s.date, note: `${s.hours} h shift` })),
   });
 
-  // R4 — Max 5 consecutive long shifts (≥10h)
+  // R4 — Max 5 consecutive long shifts (>10h)
+  // "Consecutive" means on consecutive calendar days. A rest day, a
+  // non-long working day, or any gap in the rota resets the run — otherwise
+  // a trainee with only AM+PM weekdays would appear to be on an unbroken
+  // long-shift streak across months.
   let runLong = 0;
   let maxRunLong = 0;
+  let prevLongMs: number | null = null;
   for (const s of shifts) {
-    runLong = s.isLong ? runLong + 1 : 0;
+    const dMs = dateAtHour(s.date, 0);
+    if (!s.isLong) {
+      runLong = 0;
+      prevLongMs = null;
+      continue;
+    }
+    if (prevLongMs !== null && dMs - prevLongMs === MS_DAY) {
+      runLong += 1;
+    } else {
+      runLong = 1;
+    }
     if (runLong > maxRunLong) maxRunLong = runLong;
+    prevLongMs = dMs;
   }
   rules.push({
     id: "max_5_long",
-    label: "Max 5 consecutive long shifts (≥10h)",
+    label: "Max 5 consecutive long shifts (>10h)",
     status: maxRunLong <= 5 ? "pass" : "fail",
-    detail: `Longest run of long shifts: ${maxRunLong}`,
+    detail: `Longest run of consecutive long shifts: ${maxRunLong}`,
   });
 
-  // R5 — Max 4 consecutive night shifts
+  // R5 — Max 4 consecutive night shifts (consecutive calendar days)
   let runNight = 0;
   let maxRunNight = 0;
+  let prevNightMs: number | null = null;
   for (const s of shifts) {
-    runNight = s.isNight ? runNight + 1 : 0;
+    if (!s.isNight) continue;
+    const dMs = dateAtHour(s.date, 0);
+    if (prevNightMs !== null && dMs - prevNightMs === MS_DAY) {
+      runNight += 1;
+    } else {
+      runNight = 1;
+    }
     if (runNight > maxRunNight) maxRunNight = runNight;
+    prevNightMs = dMs;
   }
   rules.push({
     id: "max_4_nights",
