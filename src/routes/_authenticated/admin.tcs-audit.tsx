@@ -144,9 +144,10 @@ function TcsAuditPage() {
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
-  const compliantCount = rows.filter((r) => r.audit.overall === "compliant").length;
+  const compliantCount = rows.filter((r) => r.audit.overall === "compliant" && !r.reason).length;
   const breachCount = rows.filter((r) => r.audit.overall === "non_compliant").length;
-  const indetCount = rows.filter((r) => r.audit.overall === "insufficient_data").length;
+  const noDataCount = rows.filter((r) => r.reason === "no_sync").length;
+  const preRotationCount = rows.filter((r) => r.reason === "not_started" || r.reason === "rotation_ended").length;
 
   return (
     <div className="space-y-6">
