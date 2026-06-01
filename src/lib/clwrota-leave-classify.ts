@@ -83,14 +83,57 @@ export function classifyLeaveType(
   return "other";
 }
 
+/**
+ * Normalize a raw CLWRota status string into our four canonical states.
+ *
+ * Behaviour:
+ *  - Trims, lower-cases, collapses internal whitespace and strips surrounding
+ *    punctuation so "  Approved.  " and "APPROVED" both match.
+ *  - Recognises an extended synonym set for each state (e.g. "auth(orised)",
+ *    "ok", "signed off" → approved; "refused", "not approved" → rejected;
+ *    "void", "revoked" → cancelled; "in review", "tbc", "submitted" →
+ *    pending).
+ *  - "not approved" / "not granted" are matched BEFORE the approved synonyms
+ *    so the negation wins.
+ *  - Empty / unknown input defaults to "approved" because CLWRota only
+ *    publishes already-approved leave on its feed.
+ */
 export function classifyLeaveStatus(raw: string | null | undefined): LeaveStatus {
-  const s = (raw ?? "").toLowerCase().trim();
+  const s = (raw ?? "")
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}]+/gu, " ") // strip punctuation/symbols
+    .replace(/\s+/g, " ")
+    .trim();
   if (!s) return "approved"; // CLWRota-published leave is already approved
-  if (s.includes("approve") || s.includes("confirm") || s.includes("granted") || s === "ok")
+
+  // Negations must beat the plain "approved/granted" match below.
+  if (/\bnot\s+(approved|granted|authorised|authorized|accepted)\b/.test(s)) return "rejected";
+
+  if (
+    /\b(approved?|approve|granted?|grant|authoris(ed|e)|authoriz(ed|e)|accepted?|confirmed?|confirm|signed off|sign off|ok|okay|yes|y)\b/.test(
+      s,
+    )
+  )
     return "approved";
-  if (s.includes("reject") || s.includes("deny") || s.includes("deni") || s.includes("declined"))
+
+  if (
+    /\b(rejected?|reject|denied?|deny|declined?|decline|refused?|refuse|no)\b/.test(s)
+  )
     return "rejected";
-  if (s.includes("cancel") || s.includes("withdrawn")) return "cancelled";
-  if (s.includes("pending") || s.includes("request") || s.includes("await")) return "pending";
+
+  if (
+    /\b(cancelled?|canceled?|cancel|withdrawn|withdraw|void(ed)?|revoked?|revoke|removed?|deleted?)\b/.test(
+      s,
+    )
+  )
+    return "cancelled";
+
+  if (
+    /\b(pending|request(ed)?|await(ing)?|submitted?|submit|review(ing)?|in review|tbc|tbd|unconfirmed|open)\b/.test(
+      s,
+    )
+  )
+    return "pending";
+
   return "approved";
 }

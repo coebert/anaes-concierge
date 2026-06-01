@@ -130,16 +130,75 @@ describe("classifyLeaveStatus", () => {
     expect(classifyLeaveStatus("")).toBe("approved");
     expect(classifyLeaveStatus("   ")).toBe("approved");
   });
+
   it("maps known status verbs", () => {
     expect(classifyLeaveStatus("Approved")).toBe("approved");
     expect(classifyLeaveStatus("Granted")).toBe("approved");
     expect(classifyLeaveStatus("OK")).toBe("approved");
     expect(classifyLeaveStatus("Rejected")).toBe("rejected");
     expect(classifyLeaveStatus("Declined")).toBe("rejected");
+    expect(classifyLeaveStatus("Denied")).toBe("rejected");
     expect(classifyLeaveStatus("Cancelled")).toBe("cancelled");
     expect(classifyLeaveStatus("Withdrawn")).toBe("cancelled");
     expect(classifyLeaveStatus("Pending approval")).toBe("pending");
     expect(classifyLeaveStatus("Awaiting decision")).toBe("pending");
+  });
+
+  it("normalizes case, whitespace and surrounding punctuation", () => {
+    expect(classifyLeaveStatus("  APPROVED  ")).toBe("approved");
+    expect(classifyLeaveStatus("approved.")).toBe("approved");
+    expect(classifyLeaveStatus("[Approved]")).toBe("approved");
+    expect(classifyLeaveStatus("approved\t\n")).toBe("approved");
+    expect(classifyLeaveStatus("  CANCELLED!  ")).toBe("cancelled");
+    expect(classifyLeaveStatus("  pending...  ")).toBe("pending");
+  });
+
+  it("recognises extended approved synonyms", () => {
+    expect(classifyLeaveStatus("Authorised")).toBe("approved");
+    expect(classifyLeaveStatus("Authorized")).toBe("approved");
+    expect(classifyLeaveStatus("Accepted")).toBe("approved");
+    expect(classifyLeaveStatus("Confirmed")).toBe("approved");
+    expect(classifyLeaveStatus("Signed off")).toBe("approved");
+    expect(classifyLeaveStatus("Yes")).toBe("approved");
+    expect(classifyLeaveStatus("Okay")).toBe("approved");
+  });
+
+  it("recognises extended rejected synonyms (including negations)", () => {
+    expect(classifyLeaveStatus("Refused")).toBe("rejected");
+    expect(classifyLeaveStatus("Reject")).toBe("rejected");
+    expect(classifyLeaveStatus("Not approved")).toBe("rejected");
+    expect(classifyLeaveStatus("Not granted")).toBe("rejected");
+    expect(classifyLeaveStatus("Not authorised")).toBe("rejected");
+    expect(classifyLeaveStatus("No")).toBe("rejected");
+  });
+
+  it("recognises extended cancelled synonyms", () => {
+    expect(classifyLeaveStatus("Cancel")).toBe("cancelled");
+    expect(classifyLeaveStatus("Canceled")).toBe("cancelled"); // US spelling
+    expect(classifyLeaveStatus("Withdraw")).toBe("cancelled");
+    expect(classifyLeaveStatus("Void")).toBe("cancelled");
+    expect(classifyLeaveStatus("Voided")).toBe("cancelled");
+    expect(classifyLeaveStatus("Revoked")).toBe("cancelled");
+    expect(classifyLeaveStatus("Removed")).toBe("cancelled");
+    expect(classifyLeaveStatus("Deleted")).toBe("cancelled");
+  });
+
+  it("recognises extended pending synonyms", () => {
+    expect(classifyLeaveStatus("Requested")).toBe("pending");
+    expect(classifyLeaveStatus("Submitted")).toBe("pending");
+    expect(classifyLeaveStatus("In review")).toBe("pending");
+    expect(classifyLeaveStatus("Under review")).toBe("pending");
+    expect(classifyLeaveStatus("TBC")).toBe("pending");
+    expect(classifyLeaveStatus("TBD")).toBe("pending");
+    expect(classifyLeaveStatus("Unconfirmed")).toBe("pending");
+    expect(classifyLeaveStatus("Open")).toBe("pending");
+  });
+
+  it("negation beats the bare verb (precedence)", () => {
+    // Must NOT classify these as approved just because the word appears.
+    expect(classifyLeaveStatus("not approved")).toBe("rejected");
+    expect(classifyLeaveStatus("NOT GRANTED")).toBe("rejected");
+    expect(classifyLeaveStatus("  not   authorised  ")).toBe("rejected");
   });
 });
 
