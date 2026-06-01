@@ -182,6 +182,8 @@ describe("solo-list counting rules — AM/PM lists", () => {
         profiles.get(a.staff_id)?.grade === "trainee" &&
         isSoloTraineeAssignment(a, consSet, profiles),
     );
+    expect(
+      solos.map((a) => `${a.session}:${a.staff_id}:${a.theatre_session_id}`),
     ).toEqual([
       "am:train-1:ts-2",
       "pm:train-2:ts-3",
