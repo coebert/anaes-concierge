@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
+import { computeRobustness, computeListCoverage, riskColor, riskLabel } from "@/lib/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
