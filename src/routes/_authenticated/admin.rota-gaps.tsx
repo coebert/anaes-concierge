@@ -212,7 +212,7 @@ function RotaGapsPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {rows.map(({ trainee, report }) => (
+              {rows.map(({ trainee, report, classified }) => (
                 <Card key={trainee.id}>
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -251,6 +251,7 @@ function RotaGapsPage() {
                       </ul>
                     </CardContent>
                   )}
+                  <ClassifiedSection report={classified} />
                 </Card>
               ))}
             </div>
