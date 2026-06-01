@@ -436,3 +436,44 @@ describe("classifyLeaveStatus — real-world fixture sweep", () => {
     }
   });
 });
+
+describe("classifyLeaveStatus — unknown / unrecognised strings fall back consistently", () => {
+  it("maps every unknown string to the explicit default", () => {
+    const unknowns = [
+      "qwerty",
+      "12345",
+      "!@#$%",
+      "lorem ipsum",
+      "foo bar baz",
+      "unknown",
+      "unrecognised",
+      "random text here",
+      "xyzabc",
+      "status undefined",
+      "n/a",
+      "na",
+      "---",
+      "???",
+      "🚀",
+      "日本語",
+      "한글",
+      "العربية",
+    ];
+    for (const s of unknowns) {
+      expect(classifyLeaveStatus(s)).toBe(DEFAULT_LEAVE_STATUS);
+    }
+  });
+
+  it("maps a string of pure whitespace / symbols to the explicit default", () => {
+    expect(classifyLeaveStatus("   \t\n\r   ")).toBe(DEFAULT_LEAVE_STATUS);
+    expect(classifyLeaveStatus("!!!")).toBe(DEFAULT_LEAVE_STATUS);
+    expect(classifyLeaveStatus("...")).toBe(DEFAULT_LEAVE_STATUS);
+  });
+
+  it("does not silently change the default value", () => {
+    // If this assertion ever fails, the fallback policy has been altered
+    // intentionally or accidentally.  Update the test AND the JSDoc on
+    // DEFAULT_LEAVE_STATUS to reflect the new policy.
+    expect(DEFAULT_LEAVE_STATUS).toBe("approved");
+  });
+});
