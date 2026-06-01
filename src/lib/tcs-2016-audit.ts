@@ -214,26 +214,50 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     breaches: long13.slice(0, 5).map((s) => ({ date: s.date, note: `${s.hours} h shift` })),
   });
 
-  // R4 — Max 5 consecutive long shifts (≥10h)
+  // R4 — Max 5 consecutive long shifts (>10h)
+  // "Consecutive" means on consecutive calendar days. A rest day, a
+  // non-long working day, or any gap in the rota resets the run — otherwise
+  // a trainee with only AM+PM weekdays would appear to be on an unbroken
+  // long-shift streak across months.
   let runLong = 0;
   let maxRunLong = 0;
+  let prevLongMs: number | null = null;
   for (const s of shifts) {
-    runLong = s.isLong ? runLong + 1 : 0;
+    const dMs = dateAtHour(s.date, 0);
+    if (!s.isLong) {
+      runLong = 0;
+      prevLongMs = null;
+      continue;
+    }
+    if (prevLongMs !== null && dMs - prevLongMs === MS_DAY) {
+      runLong += 1;
+    } else {
+      runLong = 1;
+    }
     if (runLong > maxRunLong) maxRunLong = runLong;
+    prevLongMs = dMs;
   }
   rules.push({
     id: "max_5_long",
-    label: "Max 5 consecutive long shifts (≥10h)",
+    label: "Max 5 consecutive long shifts (>10h)",
     status: maxRunLong <= 5 ? "pass" : "fail",
-    detail: `Longest run of long shifts: ${maxRunLong}`,
+    detail: `Longest run of consecutive long shifts: ${maxRunLong}`,
   });
 
-  // R5 — Max 4 consecutive night shifts
+  // R5 — Max 4 consecutive night shifts (consecutive calendar days)
   let runNight = 0;
   let maxRunNight = 0;
+  let prevNightMs: number | null = null;
   for (const s of shifts) {
-    runNight = s.isNight ? runNight + 1 : 0;
+    if (!s.isNight) continue;
+    const dMs = dateAtHour(s.date, 0);
+    if (prevNightMs !== null && dMs - prevNightMs === MS_DAY) {
+      runNight += 1;
+    } else {
+      runNight = 1;
+    }
     if (runNight > maxRunNight) maxRunNight = runNight;
+    prevNightMs = dMs;
   }
   rules.push({
     id: "max_4_nights",
