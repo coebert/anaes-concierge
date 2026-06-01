@@ -56,8 +56,14 @@ export type AuditResult = {
   overall: "compliant" | "non_compliant" | "insufficient_data";
   totalShifts: number;
   totalHours: number;
+  /** First / last shift date actually present in the data (may be narrower than the requested window). */
   windowStart: string | null;
   windowEnd: string | null;
+  /** The reference window the audit was *asked* to cover, before clamping to shift data. */
+  requestedWindowStart: string | null;
+  requestedWindowEnd: string | null;
+  /** LTFT pro-rata fraction applied (1 = full-time, 0.8 = 4 days/wk, etc.). */
+  ltftFraction: number;
   rules: RuleResult[];
   /** Every merged shift fed into the audit, in chronological order. */
   shifts: ShiftSummary[];
