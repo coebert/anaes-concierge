@@ -116,3 +116,61 @@ describe("auditTcs2016", () => {
     expect(r.rules.find((x) => x.id === "max_4_nights")?.status).toBe("pass");
   });
 });
+
+describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
+  it("R8 fires after a single night when next shift is <46h later", () => {
+    // Night Mon 21:00 → 08:00 Tue; PM Tue 13:00. Gap = 5h.
+    const r = auditTcs2016([
+      mk("2026-05-25", "night", "sho_oncall", "on_call"),
+      mk("2026-05-26", "pm"),
+    ]);
+    const rule = r.rules.find((x) => x.id === "rest_46h_post_nights");
+    expect(rule?.status).toBe("fail");
+    expect(rule?.breaches?.[0].note).toMatch(/1 consecutive night/);
+  });
+
+  it("R8 passes after a single night if next shift is ≥46h later", () => {
+    // Night Mon 21:00 → 08:00 Tue; AM Thu 08:00. Gap = 48h.
+    const r = auditTcs2016([
+      mk("2026-05-25", "night", "sho_oncall", "on_call"),
+      mk("2026-05-28", "am"),
+    ]);
+    expect(
+      r.rules.find((x) => x.id === "rest_46h_post_nights")?.status,
+    ).toBe("pass");
+  });
+
+  it("R6 bridges a single leave day in the middle of a stretch", () => {
+    // Worked Sat 23 May → Mon 1 Jun, with a leave day on Wed 27 May.
+    // Without leave-bridging the run breaks; with bridging it's 10 days.
+    const days = [
+      "2026-05-23", "2026-05-24", "2026-05-25", "2026-05-26",
+      // "2026-05-27" leave
+      "2026-05-28", "2026-05-29", "2026-05-30", "2026-05-31", "2026-06-01",
+    ];
+    const a = days.map((d) => mk(d, "am"));
+    const r = auditTcs2016(a, { leaveDates: new Set(["2026-05-27"]) });
+    const rule = r.rules.find((x) => x.id === "max_7_consec_days");
+    expect(rule?.status).toBe("fail");
+    expect(rule?.detail).toMatch(/: 9$/);
+  });
+
+  it("R1 uses the supplied window and excludes leave days", () => {
+    // Only 1 working week (50h) but reference period is 4 weeks (28 days),
+    // 5 of which are leave → denominator = 23 days ≈ 3.29 weeks → still
+    // under 4 weeks of contracted time, so this is indeterminate (the
+    // safer outcome) rather than spuriously passing as ~12.5 h/week.
+    const a = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"]
+      .flatMap((d) => [mk(d, "am"), mk(d, "pm")]);
+    const leave = new Set([
+      "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
+    ]);
+    const r = auditTcs2016(a, {
+      windowStartISO: "2026-05-25",
+      windowEndISO: "2026-06-21", // 4 weeks
+      leaveDates: leave,
+    });
+    const rule = r.rules.find((x) => x.id === "avg_48h");
+    expect(rule?.detail).toMatch(/excluded 5 leave days/);
+  });
+});
