@@ -578,7 +578,7 @@ function LeavePage() {
                 <CardDescription>
                   Days taken (approved) + booked (pending) vs annual allowance for the
                   current leave year. Counts working days (Mon–Fri); half-day requests
-                  count as 0.5. Study covers professional / study leave.
+                  count as 0.5. Study and professional leave are tracked separately.
                 </CardDescription>
               </div>
               <Input
@@ -606,6 +606,9 @@ function LeavePage() {
                         <TableHead className="text-right">Study taken/booked</TableHead>
                         <TableHead className="text-right">Study allowance</TableHead>
                         <TableHead className="text-right">Study remaining</TableHead>
+                        <TableHead className="text-right">Professional taken/booked</TableHead>
+                        <TableHead className="text-right">Professional allowance</TableHead>
+                        <TableHead className="text-right">Professional remaining</TableHead>
                         <TableHead className="text-right" title="Sick / parental / compassionate / other — informational only, not deducted from an allowance">Other taken/booked</TableHead>
                         <TableHead className="text-xs text-muted-foreground">Leave year</TableHead>
                       </TableRow>
@@ -616,6 +619,8 @@ function LeavePage() {
                         const annualRem = s.annualAllowance - annualUsed;
                         const studyUsed = s.study.taken + s.study.booked;
                         const studyRem = s.studyAllowance - studyUsed;
+                        const profUsed = s.professional.taken + s.professional.booked;
+                        const profRem = s.professionalAllowance - profUsed;
                         const otherUsed = s.other.taken + s.other.booked;
                         const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
                         const remTone = (rem: number) =>
@@ -643,6 +648,15 @@ function LeavePage() {
                             </TableCell>
                             <TableCell className={cn("text-right tabular-nums", remTone(studyRem))}>
                               {fmt(studyRem)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fmt(s.professional.taken)} / {fmt(s.professional.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(s.professionalAllowance)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(profRem))}>
+                              {fmt(profRem)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-muted-foreground">
                               {fmt(s.other.taken)} / {fmt(s.other.booked)}
