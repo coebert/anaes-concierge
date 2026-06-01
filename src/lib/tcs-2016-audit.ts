@@ -149,7 +149,32 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
 const MS_HOUR = 3_600_000;
 const MS_DAY = 86_400_000;
 
-export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
+/**
+ * Optional context that materially changes how the audit is computed.
+ *
+ *  - `windowStartISO` / `windowEndISO`: the reference period the audit was
+ *    asked to cover (lookback clamped to the trainee's rotation). When
+ *    supplied, R1 (average ≤ 48 h/week) divides by this period — not by
+ *    the span between the first and last shift — so sparse data and
+ *    leave blocks no longer artificially deflate the average.
+ *  - `leaveDates`: set of `YYYY-MM-DD` strings the trainee was on approved
+ *    leave. Leave days are (a) subtracted from R1's denominator (TCS 2016
+ *    averaging excludes annual / study leave) and (b) treated as bridging
+ *    days for R6 ("max 7 consecutive days") — leave doesn't count as a
+ *    rostered day off, so a working stretch interrupted only by leave is
+ *    still one continuous working period.
+ */
+export type AuditOptions = {
+  windowStartISO?: string;
+  windowEndISO?: string;
+  leaveDates?: Set<string>;
+};
+
+export function auditTcs2016(
+  assignments: AuditAssignment[],
+  options: AuditOptions = {},
+): AuditResult {
+  const leaveDates = options.leaveDates ?? new Set<string>();
   // Only "working" duty assignments — exclude leave/admin/teaching markers
   // that are not actually working shifts. (role_on_list 'non_clinical',
   // 'teaching', 'admin_session' are still working hours under TCS, so we
@@ -209,10 +234,31 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
 
   const rules: RuleResult[] = [];
 
-  // R1 — Max 48h/week averaged over the rota's reference period (full window here).
-  const spanDays = Math.max(1, Math.round((shifts[shifts.length - 1].endMs - shifts[0].startMs) / MS_DAY));
+  // R1 — Max 48h/week averaged over the rota's reference period.
+  //
+  // The reference period is the supplied audit window (lookback clamped to
+  // rotation) when available, otherwise the span of recorded shifts. Days
+  // the trainee was on approved leave are subtracted from the denominator
+  // because TCS 2016 Schedule 3 paragraph 12 excludes annual / study /
+  // sick leave from the WTD average.
+  const refStartISO = options.windowStartISO ?? windowStart;
+  const refEndISO = options.windowEndISO ?? windowEnd;
+  const refSpanDaysRaw = Math.max(
+    1,
+    Math.round((dateAtHour(refEndISO, 0) - dateAtHour(refStartISO, 0)) / MS_DAY) + 1,
+  );
+  // Count only leave days that fall inside the reference period.
+  let leaveInWindow = 0;
+  for (const d of leaveDates) {
+    if (d >= refStartISO && d <= refEndISO) leaveInWindow += 1;
+  }
+  const spanDays = Math.max(1, refSpanDaysRaw - leaveInWindow);
   const spanWeeks = spanDays / 7;
   const avgWeekly = totalHours / spanWeeks;
+  const leaveNote =
+    leaveInWindow > 0
+      ? ` (excluded ${leaveInWindow} leave day${leaveInWindow === 1 ? "" : "s"})`
+      : "";
   rules.push({
     id: "avg_48h",
     label: "Average ≤ 48h / week (over reference period)",
@@ -225,16 +271,17 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     detail:
       spanWeeks < 4
         ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)`
-        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} d)`,
+        : `${avgWeekly.toFixed(1)} h/week averaged over ${spanWeeks.toFixed(1)} weeks (${totalHours} h / ${spanDays} working day${spanDays === 1 ? "" : "s"})${leaveNote}`,
     evidence: {
-      windowStart,
-      windowEnd,
+      windowStart: refStartISO,
+      windowEnd: refEndISO,
       shifts: shifts.map(summarise),
       notes: [
-        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} day(s) ≈ ${spanWeeks.toFixed(1)} weeks`,
+        `${shifts.length} shift(s) totalling ${totalHours} h across ${spanDays} contracted day(s) ≈ ${spanWeeks.toFixed(1)} weeks${leaveNote}`,
       ],
     },
   });
+
 
   // R2 — Max 72h in any rolling 7 consecutive days
   let max72 = 0;
@@ -382,7 +429,8 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
           },
   });
 
-  // R6 — Max 7 consecutive days worked
+  // R6 — Max 7 consecutive days worked. Leave days bridge a run because
+  // annual / study leave does not count as a rostered day off under TCS.
   const days = Array.from(new Set(shifts.map((s) => s.date))).sort();
   let runDays = 0;
   let maxRunDays = 0;
@@ -390,10 +438,19 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
   let dayRunStart = 0;
   let bestDayStart = 0;
   let bestDayEnd = 0;
+  const onlyLeaveBetween = (prevMs: number, curMs: number): boolean => {
+    // Every calendar day strictly between prev and cur must be a leave day.
+    if (curMs - prevMs <= MS_DAY) return true;
+    for (let t = prevMs + MS_DAY; t < curMs; t += MS_DAY) {
+      const iso = new Date(t).toISOString().slice(0, 10);
+      if (!leaveDates.has(iso)) return false;
+    }
+    return true;
+  };
   for (let k = 0; k < days.length; k++) {
     const d = days[k];
     const dMs = dateAtHour(d, 0);
-    if (prevDay !== null && dMs - prevDay === MS_DAY) {
+    if (prevDay !== null && (dMs - prevDay === MS_DAY || onlyLeaveBetween(prevDay, dMs))) {
       runDays += 1;
     } else {
       runDays = 1;
@@ -406,6 +463,7 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     }
     prevDay = dMs;
   }
+
   const dayRunDates = days.slice(bestDayStart, bestDayEnd + 1);
   const dayRunShifts = dayRunDates.flatMap((d) => shiftsByDate.get(d) ?? []).map(summarise);
   rules.push({
@@ -453,7 +511,12 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
     evidence: rest11Shifts.length === 0 ? undefined : { shifts: rest11Shifts, notes: rest11Notes },
   });
 
-  // R8 — Minimum 46h continuous rest after a run of ≥3 nights
+  // R8 — Minimum 46h continuous rest after ANY run of night shifts.
+  //
+  // TCS 2016 Schedule 3 paragraph 13 mandates 46 h rest following any
+  // period of consecutive night shifts (including a single night). The
+  // previous implementation only fired for runs of ≥3 nights, which let
+  // single- and double-night blocks slip through silently.
   const rest46Breaches: Array<{ date: string; note: string }> = [];
   const rest46Shifts: ShiftSummary[] = [];
   const rest46Notes: string[] = [];
@@ -463,16 +526,16 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
       let j = i;
       while (j + 1 < shifts.length && shifts[j + 1].isNight) j++;
       const runLen = j - i + 1;
-      if (runLen >= 3 && j + 1 < shifts.length) {
+      if (j + 1 < shifts.length) {
         const gapH = (shifts[j + 1].startMs - shifts[j].endMs) / MS_HOUR;
         if (gapH < 46) {
           rest46Breaches.push({
             date: shifts[j].date,
-            note: `Only ${gapH.toFixed(1)} h rest after ${runLen} consecutive nights`,
+            note: `Only ${gapH.toFixed(1)} h rest after ${runLen} consecutive night${runLen === 1 ? "" : "s"}`,
           });
           for (let k = i; k <= j + 1; k++) rest46Shifts.push(summarise(shifts[k]));
           rest46Notes.push(
-            `${shifts[i].date} → ${shifts[j].date} (${runLen} nights), then ${shifts[j + 1].date} ${shifts[j + 1].session}: gap ${gapH.toFixed(1)} h`,
+            `${shifts[i].date} → ${shifts[j].date} (${runLen} night${runLen === 1 ? "" : "s"}), then ${shifts[j + 1].date} ${shifts[j + 1].session}: gap ${gapH.toFixed(1)} h`,
           );
         }
       }
@@ -483,15 +546,16 @@ export function auditTcs2016(assignments: AuditAssignment[]): AuditResult {
   }
   rules.push({
     id: "rest_46h_post_nights",
-    label: "Min 46h continuous rest after ≥3 consecutive nights",
+    label: "Min 46h continuous rest after any night shift run",
     status: rest46Breaches.length === 0 ? "pass" : "fail",
     detail:
       rest46Breaches.length === 0
         ? "No short post-nights rest gaps detected"
-        : `${rest46Breaches.length} gap(s) under 46 h`,
+        : `${rest46Breaches.length} gap(s) under 46 h after a night run`,
     breaches: rest46Breaches.slice(0, 5),
     evidence: rest46Shifts.length === 0 ? undefined : { shifts: rest46Shifts, notes: rest46Notes },
   });
+
 
   // R9 — No more than 1 weekend in 2 worked
   const weekendsWorked = new Set<string>();

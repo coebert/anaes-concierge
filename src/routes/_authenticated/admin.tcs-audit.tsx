@@ -50,7 +50,7 @@ function TcsAuditPage() {
         .order("full_name");
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
-      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>(), todayISO };
+      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>(), leaveByStaff: new Map<string, Set<string>>(), todayISO, sinceISO: since };
 
       // Fetch in pages of 1000 to avoid Supabase's default row cap silently
       // truncating high-volume trainees (a single .range(0, 9999) request
@@ -76,6 +76,32 @@ function TcsAuditPage() {
         if (offset > 50_000) break; // hard safety stop
       }
 
+      // Pull approved leave so the audit can (a) bridge "consecutive days"
+      // runs across leave days and (b) exclude leave days from the WTD
+      // averaging denominator. Pending / cancelled requests are ignored.
+      let leaveQ = supabase
+        .from("leave_requests")
+        .select("staff_id, start_date, end_date, status")
+        .in("staff_id", ids)
+        .eq("status", "approved");
+      if (since) leaveQ = leaveQ.gte("end_date", since);
+      const { data: leaveRows, error: e3 } = await leaveQ;
+      if (e3) throw e3;
+      const leaveByStaff = new Map<string, Set<string>>();
+      for (const lr of leaveRows ?? []) {
+        let set = leaveByStaff.get(lr.staff_id);
+        if (!set) {
+          set = new Set();
+          leaveByStaff.set(lr.staff_id, set);
+        }
+        // Expand inclusive date range to a set of YYYY-MM-DD strings.
+        const start = new Date(lr.start_date + "T00:00:00Z").getTime();
+        const end = new Date(lr.end_date + "T00:00:00Z").getTime();
+        for (let t = start; t <= end; t += 86_400_000) {
+          set.add(new Date(t).toISOString().slice(0, 10));
+        }
+      }
+
       const map = new Map<string, AuditAssignment[]>();
       for (const a of all) {
         const arr = map.get(a.staff_id) ?? [];
@@ -87,7 +113,7 @@ function TcsAuditPage() {
         });
         map.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff: map, todayISO };
+      return { trainees: trainees ?? [], assignmentsByStaff: map, leaveByStaff, todayISO, sinceISO: since };
     },
   });
 
@@ -113,9 +139,24 @@ function TcsAuditPage() {
           else if (endISO && endISO < todayISO) reason = "rotation_ended";
           else reason = "no_sync";
         }
+        // Reference window for R1 averaging: the user-selected lookback
+        // (or rotation start if 'all') clamped to the rotation window and
+        // to today. This stops a sparse dataset / leave block from
+        // artificially deflating the WTD average.
+        const lookbackStart = data.sinceISO ?? startISO ?? todayISO;
+        const refStart = [startISO ?? lookbackStart, lookbackStart]
+          .filter(Boolean)
+          .sort()
+          .reverse()[0]; // later of the two
+        const refEnd = [endISO ?? todayISO, todayISO].sort()[0]; // earlier of the two
+        const leaveDates = data.leaveByStaff.get(t.id) ?? new Set<string>();
         return {
           trainee: t,
-          audit: auditTcs2016(inRotation),
+          audit: auditTcs2016(inRotation, {
+            windowStartISO: refStart,
+            windowEndISO: refEnd,
+            leaveDates,
+          }),
           reason,
           startISO,
           endISO,
