@@ -174,28 +174,13 @@ function TcsAuditPage() {
                         : "no data"}
                     </p>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
                     <div className="grid gap-2 md:grid-cols-2">
                       {audit.rules.map((r) => (
-                        <div
-                          key={r.id}
-                          className="flex items-start gap-2 rounded-md border p-2 text-sm"
-                        >
-                          <RuleIcon status={r.status} />
-                          <div className="flex-1">
-                            <div className="font-medium">{r.label}</div>
-                            <div className="text-xs text-muted-foreground">{r.detail}</div>
-                            {r.breaches && r.breaches.length > 0 && (
-                              <ul className="mt-1 list-disc pl-4 text-xs text-destructive">
-                                {r.breaches.map((b, i) => (
-                                  <li key={i}>{b.note}</li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </div>
+                        <RuleCard key={r.id} rule={r} />
                       ))}
                     </div>
+                    <AllSessionsDrilldown audit={audit} />
                   </CardContent>
                 </Card>
               ))}
