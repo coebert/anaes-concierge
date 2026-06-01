@@ -130,7 +130,7 @@ export function SummaryDashboard() {
               ) : days.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No weekdays in the next 7 days.</div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                   {days.map((d) => {
                     const risk = worstRisk(d.am.risk, d.pm.risk);
                     const headroom = Math.min(d.am.headroom, d.pm.headroom);
@@ -161,6 +161,7 @@ export function SummaryDashboard() {
                     );
                   })}
                 </div>
+                <RobustnessLegend />
               )}
             </CardContent>
           </Card>
