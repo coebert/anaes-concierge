@@ -805,18 +805,24 @@ function ValidationCard({
   const [mismatchThreshold, setMismatchThreshold] = useState(15);
   const [onlyMismatches, setOnlyMismatches] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [monthsBackOverride, setMonthsBackOverride] = useState<number | null>(null);
+
+  const effectiveMonthsBack = monthsBackOverride ?? monthsBack;
+  const queryClient = useQueryClient();
+
+  const queryKey = [
+    "list-feasibility-validation",
+    effectiveMonthsBack,
+    sampleCap,
+    mismatchThreshold,
+    JSON.stringify(thresholds),
+  ] as const;
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: [
-      "list-feasibility-validation",
-      monthsBack,
-      sampleCap,
-      mismatchThreshold,
-      JSON.stringify(thresholds),
-    ],
+    queryKey,
     queryFn: async () => {
       const raw = await validateConsultantPatterns({
-        monthsBack,
+        monthsBack: effectiveMonthsBack,
         thresholds,
         sampleCap,
         mismatchThresholdPct: mismatchThreshold,
@@ -834,6 +840,55 @@ function ValidationCard({
     }
   };
 
+  // ---- Apply remediation -> auto re-run validation ----
+  const applyMutation = useMutation({
+    mutationFn: async (remediation: Remediation) => {
+      switch (remediation.kind) {
+        case "extend-non-working-labels": {
+          const tokens = ((remediation.payload?.tokens as string[]) ?? [])
+            .map((t) => t.trim())
+            .filter(Boolean);
+          if (tokens.length === 0) throw new Error("No tokens to add");
+          const rows = tokens.map((token) => ({
+            token,
+            source: "auto-remediation:list-feasibility",
+          }));
+          const { error } = await supabase
+            .from("validation_custom_non_working_labels")
+            .upsert(rows, { onConflict: "token", ignoreDuplicates: true });
+          if (error) throw new Error(error.message);
+          return {
+            message: `Added ${tokens.length} label${tokens.length === 1 ? "" : "s"} to the non-working list.`,
+          };
+        }
+        case "widen-validation-window": {
+          const next = Math.min(24, effectiveMonthsBack + 3);
+          if (next === effectiveMonthsBack) {
+            throw new Error("Validation window is already at the maximum (24 months).");
+          }
+          setMonthsBackOverride(next);
+          return { message: `Widened validation window to ${next} months.` };
+        }
+        default:
+          throw new Error("This remediation has no in-app apply action.");
+      }
+    },
+    onSuccess: async (result) => {
+      toast.success(result.message, {
+        description: "Re-running validation to confirm the fix…",
+      });
+      // Make sure the next run reflects newly inserted DB rows.
+      await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      await refetch();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Could not apply remediation");
+    },
+  });
+
+  const isApplicable = (kind: Remediation["kind"]) =>
+    kind === "extend-non-working-labels" || kind === "widen-validation-window";
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -843,8 +898,9 @@ function ValidationCard({
           session) cell, this pulls a sample of actual rota_assignments
           rows from the same window and recomputes a sampled working %
           independently of the model. Cells whose sampled % differs from
-          the model by more than the mismatch threshold are flagged so you
-          can audit the underlying records.
+          the model by more than the mismatch threshold are flagged, and
+          each flagged cell shows an auto-investigation diagnosis with a
+          one-click apply button where the fix can be made in-app.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -875,6 +931,32 @@ function ValidationCard({
                 setMismatchThreshold(Math.max(5, Number(e.target.value) || 15))
               }
             />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Validation window (months)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                className="w-24"
+                min={1}
+                max={24}
+                value={effectiveMonthsBack}
+                onChange={(e) =>
+                  setMonthsBackOverride(
+                    Math.min(24, Math.max(1, Number(e.target.value) || monthsBack)),
+                  )
+                }
+              />
+              {monthsBackOverride !== null && monthsBackOverride !== monthsBack && (
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground underline"
+                  onClick={() => setMonthsBackOverride(null)}
+                >
+                  reset
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Switch
@@ -909,10 +991,14 @@ function ValidationCard({
             onlyMismatches={onlyMismatches}
             expanded={expanded}
             setExpanded={setExpanded}
+            onApply={(r) => applyMutation.mutate(r)}
+            isApplying={applyMutation.isPending}
+            isApplicable={isApplicable}
           />
         )}
       </CardContent>
     </Card>
+
   );
 }
 
