@@ -890,6 +890,69 @@ function ValidationCard({
   const isApplicable = (kind: Remediation["kind"]) =>
     kind === "extend-non-working-labels" || kind === "widen-validation-window";
 
+  // ---- Apply ALL eligible remediations in the current report ----
+  const eligibleRemediations: Remediation[] = data
+    ? data.consultants.flatMap((c) =>
+        c.cells.flatMap((cell) =>
+          cell.diagnoses
+            .map((d) => d.remediation)
+            .filter((r) => isApplicable(r.kind)),
+        ),
+      )
+    : [];
+
+  const aggregateTokens = Array.from(
+    new Set(
+      eligibleRemediations
+        .filter((r) => r.kind === "extend-non-working-labels")
+        .flatMap((r) => ((r.payload?.tokens as string[]) ?? []).map((t) => t.trim()))
+        .filter(Boolean),
+    ),
+  );
+  const wantsWiden = eligibleRemediations.some(
+    (r) => r.kind === "widen-validation-window",
+  );
+  const canWiden = wantsWiden && effectiveMonthsBack < 24;
+  const totalEligibleFixes = aggregateTokens.length + (canWiden ? 1 : 0);
+
+  const applyAllMutation = useMutation({
+    mutationFn: async () => {
+      const steps: string[] = [];
+      if (aggregateTokens.length > 0) {
+        const rows = aggregateTokens.map((token) => ({
+          token,
+          source: "auto-remediation:list-feasibility:apply-all",
+        }));
+        const { error } = await supabase
+          .from("validation_custom_non_working_labels")
+          .upsert(rows, { onConflict: "token", ignoreDuplicates: true });
+        if (error) throw new Error(error.message);
+        steps.push(
+          `Added ${aggregateTokens.length} label${aggregateTokens.length === 1 ? "" : "s"} to the non-working list`,
+        );
+      }
+      if (canWiden) {
+        const next = Math.min(24, effectiveMonthsBack + 3);
+        setMonthsBackOverride(next);
+        steps.push(`Widened validation window to ${next} months`);
+      }
+      if (steps.length === 0) {
+        throw new Error("No eligible remediations to apply.");
+      }
+      return { message: steps.join("; ") + "." };
+    },
+    onSuccess: async (result) => {
+      toast.success("Applied all eligible fixes", {
+        description: `${result.message} Re-running validation…`,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      await refetch();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Could not apply fixes");
+    },
+  });
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -976,6 +1039,20 @@ function ValidationCard({
                 ? "Re-run validation"
                 : "Run validation"}
           </Button>
+          {enabled && data && totalEligibleFixes > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => applyAllMutation.mutate()}
+              disabled={
+                applyAllMutation.isPending || applyMutation.isPending || isFetching
+              }
+            >
+              {applyAllMutation.isPending
+                ? "Applying all fixes…"
+                : `Apply all fixes & re-run (${totalEligibleFixes})`}
+            </Button>
+          )}
         </div>
 
         {!enabled ? (
