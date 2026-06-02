@@ -502,17 +502,37 @@ export async function computeListFeasibility(
 
   const consultantPatterns: ConsultantPattern[] = [];
   const SESSIONS: Array<"am" | "pm"> = ["am", "pm"];
+  // Heuristic threshold for inferring a "regular day off" from the rota:
+  // if a consultant has ≥ this many occurrences of a dow in tenure but zero
+  // rota records (of any duty type) on that dow, treat the entire day as a
+  // non-working day. 4 weeks of exposure is a reasonable signal.
+  const REGULAR_DAY_OFF_MIN_TENURE = 4;
+
   for (const c of consultantById.values()) {
     if (!c.active) continue;
     const bounds = tenureBounds.get(c.id);
     const tenureStart = bounds ? (bounds.first < windowStart ? windowStart : bounds.first) : null;
     const tenureEnd = bounds ? (bounds.last > windowEnd ? windowEnd : bounds.last) : null;
     const cells: ConsultantPatternCell[] = [];
+    const consultantDowRecords = dowsWithAnyRecord.get(c.id) ?? new Set<number>();
     let regularSessions = 0;
     for (let dow = 1; dow <= 5; dow++) {
-      const total = tenureStart && tenureEnd
+      const tenureDowOccurrences = tenureStart && tenureEnd
         ? countDowInRange(dow, tenureStart, tenureEnd)
         : 0;
+      // A dow is a "regular day off" if profiles.ltft_days_off lists it, OR
+      // if the consultant has meaningful tenure exposure but zero records of
+      // any duty type on that dow.
+      const explicitOff = c.ltftDaysOff.has(dow);
+      const inferredOff =
+        !explicitOff &&
+        tenureDowOccurrences >= REGULAR_DAY_OFF_MIN_TENURE &&
+        !consultantDowRecords.has(dow);
+      const regularDayOff = explicitOff || inferredOff;
+      // For day-off cells, zero out the denominator so they don't count as
+      // "available" sessions in either workingPct or the regular-pattern
+      // candidate pool.
+      const total = regularDayOff ? 0 : tenureDowOccurrences;
       for (const session of SESSIONS) {
         const counts = patternCounts.get(cellKey(c.id, dow, session)) ?? {
           clinical: 0,
@@ -520,7 +540,7 @@ export async function computeListFeasibility(
         };
         const workingPct =
           total > 0 ? Math.round((counts.clinical / total) * 100) : 0;
-        const regular = workingPct >= thresholds.regularWorkingMinPct;
+        const regular = !regularDayOff && workingPct >= thresholds.regularWorkingMinPct;
         if (regular) regularSessions += 1;
         cells.push({
           dow,
@@ -530,6 +550,7 @@ export async function computeListFeasibility(
           workingOccurrences: counts.clinical,
           workingPct,
           regular,
+          regularDayOff,
         });
       }
     }
