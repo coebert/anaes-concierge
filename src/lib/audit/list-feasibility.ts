@@ -297,13 +297,18 @@ export async function computeListFeasibility(
     return /\b(emergency|cepod)\b/i.test(surgeonRaw);
   };
 
-  const consultantById = new Map<string, { id: string; name: string; active: boolean }>();
+  const consultantById = new Map<
+    string,
+    { id: string; name: string; active: boolean; ltftDaysOff: Set<number> }
+  >();
   for (const p of profiles ?? []) {
     if ((p.grade as Grade) === "consultant") {
+      const raw = (p.ltft_days_off as unknown as number[] | null) ?? [];
       consultantById.set(p.id as string, {
         id: p.id as string,
         name: (p.full_name as string) || "(unnamed)",
         active: (p.active as boolean) ?? true,
+        ltftDaysOff: new Set(raw.map((n) => Number(n))),
       });
     }
   }
