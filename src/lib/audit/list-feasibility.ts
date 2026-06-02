@@ -28,6 +28,10 @@ export interface FeasibilityThresholds {
   forbidNewShortfalls: boolean;
   /** Minimum occurrences in window for a slot to be considered "regular". */
   minOccurrences: number;
+  /** % of active consultants with any duty record above which a day is "thin". 0-100. */
+  shortfallDayBusyPct: number;
+  /** WTE added per failed slot dimension (rough PA→WTE conversion). */
+  wtePerWeeklySession: number;
 }
 
 export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
@@ -35,6 +39,8 @@ export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
   ownerOrDeputyMinPct: 95,
   forbidNewShortfalls: true,
   minOccurrences: 4,
+  shortfallDayBusyPct: 70,
+  wtePerWeeklySession: 0.1,
 };
 
 export type Verdict = "feasible" | "borderline" | "not_feasible";
@@ -315,7 +321,12 @@ export async function computeListFeasibility(
         // covered here would no longer be free. Treat as potential
         // shortfall when no spare consultants were free on that day.
         // Heuristic only — proper sim would re-run robustness.
-        shortfallsIfLocked += isCoveredDayThin(asnByDateStaff, occ.date, totalActiveConsultants)
+        shortfallsIfLocked += isCoveredDayThin(
+          asnByDateStaff,
+          occ.date,
+          totalActiveConsultants,
+          thresholds.shortfallDayBusyPct,
+        )
           ? 1
           : 0;
       } else if (isUnavailable) {
@@ -399,7 +410,8 @@ export async function computeListFeasibility(
   const notFeasible = slotResults.filter((s) => s.verdict === "not_feasible").length;
   const estimatedExtraWte =
     Math.round(
-      slotResults.reduce((acc, s) => acc + s.headcountGap * 0.1, 0) * 10,
+      slotResults.reduce((acc, s) => acc + s.headcountGap * thresholds.wtePerWeeklySession, 0) *
+        10,
     ) / 10;
 
   // Sort: not_feasible first, then borderline, then by occurrences desc.
@@ -436,6 +448,7 @@ function isCoveredDayThin(
   asnByDateStaff: Map<string, { staffId: string }[]>,
   date: string,
   totalActiveConsultants: number,
+  busyPct: number,
 ): boolean {
   if (totalActiveConsultants === 0) return false;
   const staffWithAnyRecord = new Set<string>();
@@ -443,7 +456,7 @@ function isCoveredDayThin(
     if (!key.startsWith(date + "|")) continue;
     for (const r of rows) staffWithAnyRecord.add(r.staffId);
   }
-  return staffWithAnyRecord.size / totalActiveConsultants > 0.7;
+  return staffWithAnyRecord.size / totalActiveConsultants > busyPct / 100;
 }
 
 export const DOW_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

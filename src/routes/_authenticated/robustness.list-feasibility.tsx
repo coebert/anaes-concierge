@@ -37,13 +37,34 @@ export const Route = createFileRoute("/_authenticated/robustness/list-feasibilit
 });
 
 function ListFeasibilityPage() {
-  const [monthsBack, setMonthsBack] = useState(6);
-  const [thresholds, setThresholds] = useState<FeasibilityThresholds>(DEFAULT_THRESHOLDS);
+  // "Applied" state — what the query actually runs against.
+  const [appliedMonths, setAppliedMonths] = useState(6);
+  const [appliedThresholds, setAppliedThresholds] =
+    useState<FeasibilityThresholds>(DEFAULT_THRESHOLDS);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["list-feasibility", monthsBack, JSON.stringify(thresholds)],
-    queryFn: () => computeListFeasibility({ monthsBack, thresholds }),
+  // "Draft" state — what the controls show. Changes only take effect on Recalculate.
+  const [draftMonths, setDraftMonths] = useState(6);
+  const [draftThresholds, setDraftThresholds] =
+    useState<FeasibilityThresholds>(DEFAULT_THRESHOLDS);
+
+  const dirty =
+    draftMonths !== appliedMonths ||
+    JSON.stringify(draftThresholds) !== JSON.stringify(appliedThresholds);
+
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["list-feasibility", appliedMonths, JSON.stringify(appliedThresholds)],
+    queryFn: () =>
+      computeListFeasibility({ monthsBack: appliedMonths, thresholds: appliedThresholds }),
   });
+
+  const applyDraft = () => {
+    setAppliedMonths(draftMonths);
+    setAppliedThresholds(draftThresholds);
+  };
+  const resetDraft = () => {
+    setDraftMonths(6);
+    setDraftThresholds(DEFAULT_THRESHOLDS);
+  };
 
   const summary = data?.summary;
   const slots = data?.slots ?? [];
@@ -63,7 +84,7 @@ function ListFeasibilityPage() {
             Regular-list feasibility
           </h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            For every recurring surgical list in the last {monthsBack} months,
+            For every recurring surgical list in the last {appliedMonths} months,
             this model asks: <em>if we named one consultant as its regular
             owner, would current staffing, leave and on-call patterns
             actually let them be there?</em> Outputs a per-list verdict and
@@ -73,10 +94,15 @@ function ListFeasibilityPage() {
         </header>
 
         <ThresholdControls
-          monthsBack={monthsBack}
-          setMonthsBack={setMonthsBack}
-          thresholds={thresholds}
-          setThresholds={setThresholds}
+          monthsBack={draftMonths}
+          setMonthsBack={setDraftMonths}
+          thresholds={draftThresholds}
+          setThresholds={setDraftThresholds}
+          dirty={dirty}
+          isFetching={isFetching}
+          onApply={applyDraft}
+          onReset={resetDraft}
+          onRerun={() => refetch()}
         />
 
         {isLoading ? (
@@ -100,18 +126,29 @@ function ThresholdControls({
   setMonthsBack,
   thresholds,
   setThresholds,
+  dirty,
+  isFetching,
+  onApply,
+  onReset,
+  onRerun,
 }: {
   monthsBack: number;
   setMonthsBack: (n: number) => void;
   thresholds: FeasibilityThresholds;
   setThresholds: (t: FeasibilityThresholds) => void;
+  dirty: boolean;
+  isFetching: boolean;
+  onApply: () => void;
+  onReset: () => void;
+  onRerun: () => void;
 }) {
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Feasibility bar</CardTitle>
         <CardDescription>
-          Tune the rules for what counts as a workable regular assignment.
+          Tune the rules for what counts as a workable regular assignment,
+          then press <strong>Recalculate</strong> to rerun the model.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -170,6 +207,45 @@ function ThresholdControls({
             onChange={(e) => setMonthsBack(Math.max(1, Number(e.target.value) || 6))}
           />
         </div>
+        <div className="space-y-2">
+          <Label className="text-xs flex items-center justify-between">
+            "Thin day" busy ≥
+            <span className="font-mono">{thresholds.shortfallDayBusyPct}%</span>
+          </Label>
+          <Slider
+            min={40}
+            max={95}
+            step={5}
+            value={[thresholds.shortfallDayBusyPct]}
+            onValueChange={([v]) =>
+              setThresholds({ ...thresholds, shortfallDayBusyPct: v })
+            }
+          />
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            % of active consultants with any duty record above which a day
+            counts as too thin to absorb a redeployment.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs">WTE per failed weekly session</Label>
+          <Input
+            type="number"
+            min={0.05}
+            max={0.5}
+            step={0.05}
+            value={thresholds.wtePerWeeklySession}
+            onChange={(e) =>
+              setThresholds({
+                ...thresholds,
+                wtePerWeeklySession: Math.max(0.01, Number(e.target.value) || 0.1),
+              })
+            }
+          />
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            Conversion used in the extra-WTE estimate. Default 0.1 ≈ 1 PA
+            per session ÷ 10 PAs per consultant.
+          </p>
+        </div>
         <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
           <Switch
             id="forbid-shortfall"
@@ -189,17 +265,26 @@ function ThresholdControls({
             <TooltipContent>
               Heuristic: counts occurrences where the owner was free but
               another consultant covered, AND that day had very thin
-              consultant capacity overall.
+              consultant capacity overall (per the "thin day" threshold).
             </TooltipContent>
           </Tooltip>
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setThresholds(DEFAULT_THRESHOLDS)}
-          >
-            Reset to defaults
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            {dirty && (
+              <span className="text-[11px] text-amber-600">
+                Unapplied changes
+              </span>
+            )}
+            <Button variant="ghost" size="sm" onClick={onReset}>
+              Reset to defaults
+            </Button>
+            <Button
+              size="sm"
+              onClick={dirty ? onApply : onRerun}
+              disabled={isFetching}
+            >
+              {isFetching ? "Modelling…" : dirty ? "Recalculate" : "Rerun"}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
