@@ -59,7 +59,10 @@ function RobustnessPage() {
           <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}>
             Later <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
-          <div className="ml-auto">
+          <div className="ml-auto flex gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/robustness/list-feasibility">Regular-list feasibility</Link>
+            </Button>
             <Button asChild size="sm">
               <Link to="/robustness/simulate">Run what-if simulation</Link>
             </Button>
