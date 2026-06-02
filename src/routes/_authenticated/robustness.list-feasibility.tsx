@@ -564,10 +564,34 @@ function AssumptionsCard() {
           </p>
         </div>
         <div>
-          <h4 className="font-medium mb-1">Extra-WTE estimate</h4>
-          <p className="text-muted-foreground">
-            Each "not feasible" slot that fails because the owner is below threshold adds roughly <strong>0.1 WTE</strong> (one regular session per week ≈ 1 PA, and 10 PAs ≈ 1 consultant WTE). If both the owner and the owner+deputy thresholds fail, the gap is counted twice. The total is rounded to one decimal place. This is a rough order-of-magnitude estimate, not a precise workforce-planning figure.
-          </p>
+          <h4 className="font-medium mb-1">Extra consultant WTE needed — how it's calculated</h4>
+          <ul className="list-disc pl-5 text-muted-foreground space-y-1 mt-1">
+            <li>For each regular list slot, the model picks an <strong>owner</strong> (most frequent consultant) and a <strong>deputy</strong> (second-most). Only active consultant-grade staff are eligible.</li>
+            <li>Two coverage percentages are computed across the window: <strong>owner %</strong> and <strong>owner-or-deputy %</strong>.</li>
+            <li>Each percentage is compared to its threshold (defaults 80% / 95%) and classified as <em>above</em>, <em>near</em> (within 10 pts), or <em>below</em>.</li>
+            <li>A per-slot <strong>headcount gap</strong> is then assigned:
+              <ul className="list-[circle] pl-5 mt-1">
+                <li><code>+1</code> if the owner % is <em>below</em> threshold.</li>
+                <li><code>+1</code> more if the owner-or-deputy % is also <em>below</em> threshold (so a slot can contribute 0, 1, or 2).</li>
+                <li><code>0</code> for feasible or borderline slots.</li>
+              </ul>
+            </li>
+            <li>Each unit of headcount gap is converted to WTE using <strong>0.1 WTE per weekly session</strong> (1 list half-day per week ≈ 1 PA, and 10 PAs ≈ 1 consultant WTE). This rate is configurable in the thresholds panel.</li>
+            <li>The slot-level gaps are summed across the department and rounded to one decimal place. Emergency / CEPOD lists are excluded from this calculation.</li>
+            <li>This is a deliberately rough order-of-magnitude figure, not a precise workforce-planning number — it answers "roughly how many more consultants would close the regular-list coverage gap?".</li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">Extra WTE needed after SAS doctors are factored in</h4>
+          <ul className="list-disc pl-5 text-muted-foreground space-y-1 mt-1">
+            <li>SAS doctors are not nominated as owners or deputies, but they do deliver theatre lists and so add real capacity to the elective pool.</li>
+            <li>The model counts every <code>duty_type = "theatre"</code> AM/PM rota assignment for active SAS doctors within the analysis window.</li>
+            <li>That total is divided by the number of weeks in the window to give <strong>SAS list half-days per week</strong>.</li>
+            <li>It is then multiplied by the same <strong>0.1 WTE per weekly session</strong> rate to give a <strong>SAS consultant-WTE-equivalent offset</strong>.</li>
+            <li>The adjusted figure is <code>max(0, extra consultant WTE − SAS offset)</code>, again rounded to one decimal place.</li>
+            <li>The hover tooltip on the "Extra WTE needed (after SAS)" tile shows the underlying numbers (SAS headcount, half-days/week, WTE offset) for transparency.</li>
+            <li>Caveat: this assumes the SAS list activity observed in the window continues at the same rate. It does not assume SAS doctors take on additional sessions, nor that they become the named owner of any list.</li>
+          </ul>
         </div>
         <div>
           <h4 className="font-medium mb-1">Verdict thresholds</h4>
