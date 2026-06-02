@@ -919,10 +919,21 @@ function ValidationCard({
     },
     onSuccess: async (result) => {
       toast.success(result.message, {
-        description: "Re-running validation to confirm the fix…",
+        description: "Verifying updated tokens and re-running validation…",
       });
       // Make sure the next run reflects newly inserted DB rows.
       await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      // Explicit verification step: re-read tokens from DB and recompute the
+      // model before re-rendering the validation report.
+      try {
+        await runVerification(effectiveMonthsBack);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? `Verification failed: ${err.message}`
+            : "Verification failed",
+        );
+      }
       await refetch();
     },
     onError: (err) => {
