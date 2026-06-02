@@ -44,6 +44,7 @@ import {
   type DiagnosedConsultant,
   type DiagnosedCell,
   type Diagnosis,
+  type Remediation,
 } from "@/lib/audit/list-feasibility-diagnosis";
 
 
