@@ -270,9 +270,9 @@ function ThresholdControls({
             }
           />
           <p className="text-[10px] text-muted-foreground leading-tight">
-            % of eligible weeks (excluding on-call days) a consultant must
-            work a given half-day before it counts as part of their regular
-            pattern.
+            % of all weekdays (Mon–Fri) the consultant must be assigned to
+            clinical activity on a given half-day before it counts as part of
+            their regular pattern. On-call weeks are NOT excluded.
           </p>
         </div>
 
