@@ -1000,7 +1000,7 @@ function ValidationConsultantRow({
   expanded,
   onToggle,
 }: {
-  consultant: ValidationConsultant;
+  consultant: DiagnosedConsultant;
   expanded: boolean;
   onToggle: () => void;
 }) {
