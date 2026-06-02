@@ -1197,8 +1197,8 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
     </div>
   );
 }
-  );
-}
+
+
 
 function ClassificationBadge({
   classification,
