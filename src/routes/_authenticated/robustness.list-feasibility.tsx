@@ -1026,6 +1026,11 @@ function ValidationConsultantRow({
           <span className="text-[11px] text-muted-foreground">
             max Δ {consultant.maxAbsDelta} pts
           </span>
+          {consultant.topDiagnosis && (
+            <span className="text-[11px] text-muted-foreground italic truncate max-w-[40ch]">
+              · {consultant.topDiagnosis.summary}
+            </span>
+          )}
         </div>
         <span className="text-[11px] text-muted-foreground">
           {consultant.tenureStart && consultant.tenureEnd
