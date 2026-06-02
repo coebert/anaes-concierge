@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
 
 /**
  * CLWRota (Rotamap Central API) integration — pull-only.
@@ -1145,11 +1146,7 @@ function isJuniorTraineeLevel(trainingLevel: string | null | undefined): boolean
  * expected to handle their own whitespace/hyphen variants explicitly.
  */
 export function normaliseClassifierText(raw: string): string {
-  return raw
-    .toLowerCase()
-    .replace(/[-_/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normaliseRotaLabelText(raw);
 }
 
 function mappingMatches(
@@ -1416,6 +1413,12 @@ export async function performRotaSync() {
       if (!session)      { skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` }); continue; }
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
+      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName];
+      if (isNonWorkingRotaLabel(dutyLabels)) {
+        skipped.push({ label, reason: "non-working rota label (off/day off)" });
+        continue;
+      }
+
       let staffId: string | undefined;
       if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
       if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
@@ -1449,7 +1452,7 @@ export async function performRotaSync() {
       // Classify duty type from free-text labels + staff grade.
       const prof = profById.get(staffId);
       const dutyType = classifyDutyType(
-        [consultantName, roleRaw, specialtyName, theatreName],
+        dutyLabels,
         prof?.grade,
         prof?.training_level,
         dutyMappings,

@@ -110,6 +110,7 @@ import {
   type DutyTypeMappingRow,
   type ResolvedDutyType,
 } from "../clwrota.functions";
+import { isNonWorkingRotaLabel } from "../clwrota-labels";
 import { computeRobustness } from "./robustness";
 
 /* --------------------------- CLWRota payload shape ------------------------ */
@@ -290,6 +291,13 @@ describe("CLWRota payload field mapping helpers", () => {
       .toBe("theatre");
     expect(classifyDutyType(["Pain clinic"], "consultant", null, PROD_MAPPINGS))
       .toBe("theatre");
+  });
+
+  it("detects CLWRota off/day-off placeholders as non-working labels", () => {
+    expect(isNonWorkingRotaLabel(["Off Day"])).toBe(true);
+    expect(isNonWorkingRotaLabel(["Surgeon: Off"])).toBe(true);
+    expect(isNonWorkingRotaLabel(["Surgeon: Masood? off"])).toBe(true);
+    expect(isNonWorkingRotaLabel(["Theatre 3", "Pain clinic"])).toBe(false);
   });
 });
 

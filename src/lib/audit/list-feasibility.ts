@@ -18,6 +18,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { isNonWorkingRotaLabel } from "@/lib/clwrota-labels";
 import type { Grade } from "./robustness";
 
 // -------- public types --------
@@ -285,7 +286,7 @@ export async function computeListFeasibility(
     fetchAllRows((from, to) =>
       supabase
         .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id")
+        .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id, notes")
         .gte("session_date", windowStart)
         .lte("session_date", windowEnd)
         .order("session_date", { ascending: true })
@@ -341,6 +342,7 @@ export async function computeListFeasibility(
     dutyType: string;
     roleOnList: string;
     theatreSessionId: string | null;
+    notes: string | null;
   };
   const asnByTheatreSession = new Map<string, Asn[]>();
   const asnByDateStaff = new Map<string, Asn[]>(); // key: date|staffId
@@ -361,7 +363,9 @@ export async function computeListFeasibility(
       dutyType: a.duty_type as string,
       roleOnList: a.role_on_list as string,
       theatreSessionId: (a.theatre_session_id as string | null) ?? null,
+      notes: (a.notes as string | null) ?? null,
     };
+    if (isNonWorkingRotaLabel([row.notes])) continue;
     if (row.theatreSessionId) {
       const arr = asnByTheatreSession.get(row.theatreSessionId) ?? [];
       arr.push(row);
@@ -617,6 +621,7 @@ export async function computeListFeasibility(
     const theatreId = (s.theatre_id as string) ?? "";
     if (!theatreId) continue;
     const surgeonRaw = (s.surgical_consultant as string | null) ?? "";
+    if (isNonWorkingRotaLabel([surgeonRaw])) continue;
     if (isEmergencySession((s.specialty_id as string | null) ?? null, surgeonRaw)) {
       continue;
     }
