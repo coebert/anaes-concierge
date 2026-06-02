@@ -32,6 +32,14 @@ import {
   type ListSlotFeasibility,
   type Verdict,
 } from "@/lib/audit/list-feasibility";
+import {
+  validateConsultantPatterns,
+  type ValidationReport,
+  type ValidationCell,
+  type ValidationConsultant,
+  type SampleClassification,
+} from "@/lib/audit/list-feasibility-validation";
+
 
 
 export const Route = createFileRoute("/_authenticated/robustness/list-feasibility")({
@@ -120,6 +128,10 @@ function ListFeasibilityPage() {
               patterns={consultantPatterns}
               regularMinPct={summary.thresholds.regularWorkingMinPct}
             />
+            <ValidationCard
+              monthsBack={appliedMonths}
+              thresholds={appliedThresholds}
+            />
             <SlotsTable slots={slots} />
             <AssumptionsCard />
           </>
@@ -128,6 +140,7 @@ function ListFeasibilityPage() {
     </TooltipProvider>
   );
 }
+
 
 
 function ThresholdControls({
@@ -771,3 +784,371 @@ function WorkingPatternsCard({
     </Card>
   );
 }
+
+// =============== Validation report ===============
+
+function ValidationCard({
+  monthsBack,
+  thresholds,
+}: {
+  monthsBack: number;
+  thresholds: FeasibilityThresholds;
+}) {
+  const [enabled, setEnabled] = useState(false);
+  const [sampleCap, setSampleCap] = useState(10);
+  const [mismatchThreshold, setMismatchThreshold] = useState(15);
+  const [onlyMismatches, setOnlyMismatches] = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: [
+      "list-feasibility-validation",
+      monthsBack,
+      sampleCap,
+      mismatchThreshold,
+      JSON.stringify(thresholds),
+    ],
+    queryFn: () =>
+      validateConsultantPatterns({
+        monthsBack,
+        thresholds,
+        sampleCap,
+        mismatchThresholdPct: mismatchThreshold,
+      }),
+    enabled,
+  });
+
+  const run = () => {
+    if (enabled) {
+      void refetch();
+    } else {
+      setEnabled(true);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Working-pattern validation</CardTitle>
+        <CardDescription>
+          One-click sanity check: for each consultant × (day-of-week,
+          session) cell, this pulls a sample of actual rota_assignments
+          rows from the same window and recomputes a sampled working %
+          independently of the model. Cells whose sampled % differs from
+          the model by more than the mismatch threshold are flagged so you
+          can audit the underlying records.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Sample size per cell</Label>
+            <Input
+              type="number"
+              className="w-24"
+              min={3}
+              max={50}
+              value={sampleCap}
+              onChange={(e) =>
+                setSampleCap(Math.max(3, Number(e.target.value) || 10))
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Mismatch threshold (% pts)</Label>
+            <Input
+              type="number"
+              className="w-24"
+              min={5}
+              max={50}
+              step={5}
+              value={mismatchThreshold}
+              onChange={(e) =>
+                setMismatchThreshold(Math.max(5, Number(e.target.value) || 15))
+              }
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="only-mismatches"
+              checked={onlyMismatches}
+              onCheckedChange={setOnlyMismatches}
+            />
+            <Label htmlFor="only-mismatches" className="text-xs">
+              Only show consultants with mismatches
+            </Label>
+          </div>
+          <Button size="sm" onClick={run} disabled={isFetching}>
+            {isFetching
+              ? "Validating…"
+              : enabled
+                ? "Re-run validation"
+                : "Run validation"}
+          </Button>
+        </div>
+
+        {!enabled ? (
+          <p className="text-xs text-muted-foreground">
+            Validation hasn't been run yet. Press <strong>Run validation</strong> to
+            independently re-derive consultant working patterns from raw
+            CLWRota records.
+          </p>
+        ) : isFetching && !data ? (
+          <p className="text-sm text-muted-foreground">Sampling raw rota records…</p>
+        ) : !data ? null : (
+          <ValidationResults
+            report={data}
+            onlyMismatches={onlyMismatches}
+            expanded={expanded}
+            setExpanded={setExpanded}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ValidationResults({
+  report,
+  onlyMismatches,
+  expanded,
+  setExpanded,
+}: {
+  report: ValidationReport;
+  onlyMismatches: boolean;
+  expanded: string | null;
+  setExpanded: (k: string | null) => void;
+}) {
+  const consultants = onlyMismatches
+    ? report.consultants.filter((c) => c.mismatchCount > 0)
+    : report.consultants;
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-4 text-xs">
+        <SummaryPill
+          label="Consultants checked"
+          value={report.consultants.length}
+        />
+        <SummaryPill
+          label="Cells checked"
+          value={report.totalCells}
+        />
+        <SummaryPill
+          label="Cells flagged"
+          value={report.cellsWithMismatch}
+          tone={report.cellsWithMismatch > 0 ? "red" : "emerald"}
+        />
+        <SummaryPill
+          label="Consultants flagged"
+          value={report.consultantsWithMismatch}
+          tone={report.consultantsWithMismatch > 0 ? "red" : "emerald"}
+        />
+      </div>
+
+      {consultants.length === 0 ? (
+        <p className="text-xs text-emerald-700">
+          No mismatches detected at the current threshold (±{report.mismatchThresholdPct}{" "}
+          percentage points). All sampled cells agree with the model.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {consultants.map((c) => (
+            <ValidationConsultantRow
+              key={c.id}
+              consultant={c}
+              expanded={expanded === c.id}
+              onToggle={() => setExpanded(expanded === c.id ? null : c.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ValidationConsultantRow({
+  consultant,
+  expanded,
+  onToggle,
+}: {
+  consultant: ValidationConsultant;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="rounded-md border">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/40"
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-sm">{consultant.name}</span>
+          {consultant.mismatchCount > 0 ? (
+            <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+              {consultant.mismatchCount} mismatch
+              {consultant.mismatchCount === 1 ? "" : "es"}
+            </Badge>
+          ) : (
+            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+              Agrees with model
+            </Badge>
+          )}
+          <span className="text-[11px] text-muted-foreground">
+            max Δ {consultant.maxAbsDelta} pts
+          </span>
+        </div>
+        <span className="text-[11px] text-muted-foreground">
+          {consultant.tenureStart && consultant.tenureEnd
+            ? `${consultant.tenureStart} → ${consultant.tenureEnd}`
+            : "no tenure data"}
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t bg-muted/20 p-3 space-y-3">
+          <ValidationCellTable cells={consultant.cells} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ValidationCellTable({ cells }: { cells: ValidationCell[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="px-2 py-1 text-left font-medium">Cell</th>
+            <th className="px-2 py-1 text-center font-medium">Model %</th>
+            <th className="px-2 py-1 text-center font-medium">Sampled %</th>
+            <th className="px-2 py-1 text-center font-medium">Δ</th>
+            <th className="px-2 py-1 text-center font-medium">n</th>
+            <th className="px-2 py-1 text-center font-medium">Clin</th>
+            <th className="px-2 py-1 text-center font-medium">Off-lbl</th>
+            <th className="px-2 py-1 text-center font-medium">Other</th>
+            <th className="px-2 py-1 text-center font-medium">None</th>
+            <th className="px-2 py-1 text-left font-medium">Sampled dates</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cells.map((cell) => (
+            <tr
+              key={`${cell.dow}-${cell.session}`}
+              className={cn(
+                "border-t align-top",
+                cell.mismatch && "bg-red-50 dark:bg-red-950/20",
+              )}
+            >
+              <td className="px-2 py-1.5 whitespace-nowrap font-medium">
+                {DOW_LABEL[cell.dow]}{" "}
+                <span className="uppercase text-muted-foreground">
+                  {cell.session}
+                </span>
+                {cell.modelRegularDayOff && (
+                  <span className="ml-1 text-[10px] italic text-muted-foreground">
+                    (off)
+                  </span>
+                )}
+              </td>
+              <td className="px-2 py-1.5 text-center font-mono">
+                {cell.modelPct}%
+              </td>
+              <td className="px-2 py-1.5 text-center font-mono">
+                {cell.sampleSize === 0 ? "—" : `${cell.sampledPct}%`}
+              </td>
+              <td
+                className={cn(
+                  "px-2 py-1.5 text-center font-mono",
+                  cell.mismatch && "text-red-700 font-semibold",
+                )}
+              >
+                {cell.sampleSize === 0 ? "—" : `${cell.delta > 0 ? "+" : ""}${cell.delta}`}
+              </td>
+              <td className="px-2 py-1.5 text-center text-muted-foreground">
+                {cell.sampleSize}/{cell.tenureDates}
+              </td>
+              <td className="px-2 py-1.5 text-center">{cell.clinical}</td>
+              <td className="px-2 py-1.5 text-center">{cell.offDayLabel}</td>
+              <td className="px-2 py-1.5 text-center">{cell.otherDuty}</td>
+              <td className="px-2 py-1.5 text-center">{cell.noRecord}</td>
+              <td className="px-2 py-1.5">
+                <ul className="space-y-0.5">
+                  {cell.samples.map((s) => (
+                    <li key={s.date} className="text-[10px] leading-tight">
+                      <span className="font-mono">{s.date}</span>{" "}
+                      <ClassificationBadge classification={s.classification} />
+                      {s.dutyType && (
+                        <span className="ml-1 text-muted-foreground">
+                          {s.dutyType}
+                          {s.roleOnList ? `/${s.roleOnList}` : ""}
+                        </span>
+                      )}
+                      {s.notes && (
+                        <span className="ml-1 text-muted-foreground italic">
+                          "{s.notes.slice(0, 60)}
+                          {s.notes.length > 60 ? "…" : ""}"
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ClassificationBadge({
+  classification,
+}: {
+  classification: SampleClassification;
+}) {
+  const map: Record<SampleClassification, { label: string; cls: string }> = {
+    clinical: { label: "clin", cls: "bg-emerald-100 text-emerald-800" },
+    off_day_label: { label: "off-lbl", cls: "bg-slate-200 text-slate-700" },
+    other_duty: { label: "other", cls: "bg-amber-100 text-amber-800" },
+    no_record: { label: "none", cls: "bg-muted text-muted-foreground" },
+  };
+  const m = map[classification];
+  return (
+    <span
+      className={cn(
+        "inline-block rounded px-1 text-[9px] font-medium uppercase tracking-wide",
+        m.cls,
+      )}
+    >
+      {m.label}
+    </span>
+  );
+}
+
+function SummaryPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "emerald" | "red";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border px-3 py-2",
+        tone === "red" && "border-red-300 bg-red-50 text-red-900",
+        tone === "emerald" && "border-emerald-300 bg-emerald-50 text-emerald-900",
+      )}
+    >
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-lg font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
