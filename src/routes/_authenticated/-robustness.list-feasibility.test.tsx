@@ -13,17 +13,23 @@ import type {
 
 // Replace TanStack Router primitives with inert stand-ins so the page can be
 // rendered outside a router context.
-vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({
-    options: opts,
-  }),
-  Link: ({
-    children,
-    to,
-    ...rest
-  }: React.PropsWithChildren<{ to?: string } & Record<string, unknown>>) =>
-    React.createElement("a", { href: to, ...rest }, children),
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({
+      options: opts,
+    }),
+    Link: ({
+      children,
+      to,
+      ...rest
+    }: React.PropsWithChildren<
+      { to?: string } & Record<string, unknown>
+    >) => React.createElement("a", { href: to, ...rest }, children),
+  };
+});
 
 // Spy on computeListFeasibility while keeping its real types/constants.
 const computeListFeasibility = vi.fn();
