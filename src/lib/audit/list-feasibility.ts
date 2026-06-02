@@ -142,6 +142,14 @@ export interface DepartmentSummary {
   notFeasible: number;
   /** Sum of per-slot headcount gaps, weighted by sessions/week → consultant WTE. */
   estimatedExtraWte: number;
+  /** Number of active SAS doctors used in the SAS-adjusted estimate. */
+  activeSasCount: number;
+  /** Average list half-days delivered by SAS doctors per week across the window. */
+  sasListSessionsPerWeek: number;
+  /** Consultant-WTE-equivalent of SAS list delivery (sasListSessionsPerWeek × wtePerWeeklySession). */
+  sasWteOffset: number;
+  /** Extra consultant WTE needed after subtracting SAS list-delivery capacity (floored at 0). */
+  estimatedExtraWteWithSas: number;
   /** Data-quality: how many theatre rota_assignments in the window are linked
    *  to a theatre_session via theatre_session_id (the only way to attribute a
    *  consultant to a specific list). Coverage % below is computed on the
