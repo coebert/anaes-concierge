@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/robustness/list-feasibilit
   component: ListFeasibilityPage,
 });
 
-function ListFeasibilityPage() {
+export function ListFeasibilityPage() {
   // "Applied" state — what the query actually runs against.
   const [appliedMonths, setAppliedMonths] = useState(6);
   const [appliedThresholds, setAppliedThresholds] =
