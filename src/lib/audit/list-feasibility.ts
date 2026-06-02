@@ -182,6 +182,25 @@ function classify(
   return "below";
 }
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 // -------- core compute --------
 
 export interface ComputeOptions {
@@ -208,25 +227,42 @@ export async function computeListFeasibility(
   })();
   void isoMonthsAgo;
 
-  const [{ data: profiles }, { data: theatres }, { data: sessions }, { data: assignments }] =
-    await Promise.all([
+  const [profiles, theatres, sessions, assignments] = await Promise.all([
+    fetchAllRows((from, to) =>
       supabase
         .from("profiles")
-        .select("id, full_name, grade, active"),
+        .select("id, full_name, grade, active")
+        .order("full_name", { nullsFirst: false })
+        .range(from, to),
+    ),
+    fetchAllRows((from, to) =>
       supabase
         .from("theatres")
-        .select("id, name"),
+        .select("id, name")
+        .order("name", { nullsFirst: false })
+        .range(from, to),
+    ),
+    fetchAllRows((from, to) =>
       supabase
         .from("theatre_sessions")
         .select("id, session_date, session, theatre_id, surgical_consultant")
         .gte("session_date", windowStart)
-        .lte("session_date", windowEnd),
+        .lte("session_date", windowEnd)
+        .order("session_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows((from, to) =>
       supabase
         .from("rota_assignments")
         .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id")
         .gte("session_date", windowStart)
-        .lte("session_date", windowEnd),
-    ]);
+        .lte("session_date", windowEnd)
+        .order("session_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+  ]);
 
   const consultantById = new Map<string, { id: string; name: string; active: boolean }>();
   for (const p of profiles ?? []) {
