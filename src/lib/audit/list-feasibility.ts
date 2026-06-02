@@ -525,6 +525,10 @@ export async function computeListFeasibility(
     const theatreId = (s.theatre_id as string) ?? "";
     if (!theatreId) continue;
     const surgeonRaw = (s.surgical_consultant as string | null) ?? "";
+    if (isEmergencySession((s.specialty_id as string | null) ?? null, surgeonRaw)) {
+      continue;
+    }
+    const surgeonRaw = (s.surgical_consultant as string | null) ?? "";
     const surgeonNorm = normaliseSurgeon(surgeonRaw);
     const key = `${dow}|${sess}|${theatreId}|${surgeonNorm}`;
     const existing = slotMap.get(key);
