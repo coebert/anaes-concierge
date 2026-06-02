@@ -324,6 +324,14 @@ export async function computeListFeasibility(
   };
   const asnByTheatreSession = new Map<string, Asn[]>();
   const asnByDateStaff = new Map<string, Asn[]>(); // key: date|staffId
+  // (date|session) -> set of consultant staffIds with duty_type='theatre' that
+  // half (linked OR unlinked). Used to detect "owner busy on another list".
+  const consultantsOnTheatreByDateSession = new Map<string, Set<string>>();
+  // Per-date set of every staffId with ANY duty record. Used by isCoveredDayThin.
+  const staffWithAnyRecordByDate = new Map<string, Set<string>>();
+  // Data-quality counters.
+  let theatreAssignmentsTotal = 0;
+  let theatreAssignmentsLinked = 0;
 
   for (const a of assignments ?? []) {
     const row: Asn = {
@@ -343,6 +351,31 @@ export async function computeListFeasibility(
     const arr2 = asnByDateStaff.get(k) ?? [];
     arr2.push(row);
     asnByDateStaff.set(k, arr2);
+
+    // Day-level "anyone here" set (for thin-day proxy).
+    let dayStaff = staffWithAnyRecordByDate.get(row.date);
+    if (!dayStaff) {
+      dayStaff = new Set();
+      staffWithAnyRecordByDate.set(row.date, dayStaff);
+    }
+    dayStaff.add(row.staffId);
+
+    // (date|session) → consultants doing theatre that half — linked or not.
+    if (
+      row.dutyType === "theatre" &&
+      (row.session === "am" || row.session === "pm") &&
+      consultantById.has(row.staffId)
+    ) {
+      const key = `${row.date}|${row.session}`;
+      let set = consultantsOnTheatreByDateSession.get(key);
+      if (!set) {
+        set = new Set();
+        consultantsOnTheatreByDateSession.set(key, set);
+      }
+      set.add(row.staffId);
+      theatreAssignmentsTotal += 1;
+      if (row.theatreSessionId) theatreAssignmentsLinked += 1;
+    }
   }
 
   // ----- Consultant working patterns --------------------------------------
