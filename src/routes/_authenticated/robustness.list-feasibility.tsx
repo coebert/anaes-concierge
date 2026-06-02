@@ -270,9 +270,9 @@ function ThresholdControls({
             }
           />
           <p className="text-[10px] text-muted-foreground leading-tight">
-            % of eligible weeks (excluding on-call days) a consultant must
-            work a given half-day before it counts as part of their regular
-            pattern.
+            % of all weekdays (Mon–Fri) the consultant must be assigned to
+            clinical activity on a given half-day before it counts as part of
+            their regular pattern. On-call weeks are NOT excluded.
           </p>
         </div>
 
@@ -636,12 +636,13 @@ function WorkingPatternsCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Consultant working patterns</CardTitle>
         <CardDescription>
-          For each consultant, the percentage of eligible weeks (excluding
-          weeks they were on-call for that half-day) they actually worked
-          each Mon–Fri AM/PM session. Cells highlighted in green are at or
-          above the regular-working threshold ({regularMinPct}%) and are
-          treated as part of the consultant's regular pattern when matching
-          them to feasible list slots.
+          For each consultant, the percentage of all Mon–Fri half-days in the
+          window on which CLWRota recorded them as covering a theatre list
+          (clinical activity). Weeks containing on-call are included in the
+          denominator. Cells highlighted in green are at or above the
+          regular-working threshold ({regularMinPct}%) and are treated as part
+          of the consultant's regular pattern when matching them to feasible
+          list slots.
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -681,7 +682,7 @@ function WorkingPatternsCard({
                           ? "bg-amber-50 text-amber-700"
                           : "text-muted-foreground",
                     )}
-                    title={`${c.workingOccurrences}/${Math.max(0, c.totalOccurrences - c.oncallOccurrences)} eligible weeks (on-call ${c.oncallOccurrences})`}
+                    title={`Clinical activity ${c.workingOccurrences}/${c.totalOccurrences} weekdays (on-call on ${c.oncallOccurrences})`}
                   >
                     {c.workingPct}%
                   </td>
