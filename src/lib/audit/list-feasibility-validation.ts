@@ -238,7 +238,7 @@ export async function validateConsultantPatterns(
     }
     // Off-day label wins regardless of duty_type — these rows should never
     // count as clinical activity.
-    const offDayRow = rows.find((r) => isNonWorkingRotaLabel([r.notes]));
+    const offDayRow = rows.find((r) => isNonWorkingRotaLabel([r.notes], extraNonWorkingTokens));
     if (offDayRow) {
       return {
         classification: "off_day_label",
