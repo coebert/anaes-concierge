@@ -621,3 +621,80 @@ function Stat({
     </Card>
   );
 }
+
+function WorkingPatternsCard({
+  patterns,
+  regularMinPct,
+}: {
+  patterns: ConsultantPattern[];
+  regularMinPct: number;
+}) {
+  if (patterns.length === 0) return null;
+  const DAYS = [1, 2, 3, 4, 5];
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Consultant working patterns</CardTitle>
+        <CardDescription>
+          For each consultant, the percentage of eligible weeks (excluding
+          weeks they were on-call for that half-day) they actually worked
+          each Mon–Fri AM/PM session. Cells highlighted in green are at or
+          above the regular-working threshold ({regularMinPct}%) and are
+          treated as part of the consultant's regular pattern when matching
+          them to feasible list slots.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr>
+              <th className="px-2 py-1 text-left font-medium">Consultant</th>
+              {DAYS.map((d) => (
+                <th key={d} className="px-1 py-1 text-center font-medium" colSpan={2}>
+                  {DOW_LABEL[d]}
+                </th>
+              ))}
+              <th className="px-2 py-1 text-center font-medium">Reg /wk</th>
+            </tr>
+            <tr className="text-[10px]">
+              <th />
+              {DAYS.map((d) => (
+                <>
+                  <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">AM</th>
+                  <th key={`${d}-pm`} className="px-1 py-0.5 text-center font-normal">PM</th>
+                </>
+              ))}
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {patterns.map((p) => (
+              <tr key={p.id} className="border-t">
+                <td className="px-2 py-1 whitespace-nowrap">{p.name}</td>
+                {p.cells.map((c) => (
+                  <td
+                    key={`${c.dow}-${c.session}`}
+                    className={cn(
+                      "px-1 py-1 text-center font-mono text-[11px]",
+                      c.regular
+                        ? "bg-emerald-100 text-emerald-800"
+                        : c.workingPct >= regularMinPct - 15
+                          ? "bg-amber-50 text-amber-700"
+                          : "text-muted-foreground",
+                    )}
+                    title={`${c.workingOccurrences}/${Math.max(0, c.totalOccurrences - c.oncallOccurrences)} eligible weeks (on-call ${c.oncallOccurrences})`}
+                  >
+                    {c.workingPct}%
+                  </td>
+                ))}
+                <td className="px-2 py-1 text-center font-medium">
+                  {p.regularSessionsPerWeek}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
