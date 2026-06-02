@@ -658,12 +658,11 @@ function WorkingPatternsCard({
             </tr>
             <tr className="text-[10px]">
               <th />
-              {DAYS.map((d) => (
-                <>
-                  <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">AM</th>
-                  <th key={`${d}-pm`} className="px-1 py-0.5 text-center font-normal">PM</th>
-                </>
-              ))}
+              {DAYS.flatMap((d) => [
+                <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">AM</th>,
+                <th key={`${d}-pm`} className="px-1 py-0.5 text-center font-normal">PM</th>,
+              ])}
+
               <th />
             </tr>
           </thead>
