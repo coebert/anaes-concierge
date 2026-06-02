@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   CalendarDays,
@@ -23,8 +23,10 @@ import {
   Wrench,
   ArrowLeft,
   CalendarX,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -35,8 +37,6 @@ interface NavItem {
   traineeOnly?: boolean;
 }
 
-// Primary nav: audit-first. The app exists to surface insights from synced
-// CLWRota data — trainee experience, leave pressure, rota robustness.
 const NAV: NavItem[] = [
   { to: "/", label: "Audit dashboard", icon: LayoutDashboard },
   { to: "/trainees", label: "Trainee audit", icon: GraduationCap, traineeOnly: true },
@@ -48,11 +48,6 @@ const NAV: NavItem[] = [
   { to: "/account", label: "My account", icon: UserCircle },
 ];
 
-
-
-// Coordinator tools: AI-assisted rota writing, custom rules, manual editor.
-// Kept available but de-emphasised — the app's primary purpose is auditing
-// existing CLWRota data, not generating new rotas.
 const COORDINATOR_NAV: NavItem[] = [
   { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin", "rota_coordinator"] },
   { to: "/coordinator/duties", label: "Duties & on-call", icon: Stethoscope, roles: ["admin", "rota_coordinator"] },
@@ -73,13 +68,18 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/duty-mappings", label: "Duty mappings", icon: Wrench, roles: ["admin"] },
   { to: "/admin/duty-categories", label: "Duty categories", icon: Wrench, roles: ["admin"] },
   { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
-
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { signOut, user, roles, hasRole, grade } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close the mobile drawer on navigation.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -91,8 +91,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       (!i.traineeOnly || isAdmin || grade === "trainee") &&
       (!i.roles || i.roles.some((r) => hasRole(r))),
   );
-
-
   const visibleCoord = COORDINATOR_NAV.filter(
     (i) => !i.roles || i.roles.some((r) => hasRole(r)),
   );
@@ -112,56 +110,85 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? "SAS"
     : "Staff";
 
+  const navBody = (
+    <>
+      <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4 text-sm">
+        <NavSection items={visibleMain} currentPath={location.pathname} />
+
+        {visibleCoord.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Wrench className="h-3 w-3" />
+              Coordinator tools
+            </div>
+            <NavSection items={visibleCoord} currentPath={location.pathname} />
+          </div>
+        )}
+
+        {visibleAdmin.length > 0 && (
+          <div className="space-y-1">
+            <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Administration
+            </div>
+            <NavSection items={visibleAdmin} currentPath={location.pathname} />
+          </div>
+        )}
+      </nav>
+
+      <div className="space-y-2 border-t p-3 text-sm">
+        <div className="px-1">
+          <div className="truncate font-medium">{user?.email}</div>
+          <div className="text-xs text-muted-foreground">{roleLabel}</div>
+        </div>
+        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign out
+        </Button>
+      </div>
+    </>
+  );
+
+  const brand = (
+    <div className="flex items-center gap-2">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <Stethoscope className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
+        <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen bg-muted/30">
+      {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
-        <div className="flex items-center gap-2 border-b px-4 py-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Stethoscope className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
-            <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4 text-sm">
-          <NavSection items={visibleMain} currentPath={location.pathname} />
-
-          {visibleCoord.length > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Wrench className="h-3 w-3" />
-                Coordinator tools
-              </div>
-              <NavSection items={visibleCoord} currentPath={location.pathname} />
-            </div>
-          )}
-
-          {visibleAdmin.length > 0 && (
-            <div className="space-y-1">
-              <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Administration
-              </div>
-              <NavSection items={visibleAdmin} currentPath={location.pathname} />
-            </div>
-          )}
-        </nav>
-
-        <div className="space-y-2 border-t p-3 text-sm">
-          <div className="px-1">
-            <div className="truncate font-medium">{user?.email}</div>
-            <div className="text-xs text-muted-foreground">{roleLabel}</div>
-          </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
-          </Button>
-        </div>
+        <div className="border-b px-4 py-4">{brand}</div>
+        {navBody}
       </aside>
 
       <main className="flex-1 min-w-0">
-        <div className="mx-auto max-w-7xl p-4 md:p-8">
+        {/* Mobile top bar */}
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur md:hidden">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open menu" className="min-h-11 min-w-11">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="flex w-72 max-w-[85vw] flex-col p-0">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <div className="border-b px-4 py-4">{brand}</div>
+              {navBody}
+            </SheetContent>
+          </Sheet>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-7xl p-3 sm:p-4 md:p-8">
           {location.pathname !== "/" && <BackButton />}
           {children}
         </div>
@@ -175,7 +202,7 @@ function BackButton() {
   const navigate = useNavigate();
   const canGoBack = router.history.length > 1;
   return (
-    <div className="mb-4">
+    <div className="mb-3 md:mb-4">
       <Button
         variant="ghost"
         size="sm"
@@ -192,8 +219,6 @@ function BackButton() {
   );
 }
 
-
-
 function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
   return (
     <ul className="space-y-1">
@@ -208,14 +233,14 @@ function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: str
             <Link
               to={item.to}
               className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors md:py-2",
                 active
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
             </Link>
           </li>
         );
