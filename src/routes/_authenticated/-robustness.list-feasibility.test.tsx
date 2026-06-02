@@ -217,4 +217,51 @@ describe("regular-list feasibility page", () => {
 
     cleanup();
   });
+
+  it("renders empty state when consultantPatterns and slots are empty", async () => {
+    const emptyFixture: ListFeasibilityResult = {
+      ...fixture,
+      consultantPatterns: [],
+      slots: [],
+      summary: {
+        ...fixture.summary,
+        totalSlots: 0,
+        feasible: 0,
+        borderline: 0,
+        notFeasible: 0,
+        estimatedExtraWte: 0,
+        estimatedExtraWteWithSas: 0,
+      },
+    };
+    computeListFeasibility.mockResolvedValue(emptyFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // Slots table empty state
+    expect(
+      screen.getByText("No recurring lists matched the minimum-occurrence filter."),
+    ).toBeTruthy();
+
+    // No consultant names rendered
+    expect(screen.queryByText("Dr Alpha Fixture")).toBeNull();
+
+    // Summary still renders with 0 slots
+    expect(screen.getByText(/0 recurring list slot/)).toBeTruthy();
+
+    cleanup();
+  });
 });
