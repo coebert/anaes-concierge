@@ -160,13 +160,29 @@ export async function validateConsultantPatterns(
     return d.toISOString().slice(0, 10);
   })();
 
-  // Run the model and pull raw rota rows + profiles + custom non-working
-  // labels in parallel.
-  const [modelResult, profiles, assignments, customLabels] = await Promise.all([
+  // Fetch custom non-working labels first so the model can honour them too
+  // (otherwise the model would re-flag the same cells the sampler considers
+  // off-day, and "Apply all fixes & re-run" would never change the report).
+  const customLabels = await fetchAllRows((from, to) =>
+    supabase
+      .from("validation_custom_non_working_labels")
+      .select("token")
+      .order("token", { ascending: true })
+      .range(from, to),
+  );
+
+  const extraNonWorkingTokens = (customLabels ?? [])
+    .map((r) => (r as { token: string }).token)
+    .filter((t): t is string => typeof t === "string" && t.length > 0);
+
+  // Run the model (with the same extra tokens) and pull raw rota rows +
+  // profiles in parallel.
+  const [modelResult, profiles, assignments] = await Promise.all([
     computeListFeasibility({
       monthsBack,
       thresholds: opts.thresholds,
       todayOverride: opts.todayOverride,
+      extraNonWorkingTokens,
     }),
     fetchAllRows((from, to) =>
       supabase
@@ -185,18 +201,7 @@ export async function validateConsultantPatterns(
         .order("id", { ascending: true })
         .range(from, to),
     ),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("validation_custom_non_working_labels")
-        .select("token")
-        .order("token", { ascending: true })
-        .range(from, to),
-    ),
   ]);
-
-  const extraNonWorkingTokens = (customLabels ?? [])
-    .map((r) => (r as { token: string }).token)
-    .filter((t): t is string => typeof t === "string" && t.length > 0);
 
   const consultantIds = new Set<string>();
   for (const p of profiles ?? []) {
