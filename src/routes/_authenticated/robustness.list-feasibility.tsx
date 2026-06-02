@@ -332,6 +332,78 @@ function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
 }
 
 
+function AssumptionsCard() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Modelling assumptions</CardTitle>
+        <CardDescription>
+          How the feasibility and headcount numbers are derived, so you can audit the results.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <div>
+          <h4 className="font-medium mb-1">Data window</h4>
+          <p className="text-muted-foreground">
+            The model looks at CLWRota actuals between the start and end dates shown above.
+            Weekend sessions (Saturday and Sunday) are excluded. Only AM and PM sessions are analysed.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">What counts as a recurring list</h4>
+          <p className="text-muted-foreground">
+            A list is treated as a recurring "slot" when it shares the same day-of-week, session (AM/PM), theatre and surgeon, and appears at least as many times as the minimum-recurrence threshold you set.
+            Surgeon names are normalised (titles and extra spaces stripped) so minor spelling variations do not fragment the count.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">Owner and deputy identification</h4>
+          <p className="text-muted-foreground">
+            The consultant who has covered a slot most often is nominated as the <em>owner</em>. The second-most-frequent consultant is nominated as the <em>deputy</em>. Only consultants with an active profile and grade "consultant" are considered; SAS doctors and trainees are not counted as owners or deputies.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">How coverage percentages are counted</h4>
+          <p className="text-muted-foreground">
+            <strong>Owner present %</strong> — sessions where the owner was the named theatre consultant on that list, divided by total occurrences of the slot.<br />
+            <strong>Owner or deputy %</strong> — sessions where <em>either</em> the owner <em>or</em> the deputy was the named theatre consultant, divided by total occurrences.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">Why the owner might be absent</h4>
+          <p className="text-muted-foreground">
+            When the owner did not cover a session, the model distinguishes two cases:
+          </p>
+          <ul className="list-disc pl-5 text-muted-foreground space-y-1 mt-1">
+            <li><strong>Unavailable</strong> — the owner had a non-theatre duty_type recorded for that half-day (e.g. on-call, SPA, admin, leave).</li>
+            <li><strong>Free but replaced</strong> — the owner had no rota record at all for that half-day, or was on a different theatre list, so another consultant covered instead. This is treated as the most flexible kind of absence.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">Shortfall heuristic</h4>
+          <p className="text-muted-foreground">
+            When "Reject slots that would tip a day into shortfall" is enabled, the model counts how many times the owner was "free but replaced" on a day when more than 70% of all active consultants already had some duty record. On those days, locking the owner to this list would remove a spare body and is flagged as a potential shortfall.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">Extra-WTE estimate</h4>
+          <p className="text-muted-foreground">
+            Each "not feasible" slot that fails because the owner is below threshold adds roughly <strong>0.1 WTE</strong> (one regular session per week ≈ 1 PA, and 10 PAs ≈ 1 consultant WTE). If both the owner and the owner+deputy thresholds fail, the gap is counted twice. The total is rounded to one decimal place. This is a rough order-of-magnitude estimate, not a precise workforce-planning figure.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-medium mb-1">Verdict thresholds</h4>
+          <p className="text-muted-foreground">
+            <strong>Feasible</strong> — owner and owner+deputy both meet or exceed their target percentages, and no shortfall flag is raised.<br />
+            <strong>Borderline</strong> — neither percentage is more than 10 points below its target, and no shortfall flag is raised.<br />
+            <strong>Not feasible</strong> — either percentage is more than 10 points below target, or a shortfall is flagged.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function VerdictBadge({ verdict }: { verdict: Verdict }) {
   if (verdict === "feasible") {
     return (
