@@ -920,7 +920,7 @@ function ValidationResults({
   expanded,
   setExpanded,
 }: {
-  report: ValidationReport;
+  report: DiagnosedReport;
   onlyMismatches: boolean;
   expanded: string | null;
   setExpanded: (k: string | null) => void;
@@ -951,6 +951,28 @@ function ValidationResults({
           tone={report.consultantsWithMismatch > 0 ? "red" : "emerald"}
         />
       </div>
+
+      {report.causeTally.length > 0 && (
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+          <div className="text-xs font-medium">
+            Auto-investigation: most common causes
+          </div>
+          <ul className="text-xs space-y-1">
+            {report.causeTally.map((c) => (
+              <li key={c.code} className="flex items-center gap-2">
+                <Badge variant="secondary" className="tabular-nums">
+                  {c.count}
+                </Badge>
+                <span>{c.summary}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-muted-foreground">
+            Expand any flagged consultant below to see per-cell diagnoses and
+            recommended fixes.
+          </p>
+        </div>
+      )}
 
       {consultants.length === 0 ? (
         <p className="text-xs text-emerald-700">
