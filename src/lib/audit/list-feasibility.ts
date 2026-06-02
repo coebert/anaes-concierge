@@ -51,6 +51,16 @@ export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
 
 export type Verdict = "feasible" | "borderline" | "not_feasible";
 
+export interface CandidateOwner {
+  id: string;
+  name: string;
+  /** % of eligible (dow, session) instances they actually worked (non-on-call). */
+  workingPct: number;
+  /** True if they already happen to be the proposed owner or deputy. */
+  isCurrentOwner: boolean;
+  isCurrentDeputy: boolean;
+}
+
 export interface ListSlotFeasibility {
   key: string;
   dow: number;                  // 1=Mon ... 5=Fri
@@ -79,6 +89,34 @@ export interface ListSlotFeasibility {
   /** Rough additional WTE needed to make this slot feasible at chosen threshold. */
   headcountGap: number;
   reasons: string[];
+  /** Consultants whose regular weekly working pattern includes this (dow, session)
+   *  and who could therefore plausibly take this slot on. Sorted by working %.
+   *  Includes the current proposed owner/deputy if they qualify. */
+  candidateOwners: CandidateOwner[];
+}
+
+export interface ConsultantPatternCell {
+  dow: number;            // 1-5
+  session: "am" | "pm";
+  /** Total weekdays of this dow in the window. */
+  totalOccurrences: number;
+  /** Times this consultant was on-call (or other excluded duty) on that half. */
+  oncallOccurrences: number;
+  /** Times they had a non-on-call working record on that half. */
+  workingOccurrences: number;
+  /** workingOccurrences / max(1, totalOccurrences - oncallOccurrences). */
+  workingPct: number;
+  /** True if workingPct ≥ thresholds.regularWorkingMinPct. */
+  regular: boolean;
+}
+
+export interface ConsultantPattern {
+  id: string;
+  name: string;
+  /** 10 cells, Mon-Fri × AM/PM, always in order Mon AM, Mon PM, Tue AM … Fri PM. */
+  cells: ConsultantPatternCell[];
+  /** Count of cells with regular === true. */
+  regularSessionsPerWeek: number;
 }
 
 export interface DepartmentSummary {
@@ -96,7 +134,10 @@ export interface DepartmentSummary {
 export interface ListFeasibilityResult {
   summary: DepartmentSummary;
   slots: ListSlotFeasibility[];
+  /** One row per active consultant, with their working pattern matrix. */
+  consultantPatterns: ConsultantPattern[];
 }
+
 
 // -------- helpers --------
 
