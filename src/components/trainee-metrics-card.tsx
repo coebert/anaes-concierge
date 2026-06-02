@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 import type { TraineeMetrics } from "@/lib/trainee-metrics";
+
 
 type Props = {
   metrics: TraineeMetrics;
@@ -26,8 +28,26 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
     warnings,
   } = metrics;
   const regionLabel = subtitle ? `${title} — ${subtitle}` : title;
+
+  // Build a stable signature of the metrics that should trigger an announcement.
+  const warningSig = warnings.map((w) => `${w.level}:${w.code}`).join("|");
+  const specialtySig = specialtyBreakdown
+    .map((s) => `${s.name}:${s.count}:${s.percent}`)
+    .join("|");
+  const announcement = useAnnouncement({
+    warnings,
+    warningSig,
+    specialtyBreakdown,
+    specialtySig,
+    regionLabel,
+  });
+
   return (
     <Card aria-label={regionLabel}>
+      {/* Off-screen polite live region: announces post-mount changes only. */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
       <CardHeader className="pb-2 p-4 sm:p-6 sm:pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
         {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
@@ -41,7 +61,6 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
             {warnings.map((w) => (
               <li
                 key={w.code}
-                role={w.level === "warn" ? "alert" : "status"}
                 className={
                   w.level === "warn"
                     ? "rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm text-amber-900 dark:text-amber-200 sm:px-3 sm:py-2"
@@ -55,6 +74,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
             ))}
           </ul>
         ) : null}
+
         <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
           <Metric
             label="Time at Salisbury"
@@ -172,3 +192,78 @@ function Metric({
     </div>
   );
 }
+
+/**
+ * Computes a polite live-region message when warnings or specialty data
+ * change after the initial mount. Returns "" on first render so screen
+ * readers do not announce the card's initial state.
+ */
+function useAnnouncement({
+  warnings,
+  warningSig,
+  specialtyBreakdown,
+  specialtySig,
+  regionLabel,
+}: {
+  warnings: TraineeMetrics["warnings"];
+  warningSig: string;
+  specialtyBreakdown: TraineeMetrics["specialtyBreakdown"];
+  specialtySig: string;
+  regionLabel: string;
+}) {
+  const mountedRef = useRef(false);
+  const prevWarnSigRef = useRef(warningSig);
+  const prevSpecSigRef = useRef(specialtySig);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      prevWarnSigRef.current = warningSig;
+      prevSpecSigRef.current = specialtySig;
+      return;
+    }
+
+    const parts: string[] = [];
+
+    if (warningSig !== prevWarnSigRef.current) {
+      const prevCodes = new Set(
+        prevWarnSigRef.current.split("|").filter(Boolean),
+      );
+      const added = warnings.filter(
+        (w) => !prevCodes.has(`${w.level}:${w.code}`),
+      );
+      if (added.length > 0) {
+        parts.push(
+          `${regionLabel}: ${added
+            .map((w) => `${w.level === "warn" ? "Warning" : "Info"} — ${w.message}`)
+            .join(". ")}.`,
+        );
+      } else if (warnings.length === 0) {
+        parts.push(`${regionLabel}: all warnings cleared.`);
+      }
+      prevWarnSigRef.current = warningSig;
+    }
+
+    if (specialtySig !== prevSpecSigRef.current) {
+      const total = specialtyBreakdown.reduce((sum, s) => sum + s.count, 0);
+      const top = specialtyBreakdown[0];
+      parts.push(
+        top
+          ? `Specialty breakdown updated: ${specialtyBreakdown.length} specialties, ${total} lists. Top: ${top.name} at ${top.percent} percent.`
+          : `Specialty breakdown updated: no clinical lists recorded.`,
+      );
+      prevSpecSigRef.current = specialtySig;
+    }
+
+    if (parts.length > 0) {
+      // Toggle to force re-announcement even if text is identical.
+      setMessage("");
+      const id = setTimeout(() => setMessage(parts.join(" ")), 50);
+      return () => clearTimeout(id);
+    }
+  }, [warningSig, specialtySig, warnings, specialtyBreakdown, regionLabel]);
+
+  return message;
+}
+
