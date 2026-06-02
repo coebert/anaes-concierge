@@ -34,11 +34,15 @@ import {
 } from "@/lib/audit/list-feasibility";
 import {
   validateConsultantPatterns,
-  type ValidationReport,
-  type ValidationCell,
-  type ValidationConsultant,
   type SampleClassification,
 } from "@/lib/audit/list-feasibility-validation";
+import {
+  diagnoseValidationReport,
+  type DiagnosedReport,
+  type DiagnosedConsultant,
+  type DiagnosedCell,
+  type Diagnosis,
+} from "@/lib/audit/list-feasibility-diagnosis";
 
 
 
