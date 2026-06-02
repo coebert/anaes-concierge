@@ -202,14 +202,15 @@ describe("regular-list feasibility page", () => {
     expect(callArg.monthsBack).toBe(6);
     expect(callArg.thresholds).toBeDefined();
 
-    // consultantPatterns rendered
+    // consultantPatterns rendered (the consultant name appears both in the
+    // patterns table and in the slot's owner column).
     await waitFor(() => {
-      expect(screen.getByText("Dr Alpha Fixture")).toBeTruthy();
+      expect(screen.getAllByText("Dr Alpha Fixture").length).toBeGreaterThan(0);
     });
 
     // slots rendered (two distinct slot rows)
-    expect(screen.getByText("Theatre Fixture One")).toBeTruthy();
-    expect(screen.getByText("Theatre Fixture Two")).toBeTruthy();
+    expect(screen.getAllByText("Theatre Fixture One").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Theatre Fixture Two").length).toBeGreaterThan(0);
 
     // department summary numbers rendered
     expect(screen.getByText(/2 recurring list slot/)).toBeTruthy();
