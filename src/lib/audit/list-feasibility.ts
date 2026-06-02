@@ -98,13 +98,13 @@ export interface ListSlotFeasibility {
 export interface ConsultantPatternCell {
   dow: number;            // 1-5
   session: "am" | "pm";
-  /** Total weekdays of this dow in the window. */
+  /** Total weekdays of this dow in the window (denominator — NOT reduced by on-call). */
   totalOccurrences: number;
-  /** Times this consultant was on-call (or other excluded duty) on that half. */
+  /** Times this consultant was on-call on that half (informational only). */
   oncallOccurrences: number;
-  /** Times they had a non-on-call working record on that half. */
+  /** Times this consultant was assigned to clinical activity (theatre list) on that half. */
   workingOccurrences: number;
-  /** workingOccurrences / max(1, totalOccurrences - oncallOccurrences). */
+  /** workingOccurrences / max(1, totalOccurrences) as a percentage. */
   workingPct: number;
   /** True if workingPct ≥ thresholds.regularWorkingMinPct. */
   regular: boolean;
