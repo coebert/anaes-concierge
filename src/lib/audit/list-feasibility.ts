@@ -309,11 +309,13 @@ export async function computeListFeasibility(
   for (const p of profiles ?? []) {
     if ((p.grade as Grade) === "consultant") {
       const raw = (p.ltft_days_off as unknown as number[] | null) ?? [];
+      // Normalise to JS getUTCDay convention (0=Sun..6=Sat). ISO 7 → 0.
+      const normalised = raw.map((n) => (Number(n) === 7 ? 0 : Number(n)));
       consultantById.set(p.id as string, {
         id: p.id as string,
         name: (p.full_name as string) || "(unnamed)",
         active: (p.active as boolean) ?? true,
-        ltftDaysOff: new Set(raw.map((n) => Number(n))),
+        ltftDaysOff: new Set(normalised),
       });
     }
   }
