@@ -110,6 +110,11 @@ export interface ConsultantPatternCell {
   workingPct: number;
   /** True if workingPct ≥ thresholds.regularWorkingMinPct. */
   regular: boolean;
+  /** True if this dow is a regular non-working day for this consultant —
+   *  either via profiles.ltft_days_off or inferred from a tenure with
+   *  meaningful exposure but zero rota records of any duty type on this dow.
+   *  Excluded from totalOccurrences so they aren't counted as "available". */
+  regularDayOff: boolean;
 }
 
 export interface ConsultantPattern {
