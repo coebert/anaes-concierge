@@ -338,7 +338,7 @@ function DepartmentSummaryCard({ summary }: { summary: DepartmentSummary }) {
           {summary.windowStart} and {summary.windowEnd}.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-4">
+      <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Stat
           label="Feasible"
           value={summary.feasible}
@@ -363,6 +363,13 @@ function DepartmentSummaryCard({ summary }: { summary: DepartmentSummary }) {
           tone={summary.estimatedExtraWte > 0 ? "red" : "emerald"}
           icon={Users}
           help="Rough estimate: each unfilled regular slot ≈ 0.1 WTE per session/week. Add 1 WTE per ~10 missing weekly sessions."
+        />
+        <Stat
+          label="Extra WTE needed (after SAS)"
+          value={summary.estimatedExtraWteWithSas.toFixed(1)}
+          tone={summary.estimatedExtraWteWithSas > 0 ? "red" : "emerald"}
+          icon={Users}
+          help={`Subtracts current SAS list-delivery capacity: ${summary.activeSasCount} active SAS doctor(s) delivering ~${summary.sasListSessionsPerWeek.toFixed(1)} list half-days/week ≈ ${summary.sasWteOffset.toFixed(1)} consultant-WTE of cover.`}
         />
       </CardContent>
       {linkagePct < 90 && (
