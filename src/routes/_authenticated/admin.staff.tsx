@@ -154,6 +154,25 @@ function AdminStaffPage() {
     },
   });
 
+  // Identify consultants who provide ICU cover — anyone with at least one
+  // `icu_consultant_oncall` rota assignment in the last 12 months.
+  const { data: icuConsultantIds } = useQuery({
+    queryKey: ["icu-consultant-ids", "12m"],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 365);
+      const sinceISO = since.toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("staff_id")
+        .eq("duty_type", "icu_consultant_oncall")
+        .gte("session_date", sinceISO);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.staff_id));
+    },
+  });
+  const icuIds = icuConsultantIds ?? new Set<string>();
+
   const filtered = data?.filter((p) => {
     if (!showInactive && p.active === false) return false;
     if (!filter) return true;
