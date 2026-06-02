@@ -1047,7 +1047,7 @@ function ValidationConsultantRow({
   );
 }
 
-function ValidationCellTable({ cells }: { cells: ValidationCell[] }) {
+function ValidationCellTable({ cells }: { cells: DiagnosedCell[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -1067,72 +1067,136 @@ function ValidationCellTable({ cells }: { cells: ValidationCell[] }) {
         </thead>
         <tbody>
           {cells.map((cell) => (
-            <tr
-              key={`${cell.dow}-${cell.session}`}
-              className={cn(
-                "border-t align-top",
-                cell.mismatch && "bg-red-50 dark:bg-red-950/20",
-              )}
-            >
-              <td className="px-2 py-1.5 whitespace-nowrap font-medium">
-                {DOW_LABEL[cell.dow]}{" "}
-                <span className="uppercase text-muted-foreground">
-                  {cell.session}
-                </span>
-                {cell.modelRegularDayOff && (
-                  <span className="ml-1 text-[10px] italic text-muted-foreground">
-                    (off)
-                  </span>
-                )}
-              </td>
-              <td className="px-2 py-1.5 text-center font-mono">
-                {cell.modelPct}%
-              </td>
-              <td className="px-2 py-1.5 text-center font-mono">
-                {cell.sampleSize === 0 ? "—" : `${cell.sampledPct}%`}
-              </td>
-              <td
+            <Fragment key={`${cell.dow}-${cell.session}`}>
+              <tr
                 className={cn(
-                  "px-2 py-1.5 text-center font-mono",
-                  cell.mismatch && "text-red-700 font-semibold",
+                  "border-t align-top",
+                  cell.mismatch && "bg-red-50 dark:bg-red-950/20",
                 )}
               >
-                {cell.sampleSize === 0 ? "—" : `${cell.delta > 0 ? "+" : ""}${cell.delta}`}
-              </td>
-              <td className="px-2 py-1.5 text-center text-muted-foreground">
-                {cell.sampleSize}/{cell.tenureDates}
-              </td>
-              <td className="px-2 py-1.5 text-center">{cell.clinical}</td>
-              <td className="px-2 py-1.5 text-center">{cell.offDayLabel}</td>
-              <td className="px-2 py-1.5 text-center">{cell.otherDuty}</td>
-              <td className="px-2 py-1.5 text-center">{cell.noRecord}</td>
-              <td className="px-2 py-1.5">
-                <ul className="space-y-0.5">
-                  {cell.samples.map((s) => (
-                    <li key={s.date} className="text-[10px] leading-tight">
-                      <span className="font-mono">{s.date}</span>{" "}
-                      <ClassificationBadge classification={s.classification} />
-                      {s.dutyType && (
-                        <span className="ml-1 text-muted-foreground">
-                          {s.dutyType}
-                          {s.roleOnList ? `/${s.roleOnList}` : ""}
-                        </span>
-                      )}
-                      {s.notes && (
-                        <span className="ml-1 text-muted-foreground italic">
-                          "{s.notes.slice(0, 60)}
-                          {s.notes.length > 60 ? "…" : ""}"
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </td>
-            </tr>
+                <td className="px-2 py-1.5 whitespace-nowrap font-medium">
+                  {DOW_LABEL[cell.dow]}{" "}
+                  <span className="uppercase text-muted-foreground">
+                    {cell.session}
+                  </span>
+                  {cell.modelRegularDayOff && (
+                    <span className="ml-1 text-[10px] italic text-muted-foreground">
+                      (off)
+                    </span>
+                  )}
+                </td>
+                <td className="px-2 py-1.5 text-center font-mono">
+                  {cell.modelPct}%
+                </td>
+                <td className="px-2 py-1.5 text-center font-mono">
+                  {cell.sampleSize === 0 ? "—" : `${cell.sampledPct}%`}
+                </td>
+                <td
+                  className={cn(
+                    "px-2 py-1.5 text-center font-mono",
+                    cell.mismatch && "text-red-700 font-semibold",
+                  )}
+                >
+                  {cell.sampleSize === 0 ? "—" : `${cell.delta > 0 ? "+" : ""}${cell.delta}`}
+                </td>
+                <td className="px-2 py-1.5 text-center text-muted-foreground">
+                  {cell.sampleSize}/{cell.tenureDates}
+                </td>
+                <td className="px-2 py-1.5 text-center">{cell.clinical}</td>
+                <td className="px-2 py-1.5 text-center">{cell.offDayLabel}</td>
+                <td className="px-2 py-1.5 text-center">{cell.otherDuty}</td>
+                <td className="px-2 py-1.5 text-center">{cell.noRecord}</td>
+                <td className="px-2 py-1.5">
+                  <ul className="space-y-0.5">
+                    {cell.samples.map((s) => (
+                      <li key={s.date} className="text-[10px] leading-tight">
+                        <span className="font-mono">{s.date}</span>{" "}
+                        <ClassificationBadge classification={s.classification} />
+                        {s.dutyType && (
+                          <span className="ml-1 text-muted-foreground">
+                            {s.dutyType}
+                            {s.roleOnList ? `/${s.roleOnList}` : ""}
+                          </span>
+                        )}
+                        {s.notes && (
+                          <span className="ml-1 text-muted-foreground italic">
+                            "{s.notes.slice(0, 60)}
+                            {s.notes.length > 60 ? "…" : ""}"
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+              {cell.diagnoses.length > 0 && (
+                <tr className="border-t-0 bg-amber-50/50 dark:bg-amber-950/10">
+                  <td colSpan={10} className="px-2 pb-2">
+                    <DiagnosisList diagnoses={cell.diagnoses} />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        Auto-investigation
+      </div>
+      <ul className="space-y-1.5">
+        {diagnoses.map((d, i) => (
+          <li
+            key={`${d.code}-${i}`}
+            className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] dark:border-amber-900 dark:bg-amber-950/30"
+          >
+            <div className="flex items-start gap-2">
+              <Badge
+                className={cn(
+                  "shrink-0 text-[9px] uppercase",
+                  d.severity === "error" && "bg-red-100 text-red-800",
+                  d.severity === "warn" && "bg-amber-100 text-amber-800",
+                  d.severity === "info" && "bg-slate-100 text-slate-700",
+                )}
+              >
+                {d.severity}
+              </Badge>
+              <div className="space-y-0.5">
+                <div className="font-medium">{d.summary}</div>
+                {d.evidence.length > 0 && (
+                  <ul className="list-disc pl-4 text-muted-foreground">
+                    {d.evidence.map((e, j) => (
+                      <li key={j}>{e}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex items-center gap-2 pt-0.5">
+                  <span className="text-muted-foreground">
+                    → {d.remediation.summary}
+                  </span>
+                  {d.remediation.href && (
+                    <Link
+                      to={d.remediation.href}
+                      className="text-primary underline underline-offset-2"
+                    >
+                      Open
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
   );
 }
 
