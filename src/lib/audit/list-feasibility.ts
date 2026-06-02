@@ -230,6 +230,12 @@ export interface ComputeOptions {
   thresholds?: Partial<FeasibilityThresholds>;
   /** Override clock for tests. */
   todayOverride?: string;
+  /**
+   * Site-specific non-working tokens (e.g. "study leave") that should
+   * cause a rota row to be ignored as clinical activity, in addition
+   * to the core regex in isNonWorkingRotaLabel.
+   */
+  extraNonWorkingTokens?: string[];
 }
 
 export async function computeListFeasibility(
@@ -240,6 +246,7 @@ export async function computeListFeasibility(
     ...DEFAULT_THRESHOLDS,
     ...(opts.thresholds ?? {}),
   };
+  const extraNonWorkingTokens = opts.extraNonWorkingTokens ?? [];
   const windowEnd = opts.todayOverride ?? todayISO();
   const windowStart = (() => {
     const d = new Date(windowEnd + "T00:00:00Z");
@@ -365,7 +372,7 @@ export async function computeListFeasibility(
       theatreSessionId: (a.theatre_session_id as string | null) ?? null,
       notes: (a.notes as string | null) ?? null,
     };
-    if (isNonWorkingRotaLabel([row.notes])) continue;
+    if (isNonWorkingRotaLabel([row.notes], extraNonWorkingTokens)) continue;
     if (row.theatreSessionId) {
       const arr = asnByTheatreSession.get(row.theatreSessionId) ?? [];
       arr.push(row);
@@ -621,7 +628,7 @@ export async function computeListFeasibility(
     const theatreId = (s.theatre_id as string) ?? "";
     if (!theatreId) continue;
     const surgeonRaw = (s.surgical_consultant as string | null) ?? "";
-    if (isNonWorkingRotaLabel([surgeonRaw])) continue;
+    if (isNonWorkingRotaLabel([surgeonRaw], extraNonWorkingTokens)) continue;
     if (isEmergencySession((s.specialty_id as string | null) ?? null, surgeonRaw)) {
       continue;
     }
