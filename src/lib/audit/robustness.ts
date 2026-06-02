@@ -345,24 +345,24 @@ export async function computeRobustness(
 
   // staff_id -> set of dates on approved leave
   const leaveByDate = new Map<string, Set<string>>();
-  for (const l of leave ?? []) {
-    const from = new Date(((l.start_date as string) < rangeStart ? rangeStart : (l.start_date as string)) + "T00:00:00Z");
-    const to = new Date(((l.end_date as string) > rangeEnd ? rangeEnd : (l.end_date as string)) + "T00:00:00Z");
+  for (const l of leave) {
+    const from = new Date((l.start_date < rangeStart ? rangeStart : l.start_date) + "T00:00:00Z");
+    const to = new Date((l.end_date > rangeEnd ? rangeEnd : l.end_date) + "T00:00:00Z");
     for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
       const iso = d.toISOString().slice(0, 10);
       const set = leaveByDate.get(iso) ?? new Set();
-      set.add(l.staff_id as string);
+      set.add(l.staff_id);
       leaveByDate.set(iso, set);
     }
   }
 
-  // theatre lists requiring cover per date
+  // theatre lists requiring cover per date (emergency / CEPOD already removed)
   const requiredMap = new Map<string, { am: number; pm: number }>();
-  for (const t of theatreSessions ?? []) {
-    const r = requiredMap.get(t.session_date as string) ?? { am: 0, pm: 0 };
+  for (const t of theatreSessions) {
+    const r = requiredMap.get(t.session_date) ?? { am: 0, pm: 0 };
     if (t.session === "am") r.am += 1;
     if (t.session === "pm") r.pm += 1;
-    requiredMap.set(t.session_date as string, r);
+    requiredMap.set(t.session_date, r);
   }
 
   // assignments indexed by (date, session) and (date, staff)
@@ -373,16 +373,24 @@ export async function computeRobustness(
   const dailySpa = new Map<string, Set<string>>();
   const filledMap = new Map<string, { am: Set<string>; pm: Set<string> }>();
 
-  for (const a of assignments ?? []) {
-    const date = a.session_date as string;
-    const sess = a.session as string; // am/pm/eve/night
-    const sid = a.staff_id as string;
-    const dt = a.duty_type as string;
+  for (const a of assignments) {
+    const date = a.session_date;
+    const sess = a.session; // am/pm/eve/night
+    const sid = a.staff_id;
+    const dt = a.duty_type;
+
+    // Emergency / CEPOD theatre assignments are part of the on-call rota,
+    // not the planned-list pool: don't count them as filling a regular list
+    // and don't remove the consultant from the daytime pool here.
+    if (a.theatre_session_id && emergencySessionIds.has(a.theatre_session_id)) {
+      continue;
+    }
 
     if (dt === "theatre" && a.theatre_session_id && (sess === "am" || sess === "pm")) {
       const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
-      (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id as string);
+      (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id);
       filledMap.set(date, cur);
+
     }
 
     // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
