@@ -419,7 +419,39 @@ function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
                 <td className="px-2 py-1.5">
                   <VerdictBadge verdict={s.verdict} />
                 </td>
+                <td className="px-2 py-1.5 max-w-[18rem]">
+                  {s.candidateOwners.length === 0 ? (
+                    <span className="text-muted-foreground text-[11px]">
+                      No consultant regularly works this half-day.
+                    </span>
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {s.candidateOwners.slice(0, 5).map((c) => (
+                        <li key={c.id} className="text-[11px] leading-tight">
+                          <span className={cn(c.isCurrentOwner && "font-medium")}>
+                            {c.name}
+                          </span>{" "}
+                          <span className="text-muted-foreground font-mono">
+                            {c.workingPct}%
+                          </span>
+                          {c.isCurrentOwner && (
+                            <span className="ml-1 text-[10px] text-emerald-700">owner</span>
+                          )}
+                          {c.isCurrentDeputy && !c.isCurrentOwner && (
+                            <span className="ml-1 text-[10px] text-amber-700">deputy</span>
+                          )}
+                        </li>
+                      ))}
+                      {s.candidateOwners.length > 5 && (
+                        <li className="text-[10px] text-muted-foreground">
+                          +{s.candidateOwners.length - 5} more
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </td>
                 <td className="px-2 py-1.5 text-muted-foreground max-w-[24rem]">
+
                   {s.reasons.length === 0 ? (
                     <span className="text-emerald-700">All thresholds met.</span>
                   ) : (
