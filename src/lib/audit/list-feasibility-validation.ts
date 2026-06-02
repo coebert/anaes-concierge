@@ -160,8 +160,9 @@ export async function validateConsultantPatterns(
     return d.toISOString().slice(0, 10);
   })();
 
-  // Run the model and pull raw rota rows + profiles in parallel.
-  const [modelResult, profiles, assignments] = await Promise.all([
+  // Run the model and pull raw rota rows + profiles + custom non-working
+  // labels in parallel.
+  const [modelResult, profiles, assignments, customLabels] = await Promise.all([
     computeListFeasibility({
       monthsBack,
       thresholds: opts.thresholds,
@@ -184,7 +185,18 @@ export async function validateConsultantPatterns(
         .order("id", { ascending: true })
         .range(from, to),
     ),
+    fetchAllRows((from, to) =>
+      supabase
+        .from("validation_custom_non_working_labels")
+        .select("token")
+        .order("token", { ascending: true })
+        .range(from, to),
+    ),
   ]);
+
+  const extraNonWorkingTokens = (customLabels ?? [])
+    .map((r) => (r as { token: string }).token)
+    .filter((t): t is string => typeof t === "string" && t.length > 0);
 
   const consultantIds = new Set<string>();
   for (const p of profiles ?? []) {
