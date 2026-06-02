@@ -625,8 +625,10 @@ export async function computeListFeasibility(
       estimatedExtraWte,
     },
     slots: slotResults,
+    consultantPatterns,
   };
 }
+
 
 /**
  * Crude proxy for "the day was thin on consultants": if more than ~70%
