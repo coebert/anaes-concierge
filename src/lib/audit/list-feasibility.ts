@@ -230,6 +230,12 @@ export interface ComputeOptions {
   thresholds?: Partial<FeasibilityThresholds>;
   /** Override clock for tests. */
   todayOverride?: string;
+  /**
+   * Site-specific non-working tokens (e.g. "study leave") that should
+   * cause a rota row to be ignored as clinical activity, in addition
+   * to the core regex in isNonWorkingRotaLabel.
+   */
+  extraNonWorkingTokens?: string[];
 }
 
 export async function computeListFeasibility(
@@ -240,6 +246,7 @@ export async function computeListFeasibility(
     ...DEFAULT_THRESHOLDS,
     ...(opts.thresholds ?? {}),
   };
+  const extraNonWorkingTokens = opts.extraNonWorkingTokens ?? [];
   const windowEnd = opts.todayOverride ?? todayISO();
   const windowStart = (() => {
     const d = new Date(windowEnd + "T00:00:00Z");
