@@ -87,6 +87,7 @@ describe("solo-trainee detection", () => {
     expect(isSoloTraineeAssignment(assignments[2], consSet, profiles)).toBe(false);
   });
 
+
   it("multiple sessions: only the session without consultant is solo", () => {
     const assignments: SoloAssignment[] = [
       // ts-1 has a consultant -> trainee on ts-1 not solo
@@ -102,15 +103,17 @@ describe("solo-trainee detection", () => {
     expect(solos.map((a) => a.staff_id)).toEqual(["train-2"]);
   });
 
-  it("SAS on the session does not mark the trainee as not solo", () => {
+  it("SAS on the session disqualifies the trainee from being solo", () => {
     const assignments: SoloAssignment[] = [
       { ...base, staff_id: "sas-1", theatre_session_id: "ts-1" },
       { ...base, staff_id: "train-1", theatre_session_id: "ts-1" },
     ];
     const consSet = buildConsultantSessionSet(assignments, profiles);
-    // only consultants disqualify a "solo" trainee — SAS sharing a list still solo
-    expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(true);
+    // SAS doctors are senior career-grade and supervise a trainee sharing
+    // their list, so the trainee is not "solo" in the unsupervised sense.
+    expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(false);
   });
+
 });
 
 describe("solo-list counting rules — AM/PM lists", () => {
@@ -166,7 +169,7 @@ describe("solo-list counting rules — AM/PM lists", () => {
     expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(true);
   });
 
-  it("mixed batch: only specifically-listed trainees without a consultant on the list are counted", () => {
+  it("mixed batch: only specifically-listed trainees without a consultant or SAS on the list are counted", () => {
     const assignments: SoloAssignment[] = [
       { ...base, session: "am", staff_id: "train-1", theatre_session_id: null },
       { ...base, session: "am", staff_id: "cons-1", theatre_session_id: "ts-1" },
@@ -186,7 +189,7 @@ describe("solo-list counting rules — AM/PM lists", () => {
       solos.map((a) => `${a.session}:${a.staff_id}:${a.theatre_session_id}`),
     ).toEqual([
       "am:train-1:ts-2",
-      "pm:train-2:ts-3",
     ]);
   });
+
 });
