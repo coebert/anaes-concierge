@@ -26,7 +26,9 @@ import {
   computeListFeasibility,
   DEFAULT_THRESHOLDS,
   DOW_LABEL,
+  type DepartmentSummary,
   type FeasibilityThresholds,
+  type ListSlotFeasibility,
   type Verdict,
 } from "@/lib/audit/list-feasibility";
 
