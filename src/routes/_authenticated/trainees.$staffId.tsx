@@ -31,12 +31,20 @@ function TraineeDetailPage() {
         { data: targets, error: e3 },
         { data: specs, error: e4 },
       ] = await Promise.all([
+        // Select `locally_modified` so the displacement lens actually works
+        // — previously this column was missing from the projection, so every
+        // trainee showed 0 displaced sessions regardless of reality.
+        // `.range` lifts the default 1000-row PostgREST cap; long-tenured
+        // trainees can exceed that on their own.
         supabase
           .from("rota_assignments")
-          .select("id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type")
+          .select(
+            "id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type,locally_modified",
+          )
           .eq("staff_id", staffId)
           .lte("session_date", today)
-          .order("session_date", { ascending: false }),
+          .order("session_date", { ascending: false })
+          .range(0, 9999),
         supabase.from("trainee_targets").select("*"),
         supabase.from("specialties").select("id,name"),
       ]);
@@ -61,6 +69,7 @@ function TraineeDetailPage() {
               .from("theatre_sessions")
               .select("id,specialty_id,surgical_consultant,theatre_id")
               .in("id", tsIds)
+              .range(0, 9999)
           : Promise.resolve({ data: [] as any[] }),
       ]);
       const theatreIds = Array.from(new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean)));
@@ -68,9 +77,39 @@ function TraineeDetailPage() {
         ? await supabase.from("theatres").select("id,name").in("id", theatreIds)
         : { data: [] as any[] };
 
+      // Mirror the overview page: a "solo" entry on a theatre session that
+      // also has a consultant rostered is in fact supervised. Without this
+      // reclassification, the detail page disagrees with the overview's
+      // solo/supervised counts and curriculum-progress percentages.
+      const consultantSessionIds = new Set<string>();
+      if (tsIds.length) {
+        const { data: tsAssigns, error: e6 } = await supabase
+          .from("rota_assignments")
+          .select(
+            "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+          )
+          .in("theatre_session_id", tsIds)
+          .eq("profiles.grade", "consultant")
+          .range(0, 9999);
+        if (e6) throw e6;
+        for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+          if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
+        }
+      }
+
+      const normalisedAssignments = (assignments ?? []).map((a) => ({
+        ...a,
+        role_on_list:
+          a.role_on_list === "solo" &&
+          a.theatre_session_id &&
+          consultantSessionIds.has(a.theatre_session_id)
+            ? "supervised"
+            : a.role_on_list,
+      }));
+
       return {
         profile,
-        assignments: assignments ?? [],
+        assignments: normalisedAssignments,
         targets: targets ?? [],
         specMap: new Map((specs ?? []).map((s) => [s.id, s.name])),
         tsMap: new Map((ts ?? []).map((t) => [t.id, t])),
