@@ -98,12 +98,14 @@ function LeavePage() {
     setLoading(true);
     // Scope to a relevant window so we never hit Supabase's default 1000-row
     // cap and silently drop rows covering "today" (which happened when there
-    // were >1000 future rows ordered by start_date DESC). We keep ~60 days of
-    // history for the "All upcoming" tab and a generous future horizon for
+    // were >1000 future rows ordered by start_date DESC). We keep ~13 months
+    // of history for the "All upcoming" / sick-leave tabs so that
+    // retrospectively-added sick leave (logged in CLWRota weeks or months
+    // after the absence) is included, and a generous future horizon for
     // planning. .range() raises the row ceiling as a belt-and-braces guard.
     const today = new Date();
     const windowStart = new Date(today);
-    windowStart.setDate(windowStart.getDate() - 60);
+    windowStart.setDate(windowStart.getDate() - 400);
     const windowEnd = new Date(today);
     windowEnd.setFullYear(windowEnd.getFullYear() + 2);
     // Allowance tab needs up to 13 months of history (longest realistic leave
@@ -227,6 +229,33 @@ function LeavePage() {
       .sort((a, b) => a.start_date.localeCompare(b.start_date));
   }, [activeRows]);
 
+  // Sick-leave listing across the loaded window. Sick leave is almost
+  // always recorded retrospectively (logged in CLWRota after the absence
+  // started), so we surface it on its own tab — most recent first — and
+  // flag rows whose `created_at` is after `start_date` so reviewers can
+  // see which entries were back-filled rather than booked in advance.
+  type SickRow = LeaveRow & { _isRetrospective: boolean; _daysLate: number };
+  const sickRows = useMemo<SickRow[]>(() => {
+    const out: SickRow[] = [];
+    for (const r of rows) {
+      if (r.type !== "sick") continue;
+      if (r.status === "cancelled" || r.status === "rejected") continue;
+      const startMs = new Date(r.start_date + "T00:00:00Z").getTime();
+      const createdMs = new Date(r.created_at).getTime();
+      const daysLate = Math.floor((createdMs - startMs) / (1000 * 60 * 60 * 24));
+      out.push({ ...r, _isRetrospective: daysLate >= 1, _daysLate: daysLate });
+    }
+    return out.sort((a, b) => b.start_date.localeCompare(a.start_date));
+  }, [rows]);
+
+  // Sick leave entries added in the last 14 days, no matter what absence
+  // date they cover — the practical "what's new on the leave tab" view.
+  const recentlyAddedSick = useMemo(() => {
+    const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    return sickRows.filter((r) => new Date(r.created_at).getTime() >= cutoff);
+  }, [sickRows]);
+
+
   // --- Allowance summary: per-staff balances for the current leave year. ---
   // Default leave year start: April 1st of the current (or prior, if before
   // April) calendar year — the NHS convention. Per-staff overrides come from
@@ -327,6 +356,7 @@ function LeavePage() {
         <TabsList>
           <TabsTrigger value="calendar">Department calendar</TabsTrigger>
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
+          <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
           <TabsTrigger value="mine">My requests</TabsTrigger>
         </TabsList>
@@ -539,8 +569,79 @@ function LeavePage() {
           </Card>
         </TabsContent>
 
+        {/* ---------------- Sick leave (incl. retrospective from CLWRota) ---------------- */}
+        <TabsContent value="sick">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Sick leave</CardTitle>
+              <CardDescription>
+                All sick-leave entries in the last 13 months, most recent absence first.
+                Includes records back-filled from CLWRota after the absence — flagged
+                <Badge variant="outline" className="ml-1 mr-1 align-middle">Retrospective</Badge>
+                when the entry was logged after the absence started.
+                {recentlyAddedSick.length > 0 && (
+                  <> <span className="font-medium text-foreground">{recentlyAddedSick.length}</span> entr{recentlyAddedSick.length === 1 ? "y" : "ies"} added in the last 14 days.</>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : sickRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No sick-leave records in the loaded window.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Absence</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Logged</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sickRows.map((r) => {
+                      const p = profileById.get(r.staff_id);
+                      const isNew = recentlyAddedSick.some((x) => x.id === r.id);
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-mono text-xs">
+                            {formatDateGB(r.start_date)} → {formatDateGB(r.end_date)}
+                          </TableCell>
+                          <TableCell>{p?.full_name ?? "Unknown"}</TableCell>
+                          <TableCell>{gradeLabel(p?.grade)}</TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant(r.status)} className="capitalize">
+                              {r.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="font-mono">{formatDateGB(r.created_at.slice(0, 10))}</span>
+                              {r._isRetrospective && (
+                                <Badge variant="outline" title={`Logged ${r._daysLate} day${r._daysLate === 1 ? "" : "s"} after absence started`}>
+                                  Retrospective{r._daysLate > 1 ? ` (+${r._daysLate}d)` : ""}
+                                </Badge>
+                              )}
+                              {isNew && (
+                                <Badge variant="secondary">New</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ---------------- Allowances ---------------- */}
         <TabsContent value="allowances">
+
           <Card>
             <CardHeader className="pb-2 flex flex-row items-end justify-between gap-3">
               <div>
