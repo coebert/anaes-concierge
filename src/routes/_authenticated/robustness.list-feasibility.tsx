@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
   CardContent,
@@ -42,6 +44,7 @@ import {
   type DiagnosedConsultant,
   type DiagnosedCell,
   type Diagnosis,
+  type Remediation,
 } from "@/lib/audit/list-feasibility-diagnosis";
 
 
@@ -803,18 +806,24 @@ function ValidationCard({
   const [mismatchThreshold, setMismatchThreshold] = useState(15);
   const [onlyMismatches, setOnlyMismatches] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [monthsBackOverride, setMonthsBackOverride] = useState<number | null>(null);
+
+  const effectiveMonthsBack = monthsBackOverride ?? monthsBack;
+  const queryClient = useQueryClient();
+
+  const queryKey = [
+    "list-feasibility-validation",
+    effectiveMonthsBack,
+    sampleCap,
+    mismatchThreshold,
+    JSON.stringify(thresholds),
+  ] as const;
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: [
-      "list-feasibility-validation",
-      monthsBack,
-      sampleCap,
-      mismatchThreshold,
-      JSON.stringify(thresholds),
-    ],
+    queryKey,
     queryFn: async () => {
       const raw = await validateConsultantPatterns({
-        monthsBack,
+        monthsBack: effectiveMonthsBack,
         thresholds,
         sampleCap,
         mismatchThresholdPct: mismatchThreshold,
@@ -832,6 +841,55 @@ function ValidationCard({
     }
   };
 
+  // ---- Apply remediation -> auto re-run validation ----
+  const applyMutation = useMutation({
+    mutationFn: async (remediation: Remediation) => {
+      switch (remediation.kind) {
+        case "extend-non-working-labels": {
+          const tokens = ((remediation.payload?.tokens as string[]) ?? [])
+            .map((t) => t.trim())
+            .filter(Boolean);
+          if (tokens.length === 0) throw new Error("No tokens to add");
+          const rows = tokens.map((token) => ({
+            token,
+            source: "auto-remediation:list-feasibility",
+          }));
+          const { error } = await supabase
+            .from("validation_custom_non_working_labels")
+            .upsert(rows, { onConflict: "token", ignoreDuplicates: true });
+          if (error) throw new Error(error.message);
+          return {
+            message: `Added ${tokens.length} label${tokens.length === 1 ? "" : "s"} to the non-working list.`,
+          };
+        }
+        case "widen-validation-window": {
+          const next = Math.min(24, effectiveMonthsBack + 3);
+          if (next === effectiveMonthsBack) {
+            throw new Error("Validation window is already at the maximum (24 months).");
+          }
+          setMonthsBackOverride(next);
+          return { message: `Widened validation window to ${next} months.` };
+        }
+        default:
+          throw new Error("This remediation has no in-app apply action.");
+      }
+    },
+    onSuccess: async (result) => {
+      toast.success(result.message, {
+        description: "Re-running validation to confirm the fix…",
+      });
+      // Make sure the next run reflects newly inserted DB rows.
+      await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      await refetch();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Could not apply remediation");
+    },
+  });
+
+  const isApplicable = (kind: Remediation["kind"]) =>
+    kind === "extend-non-working-labels" || kind === "widen-validation-window";
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -841,8 +899,9 @@ function ValidationCard({
           session) cell, this pulls a sample of actual rota_assignments
           rows from the same window and recomputes a sampled working %
           independently of the model. Cells whose sampled % differs from
-          the model by more than the mismatch threshold are flagged so you
-          can audit the underlying records.
+          the model by more than the mismatch threshold are flagged, and
+          each flagged cell shows an auto-investigation diagnosis with a
+          one-click apply button where the fix can be made in-app.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -873,6 +932,32 @@ function ValidationCard({
                 setMismatchThreshold(Math.max(5, Number(e.target.value) || 15))
               }
             />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Validation window (months)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                className="w-24"
+                min={1}
+                max={24}
+                value={effectiveMonthsBack}
+                onChange={(e) =>
+                  setMonthsBackOverride(
+                    Math.min(24, Math.max(1, Number(e.target.value) || monthsBack)),
+                  )
+                }
+              />
+              {monthsBackOverride !== null && monthsBackOverride !== monthsBack && (
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground underline"
+                  onClick={() => setMonthsBackOverride(null)}
+                >
+                  reset
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Switch
@@ -907,11 +992,21 @@ function ValidationCard({
             onlyMismatches={onlyMismatches}
             expanded={expanded}
             setExpanded={setExpanded}
+            onApply={(r) => applyMutation.mutate(r)}
+            isApplying={applyMutation.isPending}
+            isApplicable={isApplicable}
           />
         )}
       </CardContent>
     </Card>
+
   );
+}
+
+interface RemediationActions {
+  onApply: (r: Remediation) => void;
+  isApplying: boolean;
+  isApplicable: (kind: Remediation["kind"]) => boolean;
 }
 
 function ValidationResults({
@@ -919,12 +1014,15 @@ function ValidationResults({
   onlyMismatches,
   expanded,
   setExpanded,
+  onApply,
+  isApplying,
+  isApplicable,
 }: {
   report: DiagnosedReport;
   onlyMismatches: boolean;
   expanded: string | null;
   setExpanded: (k: string | null) => void;
-}) {
+} & RemediationActions) {
   const consultants = onlyMismatches
     ? report.consultants.filter((c) => c.mismatchCount > 0)
     : report.consultants;
@@ -987,6 +1085,9 @@ function ValidationResults({
               consultant={c}
               expanded={expanded === c.id}
               onToggle={() => setExpanded(expanded === c.id ? null : c.id)}
+              onApply={onApply}
+              isApplying={isApplying}
+              isApplicable={isApplicable}
             />
           ))}
         </div>
@@ -999,11 +1100,14 @@ function ValidationConsultantRow({
   consultant,
   expanded,
   onToggle,
+  onApply,
+  isApplying,
+  isApplicable,
 }: {
   consultant: DiagnosedConsultant;
   expanded: boolean;
   onToggle: () => void;
-}) {
+} & RemediationActions) {
   return (
     <div className="rounded-md border">
       <button
@@ -1040,14 +1144,24 @@ function ValidationConsultantRow({
       </button>
       {expanded && (
         <div className="border-t bg-muted/20 p-3 space-y-3">
-          <ValidationCellTable cells={consultant.cells} />
+          <ValidationCellTable
+            cells={consultant.cells}
+            onApply={onApply}
+            isApplying={isApplying}
+            isApplicable={isApplicable}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function ValidationCellTable({ cells }: { cells: DiagnosedCell[] }) {
+function ValidationCellTable({
+  cells,
+  onApply,
+  isApplying,
+  isApplicable,
+}: { cells: DiagnosedCell[] } & RemediationActions) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -1132,7 +1246,12 @@ function ValidationCellTable({ cells }: { cells: DiagnosedCell[] }) {
               {cell.diagnoses.length > 0 && (
                 <tr className="border-t-0 bg-amber-50/50 dark:bg-amber-950/10">
                   <td colSpan={10} className="px-2 pb-2">
-                    <DiagnosisList diagnoses={cell.diagnoses} />
+                    <DiagnosisList
+                      diagnoses={cell.diagnoses}
+                      onApply={onApply}
+                      isApplying={isApplying}
+                      isApplicable={isApplicable}
+                    />
                   </td>
                 </tr>
               )}
@@ -1144,7 +1263,12 @@ function ValidationCellTable({ cells }: { cells: DiagnosedCell[] }) {
   );
 }
 
-function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
+function DiagnosisList({
+  diagnoses,
+  onApply,
+  isApplying,
+  isApplicable,
+}: { diagnoses: Diagnosis[] } & RemediationActions) {
   return (
     <div className="space-y-1.5">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -1167,7 +1291,7 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
               >
                 {d.severity}
               </Badge>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 flex-1">
                 <div className="font-medium">{d.summary}</div>
                 {d.evidence.length > 0 && (
                   <ul className="list-disc pl-4 text-muted-foreground">
@@ -1176,10 +1300,21 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
                     ))}
                   </ul>
                 )}
-                <div className="flex items-center gap-2 pt-0.5">
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <span className="text-muted-foreground">
                     → {d.remediation.summary}
                   </span>
+                  {isApplicable(d.remediation.kind) && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-6 px-2 text-[10px]"
+                      disabled={isApplying}
+                      onClick={() => onApply(d.remediation)}
+                    >
+                      {isApplying ? "Applying…" : "Apply fix & re-run"}
+                    </Button>
+                  )}
                   {d.remediation.href && (
                     <Link
                       to={d.remediation.href}
@@ -1197,6 +1332,7 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
     </div>
   );
 }
+
 
 
 

@@ -929,6 +929,30 @@ export type Database = {
         }
         Relationships: []
       }
+      validation_custom_non_working_labels: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          source: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          source?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          source?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -14,10 +14,17 @@ export function normaliseRotaLabelText(raw: string): string {
  */
 export function isNonWorkingRotaLabel(
   labels: Array<string | null | undefined>,
+  extraTokens: string[] = [],
 ): boolean {
+  const normalisedExtras = extraTokens
+    .map((t) => normaliseRotaLabelText(t))
+    .filter((t) => t.length > 0);
   return labels.some((label) => {
     const text = normaliseRotaLabelText(label ?? "");
     if (!text) return false;
-    return /(^|\b)(off|off day|day off|regular day off|ltft day off|not working)(\b|$)/.test(text);
+    if (/(^|\b)(off|off day|day off|regular day off|ltft day off|not working)(\b|$)/.test(text)) {
+      return true;
+    }
+    return normalisedExtras.some((tok) => text.includes(tok));
   });
 }
