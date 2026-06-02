@@ -636,13 +636,14 @@ function WorkingPatternsCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Consultant working patterns</CardTitle>
         <CardDescription>
-          For each consultant, the percentage of all Mon–Fri half-days in the
-          window on which CLWRota recorded them as covering a theatre list
-          (clinical activity). Weeks containing on-call are included in the
-          denominator. Cells highlighted in green are at or above the
-          regular-working threshold ({regularMinPct}%) and are treated as part
-          of the consultant's regular pattern when matching them to feasible
-          list slots.
+          For each consultant, the percentage of Mon–Fri half-days{" "}
+          <strong>within their own tenure in the data window</strong> on which
+          CLWRota recorded them as covering a theatre list (clinical activity).
+          Each consultant's denominator is scoped to the first and last date
+          they appear in the rota inside the window, so recent joiners and
+          leavers are not artificially diluted. Weeks containing on-call are
+          still included in the denominator. Cells highlighted in green are
+          at or above the regular-working threshold ({regularMinPct}%).
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -650,6 +651,7 @@ function WorkingPatternsCard({
           <thead className="text-muted-foreground">
             <tr>
               <th className="px-2 py-1 text-left font-medium">Consultant</th>
+              <th className="px-2 py-1 text-left font-medium whitespace-nowrap">Tenure in window</th>
               {DAYS.map((d) => (
                 <th key={d} className="px-1 py-1 text-center font-medium" colSpan={2}>
                   {DOW_LABEL[d]}
@@ -658,6 +660,7 @@ function WorkingPatternsCard({
               <th className="px-2 py-1 text-center font-medium">Reg /wk</th>
             </tr>
             <tr className="text-[10px]">
+              <th />
               <th />
               {DAYS.flatMap((d) => [
                 <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">AM</th>,
@@ -671,6 +674,18 @@ function WorkingPatternsCard({
             {patterns.map((p) => (
               <tr key={p.id} className="border-t">
                 <td className="px-2 py-1 whitespace-nowrap">{p.name}</td>
+                <td className="px-2 py-1 whitespace-nowrap text-[11px] text-muted-foreground">
+                  {p.tenureStart && p.tenureEnd ? (
+                    <>
+                      {p.tenureStart} → {p.tenureEnd}
+                      <span className="ml-1 text-muted-foreground/70">
+                        ({p.tenureWeekdays} wd)
+                      </span>
+                    </>
+                  ) : (
+                    <span className="italic">no data</span>
+                  )}
+                </td>
                 {p.cells.map((c) => (
                   <td
                     key={`${c.dow}-${c.session}`}
@@ -682,7 +697,7 @@ function WorkingPatternsCard({
                           ? "bg-amber-50 text-amber-700"
                           : "text-muted-foreground",
                     )}
-                    title={`Clinical activity ${c.workingOccurrences}/${c.totalOccurrences} weekdays (on-call on ${c.oncallOccurrences})`}
+                    title={`Clinical activity ${c.workingOccurrences}/${c.totalOccurrences} weekdays in tenure (on-call on ${c.oncallOccurrences})`}
                   >
                     {c.workingPct}%
                   </td>
