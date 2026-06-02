@@ -255,6 +255,26 @@ function ThresholdControls({
             per session ÷ 10 PAs per consultant.
           </p>
         </div>
+        <div className="space-y-2">
+          <Label className="text-xs flex items-center justify-between">
+            "Regular working" ≥
+            <span className="font-mono">{thresholds.regularWorkingMinPct}%</span>
+          </Label>
+          <Slider
+            min={20}
+            max={90}
+            step={5}
+            value={[thresholds.regularWorkingMinPct]}
+            onValueChange={([v]) =>
+              setThresholds({ ...thresholds, regularWorkingMinPct: v })
+            }
+          />
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            % of eligible weeks (excluding on-call days) a consultant must
+            work a given half-day before it counts as part of their regular
+            pattern.
+          </p>
+
         <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
           <Switch
             id="forbid-shortfall"
