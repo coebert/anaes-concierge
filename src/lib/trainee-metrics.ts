@@ -41,11 +41,26 @@ export function computeTraineeMetrics(
     ? Math.max(0, Math.ceil((end.getTime() - now) / (1000 * 60 * 60 * 24 * 7)))
     : null;
 
+  // A real anaesthetic list requires a theatre_session_id (i.e. it was matched
+  // to a known theatre booking on import). Rows with duty_type='theatre' but
+  // no theatre_session_id are unmatched CLWRota labels like "Off Day",
+  // "Available", "Emergency Theatre", surgeon-name shorthand, etc. They
+  // default to role_on_list='solo' on import, which previously inflated the
+  // solo-daytime percentage to near 100% — particularly for junior trainees
+  // whose CLWRota entries often lack a parsable theatre name.
   const daytimeAssignments = assignments.filter(
-    (a) => a.duty_type === "theatre" && (a.session === "am" || a.session === "pm"),
+    (a) =>
+      a.duty_type === "theatre" &&
+      (a.session === "am" || a.session === "pm") &&
+      a.theatre_session_id != null,
   );
   const daytimeLists = daytimeAssignments.length;
-  const soloLists = assignments.filter((a) => a.role_on_list === "solo").length;
+  const soloLists = assignments.filter(
+    (a) =>
+      a.role_on_list === "solo" &&
+      a.duty_type === "theatre" &&
+      a.theatre_session_id != null,
+  ).length;
   const soloDaytimeLists = daytimeAssignments.filter((a) => a.role_on_list === "solo").length;
   const soloDaytimePct = daytimeLists > 0
     ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10
@@ -74,8 +89,13 @@ export function computeTraineeMetrics(
     ? Math.round((onCallLists / totalAssignments) * 1000) / 10
     : null;
 
-  const clinical = assignments.filter((a) =>
-    ["solo", "supervised", "supervising"].includes(a.role_on_list),
+  // Only real lists (matched to a theatre_session) count toward the clinical
+  // specialty breakdown — otherwise unmatched "solo" default rows pollute it
+  // as "Unknown".
+  const clinical = assignments.filter(
+    (a) =>
+      ["solo", "supervised", "supervising"].includes(a.role_on_list) &&
+      a.theatre_session_id != null,
   );
   const counts = new Map<string, number>();
   for (const a of clinical) {
