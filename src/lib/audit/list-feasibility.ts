@@ -227,7 +227,7 @@ export async function computeListFeasibility(
   })();
   void isoMonthsAgo;
 
-  const [profiles, theatres, sessions, assignments] = await Promise.all([
+  const [profiles, theatres, specialties, sessions, assignments] = await Promise.all([
     fetchAllRows((from, to) =>
       supabase
         .from("profiles")
@@ -246,8 +246,16 @@ export async function computeListFeasibility(
     ),
     fetchAllRows((from, to) =>
       supabase
+        .from("specialties")
+        .select("id, name")
+        .order("name", { nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows((from, to) =>
+      supabase
         .from("theatre_sessions")
-        .select("id, session_date, session, theatre_id, surgical_consultant")
+        .select("id, session_date, session, theatre_id, surgical_consultant, specialty_id")
         .gte("session_date", windowStart)
         .lte("session_date", windowEnd)
         .order("session_date", { ascending: true })
@@ -265,6 +273,22 @@ export async function computeListFeasibility(
         .range(from, to),
     ),
   ]);
+
+  // Specialty IDs that represent emergency / unscheduled work. These lists
+  // are not regular bookings and shouldn't be expected to have a fixed
+  // anaesthetic consultant owner — exclude them from the feasibility model.
+  const emergencySpecialtyIds = new Set<string>();
+  for (const sp of specialties ?? []) {
+    const n = ((sp.name as string) || "").toLowerCase();
+    if (/emerg|cepod/.test(n)) emergencySpecialtyIds.add(sp.id as string);
+  }
+  const isEmergencySession = (
+    specialtyId: string | null,
+    surgeonRaw: string,
+  ): boolean => {
+    if (specialtyId && emergencySpecialtyIds.has(specialtyId)) return true;
+    return /\b(emergency|cepod)\b/i.test(surgeonRaw);
+  };
 
   const consultantById = new Map<string, { id: string; name: string; active: boolean }>();
   for (const p of profiles ?? []) {
@@ -501,6 +525,9 @@ export async function computeListFeasibility(
     const theatreId = (s.theatre_id as string) ?? "";
     if (!theatreId) continue;
     const surgeonRaw = (s.surgical_consultant as string | null) ?? "";
+    if (isEmergencySession((s.specialty_id as string | null) ?? null, surgeonRaw)) {
+      continue;
+    }
     const surgeonNorm = normaliseSurgeon(surgeonRaw);
     const key = `${dow}|${sess}|${theatreId}|${surgeonNorm}`;
     const existing = slotMap.get(key);
