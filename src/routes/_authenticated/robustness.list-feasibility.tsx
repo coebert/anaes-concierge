@@ -26,11 +26,13 @@ import {
   computeListFeasibility,
   DEFAULT_THRESHOLDS,
   DOW_LABEL,
+  type ConsultantPattern,
   type DepartmentSummary,
   type FeasibilityThresholds,
   type ListSlotFeasibility,
   type Verdict,
 } from "@/lib/audit/list-feasibility";
+
 
 export const Route = createFileRoute("/_authenticated/robustness/list-feasibility")({
   component: ListFeasibilityPage,
