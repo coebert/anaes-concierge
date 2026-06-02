@@ -812,13 +812,15 @@ function ValidationCard({
       mismatchThreshold,
       JSON.stringify(thresholds),
     ],
-    queryFn: () =>
-      validateConsultantPatterns({
+    queryFn: async () => {
+      const raw = await validateConsultantPatterns({
         monthsBack,
         thresholds,
         sampleCap,
         mismatchThresholdPct: mismatchThreshold,
-      }),
+      });
+      return diagnoseValidationReport(raw);
+    },
     enabled,
   });
 
