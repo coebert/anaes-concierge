@@ -229,6 +229,33 @@ function LeavePage() {
       .sort((a, b) => a.start_date.localeCompare(b.start_date));
   }, [activeRows]);
 
+  // Sick-leave listing across the loaded window. Sick leave is almost
+  // always recorded retrospectively (logged in CLWRota after the absence
+  // started), so we surface it on its own tab — most recent first — and
+  // flag rows whose `created_at` is after `start_date` so reviewers can
+  // see which entries were back-filled rather than booked in advance.
+  type SickRow = LeaveRow & { _isRetrospective: boolean; _daysLate: number };
+  const sickRows = useMemo<SickRow[]>(() => {
+    const out: SickRow[] = [];
+    for (const r of rows) {
+      if (r.type !== "sick") continue;
+      if (r.status === "cancelled" || r.status === "rejected") continue;
+      const startMs = new Date(r.start_date + "T00:00:00Z").getTime();
+      const createdMs = new Date(r.created_at).getTime();
+      const daysLate = Math.floor((createdMs - startMs) / (1000 * 60 * 60 * 24));
+      out.push({ ...r, _isRetrospective: daysLate >= 1, _daysLate: daysLate });
+    }
+    return out.sort((a, b) => b.start_date.localeCompare(a.start_date));
+  }, [rows]);
+
+  // Sick leave entries added in the last 14 days, no matter what absence
+  // date they cover — the practical "what's new on the leave tab" view.
+  const recentlyAddedSick = useMemo(() => {
+    const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    return sickRows.filter((r) => new Date(r.created_at).getTime() >= cutoff);
+  }, [sickRows]);
+
+
   // --- Allowance summary: per-staff balances for the current leave year. ---
   // Default leave year start: April 1st of the current (or prior, if before
   // April) calendar year — the NHS convention. Per-staff overrides come from
