@@ -393,7 +393,9 @@ function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
               <th className="px-2 py-1 text-center font-medium">+Deputy %</th>
               <th className="px-2 py-1 text-center font-medium">n</th>
               <th className="px-2 py-1 text-left font-medium">Verdict</th>
+              <th className="px-2 py-1 text-left font-medium">Feasible candidates</th>
               <th className="px-2 py-1 text-left font-medium">Why</th>
+
             </tr>
           </thead>
           <tbody>
