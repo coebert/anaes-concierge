@@ -28,8 +28,26 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
     warnings,
   } = metrics;
   const regionLabel = subtitle ? `${title} — ${subtitle}` : title;
+
+  // Build a stable signature of the metrics that should trigger an announcement.
+  const warningSig = warnings.map((w) => `${w.level}:${w.code}`).join("|");
+  const specialtySig = specialtyBreakdown
+    .map((s) => `${s.name}:${s.count}:${s.percent}`)
+    .join("|");
+  const announcement = useAnnouncement({
+    warnings,
+    warningSig,
+    specialtyBreakdown,
+    specialtySig,
+    regionLabel,
+  });
+
   return (
     <Card aria-label={regionLabel}>
+      {/* Off-screen polite live region: announces post-mount changes only. */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
       <CardHeader className="pb-2 p-4 sm:p-6 sm:pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
         {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
@@ -43,7 +61,6 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
             {warnings.map((w) => (
               <li
                 key={w.code}
-                role={w.level === "warn" ? "alert" : "status"}
                 className={
                   w.level === "warn"
                     ? "rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm text-amber-900 dark:text-amber-200 sm:px-3 sm:py-2"
@@ -57,6 +74,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
             ))}
           </ul>
         ) : null}
+
         <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
           <Metric
             label="Time at Salisbury"
