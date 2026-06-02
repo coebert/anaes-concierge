@@ -1085,6 +1085,9 @@ function ValidationResults({
               consultant={c}
               expanded={expanded === c.id}
               onToggle={() => setExpanded(expanded === c.id ? null : c.id)}
+              onApply={onApply}
+              isApplying={isApplying}
+              isApplicable={isApplicable}
             />
           ))}
         </div>
