@@ -205,11 +205,7 @@ function ThresholdControls({
   );
 }
 
-function DepartmentSummaryCard({
-  summary,
-}: {
-  summary: NonNullable<ReturnType<typeof computeListFeasibility> extends Promise<infer R> ? R : never>["summary"];
-}) {
+function DepartmentSummaryCard({ summary }: { summary: DepartmentSummary }) {
   return (
     <Card>
       <CardHeader className="pb-2">
