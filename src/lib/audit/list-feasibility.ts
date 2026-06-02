@@ -820,7 +820,5 @@ function isCoveredDayThin(
   if (!set) return false;
   return set.size / totalActiveConsultants > busyPct / 100;
 }
-  return staffWithAnyRecord.size / totalActiveConsultants > busyPct / 100;
-}
 
 export const DOW_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
