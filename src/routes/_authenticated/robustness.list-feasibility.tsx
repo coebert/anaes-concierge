@@ -87,6 +87,7 @@ function ListFeasibilityPage() {
           <>
             <DepartmentSummaryCard summary={summary} />
             <SlotsTable slots={slots} />
+            <AssumptionsCard />
           </>
         )}
       </div>
