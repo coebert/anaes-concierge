@@ -98,7 +98,9 @@ export interface ListSlotFeasibility {
 export interface ConsultantPatternCell {
   dow: number;            // 1-5
   session: "am" | "pm";
-  /** Total weekdays of this dow in the window (denominator — NOT reduced by on-call). */
+  /** Total weekdays of this dow within this consultant's personal tenure
+   *  (intersection of the data window and dates they actually appear in
+   *  the rota). NOT reduced by on-call. */
   totalOccurrences: number;
   /** Times this consultant was on-call on that half (informational only). */
   oncallOccurrences: number;
@@ -117,6 +119,12 @@ export interface ConsultantPattern {
   cells: ConsultantPatternCell[];
   /** Count of cells with regular === true. */
   regularSessionsPerWeek: number;
+  /** First date in the window this consultant appears in the rota at all. */
+  tenureStart: string | null;
+  /** Last date in the window this consultant appears in the rota at all. */
+  tenureEnd: string | null;
+  /** Mon–Fri weekdays between tenureStart and tenureEnd inclusive. */
+  tenureWeekdays: number;
 }
 
 export interface DepartmentSummary {
