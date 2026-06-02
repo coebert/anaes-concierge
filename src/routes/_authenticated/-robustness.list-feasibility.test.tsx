@@ -352,8 +352,8 @@ describe("regular-list feasibility page", () => {
     });
     expect(screen.getAllByText("Theatre Fixture Two").length).toBeGreaterThan(0);
 
-    // No consultant names rendered (WorkingPatternsCard returns null)
-    expect(screen.queryByText("Dr Alpha Fixture")).toBeNull();
+    // WorkingPatternsCard returns null when patterns are empty
+    expect(screen.queryByText("Consultant working patterns")).toBeNull();
 
     // Summary shows 2 slots
     expect(screen.getByText(/2 recurring list slot/)).toBeTruthy();
