@@ -58,6 +58,8 @@ function makeChain(table: string) {
     lte: () => typeof chain;
     gte: () => typeof chain;
     in: () => typeof chain;
+    order: () => typeof chain;
+    range: () => typeof chain;
     then: (
       onfulfilled: (v: { data: Row[]; error: null }) => unknown,
     ) => Promise<unknown>;
