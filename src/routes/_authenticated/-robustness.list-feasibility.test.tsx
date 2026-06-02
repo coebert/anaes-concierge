@@ -268,4 +268,96 @@ describe("regular-list feasibility page", () => {
 
     cleanup();
   });
+
+  it("renders consultant patterns but empty slots state when slots are empty", async () => {
+    const partialFixture: ListFeasibilityResult = {
+      ...fixture,
+      slots: [],
+      summary: {
+        ...fixture.summary,
+        totalSlots: 0,
+        feasible: 0,
+        borderline: 0,
+        notFeasible: 0,
+        estimatedExtraWte: 0,
+        estimatedExtraWteWithSas: 0,
+      },
+    };
+    computeListFeasibility.mockResolvedValue(partialFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // consultantPatterns rendered
+    await waitFor(() => {
+      expect(screen.getAllByText("Dr Alpha Fixture").length).toBeGreaterThan(0);
+    });
+
+    // Slots empty state
+    expect(
+      await screen.findByText("No recurring lists matched the minimum-occurrence filter."),
+    ).toBeTruthy();
+
+    // Summary shows 0 slots
+    expect(screen.getByText(/0 recurring list slot/)).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("renders slots but no patterns card when consultantPatterns are empty", async () => {
+    const partialFixture: ListFeasibilityResult = {
+      ...fixture,
+      consultantPatterns: [],
+      summary: {
+        ...fixture.summary,
+        totalSlots: 2,
+        feasible: 1,
+        notFeasible: 1,
+      },
+    };
+    computeListFeasibility.mockResolvedValue(partialFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // Slots rendered
+    await waitFor(() => {
+      expect(screen.getAllByText("Theatre Fixture One").length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText("Theatre Fixture Two").length).toBeGreaterThan(0);
+
+    // WorkingPatternsCard returns null when patterns are empty
+    expect(screen.queryByText("Consultant working patterns")).toBeNull();
+
+    // Summary shows 2 slots
+    expect(screen.getByText(/2 recurring list slot/)).toBeTruthy();
+
+    cleanup();
+  });
 });
