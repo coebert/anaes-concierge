@@ -1003,17 +1003,26 @@ function ValidationCard({
   );
 }
 
+interface RemediationActions {
+  onApply: (r: Remediation) => void;
+  isApplying: boolean;
+  isApplicable: (kind: Remediation["kind"]) => boolean;
+}
+
 function ValidationResults({
   report,
   onlyMismatches,
   expanded,
   setExpanded,
+  onApply,
+  isApplying,
+  isApplicable,
 }: {
   report: DiagnosedReport;
   onlyMismatches: boolean;
   expanded: string | null;
   setExpanded: (k: string | null) => void;
-}) {
+} & RemediationActions) {
   const consultants = onlyMismatches
     ? report.consultants.filter((c) => c.mismatchCount > 0)
     : report.consultants;
