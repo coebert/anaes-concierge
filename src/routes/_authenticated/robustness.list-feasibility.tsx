@@ -1124,6 +1124,51 @@ function ValidationCard({
           )}
         </div>
 
+        {(verifying || verification) && (
+          <div className="rounded-md border border-sky-300/60 bg-sky-50 px-3 py-2 text-xs text-sky-900 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-200">
+            {verifying ? (
+              <span>
+                <strong>Verifying…</strong> re-reading non-working labels from
+                the database and recomputing the feasibility model before
+                refreshing the validation report.
+              </span>
+            ) : verification ? (
+              <div className="space-y-1">
+                <div>
+                  <strong>Verification complete</strong> — recomputed model
+                  with{" "}
+                  <span className="font-mono">{verification.tokenCount}</span>{" "}
+                  non-working label token(s) over a{" "}
+                  <span className="font-mono">{verification.monthsBack}</span>
+                  -month window at{" "}
+                  {new Date(verification.at).toLocaleTimeString()}.
+                </div>
+                <div className="text-[11px]">
+                  Recomputed list verdicts: feasible{" "}
+                  <span className="font-mono">{verification.feasible}</span>,
+                  borderline{" "}
+                  <span className="font-mono">{verification.borderline}</span>,
+                  not feasible{" "}
+                  <span className="font-mono">{verification.notFeasible}</span>.
+                  {verification.tokensSample.length > 0 && (
+                    <>
+                      {" "}Tokens in effect:{" "}
+                      <span className="font-mono">
+                        {verification.tokensSample.join(", ")}
+                        {verification.tokenCount > verification.tokensSample.length
+                          ? ` … (+${verification.tokenCount - verification.tokensSample.length} more)`
+                          : ""}
+                      </span>
+                      .
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+
         {!enabled ? (
           <p className="text-xs text-muted-foreground">
             Validation hasn't been run yet. Press <strong>Run validation</strong> to
