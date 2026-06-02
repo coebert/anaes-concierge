@@ -1100,11 +1100,14 @@ function ValidationConsultantRow({
   consultant,
   expanded,
   onToggle,
+  onApply,
+  isApplying,
+  isApplicable,
 }: {
   consultant: DiagnosedConsultant;
   expanded: boolean;
   onToggle: () => void;
-}) {
+} & RemediationActions) {
   return (
     <div className="rounded-md border">
       <button
@@ -1141,14 +1144,24 @@ function ValidationConsultantRow({
       </button>
       {expanded && (
         <div className="border-t bg-muted/20 p-3 space-y-3">
-          <ValidationCellTable cells={consultant.cells} />
+          <ValidationCellTable
+            cells={consultant.cells}
+            onApply={onApply}
+            isApplying={isApplying}
+            isApplicable={isApplicable}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function ValidationCellTable({ cells }: { cells: DiagnosedCell[] }) {
+function ValidationCellTable({
+  cells,
+  onApply,
+  isApplying,
+  isApplicable,
+}: { cells: DiagnosedCell[] } & RemediationActions) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
