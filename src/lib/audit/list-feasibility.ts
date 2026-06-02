@@ -448,6 +448,7 @@ function isCoveredDayThin(
   asnByDateStaff: Map<string, { staffId: string }[]>,
   date: string,
   totalActiveConsultants: number,
+  busyPct: number,
 ): boolean {
   if (totalActiveConsultants === 0) return false;
   const staffWithAnyRecord = new Set<string>();
@@ -455,7 +456,7 @@ function isCoveredDayThin(
     if (!key.startsWith(date + "|")) continue;
     for (const r of rows) staffWithAnyRecord.add(r.staffId);
   }
-  return staffWithAnyRecord.size / totalActiveConsultants > 0.7;
+  return staffWithAnyRecord.size / totalActiveConsultants > busyPct / 100;
 }
 
 export const DOW_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
