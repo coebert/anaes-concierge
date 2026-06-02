@@ -89,8 +89,13 @@ export function computeTraineeMetrics(
     ? Math.round((onCallLists / totalAssignments) * 1000) / 10
     : null;
 
-  const clinical = assignments.filter((a) =>
-    ["solo", "supervised", "supervising"].includes(a.role_on_list),
+  // Only real lists (matched to a theatre_session) count toward the clinical
+  // specialty breakdown — otherwise unmatched "solo" default rows pollute it
+  // as "Unknown".
+  const clinical = assignments.filter(
+    (a) =>
+      ["solo", "supervised", "supervising"].includes(a.role_on_list) &&
+      a.theatre_session_id != null,
   );
   const counts = new Map<string, number>();
   for (const a of clinical) {
