@@ -32,6 +32,10 @@ export interface FeasibilityThresholds {
   shortfallDayBusyPct: number;
   /** WTE added per failed slot dimension (rough PA→WTE conversion). */
   wtePerWeeklySession: number;
+  /** % of eligible (dow, session) instances a consultant must work (excluding
+   *  on-call days they were rostered for) before that half-day counts as part
+   *  of their regular working pattern. 0-100. */
+  regularWorkingMinPct: number;
 }
 
 export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
@@ -41,7 +45,9 @@ export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
   minOccurrences: 4,
   shortfallDayBusyPct: 70,
   wtePerWeeklySession: 0.1,
+  regularWorkingMinPct: 50,
 };
+
 
 export type Verdict = "feasible" | "borderline" | "not_feasible";
 
