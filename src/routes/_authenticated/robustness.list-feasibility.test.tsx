@@ -50,12 +50,13 @@ import { Route } from "./robustness.list-feasibility";
 // --- Fixture --------------------------------------------------------------
 
 const DEFAULT_THRESHOLDS_FIXTURE: FeasibilityThresholds = {
-  ownerMinPct: 80,
+  ownerPresentMinPct: 80,
   ownerOrDeputyMinPct: 95,
-  regularWorkingMinPct: 60,
-  minRecurrences: 6,
-  forbidShortfall: false,
+  forbidNewShortfalls: false,
+  minOccurrences: 4,
+  shortfallDayBusyPct: 70,
   wtePerWeeklySession: 0.1,
+  regularWorkingMinPct: 50,
 };
 
 const fixture: ListFeasibilityResult = {
