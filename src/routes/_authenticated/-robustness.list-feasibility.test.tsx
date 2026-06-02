@@ -162,10 +162,10 @@ describe("regular-list feasibility page", () => {
   it("calls computeListFeasibility and renders consultantPatterns + slots", async () => {
     computeListFeasibility.mockResolvedValue(fixture);
 
-    // Route.options.component is the page; Route is the route definition.
-    const Page = (Route as unknown as { options: { component: React.FC } })
-      .options.component;
-    console.log("Page type:", typeof Page, Page?.name);
+    // Route.options.component is the lazy-wrapped page; render the source
+    // component directly for the SSR-free test environment.
+    expect(Route).toBeDefined();
+    const Page = ListFeasibilityPage;
 
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -175,11 +175,7 @@ describe("regular-list feasibility page", () => {
       React.createElement(
         QueryClientProvider,
         { client: qc },
-        React.createElement(
-          React.Suspense,
-          { fallback: React.createElement("div", null, "loading") },
-          React.createElement(Page),
-        ),
+        React.createElement(Page),
       ),
     );
 
