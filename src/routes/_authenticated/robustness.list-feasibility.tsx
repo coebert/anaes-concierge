@@ -116,6 +116,10 @@ function ListFeasibilityPage() {
         ) : (
           <>
             <DepartmentSummaryCard summary={summary} />
+            <WorkingPatternsCard
+              patterns={consultantPatterns}
+              regularMinPct={summary.thresholds.regularWorkingMinPct}
+            />
             <SlotsTable slots={slots} />
             <AssumptionsCard />
           </>
@@ -124,6 +128,7 @@ function ListFeasibilityPage() {
     </TooltipProvider>
   );
 }
+
 
 function ThresholdControls({
   monthsBack,
