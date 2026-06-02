@@ -792,6 +792,8 @@ export async function computeListFeasibility(
       borderline,
       notFeasible,
       estimatedExtraWte,
+      theatreAssignmentsTotal,
+      theatreAssignmentsLinked,
     },
     slots: slotResults,
     consultantPatterns,
@@ -804,20 +806,20 @@ export async function computeListFeasibility(
  * of all active consultants had any duty_type record that day, there was
  * very little spare cover. Used only as a heuristic for the
  * "shortfalls if locked" counter without re-running the full robustness
- * simulation.
+ * simulation. Takes a precomputed date -> staffId set to avoid scanning
+ * the full assignment map per occurrence.
  */
 function isCoveredDayThin(
-  asnByDateStaff: Map<string, { staffId: string }[]>,
+  staffWithAnyRecordByDate: Map<string, Set<string>>,
   date: string,
   totalActiveConsultants: number,
   busyPct: number,
 ): boolean {
   if (totalActiveConsultants === 0) return false;
-  const staffWithAnyRecord = new Set<string>();
-  for (const [key, rows] of asnByDateStaff) {
-    if (!key.startsWith(date + "|")) continue;
-    for (const r of rows) staffWithAnyRecord.add(r.staffId);
-  }
+  const set = staffWithAnyRecordByDate.get(date);
+  if (!set) return false;
+  return set.size / totalActiveConsultants > busyPct / 100;
+}
   return staffWithAnyRecord.size / totalActiveConsultants > busyPct / 100;
 }
 
