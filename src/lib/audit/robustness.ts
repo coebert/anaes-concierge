@@ -592,19 +592,24 @@ export async function computeListCoverage(
     const CHUNK = 200;
     for (let i = 0; i < tsIds.length; i += CHUNK) {
       const slice = tsIds.slice(i, i + CHUNK);
-      const rows = await fetchAllRows<(typeof asns)[number]>((from, to) =>
-        supabase
-          .from("rota_assignments")
-          .select(
-            `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
-          )
-          .in("theatre_session_id", slice)
-          .eq("duty_type", "theatre")
-          .order("id", { ascending: true })
-          .range(from, to),
+      const rows = await fetchAllRows<(typeof asns)[number]>(
+        (from, to) =>
+          supabase
+            .from("rota_assignments")
+            .select(
+              `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
+            )
+            .in("theatre_session_id", slice)
+            .eq("duty_type", "theatre")
+            .order("id", { ascending: true })
+            .range(from, to) as unknown as PromiseLike<{
+            data: (typeof asns)[number][] | null;
+            error: unknown;
+          }>,
       );
       asns.push(...rows);
     }
+
   }
 
 
