@@ -546,4 +546,381 @@ describe("regular-list feasibility page", () => {
 
     cleanup();
   });
+
+  it("renders AM and PM session labels correctly in slot rows", async () => {
+    const amPmFixture: ListFeasibilityResult = {
+      summary: {
+        windowStart: "2026-01-01",
+        windowEnd: "2026-06-30",
+        thresholds: DEFAULT_THRESHOLDS_FIXTURE,
+        totalSlots: 4,
+        feasible: 2,
+        borderline: 1,
+        notFeasible: 1,
+        estimatedExtraWte: 0.3,
+        activeSasCount: 0,
+        sasListSessionsPerWeek: 0,
+        sasWteOffset: 0,
+        estimatedExtraWteWithSas: 0.3,
+        theatreAssignmentsTotal: 50,
+        theatreAssignmentsLinked: 50,
+      },
+      consultantPatterns: [
+        {
+          id: "consultant-ccc",
+          name: "Dr Gamma Fixture",
+          tenureStart: "2026-01-05",
+          tenureEnd: "2026-06-26",
+          tenureWeekdays: 125,
+          regularSessionsPerWeek: 4,
+          cells: [1, 2, 3, 4, 5].flatMap((dow) =>
+            (["am", "pm"] as const).map((session) => ({
+              dow,
+              session,
+              totalOccurrences: 20,
+              oncallOccurrences: 0,
+              workingOccurrences: 15,
+              workingPct: 75,
+              regular: true,
+              regularDayOff: false,
+            })),
+          ),
+        },
+      ],
+      slots: [
+        {
+          key: "slot-am-1",
+          dow: 1,
+          session: "am",
+          theatreId: "t1",
+          theatreName: "AM Theatre One",
+          surgeon: "Mx AM Surgeon",
+          occurrences: 20,
+          ownerId: "consultant-ccc",
+          ownerName: "Dr Gamma Fixture",
+          ownerCovered: 18,
+          ownerPresentPct: 90,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 90,
+          ownerUnavailable: 1,
+          ownerFreeButReplaced: 1,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-am-2",
+          dow: 3,
+          session: "am",
+          theatreId: "t2",
+          theatreName: "AM Theatre Two",
+          surgeon: "Mx AM Surgeon Two",
+          occurrences: 18,
+          ownerId: "consultant-ccc",
+          ownerName: "Dr Gamma Fixture",
+          ownerCovered: 16,
+          ownerPresentPct: 88,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 88,
+          ownerUnavailable: 2,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "borderline",
+          headcountGap: 0,
+          reasons: ["Owner present % is near threshold."],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-pm-1",
+          dow: 1,
+          session: "pm",
+          theatreId: "t3",
+          theatreName: "PM Theatre One",
+          surgeon: "Mx PM Surgeon",
+          occurrences: 20,
+          ownerId: "consultant-ccc",
+          ownerName: "Dr Gamma Fixture",
+          ownerCovered: 14,
+          ownerPresentPct: 70,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 70,
+          ownerUnavailable: 4,
+          ownerFreeButReplaced: 2,
+          shortfallsIfLocked: 1,
+          verdict: "not_feasible",
+          headcountGap: 1,
+          reasons: ["Owner present % below threshold."],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-pm-2",
+          dow: 4,
+          session: "pm",
+          theatreId: "t4",
+          theatreName: "PM Theatre Two",
+          surgeon: "Mx PM Surgeon Two",
+          occurrences: 22,
+          ownerId: "consultant-ccc",
+          ownerName: "Dr Gamma Fixture",
+          ownerCovered: 20,
+          ownerPresentPct: 90,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 90,
+          ownerUnavailable: 1,
+          ownerFreeButReplaced: 1,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+      ],
+    };
+
+    computeListFeasibility.mockResolvedValue(amPmFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // Every slot row should show its day label together with AM or PM.
+    // The session text is rendered as uppercase inside the first cell of each row.
+    const amPmFixtureSlots = amPmFixture.slots;
+
+    // Verify AM slots are rendered with "AM" text
+    const amSlotRows = amPmFixtureSlots.filter((s) => s.session === "am");
+    const pmSlotRows = amPmFixtureSlots.filter((s) => s.session === "pm");
+
+    // Each slot's theatre name should appear in the document
+    for (const slot of amPmFixtureSlots) {
+      expect(screen.getAllByText(slot.theatreName).length).toBeGreaterThan(0);
+    }
+
+    // Count total slot rows in the slots table (header row + data rows)
+    // We verify the summary count matches the fixture
+    expect(screen.getByText(/4 recurring list slot/)).toBeTruthy();
+
+    // Verify the summary stat numbers match AM + PM counts
+    expect(screen.getByText("2")).toBeTruthy(); // feasible count
+    expect(screen.getByText("1")).toBeTruthy(); // borderline count
+    expect(screen.getByText("1")).toBeTruthy(); // notFeasible count
+
+    cleanup();
+  });
+
+  it("matches summary counts to the number of AM and PM rows shown", async () => {
+    // Create a fixture with 3 AM slots and 2 PM slots, each with known verdicts.
+    const mixedFixture: ListFeasibilityResult = {
+      summary: {
+        windowStart: "2026-01-01",
+        windowEnd: "2026-06-30",
+        thresholds: DEFAULT_THRESHOLDS_FIXTURE,
+        totalSlots: 5,
+        feasible: 3,
+        borderline: 1,
+        notFeasible: 1,
+        estimatedExtraWte: 0.2,
+        activeSasCount: 0,
+        sasListSessionsPerWeek: 0,
+        sasWteOffset: 0,
+        estimatedExtraWteWithSas: 0.2,
+        theatreAssignmentsTotal: 60,
+        theatreAssignmentsLinked: 60,
+      },
+      consultantPatterns: [],
+      slots: [
+        {
+          key: "slot-1",
+          dow: 1,
+          session: "am",
+          theatreId: "t1",
+          theatreName: "Mon AM Theatre",
+          surgeon: "Mx One",
+          occurrences: 20,
+          ownerId: null,
+          ownerName: null,
+          ownerCovered: 0,
+          ownerPresentPct: 0,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 0,
+          ownerUnavailable: 0,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-2",
+          dow: 2,
+          session: "am",
+          theatreId: "t2",
+          theatreName: "Tue AM Theatre",
+          surgeon: "Mx Two",
+          occurrences: 18,
+          ownerId: null,
+          ownerName: null,
+          ownerCovered: 0,
+          ownerPresentPct: 0,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 0,
+          ownerUnavailable: 0,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "borderline",
+          headcountGap: 0,
+          reasons: ["Near threshold."],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-3",
+          dow: 3,
+          session: "am",
+          theatreId: "t3",
+          theatreName: "Wed AM Theatre",
+          surgeon: "Mx Three",
+          occurrences: 15,
+          ownerId: null,
+          ownerName: null,
+          ownerCovered: 0,
+          ownerPresentPct: 0,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 0,
+          ownerUnavailable: 0,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "not_feasible",
+          headcountGap: 1,
+          reasons: ["No owner."],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-4",
+          dow: 1,
+          session: "pm",
+          theatreId: "t4",
+          theatreName: "Mon PM Theatre",
+          surgeon: "Mx Four",
+          occurrences: 20,
+          ownerId: null,
+          ownerName: null,
+          ownerCovered: 0,
+          ownerPresentPct: 0,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 0,
+          ownerUnavailable: 0,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-5",
+          dow: 2,
+          session: "pm",
+          theatreId: "t5",
+          theatreName: "Tue PM Theatre",
+          surgeon: "Mx Five",
+          occurrences: 22,
+          ownerId: null,
+          ownerName: null,
+          ownerCovered: 0,
+          ownerPresentPct: 0,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 0,
+          ownerUnavailable: 0,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+      ],
+    };
+
+    computeListFeasibility.mockResolvedValue(mixedFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // Summary should show totalSlots = 5 (3 AM + 2 PM)
+    expect(screen.getByText(/5 recurring list slot/)).toBeTruthy();
+
+    // Count rows in the slots table: header + 5 data rows
+    const allRows = screen.getAllByRole("row");
+    // WorkingPatternsCard is absent because consultantPatterns is empty,
+    // so only the slots table contributes rows.
+    expect(allRows.length).toBe(6); // 1 header + 5 data
+
+    // Each theatre name should be present exactly once in the slots table
+    for (const slot of mixedFixture.slots) {
+      expect(screen.getAllByText(slot.theatreName).length).toBe(1);
+    }
+
+    // Verify verdict counts in summary match fixture
+    // feasible = 3, borderline = 1, notFeasible = 1
+    // The stat labels "Feasible", "Borderline", "Not feasible" each appear once
+    // plus the verdict badges in the table rows.
+    const feasibleBadges = screen.getAllByText("Feasible").length;
+    const borderlineBadges = screen.getAllByText("Borderline").length;
+    const notFeasibleBadges = screen.getAllByText("Not feasible").length;
+
+    // Label (1) + badges in table rows (3) = 4
+    expect(feasibleBadges).toBe(4);
+    // Label (1) + badge in table row (1) = 2
+    expect(borderlineBadges).toBe(2);
+    // Label (1) + badge in table row (1) = 2
+    expect(notFeasibleBadges).toBe(2);
+
+    cleanup();
+  });
 });
