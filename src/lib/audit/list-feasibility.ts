@@ -28,6 +28,10 @@ export interface FeasibilityThresholds {
   forbidNewShortfalls: boolean;
   /** Minimum occurrences in window for a slot to be considered "regular". */
   minOccurrences: number;
+  /** % of active consultants with any duty record above which a day is "thin". 0-100. */
+  shortfallDayBusyPct: number;
+  /** WTE added per failed slot dimension (rough PA→WTE conversion). */
+  wtePerWeeklySession: number;
 }
 
 export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
@@ -35,6 +39,8 @@ export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
   ownerOrDeputyMinPct: 95,
   forbidNewShortfalls: true,
   minOccurrences: 4,
+  shortfallDayBusyPct: 70,
+  wtePerWeeklySession: 0.1,
 };
 
 export type Verdict = "feasible" | "borderline" | "not_feasible";
