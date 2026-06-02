@@ -807,9 +807,52 @@ function ValidationCard({
   const [onlyMismatches, setOnlyMismatches] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [monthsBackOverride, setMonthsBackOverride] = useState<number | null>(null);
+  const [verification, setVerification] = useState<{
+    at: string;
+    tokenCount: number;
+    tokensSample: string[];
+    feasible: number;
+    borderline: number;
+    notFeasible: number;
+    monthsBack: number;
+  } | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   const effectiveMonthsBack = monthsBackOverride ?? monthsBack;
   const queryClient = useQueryClient();
+
+  // Explicit post-remediation verification: re-read the updated tokens from
+  // the DB and re-run computeListFeasibility with them, so we can confirm
+  // the recomputed model numbers BEFORE the validation report re-renders.
+  const runVerification = async (forMonthsBack: number) => {
+    setVerifying(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from("validation_custom_non_working_labels")
+        .select("token")
+        .order("token", { ascending: true });
+      if (error) throw new Error(error.message);
+      const tokens = (rows ?? [])
+        .map((r) => (r as { token: string }).token)
+        .filter((t): t is string => typeof t === "string" && t.length > 0);
+      const model = await computeListFeasibility({
+        monthsBack: forMonthsBack,
+        thresholds,
+        extraNonWorkingTokens: tokens,
+      });
+      setVerification({
+        at: new Date().toISOString(),
+        tokenCount: tokens.length,
+        tokensSample: tokens.slice(0, 8),
+        feasible: model.summary.feasible,
+        borderline: model.summary.borderline,
+        notFeasible: model.summary.notFeasible,
+        monthsBack: forMonthsBack,
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const queryKey = [
     "list-feasibility-validation",
@@ -876,10 +919,21 @@ function ValidationCard({
     },
     onSuccess: async (result) => {
       toast.success(result.message, {
-        description: "Re-running validation to confirm the fix…",
+        description: "Verifying updated tokens and re-running validation…",
       });
       // Make sure the next run reflects newly inserted DB rows.
       await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      // Explicit verification step: re-read tokens from DB and recompute the
+      // model before re-rendering the validation report.
+      try {
+        await runVerification(effectiveMonthsBack);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? `Verification failed: ${err.message}`
+            : "Verification failed",
+        );
+      }
       await refetch();
     },
     onError: (err) => {
@@ -943,9 +997,24 @@ function ValidationCard({
     },
     onSuccess: async (result) => {
       toast.success("Applied all eligible fixes", {
-        description: `${result.message} Re-running validation…`,
+        description: `${result.message} Verifying updated tokens and re-running validation…`,
       });
       await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      // Explicit verification step: re-read tokens from DB and recompute the
+      // model before re-rendering the validation report. Use the post-apply
+      // months value (state may not have flushed yet).
+      const nextMonths = canWiden
+        ? Math.min(24, effectiveMonthsBack + 3)
+        : effectiveMonthsBack;
+      try {
+        await runVerification(nextMonths);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? `Verification failed: ${err.message}`
+            : "Verification failed",
+        );
+      }
       await refetch();
     },
     onError: (err) => {
@@ -1054,6 +1123,51 @@ function ValidationCard({
             </Button>
           )}
         </div>
+
+        {(verifying || verification) && (
+          <div className="rounded-md border border-sky-300/60 bg-sky-50 px-3 py-2 text-xs text-sky-900 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-200">
+            {verifying ? (
+              <span>
+                <strong>Verifying…</strong> re-reading non-working labels from
+                the database and recomputing the feasibility model before
+                refreshing the validation report.
+              </span>
+            ) : verification ? (
+              <div className="space-y-1">
+                <div>
+                  <strong>Verification complete</strong> — recomputed model
+                  with{" "}
+                  <span className="font-mono">{verification.tokenCount}</span>{" "}
+                  non-working label token(s) over a{" "}
+                  <span className="font-mono">{verification.monthsBack}</span>
+                  -month window at{" "}
+                  {new Date(verification.at).toLocaleTimeString()}.
+                </div>
+                <div className="text-[11px]">
+                  Recomputed list verdicts: feasible{" "}
+                  <span className="font-mono">{verification.feasible}</span>,
+                  borderline{" "}
+                  <span className="font-mono">{verification.borderline}</span>,
+                  not feasible{" "}
+                  <span className="font-mono">{verification.notFeasible}</span>.
+                  {verification.tokensSample.length > 0 && (
+                    <>
+                      {" "}Tokens in effect:{" "}
+                      <span className="font-mono">
+                        {verification.tokensSample.join(", ")}
+                        {verification.tokenCount > verification.tokensSample.length
+                          ? ` … (+${verification.tokenCount - verification.tokensSample.length} more)`
+                          : ""}
+                      </span>
+                      .
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
 
         {!enabled ? (
           <p className="text-xs text-muted-foreground">
