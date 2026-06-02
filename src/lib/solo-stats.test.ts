@@ -87,6 +87,7 @@ describe("solo-trainee detection", () => {
     expect(isSoloTraineeAssignment(assignments[2], consSet, profiles)).toBe(false);
   });
 
+
   it("multiple sessions: only the session without consultant is solo", () => {
     const assignments: SoloAssignment[] = [
       // ts-1 has a consultant -> trainee on ts-1 not solo
