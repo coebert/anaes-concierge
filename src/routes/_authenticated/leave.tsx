@@ -329,6 +329,7 @@ function LeavePage() {
         <TabsList>
           <TabsTrigger value="calendar">Department calendar</TabsTrigger>
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
+          <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
           <TabsTrigger value="mine">My requests</TabsTrigger>
         </TabsList>
