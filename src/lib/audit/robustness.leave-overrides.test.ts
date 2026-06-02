@@ -60,6 +60,8 @@ function makeChain(table: string) {
     lte: () => chain,
     gte: () => chain,
     in: () => chain,
+    order: () => chain,
+    range: () => chain,
     then: (onfulfilled) =>
       Promise.resolve({
         data: (fixture as unknown as Record<string, Row[]>)[table] ?? [],
