@@ -32,6 +32,14 @@ import {
   type ListSlotFeasibility,
   type Verdict,
 } from "@/lib/audit/list-feasibility";
+import {
+  validateConsultantPatterns,
+  type ValidationReport,
+  type ValidationCell,
+  type ValidationConsultant,
+  type SampleClassification,
+} from "@/lib/audit/list-feasibility-validation";
+
 
 
 export const Route = createFileRoute("/_authenticated/robustness/list-feasibility")({
