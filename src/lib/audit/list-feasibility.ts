@@ -271,11 +271,13 @@ export async function computeListFeasibility(
   // ----- Consultant working patterns --------------------------------------
   // For each (dow, session), figure out:
   //   - totalOccurrences: how many of that weekday existed in the window
-  //   - per-consultant working vs on-call counts
-  // A duty_type ending in "_oncall" is treated as on-call. "theatre", "spa",
-  // "admin", "teaching" and similar are working presence. A weekday with no
-  // record at all is treated as neither working nor on-call (likely leave or
-  // a non-working pattern day).
+  //   - per-consultant clinical-activity count (assigned to a theatre list)
+  //   - per-consultant on-call count (informational only)
+  //
+  // IMPORTANT: weeks in which the consultant was on-call are NOT excluded
+  // from the denominator. The percentage shown is simply
+  //   (sessions assigned to clinical activity) / (total weekdays of that dow)
+  // taken straight from CLWRota actuals.
   const totalByDow = new Map<number, number>();
   const seenDates = new Set<string>();
   for (const s of sessions ?? []) {
@@ -287,8 +289,8 @@ export async function computeListFeasibility(
     totalByDow.set(dow, (totalByDow.get(dow) ?? 0) + 1);
   }
 
-  // Per-consultant, per (dow|session), working and on-call counts.
-  type PatternCounts = { working: number; oncall: number };
+  // Per-consultant, per (dow|session), clinical-activity and on-call counts.
+  type PatternCounts = { clinical: number; oncall: number };
   const patternCounts = new Map<string, PatternCounts>(); // key: staffId|dow|session
   const cellKey = (staffId: string, dow: number, session: string) =>
     `${staffId}|${dow}|${session}`;
@@ -302,22 +304,23 @@ export async function computeListFeasibility(
     if (dow === 0 || dow === 6) continue;
     // Aggregate per half-day on this date so two duty_type rows on the same
     // half don't double-count.
-    const seenHalf = new Map<string, { working: boolean; oncall: boolean }>();
+    const seenHalf = new Map<string, { clinical: boolean; oncall: boolean }>();
     for (const a of rows) {
       if (a.session !== "am" && a.session !== "pm") continue;
       const isOncall = a.dutyType.endsWith("_oncall");
-      const flag = seenHalf.get(a.session) ?? { working: false, oncall: false };
+      // "Clinical activity" = covering a theatre list. SPA/admin/teaching
+      // /non-clinical/on-call don't count as clinical activity.
+      const isClinical = a.dutyType === "theatre";
+      const flag = seenHalf.get(a.session) ?? { clinical: false, oncall: false };
       if (isOncall) flag.oncall = true;
-      else flag.working = true;
+      if (isClinical) flag.clinical = true;
       seenHalf.set(a.session, flag);
     }
     for (const [sess, flag] of seenHalf) {
       const key = cellKey(staffId, dow, sess);
-      const cur = patternCounts.get(key) ?? { working: 0, oncall: 0 };
-      // On-call wins for that half — a consultant can't simultaneously be
-      // counted as "regularly working" if they were on the on-call rota.
+      const cur = patternCounts.get(key) ?? { clinical: 0, oncall: 0 };
+      if (flag.clinical) cur.clinical += 1;
       if (flag.oncall) cur.oncall += 1;
-      else if (flag.working) cur.working += 1;
       patternCounts.set(key, cur);
     }
   }
@@ -331,13 +334,12 @@ export async function computeListFeasibility(
     for (let dow = 1; dow <= 5; dow++) {
       for (const session of SESSIONS) {
         const counts = patternCounts.get(cellKey(c.id, dow, session)) ?? {
-          working: 0,
+          clinical: 0,
           oncall: 0,
         };
         const total = totalByDow.get(dow) ?? 0;
-        const eligible = Math.max(0, total - counts.oncall);
         const workingPct =
-          eligible > 0 ? Math.round((counts.working / eligible) * 100) : 0;
+          total > 0 ? Math.round((counts.clinical / total) * 100) : 0;
         const regular = workingPct >= thresholds.regularWorkingMinPct;
         if (regular) regularSessions += 1;
         cells.push({
@@ -345,7 +347,7 @@ export async function computeListFeasibility(
           session,
           totalOccurrences: total,
           oncallOccurrences: counts.oncall,
-          workingOccurrences: counts.working,
+          workingOccurrences: counts.clinical,
           workingPct,
           regular,
         });
@@ -374,9 +376,8 @@ export async function computeListFeasibility(
   const workingPctOf = (staffId: string, dow: number, session: string): number => {
     const counts = patternCounts.get(cellKey(staffId, dow, session));
     const total = totalByDow.get(dow) ?? 0;
-    const eligible = Math.max(0, total - (counts?.oncall ?? 0));
-    if (eligible === 0) return 0;
-    return Math.round(((counts?.working ?? 0) / eligible) * 100);
+    if (total === 0) return 0;
+    return Math.round(((counts?.clinical ?? 0) / total) * 100);
   };
 
 
