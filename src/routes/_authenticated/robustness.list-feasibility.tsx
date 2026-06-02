@@ -636,12 +636,13 @@ function WorkingPatternsCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Consultant working patterns</CardTitle>
         <CardDescription>
-          For each consultant, the percentage of eligible weeks (excluding
-          weeks they were on-call for that half-day) they actually worked
-          each Mon–Fri AM/PM session. Cells highlighted in green are at or
-          above the regular-working threshold ({regularMinPct}%) and are
-          treated as part of the consultant's regular pattern when matching
-          them to feasible list slots.
+          For each consultant, the percentage of all Mon–Fri half-days in the
+          window on which CLWRota recorded them as covering a theatre list
+          (clinical activity). Weeks containing on-call are included in the
+          denominator. Cells highlighted in green are at or above the
+          regular-working threshold ({regularMinPct}%) and are treated as part
+          of the consultant's regular pattern when matching them to feasible
+          list slots.
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
