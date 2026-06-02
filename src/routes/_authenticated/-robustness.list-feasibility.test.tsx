@@ -32,7 +32,9 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 // Spy on computeListFeasibility while keeping its real types/constants.
-const computeListFeasibility = vi.fn();
+const { computeListFeasibility } = vi.hoisted(() => ({
+  computeListFeasibility: vi.fn(),
+}));
 vi.mock("@/lib/audit/list-feasibility", async () => {
   const actual = await vi.importActual<
     typeof import("@/lib/audit/list-feasibility")
