@@ -807,9 +807,52 @@ function ValidationCard({
   const [onlyMismatches, setOnlyMismatches] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [monthsBackOverride, setMonthsBackOverride] = useState<number | null>(null);
+  const [verification, setVerification] = useState<{
+    at: string;
+    tokenCount: number;
+    tokensSample: string[];
+    feasible: number;
+    borderline: number;
+    notFeasible: number;
+    monthsBack: number;
+  } | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   const effectiveMonthsBack = monthsBackOverride ?? monthsBack;
   const queryClient = useQueryClient();
+
+  // Explicit post-remediation verification: re-read the updated tokens from
+  // the DB and re-run computeListFeasibility with them, so we can confirm
+  // the recomputed model numbers BEFORE the validation report re-renders.
+  const runVerification = async (forMonthsBack: number) => {
+    setVerifying(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from("validation_custom_non_working_labels")
+        .select("token")
+        .order("token", { ascending: true });
+      if (error) throw new Error(error.message);
+      const tokens = (rows ?? [])
+        .map((r) => (r as { token: string }).token)
+        .filter((t): t is string => typeof t === "string" && t.length > 0);
+      const model = await computeListFeasibility({
+        monthsBack: forMonthsBack,
+        thresholds,
+        extraNonWorkingTokens: tokens,
+      });
+      setVerification({
+        at: new Date().toISOString(),
+        tokenCount: tokens.length,
+        tokensSample: tokens.slice(0, 8),
+        feasible: model.summary.feasible,
+        borderline: model.summary.borderline,
+        notFeasible: model.summary.notFeasible,
+        monthsBack: forMonthsBack,
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const queryKey = [
     "list-feasibility-validation",
