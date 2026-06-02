@@ -360,4 +360,190 @@ describe("regular-list feasibility page", () => {
 
     cleanup();
   });
+
+  it("renders both consultantPatterns and slots together with correct counts", async () => {
+    // Use a fixture with multiple consultants and varied verdicts so counts
+    // are non-trivial and can be checked against the rendered rows.
+    const richFixture: ListFeasibilityResult = {
+      summary: {
+        windowStart: "2026-01-01",
+        windowEnd: "2026-06-30",
+        thresholds: DEFAULT_THRESHOLDS_FIXTURE,
+        totalSlots: 3,
+        feasible: 2,
+        borderline: 0,
+        notFeasible: 1,
+        estimatedExtraWte: 0.2,
+        activeSasCount: 1,
+        sasListSessionsPerWeek: 2,
+        sasWteOffset: 0.2,
+        estimatedExtraWteWithSas: 0.0,
+        theatreAssignmentsTotal: 100,
+        theatreAssignmentsLinked: 100,
+      },
+      consultantPatterns: [
+        {
+          id: "consultant-aaa",
+          name: "Dr Alpha Fixture",
+          tenureStart: "2026-01-05",
+          tenureEnd: "2026-06-26",
+          tenureWeekdays: 125,
+          regularSessionsPerWeek: 3,
+          cells: [1, 2, 3, 4, 5].flatMap((dow) =>
+            (["am", "pm"] as const).map((session) => ({
+              dow,
+              session,
+              totalOccurrences: 20,
+              oncallOccurrences: 0,
+              workingOccurrences: dow === 5 ? 0 : 12,
+              workingPct: dow === 5 ? 0 : 60,
+              regular: dow !== 5,
+              regularDayOff: dow === 5,
+            })),
+          ),
+        },
+        {
+          id: "consultant-bbb",
+          name: "Dr Beta Fixture",
+          tenureStart: "2026-01-05",
+          tenureEnd: "2026-06-26",
+          tenureWeekdays: 125,
+          regularSessionsPerWeek: 2,
+          cells: [1, 2, 3, 4, 5].flatMap((dow) =>
+            (["am", "pm"] as const).map((session) => ({
+              dow,
+              session,
+              totalOccurrences: 20,
+              oncallOccurrences: 2,
+              workingOccurrences: 10,
+              workingPct: 50,
+              regular: dow <= 3,
+              regularDayOff: dow > 3,
+            })),
+          ),
+        },
+      ],
+      slots: [
+        {
+          key: "slot-1",
+          dow: 1,
+          session: "am",
+          theatreId: "t1",
+          theatreName: "Theatre Fixture One",
+          surgeon: "Mx Surgeon Fixture",
+          occurrences: 20,
+          ownerId: "consultant-aaa",
+          ownerName: "Dr Alpha Fixture",
+          ownerCovered: 18,
+          ownerPresentPct: 90,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 90,
+          ownerUnavailable: 1,
+          ownerFreeButReplaced: 1,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-2",
+          dow: 2,
+          session: "pm",
+          theatreId: "t2",
+          theatreName: "Theatre Fixture Two",
+          surgeon: "Mx Other Fixture",
+          occurrences: 18,
+          ownerId: "consultant-aaa",
+          ownerName: "Dr Alpha Fixture",
+          ownerCovered: 16,
+          ownerPresentPct: 88,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 88,
+          ownerUnavailable: 2,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "feasible",
+          headcountGap: 0,
+          reasons: [],
+          candidateOwners: [],
+        },
+        {
+          key: "slot-3",
+          dow: 3,
+          session: "am",
+          theatreId: "t3",
+          theatreName: "Theatre Fixture Three",
+          surgeon: "Mx Third Fixture",
+          occurrences: 15,
+          ownerId: null,
+          ownerName: null,
+          ownerCovered: 0,
+          ownerPresentPct: 0,
+          deputyId: null,
+          deputyName: null,
+          deputyCovered: 0,
+          ownerOrDeputyPct: 0,
+          ownerUnavailable: 0,
+          ownerFreeButReplaced: 0,
+          shortfallsIfLocked: 0,
+          verdict: "not_feasible",
+          headcountGap: 1,
+          reasons: ["No consultant regularly works this slot."],
+          candidateOwners: [],
+        },
+      ],
+    };
+
+    computeListFeasibility.mockResolvedValue(richFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // Both consultant names appear (in WorkingPatternsCard or slots table)
+    await waitFor(() => {
+      expect(screen.getAllByText("Dr Alpha Fixture").length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText("Dr Beta Fixture").length).toBeGreaterThan(0);
+
+    // All three theatres appear in the slots table
+    expect(screen.getAllByText("Theatre Fixture One").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Theatre Fixture Two").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Theatre Fixture Three").length).toBeGreaterThan(0);
+
+    // Summary counts rendered exactly as returned
+    expect(screen.getByText(/3 recurring list slot/)).toBeTruthy();
+
+    // Count rendered table rows — each slot produces exactly one <tr>
+    const tableRows = screen.getAllByRole("row");
+    // Slots table has a header row plus one row per slot (3)
+    // Working-patterns table has two header rows plus two data rows
+    // Total rows across all tables: 4 (slots) + 4 (patterns) = 8
+    expect(tableRows.length).toBe(8);
+
+    // Verdict badges in the slots table match summary counts
+    // "Feasible" / "Not feasible" also appear as summary stat labels, so
+    // total occurrences are label + badge(s).
+    expect(screen.getAllByText("Feasible").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Not feasible").length).toBeGreaterThanOrEqual(1);
+
+    cleanup();
+  });
 });
