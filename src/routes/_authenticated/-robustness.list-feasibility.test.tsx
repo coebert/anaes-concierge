@@ -917,12 +917,12 @@ describe("regular-list feasibility page", () => {
     const borderlineTexts = await screen.findAllByText("Borderline");
     const notFeasibleTexts = await screen.findAllByText("Not feasible");
 
-    // Label (1) + badges in table rows (3) = 4
-    expect(feasibleTexts.length).toBe(4);
-    // Label (1) + badge in table row (1) = 2
-    expect(borderlineTexts.length).toBe(2);
-    // Label (1) + badge in table row (1) = 2
-    expect(notFeasibleTexts.length).toBe(2);
+    // Label (1) + badges in table rows (3) + assumptions card (1) = 5
+    expect(feasibleTexts.length).toBe(5);
+    // Label (1) + badge in table row (1) + assumptions card (1) = 3
+    expect(borderlineTexts.length).toBe(3);
+    // Label (1) + badge in table row (1) + assumptions card (1) = 3
+    expect(notFeasibleTexts.length).toBe(3);
 
     cleanup();
   });
