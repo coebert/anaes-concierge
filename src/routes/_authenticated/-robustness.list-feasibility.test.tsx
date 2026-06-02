@@ -257,7 +257,7 @@ describe("regular-list feasibility page", () => {
 
     // Slots table empty state
     expect(
-      screen.getByText("No recurring lists matched the minimum-occurrence filter."),
+      await screen.findByText("No recurring lists matched the minimum-occurrence filter."),
     ).toBeTruthy();
 
     // No consultant names rendered
