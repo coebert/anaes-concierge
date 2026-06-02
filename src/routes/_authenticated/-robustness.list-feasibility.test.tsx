@@ -175,7 +175,11 @@ describe("regular-list feasibility page", () => {
       React.createElement(
         QueryClientProvider,
         { client: qc },
-        React.createElement(Page),
+        React.createElement(
+          React.Suspense,
+          { fallback: React.createElement("div", null, "loading") },
+          React.createElement(Page),
+        ),
       ),
     );
 
