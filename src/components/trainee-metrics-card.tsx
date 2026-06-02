@@ -25,34 +25,41 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
     specialtyBreakdown,
     warnings,
   } = metrics;
+  const regionLabel = subtitle ? `${title} — ${subtitle}` : title;
   return (
-    <Card>
+    <Card aria-label={regionLabel}>
       <CardHeader className="pb-2 p-4 sm:p-6 sm:pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
         {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
         {warnings.length > 0 ? (
-          <div className="space-y-1.5">
+          <ul
+            className="space-y-1.5 list-none p-0"
+            aria-label="Data quality warnings"
+          >
             {warnings.map((w) => (
-              <div
+              <li
                 key={w.code}
+                role={w.level === "warn" ? "alert" : "status"}
                 className={
                   w.level === "warn"
-                    ? "rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-900 dark:text-amber-200 sm:px-3 sm:py-2"
-                    : "rounded-md border border-muted bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground sm:px-3 sm:py-2"
+                    ? "rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm text-amber-900 dark:text-amber-200 sm:px-3 sm:py-2"
+                    : "rounded-md border border-muted bg-muted/40 px-2 py-1.5 text-sm text-muted-foreground sm:px-3 sm:py-2"
                 }
               >
-                {w.level === "warn" ? "⚠ " : "ℹ "}
+                <span aria-hidden="true">{w.level === "warn" ? "⚠ " : "ℹ "}</span>
+                <span className="sr-only">{w.level === "warn" ? "Warning: " : "Info: "}</span>
                 {w.message}
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : null}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
           <Metric
             label="Time at Salisbury"
             value={weeksAtSalisbury === null ? "—" : `${weeksAtSalisbury} wk`}
+            valueAria={weeksAtSalisbury === null ? "no data" : `${weeksAtSalisbury} weeks`}
             sub={
               startDate
                 ? `since ${formatDateWithWeekdayGB(startDate)}`
@@ -62,6 +69,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
           <Metric
             label="Time left"
             value={weeksRemaining === null ? "—" : `${weeksRemaining} wk`}
+            valueAria={weeksRemaining === null ? "no data" : `${weeksRemaining} weeks`}
             sub={
               rotationEndDate
                 ? `until ${formatDateWithWeekdayGB(rotationEndDate)}`
@@ -72,24 +80,38 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
           <Metric
             label="Solo daytime lists"
             value={soloDaytimePct === null ? "—" : `${soloDaytimePct}%`}
+            valueAria={
+              soloDaytimePct === null
+                ? "no data"
+                : `${soloDaytimePct} percent, ${metrics.soloDaytimeLists} of ${daytimeLists}`
+            }
             sub={`${metrics.soloDaytimeLists} of ${daytimeLists}`}
           />
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
+        </dl>
+        <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
           <Metric label="Directly supervised" value={supervisedLists.toString()} />
           <Metric label="Solo lists (all)" value={soloLists.toString()} />
-          <Metric label="On-call" value={onCallLists.toString()} sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"} />
+          <Metric
+            label="On-call"
+            value={onCallLists.toString()}
+            sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"}
+          />
           <Metric label="Total assignments" value={totalAssignments.toString()} />
-        </div>
+        </dl>
 
-        <div>
-          <div className="mb-2 text-sm font-medium">Lists by surgical specialty</div>
+        <section aria-labelledby={`specialty-heading-${title.replace(/\s+/g, "-")}`}>
+          <h3
+            id={`specialty-heading-${title.replace(/\s+/g, "-")}`}
+            className="mb-2 text-sm font-medium"
+          >
+            Lists by surgical specialty
+          </h3>
           {specialtyBreakdown.length === 0 ? (
             <p className="text-sm text-muted-foreground">No clinical lists recorded.</p>
           ) : (
-            <div className="space-y-2">
+            <ul className="space-y-2 list-none p-0">
               {specialtyBreakdown.map((s) => (
-                <div key={s.name}>
+                <li key={s.name}>
                   <div className="sm:hidden space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium">{s.name}</span>
@@ -97,33 +119,56 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
                         {s.count} · {s.percent}%
                       </span>
                     </div>
-                    <Progress value={s.percent} className="h-2" />
+                    <Progress
+                      value={s.percent}
+                      className="h-2"
+                      aria-label={`${s.name}: ${s.count} lists, ${s.percent} percent`}
+                    />
                   </div>
                   <div className="hidden sm:flex items-center gap-3 text-sm">
                     <div className="w-40 truncate">{s.name}</div>
                     <div className="flex-1">
-                      <Progress value={s.percent} className="h-2" />
+                      <Progress
+                        value={s.percent}
+                        className="h-2"
+                        aria-label={`${s.name}: ${s.count} lists, ${s.percent} percent`}
+                      />
                     </div>
                     <div className="w-24 text-right tabular-nums text-muted-foreground">
                       {s.count} · {s.percent}%
                     </div>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-        </div>
+        </section>
       </CardContent>
     </Card>
   );
 }
 
-function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Metric({
+  label,
+  value,
+  valueAria,
+  sub,
+}: {
+  label: string;
+  value: string;
+  valueAria?: string;
+  sub?: string;
+}) {
   return (
     <div className="rounded-md border bg-card p-2 sm:p-3">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground sm:text-xs">{label}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">{value}</div>
-      {sub ? <div className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">{sub}</div> : null}
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd
+        className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl"
+        aria-label={valueAria ?? `${label}: ${value}`}
+      >
+        {value}
+      </dd>
+      {sub ? <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div> : null}
     </div>
   );
 }
