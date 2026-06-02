@@ -246,7 +246,7 @@ function DepartmentSummaryCard({ summary }: { summary: DepartmentSummary }) {
   );
 }
 
-function SlotsTable({ slots }: { slots: ReturnType<typeof useMemoSlotsType> }) {
+function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
   if (slots.length === 0) {
     return (
       <Card>
