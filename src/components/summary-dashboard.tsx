@@ -77,17 +77,20 @@ export function SummaryDashboard() {
         for (const r of (ts ?? []) as Array<{ id: string; theatres: { name: string } }>) {
           theatreById.set(r.id, r.theatres.name);
         }
-        // Exclude sessions that also have a consultant assigned — those aren't solo.
+        // Exclude sessions that also have a consultant or SAS doctor assigned —
+        // those trainees are working alongside a senior career-grade doctor,
+        // so they aren't truly solo / unsupervised.
         const { data: coAssigns } = await supabase
           .from("rota_assignments")
           .select("theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
           .eq("session_date", today)
           .eq("duty_type", "theatre")
           .in("theatre_session_id", tsIds)
-          .eq("profiles.grade", "consultant");
+          .in("profiles.grade", ["consultant", "sas"]);
         for (const r of (coAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
           if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
         }
+
       }
       return rows
         .filter((r) => r.theatre_session_id && !consultantSessionIds.has(r.theatre_session_id))
