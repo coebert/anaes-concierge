@@ -1,5 +1,47 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
+ * robustness window, `rota_assignments` and `theatre_sessions` routinely
+ * exceed that and the audit ends up reasoning over a truncated slice
+ * (producing false shortfalls / phantom unfilled lists). Paginate every
+ * read used by this module through this helper.
+ */
+const PAGE_SIZE = 1000;
+async function fetchAllRows<T>(
+  build: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as T[];
+    out.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
+/**
+ * Emergency / CEPOD theatre sessions are not regular planned lists — they
+ * are covered by the on-call rota, not by allocating a free consultant
+ * from the daytime pool. Counting them as `required` lists inflates demand
+ * (and would mark the on-call consultant as "covering a list", removing
+ * them from the pool twice). Detected via the linked specialty name or a
+ * free-text surgical_consultant hint, consistent with list-feasibility.
+ */
+function isEmergencyTheatreSession(
+  t: { specialty_id?: string | null; surgical_consultant?: string | null },
+  emergencySpecialtyIds: Set<string>,
+): boolean {
+  if (t.specialty_id && emergencySpecialtyIds.has(t.specialty_id)) return true;
+  const sc = (t.surgical_consultant ?? "").toLowerCase();
+  return /emergenc|cepod/.test(sc);
+}
+
 export type Grade = "consultant" | "sas" | "trainee" | "unknown";
 export type SessionHalf = "am" | "pm";
 
