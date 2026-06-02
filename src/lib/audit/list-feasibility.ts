@@ -616,9 +616,12 @@ export async function computeListFeasibility(
 
     for (const occ of slot.occurrences) {
       const asns = asnByTheatreSession.get(occ.theatreSessionId) ?? [];
-      const coverer = asns.find((a) => a.dutyType === "theatre")?.staffId;
+      // A session can have multiple consultants assigned — iterate all.
+      const coverers = new Set(
+        asns.filter((a) => a.dutyType === "theatre").map((a) => a.staffId),
+      );
       const coveredByOwnerOrDeputy =
-        (ownerId && coverer === ownerId) || (deputyId && coverer === deputyId);
+        (ownerId && coverers.has(ownerId)) || (deputyId && coverers.has(deputyId));
       if (coveredByOwnerOrDeputy) ownerOrDeputyCovered += 1;
 
       if (!ownerId) continue;
@@ -628,36 +631,37 @@ export async function computeListFeasibility(
       );
       if (ownerOnThisSession) continue; // owner did cover
 
-      // Owner did not cover. Why?
+      // Owner did not cover (or attribution isn't linked). Why?
       const ownerSameHalf = ownerAsnsToday.find((a) => a.session === slot.session);
       const ownerAllDay = ownerAsnsToday;
+      // Key fix: if the owner has duty_type='theatre' on the SAME half but
+      // it's either linked to a different theatre_session OR unlinked
+      // entirely, they were busy on some other list and physically cannot
+      // also cover this one. Count as unavailable, not "free but replaced".
+      const ownerBusyOnOtherTheatre =
+        ownerSameHalf?.dutyType === "theatre";
       const dt = ownerSameHalf?.dutyType ?? ownerAllDay[0]?.dutyType;
-      const isUnavailable = !!dt && dt !== "theatre"; // leave/on-call/SPA/admin/etc all surface as a non-theatre duty_type record
-      // Approved leave isn't necessarily recorded as a rota_assignment row;
-      // a totally empty day for a working consultant is treated as "free
-      // but replaced" only if it's not a known leave day. We don't have
-      // leave data wired here yet — treat "no record on that half" as
-      // "free but replaced" which is a conservative read.
-      if (ownerAllDay.length === 0) {
+      const isUnavailable = !!dt && dt !== "theatre"; // leave/on-call/SPA/admin/obstetrics/etc.
+
+      if (ownerBusyOnOtherTheatre || isUnavailable) {
+        ownerUnavailable += 1;
+      } else if (ownerAllDay.length === 0) {
+        // No record at all that day. Could be approved leave (not synced as
+        // an assignment row) or a true gap. Conservative: free-but-replaced.
         ownerFreeButReplaced += 1;
-        // If owner were locked here, the *other* list they were covering
-        // wouldn't exist to lose — but the redirected consultant who
-        // covered here would no longer be free. Treat as potential
-        // shortfall when no spare consultants were free on that day.
-        // Heuristic only — proper sim would re-run robustness.
         shortfallsIfLocked += isCoveredDayThin(
-          asnByDateStaff,
+          staffWithAnyRecordByDate,
           occ.date,
           totalActiveConsultants,
           thresholds.shortfallDayBusyPct,
         )
           ? 1
           : 0;
-      } else if (isUnavailable) {
-        ownerUnavailable += 1;
       } else {
+        // Owner had some record that day but not on this half and not theatre.
         ownerFreeButReplaced += 1;
       }
+
     }
 
     const ownerPresentPct = Math.round((ownerCovered / slot.occurrences.length) * 100);
