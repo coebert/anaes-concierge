@@ -137,6 +137,13 @@ export interface DepartmentSummary {
   notFeasible: number;
   /** Sum of per-slot headcount gaps, weighted by sessions/week → consultant WTE. */
   estimatedExtraWte: number;
+  /** Data-quality: how many theatre rota_assignments in the window are linked
+   *  to a theatre_session via theatre_session_id (the only way to attribute a
+   *  consultant to a specific list). Coverage % below is computed on the
+   *  linked subset; unlinked rows are used only to detect "owner busy on
+   *  another list" so they aren't mis-classified as free. */
+  theatreAssignmentsTotal: number;
+  theatreAssignmentsLinked: number;
 }
 
 export interface ListFeasibilityResult {
