@@ -165,6 +165,7 @@ describe("regular-list feasibility page", () => {
     // Route.options.component is the page; Route is the route definition.
     const Page = (Route as unknown as { options: { component: React.FC } })
       .options.component;
+    console.log("Page type:", typeof Page, Page?.name);
 
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false } },
