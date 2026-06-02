@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
@@ -170,6 +170,10 @@ const fixture: ListFeasibilityResult = {
 // --- Test -----------------------------------------------------------------
 
 describe("regular-list feasibility page", () => {
+  beforeEach(() => {
+    computeListFeasibility.mockClear();
+  });
+
   it("calls computeListFeasibility and renders consultantPatterns + slots", async () => {
     computeListFeasibility.mockResolvedValue(fixture);
 
@@ -214,6 +218,53 @@ describe("regular-list feasibility page", () => {
 
     // department summary numbers rendered
     expect(screen.getByText(/2 recurring list slot/)).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("renders empty state when consultantPatterns and slots are empty", async () => {
+    const emptyFixture: ListFeasibilityResult = {
+      ...fixture,
+      consultantPatterns: [],
+      slots: [],
+      summary: {
+        ...fixture.summary,
+        totalSlots: 0,
+        feasible: 0,
+        borderline: 0,
+        notFeasible: 0,
+        estimatedExtraWte: 0,
+        estimatedExtraWteWithSas: 0,
+      },
+    };
+    computeListFeasibility.mockResolvedValue(emptyFixture);
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      React.createElement(
+        QueryClientProvider,
+        { client: qc },
+        React.createElement(ListFeasibilityPage),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(computeListFeasibility).toHaveBeenCalledTimes(1);
+    });
+
+    // Slots table empty state
+    expect(
+      await screen.findByText("No recurring lists matched the minimum-occurrence filter."),
+    ).toBeTruthy();
+
+    // No consultant names rendered
+    expect(screen.queryByText("Dr Alpha Fixture")).toBeNull();
+
+    // Summary still renders with 0 slots
+    expect(screen.getByText(/0 recurring list slot/)).toBeTruthy();
 
     cleanup();
   });
