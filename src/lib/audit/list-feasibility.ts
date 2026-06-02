@@ -431,11 +431,12 @@ export async function computeListFeasibility(
       regularByCell.set(k, arr);
     }
   }
+  const patternById = new Map(consultantPatterns.map((p) => [p.id, p]));
   const workingPctOf = (staffId: string, dow: number, session: string): number => {
-    const counts = patternCounts.get(cellKey(staffId, dow, session));
-    const total = totalByDow.get(dow) ?? 0;
-    if (total === 0) return 0;
-    return Math.round(((counts?.clinical ?? 0) / total) * 100);
+    const pat = patternById.get(staffId);
+    if (!pat) return 0;
+    const cell = pat.cells.find((c) => c.dow === dow && c.session === session);
+    return cell?.workingPct ?? 0;
   };
 
 
