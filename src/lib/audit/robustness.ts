@@ -544,13 +544,41 @@ export async function computeListCoverage(
   rangeStart: string,
   rangeEnd: string,
 ): Promise<DayListCoverage[]> {
-  const { data: sessions } = await supabase
-    .from("theatre_sessions")
-    .select("id, session_date, session")
-    .gte("session_date", rangeStart)
-    .lte("session_date", rangeEnd);
+  const [sessionsRaw, specialtiesAll] = await Promise.all([
+    fetchAllRows<{
+      id: string;
+      session_date: string;
+      session: string;
+      specialty_id: string | null;
+      surgical_consultant: string | null;
+    }>((from, to) =>
+      supabase
+        .from("theatre_sessions")
+        .select("id, session_date, session, specialty_id, surgical_consultant")
+        .gte("session_date", rangeStart)
+        .lte("session_date", rangeEnd)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<{ id: string; name: string }>((from, to) =>
+      supabase
+        .from("specialties")
+        .select("id, name")
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+  ]);
 
-  const tsIds = (sessions ?? []).map((s) => s.id as string);
+  const emergencySpecialtyIds = new Set(
+    specialtiesAll
+      .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
+      .map((s) => s.id),
+  );
+  const sessions = sessionsRaw.filter(
+    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+  );
+
+  const tsIds = sessions.map((s) => s.id);
 
   let asns: Array<{
     theatre_session_id: string;
@@ -560,15 +588,25 @@ export async function computeListCoverage(
   }> = [];
 
   if (tsIds.length > 0) {
-    const { data } = await supabase
-      .from("rota_assignments")
-      .select(
-        `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
-      )
-      .in("theatre_session_id", tsIds)
-      .eq("duty_type", "theatre");
-    asns = (data ?? []) as typeof asns;
+    // `.in()` URL-encoded list is bounded by URL length; chunk to be safe.
+    const CHUNK = 200;
+    for (let i = 0; i < tsIds.length; i += CHUNK) {
+      const slice = tsIds.slice(i, i + CHUNK);
+      const rows = await fetchAllRows<(typeof asns)[number]>((from, to) =>
+        supabase
+          .from("rota_assignments")
+          .select(
+            `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
+          )
+          .in("theatre_session_id", slice)
+          .eq("duty_type", "theatre")
+          .order("id", { ascending: true })
+          .range(from, to),
+      );
+      asns.push(...rows);
+    }
   }
+
 
   // Map theatre_session_id -> set of assigned staff grades/levels
   const coverageBySession = new Map<
