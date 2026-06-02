@@ -98,12 +98,14 @@ function LeavePage() {
     setLoading(true);
     // Scope to a relevant window so we never hit Supabase's default 1000-row
     // cap and silently drop rows covering "today" (which happened when there
-    // were >1000 future rows ordered by start_date DESC). We keep ~60 days of
-    // history for the "All upcoming" tab and a generous future horizon for
+    // were >1000 future rows ordered by start_date DESC). We keep ~13 months
+    // of history for the "All upcoming" / sick-leave tabs so that
+    // retrospectively-added sick leave (logged in CLWRota weeks or months
+    // after the absence) is included, and a generous future horizon for
     // planning. .range() raises the row ceiling as a belt-and-braces guard.
     const today = new Date();
     const windowStart = new Date(today);
-    windowStart.setDate(windowStart.getDate() - 60);
+    windowStart.setDate(windowStart.getDate() - 400);
     const windowEnd = new Date(today);
     windowEnd.setFullYear(windowEnd.getFullYear() + 2);
     // Allowance tab needs up to 13 months of history (longest realistic leave
