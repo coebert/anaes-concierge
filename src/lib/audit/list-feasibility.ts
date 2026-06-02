@@ -321,7 +321,12 @@ export async function computeListFeasibility(
         // covered here would no longer be free. Treat as potential
         // shortfall when no spare consultants were free on that day.
         // Heuristic only — proper sim would re-run robustness.
-        shortfallsIfLocked += isCoveredDayThin(asnByDateStaff, occ.date, totalActiveConsultants)
+        shortfallsIfLocked += isCoveredDayThin(
+          asnByDateStaff,
+          occ.date,
+          totalActiveConsultants,
+          thresholds.shortfallDayBusyPct,
+        )
           ? 1
           : 0;
       } else if (isUnavailable) {
