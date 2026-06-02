@@ -233,6 +233,7 @@ export async function computeListFeasibility(
         .from("profiles")
         .select("id, full_name, grade, active")
         .order("full_name", { nullsFirst: false })
+        .order("id", { ascending: true })
         .range(from, to),
     ),
     fetchAllRows((from, to) =>
@@ -240,6 +241,7 @@ export async function computeListFeasibility(
         .from("theatres")
         .select("id, name")
         .order("name", { nullsFirst: false })
+        .order("id", { ascending: true })
         .range(from, to),
     ),
     fetchAllRows((from, to) =>
