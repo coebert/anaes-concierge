@@ -1039,6 +1039,20 @@ function ValidationCard({
                 ? "Re-run validation"
                 : "Run validation"}
           </Button>
+          {enabled && data && totalEligibleFixes > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => applyAllMutation.mutate()}
+              disabled={
+                applyAllMutation.isPending || applyMutation.isPending || isFetching
+              }
+            >
+              {applyAllMutation.isPending
+                ? "Applying all fixes…"
+                : `Apply all fixes & re-run (${totalEligibleFixes})`}
+            </Button>
+          )}
         </div>
 
         {!enabled ? (
