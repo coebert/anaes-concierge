@@ -896,33 +896,33 @@ describe("regular-list feasibility page", () => {
     });
 
     // Summary should show totalSlots = 5 (3 AM + 2 PM)
-    expect(screen.getByText(/5 recurring list slot/)).toBeTruthy();
+    expect(await screen.findByText(/5 recurring list slot/)).toBeTruthy();
 
     // Count rows in the slots table: header + 5 data rows
-    const allRows = screen.getAllByRole("row");
+    const allRows = await screen.findAllByRole("row");
     // WorkingPatternsCard is absent because consultantPatterns is empty,
     // so only the slots table contributes rows.
     expect(allRows.length).toBe(6); // 1 header + 5 data
 
     // Each theatre name should be present exactly once in the slots table
     for (const slot of mixedFixture.slots) {
-      expect(screen.getAllByText(slot.theatreName).length).toBe(1);
+      expect((await screen.findAllByText(slot.theatreName)).length).toBe(1);
     }
 
     // Verify verdict counts in summary match fixture
     // feasible = 3, borderline = 1, notFeasible = 1
     // The stat labels "Feasible", "Borderline", "Not feasible" each appear once
     // plus the verdict badges in the table rows.
-    const feasibleBadges = screen.getAllByText("Feasible").length;
-    const borderlineBadges = screen.getAllByText("Borderline").length;
-    const notFeasibleBadges = screen.getAllByText("Not feasible").length;
+    const feasibleTexts = await screen.findAllByText("Feasible");
+    const borderlineTexts = await screen.findAllByText("Borderline");
+    const notFeasibleTexts = await screen.findAllByText("Not feasible");
 
     // Label (1) + badges in table rows (3) = 4
-    expect(feasibleBadges).toBe(4);
+    expect(feasibleTexts.length).toBe(4);
     // Label (1) + badge in table row (1) = 2
-    expect(borderlineBadges).toBe(2);
+    expect(borderlineTexts.length).toBe(2);
     // Label (1) + badge in table row (1) = 2
-    expect(notFeasibleBadges).toBe(2);
+    expect(notFeasibleTexts.length).toBe(2);
 
     cleanup();
   });
