@@ -137,6 +137,13 @@ export interface DepartmentSummary {
   notFeasible: number;
   /** Sum of per-slot headcount gaps, weighted by sessions/week → consultant WTE. */
   estimatedExtraWte: number;
+  /** Data-quality: how many theatre rota_assignments in the window are linked
+   *  to a theatre_session via theatre_session_id (the only way to attribute a
+   *  consultant to a specific list). Coverage % below is computed on the
+   *  linked subset; unlinked rows are used only to detect "owner busy on
+   *  another list" so they aren't mis-classified as free. */
+  theatreAssignmentsTotal: number;
+  theatreAssignmentsLinked: number;
 }
 
 export interface ListFeasibilityResult {
@@ -317,6 +324,14 @@ export async function computeListFeasibility(
   };
   const asnByTheatreSession = new Map<string, Asn[]>();
   const asnByDateStaff = new Map<string, Asn[]>(); // key: date|staffId
+  // (date|session) -> set of consultant staffIds with duty_type='theatre' that
+  // half (linked OR unlinked). Used to detect "owner busy on another list".
+  const consultantsOnTheatreByDateSession = new Map<string, Set<string>>();
+  // Per-date set of every staffId with ANY duty record. Used by isCoveredDayThin.
+  const staffWithAnyRecordByDate = new Map<string, Set<string>>();
+  // Data-quality counters.
+  let theatreAssignmentsTotal = 0;
+  let theatreAssignmentsLinked = 0;
 
   for (const a of assignments ?? []) {
     const row: Asn = {
@@ -336,6 +351,31 @@ export async function computeListFeasibility(
     const arr2 = asnByDateStaff.get(k) ?? [];
     arr2.push(row);
     asnByDateStaff.set(k, arr2);
+
+    // Day-level "anyone here" set (for thin-day proxy).
+    let dayStaff = staffWithAnyRecordByDate.get(row.date);
+    if (!dayStaff) {
+      dayStaff = new Set();
+      staffWithAnyRecordByDate.set(row.date, dayStaff);
+    }
+    dayStaff.add(row.staffId);
+
+    // (date|session) → consultants doing theatre that half — linked or not.
+    if (
+      row.dutyType === "theatre" &&
+      (row.session === "am" || row.session === "pm") &&
+      consultantById.has(row.staffId)
+    ) {
+      const key = `${row.date}|${row.session}`;
+      let set = consultantsOnTheatreByDateSession.get(key);
+      if (!set) {
+        set = new Set();
+        consultantsOnTheatreByDateSession.set(key, set);
+      }
+      set.add(row.staffId);
+      theatreAssignmentsTotal += 1;
+      if (row.theatreSessionId) theatreAssignmentsLinked += 1;
+    }
   }
 
   // ----- Consultant working patterns --------------------------------------
@@ -576,9 +616,12 @@ export async function computeListFeasibility(
 
     for (const occ of slot.occurrences) {
       const asns = asnByTheatreSession.get(occ.theatreSessionId) ?? [];
-      const coverer = asns.find((a) => a.dutyType === "theatre")?.staffId;
+      // A session can have multiple consultants assigned — iterate all.
+      const coverers = new Set(
+        asns.filter((a) => a.dutyType === "theatre").map((a) => a.staffId),
+      );
       const coveredByOwnerOrDeputy =
-        (ownerId && coverer === ownerId) || (deputyId && coverer === deputyId);
+        (ownerId && coverers.has(ownerId)) || (deputyId && coverers.has(deputyId));
       if (coveredByOwnerOrDeputy) ownerOrDeputyCovered += 1;
 
       if (!ownerId) continue;
@@ -588,36 +631,37 @@ export async function computeListFeasibility(
       );
       if (ownerOnThisSession) continue; // owner did cover
 
-      // Owner did not cover. Why?
+      // Owner did not cover (or attribution isn't linked). Why?
       const ownerSameHalf = ownerAsnsToday.find((a) => a.session === slot.session);
       const ownerAllDay = ownerAsnsToday;
+      // Key fix: if the owner has duty_type='theatre' on the SAME half but
+      // it's either linked to a different theatre_session OR unlinked
+      // entirely, they were busy on some other list and physically cannot
+      // also cover this one. Count as unavailable, not "free but replaced".
+      const ownerBusyOnOtherTheatre =
+        ownerSameHalf?.dutyType === "theatre";
       const dt = ownerSameHalf?.dutyType ?? ownerAllDay[0]?.dutyType;
-      const isUnavailable = !!dt && dt !== "theatre"; // leave/on-call/SPA/admin/etc all surface as a non-theatre duty_type record
-      // Approved leave isn't necessarily recorded as a rota_assignment row;
-      // a totally empty day for a working consultant is treated as "free
-      // but replaced" only if it's not a known leave day. We don't have
-      // leave data wired here yet — treat "no record on that half" as
-      // "free but replaced" which is a conservative read.
-      if (ownerAllDay.length === 0) {
+      const isUnavailable = !!dt && dt !== "theatre"; // leave/on-call/SPA/admin/obstetrics/etc.
+
+      if (ownerBusyOnOtherTheatre || isUnavailable) {
+        ownerUnavailable += 1;
+      } else if (ownerAllDay.length === 0) {
+        // No record at all that day. Could be approved leave (not synced as
+        // an assignment row) or a true gap. Conservative: free-but-replaced.
         ownerFreeButReplaced += 1;
-        // If owner were locked here, the *other* list they were covering
-        // wouldn't exist to lose — but the redirected consultant who
-        // covered here would no longer be free. Treat as potential
-        // shortfall when no spare consultants were free on that day.
-        // Heuristic only — proper sim would re-run robustness.
         shortfallsIfLocked += isCoveredDayThin(
-          asnByDateStaff,
+          staffWithAnyRecordByDate,
           occ.date,
           totalActiveConsultants,
           thresholds.shortfallDayBusyPct,
         )
           ? 1
           : 0;
-      } else if (isUnavailable) {
-        ownerUnavailable += 1;
       } else {
+        // Owner had some record that day but not on this half and not theatre.
         ownerFreeButReplaced += 1;
       }
+
     }
 
     const ownerPresentPct = Math.round((ownerCovered / slot.occurrences.length) * 100);
@@ -748,6 +792,8 @@ export async function computeListFeasibility(
       borderline,
       notFeasible,
       estimatedExtraWte,
+      theatreAssignmentsTotal,
+      theatreAssignmentsLinked,
     },
     slots: slotResults,
     consultantPatterns,
@@ -760,21 +806,19 @@ export async function computeListFeasibility(
  * of all active consultants had any duty_type record that day, there was
  * very little spare cover. Used only as a heuristic for the
  * "shortfalls if locked" counter without re-running the full robustness
- * simulation.
+ * simulation. Takes a precomputed date -> staffId set to avoid scanning
+ * the full assignment map per occurrence.
  */
 function isCoveredDayThin(
-  asnByDateStaff: Map<string, { staffId: string }[]>,
+  staffWithAnyRecordByDate: Map<string, Set<string>>,
   date: string,
   totalActiveConsultants: number,
   busyPct: number,
 ): boolean {
   if (totalActiveConsultants === 0) return false;
-  const staffWithAnyRecord = new Set<string>();
-  for (const [key, rows] of asnByDateStaff) {
-    if (!key.startsWith(date + "|")) continue;
-    for (const r of rows) staffWithAnyRecord.add(r.staffId);
-  }
-  return staffWithAnyRecord.size / totalActiveConsultants > busyPct / 100;
+  const set = staffWithAnyRecordByDate.get(date);
+  if (!set) return false;
+  return set.size / totalActiveConsultants > busyPct / 100;
 }
 
 export const DOW_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

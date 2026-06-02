@@ -323,6 +323,12 @@ function ThresholdControls({
 }
 
 function DepartmentSummaryCard({ summary }: { summary: DepartmentSummary }) {
+  const linkagePct =
+    summary.theatreAssignmentsTotal > 0
+      ? Math.round(
+          (summary.theatreAssignmentsLinked / summary.theatreAssignmentsTotal) * 100,
+        )
+      : 100;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -359,6 +365,21 @@ function DepartmentSummaryCard({ summary }: { summary: DepartmentSummary }) {
           help="Rough estimate: each unfilled regular slot ≈ 0.1 WTE per session/week. Add 1 WTE per ~10 missing weekly sessions."
         />
       </CardContent>
+      {linkagePct < 90 && (
+        <CardContent className="pt-0">
+          <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+            <strong>Data-quality caveat:</strong> only {linkagePct}% of theatre
+            rota assignments in this window (
+            {summary.theatreAssignmentsLinked.toLocaleString()} of{" "}
+            {summary.theatreAssignmentsTotal.toLocaleString()}) are linked to a
+            specific theatre list. Owner/deputy coverage percentages are
+            computed on that linked subset. Unlinked theatre work is still used
+            to recognise that a consultant was busy on some other list (so they
+            aren't mis-classified as "free but replaced"), but coverage % may
+            be understated where CLWRota didn't attach a list ID.
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
