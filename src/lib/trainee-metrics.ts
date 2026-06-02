@@ -51,7 +51,24 @@ export function computeTraineeMetrics(
     ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10
     : null;
   const supervisedLists = assignments.filter((a) => a.role_on_list === "supervised").length;
-  const onCallLists = assignments.filter((a) => a.duty_type !== "theatre" && a.duty_type !== null).length;
+  // On-call = any duty type that represents an on-call/resident-on-call
+  // commitment. The previous "anything that isn't theatre" rule wrongly
+  // counted SPA, admin, teaching and non-clinical sessions as on-call,
+  // inflating the on-call share for trainees with a lot of non-clinical time.
+  const ONCALL_DUTY_TYPES = new Set([
+    "icu_consultant_oncall",
+    "general_consultant_oncall",
+    "registrar_oncall",
+    "sho_oncall",
+    "icu_trainee",
+    "icu_ct2_plus",
+    "obstetrics",
+    "obstetrics_2nd",
+    "consultant_in_charge",
+  ]);
+  const onCallLists = assignments.filter(
+    (a) => a.duty_type != null && ONCALL_DUTY_TYPES.has(a.duty_type),
+  ).length;
   const totalAssignments = assignments.length;
   const onCallPct = totalAssignments > 0
     ? Math.round((onCallLists / totalAssignments) * 1000) / 10

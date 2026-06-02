@@ -72,6 +72,7 @@ function TraineesPage() {
       if (e3) throw e3;
 
       const traineeIds = (trainees ?? []).map((t) => t.id);
+      const todayIso = todayISO();
       let allAssignments: Array<{
         staff_id: string;
         role_on_list: string;
@@ -79,12 +80,23 @@ function TraineesPage() {
         duty_type: string | null;
         theatre_session_id: string | null;
         session_date: string;
+        locally_modified: boolean | null;
       }> = [];
       if (traineeIds.length) {
+        // Explicit high range — the default PostgREST cap is 1000 rows, and
+        // active trainees collectively easily exceed that. Truncated reads
+        // were silently dropping assignments from longer-tenured trainees,
+        // making their progress percentages look artificially low.
+        // Also restrict to sessions on/before today so future-scheduled lists
+        // don't pre-credit curriculum progress.
         const { data: rows, error: e4 } = await supabase
           .from("rota_assignments")
-          .select("staff_id,role_on_list,session,duty_type,theatre_session_id,session_date")
-          .in("staff_id", traineeIds);
+          .select(
+            "staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
+          )
+          .in("staff_id", traineeIds)
+          .lte("session_date", todayIso)
+          .range(0, 49999);
         if (e4) throw e4;
         allAssignments = (rows ?? []) as typeof allAssignments;
       }
@@ -96,7 +108,8 @@ function TraineesPage() {
         const { data: ts, error: e5 } = await supabase
           .from("theatre_sessions")
           .select("id,specialty_id")
-          .in("id", tsIds);
+          .in("id", tsIds)
+          .range(0, 49999);
         if (e5) throw e5;
         tsMap = new Map((ts ?? []).map((s) => [s.id, s.specialty_id]));
       }
@@ -115,7 +128,8 @@ function TraineesPage() {
           .from("rota_assignments")
           .select("theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
           .in("theatre_session_id", tsIds)
-          .eq("profiles.grade", "consultant");
+          .eq("profiles.grade", "consultant")
+          .range(0, 49999);
         if (e6) throw e6;
         for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
           if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
