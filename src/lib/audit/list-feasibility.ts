@@ -238,7 +238,7 @@ export async function computeListFeasibility(
     fetchAllRows((from, to) =>
       supabase
         .from("profiles")
-        .select("id, full_name, grade, active")
+        .select("id, full_name, grade, active, ltft_days_off")
         .order("full_name", { nullsFirst: false })
         .order("id", { ascending: true })
         .range(from, to),
