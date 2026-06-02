@@ -170,6 +170,10 @@ const fixture: ListFeasibilityResult = {
 // --- Test -----------------------------------------------------------------
 
 describe("regular-list feasibility page", () => {
+  beforeEach(() => {
+    computeListFeasibility.mockClear();
+  });
+
   it("calls computeListFeasibility and renders consultantPatterns + slots", async () => {
     computeListFeasibility.mockResolvedValue(fixture);
 
