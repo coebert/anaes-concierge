@@ -169,7 +169,7 @@ describe("solo-list counting rules — AM/PM lists", () => {
     expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(true);
   });
 
-  it("mixed batch: only specifically-listed trainees without a consultant on the list are counted", () => {
+  it("mixed batch: only specifically-listed trainees without a consultant or SAS on the list are counted", () => {
     const assignments: SoloAssignment[] = [
       { ...base, session: "am", staff_id: "train-1", theatre_session_id: null },
       { ...base, session: "am", staff_id: "cons-1", theatre_session_id: "ts-1" },
@@ -189,7 +189,7 @@ describe("solo-list counting rules — AM/PM lists", () => {
       solos.map((a) => `${a.session}:${a.staff_id}:${a.theatre_session_id}`),
     ).toEqual([
       "am:train-1:ts-2",
-      "pm:train-2:ts-3",
     ]);
   });
+
 });
