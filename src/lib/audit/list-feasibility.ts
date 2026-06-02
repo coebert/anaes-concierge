@@ -536,6 +536,36 @@ export async function computeListFeasibility(
     if (ownerBand === "below") headcountGap += 1;
     if (deputyBand === "below") headcountGap += 1;
 
+    // Candidate owners — consultants whose regular weekly pattern includes
+    // this (dow, session). Always include the current proposed owner/deputy
+    // even if their working % falls below the regular-pattern threshold, so
+    // the user sees why they were nominated.
+    const candidateOwners: CandidateOwner[] = [];
+    const seenCandidates = new Set<string>();
+    const pushCandidate = (id: string, name: string) => {
+      if (seenCandidates.has(id)) return;
+      seenCandidates.add(id);
+      candidateOwners.push({
+        id,
+        name,
+        workingPct: workingPctOf(id, slot.dow, slot.session),
+        isCurrentOwner: id === ownerId,
+        isCurrentDeputy: id === deputyId,
+      });
+    };
+    for (const pat of regularByCell.get(`${slot.dow}|${slot.session}`) ?? []) {
+      pushCandidate(pat.id, pat.name);
+    }
+    if (ownerId) {
+      const c = consultantById.get(ownerId);
+      if (c) pushCandidate(ownerId, c.name);
+    }
+    if (deputyId) {
+      const c = consultantById.get(deputyId);
+      if (c) pushCandidate(deputyId, c.name);
+    }
+    candidateOwners.sort((a, b) => b.workingPct - a.workingPct);
+
     slotResults.push({
       key: slot.key,
       dow: slot.dow,
@@ -558,8 +588,10 @@ export async function computeListFeasibility(
       verdict,
       headcountGap,
       reasons,
+      candidateOwners,
     });
   }
+
 
   // Dept rollup. A slot that runs once/week ≈ 0.1 WTE per session (10 PAs/week).
   // We treat the gap as: per missing consultant, 1/10 WTE per regular session/week.
