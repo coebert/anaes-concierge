@@ -1843,8 +1843,13 @@ export async function performLeaveSync() {
   if (!url) return { ...emptyResult, message: "No leave report URL configured." };
 
   // CLWRota's leave_events endpoint can otherwise span many years and time
-  // out the Worker before any row is upserted. Mirror the rota-sync window.
-  const boundedUrl = clampDateWindow(url, { daysBack: 60, daysAhead: 240 });
+  // out the Worker before any row is upserted. We widen daysBack to 365 so
+  // that retrospectively-added leave (most commonly **sick leave**, which
+  // is almost always logged after the absence rather than booked in
+  // advance) is pulled into Supabase even when the absence ended weeks or
+  // months ago. The historical-data safeguard further down still protects
+  // any older rows already in the table.
+  const boundedUrl = clampDateWindow(url, { daysBack: 365, daysAhead: 240 });
 
   let rows: Record<string, unknown>[];
   let rawPreview = "";
