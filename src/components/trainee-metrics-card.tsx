@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 import type { TraineeMetrics } from "@/lib/trainee-metrics";
+
 
 type Props = {
   metrics: TraineeMetrics;
