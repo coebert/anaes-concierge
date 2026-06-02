@@ -530,15 +530,21 @@ describe("regular-list feasibility page", () => {
 
     // Summary counts rendered exactly as returned
     expect(screen.getByText(/3 recurring list slot/)).toBeTruthy();
-    const feasibleStat = screen.getByText("Feasible").closest("div[class*='grid']") || screen.getByText("Feasible").parentElement;
-    // The Stat component wraps label + value; assert the numeric values are visible.
-    expect(screen.getByText("2")).toBeTruthy();
-    expect(screen.getByText("1")).toBeTruthy();
+
+    // Summary stat values (feasible = 2, not feasible = 1)
+    expect(screen.getByText(/^2$/)).toBeTruthy();
+    expect(screen.getByText(/^1$/)).toBeTruthy();
 
     // Count rendered table rows — each slot produces exactly one <tr>
     const tableRows = screen.getAllByRole("row");
-    // Table has a header row plus one row per slot (3)
-    expect(tableRows.length).toBe(4);
+    // Slots table has a header row plus one row per slot (3)
+    // Working-patterns table has two header rows plus two data rows
+    // Total rows across all tables: 4 (slots) + 4 (patterns) = 8
+    expect(tableRows.length).toBe(8);
+
+    // Verdict badges in the slots table match summary counts
+    expect(screen.getAllByText("Feasible").length).toBe(2);
+    expect(screen.getAllByText("Not feasible").length).toBe(1);
 
     cleanup();
   });
