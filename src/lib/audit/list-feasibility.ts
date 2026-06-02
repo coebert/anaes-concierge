@@ -98,7 +98,9 @@ export interface ListSlotFeasibility {
 export interface ConsultantPatternCell {
   dow: number;            // 1-5
   session: "am" | "pm";
-  /** Total weekdays of this dow in the window (denominator — NOT reduced by on-call). */
+  /** Total weekdays of this dow within this consultant's personal tenure
+   *  (intersection of the data window and dates they actually appear in
+   *  the rota). NOT reduced by on-call. */
   totalOccurrences: number;
   /** Times this consultant was on-call on that half (informational only). */
   oncallOccurrences: number;
@@ -117,6 +119,12 @@ export interface ConsultantPattern {
   cells: ConsultantPatternCell[];
   /** Count of cells with regular === true. */
   regularSessionsPerWeek: number;
+  /** First date in the window this consultant appears in the rota at all. */
+  tenureStart: string | null;
+  /** Last date in the window this consultant appears in the rota at all. */
+  tenureEnd: string | null;
+  /** Mon–Fri weekdays between tenureStart and tenureEnd inclusive. */
+  tenureWeekdays: number;
 }
 
 export interface DepartmentSummary {
@@ -269,16 +277,17 @@ export async function computeListFeasibility(
   }
 
   // ----- Consultant working patterns --------------------------------------
-  // For each (dow, session), figure out:
-  //   - totalOccurrences: how many of that weekday existed in the window
-  //   - per-consultant clinical-activity count (assigned to a theatre list)
-  //   - per-consultant on-call count (informational only)
-  //
-  // IMPORTANT: weeks in which the consultant was on-call are NOT excluded
-  // from the denominator. The percentage shown is simply
-  //   (sessions assigned to clinical activity) / (total weekdays of that dow)
-  // taken straight from CLWRota actuals.
-  const totalByDow = new Map<number, number>();
+  // For each consultant we compute:
+  //   - tenureStart / tenureEnd: first and last dates within the data window
+  //     where the consultant appears in the rota at all. Consultants who
+  //     started recently (or have left) should not be penalised by weekdays
+  //     before/after their tenure.
+  //   - totalOccurrences per (dow, session): count of weekdays of that dow
+  //     that have a theatre_session AND fall inside their tenure.
+  //   - workingOccurrences: theatre-list assignments on that half-day.
+  //   - oncallOccurrences: on-call assignments on that half-day (info only;
+  //     on-call weeks are NOT removed from the denominator).
+  const dowDates = new Map<number, string[]>(); // dow -> ISO dates with a theatre_session
   const seenDates = new Set<string>();
   for (const s of sessions ?? []) {
     const date = s.session_date as string;
@@ -286,7 +295,27 @@ export async function computeListFeasibility(
     seenDates.add(date);
     const dow = new Date(date + "T00:00:00Z").getUTCDay();
     if (dow === 0 || dow === 6) continue;
-    totalByDow.set(dow, (totalByDow.get(dow) ?? 0) + 1);
+    const arr = dowDates.get(dow) ?? [];
+    arr.push(date);
+    dowDates.set(dow, arr);
+  }
+  for (const arr of dowDates.values()) arr.sort();
+
+  // First/last date this consultant appears in the rota (any duty_type)
+  // within the window.
+  const tenureBounds = new Map<string, { first: string; last: string }>();
+  for (const [k] of asnByDateStaff) {
+    const sep = k.indexOf("|");
+    const date = k.slice(0, sep);
+    const staffId = k.slice(sep + 1);
+    if (!consultantById.has(staffId)) continue;
+    const cur = tenureBounds.get(staffId);
+    if (!cur) {
+      tenureBounds.set(staffId, { first: date, last: date });
+    } else {
+      if (date < cur.first) cur.first = date;
+      if (date > cur.last) cur.last = date;
+    }
   }
 
   // Per-consultant, per (dow|session), clinical-activity and on-call counts.
@@ -302,14 +331,10 @@ export async function computeListFeasibility(
     if (!consultantById.has(staffId)) continue;
     const dow = new Date(date + "T00:00:00Z").getUTCDay();
     if (dow === 0 || dow === 6) continue;
-    // Aggregate per half-day on this date so two duty_type rows on the same
-    // half don't double-count.
     const seenHalf = new Map<string, { clinical: boolean; oncall: boolean }>();
     for (const a of rows) {
       if (a.session !== "am" && a.session !== "pm") continue;
       const isOncall = a.dutyType.endsWith("_oncall");
-      // "Clinical activity" = covering a theatre list. SPA/admin/teaching
-      // /non-clinical/on-call don't count as clinical activity.
       const isClinical = a.dutyType === "theatre";
       const flag = seenHalf.get(a.session) ?? { clinical: false, oncall: false };
       if (isOncall) flag.oncall = true;
@@ -325,19 +350,49 @@ export async function computeListFeasibility(
     }
   }
 
+  // Count weekdays of `dow` that have a theatre_session between first..last (inclusive).
+  const countDowInRange = (dow: number, first: string, last: string): number => {
+    const arr = dowDates.get(dow);
+    if (!arr || arr.length === 0) return 0;
+    let n = 0;
+    for (const d of arr) {
+      if (d < first) continue;
+      if (d > last) break;
+      n += 1;
+    }
+    return n;
+  };
+
+  const countWeekdays = (first: string, last: string): number => {
+    if (first > last) return 0;
+    let n = 0;
+    const start = new Date(first + "T00:00:00Z");
+    const end = new Date(last + "T00:00:00Z");
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const dow = d.getUTCDay();
+      if (dow >= 1 && dow <= 5) n += 1;
+    }
+    return n;
+  };
+
   const consultantPatterns: ConsultantPattern[] = [];
   const SESSIONS: Array<"am" | "pm"> = ["am", "pm"];
   for (const c of consultantById.values()) {
     if (!c.active) continue;
+    const bounds = tenureBounds.get(c.id);
+    const tenureStart = bounds ? (bounds.first < windowStart ? windowStart : bounds.first) : null;
+    const tenureEnd = bounds ? (bounds.last > windowEnd ? windowEnd : bounds.last) : null;
     const cells: ConsultantPatternCell[] = [];
     let regularSessions = 0;
     for (let dow = 1; dow <= 5; dow++) {
+      const total = tenureStart && tenureEnd
+        ? countDowInRange(dow, tenureStart, tenureEnd)
+        : 0;
       for (const session of SESSIONS) {
         const counts = patternCounts.get(cellKey(c.id, dow, session)) ?? {
           clinical: 0,
           oncall: 0,
         };
-        const total = totalByDow.get(dow) ?? 0;
         const workingPct =
           total > 0 ? Math.round((counts.clinical / total) * 100) : 0;
         const regular = workingPct >= thresholds.regularWorkingMinPct;
@@ -358,6 +413,9 @@ export async function computeListFeasibility(
       name: c.name,
       cells,
       regularSessionsPerWeek: regularSessions,
+      tenureStart,
+      tenureEnd,
+      tenureWeekdays: tenureStart && tenureEnd ? countWeekdays(tenureStart, tenureEnd) : 0,
     });
   }
   consultantPatterns.sort((a, b) => a.name.localeCompare(b.name));
@@ -373,11 +431,12 @@ export async function computeListFeasibility(
       regularByCell.set(k, arr);
     }
   }
+  const patternById = new Map(consultantPatterns.map((p) => [p.id, p]));
   const workingPctOf = (staffId: string, dow: number, session: string): number => {
-    const counts = patternCounts.get(cellKey(staffId, dow, session));
-    const total = totalByDow.get(dow) ?? 0;
-    if (total === 0) return 0;
-    return Math.round(((counts?.clinical ?? 0) / total) * 100);
+    const pat = patternById.get(staffId);
+    if (!pat) return 0;
+    const cell = pat.cells.find((c) => c.dow === dow && c.session === session);
+    return cell?.workingPct ?? 0;
   };
 
 
