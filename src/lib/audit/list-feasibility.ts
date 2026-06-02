@@ -110,6 +110,11 @@ export interface ConsultantPatternCell {
   workingPct: number;
   /** True if workingPct ≥ thresholds.regularWorkingMinPct. */
   regular: boolean;
+  /** True if this dow is a regular non-working day for this consultant —
+   *  either via profiles.ltft_days_off or inferred from a tenure with
+   *  meaningful exposure but zero rota records of any duty type on this dow.
+   *  Excluded from totalOccurrences so they aren't counted as "available". */
+  regularDayOff: boolean;
 }
 
 export interface ConsultantPattern {
@@ -238,7 +243,7 @@ export async function computeListFeasibility(
     fetchAllRows((from, to) =>
       supabase
         .from("profiles")
-        .select("id, full_name, grade, active")
+        .select("id, full_name, grade, active, ltft_days_off")
         .order("full_name", { nullsFirst: false })
         .order("id", { ascending: true })
         .range(from, to),
@@ -297,13 +302,20 @@ export async function computeListFeasibility(
     return /\b(emergency|cepod)\b/i.test(surgeonRaw);
   };
 
-  const consultantById = new Map<string, { id: string; name: string; active: boolean }>();
+  const consultantById = new Map<
+    string,
+    { id: string; name: string; active: boolean; ltftDaysOff: Set<number> }
+  >();
   for (const p of profiles ?? []) {
     if ((p.grade as Grade) === "consultant") {
+      const raw = (p.ltft_days_off as unknown as number[] | null) ?? [];
+      // Normalise to JS getUTCDay convention (0=Sun..6=Sat). ISO 7 → 0.
+      const normalised = raw.map((n) => (Number(n) === 7 ? 0 : Number(n)));
       consultantById.set(p.id as string, {
         id: p.id as string,
         name: (p.full_name as string) || "(unnamed)",
         active: (p.active as boolean) ?? true,
+        ltftDaysOff: new Set(normalised),
       });
     }
   }
@@ -426,6 +438,11 @@ export async function computeListFeasibility(
   const cellKey = (staffId: string, dow: number, session: string) =>
     `${staffId}|${dow}|${session}`;
 
+  // Also track which dows the consultant has ANY rota record on (any duty
+  // type). Used below to infer "regular day off" — a dow with substantial
+  // tenure exposure but zero records of any kind.
+  const dowsWithAnyRecord = new Map<string, Set<number>>(); // staffId -> Set<dow>
+
   for (const [k, rows] of asnByDateStaff) {
     const sep = k.indexOf("|");
     const date = k.slice(0, sep);
@@ -433,6 +450,12 @@ export async function computeListFeasibility(
     if (!consultantById.has(staffId)) continue;
     const dow = new Date(date + "T00:00:00Z").getUTCDay();
     if (dow === 0 || dow === 6) continue;
+    let dowSet = dowsWithAnyRecord.get(staffId);
+    if (!dowSet) {
+      dowSet = new Set();
+      dowsWithAnyRecord.set(staffId, dowSet);
+    }
+    dowSet.add(dow);
     const seenHalf = new Map<string, { clinical: boolean; oncall: boolean }>();
     for (const a of rows) {
       if (a.session !== "am" && a.session !== "pm") continue;
@@ -479,17 +502,37 @@ export async function computeListFeasibility(
 
   const consultantPatterns: ConsultantPattern[] = [];
   const SESSIONS: Array<"am" | "pm"> = ["am", "pm"];
+  // Heuristic threshold for inferring a "regular day off" from the rota:
+  // if a consultant has ≥ this many occurrences of a dow in tenure but zero
+  // rota records (of any duty type) on that dow, treat the entire day as a
+  // non-working day. 4 weeks of exposure is a reasonable signal.
+  const REGULAR_DAY_OFF_MIN_TENURE = 4;
+
   for (const c of consultantById.values()) {
     if (!c.active) continue;
     const bounds = tenureBounds.get(c.id);
     const tenureStart = bounds ? (bounds.first < windowStart ? windowStart : bounds.first) : null;
     const tenureEnd = bounds ? (bounds.last > windowEnd ? windowEnd : bounds.last) : null;
     const cells: ConsultantPatternCell[] = [];
+    const consultantDowRecords = dowsWithAnyRecord.get(c.id) ?? new Set<number>();
     let regularSessions = 0;
     for (let dow = 1; dow <= 5; dow++) {
-      const total = tenureStart && tenureEnd
+      const tenureDowOccurrences = tenureStart && tenureEnd
         ? countDowInRange(dow, tenureStart, tenureEnd)
         : 0;
+      // A dow is a "regular day off" if profiles.ltft_days_off lists it, OR
+      // if the consultant has meaningful tenure exposure but zero records of
+      // any duty type on that dow.
+      const explicitOff = c.ltftDaysOff.has(dow);
+      const inferredOff =
+        !explicitOff &&
+        tenureDowOccurrences >= REGULAR_DAY_OFF_MIN_TENURE &&
+        !consultantDowRecords.has(dow);
+      const regularDayOff = explicitOff || inferredOff;
+      // For day-off cells, zero out the denominator so they don't count as
+      // "available" sessions in either workingPct or the regular-pattern
+      // candidate pool.
+      const total = regularDayOff ? 0 : tenureDowOccurrences;
       for (const session of SESSIONS) {
         const counts = patternCounts.get(cellKey(c.id, dow, session)) ?? {
           clinical: 0,
@@ -497,7 +540,7 @@ export async function computeListFeasibility(
         };
         const workingPct =
           total > 0 ? Math.round((counts.clinical / total) * 100) : 0;
-        const regular = workingPct >= thresholds.regularWorkingMinPct;
+        const regular = !regularDayOff && workingPct >= thresholds.regularWorkingMinPct;
         if (regular) regularSessions += 1;
         cells.push({
           dow,
@@ -507,6 +550,7 @@ export async function computeListFeasibility(
           workingOccurrences: counts.clinical,
           workingPct,
           regular,
+          regularDayOff,
         });
       }
     }

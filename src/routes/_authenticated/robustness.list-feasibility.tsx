@@ -712,15 +712,21 @@ function WorkingPatternsCard({
                     key={`${c.dow}-${c.session}`}
                     className={cn(
                       "px-1 py-1 text-center font-mono text-[11px]",
-                      c.regular
-                        ? "bg-emerald-100 text-emerald-800"
-                        : c.workingPct >= regularMinPct - 15
-                          ? "bg-amber-50 text-amber-700"
-                          : "text-muted-foreground",
+                      c.regularDayOff
+                        ? "bg-muted/40 text-muted-foreground italic"
+                        : c.regular
+                          ? "bg-emerald-100 text-emerald-800"
+                          : c.workingPct >= regularMinPct - 15
+                            ? "bg-amber-50 text-amber-700"
+                            : "text-muted-foreground",
                     )}
-                    title={`Clinical activity ${c.workingOccurrences}/${c.totalOccurrences} weekdays in tenure (on-call on ${c.oncallOccurrences})`}
+                    title={
+                      c.regularDayOff
+                        ? "Regular non-working day — excluded from working-pattern denominator"
+                        : `Clinical activity ${c.workingOccurrences}/${c.totalOccurrences} weekdays in tenure (on-call on ${c.oncallOccurrences})`
+                    }
                   >
-                    {c.workingPct}%
+                    {c.regularDayOff ? "off" : `${c.workingPct}%`}
                   </td>
                 ))}
                 <td className="px-2 py-1 text-center font-medium">
