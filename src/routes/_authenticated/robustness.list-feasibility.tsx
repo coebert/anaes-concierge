@@ -682,7 +682,7 @@ function WorkingPatternsCard({
                           ? "bg-amber-50 text-amber-700"
                           : "text-muted-foreground",
                     )}
-                    title={`${c.workingOccurrences}/${Math.max(0, c.totalOccurrences - c.oncallOccurrences)} eligible weeks (on-call ${c.oncallOccurrences})`}
+                    title={`Clinical activity ${c.workingOccurrences}/${c.totalOccurrences} weekdays (on-call on ${c.oncallOccurrences})`}
                   >
                     {c.workingPct}%
                   </td>
