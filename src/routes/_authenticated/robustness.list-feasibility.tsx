@@ -330,11 +330,6 @@ function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
   );
 }
 
-// Helper so we can type the slots prop without re-importing types.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function useMemoSlotsType() {
-  return [] as Awaited<ReturnType<typeof computeListFeasibility>>["slots"];
-}
 
 function VerdictBadge({ verdict }: { verdict: Verdict }) {
   if (verdict === "feasible") {
