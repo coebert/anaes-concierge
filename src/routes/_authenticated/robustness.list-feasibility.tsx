@@ -70,6 +70,8 @@ function ListFeasibilityPage() {
 
   const summary = data?.summary;
   const slots = data?.slots ?? [];
+  const consultantPatterns = data?.consultantPatterns ?? [];
+
 
   return (
     <TooltipProvider>
