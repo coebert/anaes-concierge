@@ -142,6 +142,14 @@ export interface DepartmentSummary {
   notFeasible: number;
   /** Sum of per-slot headcount gaps, weighted by sessions/week → consultant WTE. */
   estimatedExtraWte: number;
+  /** Number of active SAS doctors used in the SAS-adjusted estimate. */
+  activeSasCount: number;
+  /** Average list half-days delivered by SAS doctors per week across the window. */
+  sasListSessionsPerWeek: number;
+  /** Consultant-WTE-equivalent of SAS list delivery (sasListSessionsPerWeek × wtePerWeeklySession). */
+  sasWteOffset: number;
+  /** Extra consultant WTE needed after subtracting SAS list-delivery capacity (floored at 0). */
+  estimatedExtraWteWithSas: number;
   /** Data-quality: how many theatre rota_assignments in the window are linked
    *  to a theatre_session via theatre_session_id (the only way to attribute a
    *  consultant to a specific list). Coverage % below is computed on the
@@ -818,6 +826,40 @@ export async function computeListFeasibility(
         10,
     ) / 10;
 
+  // ----- SAS-adjusted estimate -------------------------------------------
+  // SAS doctors are not eligible to be regular "owners" of a list, but they
+  // do deliver theatre sessions and so add capacity that reduces the extra
+  // consultant headcount needed. We measure their actual list-delivery in
+  // the window and convert it to a consultant-WTE-equivalent at the same
+  // PA→WTE rate used for the gap calculation (default 1 weekly session ≈
+  // 0.1 WTE).
+  const sasIds = new Set<string>();
+  for (const p of profiles ?? []) {
+    if ((p.grade as Grade) === "sas" && ((p.active as boolean) ?? true)) {
+      sasIds.add(p.id as string);
+    }
+  }
+  let sasTheatreHalfDays = 0;
+  for (const a of assignments ?? []) {
+    if (!sasIds.has(a.staff_id as string)) continue;
+    if ((a.duty_type as string) !== "theatre") continue;
+    const sess = a.session as string;
+    if (sess !== "am" && sess !== "pm") continue;
+    sasTheatreHalfDays += 1;
+  }
+  const windowDays =
+    (Date.parse(windowEnd + "T00:00:00Z") -
+      Date.parse(windowStart + "T00:00:00Z")) /
+      86_400_000 +
+    1;
+  const weeksInWindow = Math.max(1, windowDays / 7);
+  const sasListSessionsPerWeek =
+    Math.round((sasTheatreHalfDays / weeksInWindow) * 10) / 10;
+  const sasWteOffset =
+    Math.round(sasListSessionsPerWeek * thresholds.wtePerWeeklySession * 10) / 10;
+  const estimatedExtraWteWithSas =
+    Math.round(Math.max(0, estimatedExtraWte - sasWteOffset) * 10) / 10;
+
   // Sort: not_feasible first, then borderline, then by occurrences desc.
   slotResults.sort((a, b) => {
     const order = { not_feasible: 0, borderline: 1, feasible: 2 } as const;
@@ -836,6 +878,10 @@ export async function computeListFeasibility(
       borderline,
       notFeasible,
       estimatedExtraWte,
+      activeSasCount: sasIds.size,
+      sasListSessionsPerWeek,
+      sasWteOffset,
+      estimatedExtraWteWithSas,
       theatreAssignmentsTotal,
       theatreAssignmentsLinked,
     },
