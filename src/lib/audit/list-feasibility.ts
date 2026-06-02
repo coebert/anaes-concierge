@@ -410,7 +410,8 @@ export async function computeListFeasibility(
   const notFeasible = slotResults.filter((s) => s.verdict === "not_feasible").length;
   const estimatedExtraWte =
     Math.round(
-      slotResults.reduce((acc, s) => acc + s.headcountGap * 0.1, 0) * 10,
+      slotResults.reduce((acc, s) => acc + s.headcountGap * thresholds.wtePerWeeklySession, 0) *
+        10,
     ) / 10;
 
   // Sort: not_feasible first, then borderline, then by occurrences desc.
