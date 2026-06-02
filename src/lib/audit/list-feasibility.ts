@@ -372,7 +372,7 @@ export async function computeListFeasibility(
       theatreSessionId: (a.theatre_session_id as string | null) ?? null,
       notes: (a.notes as string | null) ?? null,
     };
-    if (isNonWorkingRotaLabel([row.notes])) continue;
+    if (isNonWorkingRotaLabel([row.notes], extraNonWorkingTokens)) continue;
     if (row.theatreSessionId) {
       const arr = asnByTheatreSession.get(row.theatreSessionId) ?? [];
       arr.push(row);
