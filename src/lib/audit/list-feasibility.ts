@@ -436,6 +436,11 @@ export async function computeListFeasibility(
   const cellKey = (staffId: string, dow: number, session: string) =>
     `${staffId}|${dow}|${session}`;
 
+  // Also track which dows the consultant has ANY rota record on (any duty
+  // type). Used below to infer "regular day off" — a dow with substantial
+  // tenure exposure but zero records of any kind.
+  const dowsWithAnyRecord = new Map<string, Set<number>>(); // staffId -> Set<dow>
+
   for (const [k, rows] of asnByDateStaff) {
     const sep = k.indexOf("|");
     const date = k.slice(0, sep);
@@ -443,6 +448,12 @@ export async function computeListFeasibility(
     if (!consultantById.has(staffId)) continue;
     const dow = new Date(date + "T00:00:00Z").getUTCDay();
     if (dow === 0 || dow === 6) continue;
+    let dowSet = dowsWithAnyRecord.get(staffId);
+    if (!dowSet) {
+      dowSet = new Set();
+      dowsWithAnyRecord.set(staffId, dowSet);
+    }
+    dowSet.add(dow);
     const seenHalf = new Map<string, { clinical: boolean; oncall: boolean }>();
     for (const a of rows) {
       if (a.session !== "am" && a.session !== "pm") continue;
