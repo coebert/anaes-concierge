@@ -37,13 +37,34 @@ export const Route = createFileRoute("/_authenticated/robustness/list-feasibilit
 });
 
 function ListFeasibilityPage() {
-  const [monthsBack, setMonthsBack] = useState(6);
-  const [thresholds, setThresholds] = useState<FeasibilityThresholds>(DEFAULT_THRESHOLDS);
+  // "Applied" state — what the query actually runs against.
+  const [appliedMonths, setAppliedMonths] = useState(6);
+  const [appliedThresholds, setAppliedThresholds] =
+    useState<FeasibilityThresholds>(DEFAULT_THRESHOLDS);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["list-feasibility", monthsBack, JSON.stringify(thresholds)],
-    queryFn: () => computeListFeasibility({ monthsBack, thresholds }),
+  // "Draft" state — what the controls show. Changes only take effect on Recalculate.
+  const [draftMonths, setDraftMonths] = useState(6);
+  const [draftThresholds, setDraftThresholds] =
+    useState<FeasibilityThresholds>(DEFAULT_THRESHOLDS);
+
+  const dirty =
+    draftMonths !== appliedMonths ||
+    JSON.stringify(draftThresholds) !== JSON.stringify(appliedThresholds);
+
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["list-feasibility", appliedMonths, JSON.stringify(appliedThresholds)],
+    queryFn: () =>
+      computeListFeasibility({ monthsBack: appliedMonths, thresholds: appliedThresholds }),
   });
+
+  const applyDraft = () => {
+    setAppliedMonths(draftMonths);
+    setAppliedThresholds(draftThresholds);
+  };
+  const resetDraft = () => {
+    setDraftMonths(6);
+    setDraftThresholds(DEFAULT_THRESHOLDS);
+  };
 
   const summary = data?.summary;
   const slots = data?.slots ?? [];
@@ -63,7 +84,7 @@ function ListFeasibilityPage() {
             Regular-list feasibility
           </h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            For every recurring surgical list in the last {monthsBack} months,
+            For every recurring surgical list in the last {appliedMonths} months,
             this model asks: <em>if we named one consultant as its regular
             owner, would current staffing, leave and on-call patterns
             actually let them be there?</em> Outputs a per-list verdict and
@@ -73,10 +94,15 @@ function ListFeasibilityPage() {
         </header>
 
         <ThresholdControls
-          monthsBack={monthsBack}
-          setMonthsBack={setMonthsBack}
-          thresholds={thresholds}
-          setThresholds={setThresholds}
+          monthsBack={draftMonths}
+          setMonthsBack={setDraftMonths}
+          thresholds={draftThresholds}
+          setThresholds={setDraftThresholds}
+          dirty={dirty}
+          isFetching={isFetching}
+          onApply={applyDraft}
+          onReset={resetDraft}
+          onRerun={() => refetch()}
         />
 
         {isLoading ? (
