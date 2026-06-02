@@ -52,6 +52,8 @@ function makeChain(table: string) {
     lte: () => typeof chain;
     gte: () => typeof chain;
     in: () => typeof chain;
+    order: () => typeof chain;
+    range: () => typeof chain;
     then: (
       onfulfilled: (v: { data: Row[]; error: null }) => unknown,
     ) => Promise<unknown>;
@@ -61,6 +63,8 @@ function makeChain(table: string) {
     lte: () => chain,
     gte: () => chain,
     in: () => chain,
+    order: () => chain,
+    range: () => chain,
     then: (onfulfilled) =>
       Promise.resolve({
         data: (fixture as unknown as Record<string, Row[]>)[table] ?? [],

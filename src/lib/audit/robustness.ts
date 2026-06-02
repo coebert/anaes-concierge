@@ -1,5 +1,47 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
+ * robustness window, `rota_assignments` and `theatre_sessions` routinely
+ * exceed that and the audit ends up reasoning over a truncated slice
+ * (producing false shortfalls / phantom unfilled lists). Paginate every
+ * read used by this module through this helper.
+ */
+const PAGE_SIZE = 1000;
+async function fetchAllRows<T>(
+  build: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await build(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as T[];
+    out.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
+/**
+ * Emergency / CEPOD theatre sessions are not regular planned lists — they
+ * are covered by the on-call rota, not by allocating a free consultant
+ * from the daytime pool. Counting them as `required` lists inflates demand
+ * (and would mark the on-call consultant as "covering a list", removing
+ * them from the pool twice). Detected via the linked specialty name or a
+ * free-text surgical_consultant hint, consistent with list-feasibility.
+ */
+function isEmergencyTheatreSession(
+  t: { specialty_id?: string | null; surgical_consultant?: string | null },
+  emergencySpecialtyIds: Set<string>,
+): boolean {
+  if (t.specialty_id && emergencySpecialtyIds.has(t.specialty_id)) return true;
+  const sc = (t.surgical_consultant ?? "").toLowerCase();
+  return /emergenc|cepod/.test(sc);
+}
+
 export type Grade = "consultant" | "sas" | "trainee" | "unknown";
 export type SessionHalf = "am" | "pm";
 
@@ -201,39 +243,97 @@ export async function computeRobustness(
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
 ): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
-  const [poolSets, [{ data: profiles }, { data: leave }, { data: theatreSessions }, { data: assignments }]] =
+  const poolSets = await loadDutyPoolSets();
+
+  const [profiles, leave, theatreSessionsRaw, assignments, specialtiesAll] =
     await Promise.all([
-      loadDutyPoolSets(),
-      Promise.all([
+      fetchAllRows<{
+        id: string;
+        grade: string | null;
+        training_level: string | null;
+        ltft_days_off: number[] | null;
+      }>((from, to) =>
         supabase
           .from("profiles")
           .select("id, grade, training_level, ltft_days_off")
-          .eq("active", true),
+          .eq("active", true)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllRows<{
+        staff_id: string;
+        start_date: string;
+        end_date: string;
+        status: string;
+      }>((from, to) =>
         supabase
           .from("leave_requests")
           .select("staff_id, start_date, end_date, status")
           .eq("status", "approved")
           .lte("start_date", rangeEnd)
-          .gte("end_date", rangeStart),
+          .gte("end_date", rangeStart)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllRows<{
+        id: string;
+        session_date: string;
+        session: string;
+        specialty_id: string | null;
+        surgical_consultant: string | null;
+      }>((from, to) =>
         supabase
           .from("theatre_sessions")
-          .select("session_date, session")
+          .select("id, session_date, session, specialty_id, surgical_consultant")
           .gte("session_date", rangeStart)
-          .lte("session_date", rangeEnd),
+          .lte("session_date", rangeEnd)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllRows<{
+        staff_id: string;
+        session_date: string;
+        session: string;
+        duty_type: string;
+        theatre_session_id: string | null;
+      }>((from, to) =>
         supabase
           .from("rota_assignments")
-          .select("staff_id, session_date, session, duty_type, theatre_session_id")
+          .select(
+            "staff_id, session_date, session, duty_type, theatre_session_id",
+          )
           .gte("session_date", rangeStart)
-          .lte("session_date", rangeEnd),
-      ]),
+          .lte("session_date", rangeEnd)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllRows<{ id: string; name: string }>((from, to) =>
+        supabase
+          .from("specialties")
+          .select("id, name")
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
     ]);
 
-  const staff = (profiles ?? []) as Array<{
-    id: string;
-    grade: string | null;
-    training_level: string | null;
-    ltft_days_off: number[] | null;
-  }>;
+  const emergencySpecialtyIds = new Set(
+    specialtiesAll
+      .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
+      .map((s) => s.id),
+  );
+
+  // Drop emergency / CEPOD sessions from the planned-list demand model.
+  const theatreSessions = theatreSessionsRaw.filter(
+    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+  );
+  const emergencySessionIds = new Set(
+    theatreSessionsRaw
+      .filter((t) => isEmergencyTheatreSession(t, emergencySpecialtyIds))
+      .map((t) => t.id),
+  );
+
+  const staff = profiles;
+
 
   const totalStaffByGrade: Record<Grade, number> = {
     consultant: 0, sas: 0, trainee: 0, unknown: 0,
@@ -245,24 +345,24 @@ export async function computeRobustness(
 
   // staff_id -> set of dates on approved leave
   const leaveByDate = new Map<string, Set<string>>();
-  for (const l of leave ?? []) {
-    const from = new Date(((l.start_date as string) < rangeStart ? rangeStart : (l.start_date as string)) + "T00:00:00Z");
-    const to = new Date(((l.end_date as string) > rangeEnd ? rangeEnd : (l.end_date as string)) + "T00:00:00Z");
+  for (const l of leave) {
+    const from = new Date((l.start_date < rangeStart ? rangeStart : l.start_date) + "T00:00:00Z");
+    const to = new Date((l.end_date > rangeEnd ? rangeEnd : l.end_date) + "T00:00:00Z");
     for (let d = new Date(from); d <= to; d.setUTCDate(d.getUTCDate() + 1)) {
       const iso = d.toISOString().slice(0, 10);
       const set = leaveByDate.get(iso) ?? new Set();
-      set.add(l.staff_id as string);
+      set.add(l.staff_id);
       leaveByDate.set(iso, set);
     }
   }
 
-  // theatre lists requiring cover per date
+  // theatre lists requiring cover per date (emergency / CEPOD already removed)
   const requiredMap = new Map<string, { am: number; pm: number }>();
-  for (const t of theatreSessions ?? []) {
-    const r = requiredMap.get(t.session_date as string) ?? { am: 0, pm: 0 };
+  for (const t of theatreSessions) {
+    const r = requiredMap.get(t.session_date) ?? { am: 0, pm: 0 };
     if (t.session === "am") r.am += 1;
     if (t.session === "pm") r.pm += 1;
-    requiredMap.set(t.session_date as string, r);
+    requiredMap.set(t.session_date, r);
   }
 
   // assignments indexed by (date, session) and (date, staff)
@@ -273,16 +373,24 @@ export async function computeRobustness(
   const dailySpa = new Map<string, Set<string>>();
   const filledMap = new Map<string, { am: Set<string>; pm: Set<string> }>();
 
-  for (const a of assignments ?? []) {
-    const date = a.session_date as string;
-    const sess = a.session as string; // am/pm/eve/night
-    const sid = a.staff_id as string;
-    const dt = a.duty_type as string;
+  for (const a of assignments) {
+    const date = a.session_date;
+    const sess = a.session; // am/pm/eve/night
+    const sid = a.staff_id;
+    const dt = a.duty_type;
+
+    // Emergency / CEPOD theatre assignments are part of the on-call rota,
+    // not the planned-list pool: don't count them as filling a regular list
+    // and don't remove the consultant from the daytime pool here.
+    if (a.theatre_session_id && emergencySessionIds.has(a.theatre_session_id)) {
+      continue;
+    }
 
     if (dt === "theatre" && a.theatre_session_id && (sess === "am" || sess === "pm")) {
       const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
-      (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id as string);
+      (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id);
       filledMap.set(date, cur);
+
     }
 
     // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
@@ -436,13 +544,41 @@ export async function computeListCoverage(
   rangeStart: string,
   rangeEnd: string,
 ): Promise<DayListCoverage[]> {
-  const { data: sessions } = await supabase
-    .from("theatre_sessions")
-    .select("id, session_date, session")
-    .gte("session_date", rangeStart)
-    .lte("session_date", rangeEnd);
+  const [sessionsRaw, specialtiesAll] = await Promise.all([
+    fetchAllRows<{
+      id: string;
+      session_date: string;
+      session: string;
+      specialty_id: string | null;
+      surgical_consultant: string | null;
+    }>((from, to) =>
+      supabase
+        .from("theatre_sessions")
+        .select("id, session_date, session, specialty_id, surgical_consultant")
+        .gte("session_date", rangeStart)
+        .lte("session_date", rangeEnd)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<{ id: string; name: string }>((from, to) =>
+      supabase
+        .from("specialties")
+        .select("id, name")
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+  ]);
 
-  const tsIds = (sessions ?? []).map((s) => s.id as string);
+  const emergencySpecialtyIds = new Set(
+    specialtiesAll
+      .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
+      .map((s) => s.id),
+  );
+  const sessions = sessionsRaw.filter(
+    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+  );
+
+  const tsIds = sessions.map((s) => s.id);
 
   let asns: Array<{
     theatre_session_id: string;
@@ -452,15 +588,30 @@ export async function computeListCoverage(
   }> = [];
 
   if (tsIds.length > 0) {
-    const { data } = await supabase
-      .from("rota_assignments")
-      .select(
-        `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
-      )
-      .in("theatre_session_id", tsIds)
-      .eq("duty_type", "theatre");
-    asns = (data ?? []) as typeof asns;
+    // `.in()` URL-encoded list is bounded by URL length; chunk to be safe.
+    const CHUNK = 200;
+    for (let i = 0; i < tsIds.length; i += CHUNK) {
+      const slice = tsIds.slice(i, i + CHUNK);
+      const rows = await fetchAllRows<(typeof asns)[number]>(
+        (from, to) =>
+          supabase
+            .from("rota_assignments")
+            .select(
+              `theatre_session_id, session_date, session, profiles!rota_assignments_staff_id_fkey!inner(grade, training_level)`,
+            )
+            .in("theatre_session_id", slice)
+            .eq("duty_type", "theatre")
+            .order("id", { ascending: true })
+            .range(from, to) as unknown as PromiseLike<{
+            data: (typeof asns)[number][] | null;
+            error: unknown;
+          }>,
+      );
+      asns.push(...rows);
+    }
+
   }
+
 
   // Map theatre_session_id -> set of assigned staff grades/levels
   const coverageBySession = new Map<
