@@ -192,3 +192,78 @@ function Metric({
     </div>
   );
 }
+
+/**
+ * Computes a polite live-region message when warnings or specialty data
+ * change after the initial mount. Returns "" on first render so screen
+ * readers do not announce the card's initial state.
+ */
+function useAnnouncement({
+  warnings,
+  warningSig,
+  specialtyBreakdown,
+  specialtySig,
+  regionLabel,
+}: {
+  warnings: TraineeMetrics["warnings"];
+  warningSig: string;
+  specialtyBreakdown: TraineeMetrics["specialtyBreakdown"];
+  specialtySig: string;
+  regionLabel: string;
+}) {
+  const mountedRef = useRef(false);
+  const prevWarnSigRef = useRef(warningSig);
+  const prevSpecSigRef = useRef(specialtySig);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      prevWarnSigRef.current = warningSig;
+      prevSpecSigRef.current = specialtySig;
+      return;
+    }
+
+    const parts: string[] = [];
+
+    if (warningSig !== prevWarnSigRef.current) {
+      const prevCodes = new Set(
+        prevWarnSigRef.current.split("|").filter(Boolean),
+      );
+      const added = warnings.filter(
+        (w) => !prevCodes.has(`${w.level}:${w.code}`),
+      );
+      if (added.length > 0) {
+        parts.push(
+          `${regionLabel}: ${added
+            .map((w) => `${w.level === "warn" ? "Warning" : "Info"} — ${w.message}`)
+            .join(". ")}.`,
+        );
+      } else if (warnings.length === 0) {
+        parts.push(`${regionLabel}: all warnings cleared.`);
+      }
+      prevWarnSigRef.current = warningSig;
+    }
+
+    if (specialtySig !== prevSpecSigRef.current) {
+      const total = specialtyBreakdown.reduce((sum, s) => sum + s.count, 0);
+      const top = specialtyBreakdown[0];
+      parts.push(
+        top
+          ? `Specialty breakdown updated: ${specialtyBreakdown.length} specialties, ${total} lists. Top: ${top.name} at ${top.percent} percent.`
+          : `Specialty breakdown updated: no clinical lists recorded.`,
+      );
+      prevSpecSigRef.current = specialtySig;
+    }
+
+    if (parts.length > 0) {
+      // Toggle to force re-announcement even if text is identical.
+      setMessage("");
+      const id = setTimeout(() => setMessage(parts.join(" ")), 50);
+      return () => clearTimeout(id);
+    }
+  }, [warningSig, specialtySig, warnings, specialtyBreakdown, regionLabel]);
+
+  return message;
+}
+
