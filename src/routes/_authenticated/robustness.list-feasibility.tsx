@@ -997,9 +997,24 @@ function ValidationCard({
     },
     onSuccess: async (result) => {
       toast.success("Applied all eligible fixes", {
-        description: `${result.message} Re-running validation…`,
+        description: `${result.message} Verifying updated tokens and re-running validation…`,
       });
       await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
+      // Explicit verification step: re-read tokens from DB and recompute the
+      // model before re-rendering the validation report. Use the post-apply
+      // months value (state may not have flushed yet).
+      const nextMonths = canWiden
+        ? Math.min(24, effectiveMonthsBack + 3)
+        : effectiveMonthsBack;
+      try {
+        await runVerification(nextMonths);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? `Verification failed: ${err.message}`
+            : "Verification failed",
+        );
+      }
       await refetch();
     },
     onError: (err) => {
