@@ -628,7 +628,7 @@ export async function computeListFeasibility(
     const theatreId = (s.theatre_id as string) ?? "";
     if (!theatreId) continue;
     const surgeonRaw = (s.surgical_consultant as string | null) ?? "";
-    if (isNonWorkingRotaLabel([surgeonRaw])) continue;
+    if (isNonWorkingRotaLabel([surgeonRaw], extraNonWorkingTokens)) continue;
     if (isEmergencySession((s.specialty_id as string | null) ?? null, surgeonRaw)) {
       continue;
     }
