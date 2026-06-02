@@ -268,6 +268,118 @@ export async function computeListFeasibility(
     asnByDateStaff.set(k, arr2);
   }
 
+  // ----- Consultant working patterns --------------------------------------
+  // For each (dow, session), figure out:
+  //   - totalOccurrences: how many of that weekday existed in the window
+  //   - per-consultant working vs on-call counts
+  // A duty_type ending in "_oncall" is treated as on-call. "theatre", "spa",
+  // "admin", "teaching" and similar are working presence. A weekday with no
+  // record at all is treated as neither working nor on-call (likely leave or
+  // a non-working pattern day).
+  const totalByDow = new Map<number, number>();
+  const seenDates = new Set<string>();
+  for (const s of sessions ?? []) {
+    const date = s.session_date as string;
+    if (seenDates.has(date)) continue;
+    seenDates.add(date);
+    const dow = new Date(date + "T00:00:00Z").getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    totalByDow.set(dow, (totalByDow.get(dow) ?? 0) + 1);
+  }
+
+  // Per-consultant, per (dow|session), working and on-call counts.
+  type PatternCounts = { working: number; oncall: number };
+  const patternCounts = new Map<string, PatternCounts>(); // key: staffId|dow|session
+  const cellKey = (staffId: string, dow: number, session: string) =>
+    `${staffId}|${dow}|${session}`;
+
+  for (const [k, rows] of asnByDateStaff) {
+    const sep = k.indexOf("|");
+    const date = k.slice(0, sep);
+    const staffId = k.slice(sep + 1);
+    if (!consultantById.has(staffId)) continue;
+    const dow = new Date(date + "T00:00:00Z").getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    // Aggregate per half-day on this date so two duty_type rows on the same
+    // half don't double-count.
+    const seenHalf = new Map<string, { working: boolean; oncall: boolean }>();
+    for (const a of rows) {
+      if (a.session !== "am" && a.session !== "pm") continue;
+      const isOncall = a.dutyType.endsWith("_oncall");
+      const flag = seenHalf.get(a.session) ?? { working: false, oncall: false };
+      if (isOncall) flag.oncall = true;
+      else flag.working = true;
+      seenHalf.set(a.session, flag);
+    }
+    for (const [sess, flag] of seenHalf) {
+      const key = cellKey(staffId, dow, sess);
+      const cur = patternCounts.get(key) ?? { working: 0, oncall: 0 };
+      // On-call wins for that half — a consultant can't simultaneously be
+      // counted as "regularly working" if they were on the on-call rota.
+      if (flag.oncall) cur.oncall += 1;
+      else if (flag.working) cur.working += 1;
+      patternCounts.set(key, cur);
+    }
+  }
+
+  const consultantPatterns: ConsultantPattern[] = [];
+  const SESSIONS: Array<"am" | "pm"> = ["am", "pm"];
+  for (const c of consultantById.values()) {
+    if (!c.active) continue;
+    const cells: ConsultantPatternCell[] = [];
+    let regularSessions = 0;
+    for (let dow = 1; dow <= 5; dow++) {
+      for (const session of SESSIONS) {
+        const counts = patternCounts.get(cellKey(c.id, dow, session)) ?? {
+          working: 0,
+          oncall: 0,
+        };
+        const total = totalByDow.get(dow) ?? 0;
+        const eligible = Math.max(0, total - counts.oncall);
+        const workingPct =
+          eligible > 0 ? Math.round((counts.working / eligible) * 100) : 0;
+        const regular = workingPct >= thresholds.regularWorkingMinPct;
+        if (regular) regularSessions += 1;
+        cells.push({
+          dow,
+          session,
+          totalOccurrences: total,
+          oncallOccurrences: counts.oncall,
+          workingOccurrences: counts.working,
+          workingPct,
+          regular,
+        });
+      }
+    }
+    consultantPatterns.push({
+      id: c.id,
+      name: c.name,
+      cells,
+      regularSessionsPerWeek: regularSessions,
+    });
+  }
+  consultantPatterns.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Quick lookup: which consultants regularly work each (dow, session)?
+  const regularByCell = new Map<string, ConsultantPattern[]>();
+  for (const pat of consultantPatterns) {
+    for (const cell of pat.cells) {
+      if (!cell.regular) continue;
+      const k = `${cell.dow}|${cell.session}`;
+      const arr = regularByCell.get(k) ?? [];
+      arr.push(pat);
+      regularByCell.set(k, arr);
+    }
+  }
+  const workingPctOf = (staffId: string, dow: number, session: string): number => {
+    const counts = patternCounts.get(cellKey(staffId, dow, session));
+    const total = totalByDow.get(dow) ?? 0;
+    const eligible = Math.max(0, total - (counts?.oncall ?? 0));
+    if (eligible === 0) return 0;
+    return Math.round(((counts?.working ?? 0) / eligible) * 100);
+  };
+
+
   // Group theatre_sessions into recurring slots.
   type Slot = {
     key: string;
