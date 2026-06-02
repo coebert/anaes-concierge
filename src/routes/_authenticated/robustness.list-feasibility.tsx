@@ -26,11 +26,13 @@ import {
   computeListFeasibility,
   DEFAULT_THRESHOLDS,
   DOW_LABEL,
+  type ConsultantPattern,
   type DepartmentSummary,
   type FeasibilityThresholds,
   type ListSlotFeasibility,
   type Verdict,
 } from "@/lib/audit/list-feasibility";
+
 
 export const Route = createFileRoute("/_authenticated/robustness/list-feasibility")({
   component: ListFeasibilityPage,
@@ -68,6 +70,8 @@ function ListFeasibilityPage() {
 
   const summary = data?.summary;
   const slots = data?.slots ?? [];
+  const consultantPatterns = data?.consultantPatterns ?? [];
+
 
   return (
     <TooltipProvider>
@@ -112,6 +116,10 @@ function ListFeasibilityPage() {
         ) : (
           <>
             <DepartmentSummaryCard summary={summary} />
+            <WorkingPatternsCard
+              patterns={consultantPatterns}
+              regularMinPct={summary.thresholds.regularWorkingMinPct}
+            />
             <SlotsTable slots={slots} />
             <AssumptionsCard />
           </>
@@ -120,6 +128,7 @@ function ListFeasibilityPage() {
     </TooltipProvider>
   );
 }
+
 
 function ThresholdControls({
   monthsBack,
@@ -246,6 +255,28 @@ function ThresholdControls({
             per session ÷ 10 PAs per consultant.
           </p>
         </div>
+        <div className="space-y-2">
+          <Label className="text-xs flex items-center justify-between">
+            "Regular working" ≥
+            <span className="font-mono">{thresholds.regularWorkingMinPct}%</span>
+          </Label>
+          <Slider
+            min={20}
+            max={90}
+            step={5}
+            value={[thresholds.regularWorkingMinPct]}
+            onValueChange={([v]) =>
+              setThresholds({ ...thresholds, regularWorkingMinPct: v })
+            }
+          />
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            % of eligible weeks (excluding on-call days) a consultant must
+            work a given half-day before it counts as part of their regular
+            pattern.
+          </p>
+        </div>
+
+
         <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
           <Switch
             id="forbid-shortfall"
@@ -362,7 +393,9 @@ function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
               <th className="px-2 py-1 text-center font-medium">+Deputy %</th>
               <th className="px-2 py-1 text-center font-medium">n</th>
               <th className="px-2 py-1 text-left font-medium">Verdict</th>
+              <th className="px-2 py-1 text-left font-medium">Feasible candidates</th>
               <th className="px-2 py-1 text-left font-medium">Why</th>
+
             </tr>
           </thead>
           <tbody>
@@ -386,7 +419,39 @@ function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
                 <td className="px-2 py-1.5">
                   <VerdictBadge verdict={s.verdict} />
                 </td>
+                <td className="px-2 py-1.5 max-w-[18rem]">
+                  {s.candidateOwners.length === 0 ? (
+                    <span className="text-muted-foreground text-[11px]">
+                      No consultant regularly works this half-day.
+                    </span>
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {s.candidateOwners.slice(0, 5).map((c) => (
+                        <li key={c.id} className="text-[11px] leading-tight">
+                          <span className={cn(c.isCurrentOwner && "font-medium")}>
+                            {c.name}
+                          </span>{" "}
+                          <span className="text-muted-foreground font-mono">
+                            {c.workingPct}%
+                          </span>
+                          {c.isCurrentOwner && (
+                            <span className="ml-1 text-[10px] text-emerald-700">owner</span>
+                          )}
+                          {c.isCurrentDeputy && !c.isCurrentOwner && (
+                            <span className="ml-1 text-[10px] text-amber-700">deputy</span>
+                          )}
+                        </li>
+                      ))}
+                      {s.candidateOwners.length > 5 && (
+                        <li className="text-[10px] text-muted-foreground">
+                          +{s.candidateOwners.length - 5} more
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </td>
                 <td className="px-2 py-1.5 text-muted-foreground max-w-[24rem]">
+
                   {s.reasons.length === 0 ? (
                     <span className="text-emerald-700">All thresholds met.</span>
                   ) : (
@@ -552,6 +617,82 @@ function Stat({
           </div>
           <div className="text-xl font-semibold">{value}</div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WorkingPatternsCard({
+  patterns,
+  regularMinPct,
+}: {
+  patterns: ConsultantPattern[];
+  regularMinPct: number;
+}) {
+  if (patterns.length === 0) return null;
+  const DAYS = [1, 2, 3, 4, 5];
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Consultant working patterns</CardTitle>
+        <CardDescription>
+          For each consultant, the percentage of eligible weeks (excluding
+          weeks they were on-call for that half-day) they actually worked
+          each Mon–Fri AM/PM session. Cells highlighted in green are at or
+          above the regular-working threshold ({regularMinPct}%) and are
+          treated as part of the consultant's regular pattern when matching
+          them to feasible list slots.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr>
+              <th className="px-2 py-1 text-left font-medium">Consultant</th>
+              {DAYS.map((d) => (
+                <th key={d} className="px-1 py-1 text-center font-medium" colSpan={2}>
+                  {DOW_LABEL[d]}
+                </th>
+              ))}
+              <th className="px-2 py-1 text-center font-medium">Reg /wk</th>
+            </tr>
+            <tr className="text-[10px]">
+              <th />
+              {DAYS.flatMap((d) => [
+                <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">AM</th>,
+                <th key={`${d}-pm`} className="px-1 py-0.5 text-center font-normal">PM</th>,
+              ])}
+
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {patterns.map((p) => (
+              <tr key={p.id} className="border-t">
+                <td className="px-2 py-1 whitespace-nowrap">{p.name}</td>
+                {p.cells.map((c) => (
+                  <td
+                    key={`${c.dow}-${c.session}`}
+                    className={cn(
+                      "px-1 py-1 text-center font-mono text-[11px]",
+                      c.regular
+                        ? "bg-emerald-100 text-emerald-800"
+                        : c.workingPct >= regularMinPct - 15
+                          ? "bg-amber-50 text-amber-700"
+                          : "text-muted-foreground",
+                    )}
+                    title={`${c.workingOccurrences}/${Math.max(0, c.totalOccurrences - c.oncallOccurrences)} eligible weeks (on-call ${c.oncallOccurrences})`}
+                  >
+                    {c.workingPct}%
+                  </td>
+                ))}
+                <td className="px-2 py-1 text-center font-medium">
+                  {p.regularSessionsPerWeek}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </CardContent>
     </Card>
   );

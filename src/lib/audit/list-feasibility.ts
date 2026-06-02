@@ -32,6 +32,10 @@ export interface FeasibilityThresholds {
   shortfallDayBusyPct: number;
   /** WTE added per failed slot dimension (rough PA→WTE conversion). */
   wtePerWeeklySession: number;
+  /** % of eligible (dow, session) instances a consultant must work (excluding
+   *  on-call days they were rostered for) before that half-day counts as part
+   *  of their regular working pattern. 0-100. */
+  regularWorkingMinPct: number;
 }
 
 export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
@@ -41,9 +45,21 @@ export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
   minOccurrences: 4,
   shortfallDayBusyPct: 70,
   wtePerWeeklySession: 0.1,
+  regularWorkingMinPct: 50,
 };
 
+
 export type Verdict = "feasible" | "borderline" | "not_feasible";
+
+export interface CandidateOwner {
+  id: string;
+  name: string;
+  /** % of eligible (dow, session) instances they actually worked (non-on-call). */
+  workingPct: number;
+  /** True if they already happen to be the proposed owner or deputy. */
+  isCurrentOwner: boolean;
+  isCurrentDeputy: boolean;
+}
 
 export interface ListSlotFeasibility {
   key: string;
@@ -73,6 +89,34 @@ export interface ListSlotFeasibility {
   /** Rough additional WTE needed to make this slot feasible at chosen threshold. */
   headcountGap: number;
   reasons: string[];
+  /** Consultants whose regular weekly working pattern includes this (dow, session)
+   *  and who could therefore plausibly take this slot on. Sorted by working %.
+   *  Includes the current proposed owner/deputy if they qualify. */
+  candidateOwners: CandidateOwner[];
+}
+
+export interface ConsultantPatternCell {
+  dow: number;            // 1-5
+  session: "am" | "pm";
+  /** Total weekdays of this dow in the window. */
+  totalOccurrences: number;
+  /** Times this consultant was on-call (or other excluded duty) on that half. */
+  oncallOccurrences: number;
+  /** Times they had a non-on-call working record on that half. */
+  workingOccurrences: number;
+  /** workingOccurrences / max(1, totalOccurrences - oncallOccurrences). */
+  workingPct: number;
+  /** True if workingPct ≥ thresholds.regularWorkingMinPct. */
+  regular: boolean;
+}
+
+export interface ConsultantPattern {
+  id: string;
+  name: string;
+  /** 10 cells, Mon-Fri × AM/PM, always in order Mon AM, Mon PM, Tue AM … Fri PM. */
+  cells: ConsultantPatternCell[];
+  /** Count of cells with regular === true. */
+  regularSessionsPerWeek: number;
 }
 
 export interface DepartmentSummary {
@@ -90,7 +134,10 @@ export interface DepartmentSummary {
 export interface ListFeasibilityResult {
   summary: DepartmentSummary;
   slots: ListSlotFeasibility[];
+  /** One row per active consultant, with their working pattern matrix. */
+  consultantPatterns: ConsultantPattern[];
 }
+
 
 // -------- helpers --------
 
@@ -220,6 +267,118 @@ export async function computeListFeasibility(
     arr2.push(row);
     asnByDateStaff.set(k, arr2);
   }
+
+  // ----- Consultant working patterns --------------------------------------
+  // For each (dow, session), figure out:
+  //   - totalOccurrences: how many of that weekday existed in the window
+  //   - per-consultant working vs on-call counts
+  // A duty_type ending in "_oncall" is treated as on-call. "theatre", "spa",
+  // "admin", "teaching" and similar are working presence. A weekday with no
+  // record at all is treated as neither working nor on-call (likely leave or
+  // a non-working pattern day).
+  const totalByDow = new Map<number, number>();
+  const seenDates = new Set<string>();
+  for (const s of sessions ?? []) {
+    const date = s.session_date as string;
+    if (seenDates.has(date)) continue;
+    seenDates.add(date);
+    const dow = new Date(date + "T00:00:00Z").getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    totalByDow.set(dow, (totalByDow.get(dow) ?? 0) + 1);
+  }
+
+  // Per-consultant, per (dow|session), working and on-call counts.
+  type PatternCounts = { working: number; oncall: number };
+  const patternCounts = new Map<string, PatternCounts>(); // key: staffId|dow|session
+  const cellKey = (staffId: string, dow: number, session: string) =>
+    `${staffId}|${dow}|${session}`;
+
+  for (const [k, rows] of asnByDateStaff) {
+    const sep = k.indexOf("|");
+    const date = k.slice(0, sep);
+    const staffId = k.slice(sep + 1);
+    if (!consultantById.has(staffId)) continue;
+    const dow = new Date(date + "T00:00:00Z").getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    // Aggregate per half-day on this date so two duty_type rows on the same
+    // half don't double-count.
+    const seenHalf = new Map<string, { working: boolean; oncall: boolean }>();
+    for (const a of rows) {
+      if (a.session !== "am" && a.session !== "pm") continue;
+      const isOncall = a.dutyType.endsWith("_oncall");
+      const flag = seenHalf.get(a.session) ?? { working: false, oncall: false };
+      if (isOncall) flag.oncall = true;
+      else flag.working = true;
+      seenHalf.set(a.session, flag);
+    }
+    for (const [sess, flag] of seenHalf) {
+      const key = cellKey(staffId, dow, sess);
+      const cur = patternCounts.get(key) ?? { working: 0, oncall: 0 };
+      // On-call wins for that half — a consultant can't simultaneously be
+      // counted as "regularly working" if they were on the on-call rota.
+      if (flag.oncall) cur.oncall += 1;
+      else if (flag.working) cur.working += 1;
+      patternCounts.set(key, cur);
+    }
+  }
+
+  const consultantPatterns: ConsultantPattern[] = [];
+  const SESSIONS: Array<"am" | "pm"> = ["am", "pm"];
+  for (const c of consultantById.values()) {
+    if (!c.active) continue;
+    const cells: ConsultantPatternCell[] = [];
+    let regularSessions = 0;
+    for (let dow = 1; dow <= 5; dow++) {
+      for (const session of SESSIONS) {
+        const counts = patternCounts.get(cellKey(c.id, dow, session)) ?? {
+          working: 0,
+          oncall: 0,
+        };
+        const total = totalByDow.get(dow) ?? 0;
+        const eligible = Math.max(0, total - counts.oncall);
+        const workingPct =
+          eligible > 0 ? Math.round((counts.working / eligible) * 100) : 0;
+        const regular = workingPct >= thresholds.regularWorkingMinPct;
+        if (regular) regularSessions += 1;
+        cells.push({
+          dow,
+          session,
+          totalOccurrences: total,
+          oncallOccurrences: counts.oncall,
+          workingOccurrences: counts.working,
+          workingPct,
+          regular,
+        });
+      }
+    }
+    consultantPatterns.push({
+      id: c.id,
+      name: c.name,
+      cells,
+      regularSessionsPerWeek: regularSessions,
+    });
+  }
+  consultantPatterns.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Quick lookup: which consultants regularly work each (dow, session)?
+  const regularByCell = new Map<string, ConsultantPattern[]>();
+  for (const pat of consultantPatterns) {
+    for (const cell of pat.cells) {
+      if (!cell.regular) continue;
+      const k = `${cell.dow}|${cell.session}`;
+      const arr = regularByCell.get(k) ?? [];
+      arr.push(pat);
+      regularByCell.set(k, arr);
+    }
+  }
+  const workingPctOf = (staffId: string, dow: number, session: string): number => {
+    const counts = patternCounts.get(cellKey(staffId, dow, session));
+    const total = totalByDow.get(dow) ?? 0;
+    const eligible = Math.max(0, total - (counts?.oncall ?? 0));
+    if (eligible === 0) return 0;
+    return Math.round(((counts?.working ?? 0) / eligible) * 100);
+  };
+
 
   // Group theatre_sessions into recurring slots.
   type Slot = {
@@ -377,6 +536,36 @@ export async function computeListFeasibility(
     if (ownerBand === "below") headcountGap += 1;
     if (deputyBand === "below") headcountGap += 1;
 
+    // Candidate owners — consultants whose regular weekly pattern includes
+    // this (dow, session). Always include the current proposed owner/deputy
+    // even if their working % falls below the regular-pattern threshold, so
+    // the user sees why they were nominated.
+    const candidateOwners: CandidateOwner[] = [];
+    const seenCandidates = new Set<string>();
+    const pushCandidate = (id: string, name: string) => {
+      if (seenCandidates.has(id)) return;
+      seenCandidates.add(id);
+      candidateOwners.push({
+        id,
+        name,
+        workingPct: workingPctOf(id, slot.dow, slot.session),
+        isCurrentOwner: id === ownerId,
+        isCurrentDeputy: id === deputyId,
+      });
+    };
+    for (const pat of regularByCell.get(`${slot.dow}|${slot.session}`) ?? []) {
+      pushCandidate(pat.id, pat.name);
+    }
+    if (ownerId) {
+      const c = consultantById.get(ownerId);
+      if (c) pushCandidate(ownerId, c.name);
+    }
+    if (deputyId) {
+      const c = consultantById.get(deputyId);
+      if (c) pushCandidate(deputyId, c.name);
+    }
+    candidateOwners.sort((a, b) => b.workingPct - a.workingPct);
+
     slotResults.push({
       key: slot.key,
       dow: slot.dow,
@@ -399,8 +588,10 @@ export async function computeListFeasibility(
       verdict,
       headcountGap,
       reasons,
+      candidateOwners,
     });
   }
+
 
   // Dept rollup. A slot that runs once/week ≈ 0.1 WTE per session (10 PAs/week).
   // We treat the gap as: per missing consultant, 1/10 WTE per regular session/week.
@@ -434,8 +625,10 @@ export async function computeListFeasibility(
       estimatedExtraWte,
     },
     slots: slotResults,
+    consultantPatterns,
   };
 }
+
 
 /**
  * Crude proxy for "the day was thin on consultants": if more than ~70%
