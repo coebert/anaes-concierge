@@ -1246,7 +1246,12 @@ function ValidationCellTable({
               {cell.diagnoses.length > 0 && (
                 <tr className="border-t-0 bg-amber-50/50 dark:bg-amber-950/10">
                   <td colSpan={10} className="px-2 pb-2">
-                    <DiagnosisList diagnoses={cell.diagnoses} />
+                    <DiagnosisList
+                      diagnoses={cell.diagnoses}
+                      onApply={onApply}
+                      isApplying={isApplying}
+                      isApplicable={isApplicable}
+                    />
                   </td>
                 </tr>
               )}
@@ -1258,7 +1263,12 @@ function ValidationCellTable({
   );
 }
 
-function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
+function DiagnosisList({
+  diagnoses,
+  onApply,
+  isApplying,
+  isApplicable,
+}: { diagnoses: Diagnosis[] } & RemediationActions) {
   return (
     <div className="space-y-1.5">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -1281,7 +1291,7 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
               >
                 {d.severity}
               </Badge>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 flex-1">
                 <div className="font-medium">{d.summary}</div>
                 {d.evidence.length > 0 && (
                   <ul className="list-disc pl-4 text-muted-foreground">
@@ -1290,10 +1300,21 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
                     ))}
                   </ul>
                 )}
-                <div className="flex items-center gap-2 pt-0.5">
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <span className="text-muted-foreground">
                     → {d.remediation.summary}
                   </span>
+                  {isApplicable(d.remediation.kind) && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-6 px-2 text-[10px]"
+                      disabled={isApplying}
+                      onClick={() => onApply(d.remediation)}
+                    >
+                      {isApplying ? "Applying…" : "Apply fix & re-run"}
+                    </Button>
+                  )}
                   {d.remediation.href && (
                     <Link
                       to={d.remediation.href}
@@ -1311,6 +1332,7 @@ function DiagnosisList({ diagnoses }: { diagnoses: Diagnosis[] }) {
     </div>
   );
 }
+
 
 
 
