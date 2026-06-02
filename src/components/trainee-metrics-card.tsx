@@ -23,6 +23,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
     onCallPct,
     totalAssignments,
     specialtyBreakdown,
+    warnings,
   } = metrics;
   return (
     <Card>
@@ -31,6 +32,23 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
         {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
       </CardHeader>
       <CardContent className="space-y-4">
+        {warnings.length > 0 ? (
+          <div className="space-y-1.5">
+            {warnings.map((w) => (
+              <div
+                key={w.code}
+                className={
+                  w.level === "warn"
+                    ? "rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
+                    : "rounded-md border border-muted bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+                }
+              >
+                {w.level === "warn" ? "⚠ " : "ℹ "}
+                {w.message}
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Metric
             label="Time at Salisbury"

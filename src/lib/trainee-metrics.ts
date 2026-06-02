@@ -9,6 +9,21 @@ export type MetricAssignment = {
   session_date?: string | null;
 };
 
+export type TraineeMetricsWarning = {
+  level: "info" | "warn";
+  code:
+    | "low_real_list_count"
+    | "no_real_lists"
+    | "high_unmatched_ratio"
+    | "no_theatre_session_rows";
+  message: string;
+};
+
+/** Minimum matched daytime lists below which a solo% is statistically unreliable. */
+export const LOW_REAL_LIST_THRESHOLD = 5;
+/** Unmatched theatre rows / total theatre rows above which import quality is poor. */
+export const HIGH_UNMATCHED_RATIO = 0.5;
+
 export type TraineeMetrics = {
   weeksAtSalisbury: number | null;
   weeksRemaining: number | null;
@@ -21,6 +36,10 @@ export type TraineeMetrics = {
   onCallLists: number;
   onCallPct: number | null;
   totalAssignments: number;
+  /** Theatre-duty rows with no matched theatre_session_id (unmatched CLWRota labels). */
+  unmatchedTheatreRows: number;
+  /** Sanity-check warnings to surface alongside the card. */
+  warnings: TraineeMetricsWarning[];
   specialtyBreakdown: Array<{ name: string; count: number; percent: number }>;
 };
 
@@ -114,6 +133,47 @@ export function computeTraineeMetrics(
     }))
     .sort((a, b) => b.count - a.count);
 
+  // Sanity-check validation: a solo% built on only a handful of real lists is
+  // statistically unreliable, and a trainee with no matched theatre_session_id
+  // rows usually points to a CLWRota import-quality problem rather than a true
+  // 0% / 100%. Surface these so reviewers don't read noise as a signal.
+  const unmatchedTheatreRows = assignments.filter(
+    (a) =>
+      a.duty_type === "theatre" &&
+      (a.session === "am" || a.session === "pm") &&
+      a.theatre_session_id == null,
+  ).length;
+  const totalTheatreRows = daytimeLists + unmatchedTheatreRows;
+  const warnings: TraineeMetricsWarning[] = [];
+  if (daytimeLists === 0) {
+    warnings.push({
+      level: "warn",
+      code: "no_real_lists",
+      message:
+        "No matched theatre lists — solo / supervised percentages cannot be calculated reliably.",
+    });
+  } else if (daytimeLists < LOW_REAL_LIST_THRESHOLD) {
+    warnings.push({
+      level: "warn",
+      code: "low_real_list_count",
+      message: `Only ${daytimeLists} matched daytime list${daytimeLists === 1 ? "" : "s"} — solo% is based on a very small sample.`,
+    });
+  }
+  if (totalTheatreRows === 0) {
+    warnings.push({
+      level: "info",
+      code: "no_theatre_session_rows",
+      message: "No theatre rows imported for this trainee.",
+    });
+  } else if (unmatchedTheatreRows / totalTheatreRows >= HIGH_UNMATCHED_RATIO) {
+    const pct = Math.round((unmatchedTheatreRows / totalTheatreRows) * 100);
+    warnings.push({
+      level: "warn",
+      code: "high_unmatched_ratio",
+      message: `${pct}% of theatre rows (${unmatchedTheatreRows}/${totalTheatreRows}) could not be matched to a theatre booking — CLWRota labels may need review.`,
+    });
+  }
+
   return {
     weeksAtSalisbury,
     weeksRemaining,
@@ -126,6 +186,8 @@ export function computeTraineeMetrics(
     onCallLists,
     onCallPct,
     totalAssignments,
+    unmatchedTheatreRows,
+    warnings,
     specialtyBreakdown,
   };
 }
