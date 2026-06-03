@@ -1342,6 +1342,12 @@ export async function performRotaSync() {
     const warnings: Array<{ label: string; reason: string }> = [];
     const unmatchedTheatres = new Set<string>();
     const unmatchedStaff = new Set<string>();
+    // External IDs we explicitly recognise as non-working — any stale
+    // rota_assignment row carrying these IDs (created by older syncs before
+    // the non-working classifier matured) must be deleted, otherwise they
+    // persist as bogus duty_type='theatre' rows with no theatre_session_id
+    // and pollute trainee unmatched-row metrics.
+    const nonWorkingExtIds = new Set<string>();
 
     // --- Pass 1: parse rows, match staff/theatre, collect work in memory. -----
     type SessionDraft = {
@@ -1415,7 +1421,8 @@ export async function performRotaSync() {
 
       const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName];
       if (isNonWorkingRotaLabel(dutyLabels)) {
-        skipped.push({ label, reason: "non-working rota label (off/day off)" });
+        if (externalId) nonWorkingExtIds.add(externalId);
+        skipped.push({ label, reason: "non-working rota label (off/day off/available)" });
         continue;
       }
 
@@ -1612,6 +1619,38 @@ export async function performRotaSync() {
     }
     if (lockedSkipped > 0) {
       skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
+    }
+
+    // --- Pass 5: delete stale rows whose feed row is now recognised as
+    // non-working. The upsert path above never touches these (we `continue`
+    // before reaching it), so without an explicit delete the row would
+    // remain in the database with its original duty_type='theatre'
+    // classification — that is the dominant source of "unmatched theatre
+    // row" warnings on trainee dashboards. Locally-modified rows are
+    // preserved so coordinators don't lose hand edits.
+    let nonWorkingCleaned = 0;
+    if (nonWorkingExtIds.size > 0) {
+      const ids = Array.from(nonWorkingExtIds);
+      const DELETE_CHUNK = 500;
+      for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+        const chunk = ids.slice(i, i + DELETE_CHUNK);
+        const { error: delErr, count } = await supabaseAdmin
+          .from("rota_assignments")
+          .delete({ count: "exact" })
+          .in("clwrota_external_id", chunk)
+          .eq("locally_modified", false);
+        if (delErr) {
+          errors.push({ label: `(non-working cleanup chunk ${i}-${i + chunk.length})`, error: delErr.message });
+          continue;
+        }
+        nonWorkingCleaned += count ?? 0;
+      }
+      if (nonWorkingCleaned > 0) {
+        skipped.push({
+          label: "stale non-working rows removed",
+          reason: `${nonWorkingCleaned} prior rota_assignment row(s) deleted because the upstream label is now recognised as non-working`,
+        });
+      }
     }
 
     // --- Suspicious solo-rate validation ---------------------------------
