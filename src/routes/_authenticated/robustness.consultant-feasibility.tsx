@@ -30,7 +30,7 @@ const InputsSchema = z.object({
   consultantInChargeSessionsPerWeek: z.number().min(0).max(21),
   painServiceSessionsPerWeek: z.number().min(0).max(50),
   poacSessionsPerWeek: z.number().min(0).max(50),
-  nonClinicalPAsPerWeek: z.number().min(0).max(50),
+  nonClinicalPAsPerWeek: z.number().min(0, "Cannot be negative").max(50, "Max 50 PAs/week"),
   icuSessionsPerWeek: z.number().min(0).max(21),
   icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
   pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
@@ -98,8 +98,12 @@ function ConsultantFeasibilityPage() {
   const set = <K extends keyof Inputs>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value;
-      const v = raw === "" ? 0 : Number(raw);
-      setInp((prev) => ({ ...prev, [key]: Number.isFinite(v) ? v : 0 }));
+      let v = raw === "" ? 0 : Number(raw);
+      if (!Number.isFinite(v)) v = 0;
+      if (key === "nonClinicalPAsPerWeek") {
+        v = Math.round(v * 2) / 2; // snap to nearest 0.5 PA
+      }
+      setInp((prev) => ({ ...prev, [key]: v }));
     };
 
   const icuFeasible = calc.icuPoolUtilisation <= 1;
