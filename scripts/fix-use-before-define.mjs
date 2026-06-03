@@ -145,22 +145,38 @@ function reorderStatements(stmts) {
 
 /** Hoist any ImportDeclaration that follows a non-import top-level stmt. */
 function hoistImports(stmts) {
-  // The desired final order: every import (preserving relative order), then
-  // every non-import (preserving relative order).
+  // Treat the leading directive prologue ("use client", "use strict", …) and
+  // ImportDeclarations as the allowed "leading block". The first statement
+  // that is NEITHER becomes the anchor; imports that follow it get moved up.
+  const isDirective = (s) =>
+    ts.isExpressionStatement(s) && ts.isStringLiteral(s.expression);
   let firstNonImport = -1;
+  let inPrologue = true;
   const moves = [];
   for (let i = 0; i < stmts.length; i++) {
-    const isImp = ts.isImportDeclaration(stmts[i]);
-    if (!isImp && firstNonImport < 0) firstNonImport = i;
-    else if (isImp && firstNonImport >= 0) {
-      moves.push({ name: "<import>", from: i, to: firstNonImport });
+    const s = stmts[i];
+    if (inPrologue && isDirective(s)) continue;
+    inPrologue = false;
+    if (ts.isImportDeclaration(s)) {
+      if (firstNonImport >= 0) moves.push({ name: "<import>", from: i, to: firstNonImport });
+    } else if (firstNonImport < 0) {
+      firstNonImport = i;
     }
   }
   if (moves.length === 0) return { order: stmts.map((_, i) => i), moves: [] };
+  // Rebuild: directives (in original order), then imports (in original order),
+  // then everything else (in original order).
   const order = [];
-  for (let i = 0; i < stmts.length; i++) if (ts.isImportDeclaration(stmts[i])) order.push(i);
-  for (let i = 0; i < stmts.length; i++) if (!ts.isImportDeclaration(stmts[i])) order.push(i);
-  return { order, moves };
+  const directives = [], imports = [], rest = [];
+  let stillPrologue = true;
+  for (let i = 0; i < stmts.length; i++) {
+    const s = stmts[i];
+    if (stillPrologue && isDirective(s)) { directives.push(i); continue; }
+    stillPrologue = false;
+    if (ts.isImportDeclaration(s)) imports.push(i);
+    else rest.push(i);
+  }
+  return { order: [...directives, ...imports, ...rest], moves };
 }
 
 /**
