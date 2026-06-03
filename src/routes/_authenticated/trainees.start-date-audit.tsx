@@ -159,6 +159,17 @@ function AuditPage() {
                     </>
                   ) : null}
                 </div>
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => retry.mutate()}
+                    disabled={retry.isPending}
+                  >
+                    <RefreshCw className={`mr-1 h-4 w-4 ${retry.isPending ? "animate-spin" : ""}`} />
+                    {retry.isPending ? "Retrying sync…" : "Retry CLWRota leave sync"}
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           ) : null}
