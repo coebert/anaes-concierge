@@ -1355,6 +1355,11 @@ export async function performRotaSync() {
       theatre_id: string;
       session: "am" | "pm" | "eve" | "night";
       specialty_id: string | null;
+      // Lowercased/trimmed specialty name as it appeared in the feed. Kept
+      // alongside specialty_id so that after Pass 2 inserts any
+      // newly-seen specialties we can still resolve an ID for drafts whose
+      // specialty didn't exist when the row was first parsed.
+      specialty_name_key: string | null;
       surgical_consultant: string | null;
     };
     type AssignmentDraft = {
