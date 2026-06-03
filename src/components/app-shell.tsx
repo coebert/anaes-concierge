@@ -23,6 +23,8 @@ import {
   Wrench,
   ArrowLeft,
   CalendarX,
+  LineChart,
+
   Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
