@@ -22,7 +22,11 @@ export function isNonWorkingRotaLabel(
   return labels.some((label) => {
     const text = normaliseRotaLabelText(label ?? "");
     if (!text) return false;
-    if (/(^|\b)(off|off day|day off|regular day off|ltft day off|not working)(\b|$)/.test(text)) {
+    // Explicit non-working / not-on-a-list markers CLWRota uses in the
+    // slot/consultant field. "available" / "spare" / "free" mean the person
+    // is rostered to the cover pool rather than allocated to a real list,
+    // so the row is not a theatre session and should not be counted as one.
+    if (/(^|\b)(off|off day|day off|regular day off|ltft day off|not working|available|available clinical|spare|free|tbc|tba|unallocated|nil)(\b|$)/.test(text)) {
       return true;
     }
     return normalisedExtras.some((tok) => text.includes(tok));
