@@ -2199,19 +2199,88 @@ export async function performLeaveSync() {
   const drafts = Array.from(draftsByExtId.values());
 
   // Upsert in chunks, keyed by clwrota_external_id. Never delete.
+  //
+  // Resilience policy:
+  //  1. Try the whole chunk first (fast path — 1000 rows in one round-trip).
+  //  2. On any chunk error, retry the chunk with exponential backoff
+  //     (1s, 2s, 4s + jitter, max 3 attempts) — covers transient DB / network
+  //     blips without losing a thousand rows.
+  //  3. If the chunk still fails, fall back to per-row upserts so a single
+  //     poisonous row can't take down the surrounding 999 valid rows. Each
+  //     per-row attempt also retries with backoff. Successes count toward
+  //     `upserted`; failures are recorded in `errors` and the loop continues.
   const CHUNK = 1000;
+  const MAX_ATTEMPTS = 3;
+  const BASE_DELAY_MS = 1000;
+
+  const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+  const backoffDelay = (attempt: number) =>
+    Math.min(15000, BASE_DELAY_MS * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+
+  /**
+   * Upsert a batch with retry/backoff. Returns the final error message or
+   * null on success. Never throws.
+   */
+  async function upsertWithBackoff(
+    batch: LeaveDraft[],
+    label: string,
+  ): Promise<string | null> {
+    let lastErr: string | null = null;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const { error: upErr } = await supabaseAdmin
+          .from("leave_requests")
+          .upsert(batch, { onConflict: "clwrota_external_id" });
+        if (!upErr) return null;
+        lastErr = upErr.message;
+      } catch (err) {
+        lastErr = err instanceof Error ? err.message : String(err);
+      }
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = backoffDelay(attempt);
+        console.warn(
+          `[clwrota] upsert failure on ${label} attempt ${attempt}/${MAX_ATTEMPTS}, retrying in ${delay}ms: ${lastErr}`,
+        );
+        await sleep(delay);
+      }
+    }
+    return lastErr ?? "unknown upsert failure";
+  }
+
   let upserted = 0;
   for (let i = 0; i < drafts.length; i += CHUNK) {
     const chunk = drafts.slice(i, i + CHUNK);
-    const { error: upErr } = await supabaseAdmin
-      .from("leave_requests")
-      .upsert(chunk, { onConflict: "clwrota_external_id" });
-    if (upErr) {
-      errors.push({ label: `(leave_requests chunk ${i}-${i + chunk.length})`, error: upErr.message });
+    const chunkLabel = `leave_requests chunk ${i}-${i + chunk.length}`;
+    const chunkErr = await upsertWithBackoff(chunk, chunkLabel);
+    if (!chunkErr) {
+      upserted += chunk.length;
       continue;
     }
-    upserted += chunk.length;
+    // Chunk failed even after retries — fall back to per-row so one bad row
+    // doesn't poison the rest. Note: 1000 small round-trips is slow but only
+    // happens on the rare failed-chunk path, so the cost is acceptable.
+    console.warn(
+      `[clwrota] chunk ${chunkLabel} still failing after ${MAX_ATTEMPTS} attempts — falling back to per-row upsert: ${chunkErr}`,
+    );
+    errors.push({ label: `(${chunkLabel})`, error: `chunk failed after retries: ${chunkErr} — falling back to per-row` });
+    let perRowOk = 0;
+    let perRowFail = 0;
+    for (const draft of chunk) {
+      const rowLabel = `leave_request ${draft.clwrota_external_id}`;
+      const rowErr = await upsertWithBackoff([draft], rowLabel);
+      if (rowErr) {
+        perRowFail += 1;
+        errors.push({ label: `(${rowLabel})`, error: rowErr });
+      } else {
+        perRowOk += 1;
+        upserted += 1;
+      }
+    }
+    console.warn(
+      `[clwrota] per-row fallback for ${chunkLabel}: ${perRowOk} ok, ${perRowFail} failed`,
+    );
   }
+
 
   // Historical-data safeguard.
   const { count: postCount, error: postCountErr } = await supabaseAdmin
