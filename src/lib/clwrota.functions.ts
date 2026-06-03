@@ -594,6 +594,7 @@ export const syncClwRotaStaff = createServerFn({ method: "POST" })
   });
 
 export async function performStaffSync() {
+    const startedAt = Date.now();
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin
