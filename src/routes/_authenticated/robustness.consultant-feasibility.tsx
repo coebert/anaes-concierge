@@ -284,9 +284,25 @@ function ConsultantFeasibilityPage() {
             <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} error={errors.bankHolidayDays} />
             <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} error={errors.weeksPerYear} />
             <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} hint="Used to convert leave days → weeks" error={errors.workingDaysPerWeek} />
+            <Field label="Sickness rate (%)" value={inp.sicknessRatePct} step="0.5" onChange={set("sicknessRatePct")} hint="Derates annual capacity" error={errors.sicknessRatePct} />
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">On-call cover (24/7)</CardTitle>
+          <CardDescription>
+            One consultant always covering theatres OOH, and one ICU-trained
+            consultant always covering ICU OOH. The PAs allocated to each rota
+            are taken from the DCC pool.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label="Theatre on-call PAs / week" value={inp.theatreOnCallPAsPerWeek} step="0.5" onChange={set("theatreOnCallPAsPerWeek")} hint="Total rota PAs/wk" error={errors.theatreOnCallPAsPerWeek} />
+          <Field label="ICU on-call PAs / week" value={inp.icuOnCallPAsPerWeek} step="0.5" onChange={set("icuOnCallPAsPerWeek")} hint="Drawn from ICU-trained pool" error={errors.icuOnCallPAsPerWeek} />
+        </CardContent>
+      </Card>
 
 
 
