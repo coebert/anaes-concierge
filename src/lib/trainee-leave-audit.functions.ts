@@ -50,12 +50,35 @@ export type AuditTrainee = {
   activity_count: number;
   predicted_start: string | null;
   leave_rows: AuditLeaveRow[];
+  /**
+   * Per-trainee warnings explaining why leave logic for this person may be
+   * incomplete (e.g. no CLWRota link so CLWRota-side leave can't be mapped,
+   * or no leave_allowances row for the current year).
+   */
+  leave_source_warnings: string[];
+};
+
+export type LeaveSourceStatus = {
+  /** True when admins have configured a CLWRota leave report URL. */
+  clwrota_leave_url_configured: boolean;
+  /** Last CLWRota sync timestamp (any kind) or null if never run. */
+  clwrota_last_sync_at: string | null;
+  /** Status of the most recent CLWRota sync. */
+  clwrota_last_status: string | null;
+  /** Last CLWRota sync error message, if any. */
+  clwrota_last_error: string | null;
+  /**
+   * Global warnings about the leave-data pipeline. Surface these so the
+   * admin knows why some trainees may be missing leave entries.
+   */
+  warnings: string[];
 };
 
 export type AuditResult = {
   window_start: string;
   window_end: string;
   trainees: AuditTrainee[];
+  leave_sources: LeaveSourceStatus;
 };
 
 const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
