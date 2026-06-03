@@ -102,6 +102,47 @@ function AuditPage() {
         </Card>
       ) : !data ? null : (
         <>
+          {data.leave_sources.warnings.length > 0 ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Leave data may be incomplete</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
+                  {data.leave_sources.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  CLWRota last sync:{" "}
+                  <span className="font-mono">
+                    {data.leave_sources.clwrota_last_sync_at
+                      ? `${data.leave_sources.clwrota_last_sync_at} (${formatDistanceToNow(
+                          new Date(data.leave_sources.clwrota_last_sync_at),
+                          { addSuffix: true },
+                        )})`
+                      : "never"}
+                  </span>
+                  {data.leave_sources.clwrota_last_status ? (
+                    <>
+                      {" · status: "}
+                      <span className="font-mono">
+                        {data.leave_sources.clwrota_last_status}
+                      </span>
+                    </>
+                  ) : null}
+                  {data.leave_sources.clwrota_last_error ? (
+                    <>
+                      {" · error: "}
+                      <span className="font-mono">
+                        {data.leave_sources.clwrota_last_error}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Decision window</CardTitle>
