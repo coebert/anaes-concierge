@@ -11,9 +11,13 @@
  * when we attempted nested-block reordering).
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import {
+  readFileSync, readdirSync, existsSync, writeFileSync, mkdtempSync, rmSync,
+} from "node:fs";
 import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 // @ts-expect-error — JS ESM, no .d.ts.
 import { processSource } from "./fix-use-before-define.mjs";
 
