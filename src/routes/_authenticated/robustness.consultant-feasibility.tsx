@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   ChevronLeft, Calculator, AlertTriangle, CheckCircle2, Info,
 } from "lucide-react";
+import { calculateFeasibility } from "@/lib/consultant-feasibility";
 
 export const Route = createFileRoute(
   "/_authenticated/robustness/consultant-feasibility",
@@ -72,111 +73,7 @@ const DEFAULTS: Inputs = {
 function ConsultantFeasibilityPage() {
   const [inp, setInp] = useState<Inputs>(DEFAULTS);
 
-  const calc = useMemo(() => {
-    const theatreSessions =
-      (inp.mainTheatres + inp.daySurgeryTheatres) *
-      inp.sessionsPerTheatrePerWeek;
-    const weeklySessionDemand =
-      theatreSessions +
-      inp.labourWardSessionsPerWeek +
-      inp.icuSessionsPerWeek;
-    const annualSessionDemand = weeklySessionDemand * inp.weeksPerYear;
-
-    // On-call PAs are consumed from the same DCC pool that funds lists.
-    // Convert them into "session-equivalents" via sessionsPerPa so they can be
-    // added to the demand side on like-for-like terms.
-    const weeklyOnCallPAs =
-      inp.theatreOnCallPAsPerWeek + inp.icuOnCallPAsPerWeek;
-    const annualOnCallSessionEquiv =
-      weeklyOnCallPAs * inp.sessionsPerPa * inp.weeksPerYear;
-
-    const weeklyDemand =
-      weeklySessionDemand + weeklyOnCallPAs * inp.sessionsPerPa;
-    const annualDemand = annualSessionDemand + annualOnCallSessionEquiv;
-
-    const leaveDays =
-      inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays;
-    const leaveWeeks = leaveDays / inp.workingDaysPerWeek;
-    const workingWeeks = Math.max(0, inp.weeksPerYear - leaveWeeks);
-
-    const weeklyClinicalSessions =
-      inp.dccPasPerConsultant * inp.sessionsPerPa;
-    const sicknessFactor = 1 - inp.sicknessRatePct / 100;
-    const annualSessionsPerConsultant =
-      weeklyClinicalSessions * workingWeeks * sicknessFactor;
-
-    const fteNeeded =
-      annualSessionsPerConsultant > 0
-        ? annualDemand / annualSessionsPerConsultant
-        : Infinity;
-
-    // ICU subgroup feasibility now includes ICU OOH cover (must also come
-    // from the ICU-trained pool) and the sickness derate baked into capacity.
-    const icuAnnualSessionDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
-    const icuAnnualOnCallEquiv =
-      inp.icuOnCallPAsPerWeek * inp.sessionsPerPa * inp.weeksPerYear;
-    const icuAnnualDemand = icuAnnualSessionDemand + icuAnnualOnCallEquiv;
-    const icuPoolAnnualCapacity =
-      inp.icuTrainedPoolSize * annualSessionsPerConsultant;
-    const icuPoolUtilisation =
-      icuPoolAnnualCapacity > 0
-        ? icuAnnualDemand / icuPoolAnnualCapacity
-        : Infinity;
-    const icuWeeklyLoad =
-      inp.icuSessionsPerWeek + inp.icuOnCallPAsPerWeek * inp.sessionsPerPa;
-    const icuSharePerConsultant =
-      inp.icuTrainedPoolSize > 0 && weeklyClinicalSessions > 0
-        ? icuWeeklyLoad / inp.icuTrainedPoolSize / weeklyClinicalSessions
-        : Infinity;
-
-    // Capacity-breakdown intermediates
-    const grossAnnualSessionsPerConsultant =
-      weeklyClinicalSessions * inp.weeksPerYear;
-    const leaveLostAnnualSessionsPerConsultant =
-      weeklyClinicalSessions * leaveWeeks;
-    const afterLeaveAnnualSessionsPerConsultant =
-      weeklyClinicalSessions * workingWeeks;
-    const sicknessLostAnnualSessionsPerConsultant =
-      afterLeaveAnnualSessionsPerConsultant - annualSessionsPerConsultant;
-    const annualOnCallBurdenPerConsultant =
-      fteNeeded > 0 && Number.isFinite(fteNeeded)
-        ? annualOnCallSessionEquiv / fteNeeded
-        : 0;
-    const residualListCapacityPerConsultant =
-      annualSessionsPerConsultant - annualOnCallBurdenPerConsultant;
-    const icuDemandPerConsultant =
-      inp.icuTrainedPoolSize > 0 ? icuAnnualDemand / inp.icuTrainedPoolSize : 0;
-    const icuResidualCapacityPerConsultant =
-      annualSessionsPerConsultant - icuDemandPerConsultant;
-
-    return {
-      theatreSessions,
-      weeklySessionDemand,
-      weeklyDemand,
-      annualDemand,
-      annualOnCallSessionEquiv,
-      weeklyOnCallPAs,
-      leaveWeeks,
-      workingWeeks,
-      weeklyClinicalSessions,
-      sicknessFactor,
-      annualSessionsPerConsultant,
-      fteNeeded,
-      icuAnnualDemand,
-      icuAnnualOnCallEquiv,
-      icuPoolAnnualCapacity,
-      icuPoolUtilisation,
-      icuSharePerConsultant,
-      grossAnnualSessionsPerConsultant,
-      leaveLostAnnualSessionsPerConsultant,
-      afterLeaveAnnualSessionsPerConsultant,
-      sicknessLostAnnualSessionsPerConsultant,
-      annualOnCallBurdenPerConsultant,
-      residualListCapacityPerConsultant,
-      icuDemandPerConsultant,
-      icuResidualCapacityPerConsultant,
-    };
-  }, [inp]);
+  const calc = useMemo(() => calculateFeasibility(inp), [inp]);
 
   const errors: FieldErrors = useMemo(() => {
     const result = InputsSchema.safeParse(inp);
