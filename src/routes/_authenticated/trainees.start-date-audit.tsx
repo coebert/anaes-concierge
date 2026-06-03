@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, AlertTriangle, RefreshCw, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useRef, useState } from "react";
 import { syncClwRotaLeave } from "@/lib/clwrota.functions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
