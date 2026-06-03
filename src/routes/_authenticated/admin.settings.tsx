@@ -771,7 +771,7 @@ function SettingsPage() {
   );
 }
 
-function InvestigateSoloCard() {
+export function InvestigateSoloCard() {
   const qc = useQueryClient();
   const investigate = useServerFn(investigateAndFixTraineeSolo);
   const [result, setResult] = useState<null | Awaited<
