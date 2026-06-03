@@ -221,12 +221,12 @@ describe("CLWRota integration → classifyLeaveOverlap (missing/null status → 
   it("does NOT mis-classify mixed batches: real statuses stay counted, missing ones become unknown", async () => {
     mockFetchOnceWith(
       JSON.stringify([
-        { "person.email": "a@x", "leave_request.state": "approved" },
-        { "person.email": "b@x" /* missing */ },
-        { "person.email": "c@x", "leave_request.state": null },
-        { "person.email": "d@x", "leave_request.state": "pending" },
-        { "person.email": "e@x", "leave_request.state": "" },
-        { "person.email": "f@x", "leave_request.state": "cancelled" },
+        { person: { email: "a@x" }, leave_request: { state: "approved" } },
+        { person: { email: "b@x" } /* missing */ },
+        { person: { email: "c@x" }, leave_request: { state: null } },
+        { person: { email: "d@x" }, leave_request: { state: "pending" } },
+        { person: { email: "e@x" }, leave_request: { state: "" } },
+        { person: { email: "f@x" }, leave_request: { state: "cancelled" } },
       ]),
     );
     const statuses = await fetchAndExtractStatuses("https://clwrota.test/leave");
@@ -253,9 +253,9 @@ describe("CLWRota integration → classifyLeaveOverlap (missing/null status → 
     mockFetchOnceWith(
       JSON.stringify([
         // primary missing → falls back to submittal
-        { "leave_submittal.state": "approved" },
+        { leave_submittal: { state: "approved" } },
         // primary present but blank → fallback chain ignores blank, returns null
-        { "leave_request.state": "", "leave_submittal.state": "" },
+        { leave_request: { state: "" }, leave_submittal: { state: "" } },
         // every candidate missing → null → unknown
         {},
       ]),
@@ -267,6 +267,7 @@ describe("CLWRota integration → classifyLeaveOverlap (missing/null status → 
     expectUnknown(statuses[1]);
     expectUnknown(statuses[2]);
   });
+
 
   it("treats non-string status types (number, boolean) sanely — numbers stringify, but booleans/missing remain unknown", async () => {
     // Defensive: if an upstream change ever leaks a non-string status, we
