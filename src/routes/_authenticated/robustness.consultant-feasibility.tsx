@@ -28,6 +28,8 @@ const InputsSchema = z.object({
   sessionsPerTheatrePerWeek: z.number().min(0).max(21, "Max 21 (3/day × 7 days)"),
   labourWardSessionsPerWeek: z.number().min(0).max(21),
   consultantInChargeSessionsPerWeek: z.number().min(0).max(21),
+  painServiceSessionsPerWeek: z.number().min(0).max(50),
+  poacSessionsPerWeek: z.number().min(0).max(50),
   icuSessionsPerWeek: z.number().min(0).max(21),
   icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
   pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
@@ -57,6 +59,8 @@ const DEFAULTS: Inputs = {
   sessionsPerTheatrePerWeek: 10,
   labourWardSessionsPerWeek: 10,
   consultantInChargeSessionsPerWeek: 10,
+  painServiceSessionsPerWeek: 5,
+  poacSessionsPerWeek: 5,
   icuSessionsPerWeek: 10,
   icuTrainedPoolSize: 10,
   pasPerConsultant: 10,
@@ -191,6 +195,8 @@ function ConsultantFeasibilityPage() {
             <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.sessionsPerTheatrePerWeek} />
             <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} error={errors.labourWardSessionsPerWeek} />
             <Field label="Consultant-in-charge sess / wk" value={inp.consultantInChargeSessionsPerWeek} onChange={set("consultantInChargeSessionsPerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.consultantInChargeSessionsPerWeek} />
+            <Field label="Pain service sess / wk" value={inp.painServiceSessionsPerWeek} step="0.5" onChange={set("painServiceSessionsPerWeek")} hint="Acute pain + pain clinics" error={errors.painServiceSessionsPerWeek} />
+            <Field label="POAC sess / wk" value={inp.poacSessionsPerWeek} step="0.5" onChange={set("poacSessionsPerWeek")} hint="Pre-op assessment" error={errors.poacSessionsPerWeek} />
             <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} error={errors.icuSessionsPerWeek} />
             <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} error={errors.icuTrainedPoolSize} />
           </CardContent>
@@ -344,6 +350,8 @@ function ConsultantFeasibilityPage() {
                 Weekly session demand = {calc.theatreSessions} theatre +{" "}
                 {inp.labourWardSessionsPerWeek} labour ward +{" "}
                 {inp.consultantInChargeSessionsPerWeek} consultant-in-charge +{" "}
+                {inp.painServiceSessionsPerWeek} pain +{" "}
+                {inp.poacSessionsPerWeek} POAC +{" "}
                 {inp.icuSessionsPerWeek} ICU ={" "}
                 <strong>{calc.weeklySessionDemand}</strong>
               </li>

@@ -7,6 +7,8 @@ export interface FeasibilityInputs {
   sessionsPerTheatrePerWeek: number;
   labourWardSessionsPerWeek: number;
   consultantInChargeSessionsPerWeek: number;
+  painServiceSessionsPerWeek: number;
+  poacSessionsPerWeek: number;
   icuSessionsPerWeek: number;
   icuTrainedPoolSize: number;
   pasPerConsultant: number;
@@ -58,6 +60,8 @@ export function calculateFeasibility(inp: FeasibilityInputs): FeasibilityResult 
     theatreSessions +
     inp.labourWardSessionsPerWeek +
     inp.consultantInChargeSessionsPerWeek +
+    inp.painServiceSessionsPerWeek +
+    inp.poacSessionsPerWeek +
     inp.icuSessionsPerWeek;
   const annualSessionDemand = weeklySessionDemand * inp.weeksPerYear;
 
@@ -156,6 +160,8 @@ export const FEASIBILITY_DEFAULTS: FeasibilityInputs = {
   sessionsPerTheatrePerWeek: 10,
   labourWardSessionsPerWeek: 10,
   consultantInChargeSessionsPerWeek: 10,
+  painServiceSessionsPerWeek: 5,
+  poacSessionsPerWeek: 5,
   icuSessionsPerWeek: 10,
   icuTrainedPoolSize: 10,
   pasPerConsultant: 10,
