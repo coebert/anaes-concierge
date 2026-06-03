@@ -109,6 +109,78 @@ export type Database = {
           },
         ]
       }
+      clwrota_sync_metrics: {
+        Row: {
+          chunks_fell_back_to_per_row: number
+          chunks_succeeded_after_retry: number
+          chunks_succeeded_first_try: number
+          chunks_total: number
+          duration_ms: number | null
+          errors_count: number
+          id: string
+          notes: string | null
+          ok: boolean
+          per_row_attempts: number
+          per_row_failed: number
+          per_row_succeeded: number
+          rows_drafted: number
+          rows_failed: number
+          rows_pulled: number
+          rows_skipped_validation: number
+          rows_upserted: number
+          run_at: string
+          sync_kind: string
+          upsert_attempts_total: number
+          upsert_retries_total: number
+        }
+        Insert: {
+          chunks_fell_back_to_per_row?: number
+          chunks_succeeded_after_retry?: number
+          chunks_succeeded_first_try?: number
+          chunks_total?: number
+          duration_ms?: number | null
+          errors_count?: number
+          id?: string
+          notes?: string | null
+          ok: boolean
+          per_row_attempts?: number
+          per_row_failed?: number
+          per_row_succeeded?: number
+          rows_drafted?: number
+          rows_failed?: number
+          rows_pulled?: number
+          rows_skipped_validation?: number
+          rows_upserted?: number
+          run_at?: string
+          sync_kind: string
+          upsert_attempts_total?: number
+          upsert_retries_total?: number
+        }
+        Update: {
+          chunks_fell_back_to_per_row?: number
+          chunks_succeeded_after_retry?: number
+          chunks_succeeded_first_try?: number
+          chunks_total?: number
+          duration_ms?: number | null
+          errors_count?: number
+          id?: string
+          notes?: string | null
+          ok?: boolean
+          per_row_attempts?: number
+          per_row_failed?: number
+          per_row_succeeded?: number
+          rows_drafted?: number
+          rows_failed?: number
+          rows_pulled?: number
+          rows_skipped_validation?: number
+          rows_upserted?: number
+          run_at?: string
+          sync_kind?: string
+          upsert_attempts_total?: number
+          upsert_retries_total?: number
+        }
+        Relationships: []
+      }
       clwrota_sync_state: {
         Row: {
           auto_reclassify_trainee_solo: boolean

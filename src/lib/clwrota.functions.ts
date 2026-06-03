@@ -2004,8 +2004,38 @@ export const syncClwRotaLeave = createServerFn({ method: "POST" })
     return performLeaveSync();
   });
 
+/**
+ * List recent CLWRota sync metric rows for the admin reliability dashboard.
+ * Default window 30 days; capped at 365.
+ */
+export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      days: z.coerce.number().int().min(1).max(365).default(30),
+      sync_kind: z.enum(["leave", "rota", "staff", "all"]).default("all"),
+    }).parse(input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
+    let q = supabaseAdmin
+      .from("clwrota_sync_metrics")
+      .select("*")
+      .gte("run_at", since)
+      .order("run_at", { ascending: true })
+      .limit(5000);
+    if (data.sync_kind !== "all") q = q.eq("sync_kind", data.sync_kind);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return { rows: rows ?? [], days: data.days, sync_kind: data.sync_kind };
+  });
+
+
 export async function performLeaveSync() {
+  const startedAt = Date.now();
   const { apiKey } = getEnv();
+
 
   // Pre-sync count for the historical-data safeguard.
   const { count: preCount, error: preCountErr } = await supabaseAdmin
@@ -2355,6 +2385,41 @@ export async function performLeaveSync() {
     }),
   );
 
+  const durationMs = Date.now() - startedAt;
+
+  // Persist a metrics row per run so the admin dashboard can chart
+  // reliability over time (retries, fallbacks, failures). Best-effort:
+  // a failure here must not break the sync result.
+  const { error: metricsInsertErr } = await supabaseAdmin
+    .from("clwrota_sync_metrics")
+    .insert({
+      sync_kind: "leave",
+      run_at: new Date().toISOString(),
+      ok: errors.length === 0,
+      duration_ms: durationMs,
+      rows_pulled: metrics.rows_pulled,
+      rows_drafted: metrics.rows_drafted,
+      rows_upserted: metrics.rows_upserted,
+      rows_failed: metrics.rows_failed,
+      rows_skipped_validation: metrics.rows_skipped_validation,
+      chunks_total: metrics.chunks_total,
+      chunks_succeeded_first_try: metrics.chunks_succeeded_first_try,
+      chunks_succeeded_after_retry: metrics.chunks_succeeded_after_retry,
+      chunks_fell_back_to_per_row: metrics.chunks_fell_back_to_per_row,
+      per_row_attempts: metrics.per_row_attempts,
+      per_row_succeeded: metrics.per_row_succeeded,
+      per_row_failed: metrics.per_row_failed,
+      upsert_attempts_total: metrics.upsert_attempts_total,
+      upsert_retries_total: metrics.upsert_retries_total,
+      errors_count: errors.length,
+      notes: errors.length
+        ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
+        : null,
+    });
+  if (metricsInsertErr) {
+    console.warn("[clwrota] failed to insert sync metrics:", metricsInsertErr.message);
+  }
+
   await supabaseAdmin.from("clwrota_sync_state").upsert({
     id: 1,
     last_sync_at: new Date().toISOString(),
@@ -2364,6 +2429,7 @@ export async function performLeaveSync() {
       : summary,
     last_pulled_rows: rows.length,
   });
+
 
   return {
     ok: errors.length === 0,
