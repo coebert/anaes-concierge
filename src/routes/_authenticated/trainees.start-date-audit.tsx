@@ -211,6 +211,15 @@ function AuditPage() {
                     </div>
                   </div>
 
+                  {t.leave_source_warnings.length > 0 ? (
+                    <ul className="list-disc space-y-0.5 rounded border border-destructive/30 bg-destructive/5 pl-5 py-1.5 text-xs text-destructive">
+                      {t.leave_source_warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+
                   {t.leave_rows.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic">
                       No leave records overlap the window.
