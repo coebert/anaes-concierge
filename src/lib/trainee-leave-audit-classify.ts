@@ -8,10 +8,15 @@
  * Extracted so it can be unit-tested without pulling in Supabase / the
  * server runtime.
  */
-export function classifyLeaveOverlap(status: string): {
+export function classifyLeaveOverlap(
+  status: string | null | undefined,
+): {
   counted: boolean;
   reason: string;
 } {
+  if (status == null) {
+    return { counted: false, reason: "Unknown status — ignored" };
+  }
   const s = status.toLowerCase();
   if (s === "approved")
     return { counted: true, reason: "Approved — blocks not-yet-started" };
