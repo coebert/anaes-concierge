@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "lint:fix-order": "node scripts/fix-use-before-define.mjs",
     "lint:fix-order:dry": "node scripts/fix-use-before-define.mjs --dry-run",
+    "lint:fix-order:check": "node scripts/fix-use-before-define.mjs --check",
     "format": "prettier --write ."
   },
   "dependencies": {
