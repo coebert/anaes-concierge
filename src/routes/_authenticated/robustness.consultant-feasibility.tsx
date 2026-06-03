@@ -381,18 +381,19 @@ function ConsultantFeasibilityPage() {
                   {(calc.icuPoolUtilisation * 100).toFixed(1)}% utilisation
                 </div>
                 <p className="text-muted-foreground">
-                  {inp.icuSessionsPerWeek} ICU sessions/week must be drawn from
+                  {inp.icuSessionsPerWeek} ICU sessions/week + {inp.icuOnCallPAsPerWeek} ICU on-call PAs/week must be drawn from
                   the {inp.icuTrainedPoolSize}-strong ICU-trained pool. Each
                   ICU-trained consultant would spend{" "}
                   <strong>
                     {(calc.icuSharePerConsultant * 100).toFixed(1)}%
                   </strong>{" "}
-                  of their clinical time on ICU, leaving the remainder for
-                  theatres / labour ward.
+                  of their clinical time on ICU + ICU on-call, leaving the
+                  remainder for theatres / labour ward.
                 </p>
                 <p className="text-muted-foreground">
                   Annual ICU demand{" "}
-                  {Math.round(calc.icuAnnualDemand).toLocaleString()} vs pool
+                  {Math.round(calc.icuAnnualDemand).toLocaleString()} (incl.{" "}
+                  {Math.round(calc.icuAnnualOnCallEquiv).toLocaleString()} on-call) vs pool
                   capacity{" "}
                   {Math.round(calc.icuPoolAnnualCapacity).toLocaleString()}{" "}
                   sessions/year.
