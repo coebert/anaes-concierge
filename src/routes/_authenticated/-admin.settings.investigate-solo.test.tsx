@@ -233,10 +233,10 @@ function renderCard() {
 describe("Admin → Settings → Investigate & fix now (e2e)", () => {
   beforeEach(() => {
     seedStore();
+    investigateMock.mockReset();
     investigateMock.mockImplementation(runInvestigate);
     toastSuccess.mockReset();
     toastError.mockReset();
-    // Auto-accept window.confirm() during the apply flow.
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
   afterEach(() => {
