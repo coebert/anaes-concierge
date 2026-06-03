@@ -67,13 +67,31 @@ function AuditPage() {
   const fetchAudit = useServerFn(getTraineeStartDateAudit);
   const retryLeaveSync = useServerFn(syncClwRotaLeave);
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["trainee-start-date-audit"],
     queryFn: () => fetchAudit(),
   });
 
+  // Snapshot data identity at the moment a retry starts, so we can detect
+  // if the audit query was refreshed (by another tab, background refetch,
+  // or a concurrent sync) while our retry was in flight. If the snapshot
+  // diverges from the current data, the warnings on screen may no longer
+  // match the underlying leave_sources state.
+  const retrySnapshotRef = useRef<{
+    dataUpdatedAt: number;
+    lastSyncAt: string | null;
+  } | null>(null);
+  const [staleDuringRetry, setStaleDuringRetry] = useState(false);
+
   const retry = useMutation({
     mutationFn: () => retryLeaveSync(),
+    onMutate: () => {
+      retrySnapshotRef.current = {
+        dataUpdatedAt,
+        lastSyncAt: data?.leave_sources.clwrota_last_sync_at ?? null,
+      };
+      setStaleDuringRetry(false);
+    },
     onSuccess: (res: unknown) => {
       const r = res as { status?: string; error?: string | null } | null;
       if (r?.status && r.status !== "ok") {
@@ -86,7 +104,25 @@ function AuditPage() {
     onError: (e: unknown) => {
       toast.error(`Leave sync failed: ${(e as Error).message}`);
     },
+    onSettled: () => {
+      retrySnapshotRef.current = null;
+    },
   });
+
+  // While a retry is pending, detect any change to the underlying audit
+  // data (a new dataUpdatedAt or a new clwrota_last_sync_at means another
+  // process touched leave_sources). Surface that as a non-blocking warning.
+  if (
+    retry.isPending &&
+    retrySnapshotRef.current &&
+    data &&
+    (dataUpdatedAt !== retrySnapshotRef.current.dataUpdatedAt ||
+      (data.leave_sources.clwrota_last_sync_at ?? null) !==
+        retrySnapshotRef.current.lastSyncAt) &&
+    !staleDuringRetry
+  ) {
+    setStaleDuringRetry(true);
+  }
 
   return (
     <div className="space-y-4">
