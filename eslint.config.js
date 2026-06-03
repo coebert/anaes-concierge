@@ -34,6 +34,25 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Flag using a value/class/component before its definition appears in
+      // the file. Function declarations are hoisted at runtime, but relying
+      // on that for React components hides ordering bugs and produces hard-
+      // to-read files (and triggers TS2304 mid-edit). Functions are still
+      // allowed because component definitions are typically `function Foo()`
+      // and we want the rule to fire on variables/classes/enums that aren't
+      // hoisted at all.
+      "no-use-before-define": "off",
+      "@typescript-eslint/no-use-before-define": [
+        "error",
+        {
+          functions: false,
+          classes: true,
+          variables: true,
+          enums: true,
+          typedefs: false,
+          ignoreTypeReferences: true,
+        },
+      ],
     },
   },
   eslintPluginPrettier,
