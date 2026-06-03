@@ -53,32 +53,50 @@ export const listStaffByIdsSafe = createServerFn({ method: "POST" })
     return (rows ?? []) as SafeStaff[];
   });
 
-async function assertAdminOrTrainee(supabase: any, userId: string) {
-  const [{ data: role }, { data: profile }] = await Promise.all([
-    supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
+async function getCallerAccess(
+  supabase: any,
+  userId: string,
+): Promise<{ isAdmin: boolean; isCoordinator: boolean; isTrainee: boolean }> {
+  const [{ data: roles }, { data: profile }] = await Promise.all([
+    supabase.from("user_roles").select("role").eq("user_id", userId),
     supabase.from("profiles").select("grade").eq("id", userId).maybeSingle(),
   ]);
-  if (!role && profile?.grade !== "trainee") {
-    throw new Error("Forbidden: trainee data is restricted.");
-  }
+  const roleSet = new Set((roles ?? []).map((r: { role: string }) => r.role));
+  return {
+    isAdmin: roleSet.has("admin"),
+    isCoordinator: roleSet.has("rota_coordinator"),
+    isTrainee: profile?.grade === "trainee",
+  };
 }
 
-/** Trainee overview list (includes email — admins or trainees only). */
+async function assertAdminOrTrainee(supabase: any, userId: string) {
+  const access = await getCallerAccess(supabase, userId);
+  if (!access.isAdmin && !access.isCoordinator && !access.isTrainee) {
+    throw new Error("Forbidden: trainee data is restricted.");
+  }
+  return access;
+}
+
+/** Trainee overview list. Email is included only for admins/coordinators. */
 export const listTraineesForOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdminOrTrainee(context.supabase, context.userId);
+    const access = await assertAdminOrTrainee(context.supabase, context.userId);
+    const canSeeEmail = access.isAdmin || access.isCoordinator;
+    const cols = canSeeEmail
+      ? "id,full_name,email,training_level,active,start_date,rotation_end_date,grade"
+      : "id,full_name,training_level,active,start_date,rotation_end_date,grade";
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade")
+      .select(cols)
       .eq("grade", "trainee")
       .eq("active", true)
       .order("full_name");
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return (data ?? []).map((row: any) => ({ email: null, ...row }));
   });
 
-/** Single trainee profile + supervisor name lookups (admins or trainees only). */
+/** Single trainee profile + supervisor name lookups. Email visible to admins/coordinators or the trainee themselves. */
 export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
@@ -90,11 +108,16 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdminOrTrainee(context.supabase, context.userId);
+    const access = await assertAdminOrTrainee(context.supabase, context.userId);
+    const canSeeEmail =
+      access.isAdmin || access.isCoordinator || context.userId === data.staffId;
+    const cols = canSeeEmail
+      ? "id,full_name,email,training_level,grade,start_date"
+      : "id,full_name,training_level,grade,start_date";
     const [{ data: profile, error: e1 }, supRes] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id,full_name,email,training_level,grade,start_date")
+        .select(cols)
         .eq("id", data.staffId)
         .maybeSingle(),
       data.supervisorIds.length
@@ -103,5 +126,7 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     ]);
     if (e1) throw new Error(e1.message);
     if ("error" in supRes && supRes.error) throw new Error(supRes.error.message);
-    return { profile, supervisors: supRes.data ?? [] };
+    const safeProfile = profile ? { email: null, ...profile } : profile;
+    return { profile: safeProfile, supervisors: supRes.data ?? [] };
   });
+
