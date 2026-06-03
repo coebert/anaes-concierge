@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { z } from "zod";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
@@ -8,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, Calculator, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  ChevronLeft, Calculator, AlertTriangle, CheckCircle2, Info,
+} from "lucide-react";
 
 export const Route = createFileRoute(
   "/_authenticated/robustness/consultant-feasibility",
@@ -16,22 +20,31 @@ export const Route = createFileRoute(
   component: ConsultantFeasibilityPage,
 });
 
-type Inputs = {
-  mainTheatres: number;
-  daySurgeryTheatres: number;
-  sessionsPerTheatrePerWeek: number; // AM/PM Mon-Fri = 10
-  labourWardSessionsPerWeek: number;
-  icuSessionsPerWeek: number;
-  icuTrainedPoolSize: number;
-  pasPerConsultant: number;
-  dccPasPerConsultant: number; // clinical PAs; rest is SPA
-  sessionsPerPa: number;
-  annualLeaveDays: number;
-  studyLeaveDays: number;
-  bankHolidayDays: number;
-  weeksPerYear: number;
-  workingDaysPerWeek: number; // for converting leave days -> weeks
-};
+// Per-field bounds. Kept generous but enough to catch typos / nonsense.
+const InputsSchema = z.object({
+  mainTheatres: z.number().int("Whole number").min(0).max(50),
+  daySurgeryTheatres: z.number().int("Whole number").min(0).max(50),
+  sessionsPerTheatrePerWeek: z.number().min(0).max(21, "Max 21 (3/day × 7 days)"),
+  labourWardSessionsPerWeek: z.number().min(0).max(21),
+  icuSessionsPerWeek: z.number().min(0).max(21),
+  icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
+  pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
+  dccPasPerConsultant: z.number().min(0).max(15),
+  sessionsPerPa: z.number().min(0.1, "Must be > 0").max(2, "Max 2 sessions/PA"),
+  annualLeaveDays: z.number().min(0).max(70),
+  studyLeaveDays: z.number().min(0).max(40),
+  bankHolidayDays: z.number().min(0).max(20),
+  weeksPerYear: z.number().min(1).max(53),
+  workingDaysPerWeek: z.number().min(1, "Must be ≥ 1").max(7),
+}).refine((v) => v.dccPasPerConsultant <= v.pasPerConsultant, {
+  message: "DCC PAs cannot exceed total PAs",
+  path: ["dccPasPerConsultant"],
+});
+
+type Inputs = z.infer<typeof InputsSchema>;
+type FieldErrors = Partial<Record<keyof Inputs, string>>;
+
+
 
 const DEFAULTS: Inputs = {
   mainTheatres: 10,
@@ -106,13 +119,27 @@ function ConsultantFeasibilityPage() {
     };
   }, [inp]);
 
+  const errors: FieldErrors = useMemo(() => {
+    const result = InputsSchema.safeParse(inp);
+    if (result.success) return {};
+    const out: FieldErrors = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path[0] as keyof Inputs | undefined;
+      if (key && !out[key]) out[key] = issue.message;
+    }
+    return out;
+  }, [inp]);
+  const hasErrors = Object.keys(errors).length > 0;
+
   const set = <K extends keyof Inputs>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = Number(e.target.value);
+      const raw = e.target.value;
+      const v = raw === "" ? 0 : Number(raw);
       setInp((prev) => ({ ...prev, [key]: Number.isFinite(v) ? v : 0 }));
     };
 
   const icuFeasible = calc.icuPoolUtilisation <= 1;
+
 
   return (
     <div className="space-y-6">
@@ -139,6 +166,53 @@ function ConsultantFeasibilityPage() {
         </Button>
       </header>
 
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Info className="h-4 w-4 text-primary" />
+            How this calculation works
+          </CardTitle>
+          <CardDescription>
+            Every figure on the page is derived from these explicit rules — change any input to see the effect.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm">
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Demand</strong> = (main + day-surgery theatres) × sessions/theatre/week + labour-ward sessions/week + ICU sessions/week.
+            </li>
+            <li>
+              <strong className="text-foreground">A "session"</strong> is a half-day list (AM or PM). Mon–Fri AM+PM = 10 sessions/theatre/week.
+            </li>
+            <li>
+              <strong className="text-foreground">Per-consultant capacity</strong>: only DCC PAs count toward clinical sessions (SPA time excluded). Sessions/week = DCC PAs × sessions per PA.
+            </li>
+            <li>
+              <strong className="text-foreground">Leave treatment</strong>: annual + study + bank-holiday days are summed and divided by working-days/week to convert into weeks lost. Working weeks/year = weeks/year − leave weeks.
+            </li>
+            <li>
+              <strong className="text-foreground">FTE needed</strong> = annual demand ÷ (weekly clinical sessions × working weeks/year). Headcount is the FTE rounded up.
+            </li>
+            <li>
+              <strong className="text-foreground">ICU subgroup check</strong>: ICU sessions can only be drawn from the ICU-trained pool. Pool utilisation = ICU annual demand ÷ (pool size × per-consultant annual capacity). Must be ≤ 100% to be feasible.
+            </li>
+            <li>
+              <strong className="text-foreground">Not modelled</strong>: sickness, on-call/night cover, parental leave, fixed sessions, LTFT, weekend lists, cross-cover for absences.
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
+
+      {hasErrors && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Check your inputs</AlertTitle>
+          <AlertDescription>
+            One or more values are out of range. The result below is hidden until they are corrected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -148,12 +222,12 @@ function ConsultantFeasibilityPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            <Field label="Main theatres" value={inp.mainTheatres} onChange={set("mainTheatres")} />
-            <Field label="Day-surgery theatres" value={inp.daySurgeryTheatres} onChange={set("daySurgeryTheatres")} />
-            <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" />
-            <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} />
-            <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} />
-            <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} />
+            <Field label="Main theatres" value={inp.mainTheatres} onChange={set("mainTheatres")} error={errors.mainTheatres} />
+            <Field label="Day-surgery theatres" value={inp.daySurgeryTheatres} onChange={set("daySurgeryTheatres")} error={errors.daySurgeryTheatres} />
+            <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.sessionsPerTheatrePerWeek} />
+            <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} error={errors.labourWardSessionsPerWeek} />
+            <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} error={errors.icuSessionsPerWeek} />
+            <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} error={errors.icuTrainedPoolSize} />
           </CardContent>
         </Card>
 
@@ -165,18 +239,21 @@ function ConsultantFeasibilityPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            <Field label="PAs / week (total)" value={inp.pasPerConsultant} step="0.5" onChange={set("pasPerConsultant")} />
-            <Field label="DCC PAs / week" value={inp.dccPasPerConsultant} step="0.5" onChange={set("dccPasPerConsultant")} hint="Clinical, excludes SPA" />
-            <Field label="Sessions / PA" value={inp.sessionsPerPa} step="0.5" onChange={set("sessionsPerPa")} />
-            <Field label="Annual leave (days)" value={inp.annualLeaveDays} onChange={set("annualLeaveDays")} />
-            <Field label="Study leave (days)" value={inp.studyLeaveDays} onChange={set("studyLeaveDays")} />
-            <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} />
-            <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} />
-            <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} />
+            <Field label="PAs / week (total)" value={inp.pasPerConsultant} step="0.5" onChange={set("pasPerConsultant")} hint="Standard NHS contract = 10" error={errors.pasPerConsultant} />
+            <Field label="DCC PAs / week" value={inp.dccPasPerConsultant} step="0.5" onChange={set("dccPasPerConsultant")} hint="Clinical, excludes SPA" error={errors.dccPasPerConsultant} />
+            <Field label="Sessions / PA" value={inp.sessionsPerPa} step="0.5" onChange={set("sessionsPerPa")} hint="1 PA = 1 half-day list" error={errors.sessionsPerPa} />
+            <Field label="Annual leave (days)" value={inp.annualLeaveDays} onChange={set("annualLeaveDays")} error={errors.annualLeaveDays} />
+            <Field label="Study leave (days)" value={inp.studyLeaveDays} onChange={set("studyLeaveDays")} error={errors.studyLeaveDays} />
+            <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} error={errors.bankHolidayDays} />
+            <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} error={errors.weeksPerYear} />
+            <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} hint="Used to convert leave days → weeks" error={errors.workingDaysPerWeek} />
           </CardContent>
         </Card>
       </div>
 
+
+
+      {!hasErrors && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Result</CardTitle>
@@ -315,18 +392,20 @@ function ConsultantFeasibilityPage() {
           </details>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
 
 function Field({
-  label, value, onChange, step, hint,
+  label, value, onChange, step, hint, error,
 }: {
   label: string;
   value: number;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   step?: string;
   hint?: string;
+  error?: string;
 }) {
   return (
     <div className="space-y-1">
@@ -338,14 +417,21 @@ function Field({
         min={0}
         value={value}
         onChange={onChange}
-        className="h-9"
+        aria-invalid={!!error}
+        className={
+          "h-9 " +
+          (error ? "border-destructive focus-visible:ring-destructive" : "")
+        }
       />
-      {hint && (
+      {error ? (
+        <p className="text-[11px] text-destructive">{error}</p>
+      ) : hint ? (
         <p className="text-[11px] text-muted-foreground">{hint}</p>
-      )}
+      ) : null}
     </div>
   );
 }
+
 
 function Stat({
   label, value, sub,
