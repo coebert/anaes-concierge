@@ -199,6 +199,7 @@ function ConsultantFeasibilityPage() {
             <Field label="Consultant-in-charge sess / wk" value={inp.consultantInChargeSessionsPerWeek} onChange={set("consultantInChargeSessionsPerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.consultantInChargeSessionsPerWeek} />
             <Field label="Pain service sess / wk" value={inp.painServiceSessionsPerWeek} step="0.5" onChange={set("painServiceSessionsPerWeek")} hint="Acute pain + pain clinics" error={errors.painServiceSessionsPerWeek} />
             <Field label="POAC sess / wk" value={inp.poacSessionsPerWeek} step="0.5" onChange={set("poacSessionsPerWeek")} hint="Pre-op assessment" error={errors.poacSessionsPerWeek} />
+            <Field label="Non-clinical PAs / wk" value={inp.nonClinicalPAsPerWeek} step="0.5" onChange={set("nonClinicalPAsPerWeek")} hint="Mgmt / governance / audit — deducted from clinical cover" error={errors.nonClinicalPAsPerWeek} />
             <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} error={errors.icuSessionsPerWeek} />
             <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} error={errors.icuTrainedPoolSize} />
           </CardContent>
