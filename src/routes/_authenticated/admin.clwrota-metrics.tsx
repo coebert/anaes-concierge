@@ -36,6 +36,7 @@ import {
 import { listClwRotaSyncMetrics } from "@/lib/clwrota.functions";
 import {
   isBackfillMetricRow,
+  parseListClwRotaSyncMetricsResponse,
   type ClwRotaSyncMetricRow,
 } from "@/lib/clwrota-metrics-types";
 import { formatDateGB } from "@/lib/utils";
@@ -77,10 +78,15 @@ function ClwRotaMetricsPage() {
 
   const query = useQuery({
     queryKey: ["clwrota-sync-metrics", days],
-    queryFn: () => listFn({ data: { days, sync_kind: "all" as const } }),
+    queryFn: async () => {
+      const raw = await listFn({ data: { days, sync_kind: "all" as const } });
+      // Re-validate at the client boundary: every row must carry a strict
+      // boolean `is_backfill` before any chart/table consumes it.
+      return parseListClwRotaSyncMetricsResponse(raw);
+    },
   });
 
-  const rows = (query.data?.rows ?? []) as MetricRow[];
+  const rows: MetricRow[] = query.data?.rows ?? [];
 
   // Aggregate per run-day for the trend charts. We sum across all sync_kind
   // values per day; the table below still shows per-run rows.
