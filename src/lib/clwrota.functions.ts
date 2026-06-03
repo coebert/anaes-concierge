@@ -1351,6 +1351,7 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
   });
 
 export async function performRotaSync() {
+    const startedAt = Date.now();
     const { apiKey } = getEnv();
 
     // --- Historical-data safeguard: record pre-sync counts ---------------
