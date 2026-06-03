@@ -413,83 +413,155 @@ const RowsWrapperSchema = z.union([
   z.record(z.unknown()), // generic wrapper — we'll probe known keys below
 ]);
 
-function parseRows(text: string): Record<string, unknown>[] {
+/**
+ * Defensively parse a CLWRota report body (JSON or CSV) into a row array.
+ *
+ * NEVER THROWS. A malformed upstream payload — invalid JSON, missing
+ * `columns`/`rows`/`data`, wrong types at the top level, unexpected
+ * nesting, or any runtime error during row zipping — yields
+ * `{ rows: [], parseError: <human-readable reason> }`. Callers should log
+ * `parseError` into `clwrota_sync_state.last_error` so admins see a clear
+ * diagnostic instead of a generic stack trace.
+ *
+ * Returning a structured result (rather than throwing or silently
+ * returning []) keeps the boundary explicit: every empty result can be
+ * traced back to either "upstream returned nothing" (`parseError: null`)
+ * or "upstream returned malformed data" (`parseError: "..."`).
+ */
+function parseRows(text: string): { rows: Record<string, unknown>[]; parseError: string | null } {
   // Try JSON first.
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
     // CSV fallback — naive parse (no quoted commas). Good enough for Rotamap reports.
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map((h) => h.trim());
-    return lines.slice(1).map((line) => {
-      const cells = line.split(",");
-      const obj: Record<string, unknown> = {};
-      headers.forEach((h, i) => {
-        obj[h] = cells[i]?.trim() ?? "";
-      });
-      return obj;
-    });
-  }
-
-  // Valid JSON — validate against a permissive top-level schema. If the
-  // payload isn't one of the shapes we know how to read, throw a clear error
-  // rather than silently returning [].
-  const validated = RowsWrapperSchema.safeParse(parsed);
-  if (!validated.success) {
-    throw new Error(
-      `Unrecognised CLWRota JSON shape (expected array, central_api object, or wrapped rows). ` +
-      `Details: ${validated.error.errors.slice(0, 3).map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`).join("; ")}`,
-    );
-  }
-
-  if (Array.isArray(validated.data)) return validated.data as Record<string, unknown>[];
-
-  const obj = validated.data as Record<string, unknown>;
-
-  // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
-  // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
-  // pick() lookups work.
-  const cols = obj["columns"];
-  const rowsRaw = obj["rows"];
-  if (
-    Array.isArray(cols) && cols.length > 0 &&
-    typeof cols[0] === "object" && cols[0] !== null &&
-    "field_name" in (cols[0] as Record<string, unknown>) &&
-    Array.isArray(rowsRaw)
-  ) {
-    const fieldNames = (cols as Array<Record<string, unknown>>).map(
-      (c) => String(c.field_name ?? ""),
-    );
-    if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
-      return rowsRaw as Record<string, unknown>[];
-    }
-    return (rowsRaw as unknown[]).map((r) => {
-      const out: Record<string, unknown> = {};
-      if (Array.isArray(r)) {
-        fieldNames.forEach((name, i) => {
-          if (name) out[name] = r[i];
-        });
+    try {
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length < 2) {
+        return {
+          rows: [],
+          parseError: text.trim().length === 0
+            ? "Empty response body"
+            : "Response is neither valid JSON nor a CSV with a header + ≥1 data row",
+        };
       }
-      return out;
-    });
-  }
-
-  // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] }, etc.
-  for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
-    if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[];
-  }
-  // Fallback: first array-valued property anywhere at the top level whose
-  // elements are non-array objects (avoids picking `columns` metadata).
-  for (const [k, v] of Object.entries(obj)) {
-    if (k === "columns") continue;
-    if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
-      return v as Record<string, unknown>[];
+      const headers = lines[0].split(",").map((h) => h.trim());
+      const rows = lines.slice(1).map((line) => {
+        const cells = line.split(",");
+        const obj: Record<string, unknown> = {};
+        headers.forEach((h, i) => {
+          obj[h] = cells[i]?.trim() ?? "";
+        });
+        return obj;
+      });
+      return { rows, parseError: null };
+    } catch (err) {
+      return {
+        rows: [],
+        parseError: `CSV fallback failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   }
-  return [];
+
+  // Valid JSON — validate against a permissive top-level schema. Unrecognised
+  // shapes are recorded as a parseError but never thrown.
+  try {
+    const validated = RowsWrapperSchema.safeParse(parsed);
+    if (!validated.success) {
+      return {
+        rows: [],
+        parseError:
+          `Unrecognised CLWRota JSON shape (expected array, central_api object, or wrapped rows). ` +
+          `Details: ${validated.error.errors
+            .slice(0, 3)
+            .map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`)
+            .join("; ")}`,
+      };
+    }
+
+    if (Array.isArray(validated.data)) {
+      // Filter out non-object entries defensively — a malformed payload may
+      // contain strings/numbers/null mixed into an otherwise-array shape.
+      const rows = (validated.data as unknown[]).filter(
+        (r): r is Record<string, unknown> =>
+          r !== null && typeof r === "object" && !Array.isArray(r),
+      );
+      return { rows, parseError: null };
+    }
+
+    const obj = validated.data as Record<string, unknown>;
+
+    // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
+    // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
+    // pick() lookups work.
+    const cols = obj["columns"];
+    const rowsRaw = obj["rows"];
+    if (
+      Array.isArray(cols) && cols.length > 0 &&
+      typeof cols[0] === "object" && cols[0] !== null &&
+      "field_name" in (cols[0] as Record<string, unknown>) &&
+      Array.isArray(rowsRaw)
+    ) {
+      const fieldNames = (cols as Array<Record<string, unknown>>).map(
+        (c) => String(c.field_name ?? ""),
+      );
+      if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
+        const rows = (rowsRaw as unknown[]).filter(
+          (r): r is Record<string, unknown> =>
+            r !== null && typeof r === "object" && !Array.isArray(r),
+        );
+        return { rows, parseError: null };
+      }
+      const rows = (rowsRaw as unknown[]).map((r) => {
+        const out: Record<string, unknown> = {};
+        if (Array.isArray(r)) {
+          fieldNames.forEach((name, i) => {
+            if (name) out[name] = r[i];
+          });
+        }
+        return out;
+      });
+      return { rows, parseError: null };
+    }
+
+    // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] }, etc.
+    for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
+      if (Array.isArray(obj[key])) {
+        const rows = (obj[key] as unknown[]).filter(
+          (r): r is Record<string, unknown> =>
+            r !== null && typeof r === "object" && !Array.isArray(r),
+        );
+        return { rows, parseError: null };
+      }
+    }
+    // Fallback: first array-valued property anywhere at the top level whose
+    // elements are non-array objects (avoids picking `columns` metadata).
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === "columns") continue;
+      if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
+        const rows = (v as unknown[]).filter(
+          (r): r is Record<string, unknown> =>
+            r !== null && typeof r === "object" && !Array.isArray(r),
+        );
+        return { rows, parseError: null };
+      }
+    }
+    return {
+      rows: [],
+      parseError:
+        "JSON parsed but no recognisable row container found " +
+        "(no top-level array, no central_api columns/rows, no data/rows/results/staff/people/items wrapper)",
+    };
+  } catch (err) {
+    // Last-resort safety net: any unexpected runtime error during shape
+    // detection / row zipping is captured rather than propagated.
+    return {
+      rows: [],
+      parseError: `Unexpected error parsing CLWRota payload: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
+
 
 
 function pick(row: Record<string, unknown>, keys: string[]): string | null {
@@ -561,10 +633,13 @@ export async function performStaffSync() {
     let rows: Record<string, unknown>[];
     let rawPreview = "";
     let sampleKeys: string[] = [];
+    let parseError: string | null = null;
     try {
       const text = await fetchReportRaw(url, apiKey);
       rawPreview = text.slice(0, 500);
-      rows = parseRows(text);
+      const parsed = parseRows(text);
+      rows = parsed.rows;
+      parseError = parsed.parseError;
       if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -578,13 +653,17 @@ export async function performStaffSync() {
     }
 
     if (rows.length === 0) {
+      const reason = parseError
+        ? `Staff URL returned no recognisable rows. ${parseError}. Response preview: ${rawPreview.slice(0, 200)}`
+        : `Staff URL returned no recognisable rows. Response preview: ${rawPreview.slice(0, 200)}`;
       await supabaseAdmin.from("clwrota_sync_state").upsert({
         id: 1,
         last_sync_at: new Date().toISOString(),
         last_status: "staff_no_rows",
-        last_error: `Staff URL returned no recognisable rows. Response preview: ${rawPreview.slice(0, 200)}`,
+        last_error: reason,
         last_pulled_rows: 0,
       });
+
       return {
         ok: false,
         message: "Staff URL returned 0 rows. See preview below.",
@@ -955,7 +1034,7 @@ async function fetchReport(url: string, apiKey: string) {
   // rows (handles Rotamap's {columns, rows} shape).
   let rows = 0;
   try {
-    rows = parseRows(text).length;
+    rows = parseRows(text).rows.length;
   } catch {
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
     rows = Math.max(0, lines.length - 1);
@@ -1280,12 +1359,15 @@ export async function performRotaSync() {
     let rows: Record<string, unknown>[];
     let rawPreview = "";
     let sampleKeys: string[] = [];
+    let parseError: string | null = null;
     try {
       const text = await fetchReportRaw(clampDateWindow(url, { daysBack, daysAhead }), apiKey);
 
 
       rawPreview = text.slice(0, 500);
-      rows = parseRows(text);
+      const parsed = parseRows(text);
+      rows = parsed.rows;
+      parseError = parsed.parseError;
       if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1299,13 +1381,17 @@ export async function performRotaSync() {
     }
 
     if (rows.length === 0) {
+      const reason = parseError
+        ? `Rota URL returned no recognisable rows. ${parseError}. Preview: ${rawPreview.slice(0, 200)}`
+        : `Rota URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`;
       await supabaseAdmin.from("clwrota_sync_state").upsert({
         id: 1,
         last_sync_at: new Date().toISOString(),
         last_status: "rota_no_rows",
-        last_error: `Rota URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`,
+        last_error: reason,
         last_pulled_rows: 0,
       });
+
       return {
         ...emptyResult,
         message: "Rota URL returned 0 rows. See preview below.",
@@ -1963,10 +2049,13 @@ export async function performLeaveSync() {
   let rows: Record<string, unknown>[];
   let rawPreview = "";
   let sampleKeys: string[] = [];
+  let parseError: string | null = null;
   try {
     const text = await fetchReportRaw(boundedUrl, apiKey);
     rawPreview = text.slice(0, 500);
-    rows = parseRows(text);
+    const parsed = parseRows(text);
+    rows = parsed.rows;
+    parseError = parsed.parseError;
     if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1980,15 +2069,19 @@ export async function performLeaveSync() {
   }
 
   if (rows.length === 0) {
+    const reason = parseError
+      ? `Leave URL returned no recognisable rows. ${parseError}. Preview: ${rawPreview.slice(0, 200)}`
+      : `Leave URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
       id: 1,
       last_sync_at: new Date().toISOString(),
       last_status: "leave_no_rows",
-      last_error: `Leave URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`,
+      last_error: reason,
       last_pulled_rows: 0,
     });
     return { ...emptyResult, message: "Leave URL returned 0 rows.", rawPreview, sampleKeys };
   }
+
 
   // Build staff lookup maps.
   const { data: profiles, error: profErr } = await supabaseAdmin
@@ -2021,74 +2114,87 @@ export async function performLeaveSync() {
   const draftsByExtId = new Map<string, LeaveDraft>();
 
   for (const row of rows) {
-    const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
-    const personExtId = pick(row, [
-      "person.local_id", "person.esr_employee_number", "person.assignment_number",
-      "person_id", "local_id", "staff_id", "user_id",
-    ]);
-    const personFirst = pick(row, ["person.first_name"]);
-    const personLast = pick(row, ["person.last_name"]);
-    const personName =
-      pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
-      ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+    // Defensive per-row try/catch: a single malformed row (unexpected nested
+    // shape, exotic value type) must never crash the whole sync. The row is
+    // recorded in `skipped` with a clear reason instead.
+    try {
+      const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
+      const personExtId = pick(row, [
+        "person.local_id", "person.esr_employee_number", "person.assignment_number",
+        "person_id", "local_id", "staff_id", "user_id",
+      ]);
+      const personFirst = pick(row, ["person.first_name"]);
+      const personLast = pick(row, ["person.last_name"]);
+      const personName =
+        pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
+        ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
 
-    const startRaw = pick(row, [
-      "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
-      "start_time", "date",
-    ]);
-    const endRaw = pick(row, [
-      "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
-      "end_time", "date",
-    ]);
-    const typeRaw = pick(row, [
-      "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
-      "absence_type", "type", "Type", "reason_category", "kind",
-    ]);
-    const statusRaw = pick(row, [
-      "leave_request.state", "leave_submittal.state",
-      "status.name", "status", "state", "Status", "approval_status",
-    ]);
-    const reasonText = pick(row, [
-      "leave_request.details", "leave_submittal.admin_notes",
-      "reason", "comment", "comments", "notes", "description", "Notes",
-    ]);
-    const externalId =
-      pick(row, ["leave_request.local_id", "id", "leave_id", "request_id", "external_id"]) ??
-      (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
+      const startRaw = pick(row, [
+        "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
+        "start_time", "date",
+      ]);
+      const endRaw = pick(row, [
+        "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
+        "end_time", "date",
+      ]);
+      const typeRaw = pick(row, [
+        "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
+        "absence_type", "type", "Type", "reason_category", "kind",
+      ]);
+      const statusRaw = pick(row, [
+        "leave_request.state", "leave_submittal.state",
+        "status.name", "status", "state", "Status", "approval_status",
+      ]);
+      const reasonText = pick(row, [
+        "leave_request.details", "leave_submittal.admin_notes",
+        "reason", "comment", "comments", "notes", "description", "Notes",
+      ]);
+      const externalId =
+        pick(row, ["leave_request.local_id", "id", "leave_id", "request_id", "external_id"]) ??
+        (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
 
 
-    const start_date = normaliseDate(startRaw);
-    const end_date = normaliseDate(endRaw);
-    const label = `${startRaw ?? "?"} → ${endRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
+      const start_date = normaliseDate(startRaw);
+      const end_date = normaliseDate(endRaw);
+      const label = `${startRaw ?? "?"} → ${endRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
 
-    if (!start_date) { skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` }); continue; }
-    if (!end_date)   { skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` }); continue; }
-    if (end_date < start_date) { skipped.push({ label, reason: `end_date < start_date` }); continue; }
-    if (!externalId) { skipped.push({ label, reason: "no stable external id" }); continue; }
+      if (!start_date) { skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` }); continue; }
+      if (!end_date)   { skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` }); continue; }
+      if (end_date < start_date) { skipped.push({ label, reason: `end_date < start_date` }); continue; }
+      if (!externalId) { skipped.push({ label, reason: "no stable external id" }); continue; }
 
-    let staffId: string | undefined;
-    if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
-    if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
-    if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
-    if (!staffId) {
-      unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
-      skipped.push({
-        label,
-        reason: `staff not found (email=${personEmail ?? "-"}, extId=${personExtId ?? "-"}, name=${personName ?? "-"})`,
+      let staffId: string | undefined;
+      if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
+      if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
+      if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
+      if (!staffId) {
+        unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
+        skipped.push({
+          label,
+          reason: `staff not found (email=${personEmail ?? "-"}, extId=${personExtId ?? "-"}, name=${personName ?? "-"})`,
+        });
+        continue;
+      }
+
+      draftsByExtId.set(externalId, {
+        staff_id: staffId,
+        type: classifyLeaveType(typeRaw, reasonText),
+        start_date,
+        end_date,
+        status: classifyLeaveStatus(statusRaw),
+        reason: reasonText,
+        clwrota_external_id: externalId,
       });
+    } catch (err) {
+      skipped.push({
+        label: "(malformed row)",
+        reason: `unexpected error processing row: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      console.warn("[clwrota] malformed leave row skipped:", err);
       continue;
     }
-
-    draftsByExtId.set(externalId, {
-      staff_id: staffId,
-      type: classifyLeaveType(typeRaw, reasonText),
-      start_date,
-      end_date,
-      status: classifyLeaveStatus(statusRaw),
-      reason: reasonText,
-      clwrota_external_id: externalId,
-    });
   }
+
 
   const drafts = Array.from(draftsByExtId.values());
 
