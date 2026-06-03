@@ -189,10 +189,10 @@ function collectStatementLists(sf) {
     }
     node.forEachChild((c) => visit(c, depth + 1));
   };
-  // Program is always first; deepest scopes processed first so edits don't
-  // invalidate outer offsets.
+  // Program scope only. Nested-block reordering is unsafe in general
+  // because identifiers in sibling statements can resolve to outer-scope
+  // bindings (shadowing); a same-name match would trigger a bogus move.
   lists.push({ stmts: sf.statements, depth: 0 });
-  sf.forEachChild((c) => visit(c, 1));
   return lists;
 }
 
