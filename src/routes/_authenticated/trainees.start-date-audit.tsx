@@ -64,9 +64,27 @@ function decisionBadge(decision: AuditTrainee["decision"]) {
 
 function AuditPage() {
   const fetchAudit = useServerFn(getTraineeStartDateAudit);
+  const retryLeaveSync = useServerFn(syncClwRotaLeave);
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["trainee-start-date-audit"],
     queryFn: () => fetchAudit(),
+  });
+
+  const retry = useMutation({
+    mutationFn: () => retryLeaveSync(),
+    onSuccess: (res: unknown) => {
+      const r = res as { status?: string; error?: string | null } | null;
+      if (r?.status && r.status !== "ok") {
+        toast.error(`Leave sync finished with status: ${r.status}${r.error ? ` — ${r.error}` : ""}`);
+      } else {
+        toast.success("CLWRota leave sync completed");
+      }
+      queryClient.invalidateQueries({ queryKey: ["trainee-start-date-audit"] });
+    },
+    onError: (e: unknown) => {
+      toast.error(`Leave sync failed: ${(e as Error).message}`);
+    },
   });
 
   return (
