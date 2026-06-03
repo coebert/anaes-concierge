@@ -34,18 +34,16 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
-      // Flag using a value/class/component before its definition appears in
-      // the file. Function declarations are hoisted at runtime, but relying
-      // on that for React components hides ordering bugs and produces hard-
-      // to-read files (and triggers TS2304 mid-edit). Functions are still
-      // allowed because component definitions are typically `function Foo()`
-      // and we want the rule to fire on variables/classes/enums that aren't
-      // hoisted at all.
+      // Flag using a name before its definition appears in the file.
+      // Function declarations are intentionally allowed (project convention
+      // puts small helper components below their parent), but variables,
+      // classes, and enums must be declared first — those are the cases
+      // that produce real TS2304 / TDZ failures and break mid-edit builds.
       "no-use-before-define": "off",
       "@typescript-eslint/no-use-before-define": [
         "error",
         {
-          functions: true,
+          functions: false,
           classes: true,
           variables: true,
           enums: true,
@@ -53,6 +51,15 @@ export default tseslint.config(
           ignoreTypeReferences: true,
         },
       ],
+    },
+  },
+  {
+    // shadcn-generated primitives in src/components/ui follow upstream
+    // ordering (sub-component used in parent, declared below). They're
+    // vendored verbatim — don't lint-flag them.
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-use-before-define": "off",
     },
   },
   eslintPluginPrettier,
