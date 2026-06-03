@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
 
 /**
  * Verification view for the "not yet started" decision.
@@ -62,22 +63,8 @@ function isoDateOffset(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function classifyStatus(status: string): {
-  counted: boolean;
-  reason: string;
-} {
-  if (status === "approved")
-    return { counted: true, reason: "Approved — blocks not-yet-started" };
-  if (status === "pending")
-    return { counted: true, reason: "Pending — blocks not-yet-started" };
-  if (status === "cancelled")
-    return { counted: false, reason: "Cancelled — ignored" };
-  if (status === "denied")
-    return { counted: false, reason: "Denied — ignored" };
-  if (status === "reserve")
-    return { counted: false, reason: "Reserve listed — ignored" };
-  return { counted: false, reason: `Status "${status}" — ignored` };
-}
+
+
 
 export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -127,7 +114,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     if (lErr) throw new Error(lErr.message);
     const leaveByStaff = new Map<string, AuditLeaveRow[]>();
     for (const r of leaveRows ?? []) {
-      const { counted, reason } = classifyStatus(r.status);
+      const { counted, reason } = classifyLeaveOverlap(r.status);
       const row: AuditLeaveRow = {
         id: r.id,
         start_date: r.start_date,
