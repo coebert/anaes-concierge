@@ -396,13 +396,14 @@ function ConsultantFeasibilityPage() {
 }
 
 function Field({
-  label, value, onChange, step, hint,
+  label, value, onChange, step, hint, error,
 }: {
   label: string;
   value: number;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   step?: string;
   hint?: string;
+  error?: string;
 }) {
   return (
     <div className="space-y-1">
@@ -414,14 +415,21 @@ function Field({
         min={0}
         value={value}
         onChange={onChange}
-        className="h-9"
+        aria-invalid={!!error}
+        className={
+          "h-9 " +
+          (error ? "border-destructive focus-visible:ring-destructive" : "")
+        }
       />
-      {hint && (
+      {error ? (
+        <p className="text-[11px] text-destructive">{error}</p>
+      ) : hint ? (
         <p className="text-[11px] text-muted-foreground">{hint}</p>
-      )}
+      ) : null}
     </div>
   );
 }
+
 
 function Stat({
   label, value, sub,
