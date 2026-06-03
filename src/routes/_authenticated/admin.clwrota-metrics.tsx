@@ -34,6 +34,10 @@ import {
   Legend,
 } from "recharts";
 import { listClwRotaSyncMetrics } from "@/lib/clwrota.functions";
+import {
+  isBackfillMetricRow,
+  type ClwRotaSyncMetricRow,
+} from "@/lib/clwrota-metrics-types";
 import { formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/clwrota-metrics")({
@@ -59,30 +63,7 @@ export const Route = createFileRoute("/_authenticated/admin/clwrota-metrics")({
   notFoundComponent: () => <div className="p-6">Page not found.</div>,
 });
 
-type MetricRow = {
-  id: string;
-  sync_kind: string;
-  run_at: string;
-  ok: boolean;
-  duration_ms: number | null;
-  rows_pulled: number;
-  rows_drafted: number;
-  rows_upserted: number;
-  rows_failed: number;
-  rows_skipped_validation: number;
-  chunks_total: number;
-  chunks_succeeded_first_try: number;
-  chunks_succeeded_after_retry: number;
-  chunks_fell_back_to_per_row: number;
-  per_row_attempts: number;
-  per_row_succeeded: number;
-  per_row_failed: number;
-  upsert_attempts_total: number;
-  upsert_retries_total: number;
-  errors_count: number;
-  notes: string | null;
-  is_backfill: boolean;
-};
+type MetricRow = ClwRotaSyncMetricRow;
 
 const WINDOW_OPTIONS = [
   { days: 7, label: "7d" },
@@ -330,7 +311,7 @@ function ClwRotaMetricsPage() {
                 </thead>
                 <tbody>
                   {rows.slice().reverse().slice(0, 50).map((r) => {
-                    const isBackfill = Boolean(r.is_backfill) || Boolean(r.notes?.startsWith("[BACKFILL"));
+                    const isBackfill = isBackfillMetricRow(r);
                     return (
                       <tr key={r.id} className={`border-t border-border ${isBackfill ? "bg-amber-50/40" : ""}`}>
                         <td className="py-1.5 pr-3 whitespace-nowrap">
