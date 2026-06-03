@@ -654,3 +654,46 @@ function Stat({
     </div>
   );
 }
+
+function CapacityRow({
+  label,
+  value,
+  suffix,
+  strong,
+  highlight,
+  muted,
+  accent,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  strong?: boolean;
+  highlight?: boolean;
+  muted?: boolean;
+  accent?: string;
+}) {
+  const isNegative = value < 0;
+  const displayValue = Math.abs(value).toFixed(1);
+  const valueClass = highlight
+    ? "text-primary font-semibold"
+    : strong
+      ? "font-semibold"
+      : muted
+        ? "text-muted-foreground"
+        : accent
+          ? accent
+          : "";
+
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className={muted ? "text-muted-foreground" : accent ? accent : ""}>
+        {label}
+      </span>
+      <span className={valueClass}>
+        {isNegative ? "−" : ""}
+        {displayValue}
+        {suffix ? ` ${suffix}` : ""}
+      </span>
+    </div>
+  );
+}
