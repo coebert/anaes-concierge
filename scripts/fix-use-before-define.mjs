@@ -197,21 +197,24 @@ function collectStatementLists(sf) {
   return [{ stmts: sf.statements, depth: 0 }];
 }
 
-function processFile(file) {
-  let src = readFileSync(file, "utf8");
+/**
+ * Pure entry point: take a source string + filename, return the rewritten
+ * source and the list of moves. No I/O. Used by the CLI below AND by the
+ * test suite in `scripts/fix-use-before-define.test.ts`.
+ */
+export function processSource(initialSrc, file) {
+  let src = initialSrc;
   let totalMoves = [];
 
-  // Run until stable, or up to 5 passes — multiple scopes may shift offsets
-  // and we re-parse between passes to stay correct.
+  // Run until stable, or up to 5 passes. We re-parse between passes so
+  // offsets stay consistent after edits.
   for (let pass = 0; pass < 5; pass++) {
     const sf = ts.createSourceFile(
       file, src, ts.ScriptTarget.Latest, true,
       file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
 
-    // Combine: program-scope (with imports-first), then each nested block.
     const lists = collectStatementLists(sf);
-    // Sort by start offset DESC so we patch from the end of the file backwards.
     lists.sort((a, b) => b.stmts[0].getFullStart() - a.stmts[0].getFullStart());
 
     // Skip imports-first in test files that intentionally interleave
@@ -219,21 +222,18 @@ function processFile(file) {
     // hoist mocks but the human-readable order is load-bearing for clarity.
     const skipImports = /\b(?:vi|jest)\.mock\s*\(/.test(src);
 
-    let edits = []; // { start, end, replacement, moves }
+    const edits = [];
     for (const { stmts } of lists) {
       const isProgram = stmts === sf.statements;
       const passes = [reorderStatements(stmts)];
       if (isProgram && !skipImports) passes.push(hoistImports(stmts));
-      // Fold passes: apply first, then re-derive order for the second.
       let order = stmts.map((_, i) => i);
       let moves = [];
       for (const p of passes) {
-        // Translate p.order (over original indices) by composing with `order`.
         const composed = p.order.map((i) => order[i]);
         order = composed;
         moves = moves.concat(p.moves);
       }
-      // No-op?
       const isIdentity = order.every((v, i) => v === i);
       if (isIdentity) continue;
       const start = stmts[0].getFullStart();
@@ -242,7 +242,6 @@ function processFile(file) {
     }
 
     if (edits.length === 0) break;
-    // Apply edits from highest start to lowest.
     edits.sort((a, b) => b.start - a.start);
     for (const e of edits) {
       src = src.slice(0, e.start) + e.replacement + src.slice(e.end);
@@ -250,24 +249,35 @@ function processFile(file) {
     }
   }
 
-  return { file, changed: totalMoves.length, moves: totalMoves, newSrc: src };
+  return { newSrc: src, moves: totalMoves };
 }
 
-let total = 0;
-for (const f of listFiles()) {
-  try {
-    const r = processFile(f);
-    if (r.changed === 0) continue;
-    const original = readFileSync(f, "utf8");
-    if (r.newSrc === original) continue;
-    total += r.changed;
-    const rel = relative(ROOT, f);
-    console.log(`${DRY ? "[dry] " : ""}${rel}: ${r.changed} move(s)`);
-    for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
-    if (!DRY) writeFileSync(f, r.newSrc, "utf8");
-  } catch (e) {
-    console.error(`SKIP ${relative(ROOT, f)}: ${e.message}`);
-  }
+function processFile(file) {
+  const src = readFileSync(file, "utf8");
+  const { newSrc, moves } = processSource(src, file);
+  return { file, changed: moves.length, moves, newSrc };
 }
-console.log(`\n${DRY ? "Would perform" : "Performed"} ${total} move(s).`);
-console.log("Re-run until output is 0, then: bun run lint && bunx tsc --noEmit");
+
+// CLI entry. Skip when imported (e.g. from the test suite).
+const invokedDirectly =
+  process.argv[1] && process.argv[1].endsWith("fix-use-before-define.mjs");
+if (invokedDirectly) {
+  let total = 0;
+  for (const f of listFiles()) {
+    try {
+      const r = processFile(f);
+      if (r.changed === 0) continue;
+      const original = readFileSync(f, "utf8");
+      if (r.newSrc === original) continue;
+      total += r.changed;
+      const rel = relative(ROOT, f);
+      console.log(`${DRY ? "[dry] " : ""}${rel}: ${r.changed} move(s)`);
+      for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
+      if (!DRY) writeFileSync(f, r.newSrc, "utf8");
+    } catch (e) {
+      console.error(`SKIP ${relative(ROOT, f)}: ${e.message}`);
+    }
+  }
+  console.log(`\n${DRY ? "Would perform" : "Performed"} ${total} move(s).`);
+  console.log("Re-run until output is 0, then: bun run lint && bunx tsc --noEmit");
+}
