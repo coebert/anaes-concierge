@@ -184,7 +184,6 @@ function AuditPage() {
               </AlertDescription>
             </Alert>
           ) : null}
-        <>
           {data.leave_sources.warnings.length > 0 ? (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
