@@ -45,7 +45,7 @@ export default tseslint.config(
       "@typescript-eslint/no-use-before-define": [
         "error",
         {
-          functions: false,
+          functions: true,
           classes: true,
           variables: true,
           enums: true,
