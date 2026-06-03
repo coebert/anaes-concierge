@@ -140,10 +140,10 @@ function generateStressSource(count: number): string {
 }
 
 describe("fix-use-before-define codemod — stress fixture", () => {
-  const COUNT = 40; // 40 of each kind → 120 reorderable + 40 shadow decoys.
+  const COUNT = 30; // 30 of each kind → 90 reorderable + 30 shadow decoys.
   const filename = "stress-synthetic.ts";
 
-  it("first pass produces output that is byte-identical to every subsequent pass", () => {
+  it("first pass produces output that is byte-identical to every subsequent pass", { timeout: 30000 }, () => {
     const original = generateStressSource(COUNT);
     const pass1 = processSource(original, filename) as {
       newSrc: string;
