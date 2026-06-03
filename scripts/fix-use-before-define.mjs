@@ -252,9 +252,22 @@ function hoistImports(stmts) {
  * [stmts[0].getFullStart(), stmts[stmts.length-1].getEnd()).
  */
 function rebuildSpan(src, stmts, order) {
-  return order
-    .map((idx) => src.slice(stmts[idx].getFullStart(), stmts[idx].getEnd()))
-    .join("");
+  const pieces = [];
+  for (let i = 0; i < order.length; i++) {
+    let piece = src.slice(stmts[order[i]].getFullStart(), stmts[order[i]].getEnd());
+    // When a statement that originally started the file (no leading trivia)
+    // moves after another statement, it can end up glued directly to the
+    // previous piece (e.g. `}export const ...`). Ensure at least one newline
+    // separates adjacent statements.
+    if (i > 0) {
+      const prev = pieces[pieces.length - 1];
+      const prevEndsWithNewline = /\n[ \t]*$/.test(prev);
+      const pieceStartsWithNewline = /^[ \t]*\n/.test(piece);
+      if (!prevEndsWithNewline && !pieceStartsWithNewline) piece = "\n" + piece;
+    }
+    pieces.push(piece);
+  }
+  return pieces.join("");
 }
 
 /** Collect every statement list we want to consider in a file. */
