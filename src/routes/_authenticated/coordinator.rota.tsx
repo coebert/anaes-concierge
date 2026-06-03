@@ -379,13 +379,6 @@ function RotaGridPage() {
   );
 }
 
-const DEFAULT_RULES: RotaRules = {
-  sessions_per_pa: 1,
-  max_sessions_per_week: 10,
-  max_consecutive_days: 7,
-  honour_fixed_sessions: true,
-  allow_back_to_back_oncall: false,
-};
 
 /* ----------------------- Cell dialog ----------------------- */
 
