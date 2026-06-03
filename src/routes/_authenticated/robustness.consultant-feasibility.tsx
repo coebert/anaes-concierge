@@ -27,6 +27,7 @@ const InputsSchema = z.object({
   daySurgeryTheatres: z.number().int("Whole number").min(0).max(50),
   sessionsPerTheatrePerWeek: z.number().min(0).max(21, "Max 21 (3/day × 7 days)"),
   labourWardSessionsPerWeek: z.number().min(0).max(21),
+  consultantInChargeSessionsPerWeek: z.number().min(0).max(21),
   icuSessionsPerWeek: z.number().min(0).max(21),
   icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
   pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
@@ -55,6 +56,7 @@ const DEFAULTS: Inputs = {
   daySurgeryTheatres: 3,
   sessionsPerTheatrePerWeek: 10,
   labourWardSessionsPerWeek: 10,
+  consultantInChargeSessionsPerWeek: 10,
   icuSessionsPerWeek: 10,
   icuTrainedPoolSize: 10,
   pasPerConsultant: 10,
@@ -188,6 +190,7 @@ function ConsultantFeasibilityPage() {
             <Field label="Day-surgery theatres" value={inp.daySurgeryTheatres} onChange={set("daySurgeryTheatres")} error={errors.daySurgeryTheatres} />
             <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.sessionsPerTheatrePerWeek} />
             <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} error={errors.labourWardSessionsPerWeek} />
+            <Field label="Consultant-in-charge sess / wk" value={inp.consultantInChargeSessionsPerWeek} onChange={set("consultantInChargeSessionsPerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.consultantInChargeSessionsPerWeek} />
             <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} error={errors.icuSessionsPerWeek} />
             <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} error={errors.icuTrainedPoolSize} />
           </CardContent>
