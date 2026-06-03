@@ -319,9 +319,11 @@ describe("computeSoloCorrections — integration: mixed realistic batch", () => 
       list.push(c.assignment_id);
       groups.set(key, list);
     }
-    expect(groups.get("cons-1")).toEqual(["ax2"]);
+    // ax2 is on ts-ortho-am which has BOTH cons-1 and cons-2 across the
+    // batch (ax1 + ax9), so proposed_supervisor_id is null -> "__none__".
+    expect(groups.get("__none__")).toEqual(["ax2"]);
+    // ax4 has only sas-1 on its session, so supervisor is unambiguous.
     expect(groups.get("sas-1")).toEqual(["ax4"]);
-    expect(groups.has("__none__")).toBe(false);
   });
 
   it("never flags locally_modified rows even in a mixed batch", () => {
