@@ -413,83 +413,155 @@ const RowsWrapperSchema = z.union([
   z.record(z.unknown()), // generic wrapper — we'll probe known keys below
 ]);
 
-function parseRows(text: string): Record<string, unknown>[] {
+/**
+ * Defensively parse a CLWRota report body (JSON or CSV) into a row array.
+ *
+ * NEVER THROWS. A malformed upstream payload — invalid JSON, missing
+ * `columns`/`rows`/`data`, wrong types at the top level, unexpected
+ * nesting, or any runtime error during row zipping — yields
+ * `{ rows: [], parseError: <human-readable reason> }`. Callers should log
+ * `parseError` into `clwrota_sync_state.last_error` so admins see a clear
+ * diagnostic instead of a generic stack trace.
+ *
+ * Returning a structured result (rather than throwing or silently
+ * returning []) keeps the boundary explicit: every empty result can be
+ * traced back to either "upstream returned nothing" (`parseError: null`)
+ * or "upstream returned malformed data" (`parseError: "..."`).
+ */
+function parseRows(text: string): { rows: Record<string, unknown>[]; parseError: string | null } {
   // Try JSON first.
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
     // CSV fallback — naive parse (no quoted commas). Good enough for Rotamap reports.
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map((h) => h.trim());
-    return lines.slice(1).map((line) => {
-      const cells = line.split(",");
-      const obj: Record<string, unknown> = {};
-      headers.forEach((h, i) => {
-        obj[h] = cells[i]?.trim() ?? "";
-      });
-      return obj;
-    });
-  }
-
-  // Valid JSON — validate against a permissive top-level schema. If the
-  // payload isn't one of the shapes we know how to read, throw a clear error
-  // rather than silently returning [].
-  const validated = RowsWrapperSchema.safeParse(parsed);
-  if (!validated.success) {
-    throw new Error(
-      `Unrecognised CLWRota JSON shape (expected array, central_api object, or wrapped rows). ` +
-      `Details: ${validated.error.errors.slice(0, 3).map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`).join("; ")}`,
-    );
-  }
-
-  if (Array.isArray(validated.data)) return validated.data as Record<string, unknown>[];
-
-  const obj = validated.data as Record<string, unknown>;
-
-  // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
-  // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
-  // pick() lookups work.
-  const cols = obj["columns"];
-  const rowsRaw = obj["rows"];
-  if (
-    Array.isArray(cols) && cols.length > 0 &&
-    typeof cols[0] === "object" && cols[0] !== null &&
-    "field_name" in (cols[0] as Record<string, unknown>) &&
-    Array.isArray(rowsRaw)
-  ) {
-    const fieldNames = (cols as Array<Record<string, unknown>>).map(
-      (c) => String(c.field_name ?? ""),
-    );
-    if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
-      return rowsRaw as Record<string, unknown>[];
-    }
-    return (rowsRaw as unknown[]).map((r) => {
-      const out: Record<string, unknown> = {};
-      if (Array.isArray(r)) {
-        fieldNames.forEach((name, i) => {
-          if (name) out[name] = r[i];
-        });
+    try {
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length < 2) {
+        return {
+          rows: [],
+          parseError: text.trim().length === 0
+            ? "Empty response body"
+            : "Response is neither valid JSON nor a CSV with a header + ≥1 data row",
+        };
       }
-      return out;
-    });
-  }
-
-  // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] }, etc.
-  for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
-    if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[];
-  }
-  // Fallback: first array-valued property anywhere at the top level whose
-  // elements are non-array objects (avoids picking `columns` metadata).
-  for (const [k, v] of Object.entries(obj)) {
-    if (k === "columns") continue;
-    if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
-      return v as Record<string, unknown>[];
+      const headers = lines[0].split(",").map((h) => h.trim());
+      const rows = lines.slice(1).map((line) => {
+        const cells = line.split(",");
+        const obj: Record<string, unknown> = {};
+        headers.forEach((h, i) => {
+          obj[h] = cells[i]?.trim() ?? "";
+        });
+        return obj;
+      });
+      return { rows, parseError: null };
+    } catch (err) {
+      return {
+        rows: [],
+        parseError: `CSV fallback failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   }
-  return [];
+
+  // Valid JSON — validate against a permissive top-level schema. Unrecognised
+  // shapes are recorded as a parseError but never thrown.
+  try {
+    const validated = RowsWrapperSchema.safeParse(parsed);
+    if (!validated.success) {
+      return {
+        rows: [],
+        parseError:
+          `Unrecognised CLWRota JSON shape (expected array, central_api object, or wrapped rows). ` +
+          `Details: ${validated.error.errors
+            .slice(0, 3)
+            .map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`)
+            .join("; ")}`,
+      };
+    }
+
+    if (Array.isArray(validated.data)) {
+      // Filter out non-object entries defensively — a malformed payload may
+      // contain strings/numbers/null mixed into an otherwise-array shape.
+      const rows = (validated.data as unknown[]).filter(
+        (r): r is Record<string, unknown> =>
+          r !== null && typeof r === "object" && !Array.isArray(r),
+      );
+      return { rows, parseError: null };
+    }
+
+    const obj = validated.data as Record<string, unknown>;
+
+    // Rotamap "central_api" shape: { columns: [{field_name, ui_name}, ...],
+    // rows: [[v1, v2, ...], ...] }. Zip into keyed objects so downstream
+    // pick() lookups work.
+    const cols = obj["columns"];
+    const rowsRaw = obj["rows"];
+    if (
+      Array.isArray(cols) && cols.length > 0 &&
+      typeof cols[0] === "object" && cols[0] !== null &&
+      "field_name" in (cols[0] as Record<string, unknown>) &&
+      Array.isArray(rowsRaw)
+    ) {
+      const fieldNames = (cols as Array<Record<string, unknown>>).map(
+        (c) => String(c.field_name ?? ""),
+      );
+      if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
+        const rows = (rowsRaw as unknown[]).filter(
+          (r): r is Record<string, unknown> =>
+            r !== null && typeof r === "object" && !Array.isArray(r),
+        );
+        return { rows, parseError: null };
+      }
+      const rows = (rowsRaw as unknown[]).map((r) => {
+        const out: Record<string, unknown> = {};
+        if (Array.isArray(r)) {
+          fieldNames.forEach((name, i) => {
+            if (name) out[name] = r[i];
+          });
+        }
+        return out;
+      });
+      return { rows, parseError: null };
+    }
+
+    // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] }, etc.
+    for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
+      if (Array.isArray(obj[key])) {
+        const rows = (obj[key] as unknown[]).filter(
+          (r): r is Record<string, unknown> =>
+            r !== null && typeof r === "object" && !Array.isArray(r),
+        );
+        return { rows, parseError: null };
+      }
+    }
+    // Fallback: first array-valued property anywhere at the top level whose
+    // elements are non-array objects (avoids picking `columns` metadata).
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === "columns") continue;
+      if (Array.isArray(v) && v.length && typeof v[0] === "object" && !Array.isArray(v[0])) {
+        const rows = (v as unknown[]).filter(
+          (r): r is Record<string, unknown> =>
+            r !== null && typeof r === "object" && !Array.isArray(r),
+        );
+        return { rows, parseError: null };
+      }
+    }
+    return {
+      rows: [],
+      parseError:
+        "JSON parsed but no recognisable row container found " +
+        "(no top-level array, no central_api columns/rows, no data/rows/results/staff/people/items wrapper)",
+    };
+  } catch (err) {
+    // Last-resort safety net: any unexpected runtime error during shape
+    // detection / row zipping is captured rather than propagated.
+    return {
+      rows: [],
+      parseError: `Unexpected error parsing CLWRota payload: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
+
 
 
 function pick(row: Record<string, unknown>, keys: string[]): string | null {
