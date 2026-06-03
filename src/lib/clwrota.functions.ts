@@ -2357,6 +2357,41 @@ export async function performLeaveSync() {
     }),
   );
 
+  const durationMs = Date.now() - startedAt;
+
+  // Persist a metrics row per run so the admin dashboard can chart
+  // reliability over time (retries, fallbacks, failures). Best-effort:
+  // a failure here must not break the sync result.
+  const { error: metricsInsertErr } = await supabaseAdmin
+    .from("clwrota_sync_metrics")
+    .insert({
+      sync_kind: "leave",
+      run_at: new Date().toISOString(),
+      ok: errors.length === 0,
+      duration_ms: durationMs,
+      rows_pulled: metrics.rows_pulled,
+      rows_drafted: metrics.rows_drafted,
+      rows_upserted: metrics.rows_upserted,
+      rows_failed: metrics.rows_failed,
+      rows_skipped_validation: metrics.rows_skipped_validation,
+      chunks_total: metrics.chunks_total,
+      chunks_succeeded_first_try: metrics.chunks_succeeded_first_try,
+      chunks_succeeded_after_retry: metrics.chunks_succeeded_after_retry,
+      chunks_fell_back_to_per_row: metrics.chunks_fell_back_to_per_row,
+      per_row_attempts: metrics.per_row_attempts,
+      per_row_succeeded: metrics.per_row_succeeded,
+      per_row_failed: metrics.per_row_failed,
+      upsert_attempts_total: metrics.upsert_attempts_total,
+      upsert_retries_total: metrics.upsert_retries_total,
+      errors_count: errors.length,
+      notes: errors.length
+        ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
+        : null,
+    });
+  if (metricsInsertErr) {
+    console.warn("[clwrota] failed to insert sync metrics:", metricsInsertErr.message);
+  }
+
   await supabaseAdmin.from("clwrota_sync_state").upsert({
     id: 1,
     last_sync_at: new Date().toISOString(),
@@ -2366,6 +2401,7 @@ export async function performLeaveSync() {
       : summary,
     last_pulled_rows: rows.length,
   });
+
 
   return {
     ok: errors.length === 0,
