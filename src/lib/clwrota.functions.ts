@@ -1852,6 +1852,8 @@ export async function performRotaSync() {
       const SUSPECT_CHUNK = 200;
       const suspectByStaff = new Map<string, { name: string; sessions: Set<string> }>();
       const suspectIds: string[] = [];
+      const suspectSupervisorByAssignment = new Map<string, string | null>();
+
       for (let i = 0; i < upsertedSessionIds.length; i += SUSPECT_CHUNK) {
         const chunk = upsertedSessionIds.slice(i, i + SUSPECT_CHUNK);
         const { data: rowsForCheck, error: checkErr } = await supabaseAdmin
