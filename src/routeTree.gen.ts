@@ -25,6 +25,7 @@ import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedRobustnessIndexRouteImport } from './routes/_authenticated/robustness.index'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as AuthenticatedTraineesStartDateAuditRouteImport } from './routes/_authenticated/trainees.start-date-audit'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
@@ -130,6 +131,12 @@ const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   path: '/api/public/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedTraineesStartDateAuditRoute =
+  AuthenticatedTraineesStartDateAuditRouteImport.update({
+    id: '/start-date-audit',
+    path: '/start-date-audit',
+    getParentRoute: () => AuthenticatedTraineesRoute,
+  } as any)
 const AuthenticatedTraineesStaffIdRoute =
   AuthenticatedTraineesStaffIdRouteImport.update({
     id: '/$staffId',
@@ -307,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
@@ -347,6 +355,7 @@ export interface FileRoutesByTo {
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/chat': typeof AuthenticatedChatIndexRoute
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
@@ -390,6 +399,7 @@ export interface FileRoutesById {
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
+  '/_authenticated/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/robustness/list-feasibility'
     | '/robustness/simulate'
     | '/trainees/$staffId'
+    | '/trainees/start-date-audit'
     | '/api/public/health'
     | '/chat/'
     | '/robustness/'
@@ -473,6 +484,7 @@ export interface FileRouteTypes {
     | '/robustness/list-feasibility'
     | '/robustness/simulate'
     | '/trainees/$staffId'
+    | '/trainees/start-date-audit'
     | '/api/public/health'
     | '/chat'
     | '/robustness'
@@ -515,6 +527,7 @@ export interface FileRouteTypes {
     | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/simulate'
     | '/_authenticated/trainees/$staffId'
+    | '/_authenticated/trainees/start-date-audit'
     | '/api/public/health'
     | '/_authenticated/chat/'
     | '/_authenticated/robustness/'
@@ -647,6 +660,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/health'
       preLoaderRoute: typeof ApiPublicHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/trainees/start-date-audit': {
+      id: '/_authenticated/trainees/start-date-audit'
+      path: '/start-date-audit'
+      fullPath: '/trainees/start-date-audit'
+      preLoaderRoute: typeof AuthenticatedTraineesStartDateAuditRouteImport
+      parentRoute: typeof AuthenticatedTraineesRoute
     }
     '/_authenticated/trainees/$staffId': {
       id: '/_authenticated/trainees/$staffId'
@@ -859,10 +879,13 @@ const AuthenticatedLeaveRouteWithChildren =
 
 interface AuthenticatedTraineesRouteChildren {
   AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
+  AuthenticatedTraineesStartDateAuditRoute: typeof AuthenticatedTraineesStartDateAuditRoute
 }
 
 const AuthenticatedTraineesRouteChildren: AuthenticatedTraineesRouteChildren = {
   AuthenticatedTraineesStaffIdRoute: AuthenticatedTraineesStaffIdRoute,
+  AuthenticatedTraineesStartDateAuditRoute:
+    AuthenticatedTraineesStartDateAuditRoute,
 }
 
 const AuthenticatedTraineesRouteWithChildren =
