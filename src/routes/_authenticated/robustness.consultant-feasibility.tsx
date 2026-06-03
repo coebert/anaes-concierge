@@ -139,7 +139,7 @@ function ConsultantFeasibilityPage() {
     const sicknessLostAnnualSessionsPerConsultant =
       afterLeaveAnnualSessionsPerConsultant - annualSessionsPerConsultant;
     const annualOnCallBurdenPerConsultant =
-      fteNeeded > 0 && Number.isFinite(ft eNeeded)
+      fteNeeded > 0 && Number.isFinite(fteNeeded)
         ? annualOnCallSessionEquiv / fteNeeded
         : 0;
     const residualListCapacityPerConsultant =
