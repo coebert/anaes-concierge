@@ -180,6 +180,16 @@ function AuditPage() {
                         {t.full_name || t.email}
                       </Link>
                       {decisionBadge(t.decision)}
+                      {t.leave_source_warnings.length > 0 ? (
+                        <Badge
+                          variant="destructive"
+                          className="gap-1"
+                          title={t.leave_source_warnings.join("\n")}
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          Leave source issue
+                        </Badge>
+                      ) : null}
                     </div>
                     <div className="text-xs text-muted-foreground space-x-3">
                       <span>
