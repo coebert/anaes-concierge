@@ -227,29 +227,47 @@ function TraineesPage() {
     };
   }, [debouncedFrom, debouncedTo]);
 
+  const today = todayISO();
+  const isNotYetStarted = (sd: string | null | undefined): sd is string =>
+    typeof sd === "string" && sd > today;
+
+  const notYetStartedTrainees = useMemo(
+    () =>
+      rows
+        .filter(({ trainee }) => isNotYetStarted(trainee.start_date))
+        .sort((a, b) =>
+          (a.trainee.start_date ?? "").localeCompare(b.trainee.start_date ?? ""),
+        ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, today],
+  );
+
   const metricRows = useMemo(() => {
     if (!data) return [];
-    return rows.map(({ trainee }) => {
-      const all = data.allAssignmentsByStaff[trainee.id] ?? [];
-      const filtered = all.filter((a) => {
-        const d = a.session_date ?? "";
-        if (fromISO && d < fromISO) return false;
-        if (d > toISO) return false;
-        return true;
+    return rows
+      .filter(({ trainee }) => !isNotYetStarted(trainee.start_date))
+      .map(({ trainee }) => {
+        const all = data.allAssignmentsByStaff[trainee.id] ?? [];
+        const filtered = all.filter((a) => {
+          const d = a.session_date ?? "";
+          if (fromISO && d < fromISO) return false;
+          if (d > toISO) return false;
+          return true;
+        });
+        return {
+          trainee,
+          metrics: computeTraineeMetrics(
+            filtered,
+            trainee.start_date,
+            data.tsSpecMap,
+            data.specMap,
+            asOfMs,
+            (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+          ),
+        };
       });
-      return {
-        trainee,
-        metrics: computeTraineeMetrics(
-          filtered,
-          trainee.start_date,
-          data.tsSpecMap,
-          data.specMap,
-          asOfMs,
-          (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
-        ),
-      };
-    });
-  }, [data, rows, fromISO, toISO, asOfMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, rows, fromISO, toISO, asOfMs, today]);
 
   return (
     <div className="space-y-4">
