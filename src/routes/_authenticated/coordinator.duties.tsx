@@ -10,7 +10,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatDateLongGB, formatDateGB, compareBySurname } from "@/lib/name-sort";
+import { formatDateLongGB, formatDateGB } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 
 export const Route = createFileRoute("/_authenticated/coordinator/duties")({
   component: DutiesPage,

@@ -17,7 +17,8 @@ import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { Pencil, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO, compareBySurname } from "@/lib/name-sort";
+import { todayISO } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,

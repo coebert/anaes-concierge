@@ -12,7 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { auditTcs2016, type AuditAssignment, type AuditResult, type RuleResult, type RuleStatus, type ShiftSummary } from "@/lib/tcs-2016-audit";
-import { compareBySurname, formatDateGB } from "@/lib/name-sort";
+import { formatDateGB } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck, ShieldAlert, ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/tcs-audit")({

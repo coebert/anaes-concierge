@@ -10,7 +10,8 @@ import {
 import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks, CalendarOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskColor, riskLabel } from "@/lib/audit/robustness";
-import { todayISO, addDaysISO, formatDateGB, cn, compareBySurname } from "@/lib/name-sort";
+import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

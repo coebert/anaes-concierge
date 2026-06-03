@@ -13,7 +13,8 @@ import {
   computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
-import { compareBySurname, formatDateGB, todayISO } from "@/lib/name-sort";
+import { formatDateGB, todayISO } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({

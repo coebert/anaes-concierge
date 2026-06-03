@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { formatDateGB, todayISO, compareBySurname } from "@/lib/name-sort";
+import { formatDateGB, todayISO } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import {
   buildConsultantSessionSet,
   isSoloTraineeAssignment,

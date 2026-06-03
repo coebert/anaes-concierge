@@ -15,7 +15,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
-import { cn, parseDateLocal, compareBySurname, toISODateLocal } from "@/lib/name-sort";
+import { cn, parseDateLocal, toISODateLocal } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 
 type SessionHalf = "am" | "pm";
 

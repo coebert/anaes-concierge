@@ -12,12 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/name-sort";
+import { cn, formatDateGB } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
-import { formatDateGB, compareBySurname } from "@/lib/name-sort";
+import { compareBySurname } from "@/lib/name-sort";
 
 interface LeaveRow {
   id: string;

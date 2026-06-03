@@ -19,7 +19,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { cn, todayISO, compareBySurname } from "@/lib/name-sort";
+import { cn, todayISO } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
