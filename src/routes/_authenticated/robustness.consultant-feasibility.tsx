@@ -549,6 +549,10 @@ function ConsultantFeasibilityPage() {
                     { label: "Consultant in charge", weekly: inp.consultantInChargeSessionsPerWeek },
                     { label: "Pain service", weekly: inp.painServiceSessionsPerWeek },
                     { label: "POAC", weekly: inp.poacSessionsPerWeek },
+                    {
+                      label: "Non-clinical PAs",
+                      weekly: inp.nonClinicalPAsPerWeek * inp.sessionsPerPa,
+                    },
                     { label: "ICU (lists)", weekly: inp.icuSessionsPerWeek },
                     {
                       label: "On-call (theatre + ICU)",
