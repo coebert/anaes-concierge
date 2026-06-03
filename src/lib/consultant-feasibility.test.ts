@@ -161,8 +161,8 @@ describe("calculateFeasibility — capacity breakdown", () => {
     const r = calculateFeasibility(FEASIBILITY_DEFAULTS);
     // 13 theatres × 10 sess/wk = 130
     expect(r.theatreSessions).toBe(130);
-    // + 10 LW + 10 ICU = 150
-    expect(r.weeklySessionDemand).toBe(150);
+    // + 10 LW + 10 consultant-in-charge + 10 ICU = 160
+    expect(r.weeklySessionDemand).toBe(160);
     // leave = (32+7+8)/5 = 9.4 wks
     expect(r.leaveWeeks).toBeCloseTo(9.4, 10);
     // working = 52 - 9.4 = 42.6
@@ -171,5 +171,18 @@ describe("calculateFeasibility — capacity breakdown", () => {
     expect(r.weeklyClinicalSessions).toBe(7.5);
     // net cap = 7.5 * 42.6 * 0.95 = 303.525
     expect(r.annualSessionsPerConsultant).toBeCloseTo(303.525, 6);
+  });
+
+  it("includes consultant-in-charge sessions in weekly demand", () => {
+    const without = calculateFeasibility({
+      ...FEASIBILITY_DEFAULTS,
+      consultantInChargeSessionsPerWeek: 0,
+    });
+    const withCic = calculateFeasibility({
+      ...FEASIBILITY_DEFAULTS,
+      consultantInChargeSessionsPerWeek: 10,
+    });
+    expect(withCic.weeklySessionDemand - without.weeklySessionDemand).toBe(10);
+    expect(withCic.fteNeeded).toBeGreaterThan(without.fteNeeded);
   });
 });
