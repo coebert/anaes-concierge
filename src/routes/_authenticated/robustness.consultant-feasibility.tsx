@@ -355,6 +355,8 @@ function ConsultantFeasibilityPage() {
                 {inp.consultantInChargeSessionsPerWeek} consultant-in-charge +{" "}
                 {inp.painServiceSessionsPerWeek} pain +{" "}
                 {inp.poacSessionsPerWeek} POAC +{" "}
+                {inp.nonClinicalPAsPerWeek} non-clinical PAs ×{" "}
+                {inp.sessionsPerPa} +{" "}
                 {inp.icuSessionsPerWeek} ICU ={" "}
                 <strong>{calc.weeklySessionDemand}</strong>
               </li>
