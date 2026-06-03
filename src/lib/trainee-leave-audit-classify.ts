@@ -12,15 +12,16 @@ export function classifyLeaveOverlap(status: string): {
   counted: boolean;
   reason: string;
 } {
-  if (status === "approved")
+  const s = status.toLowerCase();
+  if (s === "approved")
     return { counted: true, reason: "Approved — blocks not-yet-started" };
-  if (status === "pending")
+  if (s === "pending")
     return { counted: true, reason: "Pending — blocks not-yet-started" };
-  if (status === "cancelled")
+  if (s === "cancelled")
     return { counted: false, reason: "Cancelled — ignored" };
-  if (status === "denied")
+  if (s === "denied")
     return { counted: false, reason: "Denied — ignored" };
-  if (status === "reserve")
+  if (s === "reserve")
     return { counted: false, reason: "Reserve listed — ignored" };
   return { counted: false, reason: `Status "${status}" — ignored` };
 }
