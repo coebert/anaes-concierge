@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { format } from "date-fns";
-import { ArrowLeft } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -101,6 +102,47 @@ function AuditPage() {
         </Card>
       ) : !data ? null : (
         <>
+          {data.leave_sources.warnings.length > 0 ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Leave data may be incomplete</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
+                  {data.leave_sources.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  CLWRota last sync:{" "}
+                  <span className="font-mono">
+                    {data.leave_sources.clwrota_last_sync_at
+                      ? `${data.leave_sources.clwrota_last_sync_at} (${formatDistanceToNow(
+                          new Date(data.leave_sources.clwrota_last_sync_at),
+                          { addSuffix: true },
+                        )})`
+                      : "never"}
+                  </span>
+                  {data.leave_sources.clwrota_last_status ? (
+                    <>
+                      {" · status: "}
+                      <span className="font-mono">
+                        {data.leave_sources.clwrota_last_status}
+                      </span>
+                    </>
+                  ) : null}
+                  {data.leave_sources.clwrota_last_error ? (
+                    <>
+                      {" · error: "}
+                      <span className="font-mono">
+                        {data.leave_sources.clwrota_last_error}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Decision window</CardTitle>
@@ -138,6 +180,16 @@ function AuditPage() {
                         {t.full_name || t.email}
                       </Link>
                       {decisionBadge(t.decision)}
+                      {t.leave_source_warnings.length > 0 ? (
+                        <Badge
+                          variant="destructive"
+                          className="gap-1"
+                          title={t.leave_source_warnings.join("\n")}
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          Leave source issue
+                        </Badge>
+                      ) : null}
                     </div>
                     <div className="text-xs text-muted-foreground space-x-3">
                       <span>
@@ -158,6 +210,15 @@ function AuditPage() {
                       </span>
                     </div>
                   </div>
+
+                  {t.leave_source_warnings.length > 0 ? (
+                    <ul className="list-disc space-y-0.5 rounded border border-destructive/30 bg-destructive/5 pl-5 py-1.5 text-xs text-destructive">
+                      {t.leave_source_warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
 
                   {t.leave_rows.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic">

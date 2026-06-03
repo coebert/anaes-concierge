@@ -50,12 +50,35 @@ export type AuditTrainee = {
   activity_count: number;
   predicted_start: string | null;
   leave_rows: AuditLeaveRow[];
+  /**
+   * Per-trainee warnings explaining why leave logic for this person may be
+   * incomplete (e.g. no CLWRota link so CLWRota-side leave can't be mapped,
+   * or no leave_allowances row for the current year).
+   */
+  leave_source_warnings: string[];
+};
+
+export type LeaveSourceStatus = {
+  /** True when admins have configured a CLWRota leave report URL. */
+  clwrota_leave_url_configured: boolean;
+  /** Last CLWRota sync timestamp (any kind) or null if never run. */
+  clwrota_last_sync_at: string | null;
+  /** Status of the most recent CLWRota sync. */
+  clwrota_last_status: string | null;
+  /** Last CLWRota sync error message, if any. */
+  clwrota_last_error: string | null;
+  /**
+   * Global warnings about the leave-data pipeline. Surface these so the
+   * admin knows why some trainees may be missing leave entries.
+   */
+  warnings: string[];
 };
 
 export type AuditResult = {
   window_start: string;
   window_end: string;
   trainees: AuditTrainee[];
+  leave_sources: LeaveSourceStatus;
 };
 
 const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
@@ -77,16 +100,71 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     const today = isoDateOffset(0);
     const windowEnd = isoDateOffset(LOOKAHEAD_DAYS);
 
+    // --- Leave-source pipeline health ------------------------------------
+    // Pull CLWRota sync state so we can warn when the upstream leave feed
+    // is missing or unhealthy. We tolerate any error here — a degraded
+    // sync_state read should not break the audit.
+    const { data: syncState } = await supabaseAdmin
+      .from("clwrota_sync_state")
+      .select("leave_report_url, last_sync_at, last_status, last_error")
+      .eq("id", 1)
+      .maybeSingle();
+    const leave_sources: LeaveSourceStatus = {
+      clwrota_leave_url_configured: !!syncState?.leave_report_url,
+      clwrota_last_sync_at: syncState?.last_sync_at ?? null,
+      clwrota_last_status: syncState?.last_status ?? null,
+      clwrota_last_error: syncState?.last_error ?? null,
+      warnings: [],
+    };
+    if (!leave_sources.clwrota_leave_url_configured) {
+      leave_sources.warnings.push(
+        "CLWRota leave report URL is not configured — only locally-entered leave is being considered.",
+      );
+    }
+    if (leave_sources.clwrota_last_status && leave_sources.clwrota_last_status !== "ok") {
+      leave_sources.warnings.push(
+        `Last CLWRota sync did not succeed (status: ${leave_sources.clwrota_last_status}). Leave data may be stale.`,
+      );
+    }
+    if (leave_sources.clwrota_last_sync_at) {
+      const ageMs = Date.now() - new Date(leave_sources.clwrota_last_sync_at).getTime();
+      if (ageMs > 24 * 60 * 60 * 1000) {
+        leave_sources.warnings.push(
+          "Last CLWRota sync is over 24 hours old. Leave data may be stale.",
+        );
+      }
+    } else if (leave_sources.clwrota_leave_url_configured) {
+      leave_sources.warnings.push(
+        "CLWRota sync has never run — no upstream leave has been imported yet.",
+      );
+    }
+
     const { data: trainees, error: tErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, email, start_date")
+      .select("id, full_name, email, start_date, clwrota_external_id")
       .eq("grade", "trainee")
       .eq("active", true);
     if (tErr) throw new Error(tErr.message);
     const ids = (trainees ?? []).map((t) => t.id);
     if (ids.length === 0) {
-      return { window_start: today, window_end: windowEnd, trainees: [] };
+      return {
+        window_start: today,
+        window_end: windowEnd,
+        trainees: [],
+        leave_sources,
+      };
     }
+
+    // Current leave-year allowance coverage. Trainees without a row have
+    // no recorded entitlement, so day-counting against an allowance can't
+    // be done — flag them so the admin knows.
+    const { data: allowanceRows } = await supabaseAdmin
+      .from("leave_allowances")
+      .select("staff_id, leave_year_start")
+      .in("staff_id", ids);
+    const allowanceByStaff = new Set<string>(
+      (allowanceRows ?? []).map((r) => r.staff_id),
+    );
 
     const { data: activityRows, error: aErr } = await supabaseAdmin
       .from("rota_assignments")
@@ -153,6 +231,17 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       else if (has_counted_leave) decision = "has_counted_leave";
       else if (predicted) decision = "not_yet_started";
       else decision = "no_signal";
+      const warnings: string[] = [];
+      if (!t.clwrota_external_id) {
+        warnings.push(
+          "No CLWRota link on profile — CLWRota leave cannot be mapped to this trainee.",
+        );
+      }
+      if (!allowanceByStaff.has(t.id)) {
+        warnings.push(
+          "No leave_allowances row — entitlement is unknown, day-count audits will be incomplete.",
+        );
+      }
       return {
         id: t.id,
         full_name: t.full_name as string | null,
@@ -165,6 +254,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
         leave_rows: leave.sort((a, b) =>
           a.start_date.localeCompare(b.start_date),
         ),
+        leave_source_warnings: warnings,
       };
     });
 
@@ -180,5 +270,5 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       return compareBySurnameAsc(a.full_name ?? a.email, b.full_name ?? b.email);
     });
 
-    return { window_start: today, window_end: windowEnd, trainees: out };
+    return { window_start: today, window_end: windowEnd, trainees: out, leave_sources };
   });
