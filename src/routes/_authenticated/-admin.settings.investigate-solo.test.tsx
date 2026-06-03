@@ -336,11 +336,9 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     await clickButton(/preview findings/i);
 
     await waitFor(() => {
-      const autoStat = screen
-        .getByText(/auto-correctable/i)
-        .closest("div") as HTMLElement;
-      expect(within(autoStat).queryByText("0")).not.toBeNull();
+      expect(statValue(/auto-correctable/i)).toBe("0");
     });
+
 
     expect(store.reclassificationLog).toHaveLength(1);
   });
