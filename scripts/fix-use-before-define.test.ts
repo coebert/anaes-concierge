@@ -262,4 +262,54 @@ describe("fix-use-before-define codemod — CLI e2e", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("CLI --check exits with non-zero when changes would be made and does not write", () => {
+    const dir = mkdtempSync(join(tmpdir(), "fix-ubd-e2e-"));
+    const file = join(dir, "sample.ts");
+    try {
+      writeFileSync(file, sample, "utf8");
+
+      let threw: Error | null = null;
+      let out = "";
+      try {
+        out = execFileSync("node", [CLI, "--check", file], {
+          cwd: REPO,
+          encoding: "utf8",
+        });
+      } catch (e) {
+        threw = e as Error;
+        // execFileSync puts stderr+stdout in the error's stdout/stderr when it throws.
+        out = (e as any).stdout ?? "";
+      }
+
+      // Must have exited non-zero.
+      expect(threw).not.toBeNull();
+      expect((threw as any).status).toBe(1);
+      expect(out).toMatch(/Would perform \d+ move\(s\)\./);
+      // File on disk must remain untouched.
+      expect(readFileSync(file, "utf8")).toBe(sample);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("CLI --check exits with zero when no changes are needed", () => {
+    const dir = mkdtempSync(join(tmpdir(), "fix-ubd-e2e-"));
+    const file = join(dir, "sample.ts");
+    try {
+      // Write the already-fixed version so the codemod has nothing to do.
+      const { newSrc } = processSource(sample, file) as { newSrc: string };
+      writeFileSync(file, newSrc, "utf8");
+
+      const out = execFileSync("node", [CLI, "--check", file], {
+        cwd: REPO,
+        encoding: "utf8",
+      });
+
+      expect(out).toMatch(/Would perform 0 move\(s\)\./);
+      expect(readFileSync(file, "utf8")).toBe(newSrc);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
