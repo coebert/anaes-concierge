@@ -1448,9 +1448,10 @@ export async function performRotaSync() {
 
       // Collect new specialty names (resolve after pass 1 in one insert).
       let specialtyId: string | null = null;
+      let specialtyNameKey: string | null = null;
       if (specialtyName) {
-        const key = specialtyName.toLowerCase().trim();
-        const existing = specialtyByName.get(key);
+        specialtyNameKey = specialtyName.toLowerCase().trim();
+        const existing = specialtyByName.get(specialtyNameKey);
         if (existing) specialtyId = existing;
         else newSpecialtyNames.add(specialtyName);
       }
@@ -1484,13 +1485,18 @@ export async function performRotaSync() {
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
-        // Last write wins (later rows can fill in specialty/consultant).
+        // Last write wins for surgical_consultant, but for specialty we
+        // keep any non-null name/id already collected — otherwise a later
+        // row with a blank slot_speciality would wipe the value out and
+        // produce "matched-but-no-specialty" rows on trainee dashboards.
+        const prior = sessionDraftsByKey.get(theatreSessionKey);
         sessionDraftsByKey.set(theatreSessionKey, {
           session_date,
           theatre_id: theatreId,
           session,
-          specialty_id: specialtyId,
-          surgical_consultant: consultantName ?? null,
+          specialty_id: specialtyId ?? prior?.specialty_id ?? null,
+          specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
+          surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
         });
       }
 
