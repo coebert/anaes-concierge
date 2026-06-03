@@ -45,22 +45,6 @@ type Inputs = z.infer<typeof InputsSchema>;
 type FieldErrors = Partial<Record<keyof Inputs, string>>;
 
 
-type Inputs = {
-  mainTheatres: number;
-  daySurgeryTheatres: number;
-  sessionsPerTheatrePerWeek: number; // AM/PM Mon-Fri = 10
-  labourWardSessionsPerWeek: number;
-  icuSessionsPerWeek: number;
-  icuTrainedPoolSize: number;
-  pasPerConsultant: number;
-  dccPasPerConsultant: number; // clinical PAs; rest is SPA
-  sessionsPerPa: number;
-  annualLeaveDays: number;
-  studyLeaveDays: number;
-  bankHolidayDays: number;
-  weeksPerYear: number;
-  workingDaysPerWeek: number; // for converting leave days -> weeks
-};
 
 const DEFAULTS: Inputs = {
   mainTheatres: 10,
