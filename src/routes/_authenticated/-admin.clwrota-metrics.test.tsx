@@ -41,7 +41,9 @@ vi.mock("@tanstack/react-start", () => ({
 // Mock the server fn module. The handler returns a payload whose
 // `is_backfill` field is a string — this MUST trip the runtime Zod
 // validator at the client boundary.
-const listClwRotaSyncMetricsMock = vi.fn();
+const { listClwRotaSyncMetricsMock } = vi.hoisted(() => ({
+  listClwRotaSyncMetricsMock: vi.fn(),
+}));
 vi.mock("@/lib/clwrota.functions", () => ({
   listClwRotaSyncMetrics: listClwRotaSyncMetricsMock,
 }));
