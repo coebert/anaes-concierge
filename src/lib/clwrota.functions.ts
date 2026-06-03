@@ -2097,7 +2097,7 @@ export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
       sync_kind: z.enum(["leave", "rota", "staff", "all"]).default("all"),
     }).parse(input ?? {}),
   )
-  .handler(async ({ context, data }) => {
+  .handler(async ({ context, data }): Promise<ListClwRotaSyncMetricsResponse> => {
     await assertAdmin(context.userId);
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
     let q = supabaseAdmin
@@ -2109,7 +2109,11 @@ export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
     if (data.sync_kind !== "all") q = q.eq("sync_kind", data.sync_kind);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return { rows: rows ?? [], days: data.days, sync_kind: data.sync_kind };
+    return {
+      rows: (rows ?? []) as ClwRotaSyncMetricRow[],
+      days: data.days,
+      sync_kind: data.sync_kind,
+    };
   });
 
 
