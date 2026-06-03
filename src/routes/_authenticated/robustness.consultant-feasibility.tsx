@@ -210,10 +210,13 @@ function ConsultantFeasibilityPage() {
         <CardContent className="text-sm">
           <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Demand</strong> = (main + day-surgery theatres) × sessions/theatre/week + labour-ward sessions/week + ICU sessions/week.
+              <strong className="text-foreground">Session demand</strong> = (main + day-surgery theatres) × sessions/theatre/week + labour-ward sessions/week + ICU sessions/week.
             </li>
             <li>
               <strong className="text-foreground">A "session"</strong> is a half-day list (AM or PM). Mon–Fri AM+PM = 10 sessions/theatre/week.
+            </li>
+            <li>
+              <strong className="text-foreground">On-call cover</strong>: one consultant covers theatres OOH and one ICU-trained consultant covers ICU OOH at all times. The PAs allocated to each rota (per week) are converted to session-equivalents via "sessions / PA" and added to demand — these PAs are drawn from the DCC pool so they reduce list-running capacity.
             </li>
             <li>
               <strong className="text-foreground">Per-consultant capacity</strong>: only DCC PAs count toward clinical sessions (SPA time excluded). Sessions/week = DCC PAs × sessions per PA.
@@ -222,13 +225,16 @@ function ConsultantFeasibilityPage() {
               <strong className="text-foreground">Leave treatment</strong>: annual + study + bank-holiday days are summed and divided by working-days/week to convert into weeks lost. Working weeks/year = weeks/year − leave weeks.
             </li>
             <li>
-              <strong className="text-foreground">FTE needed</strong> = annual demand ÷ (weekly clinical sessions × working weeks/year). Headcount is the FTE rounded up.
+              <strong className="text-foreground">Sickness</strong>: capacity per consultant is derated by the sickness rate (e.g. 5% sickness ⇒ multiply annual sessions/consultant by 0.95).
             </li>
             <li>
-              <strong className="text-foreground">ICU subgroup check</strong>: ICU sessions can only be drawn from the ICU-trained pool. Pool utilisation = ICU annual demand ÷ (pool size × per-consultant annual capacity). Must be ≤ 100% to be feasible.
+              <strong className="text-foreground">FTE needed</strong> = (annual session demand + annual on-call session-equivalents) ÷ (weekly clinical sessions × working weeks/year × (1 − sickness)). Headcount is the FTE rounded up.
             </li>
             <li>
-              <strong className="text-foreground">Not modelled</strong>: sickness, on-call/night cover, parental leave, fixed sessions, LTFT, weekend lists, cross-cover for absences.
+              <strong className="text-foreground">ICU subgroup check</strong>: ICU sessions and ICU OOH cover can only be drawn from the ICU-trained pool. Pool utilisation = ICU annual demand ÷ (pool size × per-consultant annual capacity). Must be ≤ 100% to be feasible.
+            </li>
+            <li>
+              <strong className="text-foreground">Not modelled</strong>: parental leave, fixed sessions, LTFT, weekend elective lists, cross-cover for individual absences, on-call rota size effects (compensatory rest).
             </li>
           </ul>
         </CardContent>
