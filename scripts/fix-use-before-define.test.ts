@@ -185,3 +185,81 @@ describe("fix-use-before-define codemod — stress fixture", () => {
     }
   });
 });
+
+/**
+ * End-to-end test: drive the actual CLI binary (`node scripts/fix-use-…mjs`)
+ * against a real temporary file on disk, then assert that what the CLI
+ * wrote to disk is byte-for-byte identical to what `processSource` returns
+ * in-memory for the same input. This guards against drift between the
+ * library entry point (used by every other test) and the CLI shell.
+ */
+describe("fix-use-before-define codemod — CLI e2e", () => {
+  const REPO = dirname(HERE); // scripts/.. == repo root
+  const CLI = join(HERE, "fix-use-before-define.mjs");
+
+  // A representative input: one enum/const reorder + one late-import hoist.
+  // Big enough to be non-trivial, small enough to fail fast on mismatch.
+  const sample = [
+    `import { existing } from "./a";`,
+    ``,
+    `export const FIRST = SECOND + 1;`,
+    `export const SECOND = OtherEnum.X;`,
+    ``,
+    `export const consumeExisting = existing();`,
+    `import { late } from "./late";`,
+    `export const lateRef = late;`,
+    ``,
+    `export enum OtherEnum { X = "x" }`,
+    ``,
+  ].join("\n");
+
+  it("CLI on-disk output is byte-identical to in-memory processSource", () => {
+    const dir = mkdtempSync(join(tmpdir(), "fix-ubd-e2e-"));
+    const file = join(dir, "sample.ts");
+    try {
+      writeFileSync(file, sample, "utf8");
+
+      // Run the CLI. Pass the absolute path as a positional arg (the CLI
+      // falls back to git-ls when none are given).
+      const out = execFileSync("node", [CLI, file], {
+        cwd: REPO,
+        encoding: "utf8",
+      });
+
+      // Sanity: CLI reported the move count.
+      expect(out).toMatch(/Performed \d+ move\(s\)\./);
+
+      const onDisk = readFileSync(file, "utf8");
+      const { newSrc: inMemory, moves } = processSource(sample, file) as {
+        newSrc: string;
+        moves: unknown[];
+      };
+
+      expect(moves.length).toBeGreaterThan(0); // sanity
+      expect(onDisk).toBe(inMemory);
+      // And the file genuinely changed from the original.
+      expect(onDisk).not.toBe(sample);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("CLI --dry-run leaves the file untouched but still reports moves", () => {
+    const dir = mkdtempSync(join(tmpdir(), "fix-ubd-e2e-"));
+    const file = join(dir, "sample.ts");
+    try {
+      writeFileSync(file, sample, "utf8");
+
+      const out = execFileSync("node", [CLI, "--dry-run", file], {
+        cwd: REPO,
+        encoding: "utf8",
+      });
+
+      expect(out).toMatch(/Would perform \d+ move\(s\)\./);
+      // File on disk must be exactly what we wrote.
+      expect(readFileSync(file, "utf8")).toBe(sample);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
