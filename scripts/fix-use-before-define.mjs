@@ -175,25 +175,10 @@ function rebuildSpan(src, stmts, order) {
 
 /** Collect every statement list we want to consider in a file. */
 function collectStatementLists(sf) {
-  const lists = []; // { stmts: NodeArray, depth }
-  const visit = (node, depth) => {
-    if (
-      ts.isBlock(node) ||
-      ts.isModuleBlock(node) ||
-      ts.isCaseClause(node) ||
-      ts.isDefaultClause(node)
-    ) {
-      if (node.statements && node.statements.length > 0) {
-        lists.push({ stmts: node.statements, depth });
-      }
-    }
-    node.forEachChild((c) => visit(c, depth + 1));
-  };
   // Program scope only. Nested-block reordering is unsafe in general
   // because identifiers in sibling statements can resolve to outer-scope
   // bindings (shadowing); a same-name match would trigger a bogus move.
-  lists.push({ stmts: sf.statements, depth: 0 });
-  return lists;
+  return [{ stmts: sf.statements, depth: 0 }];
 }
 
 function processFile(file) {
