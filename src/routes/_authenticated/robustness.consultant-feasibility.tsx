@@ -119,13 +119,27 @@ function ConsultantFeasibilityPage() {
     };
   }, [inp]);
 
+  const errors: FieldErrors = useMemo(() => {
+    const result = InputsSchema.safeParse(inp);
+    if (result.success) return {};
+    const out: FieldErrors = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path[0] as keyof Inputs | undefined;
+      if (key && !out[key]) out[key] = issue.message;
+    }
+    return out;
+  }, [inp]);
+  const hasErrors = Object.keys(errors).length > 0;
+
   const set = <K extends keyof Inputs>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = Number(e.target.value);
+      const raw = e.target.value;
+      const v = raw === "" ? 0 : Number(raw);
       setInp((prev) => ({ ...prev, [key]: Number.isFinite(v) ? v : 0 }));
     };
 
   const icuFeasible = calc.icuPoolUtilisation <= 1;
+
 
   return (
     <div className="space-y-6">
