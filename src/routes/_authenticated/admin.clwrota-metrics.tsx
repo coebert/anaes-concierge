@@ -34,6 +34,10 @@ import {
   Legend,
 } from "recharts";
 import { listClwRotaSyncMetrics } from "@/lib/clwrota.functions";
+import {
+  isBackfillMetricRow,
+  type ClwRotaSyncMetricRow,
+} from "@/lib/clwrota-metrics-types";
 import { formatDateGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/clwrota-metrics")({
