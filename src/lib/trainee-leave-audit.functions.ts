@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
 
 /**
  * Verification view for the "not yet started" decision.
