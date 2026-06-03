@@ -98,8 +98,12 @@ function ConsultantFeasibilityPage() {
   const set = <K extends keyof Inputs>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value;
-      const v = raw === "" ? 0 : Number(raw);
-      setInp((prev) => ({ ...prev, [key]: Number.isFinite(v) ? v : 0 }));
+      let v = raw === "" ? 0 : Number(raw);
+      if (!Number.isFinite(v)) v = 0;
+      if (key === "nonClinicalPAsPerWeek") {
+        v = Math.round(v * 2) / 2; // snap to nearest 0.5 PA
+      }
+      setInp((prev) => ({ ...prev, [key]: v }));
     };
 
   const icuFeasible = calc.icuPoolUtilisation <= 1;
