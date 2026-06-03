@@ -86,3 +86,96 @@ describe("fix-use-before-define codemod — fixture hygiene", () => {
     }
   });
 });
+
+/**
+ * Generate a large synthetic TypeScript module that exercises every kind of
+ * reorder the codemod handles, plus shadowing decoys that must NOT trigger
+ * a move. After ONE pass the codemod's output must be byte-identical to
+ * itself on every subsequent pass — idempotency at scale, not just on
+ * small fixtures.
+ */
+function generateStressSource(count: number): string {
+  const lines: string[] = [];
+  lines.push(`import { existing } from "./a";`);
+  lines.push(``);
+  for (let i = 0; i < count; i++) {
+    lines.push(`export function useConst${i}() { return CONST_${i}; }`);
+  }
+  for (let i = 0; i < count; i++) {
+    lines.push(`export const READ_ENUM_${i} = Level${i}.A;`);
+  }
+  for (let i = 0; i < count; i++) {
+    lines.push(`export const makeWidget${i} = () => new Widget${i}();`);
+  }
+  // Shadowing decoys: each refers to `errN` only inside a catch clause, so
+  // the later `const errN` must NOT be hoisted above this block.
+  for (let i = 0; i < count; i++) {
+    lines.push(
+      `export function shadow${i}() { try { throw 0; } catch (err${i}) { return err${i}; } }`,
+    );
+  }
+  // Non-import statement, then a late import that must hoist.
+  lines.push(``);
+  lines.push(`export const SENTINEL = existing();`);
+  lines.push(`import { late } from "./late";`);
+  lines.push(`export const lateRef = late;`);
+  lines.push(``);
+  // Targets of the forward references.
+  for (let i = 0; i < count; i++) {
+    lines.push(`export const CONST_${i} = ${i};`);
+  }
+  for (let i = 0; i < count; i++) {
+    lines.push(`export enum Level${i} { A = "a${i}", B = "b${i}" }`);
+  }
+  for (let i = 0; i < count; i++) {
+    lines.push(`export class Widget${i} { id = ${i}; }`);
+  }
+  // Outer bindings sharing the name of the catch params above. These MUST
+  // stay in place — they are not referenced outside their own (shadowed)
+  // catch clauses.
+  for (let i = 0; i < count; i++) {
+    lines.push(`export const err${i} = new Error("outer-${i}");`);
+  }
+  return lines.join("\n") + "\n";
+}
+
+describe("fix-use-before-define codemod — stress fixture", () => {
+  const COUNT = 50; // 50 of each kind → 150 reorderable + 50 decoys.
+  const filename = "stress-synthetic.ts";
+
+  it("first pass produces output that is byte-identical to every subsequent pass", () => {
+    const original = generateStressSource(COUNT);
+    const pass1 = processSource(original, filename) as {
+      newSrc: string;
+      moves: Array<{ name: string }>;
+    };
+
+    // Sanity: the first pass actually did work (otherwise idempotency is vacuous).
+    expect(pass1.newSrc).not.toBe(original);
+    // 3 × COUNT real reorderings (const/enum/class) + 1 import hoist.
+    // Shadowing decoys MUST NOT contribute moves.
+    expect(pass1.moves.length).toBe(3 * COUNT + 1);
+    expect(pass1.moves.some((m) => /^err\d+$/.test(m.name))).toBe(false);
+
+    // Idempotency at scale: four further passes must be exact no-ops.
+    let prev = pass1.newSrc;
+    for (let i = 0; i < 4; i++) {
+      const r = processSource(prev, filename) as {
+        newSrc: string;
+        moves: unknown[];
+      };
+      expect(r.moves).toHaveLength(0);
+      expect(r.newSrc).toBe(prev);
+      prev = r.newSrc;
+    }
+  });
+
+  it("scales: 250 reorderable decls process in under 2 seconds", () => {
+    const original = generateStressSource(250);
+    const t0 = Date.now();
+    const { newSrc } = processSource(original, filename) as { newSrc: string };
+    const elapsed = Date.now() - t0;
+    expect(newSrc).not.toBe(original);
+    expect(elapsed).toBeLessThan(2000);
+  });
+});
