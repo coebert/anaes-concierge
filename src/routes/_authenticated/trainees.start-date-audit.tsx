@@ -159,6 +159,32 @@ function AuditPage() {
         </Card>
       ) : !data ? null : (
         <>
+          {staleDuringRetry ? (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Audit data changed during sync</AlertTitle>
+              <AlertDescription>
+                The leave audit was updated by another process while the
+                CLWRota retry was running. The warnings below may not reflect
+                the latest sync state.
+                <div className="mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setStaleDuringRetry(false);
+                      refetch();
+                    }}
+                    disabled={isFetching}
+                  >
+                    <RefreshCw className={`mr-1 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                    Refresh audit
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        <>
           {data.leave_sources.warnings.length > 0 ? (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
