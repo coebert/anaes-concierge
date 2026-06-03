@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
 import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS } from "./trainee-leave-audit-window";
+import { compareBySurnameAsc } from "@/lib/utils";
 
 /**
  * Verification view for the "not yet started" decision.
@@ -176,7 +177,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       } as const;
       const d = order[a.decision] - order[b.decision];
       if (d !== 0) return d;
-      return (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email);
+      return compareBySurnameAsc(a.full_name ?? a.email, b.full_name ?? b.email);
     });
 
     return { window_start: today, window_end: windowEnd, trainees: out };

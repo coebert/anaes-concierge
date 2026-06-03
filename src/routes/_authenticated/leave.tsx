@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
-import { formatDateGB } from "@/lib/utils";
+import { formatDateGB, compareBySurnameAsc } from "@/lib/utils";
 
 interface LeaveRow {
   id: string;
@@ -182,7 +182,7 @@ function LeavePage() {
         return (profile?.full_name ?? "").toLowerCase().includes(q);
       })
       .sort((a, b) =>
-        (a.profile?.full_name ?? "").localeCompare(b.profile?.full_name ?? ""),
+        compareBySurnameAsc(a.profile?.full_name, b.profile?.full_name),
       );
   }, [activeRows, profileById, pickedIso, nameFilter]);
 
@@ -323,7 +323,7 @@ function LeavePage() {
         other: buckets.other,
       });
     }
-    return out.sort((a, b) => a.profile.full_name.localeCompare(b.profile.full_name));
+    return out.sort((a, b) => compareBySurnameAsc(a.profile.full_name, b.profile.full_name));
   }, [profiles, yearLeave, allowanceByStaff, defaultYearStartISO]);
 
   const allowanceVisible = useMemo(() => {

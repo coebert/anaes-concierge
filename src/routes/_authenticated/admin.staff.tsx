@@ -17,7 +17,7 @@ import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { Pencil, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO, getSurname } from "@/lib/utils";
+import { todayISO, compareBySurnameAsc } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
@@ -33,12 +33,8 @@ type StaffWithPlan = {
   job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
 };
 
-function sortBySurnameDesc(a: StaffWithPlan, b: StaffWithPlan): number {
-  const aSurname = getSurname(a.full_name).toLowerCase();
-  const bSurname = getSurname(b.full_name).toLowerCase();
-  if (aSurname < bSurname) return 1;
-  if (aSurname > bSurname) return -1;
-  return 0;
+function sortBySurnameAsc(a: StaffWithPlan, b: StaffWithPlan): number {
+  return compareBySurnameAsc(a.full_name, b.full_name);
 }
 
 function StaffGroup({
@@ -51,7 +47,7 @@ function StaffGroup({
   onEdit: (id: string) => void;
 }) {
   if (!staff.length) return null;
-  const sorted = [...staff].sort(sortBySurnameDesc);
+  const sorted = [...staff].sort(sortBySurnameAsc);
   return (
     <div>
       <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

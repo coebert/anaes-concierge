@@ -151,3 +151,19 @@ export function getSurname(fullName: string | null | undefined): string {
   return parts[parts.length - 1] || fullName;
 }
 
+/**
+ * Compare two full-name strings alphabetically by surname (A→Z).
+ * Falls back to the full name for stable ordering when surnames tie.
+ * Use this everywhere staff names are listed in the UI.
+ */
+export function compareBySurnameAsc(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): number {
+  const aSurname = getSurname(a).toLowerCase();
+  const bSurname = getSurname(b).toLowerCase();
+  const bySurname = aSurname.localeCompare(bSurname);
+  if (bySurname !== 0) return bySurname;
+  return (a ?? "").toLowerCase().localeCompare((b ?? "").toLowerCase());
+}
+
