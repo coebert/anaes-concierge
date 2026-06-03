@@ -1858,6 +1858,20 @@ export async function performRotaSync() {
       last_pulled_rows: rows.length,
     });
 
+    // After all assignments are upserted, refresh the "not yet started"
+    // trainee predictions so newly-imported future rota rows turn into a
+    // predicted start_date and the UI can badge them accordingly.
+    let traineeStartPredictions: Awaited<
+      ReturnType<typeof import("./trainee-start-dates.functions").predictTraineeStartDatesImpl>
+    > | null = null;
+    try {
+      const mod = await import("./trainee-start-dates.functions");
+      traineeStartPredictions = await mod.predictTraineeStartDatesImpl();
+    } catch (err) {
+      // Non-fatal: log but don't abort the sync.
+      console.error("Trainee start-date prediction failed:", err);
+    }
+
     return {
       ok: errors.length === 0,
       message: summary,
@@ -1871,6 +1885,7 @@ export async function performRotaSync() {
       sampleKeys,
       unmatchedTheatres: Array.from(unmatchedTheatres),
       unmatchedStaff: Array.from(unmatchedStaff),
+      traineeStartPredictions,
     };
 }
 
