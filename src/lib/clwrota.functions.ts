@@ -998,6 +998,41 @@ export async function performStaffSync() {
       last_pulled_rows: rows.length,
     });
 
+    const staffDurationMs = Date.now() - startedAt;
+    console.info(
+      "[clwrota.metrics]",
+      JSON.stringify({
+        kind: "staff_sync",
+        at: new Date().toISOString(),
+        ok: errors.length === 0,
+        rows_pulled: rows.length,
+        rows_upserted: inserted + updated,
+        rows_skipped_validation: skipped.length,
+        rows_failed: errors.length,
+        errors_count: errors.length,
+        duration_ms: staffDurationMs,
+      }),
+    );
+    const { error: staffMetricsErr } = await supabaseAdmin
+      .from("clwrota_sync_metrics")
+      .insert({
+        sync_kind: "staff",
+        run_at: new Date().toISOString(),
+        ok: errors.length === 0,
+        duration_ms: staffDurationMs,
+        rows_pulled: rows.length,
+        rows_upserted: inserted + updated,
+        rows_skipped_validation: skipped.length,
+        rows_failed: errors.length,
+        errors_count: errors.length,
+        notes: errors.length
+          ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
+          : null,
+      });
+    if (staffMetricsErr) {
+      console.warn("[clwrota] failed to insert staff sync metrics:", staffMetricsErr.message);
+    }
+
     return {
       ok: errors.length === 0,
       message: summary,
