@@ -1576,7 +1576,9 @@ export async function performRotaSync() {
         const chunk = rows.slice(i, i + SESSION_CHUNK);
         const { data, error: sessErr } = await supabaseAdmin
           .from("theatre_sessions")
-          .upsert(chunk, { onConflict: "session_date,theatre_id,session" })
+          // Cast: chunk is a partial-column payload (specialty_id may be
+          // omitted on purpose) which doesn't fit the generated row shape.
+          .upsert(chunk as never, { onConflict: "session_date,theatre_id,session" })
           .select("id, session_date, theatre_id, session");
         if (sessErr) {
           errors.push({ label: "(theatre_sessions chunk)", error: sessErr.message });
