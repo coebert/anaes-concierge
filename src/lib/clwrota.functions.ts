@@ -1879,8 +1879,12 @@ export async function performRotaSync() {
           (bySession.get(r.theatre_session_id) ?? bySession.set(r.theatre_session_id, []).get(r.theatre_session_id)!).push(r);
         }
         for (const sessionRows of bySession.values()) {
-          const hasConsultant = sessionRows.some((r) => r.profiles?.grade === "consultant");
-          if (!hasConsultant) continue;
+          const supervisorRows = sessionRows.filter(
+            (r) => r.profiles?.grade === "consultant" || r.profiles?.grade === "sas",
+          );
+          if (supervisorRows.length === 0) continue;
+          const supervisorStaffId =
+            supervisorRows.length === 1 ? supervisorRows[0].staff_id : null;
           for (const r of sessionRows) {
             if (r.profiles?.grade === "trainee" && r.role_on_list === "solo") {
               const key = r.staff_id;
@@ -1891,7 +1895,10 @@ export async function performRotaSync() {
               entry.sessions.add(r.theatre_session_id!);
               suspectByStaff.set(key, entry);
               // Only auto-reclassify rows that haven't been manually overridden.
-              if (!r.locally_modified) suspectIds.push(r.id);
+              if (!r.locally_modified) {
+                suspectIds.push(r.id);
+                suspectSupervisorByAssignment.set(r.id, supervisorStaffId);
+              }
             }
           }
         }
@@ -1908,45 +1915,64 @@ export async function performRotaSync() {
 
         if (autoReclassify && suspectIds.length > 0) {
           const syncRunId = crypto.randomUUID();
-          const UPD_CHUNK = 200;
           let reclassified = 0;
-          for (let i = 0; i < suspectIds.length; i += UPD_CHUNK) {
-            const idChunk = suspectIds.slice(i, i + UPD_CHUNK);
-            const { error: updErr } = await supabaseAdmin
-              .from("rota_assignments")
-              .update({ role_on_list: "supervised" })
-              .in("id", idChunk);
-            if (updErr) {
-              errors.push({ label: "(auto-reclassify trainee solo)", error: updErr.message });
-              break;
+          // Group by proposed supervisor so we can update in chunks while still
+          // writing a supervisor_id when one is unambiguous on the session.
+          const groups = new Map<string, string[]>();
+          for (const id of suspectIds) {
+            const sup = suspectSupervisorByAssignment.get(id) ?? "__none__";
+            const list = groups.get(sup) ?? [];
+            list.push(id);
+            groups.set(sup, list);
+          }
+          for (const [sup, ids] of groups) {
+            const UPD_CHUNK = 200;
+            for (let i = 0; i < ids.length; i += UPD_CHUNK) {
+              const idChunk = ids.slice(i, i + UPD_CHUNK);
+              const update: { role_on_list: string; supervisor_id?: string } = {
+                role_on_list: "supervised",
+              };
+              if (sup !== "__none__") update.supervisor_id = sup;
+              const { error: updErr } = await supabaseAdmin
+                .from("rota_assignments")
+                .update(update)
+                .in("id", idChunk);
+              if (updErr) {
+                errors.push({ label: "(auto-reclassify trainee solo)", error: updErr.message });
+                break;
+              }
+              const { error: logErr } = await supabaseAdmin
+                .from("rota_reclassification_log")
+                .insert(
+                  idChunk.map((id) => ({
+                    sync_run_id: syncRunId,
+                    assignment_id: id,
+                    from_role: "solo",
+                    to_role: "supervised",
+                    reason:
+                      sup !== "__none__"
+                        ? "consultant/SAS on same theatre_session_id (supervisor set)"
+                        : "consultant/SAS on same theatre_session_id",
+                  })),
+                );
+              if (logErr) {
+                errors.push({ label: "(auto-reclassify log)", error: logErr.message });
+              }
+              reclassified += idChunk.length;
             }
-            const { error: logErr } = await supabaseAdmin
-              .from("rota_reclassification_log")
-              .insert(
-                idChunk.map((id) => ({
-                  sync_run_id: syncRunId,
-                  assignment_id: id,
-                  from_role: "solo",
-                  to_role: "supervised",
-                  reason: "consultant on same theatre_session_id",
-                })),
-              );
-            if (logErr) {
-              errors.push({ label: "(auto-reclassify log)", error: logErr.message });
-            }
-            reclassified += idChunk.length;
           }
           warnings.push({
-            label: "Auto-reclassified trainee solo lists (consultant also on session)",
+            label: "Auto-reclassified trainee solo lists (consultant/SAS also on session)",
             reason: `${reclassified} of ${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s) set to supervised (sync run ${syncRunId}): ${summaryList}`,
           });
         } else {
           warnings.push({
-            label: "Suspicious solo lists (consultant also on session)",
+            label: "Suspicious solo lists (consultant/SAS also on session)",
             reason: `${totalSuspect} list(s) across ${suspectByStaff.size} trainee(s): ${summaryList}`,
           });
         }
       }
+
     } catch (e) {
       errors.push({
         label: "(solo-rate validation)",
