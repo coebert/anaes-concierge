@@ -17,6 +17,13 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAle
 import { toast } from "sonner";
 import { cn, parseDateLocal, formatDateLongGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+import { useAuth } from "@/lib/auth-context";
+import {
+  validateAssignment, worstSeverity,
+  type Issue, type Profile, type RotaRules,
+} from "@/lib/rota-validation";
+import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 const DEFAULT_RULES: RotaRules = {
   sessions_per_pa: 1,
@@ -25,13 +32,7 @@ const DEFAULT_RULES: RotaRules = {
   honour_fixed_sessions: true,
   allow_back_to_back_oncall: false,
 };
-import { useAuth } from "@/lib/auth-context";
-import {
-  validateAssignment, worstSeverity,
-  type Issue, type Profile, type RotaRules,
-} from "@/lib/rota-validation";
-import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
-import { useServerFn } from "@tanstack/react-start";
+
 
 type SessionHalf = "am" | "pm";
 type RotaRole =
