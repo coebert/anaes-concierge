@@ -222,6 +222,200 @@ export const undoReclassificationRun = createServerFn({ method: "POST" })
     return { ok: true, reverted, skipped, deletedLogRows };
   });
 
+/**
+ * On-demand investigation: re-evaluate every trainee `solo` rota_assignment
+ * in a date window and (optionally) apply corrections for the case where a
+ * consultant or SAS doctor is assigned to the same theatre_session.
+ *
+ * Always returns counts for the two review-only categories
+ * (unmatched_theatre_solo, non_training_label) so a coordinator can act on
+ * them manually. Locally-modified rows are never touched.
+ */
+export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        apply: z.boolean().default(false),
+        days_back: z.coerce.number().int().min(0).max(3650).default(60),
+        days_ahead: z.coerce.number().int().min(0).max(3650).default(60),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { computeSoloCorrections } = await import("./solo-investigate");
+
+    const today = new Date();
+    const start = new Date(today);
+    start.setUTCDate(start.getUTCDate() - data.days_back);
+    const end = new Date(today);
+    end.setUTCDate(end.getUTCDate() + data.days_ahead);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const startStr = fmt(start);
+    const endStr = fmt(end);
+
+    // Pull every rota_assignment in the window with the staff grade joined.
+    const { data: rows, error: rowsErr } = await supabaseAdmin
+      .from("rota_assignments")
+      .select(
+        "id,staff_id,role_on_list,theatre_session_id,session_date,duty_type,session,locally_modified,profiles!rota_assignments_staff_id_fkey(id,grade,full_name)",
+      )
+      .gte("session_date", startStr)
+      .lte("session_date", endStr);
+    if (rowsErr) throw new Error(rowsErr.message);
+
+    type RA = {
+      id: string;
+      staff_id: string;
+      role_on_list: string;
+      theatre_session_id: string | null;
+      session_date: string | null;
+      duty_type: string | null;
+      session: string | null;
+      locally_modified: boolean | null;
+      profiles: { id: string; grade: string | null; full_name: string | null } | null;
+    };
+    const allRows = ((rows ?? []) as unknown as RA[]).filter((r) => r.profiles);
+
+    // Build profiles map (every staff_id on any row in the window).
+    const profilesById = new Map<
+      string,
+      { id: string; grade: string | null; full_name?: string | null }
+    >();
+    for (const r of allRows) {
+      if (r.profiles) profilesById.set(r.profiles.id, r.profiles);
+    }
+
+    // Load theatre sessions touched by these rows so we can detect
+    // non-working labels.
+    const tsIds = Array.from(
+      new Set(allRows.map((r) => r.theatre_session_id).filter((v): v is string => !!v)),
+    );
+    const theatreSessionsById = new Map<
+      string,
+      { id: string; specialty_name?: string | null; surgical_consultant?: string | null; notes?: string | null }
+    >();
+    if (tsIds.length > 0) {
+      const TS_CHUNK = 500;
+      for (let i = 0; i < tsIds.length; i += TS_CHUNK) {
+        const chunk = tsIds.slice(i, i + TS_CHUNK);
+        const { data: tsRows, error: tsErr } = await supabaseAdmin
+          .from("theatre_sessions")
+          .select("id,surgical_consultant,notes,specialties(name)")
+          .in("id", chunk);
+        if (tsErr) throw new Error(tsErr.message);
+        for (const r of (tsRows ?? []) as unknown as Array<{
+          id: string;
+          surgical_consultant: string | null;
+          notes: string | null;
+          specialties: { name: string | null } | null;
+        }>) {
+          theatreSessionsById.set(r.id, {
+            id: r.id,
+            specialty_name: r.specialties?.name ?? null,
+            surgical_consultant: r.surgical_consultant,
+            notes: r.notes,
+          });
+        }
+      }
+    }
+
+    // Custom non-working tokens configured by coordinators.
+    const { data: tokenRows } = await supabaseAdmin
+      .from("validation_custom_non_working_labels")
+      .select("token");
+    const extraTokens = (tokenRows ?? []).map((r) => r.token).filter(Boolean);
+
+    const corrections = computeSoloCorrections({
+      assignments: allRows.map((r) => ({
+        id: r.id,
+        staff_id: r.staff_id,
+        role_on_list: r.role_on_list,
+        theatre_session_id: r.theatre_session_id,
+        session_date: r.session_date,
+        duty_type: r.duty_type,
+        session: r.session,
+        locally_modified: r.locally_modified,
+      })),
+      profilesById,
+      theatreSessionsById,
+      extraNonWorkingTokens: extraTokens,
+    });
+
+    const byCategory = {
+      consultant_or_sas_on_session: corrections.filter(
+        (c) => c.category === "consultant_or_sas_on_session",
+      ),
+      unmatched_theatre_solo: corrections.filter(
+        (c) => c.category === "unmatched_theatre_solo",
+      ),
+      non_training_label: corrections.filter((c) => c.category === "non_training_label"),
+    };
+
+    let applied = 0;
+    let sync_run_id: string | null = null;
+    if (data.apply && byCategory.consultant_or_sas_on_session.length > 0) {
+      sync_run_id = crypto.randomUUID();
+      // Group by proposed supervisor for chunked update.
+      const groups = new Map<string, typeof byCategory.consultant_or_sas_on_session>();
+      for (const c of byCategory.consultant_or_sas_on_session) {
+        const key = c.proposed_supervisor_id ?? "__none__";
+        const list = groups.get(key) ?? [];
+        list.push(c);
+        groups.set(key, list);
+      }
+      for (const [sup, items] of groups) {
+        const ids = items.map((c) => c.assignment_id);
+        const CHUNK = 200;
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const idChunk = ids.slice(i, i + CHUNK);
+          const update: { role_on_list: "supervised"; supervisor_id?: string } = {
+            role_on_list: "supervised",
+          };
+          if (sup !== "__none__") update.supervisor_id = sup;
+          const { error: updErr } = await supabaseAdmin
+            .from("rota_assignments")
+            .update(update)
+            .in("id", idChunk);
+          if (updErr) throw new Error(updErr.message);
+          const { error: logErr } = await supabaseAdmin
+            .from("rota_reclassification_log")
+            .insert(
+              idChunk.map((id) => ({
+                sync_run_id: sync_run_id!,
+                assignment_id: id,
+                from_role: "solo" as const,
+                to_role: "supervised" as const,
+                reason:
+                  sup !== "__none__"
+                    ? "manual investigation: consultant/SAS on same session (supervisor set)"
+                    : "manual investigation: consultant/SAS on same session",
+              })),
+            );
+          if (logErr) throw new Error(logErr.message);
+          applied += idChunk.length;
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      window: { start: startStr, end: endStr },
+      counts: {
+        consultant_or_sas_on_session: byCategory.consultant_or_sas_on_session.length,
+        unmatched_theatre_solo: byCategory.unmatched_theatre_solo.length,
+        non_training_label: byCategory.non_training_label.length,
+      },
+      applied,
+      sync_run_id,
+      sample: corrections.slice(0, 25),
+    };
+  });
+
+
+
+
 
 /**
  * Rewrite the CLWRota report URL so the date window always extends at least
