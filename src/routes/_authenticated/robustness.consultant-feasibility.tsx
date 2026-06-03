@@ -253,6 +253,7 @@ function ConsultantFeasibilityPage() {
 
 
 
+      {!hasErrors && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Result</CardTitle>
