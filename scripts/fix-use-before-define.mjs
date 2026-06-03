@@ -83,10 +83,76 @@ function collectBindingNames(node, out) {
   }
 }
 
-/** All identifier texts referenced anywhere inside `stmt`. */
+/**
+ * Names introduced by a node into its own scope. Used to mask references
+ * that resolve to an inner binding (shadowing) rather than the outer name
+ * we're considering moving.
+ */
+function namesIntroducedBy(n) {
+  const frame = new Set();
+  const push = (binding) => {
+    const arr = [];
+    collectBindingNames(binding, arr);
+    for (const x of arr) frame.add(x);
+  };
+  if (
+    ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) ||
+    ts.isArrowFunction(n) || ts.isMethodDeclaration(n) ||
+    ts.isConstructorDeclaration(n) || ts.isGetAccessor(n) ||
+    ts.isSetAccessor(n)
+  ) {
+    for (const p of n.parameters || []) push(p.name);
+    if ((ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n)) && n.name) {
+      frame.add(n.name.text);
+    }
+  }
+  if ((ts.isClassDeclaration(n) || ts.isClassExpression(n)) && n.name) {
+    frame.add(n.name.text);
+  }
+  if (ts.isCatchClause(n) && n.variableDeclaration) {
+    push(n.variableDeclaration.name);
+  }
+  // Block-scoped bindings declared directly inside a Block.
+  if (ts.isBlock(n) || ts.isModuleBlock(n)) {
+    for (const c of n.statements) {
+      if (ts.isVariableStatement(c)) {
+        for (const d of c.declarationList.declarations) push(d.name);
+      } else if (
+        (ts.isFunctionDeclaration(c) ||
+          ts.isClassDeclaration(c) ||
+          ts.isEnumDeclaration(c)) &&
+        c.name
+      ) {
+        frame.add(c.name.text);
+      }
+    }
+  }
+  // `for (const x of …)` / `for (let i = 0; …)` bind x/i in the loop body.
+  if (
+    ts.isForStatement(n) || ts.isForInStatement(n) || ts.isForOfStatement(n)
+  ) {
+    const init = n.initializer;
+    if (init && ts.isVariableDeclarationList(init)) {
+      for (const d of init.declarations) push(d.name);
+    }
+  }
+  return frame;
+}
+
+/** Identifier texts referenced inside `stmt` that are NOT shadowed by an
+ *  inner scope. The shadowing guard is what stops e.g. `catch (error)` from
+ *  matching a top-level `const error` declaration. */
 function referencedIdentifiers(stmt) {
   const found = new Set();
+  const scopeStack = []; // Set<string>[]
+  const shadows = (name) => {
+    for (const f of scopeStack) if (f.has(name)) return true;
+    return false;
+  };
   const visit = (n) => {
+    const frame = namesIntroducedBy(n);
+    if (frame.size > 0) scopeStack.push(frame);
+
     if (ts.isIdentifier(n)) {
       const p = n.parent;
       const isDeclName =
@@ -103,9 +169,11 @@ function referencedIdentifiers(stmt) {
           p.name === n) ||
         (ts.isPropertyAccessExpression(p) && p.name === n) ||
         (ts.isPropertyAssignment(p) && p.name === n && !p.initializer);
-      if (!isDeclName) found.add(n.text);
+      if (!isDeclName && !shadows(n.text)) found.add(n.text);
     }
+
     n.forEachChild(visit);
+    if (frame.size > 0) scopeStack.pop();
   };
   visit(stmt);
   return found;
