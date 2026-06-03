@@ -72,7 +72,7 @@ const WINDOW_OPTIONS = [
   { days: 90, label: "90d" },
 ] as const;
 
-function ClwRotaMetricsPage() {
+export function ClwRotaMetricsPage() {
   const [days, setDays] = useState<number>(30);
   const listFn = useServerFn(listClwRotaSyncMetrics);
 
