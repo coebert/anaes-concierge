@@ -146,15 +146,15 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
   for (const t of trainees ?? []) startsByStaff.set(t.id, t.start_date);
   for (const u of updated) startsByStaff.set(u.id, u.predicted_start);
 
-  const notYetStarted = (trainees ?? [])
+  const notYetStarted: PredictionResult["notYetStarted"] = (trainees ?? [])
     .map((t) => ({
       id: t.id,
-      full_name: t.full_name,
+      full_name: t.full_name as string | null,
       start_date: startsByStaff.get(t.id) ?? null,
     }))
     .filter(
       (t): t is { id: string; full_name: string | null; start_date: string } =>
-        t.start_date !== null && t.start_date > today,
+        typeof t.start_date === "string" && t.start_date > today,
     )
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
 
