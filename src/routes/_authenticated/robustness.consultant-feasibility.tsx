@@ -30,6 +30,7 @@ const InputsSchema = z.object({
   consultantInChargeSessionsPerWeek: z.number().min(0).max(21),
   painServiceSessionsPerWeek: z.number().min(0).max(50),
   poacSessionsPerWeek: z.number().min(0).max(50),
+  nonClinicalPAsPerWeek: z.number().min(0).max(50),
   icuSessionsPerWeek: z.number().min(0).max(21),
   icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
   pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
@@ -61,6 +62,7 @@ const DEFAULTS: Inputs = {
   consultantInChargeSessionsPerWeek: 10,
   painServiceSessionsPerWeek: 5,
   poacSessionsPerWeek: 5,
+  nonClinicalPAsPerWeek: 0,
   icuSessionsPerWeek: 10,
   icuTrainedPoolSize: 10,
   pasPerConsultant: 10,
@@ -197,6 +199,7 @@ function ConsultantFeasibilityPage() {
             <Field label="Consultant-in-charge sess / wk" value={inp.consultantInChargeSessionsPerWeek} onChange={set("consultantInChargeSessionsPerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.consultantInChargeSessionsPerWeek} />
             <Field label="Pain service sess / wk" value={inp.painServiceSessionsPerWeek} step="0.5" onChange={set("painServiceSessionsPerWeek")} hint="Acute pain + pain clinics" error={errors.painServiceSessionsPerWeek} />
             <Field label="POAC sess / wk" value={inp.poacSessionsPerWeek} step="0.5" onChange={set("poacSessionsPerWeek")} hint="Pre-op assessment" error={errors.poacSessionsPerWeek} />
+            <Field label="Non-clinical PAs / wk" value={inp.nonClinicalPAsPerWeek} step="0.5" onChange={set("nonClinicalPAsPerWeek")} hint="Mgmt / governance / audit — deducted from clinical cover" error={errors.nonClinicalPAsPerWeek} />
             <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} error={errors.icuSessionsPerWeek} />
             <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} error={errors.icuTrainedPoolSize} />
           </CardContent>
@@ -352,6 +355,8 @@ function ConsultantFeasibilityPage() {
                 {inp.consultantInChargeSessionsPerWeek} consultant-in-charge +{" "}
                 {inp.painServiceSessionsPerWeek} pain +{" "}
                 {inp.poacSessionsPerWeek} POAC +{" "}
+                {inp.nonClinicalPAsPerWeek} non-clinical PAs ×{" "}
+                {inp.sessionsPerPa} +{" "}
                 {inp.icuSessionsPerWeek} ICU ={" "}
                 <strong>{calc.weeklySessionDemand}</strong>
               </li>
@@ -544,6 +549,10 @@ function ConsultantFeasibilityPage() {
                     { label: "Consultant in charge", weekly: inp.consultantInChargeSessionsPerWeek },
                     { label: "Pain service", weekly: inp.painServiceSessionsPerWeek },
                     { label: "POAC", weekly: inp.poacSessionsPerWeek },
+                    {
+                      label: "Non-clinical PAs",
+                      weekly: inp.nonClinicalPAsPerWeek * inp.sessionsPerPa,
+                    },
                     { label: "ICU (lists)", weekly: inp.icuSessionsPerWeek },
                     {
                       label: "On-call (theatre + ICU)",
