@@ -56,12 +56,9 @@ export type AuditResult = {
   trainees: AuditTrainee[];
 };
 
-function isoDateOffset(days: number): string {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS as _LOOKAHEAD } from "./trainee-leave-audit-window";
+const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
+void _LOOKAHEAD;
 
 
 
