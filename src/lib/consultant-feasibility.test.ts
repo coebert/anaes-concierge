@@ -185,4 +185,25 @@ describe("calculateFeasibility — capacity breakdown", () => {
     expect(withCic.weeklySessionDemand - without.weeklySessionDemand).toBe(10);
     expect(withCic.fteNeeded).toBeGreaterThan(without.fteNeeded);
   });
+
+  it("deducts non-clinical PAs from clinical cover", () => {
+    const base = calculateFeasibility(FEASIBILITY_DEFAULTS);
+    const withNonClinical = calculateFeasibility({
+      ...FEASIBILITY_DEFAULTS,
+      nonClinicalPAsPerWeek: 5,
+    });
+    // 5 PAs/wk × 1 session/PA = 5 sessions/wk more demand
+    expect(
+      withNonClinical.weeklySessionDemand - base.weeklySessionDemand,
+    ).toBeCloseTo(5 * FEASIBILITY_DEFAULTS.sessionsPerPa, 10);
+    // Higher demand → higher FTE needed
+    expect(withNonClinical.fteNeeded).toBeGreaterThan(base.fteNeeded);
+    // Exact annual increment
+    expect(
+      withNonClinical.annualDemand - base.annualDemand,
+    ).toBeCloseTo(
+      5 * FEASIBILITY_DEFAULTS.sessionsPerPa * FEASIBILITY_DEFAULTS.weeksPerYear,
+      6,
+    );
+  });
 });
