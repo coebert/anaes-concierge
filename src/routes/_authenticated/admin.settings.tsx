@@ -19,7 +19,9 @@ import {
   syncClwRotaLeave,
   listReclassificationRuns,
   undoReclassificationRun,
+  investigateAndFixTraineeSolo,
 } from "@/lib/clwrota.functions";
+
 
 import { formatDateGB } from "@/lib/utils";
 import { useNameSortDirection, setNameSortDirection } from "@/lib/name-sort";
