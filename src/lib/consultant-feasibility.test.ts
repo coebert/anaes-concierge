@@ -161,8 +161,8 @@ describe("calculateFeasibility — capacity breakdown", () => {
     const r = calculateFeasibility(FEASIBILITY_DEFAULTS);
     // 13 theatres × 10 sess/wk = 130
     expect(r.theatreSessions).toBe(130);
-    // + 10 LW + 10 consultant-in-charge + 10 ICU = 160
-    expect(r.weeklySessionDemand).toBe(160);
+    // + 10 LW + 10 CIC + 5 pain + 5 POAC + 10 ICU = 170
+    expect(r.weeklySessionDemand).toBe(170);
     // leave = (32+7+8)/5 = 9.4 wks
     expect(r.leaveWeeks).toBeCloseTo(9.4, 10);
     // working = 52 - 9.4 = 42.6
