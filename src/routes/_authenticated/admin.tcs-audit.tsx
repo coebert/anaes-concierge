@@ -12,7 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { auditTcs2016, type AuditAssignment, type AuditResult, type RuleResult, type RuleStatus, type ShiftSummary } from "@/lib/tcs-2016-audit";
-import { compareBySurnameAsc, formatDateGB } from "@/lib/utils";
+import { formatDateGB } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck, ShieldAlert, ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/tcs-audit")({
@@ -178,7 +179,7 @@ function TcsAuditPage() {
           o === "non_compliant" ? 0 : o === "insufficient_data" ? 2 : 1;
         const diff = rank(a.audit.overall) - rank(b.audit.overall);
         if (diff !== 0) return diff;
-        return compareBySurnameAsc(a.trainee.full_name, b.trainee.full_name);
+        return compareBySurname(a.trainee.full_name, b.trainee.full_name);
       });
   }, [data, filter]);
 

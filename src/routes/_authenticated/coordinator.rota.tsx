@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { cn, parseDateLocal, formatDateLongGB, compareBySurnameAsc } from "@/lib/utils";
+import { cn, parseDateLocal, formatDateLongGB } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { useAuth } from "@/lib/auth-context";
 import {
   validateAssignment, worstSeverity,
@@ -727,7 +728,7 @@ function CellDialog({
                                 <SelectContent>
                                   {staff
                                     .filter((s) => s.id === a.staff_id || !assigns?.some((x) => x.staff_id === s.id))
-                                    .sort((a, b) => compareBySurnameAsc(a.full_name, b.full_name))
+                                    .sort((a, b) => compareBySurname(a.full_name, b.full_name))
                                     .map((s) => (
                                       <SelectItem key={s.id} value={s.id}>
                                         {s.full_name} {s.grade ? `(${s.grade})` : ""}
@@ -792,7 +793,7 @@ function CellDialog({
                     <SelectContent>
                       {staff
                         .filter((s) => !assigns?.some((a) => a.staff_id === s.id))
-                        .sort((a, b) => compareBySurnameAsc(a.full_name, b.full_name))
+                        .sort((a, b) => compareBySurname(a.full_name, b.full_name))
                         .map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.full_name} {s.grade ? `(${s.grade})` : ""}

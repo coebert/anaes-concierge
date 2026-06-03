@@ -1,4 +1,4 @@
-import { compareBySurnameAsc } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -914,16 +914,16 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     ...mkRef(l.staff_id as string),
     type: l.type as string,
     status: l.status as string,
-  })).sort((a, b) => compareBySurnameAsc(a.staffName, b.staffName));
+  })).sort((a, b) => compareBySurname(a.staffName, b.staffName));
 
   const dow = new Date(date + "T00:00:00Z").getUTCDay();
   const ltftOff: PersonRef[] = [...profById.entries()]
     .filter(([, p]) => p.ltft_days_off.includes(dow))
     .map(([id]) => mkRef(id))
-    .sort((a, b) => compareBySurnameAsc(a.staffName, b.staffName));
+    .sort((a, b) => compareBySurname(a.staffName, b.staffName));
 
   const onOtherDuty = [...otherDutyMap.values()]
-    .sort((a, b) => compareBySurnameAsc(a.staffName, b.staffName));
+    .sort((a, b) => compareBySurname(a.staffName, b.staffName));
 
   const empty: HalfDayCapacity = {
     required: 0, soloCapable: 0, consultantsAvailable: 0, seniorTraineesAvailable: 0,
@@ -1134,7 +1134,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
       }
       entries.push(fe);
     }
-    entries.sort((a, b) => compareBySurnameAsc(a.staffName, b.staffName));
+    entries.sort((a, b) => compareBySurname(a.staffName, b.staffName));
     return { session: half, entries };
   };
 

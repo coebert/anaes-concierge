@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { formatDateGB, todayISO, compareBySurnameAsc } from "@/lib/utils";
+import { formatDateGB, todayISO } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import {
   buildConsultantSessionSet,
   isSoloTraineeAssignment,
@@ -417,7 +418,7 @@ function AdminDashboardPage() {
           traineeMetricsData.specNameMap,
         ),
       }))
-      .sort((a, b) => compareBySurnameAsc(a.trainee.full_name, b.trainee.full_name));
+      .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [traineeMetricsData]);
 
 
@@ -558,7 +559,7 @@ function AdminDashboardPage() {
         // Inactive trainees (zero daytime lists) go to the bottom
         if (a.total === 0 && b.total > 0) return 1;
         if (a.total > 0 && b.total === 0) return -1;
-        return b.pct - a.pct || compareBySurnameAsc(a.full_name, b.full_name);
+        return b.pct - a.pct || compareBySurname(a.full_name, b.full_name);
       });
 
     const totalSolo = chart.reduce((s, r) => s + r.soloLists, 0);
