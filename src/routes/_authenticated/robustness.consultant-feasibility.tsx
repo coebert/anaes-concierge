@@ -62,6 +62,7 @@ const DEFAULTS: Inputs = {
   consultantInChargeSessionsPerWeek: 10,
   painServiceSessionsPerWeek: 5,
   poacSessionsPerWeek: 5,
+  nonClinicalPAsPerWeek: 0,
   icuSessionsPerWeek: 10,
   icuTrainedPoolSize: 10,
   pasPerConsultant: 10,
