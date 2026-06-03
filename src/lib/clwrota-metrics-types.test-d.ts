@@ -57,8 +57,8 @@ type _ClassifierAcceptsRow = Expect<
 
 // 6. A row literal missing `is_backfill` must NOT be assignable.
 //    `@ts-expect-error` itself fails the build if the error disappears.
-const _missingIsBackfill = (): ClwRotaSyncMetricRow => ({
-  // @ts-expect-error is_backfill is required on ClwRotaSyncMetricRow
+// @ts-expect-error is_backfill is required on ClwRotaSyncMetricRow
+const _missingIsBackfill: ClwRotaSyncMetricRow = {
   id: "x",
   sync_kind: "rota",
   run_at: new Date().toISOString(),
@@ -80,7 +80,7 @@ const _missingIsBackfill = (): ClwRotaSyncMetricRow => ({
   upsert_retries_total: 0,
   errors_count: 0,
   notes: null,
-});
+};
 
 // Reference the helpers so unused-locals lint rules don't strip them.
 export type __ClwRotaMetricsTypeTests = [
@@ -89,5 +89,6 @@ export type __ClwRotaMetricsTypeTests = [
   _IsBackfillIsBoolean,
   _ResponseRowMatches,
   _ClassifierAcceptsRow,
-  ReturnType<typeof _missingIsBackfill>,
 ];
+export const __clwRotaMetricsRuntimeRefs = { _missingIsBackfill };
+
