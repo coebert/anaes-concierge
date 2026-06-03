@@ -328,28 +328,36 @@ function ClwRotaMetricsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.slice().reverse().slice(0, 50).map((r) => (
-                    <tr key={r.id} className="border-t border-border">
-                      <td className="py-1.5 pr-3 whitespace-nowrap">
-                        {new Date(r.run_at).toLocaleString("en-GB")}
-                      </td>
-                      <td className="py-1.5 pr-3">{r.sync_kind}</td>
-                      <td className="py-1.5 pr-3">
-                        <Badge variant={r.ok ? "secondary" : "destructive"}>
-                          {r.ok ? "ok" : "errors"}
-                        </Badge>
-                      </td>
-                      <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
-                      <td className="py-1.5 pr-3 text-right text-emerald-600">{r.rows_upserted}</td>
-                      <td className="py-1.5 pr-3 text-right text-blue-600">{r.rows_skipped_validation}</td>
-                      <td className="py-1.5 pr-3 text-right text-destructive">{r.rows_failed}</td>
-                      <td className="py-1.5 pr-3 text-right">{r.upsert_retries_total}</td>
-                      <td className="py-1.5 pr-3 text-right">{r.chunks_fell_back_to_per_row}</td>
-                      <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                        {r.duration_ms == null ? "—" : `${(r.duration_ms / 1000).toFixed(1)}s`}
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.slice().reverse().slice(0, 50).map((r) => {
+                    const isBackfill = Boolean(r.notes?.startsWith("[BACKFILL"));
+                    return (
+                      <tr key={r.id} className={`border-t border-border ${isBackfill ? "bg-amber-50/40" : ""}`}>
+                        <td className="py-1.5 pr-3 whitespace-nowrap">
+                          {new Date(r.run_at).toLocaleString("en-GB")}
+                          {isBackfill && (
+                            <Badge variant="outline" className="ml-2 text-amber-700 border-amber-300 bg-amber-100">
+                              Backfill
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-3">{r.sync_kind}</td>
+                        <td className="py-1.5 pr-3">
+                          <Badge variant={r.ok ? "secondary" : "destructive"}>
+                            {r.ok ? "ok" : "errors"}
+                          </Badge>
+                        </td>
+                        <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
+                        <td className="py-1.5 pr-3 text-right text-emerald-600">{r.rows_upserted}</td>
+                        <td className="py-1.5 pr-3 text-right text-blue-600">{r.rows_skipped_validation}</td>
+                        <td className="py-1.5 pr-3 text-right text-destructive">{r.rows_failed}</td>
+                        <td className="py-1.5 pr-3 text-right">{r.upsert_retries_total}</td>
+                        <td className="py-1.5 pr-3 text-right">{r.chunks_fell_back_to_per_row}</td>
+                        <td className="py-1.5 pr-3 text-right text-muted-foreground">
+                          {r.duration_ms == null ? "—" : `${(r.duration_ms / 1000).toFixed(1)}s`}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </CardContent>
