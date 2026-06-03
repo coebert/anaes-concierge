@@ -334,7 +334,7 @@ function ConsultantFeasibilityPage() {
 
 
 
-      {!hasErrors && (
+      {!hasErrors && (<>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Result</CardTitle>
