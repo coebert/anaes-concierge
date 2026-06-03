@@ -36,6 +36,9 @@ const InputsSchema = z.object({
   bankHolidayDays: z.number().min(0).max(20),
   weeksPerYear: z.number().min(1).max(53),
   workingDaysPerWeek: z.number().min(1, "Must be ≥ 1").max(7),
+  sicknessRatePct: z.number().min(0).max(30, "Max 30%"),
+  theatreOnCallPAsPerWeek: z.number().min(0).max(20, "Max 20 PAs/wk"),
+  icuOnCallPAsPerWeek: z.number().min(0).max(20, "Max 20 PAs/wk"),
 }).refine((v) => v.dccPasPerConsultant <= v.pasPerConsultant, {
   message: "DCC PAs cannot exceed total PAs",
   path: ["dccPasPerConsultant"],
@@ -61,6 +64,9 @@ const DEFAULTS: Inputs = {
   bankHolidayDays: 8,
   weeksPerYear: 52,
   workingDaysPerWeek: 5,
+  sicknessRatePct: 5,
+  theatreOnCallPAsPerWeek: 2,
+  icuOnCallPAsPerWeek: 2,
 };
 
 function ConsultantFeasibilityPage() {
@@ -70,11 +76,23 @@ function ConsultantFeasibilityPage() {
     const theatreSessions =
       (inp.mainTheatres + inp.daySurgeryTheatres) *
       inp.sessionsPerTheatrePerWeek;
-    const weeklyDemand =
+    const weeklySessionDemand =
       theatreSessions +
       inp.labourWardSessionsPerWeek +
       inp.icuSessionsPerWeek;
-    const annualDemand = weeklyDemand * inp.weeksPerYear;
+    const annualSessionDemand = weeklySessionDemand * inp.weeksPerYear;
+
+    // On-call PAs are consumed from the same DCC pool that funds lists.
+    // Convert them into "session-equivalents" via sessionsPerPa so they can be
+    // added to the demand side on like-for-like terms.
+    const weeklyOnCallPAs =
+      inp.theatreOnCallPAsPerWeek + inp.icuOnCallPAsPerWeek;
+    const annualOnCallSessionEquiv =
+      weeklyOnCallPAs * inp.sessionsPerPa * inp.weeksPerYear;
+
+    const weeklyDemand =
+      weeklySessionDemand + weeklyOnCallPAs * inp.sessionsPerPa;
+    const annualDemand = annualSessionDemand + annualOnCallSessionEquiv;
 
     const leaveDays =
       inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays;
@@ -83,36 +101,49 @@ function ConsultantFeasibilityPage() {
 
     const weeklyClinicalSessions =
       inp.dccPasPerConsultant * inp.sessionsPerPa;
-    const annualSessionsPerConsultant = weeklyClinicalSessions * workingWeeks;
+    const sicknessFactor = 1 - inp.sicknessRatePct / 100;
+    const annualSessionsPerConsultant =
+      weeklyClinicalSessions * workingWeeks * sicknessFactor;
 
-    const fteNeeded = annualDemand / annualSessionsPerConsultant;
+    const fteNeeded =
+      annualSessionsPerConsultant > 0
+        ? annualDemand / annualSessionsPerConsultant
+        : Infinity;
 
-    // ICU subgroup feasibility: 10 sessions/week × 52 = annual ICU demand,
-    // must be covered by the 10-strong ICU-trained pool's annual capacity.
-    const icuAnnualDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
+    // ICU subgroup feasibility now includes ICU OOH cover (must also come
+    // from the ICU-trained pool) and the sickness derate baked into capacity.
+    const icuAnnualSessionDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
+    const icuAnnualOnCallEquiv =
+      inp.icuOnCallPAsPerWeek * inp.sessionsPerPa * inp.weeksPerYear;
+    const icuAnnualDemand = icuAnnualSessionDemand + icuAnnualOnCallEquiv;
     const icuPoolAnnualCapacity =
       inp.icuTrainedPoolSize * annualSessionsPerConsultant;
     const icuPoolUtilisation =
       icuPoolAnnualCapacity > 0
         ? icuAnnualDemand / icuPoolAnnualCapacity
         : Infinity;
-    // Each ICU-trained consultant must spend this fraction of their clinical
-    // time on ICU; the remainder is available for theatre / labour ward.
+    const icuWeeklyLoad =
+      inp.icuSessionsPerWeek + inp.icuOnCallPAsPerWeek * inp.sessionsPerPa;
     const icuSharePerConsultant =
-      inp.icuTrainedPoolSize > 0
-        ? inp.icuSessionsPerWeek / inp.icuTrainedPoolSize / weeklyClinicalSessions
+      inp.icuTrainedPoolSize > 0 && weeklyClinicalSessions > 0
+        ? icuWeeklyLoad / inp.icuTrainedPoolSize / weeklyClinicalSessions
         : Infinity;
 
     return {
       theatreSessions,
+      weeklySessionDemand,
       weeklyDemand,
       annualDemand,
+      annualOnCallSessionEquiv,
+      weeklyOnCallPAs,
       leaveWeeks,
       workingWeeks,
       weeklyClinicalSessions,
+      sicknessFactor,
       annualSessionsPerConsultant,
       fteNeeded,
       icuAnnualDemand,
+      icuAnnualOnCallEquiv,
       icuPoolAnnualCapacity,
       icuPoolUtilisation,
       icuSharePerConsultant,
@@ -179,10 +210,13 @@ function ConsultantFeasibilityPage() {
         <CardContent className="text-sm">
           <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Demand</strong> = (main + day-surgery theatres) × sessions/theatre/week + labour-ward sessions/week + ICU sessions/week.
+              <strong className="text-foreground">Session demand</strong> = (main + day-surgery theatres) × sessions/theatre/week + labour-ward sessions/week + ICU sessions/week.
             </li>
             <li>
               <strong className="text-foreground">A "session"</strong> is a half-day list (AM or PM). Mon–Fri AM+PM = 10 sessions/theatre/week.
+            </li>
+            <li>
+              <strong className="text-foreground">On-call cover</strong>: one consultant covers theatres OOH and one ICU-trained consultant covers ICU OOH at all times. The PAs allocated to each rota (per week) are converted to session-equivalents via "sessions / PA" and added to demand — these PAs are drawn from the DCC pool so they reduce list-running capacity.
             </li>
             <li>
               <strong className="text-foreground">Per-consultant capacity</strong>: only DCC PAs count toward clinical sessions (SPA time excluded). Sessions/week = DCC PAs × sessions per PA.
@@ -191,13 +225,16 @@ function ConsultantFeasibilityPage() {
               <strong className="text-foreground">Leave treatment</strong>: annual + study + bank-holiday days are summed and divided by working-days/week to convert into weeks lost. Working weeks/year = weeks/year − leave weeks.
             </li>
             <li>
-              <strong className="text-foreground">FTE needed</strong> = annual demand ÷ (weekly clinical sessions × working weeks/year). Headcount is the FTE rounded up.
+              <strong className="text-foreground">Sickness</strong>: capacity per consultant is derated by the sickness rate (e.g. 5% sickness ⇒ multiply annual sessions/consultant by 0.95).
             </li>
             <li>
-              <strong className="text-foreground">ICU subgroup check</strong>: ICU sessions can only be drawn from the ICU-trained pool. Pool utilisation = ICU annual demand ÷ (pool size × per-consultant annual capacity). Must be ≤ 100% to be feasible.
+              <strong className="text-foreground">FTE needed</strong> = (annual session demand + annual on-call session-equivalents) ÷ (weekly clinical sessions × working weeks/year × (1 − sickness)). Headcount is the FTE rounded up.
             </li>
             <li>
-              <strong className="text-foreground">Not modelled</strong>: sickness, on-call/night cover, parental leave, fixed sessions, LTFT, weekend lists, cross-cover for absences.
+              <strong className="text-foreground">ICU subgroup check</strong>: ICU sessions and ICU OOH cover can only be drawn from the ICU-trained pool. Pool utilisation = ICU annual demand ÷ (pool size × per-consultant annual capacity). Must be ≤ 100% to be feasible.
+            </li>
+            <li>
+              <strong className="text-foreground">Not modelled</strong>: parental leave, fixed sessions, LTFT, weekend elective lists, cross-cover for individual absences, on-call rota size effects (compensatory rest).
             </li>
           </ul>
         </CardContent>
@@ -247,9 +284,25 @@ function ConsultantFeasibilityPage() {
             <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} error={errors.bankHolidayDays} />
             <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} error={errors.weeksPerYear} />
             <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} hint="Used to convert leave days → weeks" error={errors.workingDaysPerWeek} />
+            <Field label="Sickness rate (%)" value={inp.sicknessRatePct} step="0.5" onChange={set("sicknessRatePct")} hint="Derates annual capacity" error={errors.sicknessRatePct} />
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">On-call cover (24/7)</CardTitle>
+          <CardDescription>
+            One consultant always covering theatres OOH, and one ICU-trained
+            consultant always covering ICU OOH. The PAs allocated to each rota
+            are taken from the DCC pool.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label="Theatre on-call PAs / week" value={inp.theatreOnCallPAsPerWeek} step="0.5" onChange={set("theatreOnCallPAsPerWeek")} hint="Total rota PAs/wk" error={errors.theatreOnCallPAsPerWeek} />
+          <Field label="ICU on-call PAs / week" value={inp.icuOnCallPAsPerWeek} step="0.5" onChange={set("icuOnCallPAsPerWeek")} hint="Drawn from ICU-trained pool" error={errors.icuOnCallPAsPerWeek} />
+        </CardContent>
+      </Card>
 
 
 
@@ -264,19 +317,19 @@ function ConsultantFeasibilityPage() {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <Stat
-              label="Weekly clinical sessions to cover"
-              value={calc.weeklyDemand.toLocaleString()}
-              sub={`${calc.theatreSessions} theatre + ${inp.labourWardSessionsPerWeek} labour ward + ${inp.icuSessionsPerWeek} ICU`}
+              label="Weekly session-equivalents to cover"
+              value={calc.weeklyDemand.toFixed(1)}
+              sub={`${calc.weeklySessionDemand} lists + ${(calc.weeklyOnCallPAs * inp.sessionsPerPa).toFixed(1)} on-call (${calc.weeklyOnCallPAs} PAs)`}
             />
             <Stat
-              label="Annual clinical sessions"
+              label="Annual session-equivalents"
               value={Math.round(calc.annualDemand).toLocaleString()}
-              sub={`${calc.weeklyDemand} × ${inp.weeksPerYear} weeks`}
+              sub={`${calc.weeklyDemand.toFixed(1)} × ${inp.weeksPerYear} weeks (incl. on-call)`}
             />
             <Stat
               label="Sessions / consultant / year"
               value={calc.annualSessionsPerConsultant.toFixed(1)}
-              sub={`${calc.weeklyClinicalSessions} cln sessions × ${calc.workingWeeks.toFixed(1)} working wks`}
+              sub={`${calc.weeklyClinicalSessions} sess/wk × ${calc.workingWeeks.toFixed(1)} wks × ${(calc.sicknessFactor * 100).toFixed(0)}% (sickness ${inp.sicknessRatePct}%)`}
             />
           </div>
 
@@ -328,18 +381,19 @@ function ConsultantFeasibilityPage() {
                   {(calc.icuPoolUtilisation * 100).toFixed(1)}% utilisation
                 </div>
                 <p className="text-muted-foreground">
-                  {inp.icuSessionsPerWeek} ICU sessions/week must be drawn from
+                  {inp.icuSessionsPerWeek} ICU sessions/week + {inp.icuOnCallPAsPerWeek} ICU on-call PAs/week must be drawn from
                   the {inp.icuTrainedPoolSize}-strong ICU-trained pool. Each
                   ICU-trained consultant would spend{" "}
                   <strong>
                     {(calc.icuSharePerConsultant * 100).toFixed(1)}%
                   </strong>{" "}
-                  of their clinical time on ICU, leaving the remainder for
-                  theatres / labour ward.
+                  of their clinical time on ICU + ICU on-call, leaving the
+                  remainder for theatres / labour ward.
                 </p>
                 <p className="text-muted-foreground">
                   Annual ICU demand{" "}
-                  {Math.round(calc.icuAnnualDemand).toLocaleString()} vs pool
+                  {Math.round(calc.icuAnnualDemand).toLocaleString()} (incl.{" "}
+                  {Math.round(calc.icuAnnualOnCallEquiv).toLocaleString()} on-call) vs pool
                   capacity{" "}
                   {Math.round(calc.icuPoolAnnualCapacity).toLocaleString()}{" "}
                   sessions/year.
@@ -359,10 +413,24 @@ function ConsultantFeasibilityPage() {
                 <strong>{calc.theatreSessions}</strong> sessions/wk
               </li>
               <li>
-                Weekly demand = {calc.theatreSessions} theatre +{" "}
+                Weekly session demand = {calc.theatreSessions} theatre +{" "}
                 {inp.labourWardSessionsPerWeek} labour ward +{" "}
                 {inp.icuSessionsPerWeek} ICU ={" "}
-                <strong>{calc.weeklyDemand}</strong>
+                <strong>{calc.weeklySessionDemand}</strong>
+              </li>
+              <li>
+                On-call: ({inp.theatreOnCallPAsPerWeek} theatre +{" "}
+                {inp.icuOnCallPAsPerWeek} ICU) PAs/wk × {inp.sessionsPerPa}{" "}
+                sess/PA ={" "}
+                <strong>
+                  {(calc.weeklyOnCallPAs * inp.sessionsPerPa).toFixed(1)}
+                </strong>{" "}
+                session-equiv/wk
+              </li>
+              <li>
+                Total weekly demand ={" "}
+                <strong>{calc.weeklyDemand.toFixed(1)}</strong> × {inp.weeksPerYear} wks ={" "}
+                <strong>{Math.round(calc.annualDemand).toLocaleString()}</strong>/yr
               </li>
               <li>
                 Leave per consultant: {inp.annualLeaveDays} AL +{" "}
@@ -379,7 +447,8 @@ function ConsultantFeasibilityPage() {
                 Per consultant: {inp.dccPasPerConsultant} DCC PAs ×{" "}
                 {inp.sessionsPerPa} session/PA ={" "}
                 {calc.weeklyClinicalSessions} sessions/wk ×{" "}
-                {calc.workingWeeks.toFixed(2)} wks ={" "}
+                {calc.workingWeeks.toFixed(2)} wks × (1 −{" "}
+                {inp.sicknessRatePct}% sickness) ={" "}
                 <strong>{calc.annualSessionsPerConsultant.toFixed(1)}</strong>{" "}
                 sessions/yr
               </li>
