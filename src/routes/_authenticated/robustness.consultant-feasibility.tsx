@@ -343,6 +343,7 @@ function ConsultantFeasibilityPage() {
               <li>
                 Weekly session demand = {calc.theatreSessions} theatre +{" "}
                 {inp.labourWardSessionsPerWeek} labour ward +{" "}
+                {inp.consultantInChargeSessionsPerWeek} consultant-in-charge +{" "}
                 {inp.icuSessionsPerWeek} ICU ={" "}
                 <strong>{calc.weeklySessionDemand}</strong>
               </li>
