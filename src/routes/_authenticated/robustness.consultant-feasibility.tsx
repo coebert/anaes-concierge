@@ -166,6 +166,53 @@ function ConsultantFeasibilityPage() {
         </Button>
       </header>
 
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Info className="h-4 w-4 text-primary" />
+            How this calculation works
+          </CardTitle>
+          <CardDescription>
+            Every figure on the page is derived from these explicit rules — change any input to see the effect.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm">
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Demand</strong> = (main + day-surgery theatres) × sessions/theatre/week + labour-ward sessions/week + ICU sessions/week.
+            </li>
+            <li>
+              <strong className="text-foreground">A "session"</strong> is a half-day list (AM or PM). Mon–Fri AM+PM = 10 sessions/theatre/week.
+            </li>
+            <li>
+              <strong className="text-foreground">Per-consultant capacity</strong>: only DCC PAs count toward clinical sessions (SPA time excluded). Sessions/week = DCC PAs × sessions per PA.
+            </li>
+            <li>
+              <strong className="text-foreground">Leave treatment</strong>: annual + study + bank-holiday days are summed and divided by working-days/week to convert into weeks lost. Working weeks/year = weeks/year − leave weeks.
+            </li>
+            <li>
+              <strong className="text-foreground">FTE needed</strong> = annual demand ÷ (weekly clinical sessions × working weeks/year). Headcount is the FTE rounded up.
+            </li>
+            <li>
+              <strong className="text-foreground">ICU subgroup check</strong>: ICU sessions can only be drawn from the ICU-trained pool. Pool utilisation = ICU annual demand ÷ (pool size × per-consultant annual capacity). Must be ≤ 100% to be feasible.
+            </li>
+            <li>
+              <strong className="text-foreground">Not modelled</strong>: sickness, on-call/night cover, parental leave, fixed sessions, LTFT, weekend lists, cross-cover for absences.
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
+
+      {hasErrors && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Check your inputs</AlertTitle>
+          <AlertDescription>
+            One or more values are out of range. The result below is hidden until they are corrected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -175,12 +222,12 @@ function ConsultantFeasibilityPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            <Field label="Main theatres" value={inp.mainTheatres} onChange={set("mainTheatres")} />
-            <Field label="Day-surgery theatres" value={inp.daySurgeryTheatres} onChange={set("daySurgeryTheatres")} />
-            <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" />
-            <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} />
-            <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} />
-            <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} />
+            <Field label="Main theatres" value={inp.mainTheatres} onChange={set("mainTheatres")} error={errors.mainTheatres} />
+            <Field label="Day-surgery theatres" value={inp.daySurgeryTheatres} onChange={set("daySurgeryTheatres")} error={errors.daySurgeryTheatres} />
+            <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" error={errors.sessionsPerTheatrePerWeek} />
+            <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} error={errors.labourWardSessionsPerWeek} />
+            <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} error={errors.icuSessionsPerWeek} />
+            <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} error={errors.icuTrainedPoolSize} />
           </CardContent>
         </Card>
 
@@ -192,17 +239,19 @@ function ConsultantFeasibilityPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            <Field label="PAs / week (total)" value={inp.pasPerConsultant} step="0.5" onChange={set("pasPerConsultant")} />
-            <Field label="DCC PAs / week" value={inp.dccPasPerConsultant} step="0.5" onChange={set("dccPasPerConsultant")} hint="Clinical, excludes SPA" />
-            <Field label="Sessions / PA" value={inp.sessionsPerPa} step="0.5" onChange={set("sessionsPerPa")} />
-            <Field label="Annual leave (days)" value={inp.annualLeaveDays} onChange={set("annualLeaveDays")} />
-            <Field label="Study leave (days)" value={inp.studyLeaveDays} onChange={set("studyLeaveDays")} />
-            <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} />
-            <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} />
-            <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} />
+            <Field label="PAs / week (total)" value={inp.pasPerConsultant} step="0.5" onChange={set("pasPerConsultant")} hint="Standard NHS contract = 10" error={errors.pasPerConsultant} />
+            <Field label="DCC PAs / week" value={inp.dccPasPerConsultant} step="0.5" onChange={set("dccPasPerConsultant")} hint="Clinical, excludes SPA" error={errors.dccPasPerConsultant} />
+            <Field label="Sessions / PA" value={inp.sessionsPerPa} step="0.5" onChange={set("sessionsPerPa")} hint="1 PA = 1 half-day list" error={errors.sessionsPerPa} />
+            <Field label="Annual leave (days)" value={inp.annualLeaveDays} onChange={set("annualLeaveDays")} error={errors.annualLeaveDays} />
+            <Field label="Study leave (days)" value={inp.studyLeaveDays} onChange={set("studyLeaveDays")} error={errors.studyLeaveDays} />
+            <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} error={errors.bankHolidayDays} />
+            <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} error={errors.weeksPerYear} />
+            <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} hint="Used to convert leave days → weeks" error={errors.workingDaysPerWeek} />
           </CardContent>
         </Card>
       </div>
+
+
 
       <Card>
         <CardHeader>
