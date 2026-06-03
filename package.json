@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "lint:fix-order": "node scripts/fix-use-before-define.mjs",
+    "lint:fix-order:dry": "node scripts/fix-use-before-define.mjs --dry-run",
     "format": "prettier --write ."
   },
   "dependencies": {
