@@ -88,7 +88,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
   if (lErr) throw new Error(lErr.message);
   const hasLeave = new Set(
     (leaveRows ?? [])
-      .filter((r) => r.status === "approved" || r.status === "pending" || r.status === "reserve")
+      .filter((r) => r.status === "approved" || r.status === "pending")
       .map((r) => r.staff_id),
   );
 
