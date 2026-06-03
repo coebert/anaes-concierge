@@ -57,9 +57,7 @@ export type AuditResult = {
   trainees: AuditTrainee[];
 };
 
-import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS as _LOOKAHEAD } from "./trainee-leave-audit-window";
 const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
-void _LOOKAHEAD;
 
 
 
