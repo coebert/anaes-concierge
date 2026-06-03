@@ -114,7 +114,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     if (lErr) throw new Error(lErr.message);
     const leaveByStaff = new Map<string, AuditLeaveRow[]>();
     for (const r of leaveRows ?? []) {
-      const { counted, reason } = classifyStatus(r.status);
+      const { counted, reason } = classifyLeaveOverlap(r.status);
       const row: AuditLeaveRow = {
         id: r.id,
         start_date: r.start_date,
