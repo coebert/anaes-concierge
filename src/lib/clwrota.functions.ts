@@ -1455,6 +1455,16 @@ export async function performRotaSync() {
         theatreId = theatreByName.get(theatreName.toLowerCase().trim());
         if (!theatreId) unmatchedTheatres.add(theatreName);
       }
+      // CLWRota frequently puts off-site / non-numbered list locations
+      // (NHH, Pain, POAU, Endo, MRI, Cardioversions, Laser, …) in the
+      // slot_titles ("consultant") field rather than place.name. If we
+      // didn't find a theatre via the location columns but the consultant
+      // slot text matches a known theatre name, treat that as the theatre
+      // so the row maps to a real theatre_session.
+      if (!theatreId && consultantName) {
+        const candidate = theatreByName.get(consultantName.toLowerCase().trim());
+        if (candidate) theatreId = candidate;
+      }
 
       // Classify duty type from free-text labels + staff grade.
       const prof = profById.get(staffId);
