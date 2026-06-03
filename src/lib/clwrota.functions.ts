@@ -1342,6 +1342,12 @@ export async function performRotaSync() {
     const warnings: Array<{ label: string; reason: string }> = [];
     const unmatchedTheatres = new Set<string>();
     const unmatchedStaff = new Set<string>();
+    // External IDs we explicitly recognise as non-working — any stale
+    // rota_assignment row carrying these IDs (created by older syncs before
+    // the non-working classifier matured) must be deleted, otherwise they
+    // persist as bogus duty_type='theatre' rows with no theatre_session_id
+    // and pollute trainee unmatched-row metrics.
+    const nonWorkingExtIds = new Set<string>();
 
     // --- Pass 1: parse rows, match staff/theatre, collect work in memory. -----
     type SessionDraft = {
