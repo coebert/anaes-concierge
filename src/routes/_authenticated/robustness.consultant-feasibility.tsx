@@ -129,6 +129,26 @@ function ConsultantFeasibilityPage() {
         ? icuWeeklyLoad / inp.icuTrainedPoolSize / weeklyClinicalSessions
         : Infinity;
 
+    // Capacity-breakdown intermediates
+    const grossAnnualSessionsPerConsultant =
+      weeklyClinicalSessions * inp.weeksPerYear;
+    const leaveLostAnnualSessionsPerConsultant =
+      weeklyClinicalSessions * leaveWeeks;
+    const afterLeaveAnnualSessionsPerConsultant =
+      weeklyClinicalSessions * workingWeeks;
+    const sicknessLostAnnualSessionsPerConsultant =
+      afterLeaveAnnualSessionsPerConsultant - annualSessionsPerConsultant;
+    const annualOnCallBurdenPerConsultant =
+      fteNeeded > 0 && Number.isFinite(ft eNeeded)
+        ? annualOnCallSessionEquiv / fteNeeded
+        : 0;
+    const residualListCapacityPerConsultant =
+      annualSessionsPerConsultant - annualOnCallBurdenPerConsultant;
+    const icuDemandPerConsultant =
+      inp.icuTrainedPoolSize > 0 ? icuAnnualDemand / inp.icuTrainedPoolSize : 0;
+    const icuResidualCapacityPerConsultant =
+      annualSessionsPerConsultant - icuDemandPerConsultant;
+
     return {
       theatreSessions,
       weeklySessionDemand,
@@ -147,6 +167,14 @@ function ConsultantFeasibilityPage() {
       icuPoolAnnualCapacity,
       icuPoolUtilisation,
       icuSharePerConsultant,
+      grossAnnualSessionsPerConsultant,
+      leaveLostAnnualSessionsPerConsultant,
+      afterLeaveAnnualSessionsPerConsultant,
+      sicknessLostAnnualSessionsPerConsultant,
+      annualOnCallBurdenPerConsultant,
+      residualListCapacityPerConsultant,
+      icuDemandPerConsultant,
+      icuResidualCapacityPerConsultant,
     };
   }, [inp]);
 
