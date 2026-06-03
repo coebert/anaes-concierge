@@ -2005,7 +2005,9 @@ export const syncClwRotaLeave = createServerFn({ method: "POST" })
   });
 
 export async function performLeaveSync() {
+  const startedAt = Date.now();
   const { apiKey } = getEnv();
+
 
   // Pre-sync count for the historical-data safeguard.
   const { count: preCount, error: preCountErr } = await supabaseAdmin
