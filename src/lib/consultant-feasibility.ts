@@ -63,6 +63,7 @@ export function calculateFeasibility(inp: FeasibilityInputs): FeasibilityResult 
     inp.consultantInChargeSessionsPerWeek +
     inp.painServiceSessionsPerWeek +
     inp.poacSessionsPerWeek +
+    inp.nonClinicalPAsPerWeek * inp.sessionsPerPa +
     inp.icuSessionsPerWeek;
   const annualSessionDemand = weeklySessionDemand * inp.weeksPerYear;
 
