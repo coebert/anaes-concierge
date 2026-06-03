@@ -46,6 +46,7 @@ import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
@@ -255,6 +256,12 @@ const AuthenticatedAdminDashboardRoute =
     path: '/admin/dashboard',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminClwrotaMetricsRoute =
+  AuthenticatedAdminClwrotaMetricsRouteImport.update({
+    id: '/admin/clwrota-metrics',
+    path: '/admin/clwrota-metrics',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminAccessRequestsRoute =
   AuthenticatedAdminAccessRequestsRouteImport.update({
     id: '/admin/access-requests',
@@ -294,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -335,6 +343,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -379,6 +388,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/trainees'
     | '/api/chat'
     | '/admin/access-requests'
+    | '/admin/clwrota-metrics'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/'
     | '/admin/access-requests'
+    | '/admin/clwrota-metrics'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -507,6 +519,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/_authenticated/'
     | '/_authenticated/admin/access-requests'
+    | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
@@ -808,6 +821,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/clwrota-metrics': {
+      id: '/_authenticated/admin/clwrota-metrics'
+      path: '/admin/clwrota-metrics'
+      fullPath: '/admin/clwrota-metrics'
+      preLoaderRoute: typeof AuthenticatedAdminClwrotaMetricsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/access-requests': {
       id: '/_authenticated/admin/access-requests'
       path: '/admin/access-requests'
@@ -902,6 +922,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
+  AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
@@ -932,6 +953,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
+  AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
@@ -972,3 +994,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
