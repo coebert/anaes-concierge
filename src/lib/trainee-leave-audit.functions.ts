@@ -63,22 +63,8 @@ function isoDateOffset(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function classifyStatus(status: string): {
-  counted: boolean;
-  reason: string;
-} {
-  if (status === "approved")
-    return { counted: true, reason: "Approved — blocks not-yet-started" };
-  if (status === "pending")
-    return { counted: true, reason: "Pending — blocks not-yet-started" };
-  if (status === "cancelled")
-    return { counted: false, reason: "Cancelled — ignored" };
-  if (status === "denied")
-    return { counted: false, reason: "Denied — ignored" };
-  if (status === "reserve")
-    return { counted: false, reason: "Reserve listed — ignored" };
-  return { counted: false, reason: `Status "${status}" — ignored` };
-}
+
+
 
 export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
