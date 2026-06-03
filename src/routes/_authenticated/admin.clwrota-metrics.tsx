@@ -81,6 +81,7 @@ type MetricRow = {
   upsert_retries_total: number;
   errors_count: number;
   notes: string | null;
+  is_backfill: boolean;
 };
 
 const WINDOW_OPTIONS = [
@@ -329,7 +330,7 @@ function ClwRotaMetricsPage() {
                 </thead>
                 <tbody>
                   {rows.slice().reverse().slice(0, 50).map((r) => {
-                    const isBackfill = Boolean(r.notes?.startsWith("[BACKFILL"));
+                    const isBackfill = Boolean(r.is_backfill) || Boolean(r.notes?.startsWith("[BACKFILL"));
                     return (
                       <tr key={r.id} className={`border-t border-border ${isBackfill ? "bg-amber-50/40" : ""}`}>
                         <td className="py-1.5 pr-3 whitespace-nowrap">
