@@ -1034,7 +1034,7 @@ async function fetchReport(url: string, apiKey: string) {
   // rows (handles Rotamap's {columns, rows} shape).
   let rows = 0;
   try {
-    rows = parseRows(text).length;
+    rows = parseRows(text).rows.length;
   } catch {
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
     rows = Math.max(0, lines.length - 1);
