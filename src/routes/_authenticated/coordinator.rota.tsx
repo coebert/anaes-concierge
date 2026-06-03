@@ -17,6 +17,14 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAle
 import { toast } from "sonner";
 import { cn, parseDateLocal, formatDateLongGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+
+const DEFAULT_RULES: RotaRules = {
+  sessions_per_pa: 1,
+  max_sessions_per_week: 10,
+  max_consecutive_days: 7,
+  honour_fixed_sessions: true,
+  allow_back_to_back_oncall: false,
+};
 import { useAuth } from "@/lib/auth-context";
 import {
   validateAssignment, worstSeverity,
