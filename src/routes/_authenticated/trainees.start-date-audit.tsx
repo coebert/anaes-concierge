@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
+import { ArrowLeft, AlertTriangle, RefreshCw, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useRef, useState } from "react";
 import { syncClwRotaLeave } from "@/lib/clwrota.functions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -66,13 +67,31 @@ function AuditPage() {
   const fetchAudit = useServerFn(getTraineeStartDateAudit);
   const retryLeaveSync = useServerFn(syncClwRotaLeave);
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["trainee-start-date-audit"],
     queryFn: () => fetchAudit(),
   });
 
+  // Snapshot data identity at the moment a retry starts, so we can detect
+  // if the audit query was refreshed (by another tab, background refetch,
+  // or a concurrent sync) while our retry was in flight. If the snapshot
+  // diverges from the current data, the warnings on screen may no longer
+  // match the underlying leave_sources state.
+  const retrySnapshotRef = useRef<{
+    dataUpdatedAt: number;
+    lastSyncAt: string | null;
+  } | null>(null);
+  const [staleDuringRetry, setStaleDuringRetry] = useState(false);
+
   const retry = useMutation({
     mutationFn: () => retryLeaveSync(),
+    onMutate: () => {
+      retrySnapshotRef.current = {
+        dataUpdatedAt,
+        lastSyncAt: data?.leave_sources.clwrota_last_sync_at ?? null,
+      };
+      setStaleDuringRetry(false);
+    },
     onSuccess: (res: unknown) => {
       const r = res as { status?: string; error?: string | null } | null;
       if (r?.status && r.status !== "ok") {
@@ -85,7 +104,25 @@ function AuditPage() {
     onError: (e: unknown) => {
       toast.error(`Leave sync failed: ${(e as Error).message}`);
     },
+    onSettled: () => {
+      retrySnapshotRef.current = null;
+    },
   });
+
+  // While a retry is pending, detect any change to the underlying audit
+  // data (a new dataUpdatedAt or a new clwrota_last_sync_at means another
+  // process touched leave_sources). Surface that as a non-blocking warning.
+  if (
+    retry.isPending &&
+    retrySnapshotRef.current &&
+    data &&
+    (dataUpdatedAt !== retrySnapshotRef.current.dataUpdatedAt ||
+      (data.leave_sources.clwrota_last_sync_at ?? null) !==
+        retrySnapshotRef.current.lastSyncAt) &&
+    !staleDuringRetry
+  ) {
+    setStaleDuringRetry(true);
+  }
 
   return (
     <div className="space-y-4">
@@ -122,6 +159,31 @@ function AuditPage() {
         </Card>
       ) : !data ? null : (
         <>
+          {staleDuringRetry ? (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Audit data changed during sync</AlertTitle>
+              <AlertDescription>
+                The leave audit was updated by another process while the
+                CLWRota retry was running. The warnings below may not reflect
+                the latest sync state.
+                <div className="mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setStaleDuringRetry(false);
+                      refetch();
+                    }}
+                    disabled={isFetching}
+                  >
+                    <RefreshCw className={`mr-1 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                    Refresh audit
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {data.leave_sources.warnings.length > 0 ? (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
