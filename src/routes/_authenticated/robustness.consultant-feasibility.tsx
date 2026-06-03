@@ -489,6 +489,115 @@ function ConsultantFeasibilityPage() {
           </details>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Capacity breakdown</CardTitle>
+          <CardDescription>
+            How leave, sickness and on-call cover chip away at a consultant&apos;s
+            effective annual list-running capacity.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Per consultant */}
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Per consultant (all consultants)
+            </div>
+            <div className="space-y-1 text-sm">
+              <CapacityRow
+                label="Gross potential (no leave, no sickness)"
+                value={calc.grossAnnualSessionsPerConsultant}
+                suffix="sessions/yr"
+                muted
+              />
+              <CapacityRow
+                label={`Less leave (${calc.leaveWeeks.toFixed(1)} wks)`}
+                value={-calc.leaveLostAnnualSessionsPerConsultant}
+                suffix="sessions/yr"
+                accent="text-muted-foreground"
+              />
+              <CapacityRow
+                label="After leave"
+                value={calc.afterLeaveAnnualSessionsPerConsultant}
+                suffix="sessions/yr"
+                strong
+              />
+              <CapacityRow
+                label={`Less sickness (${inp.sicknessRatePct}%)`}
+                value={-calc.sicknessLostAnnualSessionsPerConsultant}
+                suffix="sessions/yr"
+                accent="text-muted-foreground"
+              />
+              <CapacityRow
+                label="Net clinical capacity"
+                value={calc.annualSessionsPerConsultant}
+                suffix="sessions/yr"
+                strong
+              />
+              <CapacityRow
+                label={`Less on-call share (${calc.annualOnCallBurdenPerConsultant.toFixed(1)} sess/yr)`}
+                value={-calc.annualOnCallBurdenPerConsultant}
+                suffix="sessions/yr"
+                accent="text-muted-foreground"
+              />
+              <div className="mt-2 border-t pt-2">
+                <CapacityRow
+                  label="Effective for list running"
+                  value={calc.residualListCapacityPerConsultant}
+                  suffix="sessions/yr"
+                  strong
+                  highlight
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Per ICU-trained consultant */}
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Per ICU-trained consultant
+            </div>
+            <div className="space-y-1 text-sm">
+              <CapacityRow
+                label="Gross potential"
+                value={calc.grossAnnualSessionsPerConsultant}
+                suffix="sessions/yr"
+                muted
+              />
+              <CapacityRow
+                label={`Less leave (${calc.leaveWeeks.toFixed(1)} wks)`}
+                value={-calc.leaveLostAnnualSessionsPerConsultant}
+                suffix="sessions/yr"
+                accent="text-muted-foreground"
+              />
+              <CapacityRow
+                label="After leave & sickness"
+                value={calc.annualSessionsPerConsultant}
+                suffix="sessions/yr"
+                strong
+              />
+              <CapacityRow
+                label={`ICU demand share (lists + OOH)`}
+                value={-calc.icuDemandPerConsultant}
+                suffix="sessions/yr"
+                accent="text-muted-foreground"
+              />
+              <div className="mt-2 border-t pt-2">
+                <CapacityRow
+                  label="Effective for non-ICU work"
+                  value={calc.icuResidualCapacityPerConsultant}
+                  suffix="sessions/yr"
+                  strong
+                  highlight
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       )}
     </div>
   );
