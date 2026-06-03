@@ -83,17 +83,14 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail = access.isAdmin || access.isCoordinator;
-    const cols = canSeeEmail
-      ? "id,full_name,email,training_level,active,start_date,rotation_end_date,grade"
-      : "id,full_name,training_level,active,start_date,rotation_end_date,grade";
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select(cols)
+      .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade")
       .eq("grade", "trainee")
       .eq("active", true)
       .order("full_name");
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row: any) => ({ email: null, ...row }));
+    return (data ?? []).map((row) => ({ ...row, email: canSeeEmail ? row.email : null }));
   });
 
 /** Single trainee profile + supervisor name lookups. Email visible to admins/coordinators or the trainee themselves. */
