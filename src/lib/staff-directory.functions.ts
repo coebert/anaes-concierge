@@ -126,7 +126,7 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     ]);
     if (e1) throw new Error(e1.message);
     if ("error" in supRes && supRes.error) throw new Error(supRes.error.message);
-    const safeProfile = profile ? { email: null, ...profile } : profile;
+    const safeProfile = profile ? { email: null, ...(profile as object) } : profile;
     return { profile: safeProfile, supervisors: supRes.data ?? [] };
   });
 
