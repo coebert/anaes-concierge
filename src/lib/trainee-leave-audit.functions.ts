@@ -231,6 +231,17 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       else if (has_counted_leave) decision = "has_counted_leave";
       else if (predicted) decision = "not_yet_started";
       else decision = "no_signal";
+      const warnings: string[] = [];
+      if (!t.clwrota_external_id) {
+        warnings.push(
+          "No CLWRota link on profile — CLWRota leave cannot be mapped to this trainee.",
+        );
+      }
+      if (!allowanceByStaff.has(t.id)) {
+        warnings.push(
+          "No leave_allowances row — entitlement is unknown, day-count audits will be incomplete.",
+        );
+      }
       return {
         id: t.id,
         full_name: t.full_name as string | null,
@@ -243,6 +254,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
         leave_rows: leave.sort((a, b) =>
           a.start_date.localeCompare(b.start_date),
         ),
+        leave_source_warnings: warnings,
       };
     });
 
@@ -258,5 +270,5 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       return compareBySurnameAsc(a.full_name ?? a.email, b.full_name ?? b.email);
     });
 
-    return { window_start: today, window_end: windowEnd, trainees: out };
+    return { window_start: today, window_end: windowEnd, trainees: out, leave_sources };
   });
