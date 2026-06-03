@@ -25,6 +25,15 @@ import {
 import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
 import { useServerFn } from "@tanstack/react-start";
 
+const DEFAULT_RULES: RotaRules = {
+  sessions_per_pa: 1,
+  max_sessions_per_week: 10,
+  max_consecutive_days: 7,
+  honour_fixed_sessions: true,
+  allow_back_to_back_oncall: false,
+};
+
+
 type SessionHalf = "am" | "pm";
 type RotaRole =
   | "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session";
@@ -379,13 +388,6 @@ function RotaGridPage() {
   );
 }
 
-const DEFAULT_RULES: RotaRules = {
-  sessions_per_pa: 1,
-  max_sessions_per_week: 10,
-  max_consecutive_days: 7,
-  honour_fixed_sessions: true,
-  allow_back_to_back_oncall: false,
-};
 
 /* ----------------------- Cell dialog ----------------------- */
 
