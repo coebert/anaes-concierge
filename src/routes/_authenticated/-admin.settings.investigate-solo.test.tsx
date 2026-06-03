@@ -266,13 +266,11 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     await clickButton(/preview findings/i);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/auto-correctable/i).closest("div")?.textContent,
-      ).toMatch(/1/);
+      expect(statValue(/auto-correctable/i)).toBe("1");
     });
-    expect(
-      screen.getByText(/review: unmatched theatre row/i).closest("div")?.textContent,
-    ).toMatch(/1/);
+    expect(statValue(/review: unmatched theatre row/i)).toBe("1");
+    expect(statValue(/review: non-training label/i)).toBe("0");
+
 
     // Persistence guarantee: no row was changed by a dry-run preview.
     const train = store.assignments.find((a) => a.id === "asg-train")!;
