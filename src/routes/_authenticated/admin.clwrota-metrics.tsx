@@ -81,6 +81,7 @@ type MetricRow = {
   upsert_retries_total: number;
   errors_count: number;
   notes: string | null;
+  is_backfill: boolean;
 };
 
 const WINDOW_OPTIONS = [
