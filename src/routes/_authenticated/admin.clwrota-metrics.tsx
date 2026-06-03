@@ -195,6 +195,22 @@ function ClwRotaMetricsPage() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading metrics…
         </div>
+      ) : query.isError ? (
+        <Card
+          data-testid="clwrota-metrics-error"
+          className="border-destructive/50"
+        >
+          <CardHeader>
+            <CardTitle className="text-destructive">
+              Couldn't load sync metrics
+            </CardTitle>
+            <CardDescription>
+              The metrics response failed validation, so rows are not being
+              rendered to avoid showing unclassified data.
+              {query.error instanceof Error ? ` (${query.error.message})` : null}
+            </CardDescription>
+          </CardHeader>
+        </Card>
       ) : rows.length === 0 ? (
         <Card>
           <CardHeader>
