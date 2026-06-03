@@ -288,12 +288,21 @@ function TraineesPage() {
       {notYetStartedTrainees.length > 0 ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Not yet started</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              On CLWRota but not scheduled for any activity (and not on leave) in
-              the next two weeks. Predicted start date taken from their first
-              future CLWRota assignment or the staff feed.
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle className="text-base">Not yet started</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  On CLWRota but not scheduled for any activity (and not on leave) in
+                  the next two weeks. Predicted start date taken from their first
+                  future CLWRota assignment or the staff feed.
+                </p>
+              </div>
+              {hasRole("admin") ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/trainees/start-date-audit">Verify leave logic</Link>
+                </Button>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
