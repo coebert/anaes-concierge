@@ -28,6 +28,7 @@ import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
+import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave.forecast'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
@@ -145,6 +146,12 @@ const AuthenticatedRobustnessListFeasibilityRoute =
   AuthenticatedRobustnessListFeasibilityRouteImport.update({
     id: '/robustness/list-feasibility',
     path: '/robustness/list-feasibility',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRobustnessConsultantFeasibilityRoute =
+  AuthenticatedRobustnessConsultantFeasibilityRouteImport.update({
+    id: '/robustness/consultant-feasibility',
+    path: '/robustness/consultant-feasibility',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedLeaveForecastRoute =
@@ -296,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
@@ -335,6 +343,7 @@ export interface FileRoutesByTo {
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
@@ -377,6 +386,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/leave/forecast'
+    | '/robustness/consultant-feasibility'
     | '/robustness/list-feasibility'
     | '/robustness/simulate'
     | '/trainees/$staffId'
@@ -458,6 +469,7 @@ export interface FileRouteTypes {
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/leave/forecast'
+    | '/robustness/consultant-feasibility'
     | '/robustness/list-feasibility'
     | '/robustness/simulate'
     | '/trainees/$staffId'
@@ -499,6 +511,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/leave/forecast'
+    | '/_authenticated/robustness/consultant-feasibility'
     | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/simulate'
     | '/_authenticated/trainees/$staffId'
@@ -654,6 +667,13 @@ declare module '@tanstack/react-router' {
       path: '/robustness/list-feasibility'
       fullPath: '/robustness/list-feasibility'
       preLoaderRoute: typeof AuthenticatedRobustnessListFeasibilityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/robustness/consultant-feasibility': {
+      id: '/_authenticated/robustness/consultant-feasibility'
+      path: '/robustness/consultant-feasibility'
+      fullPath: '/robustness/consultant-feasibility'
+      preLoaderRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/leave/forecast': {
@@ -873,6 +893,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
+  AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
   AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
@@ -902,6 +923,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
+  AuthenticatedRobustnessConsultantFeasibilityRoute:
+    AuthenticatedRobustnessConsultantFeasibilityRoute,
   AuthenticatedRobustnessListFeasibilityRoute:
     AuthenticatedRobustnessListFeasibilityRoute,
   AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
@@ -926,13 +949,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
