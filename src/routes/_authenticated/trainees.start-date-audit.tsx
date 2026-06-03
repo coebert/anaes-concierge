@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { syncClwRotaLeave } from "@/lib/clwrota.functions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
@@ -62,9 +64,27 @@ function decisionBadge(decision: AuditTrainee["decision"]) {
 
 function AuditPage() {
   const fetchAudit = useServerFn(getTraineeStartDateAudit);
+  const retryLeaveSync = useServerFn(syncClwRotaLeave);
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["trainee-start-date-audit"],
     queryFn: () => fetchAudit(),
+  });
+
+  const retry = useMutation({
+    mutationFn: () => retryLeaveSync(),
+    onSuccess: (res: unknown) => {
+      const r = res as { status?: string; error?: string | null } | null;
+      if (r?.status && r.status !== "ok") {
+        toast.error(`Leave sync finished with status: ${r.status}${r.error ? ` — ${r.error}` : ""}`);
+      } else {
+        toast.success("CLWRota leave sync completed");
+      }
+      queryClient.invalidateQueries({ queryKey: ["trainee-start-date-audit"] });
+    },
+    onError: (e: unknown) => {
+      toast.error(`Leave sync failed: ${(e as Error).message}`);
+    },
   });
 
   return (
@@ -138,6 +158,17 @@ function AuditPage() {
                       </span>
                     </>
                   ) : null}
+                </div>
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => retry.mutate()}
+                    disabled={retry.isPending}
+                  >
+                    <RefreshCw className={`mr-1 h-4 w-4 ${retry.isPending ? "animate-spin" : ""}`} />
+                    {retry.isPending ? "Retrying sync…" : "Retry CLWRota leave sync"}
+                  </Button>
                 </div>
               </AlertDescription>
             </Alert>
