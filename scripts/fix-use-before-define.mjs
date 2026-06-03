@@ -42,6 +42,7 @@ import ts from "typescript";
 
 const ROOT = process.cwd();
 const DRY = process.argv.includes("--dry-run");
+const CHECK = process.argv.includes("--check");
 
 const SKIP = [
   /\/components\/ui\//,
