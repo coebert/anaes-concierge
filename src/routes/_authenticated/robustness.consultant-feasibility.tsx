@@ -392,6 +392,7 @@ function ConsultantFeasibilityPage() {
           </details>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
