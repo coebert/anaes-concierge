@@ -343,8 +343,19 @@ function processFile(file) {
 const invokedDirectly =
   process.argv[1] && process.argv[1].endsWith("fix-use-before-define.mjs");
 if (invokedDirectly) {
+  // Any non-flag positional args are treated as explicit file paths to
+  // process (relative or absolute). With none, fall back to scanning the
+  // git-tracked src/ tree. Explicit paths are how the e2e test drives the
+  // CLI against a tempfile outside the repo.
+  const explicit = process.argv
+    .slice(2)
+    .filter((a) => !a.startsWith("--"));
+  const files = explicit.length > 0
+    ? explicit.map((f) => (f.startsWith("/") ? f : join(ROOT, f)))
+    : listFiles();
+
   let total = 0;
-  for (const f of listFiles()) {
+  for (const f of files) {
     try {
       const r = processFile(f);
       if (r.changed === 0) continue;
