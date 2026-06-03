@@ -1,3 +1,4 @@
+import { compareBySurnameAsc } from "@/lib/utils";
 /**
  * List-feasibility model.
  *
@@ -583,7 +584,7 @@ export async function computeListFeasibility(
       tenureWeekdays: tenureStart && tenureEnd ? countWeekdays(tenureStart, tenureEnd) : 0,
     });
   }
-  consultantPatterns.sort((a, b) => a.name.localeCompare(b.name));
+  consultantPatterns.sort((a, b) => compareBySurnameAsc(a.name, b.name));
 
   // Quick lookup: which consultants regularly work each (dow, session)?
   const regularByCell = new Map<string, ConsultantPattern[]>();

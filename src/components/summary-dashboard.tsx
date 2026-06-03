@@ -10,7 +10,7 @@ import {
 import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks, CalendarOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskColor, riskLabel } from "@/lib/audit/robustness";
-import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
+import { todayISO, addDaysISO, formatDateGB, cn, compareBySurnameAsc } from "@/lib/utils";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -189,7 +189,7 @@ export function SummaryDashboard() {
         else if (p.grade === "trainee") buckets.trainees.push(entry);
       }
       for (const k of ["consultants", "sas", "trainees"] as const) {
-        buckets[k].sort((a, b) => a.name.localeCompare(b.name));
+        buckets[k].sort((a, b) => compareBySurnameAsc(a.name, b.name));
       }
       return buckets;
     },
