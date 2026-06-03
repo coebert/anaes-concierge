@@ -108,9 +108,6 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail =
       access.isAdmin || access.isCoordinator || context.userId === data.staffId;
-    const cols = canSeeEmail
-      ? "id,full_name,email,training_level,grade,start_date"
-      : "id,full_name,training_level,grade,start_date";
     const [{ data: profile, error: e1 }, supRes] = await Promise.all([
       supabaseAdmin
         .from("profiles")
