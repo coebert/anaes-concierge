@@ -1355,6 +1355,11 @@ export async function performRotaSync() {
       theatre_id: string;
       session: "am" | "pm" | "eve" | "night";
       specialty_id: string | null;
+      // Lowercased/trimmed specialty name as it appeared in the feed. Kept
+      // alongside specialty_id so that after Pass 2 inserts any
+      // newly-seen specialties we can still resolve an ID for drafts whose
+      // specialty didn't exist when the row was first parsed.
+      specialty_name_key: string | null;
       surgical_consultant: string | null;
     };
     type AssignmentDraft = {
@@ -1443,9 +1448,10 @@ export async function performRotaSync() {
 
       // Collect new specialty names (resolve after pass 1 in one insert).
       let specialtyId: string | null = null;
+      let specialtyNameKey: string | null = null;
       if (specialtyName) {
-        const key = specialtyName.toLowerCase().trim();
-        const existing = specialtyByName.get(key);
+        specialtyNameKey = specialtyName.toLowerCase().trim();
+        const existing = specialtyByName.get(specialtyNameKey);
         if (existing) specialtyId = existing;
         else newSpecialtyNames.add(specialtyName);
       }
@@ -1479,13 +1485,18 @@ export async function performRotaSync() {
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
-        // Last write wins (later rows can fill in specialty/consultant).
+        // Last write wins for surgical_consultant, but for specialty we
+        // keep any non-null name/id already collected — otherwise a later
+        // row with a blank slot_speciality would wipe the value out and
+        // produce "matched-but-no-specialty" rows on trainee dashboards.
+        const prior = sessionDraftsByKey.get(theatreSessionKey);
         sessionDraftsByKey.set(theatreSessionKey, {
           session_date,
           theatre_id: theatreId,
           session,
-          specialty_id: specialtyId,
-          surgical_consultant: consultantName ?? null,
+          specialty_id: specialtyId ?? prior?.specialty_id ?? null,
+          specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
+          surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
         });
       }
 
@@ -1532,40 +1543,74 @@ export async function performRotaSync() {
         for (const s of created ?? []) {
           specialtyByName.set(s.name.toLowerCase().trim(), s.id);
         }
-        // Back-fill specialty_id on session drafts that referenced new names.
-        for (const draft of sessionDraftsByKey.values()) {
-          if (!draft.specialty_id) {
-            // We don't know the original name here; safe to leave null. The
-            // assignment loop above only stores specialty_id when it was
-            // already known, so newly created specialties attach to sessions
-            // on the next sync. (Avoids carrying name around for thousands
-            // of rows.)
-          }
-        }
+      }
+    }
+    // Back-fill specialty_id on every draft now that the specialty map is
+    // fully populated (covers both pre-existing specialties and any just
+    // inserted above). This is what auto-fills specialty_id for theatre
+    // bookings whose slot_speciality column was set in the feed.
+    for (const draft of sessionDraftsByKey.values()) {
+      if (!draft.specialty_id && draft.specialty_name_key) {
+        const resolved = specialtyByName.get(draft.specialty_name_key);
+        if (resolved) draft.specialty_id = resolved;
       }
     }
 
     // --- Pass 3: bulk-upsert theatre sessions in chunks. ----------------------
-    const sessionDrafts = Array.from(sessionDraftsByKey.values());
+    // Split drafts into two batches:
+    //   • withSpecialty: upsert the full row, including specialty_id, so a
+    //     known specialty overwrites any prior null.
+    //   • withoutSpecialty: upsert WITHOUT the specialty_id column so an
+    //     existing booking that already has a specialty isn't blanked out
+    //     just because today's feed row didn't include one.
+    const allDrafts = Array.from(sessionDraftsByKey.values());
     const sessionIdByKey = new Map<string, string>();
     const SESSION_CHUNK = 1000;
     const ASSIGN_CHUNK = 1500;
     let sessionsUpserted = 0;
-    for (let i = 0; i < sessionDrafts.length; i += SESSION_CHUNK) {
-      const chunk = sessionDrafts.slice(i, i + SESSION_CHUNK);
-      const { data, error: sessErr } = await supabaseAdmin
-        .from("theatre_sessions")
-        .upsert(chunk, { onConflict: "session_date,theatre_id,session" })
-        .select("id, session_date, theatre_id, session");
-      if (sessErr) {
-        errors.push({ label: "(theatre_sessions chunk)", error: sessErr.message });
-        continue;
+
+    const upsertSessions = async (
+      rows: Array<Record<string, unknown>>,
+    ) => {
+      for (let i = 0; i < rows.length; i += SESSION_CHUNK) {
+        const chunk = rows.slice(i, i + SESSION_CHUNK);
+        const { data, error: sessErr } = await supabaseAdmin
+          .from("theatre_sessions")
+          // Cast: chunk is a partial-column payload (specialty_id may be
+          // omitted on purpose) which doesn't fit the generated row shape.
+          .upsert(chunk as never, { onConflict: "session_date,theatre_id,session" })
+          .select("id, session_date, theatre_id, session");
+        if (sessErr) {
+          errors.push({ label: "(theatre_sessions chunk)", error: sessErr.message });
+          continue;
+        }
+        sessionsUpserted += data?.length ?? 0;
+        for (const s of data ?? []) {
+          sessionIdByKey.set(`${s.session_date}|${s.theatre_id}|${s.session}`, s.id);
+        }
       }
-      sessionsUpserted += data?.length ?? 0;
-      for (const s of data ?? []) {
-        sessionIdByKey.set(`${s.session_date}|${s.theatre_id}|${s.session}`, s.id);
-      }
-    }
+    };
+
+    const withSpecialty = allDrafts
+      .filter((d) => d.specialty_id != null)
+      .map((d) => ({
+        session_date: d.session_date,
+        theatre_id: d.theatre_id,
+        session: d.session,
+        specialty_id: d.specialty_id,
+        surgical_consultant: d.surgical_consultant,
+      }));
+    const withoutSpecialty = allDrafts
+      .filter((d) => d.specialty_id == null)
+      .map((d) => ({
+        session_date: d.session_date,
+        theatre_id: d.theatre_id,
+        session: d.session,
+        surgical_consultant: d.surgical_consultant,
+      }));
+    await upsertSessions(withSpecialty);
+    await upsertSessions(withoutSpecialty);
+
 
     // --- Pass 4: bulk-upsert rota assignments (dedup external id). -----------
     // Dedupe by external id keeping the last occurrence (latest in the feed).
