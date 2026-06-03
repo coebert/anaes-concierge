@@ -1,32 +1,39 @@
 #!/usr/bin/env node
 /**
- * Codemod: reorder top-level declarations so they appear before their first use.
+ * Codemod: reorder declarations so they appear before their first use, and
+ * hoist late `import` statements to the top of the file.
  *
  * Why a codemod instead of ESLint --fix?
- *   `@typescript-eslint/no-use-before-define` ships WITHOUT an autofixer because
- *   reordering arbitrary statements can change evaluation order, break TDZ
- *   semantics, or move side-effects. There is no safe-in-general fix.
+ *   `@typescript-eslint/no-use-before-define` ships WITHOUT an autofixer
+ *   because reordering arbitrary statements can change evaluation order,
+ *   break TDZ semantics, or move side-effects. This script only performs
+ *   reorderings that are safe under a narrow set of rules.
  *
- * What this codemod does (the safe subset):
- *   For each .ts/.tsx file under src/, it inspects only top-level (Program)
- *   statements. If a `const`/`let`/`var`/`class`/`enum` declaration appears
- *   AFTER the first top-level statement that references it, the whole
- *   declaring statement is moved to sit immediately before that first
- *   referencing statement. Function declarations are left alone (they are
- *   hoisted and the lint rule allows them via `functions: false`).
+ * Passes (each runs per file; re-run until 0 changes reported):
  *
- * What it deliberately does NOT do:
- *   - Reorder declarations inside function bodies, classes, or blocks.
- *   - Reorder when the first reference is inside a function body (those are
- *     usually fine at runtime; the lint rule is over-cautious there).
- *   - Resolve transitive ordering between multiple moved declarations in
- *     a single pass. Re-run the codemod until it reports 0 changes.
- *   - Touch files under src/components/ui/** (shadcn vendored code) or
- *     generated files (routeTree.gen.ts, *.d.ts).
+ *   1. SCOPE REORDER
+ *      For each statement list (the Program, plus every nested
+ *      Block / ModuleBlock / CaseBlock body), if a `const`/`let`/`var`/
+ *      `class`/`enum` declaration (including `export const`, `export enum`,
+ *      etc.) appears AFTER the first sibling statement that references it,
+ *      move the whole declaring statement just before that first referencing
+ *      sibling. Function declarations are left alone (hoisted; the lint
+ *      rule allows them via `functions: false`).
+ *
+ *   2. IMPORTS-FIRST
+ *      Any top-level `import` declaration that appears after a non-import
+ *      top-level statement is moved into the leading import block
+ *      (mirrors `eslint-plugin-import`'s `import/first` autofix).
+ *
+ * Deliberately NOT done:
+ *   - Reorder across scope boundaries.
+ *   - Resolve transitive ordering in a single pass.
+ *   - Touch `src/components/ui/**` (vendored shadcn), generated files
+ *     (`*.gen.ts`), or `*.d.ts`.
  *
  * Usage:
- *   node scripts/fix-use-before-define.mjs            # apply edits
- *   node scripts/fix-use-before-define.mjs --dry-run  # print plan only
+ *   bun run lint:fix-order            # apply edits
+ *   bun run lint:fix-order:dry        # print plan only
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -52,7 +59,7 @@ function listFiles() {
     .map((f) => join(ROOT, f));
 }
 
-/** Names introduced by a top-level statement (only the kinds we move). */
+/** Names introduced by a statement (only the kinds we move). */
 function declaredNames(stmt) {
   const names = [];
   if (ts.isVariableStatement(stmt)) {
@@ -81,7 +88,6 @@ function referencedIdentifiers(stmt) {
   const found = new Set();
   const visit = (n) => {
     if (ts.isIdentifier(n)) {
-      // Skip identifiers that are *declarations*, not references.
       const p = n.parent;
       const isDeclName =
         (ts.isVariableDeclaration(p) && p.name === n) ||
@@ -105,23 +111,18 @@ function referencedIdentifiers(stmt) {
   return found;
 }
 
-function processFile(file) {
-  const src = readFileSync(file, "utf8");
-  const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true,
-    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
-
-  const stmts = sf.statements;
-  // Index declarations: name -> statement index.
+/**
+ * Given a NodeArray of statements, return the reordered list of indices and
+ * the moves performed. Pure; no I/O.
+ */
+function reorderStatements(stmts) {
   const declAt = new Map();
   stmts.forEach((s, i) => {
     for (const n of declaredNames(s)) {
       if (!declAt.has(n)) declAt.set(n, i);
     }
   });
-
-  // For each declaration, find the earliest *prior* top-level statement
-  // that references it.
-  const moves = []; // { from, to } where from > to (declaration moves up).
+  const moves = [];
   for (const [name, fromIdx] of declAt) {
     for (let i = 0; i < fromIdx; i++) {
       if (referencedIdentifiers(stmts[i]).has(name)) {
@@ -130,13 +131,7 @@ function processFile(file) {
       }
     }
   }
-  if (moves.length === 0) return { file, changed: 0 };
-
-  // Apply in descending order of `from` so earlier indices stay valid.
   moves.sort((a, b) => b.from - a.from);
-
-  // Work on the statement array, then rebuild file text from original ranges
-  // (preserving the user's exact formatting, comments, and trailing trivia).
   const order = stmts.map((_, i) => i);
   for (const m of moves) {
     const cur = order.indexOf(m.from);
@@ -145,43 +140,128 @@ function processFile(file) {
     const [moved] = order.splice(cur, 1);
     order.splice(dest, 0, moved);
   }
+  return { order, moves };
+}
 
-  // Build new file: prologue (before first stmt) + stmts in new order + epilogue.
-  const first = stmts[0];
-  const prologue = src.slice(0, first.getFullStart());
-  const last = stmts[stmts.length - 1];
-  const epilogue = src.slice(last.getEnd());
+/** Hoist any ImportDeclaration that follows a non-import top-level stmt. */
+function hoistImports(stmts) {
+  // The desired final order: every import (preserving relative order), then
+  // every non-import (preserving relative order).
+  let firstNonImport = -1;
+  const moves = [];
+  for (let i = 0; i < stmts.length; i++) {
+    const isImp = ts.isImportDeclaration(stmts[i]);
+    if (!isImp && firstNonImport < 0) firstNonImport = i;
+    else if (isImp && firstNonImport >= 0) {
+      moves.push({ name: "<import>", from: i, to: firstNonImport });
+    }
+  }
+  if (moves.length === 0) return { order: stmts.map((_, i) => i), moves: [] };
+  const order = [];
+  for (let i = 0; i < stmts.length; i++) if (ts.isImportDeclaration(stmts[i])) order.push(i);
+  for (let i = 0; i < stmts.length; i++) if (!ts.isImportDeclaration(stmts[i])) order.push(i);
+  return { order, moves };
+}
 
-  const pieces = order.map((idx) => {
-    const s = stmts[idx];
-    // getFullStart() includes leading trivia (comments, blank lines) which we
-    // want to travel with the statement.
-    return src.slice(s.getFullStart(), s.getEnd());
-  });
+/**
+ * Apply `order` to `stmts` and return the replacement text for the span
+ * [stmts[0].getFullStart(), stmts[stmts.length-1].getEnd()).
+ */
+function rebuildSpan(src, stmts, order) {
+  return order
+    .map((idx) => src.slice(stmts[idx].getFullStart(), stmts[idx].getEnd()))
+    .join("");
+}
 
-  // Re-join: leading trivia of the very first slot must become the prologue's
-  // continuation; we keep the simplest invariant — preserve each slice as-is.
-  const newSrc = prologue + pieces.join("") + epilogue;
+/** Collect every statement list we want to consider in a file. */
+function collectStatementLists(sf) {
+  const lists = []; // { stmts: NodeArray, depth }
+  const visit = (node, depth) => {
+    if (
+      ts.isBlock(node) ||
+      ts.isModuleBlock(node) ||
+      ts.isCaseClause(node) ||
+      ts.isDefaultClause(node)
+    ) {
+      if (node.statements && node.statements.length > 0) {
+        lists.push({ stmts: node.statements, depth });
+      }
+    }
+    node.forEachChild((c) => visit(c, depth + 1));
+  };
+  // Program is always first; deepest scopes processed first so edits don't
+  // invalidate outer offsets.
+  lists.push({ stmts: sf.statements, depth: 0 });
+  sf.forEachChild((c) => visit(c, 1));
+  return lists;
+}
 
-  if (newSrc === src) return { file, changed: 0 };
+function processFile(file) {
+  let src = readFileSync(file, "utf8");
+  let totalMoves = [];
 
-  if (!DRY) writeFileSync(file, newSrc, "utf8");
-  return { file, changed: moves.length, moves };
+  // Run until stable, or up to 5 passes — multiple scopes may shift offsets
+  // and we re-parse between passes to stay correct.
+  for (let pass = 0; pass < 5; pass++) {
+    const sf = ts.createSourceFile(
+      file, src, ts.ScriptTarget.Latest, true,
+      file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    );
+
+    // Combine: program-scope (with imports-first), then each nested block.
+    const lists = collectStatementLists(sf);
+    // Sort by start offset DESC so we patch from the end of the file backwards.
+    lists.sort((a, b) => b.stmts[0].getFullStart() - a.stmts[0].getFullStart());
+
+    let edits = []; // { start, end, replacement, moves }
+    for (const { stmts } of lists) {
+      const isProgram = stmts === sf.statements;
+      const passes = [reorderStatements(stmts)];
+      if (isProgram) passes.push(hoistImports(stmts));
+      // Fold passes: apply first, then re-derive order for the second.
+      let order = stmts.map((_, i) => i);
+      let moves = [];
+      for (const p of passes) {
+        // Translate p.order (over original indices) by composing with `order`.
+        const composed = p.order.map((i) => order[i]);
+        order = composed;
+        moves = moves.concat(p.moves);
+      }
+      // No-op?
+      const isIdentity = order.every((v, i) => v === i);
+      if (isIdentity) continue;
+      const start = stmts[0].getFullStart();
+      const end = stmts[stmts.length - 1].getEnd();
+      edits.push({ start, end, replacement: rebuildSpan(src, stmts, order), moves });
+    }
+
+    if (edits.length === 0) break;
+    // Apply edits from highest start to lowest.
+    edits.sort((a, b) => b.start - a.start);
+    for (const e of edits) {
+      src = src.slice(0, e.start) + e.replacement + src.slice(e.end);
+      totalMoves = totalMoves.concat(e.moves);
+    }
+  }
+
+  return { file, changed: totalMoves.length, moves: totalMoves, newSrc: src };
 }
 
 let total = 0;
 for (const f of listFiles()) {
   try {
     const r = processFile(f);
-    if (r.changed) {
-      total += r.changed;
-      const rel = relative(ROOT, r.file);
-      console.log(`${DRY ? "[dry] " : ""}${rel}: moved ${r.changed} decl(s)`);
-      for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
-    }
+    if (r.changed === 0) continue;
+    const original = readFileSync(f, "utf8");
+    if (r.newSrc === original) continue;
+    total += r.changed;
+    const rel = relative(ROOT, f);
+    console.log(`${DRY ? "[dry] " : ""}${rel}: ${r.changed} move(s)`);
+    for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
+    if (!DRY) writeFileSync(f, r.newSrc, "utf8");
   } catch (e) {
     console.error(`SKIP ${relative(ROOT, f)}: ${e.message}`);
   }
 }
-console.log(`\n${DRY ? "Would move" : "Moved"} ${total} declaration(s).`);
-console.log("Re-run until output is 0, then run: bunx eslint . && bunx tsc --noEmit");
+console.log(`\n${DRY ? "Would perform" : "Performed"} ${total} move(s).`);
+console.log("Re-run until output is 0, then: bun run lint && bunx tsc --noEmit");
