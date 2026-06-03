@@ -43,6 +43,7 @@ function TraineesGuard() {
 }
 
 function TraineesPage() {
+  const { hasRole } = useAuth();
   const [filter, setFilter] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
