@@ -1931,9 +1931,10 @@ export async function performRotaSync() {
             const UPD_CHUNK = 200;
             for (let i = 0; i < ids.length; i += UPD_CHUNK) {
               const idChunk = ids.slice(i, i + UPD_CHUNK);
-              const update: { role_on_list: string; supervisor_id?: string } = {
+              const update: { role_on_list: "supervised"; supervisor_id?: string } = {
                 role_on_list: "supervised",
               };
+
               if (sup !== "__none__") update.supervisor_id = sup;
               const { error: updErr } = await supabaseAdmin
                 .from("rota_assignments")
