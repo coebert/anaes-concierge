@@ -285,6 +285,65 @@ function TraineesPage() {
           className="max-w-xs"
         />
       </div>
+      {notYetStartedTrainees.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Not yet started</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              On CLWRota but not scheduled for any activity (and not on leave) in
+              the next two weeks. Predicted start date taken from their first
+              future CLWRota assignment or the staff feed.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Predicted start</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {notYetStartedTrainees.map(({ trainee }) => (
+                  <TableRow key={trainee.id}>
+                    <TableCell>
+                      <Link
+                        to="/trainees/$staffId"
+                        params={{ staffId: trainee.id }}
+                        className="font-medium hover:underline"
+                      >
+                        {trainee.full_name || trainee.email}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      {trainee.training_level ? (
+                        <Badge variant="secondary">{trainee.training_level}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {trainee.start_date
+                          ? format(new Date(trainee.start_date), "PPP")
+                          : "Unknown"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
+
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
