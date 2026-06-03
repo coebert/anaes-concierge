@@ -2110,11 +2110,14 @@ export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
     if (data.sync_kind !== "all") q = q.eq("sync_kind", data.sync_kind);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return {
-      rows: (rows ?? []) as ClwRotaSyncMetricRow[],
+    // Runtime-validate before returning so a stale schema, missing column,
+    // or null `is_backfill` is caught at the server boundary instead of in
+    // the UI render path.
+    return parseListClwRotaSyncMetricsResponse({
+      rows: rows ?? [],
       days: data.days,
       sync_kind: data.sync_kind,
-    };
+    });
   });
 
 
