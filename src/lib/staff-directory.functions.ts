@@ -117,7 +117,7 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     const [{ data: profile, error: e1 }, supRes] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select(cols)
+        .select("id,full_name,email,training_level,grade,start_date")
         .eq("id", data.staffId)
         .maybeSingle(),
       data.supervisorIds.length
@@ -126,7 +126,7 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     ]);
     if (e1) throw new Error(e1.message);
     if ("error" in supRes && supRes.error) throw new Error(supRes.error.message);
-    const safeProfile = profile ? { email: null, ...(profile as object) } : profile;
+    const safeProfile = profile ? { ...profile, email: canSeeEmail ? profile.email : null } : profile;
     return { profile: safeProfile, supervisors: supRes.data ?? [] };
   });
 
