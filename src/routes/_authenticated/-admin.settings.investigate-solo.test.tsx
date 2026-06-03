@@ -251,6 +251,15 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     });
   }
 
+  function statValue(labelRegex: RegExp): string {
+    const label = screen.getByText(labelRegex);
+    const wrapper = label.parentElement as HTMLElement;
+    // The Stat wrapper contains [labelDiv, valueDiv].
+    const valueDiv = wrapper.children[1] as HTMLElement;
+    return valueDiv.textContent ?? "";
+  }
+
+
   it("preview shows counts without mutating the store", async () => {
     renderCard();
 
