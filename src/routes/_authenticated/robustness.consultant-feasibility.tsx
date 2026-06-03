@@ -413,10 +413,24 @@ function ConsultantFeasibilityPage() {
                 <strong>{calc.theatreSessions}</strong> sessions/wk
               </li>
               <li>
-                Weekly demand = {calc.theatreSessions} theatre +{" "}
+                Weekly session demand = {calc.theatreSessions} theatre +{" "}
                 {inp.labourWardSessionsPerWeek} labour ward +{" "}
                 {inp.icuSessionsPerWeek} ICU ={" "}
-                <strong>{calc.weeklyDemand}</strong>
+                <strong>{calc.weeklySessionDemand}</strong>
+              </li>
+              <li>
+                On-call: ({inp.theatreOnCallPAsPerWeek} theatre +{" "}
+                {inp.icuOnCallPAsPerWeek} ICU) PAs/wk × {inp.sessionsPerPa}{" "}
+                sess/PA ={" "}
+                <strong>
+                  {(calc.weeklyOnCallPAs * inp.sessionsPerPa).toFixed(1)}
+                </strong>{" "}
+                session-equiv/wk
+              </li>
+              <li>
+                Total weekly demand ={" "}
+                <strong>{calc.weeklyDemand.toFixed(1)}</strong> × {inp.weeksPerYear} wks ={" "}
+                <strong>{Math.round(calc.annualDemand).toLocaleString()}</strong>/yr
               </li>
               <li>
                 Leave per consultant: {inp.annualLeaveDays} AL +{" "}
@@ -433,7 +447,8 @@ function ConsultantFeasibilityPage() {
                 Per consultant: {inp.dccPasPerConsultant} DCC PAs ×{" "}
                 {inp.sessionsPerPa} session/PA ={" "}
                 {calc.weeklyClinicalSessions} sessions/wk ×{" "}
-                {calc.workingWeeks.toFixed(2)} wks ={" "}
+                {calc.workingWeeks.toFixed(2)} wks × (1 −{" "}
+                {inp.sicknessRatePct}% sickness) ={" "}
                 <strong>{calc.annualSessionsPerConsultant.toFixed(1)}</strong>{" "}
                 sessions/yr
               </li>
