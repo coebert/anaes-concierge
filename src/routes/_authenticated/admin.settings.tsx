@@ -22,6 +22,7 @@ import {
 } from "@/lib/clwrota.functions";
 
 import { formatDateGB } from "@/lib/utils";
+import { useNameSortDirection, setNameSortDirection } from "@/lib/name-sort";
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   component: SettingsPage,
@@ -758,6 +759,8 @@ function SettingsPage() {
 
         </CardContent>
       </Card>
+
+      <NameSortPreferenceCard />
 
       <ReclassificationUndoCard />
     </div>
