@@ -9,6 +9,7 @@ export interface FeasibilityInputs {
   consultantInChargeSessionsPerWeek: number;
   painServiceSessionsPerWeek: number;
   poacSessionsPerWeek: number;
+  nonClinicalPAsPerWeek: number;
   icuSessionsPerWeek: number;
   icuTrainedPoolSize: number;
   pasPerConsultant: number;
