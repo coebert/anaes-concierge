@@ -198,11 +198,16 @@ function processFile(file) {
     // Sort by start offset DESC so we patch from the end of the file backwards.
     lists.sort((a, b) => b.stmts[0].getFullStart() - a.stmts[0].getFullStart());
 
+    // Skip imports-first in test files that intentionally interleave
+    // `vi.mock()` / `jest.mock()` calls between imports — those test runners
+    // hoist mocks but the human-readable order is load-bearing for clarity.
+    const skipImports = /\b(?:vi|jest)\.mock\s*\(/.test(src);
+
     let edits = []; // { start, end, replacement, moves }
     for (const { stmts } of lists) {
       const isProgram = stmts === sf.statements;
       const passes = [reorderStatements(stmts)];
-      if (isProgram) passes.push(hoistImports(stmts));
+      if (isProgram && !skipImports) passes.push(hoistImports(stmts));
       // Fold passes: apply first, then re-derive order for the second.
       let order = stmts.map((_, i) => i);
       let moves = [];
