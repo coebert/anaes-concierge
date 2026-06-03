@@ -364,13 +364,22 @@ if (invokedDirectly) {
       if (r.newSrc === original) continue;
       total += r.changed;
       const rel = relative(ROOT, f);
-      console.log(`${DRY ? "[dry] " : ""}${rel}: ${r.changed} move(s)`);
+      const prefix = DRY ? "[dry] " : CHECK ? "[check] " : "";
+      console.log(`${prefix}${rel}: ${r.changed} move(s)`);
       for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
-      if (!DRY) writeFileSync(f, r.newSrc, "utf8");
+      if (!DRY && !CHECK) writeFileSync(f, r.newSrc, "utf8");
     } catch (e) {
       console.error(`SKIP ${relative(ROOT, f)}: ${e.message}`);
     }
   }
-  console.log(`\n${DRY ? "Would perform" : "Performed"} ${total} move(s).`);
+  const verb = DRY || CHECK ? "Would perform" : "Performed";
+  console.log(`\n${verb} ${total} move(s).`);
+  if (CHECK) {
+    if (total > 0) {
+      console.error("Exiting with non-zero status because changes would be made.");
+      process.exit(1);
+    }
+    process.exit(0);
+  }
   console.log("Re-run until output is 0, then: bun run lint && bunx tsc --noEmit");
 }
