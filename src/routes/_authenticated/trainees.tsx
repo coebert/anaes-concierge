@@ -449,6 +449,11 @@ function TraineesPage() {
                       >
                         {trainee.full_name || trainee.email}
                       </Link>
+                      {isNotYetStarted(trainee.start_date) ? (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          Not yet started · {format(new Date(trainee.start_date), "d MMM yyyy")}
+                        </Badge>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       {trainee.training_level ? (
