@@ -1,0 +1,364 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ChevronLeft, Calculator, AlertTriangle, CheckCircle2 } from "lucide-react";
+
+export const Route = createFileRoute(
+  "/_authenticated/robustness/consultant-feasibility",
+)({
+  component: ConsultantFeasibilityPage,
+});
+
+type Inputs = {
+  mainTheatres: number;
+  daySurgeryTheatres: number;
+  sessionsPerTheatrePerWeek: number; // AM/PM Mon-Fri = 10
+  labourWardSessionsPerWeek: number;
+  icuSessionsPerWeek: number;
+  icuTrainedPoolSize: number;
+  pasPerConsultant: number;
+  dccPasPerConsultant: number; // clinical PAs; rest is SPA
+  sessionsPerPa: number;
+  annualLeaveDays: number;
+  studyLeaveDays: number;
+  bankHolidayDays: number;
+  weeksPerYear: number;
+  workingDaysPerWeek: number; // for converting leave days -> weeks
+};
+
+const DEFAULTS: Inputs = {
+  mainTheatres: 10,
+  daySurgeryTheatres: 3,
+  sessionsPerTheatrePerWeek: 10,
+  labourWardSessionsPerWeek: 10,
+  icuSessionsPerWeek: 10,
+  icuTrainedPoolSize: 10,
+  pasPerConsultant: 10,
+  dccPasPerConsultant: 7.5,
+  sessionsPerPa: 1,
+  annualLeaveDays: 32,
+  studyLeaveDays: 7,
+  bankHolidayDays: 8,
+  weeksPerYear: 52,
+  workingDaysPerWeek: 5,
+};
+
+function ConsultantFeasibilityPage() {
+  const [inp, setInp] = useState<Inputs>(DEFAULTS);
+
+  const calc = useMemo(() => {
+    const theatreSessions =
+      (inp.mainTheatres + inp.daySurgeryTheatres) *
+      inp.sessionsPerTheatrePerWeek;
+    const weeklyDemand =
+      theatreSessions +
+      inp.labourWardSessionsPerWeek +
+      inp.icuSessionsPerWeek;
+    const annualDemand = weeklyDemand * inp.weeksPerYear;
+
+    const leaveDays =
+      inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays;
+    const leaveWeeks = leaveDays / inp.workingDaysPerWeek;
+    const workingWeeks = Math.max(0, inp.weeksPerYear - leaveWeeks);
+
+    const weeklyClinicalSessions =
+      inp.dccPasPerConsultant * inp.sessionsPerPa;
+    const annualSessionsPerConsultant = weeklyClinicalSessions * workingWeeks;
+
+    const fteNeeded = annualDemand / annualSessionsPerConsultant;
+
+    // ICU subgroup feasibility: 10 sessions/week × 52 = annual ICU demand,
+    // must be covered by the 10-strong ICU-trained pool's annual capacity.
+    const icuAnnualDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
+    const icuPoolAnnualCapacity =
+      inp.icuTrainedPoolSize * annualSessionsPerConsultant;
+    const icuPoolUtilisation =
+      icuPoolAnnualCapacity > 0
+        ? icuAnnualDemand / icuPoolAnnualCapacity
+        : Infinity;
+    // Each ICU-trained consultant must spend this fraction of their clinical
+    // time on ICU; the remainder is available for theatre / labour ward.
+    const icuSharePerConsultant =
+      inp.icuTrainedPoolSize > 0
+        ? inp.icuSessionsPerWeek / inp.icuTrainedPoolSize / weeklyClinicalSessions
+        : Infinity;
+
+    return {
+      theatreSessions,
+      weeklyDemand,
+      annualDemand,
+      leaveWeeks,
+      workingWeeks,
+      weeklyClinicalSessions,
+      annualSessionsPerConsultant,
+      fteNeeded,
+      icuAnnualDemand,
+      icuPoolAnnualCapacity,
+      icuPoolUtilisation,
+      icuSharePerConsultant,
+    };
+  }, [inp]);
+
+  const set = <K extends keyof Inputs>(key: K) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const v = Number(e.target.value);
+      setInp((prev) => ({ ...prev, [key]: Number.isFinite(v) ? v : 0 }));
+    };
+
+  const icuFeasible = calc.icuPoolUtilisation <= 1;
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Button asChild variant="ghost" size="sm" className="h-7 px-2">
+              <Link to="/robustness">
+                <ChevronLeft className="mr-1 h-4 w-4" /> Robustness
+              </Link>
+            </Button>
+          </div>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <Calculator className="h-6 w-6 text-primary" />
+            Consultant workforce feasibility
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            How many full-time consultants are needed to cover the standing
+            theatre, labour-ward and ICU commitments?
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setInp(DEFAULTS)}>
+          Reset to defaults
+        </Button>
+      </header>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Demand assumptions</CardTitle>
+            <CardDescription>
+              Weekly clinical sessions that must be staffed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <Field label="Main theatres" value={inp.mainTheatres} onChange={set("mainTheatres")} />
+            <Field label="Day-surgery theatres" value={inp.daySurgeryTheatres} onChange={set("daySurgeryTheatres")} />
+            <Field label="Sessions / theatre / week" value={inp.sessionsPerTheatrePerWeek} onChange={set("sessionsPerTheatrePerWeek")} hint="AM+PM Mon–Fri = 10" />
+            <Field label="Labour-ward sessions / week" value={inp.labourWardSessionsPerWeek} onChange={set("labourWardSessionsPerWeek")} />
+            <Field label="ICU sessions / week" value={inp.icuSessionsPerWeek} onChange={set("icuSessionsPerWeek")} />
+            <Field label="ICU-trained pool size" value={inp.icuTrainedPoolSize} onChange={set("icuTrainedPoolSize")} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Per-consultant capacity</CardTitle>
+            <CardDescription>
+              Job plan and leave assumptions per full-time consultant.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3">
+            <Field label="PAs / week (total)" value={inp.pasPerConsultant} step="0.5" onChange={set("pasPerConsultant")} />
+            <Field label="DCC PAs / week" value={inp.dccPasPerConsultant} step="0.5" onChange={set("dccPasPerConsultant")} hint="Clinical, excludes SPA" />
+            <Field label="Sessions / PA" value={inp.sessionsPerPa} step="0.5" onChange={set("sessionsPerPa")} />
+            <Field label="Annual leave (days)" value={inp.annualLeaveDays} onChange={set("annualLeaveDays")} />
+            <Field label="Study leave (days)" value={inp.studyLeaveDays} onChange={set("studyLeaveDays")} />
+            <Field label="Bank holidays (days)" value={inp.bankHolidayDays} onChange={set("bankHolidayDays")} />
+            <Field label="Weeks / year" value={inp.weeksPerYear} onChange={set("weeksPerYear")} />
+            <Field label="Working days / week" value={inp.workingDaysPerWeek} onChange={set("workingDaysPerWeek")} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Result</CardTitle>
+          <CardDescription>
+            Derived from the inputs above. Adjust any field to re-run.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Stat
+              label="Weekly clinical sessions to cover"
+              value={calc.weeklyDemand.toLocaleString()}
+              sub={`${calc.theatreSessions} theatre + ${inp.labourWardSessionsPerWeek} labour ward + ${inp.icuSessionsPerWeek} ICU`}
+            />
+            <Stat
+              label="Annual clinical sessions"
+              value={Math.round(calc.annualDemand).toLocaleString()}
+              sub={`${calc.weeklyDemand} × ${inp.weeksPerYear} weeks`}
+            />
+            <Stat
+              label="Sessions / consultant / year"
+              value={calc.annualSessionsPerConsultant.toFixed(1)}
+              sub={`${calc.weeklyClinicalSessions} cln sessions × ${calc.workingWeeks.toFixed(1)} working wks`}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="rounded-lg border bg-primary/5 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Full-time consultants required
+                </div>
+                <div className="mt-1 text-4xl font-semibold tracking-tight">
+                  {calc.fteNeeded.toFixed(1)}
+                  <span className="ml-2 text-base font-normal text-muted-foreground">
+                    FTE
+                  </span>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-sm">
+                Round up to {Math.ceil(calc.fteNeeded)} headcount
+              </Badge>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Annual demand ÷ annual capacity per consultant
+              ={" "}
+              {Math.round(calc.annualDemand).toLocaleString()} ÷{" "}
+              {calc.annualSessionsPerConsultant.toFixed(1)}.
+            </p>
+          </div>
+
+          <div
+            className={
+              "rounded-lg border p-4 " +
+              (icuFeasible
+                ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-destructive/40 bg-destructive/5")
+            }
+          >
+            <div className="flex items-start gap-2">
+              {icuFeasible ? (
+                <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-5 w-5 text-destructive" />
+              )}
+              <div className="space-y-1 text-sm">
+                <div className="font-medium">
+                  ICU subgroup constraint:{" "}
+                  {icuFeasible ? "feasible" : "INFEASIBLE"} at{" "}
+                  {(calc.icuPoolUtilisation * 100).toFixed(1)}% utilisation
+                </div>
+                <p className="text-muted-foreground">
+                  {inp.icuSessionsPerWeek} ICU sessions/week must be drawn from
+                  the {inp.icuTrainedPoolSize}-strong ICU-trained pool. Each
+                  ICU-trained consultant would spend{" "}
+                  <strong>
+                    {(calc.icuSharePerConsultant * 100).toFixed(1)}%
+                  </strong>{" "}
+                  of their clinical time on ICU, leaving the remainder for
+                  theatres / labour ward.
+                </p>
+                <p className="text-muted-foreground">
+                  Annual ICU demand{" "}
+                  {Math.round(calc.icuAnnualDemand).toLocaleString()} vs pool
+                  capacity{" "}
+                  {Math.round(calc.icuPoolAnnualCapacity).toLocaleString()}{" "}
+                  sessions/year.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <details className="rounded-lg border p-4 text-sm">
+            <summary className="cursor-pointer font-medium">
+              Show working
+            </summary>
+            <ul className="mt-2 space-y-1 text-muted-foreground">
+              <li>
+                Theatres: ({inp.mainTheatres} main + {inp.daySurgeryTheatres}{" "}
+                day-surgery) × {inp.sessionsPerTheatrePerWeek} sessions/wk ={" "}
+                <strong>{calc.theatreSessions}</strong> sessions/wk
+              </li>
+              <li>
+                Weekly demand = {calc.theatreSessions} theatre +{" "}
+                {inp.labourWardSessionsPerWeek} labour ward +{" "}
+                {inp.icuSessionsPerWeek} ICU ={" "}
+                <strong>{calc.weeklyDemand}</strong>
+              </li>
+              <li>
+                Leave per consultant: {inp.annualLeaveDays} AL +{" "}
+                {inp.studyLeaveDays} study + {inp.bankHolidayDays} bank hols ={" "}
+                {inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays}{" "}
+                days = {calc.leaveWeeks.toFixed(2)} weeks
+              </li>
+              <li>
+                Working weeks/year = {inp.weeksPerYear} −{" "}
+                {calc.leaveWeeks.toFixed(2)} ={" "}
+                <strong>{calc.workingWeeks.toFixed(2)}</strong>
+              </li>
+              <li>
+                Per consultant: {inp.dccPasPerConsultant} DCC PAs ×{" "}
+                {inp.sessionsPerPa} session/PA ={" "}
+                {calc.weeklyClinicalSessions} sessions/wk ×{" "}
+                {calc.workingWeeks.toFixed(2)} wks ={" "}
+                <strong>{calc.annualSessionsPerConsultant.toFixed(1)}</strong>{" "}
+                sessions/yr
+              </li>
+              <li>
+                FTE needed = {Math.round(calc.annualDemand).toLocaleString()} ÷{" "}
+                {calc.annualSessionsPerConsultant.toFixed(1)} ={" "}
+                <strong>{calc.fteNeeded.toFixed(2)}</strong>
+              </li>
+            </ul>
+          </details>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function Field({
+  label, value, onChange, step, hint,
+}: {
+  label: string;
+  value: number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  step?: string;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        type="number"
+        inputMode="decimal"
+        step={step ?? "1"}
+        min={0}
+        value={value}
+        onChange={onChange}
+        className="h-9"
+      />
+      {hint && (
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label, value, sub,
+}: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 text-2xl font-semibold tracking-tight">{value}</div>
+      {sub && (
+        <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>
+      )}
+    </div>
+  );
+}
