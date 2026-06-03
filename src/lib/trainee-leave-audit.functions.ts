@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
+import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS } from "./trainee-leave-audit-window";
 
 /**
  * Verification view for the "not yet started" decision.
@@ -21,7 +22,7 @@ import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
  * UI can audit every decision the sync made.
  */
 
-const LOOKAHEAD_DAYS = 14;
+const LOOKAHEAD_DAYS = LEAVE_LOOKAHEAD_DAYS;
 
 export type AuditLeaveRow = {
   id: string;
@@ -56,12 +57,7 @@ export type AuditResult = {
   trainees: AuditTrainee[];
 };
 
-function isoDateOffset(days: number): string {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
 
 
 
