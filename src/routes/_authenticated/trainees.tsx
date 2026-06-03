@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { computeProgress } from "@/lib/competency-utils";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { cn, todayISO, compareBySurnameAsc } from "@/lib/utils";
+import { cn, todayISO, compareBySurname } from "@/lib/name-sort";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
@@ -210,7 +210,7 @@ function TraineesPage() {
           : null;
         return { trainee: t, progress, overall };
       })
-      .sort((a, b) => compareBySurnameAsc(a.trainee.full_name, b.trainee.full_name));
+      .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [data, filter]);
 
   const { fromISO, toISO, asOfMs } = useMemo(() => {

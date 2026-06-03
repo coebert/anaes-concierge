@@ -12,12 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
-import { formatDateGB, compareBySurnameAsc } from "@/lib/utils";
+import { formatDateGB, compareBySurname } from "@/lib/name-sort";
 
 interface LeaveRow {
   id: string;
@@ -182,7 +182,7 @@ function LeavePage() {
         return (profile?.full_name ?? "").toLowerCase().includes(q);
       })
       .sort((a, b) =>
-        compareBySurnameAsc(a.profile?.full_name, b.profile?.full_name),
+        compareBySurname(a.profile?.full_name, b.profile?.full_name),
       );
   }, [activeRows, profileById, pickedIso, nameFilter]);
 
@@ -323,7 +323,7 @@ function LeavePage() {
         other: buckets.other,
       });
     }
-    return out.sort((a, b) => compareBySurnameAsc(a.profile.full_name, b.profile.full_name));
+    return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
   }, [profiles, yearLeave, allowanceByStaff, defaultYearStartISO]);
 
   const allowanceVisible = useMemo(() => {

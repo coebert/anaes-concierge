@@ -13,7 +13,7 @@ import {
   computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
-import { compareBySurnameAsc, formatDateGB, todayISO } from "@/lib/utils";
+import { compareBySurname, formatDateGB, todayISO } from "@/lib/name-sort";
 import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
@@ -139,7 +139,7 @@ function RotaGapsPage() {
       .sort((a, b) => {
         const diff = b.report.totalMissingDays - a.report.totalMissingDays;
         if (diff !== 0) return diff;
-        return compareBySurnameAsc(a.trainee.full_name, b.trainee.full_name);
+        return compareBySurname(a.trainee.full_name, b.trainee.full_name);
       });
   }, [data, filter, hideClean]);
 

@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatDateLongGB, formatDateGB, compareBySurnameAsc } from "@/lib/utils";
+import { formatDateLongGB, formatDateGB, compareBySurname } from "@/lib/name-sort";
 
 export const Route = createFileRoute("/_authenticated/coordinator/duties")({
   component: DutiesPage,
@@ -299,7 +299,7 @@ function DutiesPage() {
                               <SelectContent>
                                 {eligibleStaff(duty, dateIso)
                                   .filter((s) => !items.some((it) => it.staff_id === s.id))
-                                  .sort((a, b) => compareBySurnameAsc(a.full_name, b.full_name))
+                                  .sort((a, b) => compareBySurname(a.full_name, b.full_name))
                                   .map((s) => (
                                     <SelectItem key={s.id} value={s.id}>
                                       {s.full_name}

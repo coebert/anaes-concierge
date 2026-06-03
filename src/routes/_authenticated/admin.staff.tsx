@@ -17,7 +17,7 @@ import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { Pencil, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { todayISO, compareBySurnameAsc } from "@/lib/utils";
+import { todayISO, compareBySurname } from "@/lib/name-sort";
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
@@ -34,7 +34,7 @@ type StaffWithPlan = {
 };
 
 function sortBySurnameAsc(a: StaffWithPlan, b: StaffWithPlan): number {
-  return compareBySurnameAsc(a.full_name, b.full_name);
+  return compareBySurname(a.full_name, b.full_name);
 }
 
 function StaffGroup({

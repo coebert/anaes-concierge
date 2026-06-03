@@ -28,7 +28,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { compareBySurnameAsc } from "@/lib/utils";
+import { compareBySurname } from "@/lib/name-sort";
 import { isNonWorkingRotaLabel } from "@/lib/clwrota-labels";
 import {
   computeListFeasibility,
@@ -376,7 +376,7 @@ export async function validateConsultantPatterns(
   validated.sort((a, b) => {
     if (a.mismatchCount !== b.mismatchCount) return b.mismatchCount - a.mismatchCount;
     if (a.maxAbsDelta !== b.maxAbsDelta) return b.maxAbsDelta - a.maxAbsDelta;
-    return compareBySurnameAsc(a.name, b.name);
+    return compareBySurname(a.name, b.name);
   });
 
   return {
