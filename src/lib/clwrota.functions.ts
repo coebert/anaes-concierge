@@ -2004,6 +2004,34 @@ export const syncClwRotaLeave = createServerFn({ method: "POST" })
     return performLeaveSync();
   });
 
+/**
+ * List recent CLWRota sync metric rows for the admin reliability dashboard.
+ * Default window 30 days; capped at 365.
+ */
+export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      days: z.coerce.number().int().min(1).max(365).default(30),
+      sync_kind: z.enum(["leave", "rota", "staff", "all"]).default("all"),
+    }).parse(input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
+    let q = supabaseAdmin
+      .from("clwrota_sync_metrics")
+      .select("*")
+      .gte("run_at", since)
+      .order("run_at", { ascending: true })
+      .limit(5000);
+    if (data.sync_kind !== "all") q = q.eq("sync_kind", data.sync_kind);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return { rows: rows ?? [], days: data.days, sync_kind: data.sync_kind };
+  });
+
+
 export async function performLeaveSync() {
   const startedAt = Date.now();
   const { apiKey } = getEnv();
