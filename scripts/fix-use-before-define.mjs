@@ -350,7 +350,9 @@ if (invokedDirectly) {
   const explicit = process.argv
     .slice(2)
     .filter((a) => !a.startsWith("--"));
-  const files = explicit.length > 0 ? explicit.map((f) => join(ROOT, f)) : listFiles();
+  const files = explicit.length > 0
+    ? explicit.map((f) => (f.startsWith("/") ? f : join(ROOT, f)))
+    : listFiles();
 
   let total = 0;
   for (const f of files) {
