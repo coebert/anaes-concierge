@@ -83,10 +83,76 @@ function collectBindingNames(node, out) {
   }
 }
 
-/** All identifier texts referenced anywhere inside `stmt`. */
+/**
+ * Names introduced by a node into its own scope. Used to mask references
+ * that resolve to an inner binding (shadowing) rather than the outer name
+ * we're considering moving.
+ */
+function namesIntroducedBy(n) {
+  const frame = new Set();
+  const push = (binding) => {
+    const arr = [];
+    collectBindingNames(binding, arr);
+    for (const x of arr) frame.add(x);
+  };
+  if (
+    ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) ||
+    ts.isArrowFunction(n) || ts.isMethodDeclaration(n) ||
+    ts.isConstructorDeclaration(n) || ts.isGetAccessor(n) ||
+    ts.isSetAccessor(n)
+  ) {
+    for (const p of n.parameters || []) push(p.name);
+    if ((ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n)) && n.name) {
+      frame.add(n.name.text);
+    }
+  }
+  if ((ts.isClassDeclaration(n) || ts.isClassExpression(n)) && n.name) {
+    frame.add(n.name.text);
+  }
+  if (ts.isCatchClause(n) && n.variableDeclaration) {
+    push(n.variableDeclaration.name);
+  }
+  // Block-scoped bindings declared directly inside a Block.
+  if (ts.isBlock(n) || ts.isModuleBlock(n)) {
+    for (const c of n.statements) {
+      if (ts.isVariableStatement(c)) {
+        for (const d of c.declarationList.declarations) push(d.name);
+      } else if (
+        (ts.isFunctionDeclaration(c) ||
+          ts.isClassDeclaration(c) ||
+          ts.isEnumDeclaration(c)) &&
+        c.name
+      ) {
+        frame.add(c.name.text);
+      }
+    }
+  }
+  // `for (const x of …)` / `for (let i = 0; …)` bind x/i in the loop body.
+  if (
+    ts.isForStatement(n) || ts.isForInStatement(n) || ts.isForOfStatement(n)
+  ) {
+    const init = n.initializer;
+    if (init && ts.isVariableDeclarationList(init)) {
+      for (const d of init.declarations) push(d.name);
+    }
+  }
+  return frame;
+}
+
+/** Identifier texts referenced inside `stmt` that are NOT shadowed by an
+ *  inner scope. The shadowing guard is what stops e.g. `catch (error)` from
+ *  matching a top-level `const error` declaration. */
 function referencedIdentifiers(stmt) {
   const found = new Set();
+  const scopeStack = []; // Set<string>[]
+  const shadows = (name) => {
+    for (const f of scopeStack) if (f.has(name)) return true;
+    return false;
+  };
   const visit = (n) => {
+    const frame = namesIntroducedBy(n);
+    if (frame.size > 0) scopeStack.push(frame);
+
     if (ts.isIdentifier(n)) {
       const p = n.parent;
       const isDeclName =
@@ -103,9 +169,11 @@ function referencedIdentifiers(stmt) {
           p.name === n) ||
         (ts.isPropertyAccessExpression(p) && p.name === n) ||
         (ts.isPropertyAssignment(p) && p.name === n && !p.initializer);
-      if (!isDeclName) found.add(n.text);
+      if (!isDeclName && !shadows(n.text)) found.add(n.text);
     }
+
     n.forEachChild(visit);
+    if (frame.size > 0) scopeStack.pop();
   };
   visit(stmt);
   return found;
@@ -184,9 +252,22 @@ function hoistImports(stmts) {
  * [stmts[0].getFullStart(), stmts[stmts.length-1].getEnd()).
  */
 function rebuildSpan(src, stmts, order) {
-  return order
-    .map((idx) => src.slice(stmts[idx].getFullStart(), stmts[idx].getEnd()))
-    .join("");
+  const pieces = [];
+  for (let i = 0; i < order.length; i++) {
+    let piece = src.slice(stmts[order[i]].getFullStart(), stmts[order[i]].getEnd());
+    // When a statement that originally started the file (no leading trivia)
+    // moves after another statement, it can end up glued directly to the
+    // previous piece (e.g. `}export const ...`). Ensure at least one newline
+    // separates adjacent statements.
+    if (i > 0) {
+      const prev = pieces[pieces.length - 1];
+      const prevEndsWithNewline = /\n[ \t]*$/.test(prev);
+      const pieceStartsWithNewline = /^[ \t]*\n/.test(piece);
+      if (!prevEndsWithNewline && !pieceStartsWithNewline) piece = "\n" + piece;
+    }
+    pieces.push(piece);
+  }
+  return pieces.join("");
 }
 
 /** Collect every statement list we want to consider in a file. */
@@ -197,21 +278,24 @@ function collectStatementLists(sf) {
   return [{ stmts: sf.statements, depth: 0 }];
 }
 
-function processFile(file) {
-  let src = readFileSync(file, "utf8");
+/**
+ * Pure entry point: take a source string + filename, return the rewritten
+ * source and the list of moves. No I/O. Used by the CLI below AND by the
+ * test suite in `scripts/fix-use-before-define.test.ts`.
+ */
+export function processSource(initialSrc, file) {
+  let src = initialSrc;
   let totalMoves = [];
 
-  // Run until stable, or up to 5 passes — multiple scopes may shift offsets
-  // and we re-parse between passes to stay correct.
+  // Run until stable, or up to 5 passes. We re-parse between passes so
+  // offsets stay consistent after edits.
   for (let pass = 0; pass < 5; pass++) {
     const sf = ts.createSourceFile(
       file, src, ts.ScriptTarget.Latest, true,
       file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
 
-    // Combine: program-scope (with imports-first), then each nested block.
     const lists = collectStatementLists(sf);
-    // Sort by start offset DESC so we patch from the end of the file backwards.
     lists.sort((a, b) => b.stmts[0].getFullStart() - a.stmts[0].getFullStart());
 
     // Skip imports-first in test files that intentionally interleave
@@ -219,21 +303,18 @@ function processFile(file) {
     // hoist mocks but the human-readable order is load-bearing for clarity.
     const skipImports = /\b(?:vi|jest)\.mock\s*\(/.test(src);
 
-    let edits = []; // { start, end, replacement, moves }
+    const edits = [];
     for (const { stmts } of lists) {
       const isProgram = stmts === sf.statements;
       const passes = [reorderStatements(stmts)];
       if (isProgram && !skipImports) passes.push(hoistImports(stmts));
-      // Fold passes: apply first, then re-derive order for the second.
       let order = stmts.map((_, i) => i);
       let moves = [];
       for (const p of passes) {
-        // Translate p.order (over original indices) by composing with `order`.
         const composed = p.order.map((i) => order[i]);
         order = composed;
         moves = moves.concat(p.moves);
       }
-      // No-op?
       const isIdentity = order.every((v, i) => v === i);
       if (isIdentity) continue;
       const start = stmts[0].getFullStart();
@@ -242,7 +323,6 @@ function processFile(file) {
     }
 
     if (edits.length === 0) break;
-    // Apply edits from highest start to lowest.
     edits.sort((a, b) => b.start - a.start);
     for (const e of edits) {
       src = src.slice(0, e.start) + e.replacement + src.slice(e.end);
@@ -250,24 +330,35 @@ function processFile(file) {
     }
   }
 
-  return { file, changed: totalMoves.length, moves: totalMoves, newSrc: src };
+  return { newSrc: src, moves: totalMoves };
 }
 
-let total = 0;
-for (const f of listFiles()) {
-  try {
-    const r = processFile(f);
-    if (r.changed === 0) continue;
-    const original = readFileSync(f, "utf8");
-    if (r.newSrc === original) continue;
-    total += r.changed;
-    const rel = relative(ROOT, f);
-    console.log(`${DRY ? "[dry] " : ""}${rel}: ${r.changed} move(s)`);
-    for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
-    if (!DRY) writeFileSync(f, r.newSrc, "utf8");
-  } catch (e) {
-    console.error(`SKIP ${relative(ROOT, f)}: ${e.message}`);
-  }
+function processFile(file) {
+  const src = readFileSync(file, "utf8");
+  const { newSrc, moves } = processSource(src, file);
+  return { file, changed: moves.length, moves, newSrc };
 }
-console.log(`\n${DRY ? "Would perform" : "Performed"} ${total} move(s).`);
-console.log("Re-run until output is 0, then: bun run lint && bunx tsc --noEmit");
+
+// CLI entry. Skip when imported (e.g. from the test suite).
+const invokedDirectly =
+  process.argv[1] && process.argv[1].endsWith("fix-use-before-define.mjs");
+if (invokedDirectly) {
+  let total = 0;
+  for (const f of listFiles()) {
+    try {
+      const r = processFile(f);
+      if (r.changed === 0) continue;
+      const original = readFileSync(f, "utf8");
+      if (r.newSrc === original) continue;
+      total += r.changed;
+      const rel = relative(ROOT, f);
+      console.log(`${DRY ? "[dry] " : ""}${rel}: ${r.changed} move(s)`);
+      for (const m of r.moves) console.log(`    ${m.name}: ${m.from} -> ${m.to}`);
+      if (!DRY) writeFileSync(f, r.newSrc, "utf8");
+    } catch (e) {
+      console.error(`SKIP ${relative(ROOT, f)}: ${e.message}`);
+    }
+  }
+  console.log(`\n${DRY ? "Would perform" : "Performed"} ${total} move(s).`);
+  console.log("Re-run until output is 0, then: bun run lint && bunx tsc --noEmit");
+}
