@@ -1359,12 +1359,15 @@ export async function performRotaSync() {
     let rows: Record<string, unknown>[];
     let rawPreview = "";
     let sampleKeys: string[] = [];
+    let parseError: string | null = null;
     try {
       const text = await fetchReportRaw(clampDateWindow(url, { daysBack, daysAhead }), apiKey);
 
 
       rawPreview = text.slice(0, 500);
-      rows = parseRows(text);
+      const parsed = parseRows(text);
+      rows = parsed.rows;
+      parseError = parsed.parseError;
       if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1378,13 +1381,17 @@ export async function performRotaSync() {
     }
 
     if (rows.length === 0) {
+      const reason = parseError
+        ? `Rota URL returned no recognisable rows. ${parseError}. Preview: ${rawPreview.slice(0, 200)}`
+        : `Rota URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`;
       await supabaseAdmin.from("clwrota_sync_state").upsert({
         id: 1,
         last_sync_at: new Date().toISOString(),
         last_status: "rota_no_rows",
-        last_error: `Rota URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`,
+        last_error: reason,
         last_pulled_rows: 0,
       });
+
       return {
         ...emptyResult,
         message: "Rota URL returned 0 rows. See preview below.",
