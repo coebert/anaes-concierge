@@ -1981,6 +1981,46 @@ export async function performRotaSync() {
       last_pulled_rows: rows.length,
     });
 
+    const rotaDurationMs = Date.now() - startedAt;
+    console.info(
+      "[clwrota.metrics]",
+      JSON.stringify({
+        kind: "rota_sync",
+        at: new Date().toISOString(),
+        ok: errors.length === 0,
+        rows_pulled: rows.length,
+        rows_upserted: assignmentsUpserted,
+        rows_skipped_validation: skipped.length,
+        rows_failed: errors.length,
+        warnings_count: warnings.length,
+        errors_count: errors.length,
+        duration_ms: rotaDurationMs,
+      }),
+    );
+    const rotaNotes = errors.length
+      ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
+      : warnings.length
+        ? warnings.slice(0, 3).map((w) => `${w.label}: ${w.reason}`).join("; ").slice(0, 1000)
+        : null;
+    const { error: rotaMetricsErr } = await supabaseAdmin
+      .from("clwrota_sync_metrics")
+      .insert({
+        sync_kind: "rota",
+        run_at: new Date().toISOString(),
+        ok: errors.length === 0,
+        duration_ms: rotaDurationMs,
+        rows_pulled: rows.length,
+        rows_upserted: assignmentsUpserted,
+        rows_skipped_validation: skipped.length,
+        rows_failed: errors.length,
+        errors_count: errors.length,
+        notes: rotaNotes,
+      });
+    if (rotaMetricsErr) {
+      console.warn("[clwrota] failed to insert rota sync metrics:", rotaMetricsErr.message);
+    }
+
+
     // After all assignments are upserted, refresh the "not yet started"
     // trainee predictions so newly-imported future rota rows turn into a
     // predicted start_date and the UI can badge them accordingly.
