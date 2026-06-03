@@ -5,7 +5,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
 import {
   parseListClwRotaSyncMetricsResponse,
-  type ClwRotaSyncMetricRow,
   type ListClwRotaSyncMetricsResponse,
 } from "./clwrota-metrics-types";
 
