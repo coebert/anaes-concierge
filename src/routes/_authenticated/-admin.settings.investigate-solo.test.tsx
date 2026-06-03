@@ -244,14 +244,19 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     vi.restoreAllMocks();
   });
 
+  function clickButton(name: RegExp) {
+    const btn = screen.getByRole("button", { name });
+    return act(async () => {
+      fireEvent.click(btn);
+    });
+  }
+
   it("preview shows counts without mutating the store", async () => {
-    const user = userEvent.setup();
     renderCard();
 
-    await user.click(screen.getByRole("button", { name: /preview findings/i }));
+    await clickButton(/preview findings/i);
 
     await waitFor(() => {
-      // The auto-correctable Stat block exists and shows count = 1.
       expect(
         screen.getByText(/auto-correctable/i).closest("div")?.textContent,
       ).toMatch(/1/);
@@ -269,19 +274,16 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
   });
 
   it("Investigate & fix now persists corrected labels and surfaces success", async () => {
-    const user = userEvent.setup();
     renderCard();
 
-    await user.click(screen.getByRole("button", { name: /investigate & fix now/i }));
+    await clickButton(/investigate & fix now/i);
 
     await waitFor(() => {
-      // The applied banner appears with the count.
       expect(
-        screen.getByText(/list\(s\) reclassified solo → supervised/i),
-      ).toBeInTheDocument();
+        screen.queryByText(/list\(s\) reclassified solo → supervised/i),
+      ).not.toBeNull();
     });
 
-    // The fake server fn was invoked with apply=true.
     expect(investigateMock).toHaveBeenCalledWith({ data: { apply: true } });
 
     // --- Persistence assertions ----------------------------------------
@@ -289,8 +291,6 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     expect(train.role_on_list).toBe("supervised");
     expect(train.supervisor_id).toBe("cons-1");
 
-    // The consultant row, the unmatched row, and the legitimate solo row
-    // are all untouched.
     expect(store.assignments.find((a) => a.id === "asg-cons")!.role_on_list).toBe(
       "solo",
     );
@@ -301,7 +301,6 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
       "solo",
     );
 
-    // Reclassification log captures the persisted change.
     expect(store.reclassificationLog).toEqual([
       expect.objectContaining({
         assignment_id: "asg-train",
@@ -311,7 +310,6 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
       }),
     ]);
 
-    // Success toast was raised through the UI.
     expect(toastSuccess).toHaveBeenCalledWith(
       expect.stringMatching(/corrected 1 list\(s\)/i),
     );
@@ -319,37 +317,32 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
   });
 
   it("re-running investigate after a fix reports zero auto-correctable rows (idempotent)", async () => {
-    const user = userEvent.setup();
     renderCard();
 
-    await user.click(screen.getByRole("button", { name: /investigate & fix now/i }));
+    await clickButton(/investigate & fix now/i);
     await waitFor(() =>
       expect(
-        screen.getByText(/list\(s\) reclassified solo → supervised/i),
-      ).toBeInTheDocument(),
+        screen.queryByText(/list\(s\) reclassified solo → supervised/i),
+      ).not.toBeNull(),
     );
 
-    // Now click Preview again — the persisted store should yield 0
-    // auto-correctable rows.
-    await user.click(screen.getByRole("button", { name: /preview findings/i }));
+    await clickButton(/preview findings/i);
 
     await waitFor(() => {
       const autoStat = screen
         .getByText(/auto-correctable/i)
         .closest("div") as HTMLElement;
-      expect(within(autoStat).getByText("0")).toBeInTheDocument();
+      expect(within(autoStat).queryByText("0")).not.toBeNull();
     });
 
-    // Only one persisted log entry across both runs.
     expect(store.reclassificationLog).toHaveLength(1);
   });
 
   it("aborting the confirmation prompt does not call the apply endpoint", async () => {
     (window.confirm as unknown as ReturnType<typeof vi.spyOn>).mockReturnValue(false);
-    const user = userEvent.setup();
     renderCard();
 
-    await user.click(screen.getByRole("button", { name: /investigate & fix now/i }));
+    await clickButton(/investigate & fix now/i);
 
     expect(investigateMock).not.toHaveBeenCalled();
     const train = store.assignments.find((a) => a.id === "asg-train")!;
