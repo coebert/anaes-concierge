@@ -505,6 +505,87 @@ function ConsultantFeasibilityPage() {
               </div>
             </div>
           </div>
+
+          <Separator />
+
+          {/* Demand contributions: per-stream FTE impact */}
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Demand contributions (FTE per session/week)
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Each row shows how many sessions/week that service consumes,
+              the annual session-equivalents it generates, and the FTE impact
+              of a single weekly session at the current capacity assumptions
+              (1 sess/wk = {inp.weeksPerYear} ÷{" "}
+              {calc.annualSessionsPerConsultant.toFixed(1)} ={" "}
+              <strong>
+                {(calc.annualSessionsPerConsultant > 0
+                  ? inp.weeksPerYear / calc.annualSessionsPerConsultant
+                  : 0
+                ).toFixed(3)}
+              </strong>{" "}
+              FTE).
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="py-1 pr-2 font-medium">Service</th>
+                    <th className="py-1 px-2 text-right font-medium">Sess/wk</th>
+                    <th className="py-1 px-2 text-right font-medium">Sess/yr</th>
+                    <th className="py-1 pl-2 text-right font-medium">FTE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Theatres", weekly: calc.theatreSessions },
+                    { label: "Labour ward", weekly: inp.labourWardSessionsPerWeek },
+                    { label: "Consultant in charge", weekly: inp.consultantInChargeSessionsPerWeek },
+                    { label: "Pain service", weekly: inp.painServiceSessionsPerWeek },
+                    { label: "POAC", weekly: inp.poacSessionsPerWeek },
+                    { label: "ICU (lists)", weekly: inp.icuSessionsPerWeek },
+                    {
+                      label: "On-call (theatre + ICU)",
+                      weekly: calc.weeklyOnCallPAs * inp.sessionsPerPa,
+                    },
+                  ].map((row) => {
+                    const annual = row.weekly * inp.weeksPerYear;
+                    const fte =
+                      calc.annualSessionsPerConsultant > 0
+                        ? annual / calc.annualSessionsPerConsultant
+                        : 0;
+                    return (
+                      <tr key={row.label} className="border-b last:border-0">
+                        <td className="py-1 pr-2">{row.label}</td>
+                        <td className="py-1 px-2 text-right tabular-nums">
+                          {row.weekly.toFixed(1)}
+                        </td>
+                        <td className="py-1 px-2 text-right tabular-nums">
+                          {Math.round(annual).toLocaleString()}
+                        </td>
+                        <td className="py-1 pl-2 text-right tabular-nums">
+                          {fte.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="font-semibold">
+                    <td className="py-1 pr-2">Total</td>
+                    <td className="py-1 px-2 text-right tabular-nums">
+                      {calc.weeklyDemand.toFixed(1)}
+                    </td>
+                    <td className="py-1 px-2 text-right tabular-nums">
+                      {Math.round(calc.annualDemand).toLocaleString()}
+                    </td>
+                    <td className="py-1 pl-2 text-right tabular-nums text-primary">
+                      {calc.fteNeeded.toFixed(2)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </CardContent>
       </Card>
       </>)}
