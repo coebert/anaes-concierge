@@ -76,11 +76,23 @@ function ConsultantFeasibilityPage() {
     const theatreSessions =
       (inp.mainTheatres + inp.daySurgeryTheatres) *
       inp.sessionsPerTheatrePerWeek;
-    const weeklyDemand =
+    const weeklySessionDemand =
       theatreSessions +
       inp.labourWardSessionsPerWeek +
       inp.icuSessionsPerWeek;
-    const annualDemand = weeklyDemand * inp.weeksPerYear;
+    const annualSessionDemand = weeklySessionDemand * inp.weeksPerYear;
+
+    // On-call PAs are consumed from the same DCC pool that funds lists.
+    // Convert them into "session-equivalents" via sessionsPerPa so they can be
+    // added to the demand side on like-for-like terms.
+    const weeklyOnCallPAs =
+      inp.theatreOnCallPAsPerWeek + inp.icuOnCallPAsPerWeek;
+    const annualOnCallSessionEquiv =
+      weeklyOnCallPAs * inp.sessionsPerPa * inp.weeksPerYear;
+
+    const weeklyDemand =
+      weeklySessionDemand + weeklyOnCallPAs * inp.sessionsPerPa;
+    const annualDemand = annualSessionDemand + annualOnCallSessionEquiv;
 
     const leaveDays =
       inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays;
@@ -89,36 +101,49 @@ function ConsultantFeasibilityPage() {
 
     const weeklyClinicalSessions =
       inp.dccPasPerConsultant * inp.sessionsPerPa;
-    const annualSessionsPerConsultant = weeklyClinicalSessions * workingWeeks;
+    const sicknessFactor = 1 - inp.sicknessRatePct / 100;
+    const annualSessionsPerConsultant =
+      weeklyClinicalSessions * workingWeeks * sicknessFactor;
 
-    const fteNeeded = annualDemand / annualSessionsPerConsultant;
+    const fteNeeded =
+      annualSessionsPerConsultant > 0
+        ? annualDemand / annualSessionsPerConsultant
+        : Infinity;
 
-    // ICU subgroup feasibility: 10 sessions/week × 52 = annual ICU demand,
-    // must be covered by the 10-strong ICU-trained pool's annual capacity.
-    const icuAnnualDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
+    // ICU subgroup feasibility now includes ICU OOH cover (must also come
+    // from the ICU-trained pool) and the sickness derate baked into capacity.
+    const icuAnnualSessionDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
+    const icuAnnualOnCallEquiv =
+      inp.icuOnCallPAsPerWeek * inp.sessionsPerPa * inp.weeksPerYear;
+    const icuAnnualDemand = icuAnnualSessionDemand + icuAnnualOnCallEquiv;
     const icuPoolAnnualCapacity =
       inp.icuTrainedPoolSize * annualSessionsPerConsultant;
     const icuPoolUtilisation =
       icuPoolAnnualCapacity > 0
         ? icuAnnualDemand / icuPoolAnnualCapacity
         : Infinity;
-    // Each ICU-trained consultant must spend this fraction of their clinical
-    // time on ICU; the remainder is available for theatre / labour ward.
+    const icuWeeklyLoad =
+      inp.icuSessionsPerWeek + inp.icuOnCallPAsPerWeek * inp.sessionsPerPa;
     const icuSharePerConsultant =
-      inp.icuTrainedPoolSize > 0
-        ? inp.icuSessionsPerWeek / inp.icuTrainedPoolSize / weeklyClinicalSessions
+      inp.icuTrainedPoolSize > 0 && weeklyClinicalSessions > 0
+        ? icuWeeklyLoad / inp.icuTrainedPoolSize / weeklyClinicalSessions
         : Infinity;
 
     return {
       theatreSessions,
+      weeklySessionDemand,
       weeklyDemand,
       annualDemand,
+      annualOnCallSessionEquiv,
+      weeklyOnCallPAs,
       leaveWeeks,
       workingWeeks,
       weeklyClinicalSessions,
+      sicknessFactor,
       annualSessionsPerConsultant,
       fteNeeded,
       icuAnnualDemand,
+      icuAnnualOnCallEquiv,
       icuPoolAnnualCapacity,
       icuPoolUtilisation,
       icuSharePerConsultant,
