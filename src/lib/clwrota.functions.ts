@@ -2049,10 +2049,13 @@ export async function performLeaveSync() {
   let rows: Record<string, unknown>[];
   let rawPreview = "";
   let sampleKeys: string[] = [];
+  let parseError: string | null = null;
   try {
     const text = await fetchReportRaw(boundedUrl, apiKey);
     rawPreview = text.slice(0, 500);
-    rows = parseRows(text);
+    const parsed = parseRows(text);
+    rows = parsed.rows;
+    parseError = parsed.parseError;
     if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -2066,15 +2069,19 @@ export async function performLeaveSync() {
   }
 
   if (rows.length === 0) {
+    const reason = parseError
+      ? `Leave URL returned no recognisable rows. ${parseError}. Preview: ${rawPreview.slice(0, 200)}`
+      : `Leave URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`;
     await supabaseAdmin.from("clwrota_sync_state").upsert({
       id: 1,
       last_sync_at: new Date().toISOString(),
       last_status: "leave_no_rows",
-      last_error: `Leave URL returned no recognisable rows. Preview: ${rawPreview.slice(0, 200)}`,
+      last_error: reason,
       last_pulled_rows: 0,
     });
     return { ...emptyResult, message: "Leave URL returned 0 rows.", rawPreview, sampleKeys };
   }
+
 
   // Build staff lookup maps.
   const { data: profiles, error: profErr } = await supabaseAdmin
