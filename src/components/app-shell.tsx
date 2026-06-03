@@ -69,7 +69,9 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/theatre-grid", label: "Theatre grid", icon: Grid3x3, roles: ["admin"] },
   { to: "/admin/duty-mappings", label: "Duty mappings", icon: Wrench, roles: ["admin"] },
   { to: "/admin/duty-categories", label: "Duty categories", icon: Wrench, roles: ["admin"] },
+  { to: "/admin/clwrota-metrics", label: "CLWRota sync metrics", icon: LineChart, roles: ["admin"] },
   { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
