@@ -22,7 +22,7 @@ import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS } from "./trainee-leave-audit-wi
  * UI can audit every decision the sync made.
  */
 
-const LOOKAHEAD_DAYS = 14;
+const LOOKAHEAD_DAYS = LEAVE_LOOKAHEAD_DAYS;
 
 export type AuditLeaveRow = {
   id: string;
