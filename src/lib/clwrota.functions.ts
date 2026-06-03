@@ -2114,74 +2114,87 @@ export async function performLeaveSync() {
   const draftsByExtId = new Map<string, LeaveDraft>();
 
   for (const row of rows) {
-    const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
-    const personExtId = pick(row, [
-      "person.local_id", "person.esr_employee_number", "person.assignment_number",
-      "person_id", "local_id", "staff_id", "user_id",
-    ]);
-    const personFirst = pick(row, ["person.first_name"]);
-    const personLast = pick(row, ["person.last_name"]);
-    const personName =
-      pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
-      ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+    // Defensive per-row try/catch: a single malformed row (unexpected nested
+    // shape, exotic value type) must never crash the whole sync. The row is
+    // recorded in `skipped` with a clear reason instead.
+    try {
+      const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
+      const personExtId = pick(row, [
+        "person.local_id", "person.esr_employee_number", "person.assignment_number",
+        "person_id", "local_id", "staff_id", "user_id",
+      ]);
+      const personFirst = pick(row, ["person.first_name"]);
+      const personLast = pick(row, ["person.last_name"]);
+      const personName =
+        pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
+        ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
 
-    const startRaw = pick(row, [
-      "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
-      "start_time", "date",
-    ]);
-    const endRaw = pick(row, [
-      "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
-      "end_time", "date",
-    ]);
-    const typeRaw = pick(row, [
-      "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
-      "absence_type", "type", "Type", "reason_category", "kind",
-    ]);
-    const statusRaw = pick(row, [
-      "leave_request.state", "leave_submittal.state",
-      "status.name", "status", "state", "Status", "approval_status",
-    ]);
-    const reasonText = pick(row, [
-      "leave_request.details", "leave_submittal.admin_notes",
-      "reason", "comment", "comments", "notes", "description", "Notes",
-    ]);
-    const externalId =
-      pick(row, ["leave_request.local_id", "id", "leave_id", "request_id", "external_id"]) ??
-      (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
+      const startRaw = pick(row, [
+        "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
+        "start_time", "date",
+      ]);
+      const endRaw = pick(row, [
+        "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
+        "end_time", "date",
+      ]);
+      const typeRaw = pick(row, [
+        "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
+        "absence_type", "type", "Type", "reason_category", "kind",
+      ]);
+      const statusRaw = pick(row, [
+        "leave_request.state", "leave_submittal.state",
+        "status.name", "status", "state", "Status", "approval_status",
+      ]);
+      const reasonText = pick(row, [
+        "leave_request.details", "leave_submittal.admin_notes",
+        "reason", "comment", "comments", "notes", "description", "Notes",
+      ]);
+      const externalId =
+        pick(row, ["leave_request.local_id", "id", "leave_id", "request_id", "external_id"]) ??
+        (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
 
 
-    const start_date = normaliseDate(startRaw);
-    const end_date = normaliseDate(endRaw);
-    const label = `${startRaw ?? "?"} → ${endRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
+      const start_date = normaliseDate(startRaw);
+      const end_date = normaliseDate(endRaw);
+      const label = `${startRaw ?? "?"} → ${endRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
 
-    if (!start_date) { skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` }); continue; }
-    if (!end_date)   { skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` }); continue; }
-    if (end_date < start_date) { skipped.push({ label, reason: `end_date < start_date` }); continue; }
-    if (!externalId) { skipped.push({ label, reason: "no stable external id" }); continue; }
+      if (!start_date) { skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` }); continue; }
+      if (!end_date)   { skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` }); continue; }
+      if (end_date < start_date) { skipped.push({ label, reason: `end_date < start_date` }); continue; }
+      if (!externalId) { skipped.push({ label, reason: "no stable external id" }); continue; }
 
-    let staffId: string | undefined;
-    if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
-    if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
-    if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
-    if (!staffId) {
-      unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
-      skipped.push({
-        label,
-        reason: `staff not found (email=${personEmail ?? "-"}, extId=${personExtId ?? "-"}, name=${personName ?? "-"})`,
+      let staffId: string | undefined;
+      if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
+      if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
+      if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
+      if (!staffId) {
+        unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
+        skipped.push({
+          label,
+          reason: `staff not found (email=${personEmail ?? "-"}, extId=${personExtId ?? "-"}, name=${personName ?? "-"})`,
+        });
+        continue;
+      }
+
+      draftsByExtId.set(externalId, {
+        staff_id: staffId,
+        type: classifyLeaveType(typeRaw, reasonText),
+        start_date,
+        end_date,
+        status: classifyLeaveStatus(statusRaw),
+        reason: reasonText,
+        clwrota_external_id: externalId,
       });
+    } catch (err) {
+      skipped.push({
+        label: "(malformed row)",
+        reason: `unexpected error processing row: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      console.warn("[clwrota] malformed leave row skipped:", err);
       continue;
     }
-
-    draftsByExtId.set(externalId, {
-      staff_id: staffId,
-      type: classifyLeaveType(typeRaw, reasonText),
-      start_date,
-      end_date,
-      status: classifyLeaveStatus(statusRaw),
-      reason: reasonText,
-      clwrota_external_id: externalId,
-    });
   }
+
 
   const drafts = Array.from(draftsByExtId.values());
 
