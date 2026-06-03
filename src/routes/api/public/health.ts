@@ -29,30 +29,31 @@ async function checkDatabase(): Promise<HealthCheck> {
   const started = Date.now();
   try {
     const admin = getAdminClient();
-    const { data, error } = await admin
+    const { error } = await admin
       .from("profiles")
       .select("id", { count: "exact", head: true })
       .limit(1);
     if (error) {
+      console.error("[health] database check failed", error);
       return {
         name: "Database",
         status: "error",
         latencyMs: Date.now() - started,
-        message: error.message,
+        message: "Database connectivity issue",
       };
     }
     return {
       name: "Database",
       status: "ok",
       latencyMs: Date.now() - started,
-      message: "Connected; profiles table accessible",
     };
   } catch (err) {
+    console.error("[health] database check threw", err);
     return {
       name: "Database",
       status: "error",
       latencyMs: Date.now() - started,
-      message: err instanceof Error ? err.message : "Unknown DB error",
+      message: "Database connectivity issue",
     };
   }
 }
@@ -66,10 +67,9 @@ async function checkAiGateway(): Promise<HealthCheck> {
         name: "AI Gateway",
         status: "warning",
         latencyMs: Date.now() - started,
-        message: "LOVABLE_API_KEY not configured",
+        message: "Not configured",
       };
     }
-    // Lightweight probe: hit the models endpoint rather than running inference
     const res = await fetch("https://ai.gateway.lovable.dev/v1/models", {
       headers: {
         "Lovable-API-Key": key,
@@ -77,25 +77,26 @@ async function checkAiGateway(): Promise<HealthCheck> {
       },
     });
     if (!res.ok) {
+      console.error("[health] AI gateway HTTP", res.status);
       return {
         name: "AI Gateway",
         status: "error",
         latencyMs: Date.now() - started,
-        message: `HTTP ${res.status} from AI Gateway`,
+        message: "Upstream unavailable",
       };
     }
     return {
       name: "AI Gateway",
       status: "ok",
       latencyMs: Date.now() - started,
-      message: "Models endpoint reachable",
     };
   } catch (err) {
+    console.error("[health] AI gateway check threw", err);
     return {
       name: "AI Gateway",
       status: "error",
       latencyMs: Date.now() - started,
-      message: err instanceof Error ? err.message : "Network error",
+      message: "Upstream unavailable",
     };
   }
 }
@@ -110,31 +111,30 @@ async function checkJsonValidation(): Promise<HealthCheck> {
         name: "JSON Validation",
         status: "error",
         latencyMs: Date.now() - started,
-        message: `Self-test failed: ${result.error}`,
+        message: "Self-test failed",
       };
     }
-    // Also verify a bad payload is rejected
     const bad = validateJson({ status: "bad", count: -1 }, schema);
     if (bad.ok) {
       return {
         name: "JSON Validation",
         status: "error",
         latencyMs: Date.now() - started,
-        message: "Self-test failed: bad payload was accepted",
+        message: "Self-test failed",
       };
     }
     return {
       name: "JSON Validation",
       status: "ok",
       latencyMs: Date.now() - started,
-      message: "Zod schema parsing operational",
     };
   } catch (err) {
+    console.error("[health] json validation check threw", err);
     return {
       name: "JSON Validation",
       status: "error",
       latencyMs: Date.now() - started,
-      message: err instanceof Error ? err.message : "Unknown error",
+      message: "Self-test failed",
     };
   }
 }
@@ -146,10 +146,10 @@ async function checkClwRotaConfig(): Promise<HealthCheck> {
     const baseUrl = process.env.CLWROTA_BASE_URL;
     if (!apiKey || !baseUrl) {
       return {
-        name: "CLWRota API",
+        name: "External integration",
         status: "warning",
         latencyMs: Date.now() - started,
-        message: "CLWROTA_API_KEY or CLWROTA_BASE_URL not configured",
+        message: "Not configured",
       };
     }
     const probeUrl = `${baseUrl.replace(/\/+$/, "")}/central_api/query/services?fields=id_name`;
@@ -158,25 +158,26 @@ async function checkClwRotaConfig(): Promise<HealthCheck> {
       headers: { "X-Auth": apiKey, Accept: "application/json" },
     });
     if (!res.ok) {
+      console.error("[health] CLWRota HTTP", res.status);
       return {
-        name: "CLWRota API",
+        name: "External integration",
         status: "error",
         latencyMs: Date.now() - started,
-        message: `HTTP ${res.status} from ${probeUrl}`,
+        message: "Upstream unavailable",
       };
     }
     return {
-      name: "CLWRota API",
+      name: "External integration",
       status: "ok",
       latencyMs: Date.now() - started,
-      message: `Central API reachable (${baseUrl})`,
     };
   } catch (err) {
+    console.error("[health] CLWRota check threw", err);
     return {
-      name: "CLWRota API",
+      name: "External integration",
       status: "error",
       latencyMs: Date.now() - started,
-      message: err instanceof Error ? err.message : "Network error",
+      message: "Upstream unavailable",
     };
   }
 }
@@ -198,33 +199,35 @@ async function checkKeyTables(): Promise<HealthCheck> {
     const results = await Promise.all(
       tables.map(async (t) => {
         const { error } = await admin.from(t).select("id", { count: "exact", head: true }).limit(1);
-        return { table: t, ok: !error };
+        return { ok: !error };
       }),
     );
-    const missing = results.filter((r) => !r.ok).map((r) => r.table);
-    if (missing.length > 0) {
+    const failed = results.filter((r) => !r.ok).length;
+    if (failed > 0) {
+      console.error("[health] key tables failed count", failed);
       return {
         name: "Key Tables",
         status: "error",
         latencyMs: Date.now() - started,
-        message: `Missing or inaccessible: ${missing.join(", ")}`,
+        message: "One or more tables unreachable",
       };
     }
     return {
       name: "Key Tables",
       status: "ok",
       latencyMs: Date.now() - started,
-      message: `${tables.length} tables accessible`,
     };
   } catch (err) {
+    console.error("[health] key tables check threw", err);
     return {
       name: "Key Tables",
       status: "error",
       latencyMs: Date.now() - started,
-      message: err instanceof Error ? err.message : "Unknown error",
+      message: "Database connectivity issue",
     };
   }
 }
+
 
 export const Route = createFileRoute("/api/public/health")({
   server: {
