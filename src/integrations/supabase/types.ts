@@ -118,6 +118,7 @@ export type Database = {
           duration_ms: number | null
           errors_count: number
           id: string
+          is_backfill: boolean
           notes: string | null
           ok: boolean
           per_row_attempts: number
@@ -141,6 +142,7 @@ export type Database = {
           duration_ms?: number | null
           errors_count?: number
           id?: string
+          is_backfill?: boolean
           notes?: string | null
           ok: boolean
           per_row_attempts?: number
@@ -164,6 +166,7 @@ export type Database = {
           duration_ms?: number | null
           errors_count?: number
           id?: string
+          is_backfill?: boolean
           notes?: string | null
           ok?: boolean
           per_row_attempts?: number
