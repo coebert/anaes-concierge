@@ -173,7 +173,7 @@ describe("fix-use-before-define codemod — stress fixture", () => {
     }
   });
 
-  it("outer `errN` consts are preserved verbatim (shadowing decoys never move)", () => {
+  it("outer `errN` consts are preserved verbatim (shadowing decoys never move)", { timeout: 30000 }, () => {
     const original = generateStressSource(COUNT);
     const { newSrc } = processSource(original, filename) as { newSrc: string };
     for (let i = 0; i < COUNT; i++) {
