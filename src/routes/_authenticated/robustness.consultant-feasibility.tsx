@@ -317,19 +317,19 @@ function ConsultantFeasibilityPage() {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <Stat
-              label="Weekly clinical sessions to cover"
-              value={calc.weeklyDemand.toLocaleString()}
-              sub={`${calc.theatreSessions} theatre + ${inp.labourWardSessionsPerWeek} labour ward + ${inp.icuSessionsPerWeek} ICU`}
+              label="Weekly session-equivalents to cover"
+              value={calc.weeklyDemand.toFixed(1)}
+              sub={`${calc.weeklySessionDemand} lists + ${(calc.weeklyOnCallPAs * inp.sessionsPerPa).toFixed(1)} on-call (${calc.weeklyOnCallPAs} PAs)`}
             />
             <Stat
-              label="Annual clinical sessions"
+              label="Annual session-equivalents"
               value={Math.round(calc.annualDemand).toLocaleString()}
-              sub={`${calc.weeklyDemand} × ${inp.weeksPerYear} weeks`}
+              sub={`${calc.weeklyDemand.toFixed(1)} × ${inp.weeksPerYear} weeks (incl. on-call)`}
             />
             <Stat
               label="Sessions / consultant / year"
               value={calc.annualSessionsPerConsultant.toFixed(1)}
-              sub={`${calc.weeklyClinicalSessions} cln sessions × ${calc.workingWeeks.toFixed(1)} working wks`}
+              sub={`${calc.weeklyClinicalSessions} sess/wk × ${calc.workingWeeks.toFixed(1)} wks × ${(calc.sicknessFactor * 100).toFixed(0)}% (sickness ${inp.sicknessRatePct}%)`}
             />
           </div>
 
