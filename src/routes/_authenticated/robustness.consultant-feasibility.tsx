@@ -36,6 +36,9 @@ const InputsSchema = z.object({
   bankHolidayDays: z.number().min(0).max(20),
   weeksPerYear: z.number().min(1).max(53),
   workingDaysPerWeek: z.number().min(1, "Must be ≥ 1").max(7),
+  sicknessRatePct: z.number().min(0).max(30, "Max 30%"),
+  theatreOnCallPAsPerWeek: z.number().min(0).max(20, "Max 20 PAs/wk"),
+  icuOnCallPAsPerWeek: z.number().min(0).max(20, "Max 20 PAs/wk"),
 }).refine((v) => v.dccPasPerConsultant <= v.pasPerConsultant, {
   message: "DCC PAs cannot exceed total PAs",
   path: ["dccPasPerConsultant"],
@@ -61,6 +64,9 @@ const DEFAULTS: Inputs = {
   bankHolidayDays: 8,
   weeksPerYear: 52,
   workingDaysPerWeek: 5,
+  sicknessRatePct: 5,
+  theatreOnCallPAsPerWeek: 2,
+  icuOnCallPAsPerWeek: 2,
 };
 
 function ConsultantFeasibilityPage() {
