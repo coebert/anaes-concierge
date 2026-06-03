@@ -30,6 +30,7 @@ const InputsSchema = z.object({
   consultantInChargeSessionsPerWeek: z.number().min(0).max(21),
   painServiceSessionsPerWeek: z.number().min(0).max(50),
   poacSessionsPerWeek: z.number().min(0).max(50),
+  nonClinicalPAsPerWeek: z.number().min(0).max(50),
   icuSessionsPerWeek: z.number().min(0).max(21),
   icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
   pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
