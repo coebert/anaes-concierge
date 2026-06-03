@@ -1421,7 +1421,8 @@ export async function performRotaSync() {
 
       const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName];
       if (isNonWorkingRotaLabel(dutyLabels)) {
-        skipped.push({ label, reason: "non-working rota label (off/day off)" });
+        if (externalId) nonWorkingExtIds.add(externalId);
+        skipped.push({ label, reason: "non-working rota label (off/day off/available)" });
         continue;
       }
 
