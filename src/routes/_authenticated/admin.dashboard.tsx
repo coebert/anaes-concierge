@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { formatDateGB, getSurname, todayISO, compareBySurnameAsc } from "@/lib/utils";
+import { formatDateGB, todayISO, compareBySurnameAsc } from "@/lib/utils";
 import {
   buildConsultantSessionSet,
   isSoloTraineeAssignment,
@@ -417,13 +417,7 @@ function AdminDashboardPage() {
           traineeMetricsData.specNameMap,
         ),
       }))
-      .sort((a, b) => {
-        const aSur = getSurname(a.trainee.full_name).toLowerCase();
-        const bSur = getSurname(b.trainee.full_name).toLowerCase();
-        if (aSur < bSur) return -1;
-        if (aSur > bSur) return 1;
-        return 0;
-      });
+      .sort((a, b) => compareBySurnameAsc(a.trainee.full_name, b.trainee.full_name));
   }, [traineeMetricsData]);
 
 

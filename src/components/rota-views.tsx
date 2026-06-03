@@ -15,7 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, User } from "lucide-react";
-import { cn, parseDateLocal, getSurname, toISODateLocal } from "@/lib/utils";
+import { cn, parseDateLocal, compareBySurnameAsc, toISODateLocal } from "@/lib/utils";
 
 type SessionHalf = "am" | "pm";
 
@@ -514,13 +514,7 @@ export function StaffPicker({
       </SelectTrigger>
       <SelectContent>
         {data
-          ?.sort((a, b) => {
-            const aSurname = getSurname(a.full_name).toLowerCase();
-            const bSurname = getSurname(b.full_name).toLowerCase();
-            if (aSurname < bSurname) return 1;
-            if (aSurname > bSurname) return -1;
-            return 0;
-          })
+          ?.sort((a, b) => compareBySurnameAsc(a.full_name, b.full_name))
           .map((s) => (
           <SelectItem key={s.id} value={s.id}>
             {s.full_name} {s.grade ? `(${s.grade})` : ""}
