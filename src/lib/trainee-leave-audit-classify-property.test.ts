@@ -46,8 +46,9 @@ const IGNORED_STATUSES = ["cancelled", "denied", "reserve", "unknown"] as const;
 const ALL_KNOWN_STATUSES = [...COUNTED_STATUSES, ...IGNORED_STATUSES] as const;
 
 // Reference classifier that the property tests validate against.
+// It mirrors the case-insensitive logic of classifyLeaveOverlap.
 function refClassify(status: string): { counted: boolean; reason: string } {
-  const s = status;
+  const s = status.toLowerCase();
   if (s === "approved") return { counted: true, reason: "approved" };
   if (s === "pending") return { counted: true, reason: "pending" };
   return { counted: false, reason: `other: ${s}` };
@@ -70,27 +71,25 @@ describe("classifyLeaveOverlap — property: exact known statuses", () => {
   }
 });
 
-describe("classifyLeaveOverlap — property: mixed-case known statuses are always ignored", () => {
+describe("classifyLeaveOverlap — property: mixed-case known statuses match reference", () => {
   const seeds = [42, 123, 999, 2024, 8675309];
 
   for (const seed of seeds) {
-    it(`seed ${seed}: any mixed-case variant of known statuses is ignored`, () => {
+    it(`seed ${seed}: any mixed-case variant of known statuses matches reference`, () => {
       const rng = mulberry32(seed);
       const samples = 500;
       for (let i = 0; i < samples; i++) {
         const base = pick(rng, ALL_KNOWN_STATUSES);
         const mixed = randomMixedCase(rng, base);
-        // Only skip if the randomiser happened to emit the exact lowercase form
-        // (probability vanishingly small for lengths > 1).
-        if (mixed === base) continue;
         const actual = classifyLeaveOverlap(mixed);
-        expect(actual.counted).toBe(false);
+        const expected = refClassify(mixed);
+        expect(actual.counted).toBe(expected.counted);
       }
     });
   }
 });
 
-describe("classifyLeaveOverlap — property: arbitrary strings are ignored unless exact approved/pending", () => {
+describe("classifyLeaveOverlap — property: arbitrary strings are ignored unless approved/pending", () => {
   const seeds = [42, 123, 999, 2024, 8675309];
 
   for (const seed of seeds) {
@@ -108,7 +107,7 @@ describe("classifyLeaveOverlap — property: arbitrary strings are ignored unles
 });
 
 describe("classifyLeaveOverlap — property: structural invariants", () => {
-  it("only 'approved' and 'pending' ever return counted = true", () => {
+  it("only 'approved' and 'pending' (any case) ever return counted = true", () => {
     const seeds = [1, 7, 13, 99, 256];
     for (const seed of seeds) {
       const rng = mulberry32(seed);
@@ -116,19 +115,20 @@ describe("classifyLeaveOverlap — property: structural invariants", () => {
         const s = randomLowercaseString(rng, 1, 15);
         const result = classifyLeaveOverlap(s);
         if (result.counted) {
-          expect(s === "approved" || s === "pending").toBe(true);
+          const lowered = s.toLowerCase();
+          expect(lowered === "approved" || lowered === "pending").toBe(true);
         }
       }
     }
   });
 
-  it("any deviation in case from 'approved' or 'pending' yields counted = false", () => {
+  it("case variants of 'approved' and 'pending' yield counted = true", () => {
     const variants = [
       "Approved", "APPROVED", "ApPrOvEd", "aPpRoVeD",
       "Pending", "PENDING", "PeNdInG", "pEnDiNg",
     ];
     for (const v of variants) {
-      expect(classifyLeaveOverlap(v).counted).toBe(false);
+      expect(classifyLeaveOverlap(v).counted).toBe(true);
     }
   });
 

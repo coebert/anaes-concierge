@@ -56,15 +56,31 @@ describe("classifyLeaveOverlap — ignored statuses (do NOT block)", () => {
   });
 });
 
-describe("classifyLeaveOverlap — string matching is exact / case-sensitive", () => {
-  // leave_requests.status is a Postgres enum, so values arrive lowercased.
-  // If callers ever uppercase before classifying, they'd silently flip to
-  // ignored — pin the current contract.
-  it("'Approved' (capitalised) is NOT treated as approved", () => {
-    expect(classifyLeaveOverlap("Approved").counted).toBe(false);
+describe("classifyLeaveOverlap — case-insensitive matching", () => {
+  it("'Approved' (capitalised) IS treated as approved", () => {
+    const r = classifyLeaveOverlap("Approved");
+    expect(r.counted).toBe(true);
+    expect(r.reason).toMatch(/approved/i);
   });
-  it("'PENDING' (upper) is NOT treated as pending", () => {
-    expect(classifyLeaveOverlap("PENDING").counted).toBe(false);
+  it("'PENDING' (upper) IS treated as pending", () => {
+    const r = classifyLeaveOverlap("PENDING");
+    expect(r.counted).toBe(true);
+    expect(r.reason).toMatch(/pending/i);
+  });
+  it("'CaNcElLeD' (mixed case) IS treated as cancelled (ignored)", () => {
+    const r = classifyLeaveOverlap("CaNcElLeD");
+    expect(r.counted).toBe(false);
+    expect(r.reason).toMatch(/cancelled/i);
+  });
+  it("'DENIED' (upper) IS treated as denied (ignored)", () => {
+    const r = classifyLeaveOverlap("DENIED");
+    expect(r.counted).toBe(false);
+    expect(r.reason).toMatch(/denied/i);
+  });
+  it("'Reserve' (title case) IS treated as reserve (ignored)", () => {
+    const r = classifyLeaveOverlap("Reserve");
+    expect(r.counted).toBe(false);
+    expect(r.reason).toMatch(/reserve/i);
   });
 });
 
