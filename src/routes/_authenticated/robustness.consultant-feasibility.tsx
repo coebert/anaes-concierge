@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { z } from "zod";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
@@ -8,13 +9,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, Calculator, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  ChevronLeft, Calculator, AlertTriangle, CheckCircle2, Info,
+} from "lucide-react";
 
 export const Route = createFileRoute(
   "/_authenticated/robustness/consultant-feasibility",
 )({
   component: ConsultantFeasibilityPage,
 });
+
+// Per-field bounds. Kept generous but enough to catch typos / nonsense.
+const InputsSchema = z.object({
+  mainTheatres: z.number().int("Whole number").min(0).max(50),
+  daySurgeryTheatres: z.number().int("Whole number").min(0).max(50),
+  sessionsPerTheatrePerWeek: z.number().min(0).max(21, "Max 21 (3/day × 7 days)"),
+  labourWardSessionsPerWeek: z.number().min(0).max(21),
+  icuSessionsPerWeek: z.number().min(0).max(21),
+  icuTrainedPoolSize: z.number().int("Whole number").min(0).max(200),
+  pasPerConsultant: z.number().min(1, "Must be ≥ 1").max(15, "Max 15 PAs/week"),
+  dccPasPerConsultant: z.number().min(0).max(15),
+  sessionsPerPa: z.number().min(0.1, "Must be > 0").max(2, "Max 2 sessions/PA"),
+  annualLeaveDays: z.number().min(0).max(70),
+  studyLeaveDays: z.number().min(0).max(40),
+  bankHolidayDays: z.number().min(0).max(20),
+  weeksPerYear: z.number().min(1).max(53),
+  workingDaysPerWeek: z.number().min(1, "Must be ≥ 1").max(7),
+}).refine((v) => v.dccPasPerConsultant <= v.pasPerConsultant, {
+  message: "DCC PAs cannot exceed total PAs",
+  path: ["dccPasPerConsultant"],
+});
+
+type Inputs = z.infer<typeof InputsSchema>;
+type FieldErrors = Partial<Record<keyof Inputs, string>>;
+
 
 type Inputs = {
   mainTheatres: number;
