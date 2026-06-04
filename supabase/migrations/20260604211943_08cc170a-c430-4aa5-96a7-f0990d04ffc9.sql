@@ -1,0 +1,2 @@
+REVOKE SELECT (gmc_number), UPDATE (gmc_number), INSERT (gmc_number) ON public.profiles FROM authenticated;
+GRANT SELECT (gmc_number), UPDATE (gmc_number), INSERT (gmc_number) ON public.profiles TO service_role;
