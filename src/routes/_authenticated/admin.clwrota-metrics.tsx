@@ -96,9 +96,13 @@ export function ClwRotaMetricsPage() {
       {
         date: string;
         runs: number;
+        ok_runs: number;
+        failed_runs: number;
         rows_upserted: number;
         rows_failed: number;
         rows_skipped: number;
+        rows_deleted: number;
+        non_working_cleaned: number;
         chunks_first_try: number;
         chunks_retried: number;
         chunks_fell_back: number;
@@ -112,9 +116,13 @@ export function ClwRotaMetricsPage() {
       const b = buckets.get(date) ?? {
         date,
         runs: 0,
+        ok_runs: 0,
+        failed_runs: 0,
         rows_upserted: 0,
         rows_failed: 0,
         rows_skipped: 0,
+        rows_deleted: 0,
+        non_working_cleaned: 0,
         chunks_first_try: 0,
         chunks_retried: 0,
         chunks_fell_back: 0,
@@ -123,9 +131,13 @@ export function ClwRotaMetricsPage() {
         errors: 0,
       };
       b.runs += 1;
+      b.ok_runs += r.ok ? 1 : 0;
+      b.failed_runs += r.ok ? 0 : 1;
       b.rows_upserted += r.rows_upserted;
       b.rows_failed += r.rows_failed;
       b.rows_skipped += r.rows_skipped_validation;
+      b.rows_deleted += r.rows_deleted;
+      b.non_working_cleaned += r.non_working_cleaned;
       b.chunks_first_try += r.chunks_succeeded_first_try;
       b.chunks_retried += r.chunks_succeeded_after_retry;
       b.chunks_fell_back += r.chunks_fell_back_to_per_row;
@@ -144,14 +156,28 @@ export function ClwRotaMetricsPage() {
       (acc, r) => {
         acc.runs += 1;
         acc.ok += r.ok ? 1 : 0;
+        acc.failed += r.ok ? 0 : 1;
         acc.upserted += r.rows_upserted;
-        acc.failed += r.rows_failed;
+        acc.failed_rows += r.rows_failed;
         acc.skipped += r.rows_skipped_validation;
+        acc.deleted += r.rows_deleted;
+        acc.cleaned += r.non_working_cleaned;
         acc.retries += r.upsert_retries_total;
         acc.fallbacks += r.chunks_fell_back_to_per_row;
         return acc;
       },
-      { runs: 0, ok: 0, upserted: 0, failed: 0, skipped: 0, retries: 0, fallbacks: 0 },
+      {
+        runs: 0,
+        ok: 0,
+        failed: 0,
+        upserted: 0,
+        failed_rows: 0,
+        skipped: 0,
+        deleted: 0,
+        cleaned: 0,
+        retries: 0,
+        fallbacks: 0,
+      },
     );
   }, [rows]);
 
