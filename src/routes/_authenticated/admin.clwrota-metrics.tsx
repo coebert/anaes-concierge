@@ -411,6 +411,8 @@ export function ClwRotaMetricsPage() {
                         <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
                         <td className="py-1.5 pr-3 text-right text-emerald-600">{r.rows_upserted}</td>
                         <td className="py-1.5 pr-3 text-right text-blue-600">{r.rows_skipped_validation}</td>
+                        <td className="py-1.5 pr-3 text-right text-purple-600">{r.rows_deleted}</td>
+                        <td className="py-1.5 pr-3 text-right text-sky-600">{r.non_working_cleaned}</td>
                         <td className="py-1.5 pr-3 text-right text-destructive">{r.rows_failed}</td>
                         <td className="py-1.5 pr-3 text-right">{r.upsert_retries_total}</td>
                         <td className="py-1.5 pr-3 text-right">{r.chunks_fell_back_to_per_row}</td>
