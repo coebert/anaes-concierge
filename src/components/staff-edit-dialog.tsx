@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { todayISO, splitName, composeName } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getProfileGmcNumber, updateProfileGmcNumber } from "@/lib/admin-gmc.functions";
 import {
   Dialog,
   DialogContent,
