@@ -381,6 +381,8 @@ export function ClwRotaMetricsPage() {
                     <th className="py-2 pr-3 text-right">Pulled</th>
                     <th className="py-2 pr-3 text-right">Upserted</th>
                     <th className="py-2 pr-3 text-right">Skipped</th>
+                    <th className="py-2 pr-3 text-right">Deleted</th>
+                    <th className="py-2 pr-3 text-right">Cleaned</th>
                     <th className="py-2 pr-3 text-right">Failed</th>
                     <th className="py-2 pr-3 text-right">Retries</th>
                     <th className="py-2 pr-3 text-right">Fell back</th>
