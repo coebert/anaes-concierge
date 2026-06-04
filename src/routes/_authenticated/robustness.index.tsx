@@ -143,10 +143,12 @@ function RobustnessPage() {
                       <ThTooltip label="Other duties" tooltip="Staff on on-call, ICU, obstetrics, teaching, admin or CIC — excluded from availability." />
                       <th className="px-2 py-1 text-center font-medium">AM lists</th>
                       <ThTooltip label="AM unfilled" tooltip="Theatre lists with no anaesthetist assigned (AM)." />
-                      <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
+                      <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in." />
+                      <ThTooltip label="AM SPA" tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom." />
                       <th className="px-2 py-1 text-center font-medium">PM lists</th>
                       <ThTooltip label="PM unfilled" tooltip="Theatre lists with no anaesthetist assigned (PM)." />
-                      <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
+                      <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in." />
+                      <ThTooltip label="PM SPA" tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom." />
                       <th className="px-2 py-1 text-left font-medium">Notes</th>
                     </tr>
                   </thead>
