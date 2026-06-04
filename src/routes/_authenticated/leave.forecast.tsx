@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ClipboardList, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { loadLeavePressure, pressureColor, type DayPressure } from "@/lib/audit/leave-pressure";
+import { LeaveMonthlyCalendar } from "@/components/leave-monthly-calendar";
 
 export const Route = createFileRoute("/_authenticated/leave/forecast")({
   component: LeaveForecastPage,
@@ -93,6 +94,8 @@ function LeaveForecastPage() {
           Later <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
+
+      <LeaveMonthlyCalendar />
 
       {/* Heatmap */}
       <Card>
