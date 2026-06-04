@@ -144,7 +144,6 @@ function ProfileTab({ staffId }: { staffId: string }) {
           }),
           grade: form.grade || null,
           training_level: form.training_level || null,
-          gmc_number: form.gmc_number || null,
           start_date: form.start_date || null,
           rotation_end_date: form.grade === "trainee" ? form.rotation_end_date || null : null,
           active: form.active,
@@ -152,6 +151,9 @@ function ProfileTab({ staffId }: { staffId: string }) {
         })
         .eq("id", staffId);
       if (error) throw error;
+      await updateProfileGmcNumber({
+        data: { staffId, gmc_number: form.gmc_number || null },
+      });
     },
     onSuccess: () => {
       toast.success("Profile saved");
