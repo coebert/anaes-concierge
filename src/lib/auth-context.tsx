@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { shouldDropSessionOnLoad } from "@/lib/remember-me";
 
 export type AppRole = "admin" | "rota_coordinator" | "staff";
 export type StaffGrade = "consultant" | "sas" | "trainee";
@@ -55,10 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    // If the user previously unchecked "Keep me signed in" AND this is a fresh
+    // browser session (no sessionStorage marker), drop the persisted session
+    // before restoring it. Otherwise restore normally.
+    const dropSession = shouldDropSessionOnLoad();
+    const init = async () => {
+      if (dropSession) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase.auth.getSession();
       setSession(data.session);
-      void loadProfile(data.session?.user.id).finally(() => setLoading(false));
-    });
+      await loadProfile(data.session?.user.id);
+      setLoading(false);
+    };
+    void init();
 
     return () => sub.subscription.unsubscribe();
   }, []);

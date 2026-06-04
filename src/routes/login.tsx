@@ -4,9 +4,11 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/lib/auth-context";
+import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Stethoscope } from "lucide-react";
@@ -25,6 +27,7 @@ function LoginPage() {
   const { isAuthenticated, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(() => getRememberMe());
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,6 +44,7 @@ function LoginPage() {
       return;
     }
     setBusy(true);
+    setRememberMe(remember);
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     setBusy(false);
     if (error) {
@@ -52,6 +56,7 @@ function LoginPage() {
 
   const handleGoogle = async () => {
     setBusy(true);
+    setRememberMe(remember);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
@@ -105,6 +110,16 @@ function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="remember"
+                checked={remember}
+                onCheckedChange={(v) => setRemember(v === true)}
+              />
+              <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                Keep me signed in
+              </Label>
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
