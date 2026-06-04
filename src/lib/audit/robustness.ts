@@ -394,12 +394,18 @@ export async function computeRobustness(
       continue;
     }
 
+    // Any non-emergency assignment is evidence this person is at work today.
+    const wt = workingToday.get(date) ?? new Set<string>();
+    wt.add(sid);
+    workingToday.set(date, wt);
+
     if (dt === "theatre" && a.theatre_session_id && (sess === "am" || sess === "pm")) {
       const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
       (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id);
       filledMap.set(date, cur);
 
     }
+
 
     // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
     // clinic, future activities) for a specific half-day is removed from
