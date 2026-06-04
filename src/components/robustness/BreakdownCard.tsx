@@ -113,7 +113,7 @@ export function BreakdownCard({
           {/* Headroom summary chips */}
           <div className="flex flex-wrap gap-1.5 text-[11px]">
             <MetricChip metric="headroom" count={metricTotals.headroom} suffix={`= headroom ${h.headroom}`} />
-            <MetricChip metric="headroomWithSpa" count={metricTotals.headroomWithSpa} suffix={`= +SPA ${h.headroomWithSpa}`} />
+            <MetricChip metric="spa" count={metricTotals.spa} suffix="(separate, not in headroom)" />
             <MetricChip metric="supervisedOnly" count={metricTotals.supervisedOnly} />
             <MetricChip metric="excluded" count={metricTotals.excluded} />
           </div>
