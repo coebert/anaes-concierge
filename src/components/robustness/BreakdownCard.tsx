@@ -48,7 +48,7 @@ const CATEGORY_META: Record<
 > = {
   free_consultant: { label: "Free consultants (solo-capable)", tone: "border-emerald-500/40 bg-emerald-500/5", iconName: "check", order: 1, metric: "headroom" },
   free_senior_trainee: { label: "Free senior trainees ST6–8 (solo-capable)", tone: "border-emerald-500/40 bg-emerald-500/5", iconName: "check", order: 2, metric: "headroom" },
-  on_spa: { label: "Consultants on SPA (flexible cover)", tone: "border-orange-500/40 bg-orange-500/5", iconName: "coffee", order: 3, metric: "headroomWithSpa" },
+  on_spa: { label: "Consultants on SPA (separate metric)", tone: "border-orange-500/40 bg-orange-500/5", iconName: "coffee", order: 3, metric: "spa" },
   free_junior_trainee: { label: "Free junior trainees (need supervision)", tone: "border-sky-500/30 bg-sky-500/5", iconName: "info", order: 4, metric: "supervisedOnly" },
   free_sas: { label: "Free SAS (pair with consultant)", tone: "border-sky-500/30 bg-sky-500/5", iconName: "info", order: 5, metric: "supervisedOnly" },
   on_clinical_list: { label: "Excluded — already covering a list", tone: "border-slate-500/30 bg-slate-500/5", iconName: "list", order: 6, metric: "excluded" },
