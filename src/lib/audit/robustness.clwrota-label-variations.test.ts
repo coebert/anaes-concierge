@@ -206,7 +206,7 @@ beforeEach(() => {
 });
 
 async function half(side: "am" | "pm") {
-  const { days } = await computeRobustness(DATE, DATE);
+  const { days } = await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false });
   expect(days).toHaveLength(1);
   return days[0][side];
 }

@@ -102,8 +102,9 @@ function RobustnessPage() {
             </div>
             <div className="rounded-md bg-muted/40 p-2.5 text-muted-foreground">
               <strong className="text-foreground">Who is counted as available?</strong>{" "}
-              Consultants and trainees who are <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em> already covering a clinical list (theatre, POAC, pain clinic or any other theatre_session). ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors are shown for context but do <em>not</em> count toward headroom. Consultants on SPA are reported separately — they only close the gap as flexible cover.
+              Consultants and trainees who have at least one rota entry that day (evidence they are actually rostered to work) and who are <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em> already covering a clinical list (theatre, POAC, pain clinic or any other theatre_session). Staff with no entry on a date are treated as off-duty, not as spare capacity. ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors are shown for context but do <em>not</em> count toward headroom. Consultants on SPA are reported separately — they only close the gap as flexible cover.
             </div>
+
           </CardContent>
         </Card>
 

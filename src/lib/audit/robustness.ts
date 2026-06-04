@@ -239,12 +239,27 @@ export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
 }
 
 
+export interface RobustnessOptions {
+  /**
+   * When true (default), staff are only counted toward availability if they
+   * have at least one rota_assignment that day — evidence they are actually
+   * rostered to work. CLWRota seeds a row for every working slot, so absence
+   * of any row means the person is simply not on duty (rolling rota day off,
+   * between rotations, etc.). Without this gate, every consultant who had no
+   * entry on a date was wrongly counted as a free consultant.
+   */
+  requireRosterEvidence?: boolean;
+}
+
 export async function computeRobustness(
   rangeStart: string,
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
+  options: RobustnessOptions = {},
 ): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
+  const requireRosterEvidence = options.requireRosterEvidence ?? true;
   const poolSets = await loadDutyPoolSets();
+
 
   const [profiles, leave, theatreSessionsRaw, assignments, specialtiesAll] =
     await Promise.all([
@@ -373,6 +388,13 @@ export async function computeRobustness(
   const dailyUnavailable = new Map<string, Set<string>>();
   const dailySpa = new Map<string, Set<string>>();
   const filledMap = new Map<string, { am: Set<string>; pm: Set<string> }>();
+  // Staff with ANY assignment that day — evidence they are rostered to work.
+  // CLWRota inserts a row for every working slot (theatre, SPA, admin, ICU,
+  // on-call, teaching, obstetrics, etc.) so absence of any row means the
+  // person simply isn't scheduled. Without this gate, every consultant on a
+  // non-working day was counted as "available" and inflated headroom.
+  const workingToday = new Map<string, Set<string>>();
+
 
   for (const a of assignments) {
     const date = a.session_date;
@@ -387,12 +409,18 @@ export async function computeRobustness(
       continue;
     }
 
+    // Any non-emergency assignment is evidence this person is at work today.
+    const wt = workingToday.get(date) ?? new Set<string>();
+    wt.add(sid);
+    workingToday.set(date, wt);
+
     if (dt === "theatre" && a.theatre_session_id && (sess === "am" || sess === "pm")) {
       const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
       (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id);
       filledMap.set(date, cur);
 
     }
+
 
     // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
     // clinic, future activities) for a specific half-day is removed from
@@ -443,6 +471,7 @@ export async function computeRobustness(
     const dow = new Date(date + "T00:00:00Z").getUTCDay();
     const offToday = leaveByDate.get(date) ?? new Set<string>();
     const otherDutyToday = dailyUnavailable.get(date) ?? new Set<string>();
+    const rosteredToday = workingToday.get(date) ?? new Set<string>();
 
     const mkHalf = (req: number, half: SessionHalf): HalfDayCapacity => {
       const halfKey = `${date}|${half}`;
@@ -457,6 +486,12 @@ export async function computeRobustness(
         if (extraStaffOff.has(s.id)) continue;
         if ((s.ltft_days_off ?? []).includes(dow)) continue;
         if (otherDutyToday.has(s.id)) continue;
+        // Only count staff who have evidence of being rostered to work today.
+        // CLWRota records a row for every working slot, so no rows = not on
+        // duty (e.g. day off in a rolling rota, between rotations, etc.).
+        if (requireRosterEvidence && !rosteredToday.has(s.id)) continue;
+
+
 
         const grade = (s.grade as Grade) ?? "unknown";
         const isSpa = spaThisHalf.has(s.id);
@@ -544,7 +579,9 @@ export interface DayListCoverage {
 export async function computeListCoverage(
   rangeStart: string,
   rangeEnd: string,
+  options: RobustnessOptions = {},
 ): Promise<DayListCoverage[]> {
+
   const [sessionsRaw, specialtiesAll] = await Promise.all([
     fetchAllRows<{
       id: string;
@@ -636,7 +673,7 @@ export async function computeListCoverage(
   }
 
   // Also need SPA-needed flags from robustness
-  const { days } = await computeRobustness(rangeStart, rangeEnd);
+  const { days } = await computeRobustness(rangeStart, rangeEnd, [], options);
 
   // Build per-date required totals
   const requiredMap = new Map<string, { am: number; pm: number }>();
