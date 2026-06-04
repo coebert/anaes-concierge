@@ -95,6 +95,8 @@ function LeaveForecastPage() {
         </Button>
       </div>
 
+      <LeaveMonthlyCalendar />
+
       {/* Heatmap */}
       <Card>
         <CardHeader>
