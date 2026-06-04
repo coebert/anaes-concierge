@@ -239,12 +239,27 @@ export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
 }
 
 
+export interface RobustnessOptions {
+  /**
+   * When true (default), staff are only counted toward availability if they
+   * have at least one rota_assignment that day — evidence they are actually
+   * rostered to work. CLWRota seeds a row for every working slot, so absence
+   * of any row means the person is simply not on duty (rolling rota day off,
+   * between rotations, etc.). Without this gate, every consultant who had no
+   * entry on a date was wrongly counted as a free consultant.
+   */
+  requireRosterEvidence?: boolean;
+}
+
 export async function computeRobustness(
   rangeStart: string,
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
+  options: RobustnessOptions = {},
 ): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
+  const requireRosterEvidence = options.requireRosterEvidence ?? true;
   const poolSets = await loadDutyPoolSets();
+
 
   const [profiles, leave, theatreSessionsRaw, assignments, specialtiesAll] =
     await Promise.all([
