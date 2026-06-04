@@ -489,7 +489,8 @@ export async function computeRobustness(
         // Only count staff who have evidence of being rostered to work today.
         // CLWRota records a row for every working slot, so no rows = not on
         // duty (e.g. day off in a rolling rota, between rotations, etc.).
-        if (!rosteredToday.has(s.id)) continue;
+        if (requireRosterEvidence && !rosteredToday.has(s.id)) continue;
+
 
 
         const grade = (s.grade as Grade) ?? "unknown";
