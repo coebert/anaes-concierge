@@ -27,6 +27,7 @@ function LoginPage() {
   const { isAuthenticated, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(() => getRememberMe());
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
