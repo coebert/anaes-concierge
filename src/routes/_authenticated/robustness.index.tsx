@@ -268,7 +268,7 @@ type StatProps = {
   label: string;
   value: number | string;
   icon: typeof Activity;
-  tone: "amber" | "red" | "emerald";
+  tone: "amber" | "red" | "emerald" | "orange";
 };
 
 function UnfilledBadge({ count }: { count: number }) {
