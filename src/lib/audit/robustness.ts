@@ -579,7 +579,9 @@ export interface DayListCoverage {
 export async function computeListCoverage(
   rangeStart: string,
   rangeEnd: string,
+  options: RobustnessOptions = {},
 ): Promise<DayListCoverage[]> {
+
   const [sessionsRaw, specialtiesAll] = await Promise.all([
     fetchAllRows<{
       id: string;
