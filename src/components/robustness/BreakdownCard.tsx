@@ -88,17 +88,17 @@ export function BreakdownCard({
     .filter((c) => (groups.get(c)?.length ?? 0) > 0);
 
   // Totals contributing to each metric, derived from HalfDayCapacity.
+  // SPA is reported as its own metric — NOT folded into headroom anywhere.
   const metricTotals: Record<MetricKey, number> = {
-    headroom: h.soloCapable, // free consultants + senior trainees
-    headroomWithSpa: h.consultantsOnSpa, // additional flex cover
+    headroom: h.soloCapable, // free consultants + senior trainees (SPA excluded)
+    spa: h.consultantsOnSpa, // standalone SPA metric
     supervisedOnly: h.juniorTraineesAvailable + h.sasAvailable,
-    excluded: h.onLeave + h.onOtherDuty + Math.max(0, h.required - h.unfilled === 0 ? 0 : 0), // computed inline below for accuracy
+    excluded: 0,
   };
-  // More accurate excluded total: leave + other duties + people already on a list
-  // = breakdown entries minus the available pools and SPA.
+  // Excluded = everyone in the breakdown not counted in the three pools above.
   const totalEntries = breakdown.entries.length;
   metricTotals.excluded =
-    totalEntries - metricTotals.headroom - metricTotals.headroomWithSpa - metricTotals.supervisedOnly;
+    totalEntries - metricTotals.headroom - metricTotals.spa - metricTotals.supervisedOnly;
 
   return (
     <TooltipProvider>
