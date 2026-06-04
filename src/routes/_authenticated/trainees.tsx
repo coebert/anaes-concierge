@@ -116,11 +116,12 @@ function TraineesPage() {
         tsMap = new Map((ts ?? []).map((s) => [s.id, s.specialty_id]));
       }
 
-      // Determine which theatre sessions have a consultant assigned — a trainee
-      // marked "solo" on such a session is in fact supervised, so we should not
-      // count it as a solo list. (rota_assignments.role_on_list defaults to
-      // "solo" on import from clwrota, which otherwise inflates solo %.)
-      const consultantSessionIds = new Set<string>();
+      // Determine which theatre sessions have a supervisor-capable doctor
+      // (consultant OR SAS) assigned — a trainee marked "solo" on such a
+      // session is in fact supervised, so we should not count it as a solo
+      // list. (rota_assignments.role_on_list defaults to "solo" on import
+      // from clwrota, which otherwise inflates solo %.)
+      const supervisorSessionIds = new Set<string>();
       if (tsIds.length) {
         // rota_assignments has TWO FKs to profiles (staff_id + supervisor_id),
         // so PostgREST can't auto-resolve `profiles!inner` — disambiguate via
@@ -130,16 +131,16 @@ function TraineesPage() {
           .from("rota_assignments")
           .select("theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
           .in("theatre_session_id", tsIds)
-          .eq("profiles.grade", "consultant")
+          .in("profiles.grade", ["consultant", "sas"])
           .range(0, 49999);
         if (e6) throw e6;
         for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
-          if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
+          if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
         }
       }
 
       const effectiveRole = (a: { role_on_list: string; theatre_session_id: string | null }) =>
-        a.role_on_list === "solo" && a.theatre_session_id && consultantSessionIds.has(a.theatre_session_id)
+        a.role_on_list === "solo" && a.theatre_session_id && supervisorSessionIds.has(a.theatre_session_id)
           ? "supervised"
           : a.role_on_list;
 
