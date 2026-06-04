@@ -57,13 +57,13 @@ function TcsAuditPage() {
       // truncating high-volume trainees (a single .range(0, 9999) request
       // can still be capped server-side).
       const PAGE = 1000;
-      const all: Array<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string }> = [];
+      const all: Array<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string; theatre_session_id: string | null }> = [];
       let offset = 0;
       // Loop until a page returns fewer than PAGE rows.
       while (true) {
         let q = supabase
           .from("rota_assignments")
-          .select("staff_id, session_date, session, duty_type, role_on_list")
+          .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id")
           .in("staff_id", ids)
           .order("session_date", { ascending: true })
           .range(offset, offset + PAGE - 1);
@@ -103,14 +103,44 @@ function TcsAuditPage() {
         }
       }
 
+      // Reclassify trainee "solo" lists where a consultant OR SAS doctor is
+      // on the same theatre_session_id — those trainees are supervised.
+      const tsIds = Array.from(
+        new Set(all.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
+      );
+      const supervisorSessionIds = new Set<string>();
+      if (tsIds.length) {
+        // Page through in chunks to avoid PostgREST IN() limits.
+        const CHUNK = 500;
+        for (let i = 0; i < tsIds.length; i += CHUNK) {
+          const slice = tsIds.slice(i, i + CHUNK);
+          const { data: tsAssigns, error: eS } = await supabase
+            .from("rota_assignments")
+            .select("theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
+            .in("theatre_session_id", slice)
+            .in("profiles.grade", ["consultant", "sas"])
+            .range(0, 49999);
+          if (eS) throw eS;
+          for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+            if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
+          }
+        }
+      }
+
       const map = new Map<string, AuditAssignment[]>();
       for (const a of all) {
         const arr = map.get(a.staff_id) ?? [];
+        const role =
+          a.role_on_list === "solo" &&
+          a.theatre_session_id &&
+          supervisorSessionIds.has(a.theatre_session_id)
+            ? "supervised"
+            : a.role_on_list;
         arr.push({
           session_date: a.session_date,
           session: a.session as AuditAssignment["session"],
           duty_type: a.duty_type,
-          role_on_list: a.role_on_list,
+          role_on_list: role,
         });
         map.set(a.staff_id, arr);
       }
