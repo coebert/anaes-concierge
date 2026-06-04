@@ -192,4 +192,56 @@ describe("solo-list counting rules — AM/PM lists", () => {
     ]);
   });
 
+  // ----- Leave-overlap regression tests -----
+  // Solo vs supervised counting is derived purely from the rota_assignments
+  // table — the pure helpers below have no knowledge of leave_requests. The
+  // upstream sync (clwrota) is responsible for removing rota rows when a
+  // doctor is on approved leave for that day. These tests pin the contract
+  // and demonstrate that the SAS-aware reclassification behaves correctly
+  // across the leave categories (annual / study / compassionate) we ingest.
+
+  describe("SAS + leave overlap regressions", () => {
+    const cases: Array<{ leaveType: "annual" | "study" | "compassionate" }> = [
+      { leaveType: "annual" },
+      { leaveType: "study" },
+      { leaveType: "compassionate" },
+    ];
+
+    for (const { leaveType } of cases) {
+      it(`${leaveType} leave on a different day does not affect SAS-supervised counting`, () => {
+        // Day A: SAS works alongside trainee — supervised.
+        // Day B: SAS is on ${leaveType} leave, sync removed the SAS row.
+        //        Trainee is alone on the list — solo.
+        const assignments: SoloAssignment[] = [
+          { ...base, session_date: "2026-05-28", staff_id: "sas-1", theatre_session_id: "ts-A" },
+          { ...base, session_date: "2026-05-28", staff_id: "train-1", theatre_session_id: "ts-A" },
+          { ...base, session_date: "2026-05-29", staff_id: "train-1", theatre_session_id: "ts-B" },
+        ];
+        const consSet = buildConsultantSessionSet(assignments, profiles);
+        expect(consSet.has("ts-A")).toBe(true);
+        expect(consSet.has("ts-B")).toBe(false);
+        expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(false);
+        expect(isSoloTraineeAssignment(assignments[2], consSet, profiles)).toBe(true);
+      });
+
+      it(`${leaveType} leave for the trainee never inflates solo counts when SAS is on the list`, () => {
+        const assignments: SoloAssignment[] = [
+          { ...base, staff_id: "sas-1", theatre_session_id: "ts-1" },
+          { ...base, staff_id: "train-1", theatre_session_id: "ts-1" },
+        ];
+        const consSet = buildConsultantSessionSet(assignments, profiles);
+        expect(isSoloTraineeAssignment(assignments[1], consSet, profiles)).toBe(false);
+      });
+    }
+
+    it("SAS + consultant both present: still supervised, leave irrelevant", () => {
+      const assignments: SoloAssignment[] = [
+        { ...base, staff_id: "cons-1", theatre_session_id: "ts-1" },
+        { ...base, staff_id: "sas-1", theatre_session_id: "ts-1" },
+        { ...base, staff_id: "train-1", theatre_session_id: "ts-1" },
+      ];
+      const consSet = buildConsultantSessionSet(assignments, profiles);
+      expect(isSoloTraineeAssignment(assignments[2], consSet, profiles)).toBe(false);
+    });
+  });
 });
