@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { todayISO, splitName, composeName } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getProfileGmcNumber, updateProfileGmcNumber } from "@/lib/admin-gmc.functions";
 import {
   Dialog,
   DialogContent,
@@ -89,13 +90,12 @@ function ProfileTab({ staffId }: { staffId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["profile-edit", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", staffId)
-        .single();
+      const [{ data: prof, error }, gmcRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", staffId).single(),
+        getProfileGmcNumber({ data: { staffId } }).catch(() => ({ gmc_number: null })),
+      ]);
       if (error) throw error;
-      return data;
+      return { ...prof, gmc_number: gmcRes.gmc_number } as typeof prof & { gmc_number: string | null };
     },
   });
 
@@ -144,7 +144,6 @@ function ProfileTab({ staffId }: { staffId: string }) {
           }),
           grade: form.grade || null,
           training_level: form.training_level || null,
-          gmc_number: form.gmc_number || null,
           start_date: form.start_date || null,
           rotation_end_date: form.grade === "trainee" ? form.rotation_end_date || null : null,
           active: form.active,
@@ -152,6 +151,9 @@ function ProfileTab({ staffId }: { staffId: string }) {
         })
         .eq("id", staffId);
       if (error) throw error;
+      await updateProfileGmcNumber({
+        data: { staffId, gmc_number: form.gmc_number || null },
+      });
     },
     onSuccess: () => {
       toast.success("Profile saved");
