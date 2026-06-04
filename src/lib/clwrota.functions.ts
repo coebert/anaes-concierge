@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
+import { evaluateHistoricalSafeguard } from "./clwrota-historical-safeguard";
 import {
   parseListClwRotaSyncMetricsResponse,
   type ListClwRotaSyncMetricsResponse,
@@ -2178,10 +2179,9 @@ export async function performRotaSync() {
     }
 
     // --- Historical-data safeguard: verify no rows were unexpectedly deleted.
-    // We expect the post-sync count to be at least (preSyncCount minus the
-    // rows we deliberately removed in the non-working cleanup pass above).
-    // Anything below that floor indicates unexplained loss and should be
-    // surfaced as an error; matching the floor is normal.
+    // Logic lives in `evaluateHistoricalSafeguard` so it can be unit-tested
+    // independently of Supabase. The non-working cleanup pass above is an
+    // expected source of "loss" and is subtracted from the floor.
     const { count: postCount, error: postCountErr } = await supabaseAdmin
       .from("rota_assignments")
       .select("id", { count: "exact", head: true })
@@ -2189,13 +2189,13 @@ export async function performRotaSync() {
     if (postCountErr) {
       errors.push({ label: "(historical safeguard)", error: postCountErr.message });
     } else {
-      const expectedFloor = preSyncCount - nonWorkingCleaned;
-      const actual = postCount ?? 0;
-      if (actual < expectedFloor) {
-        errors.push({
-          label: "(historical safeguard)",
-          error: `Historical data loss detected: pre-sync ${preSyncCount}, post-sync ${actual}, expected at least ${expectedFloor} after non-working cleanup of ${nonWorkingCleaned} row(s).`,
-        });
+      const verdict = evaluateHistoricalSafeguard({
+        preSyncCount,
+        postSyncCount: postCount ?? 0,
+        nonWorkingCleaned,
+      });
+      if (!verdict.ok) {
+        errors.push({ label: "(historical safeguard)", error: verdict.error });
       }
     }
 
