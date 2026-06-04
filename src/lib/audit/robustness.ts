@@ -373,6 +373,13 @@ export async function computeRobustness(
   const dailyUnavailable = new Map<string, Set<string>>();
   const dailySpa = new Map<string, Set<string>>();
   const filledMap = new Map<string, { am: Set<string>; pm: Set<string> }>();
+  // Staff with ANY assignment that day — evidence they are rostered to work.
+  // CLWRota inserts a row for every working slot (theatre, SPA, admin, ICU,
+  // on-call, teaching, obstetrics, etc.) so absence of any row means the
+  // person simply isn't scheduled. Without this gate, every consultant on a
+  // non-working day was counted as "available" and inflated headroom.
+  const workingToday = new Map<string, Set<string>>();
+
 
   for (const a of assignments) {
     const date = a.session_date;
