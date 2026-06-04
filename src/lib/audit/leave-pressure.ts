@@ -160,3 +160,63 @@ export function pressureColor(count: number, peak: number): string {
   if (pct >= 0.2) return "bg-yellow-300/60";
   return "bg-emerald-300/50";
 }
+
+/* ----------------------------------------------------------------------------
+ * Monthly calendar feed — one entry per (staff × leave row × day).
+ * -------------------------------------------------------------------------- */
+
+export interface CalendarLeaveEntry {
+  date: string;
+  staffId: string;
+  staffName: string;
+  grade: string | null;
+  type: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+}
+
+export async function loadCalendarLeave(
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<CalendarLeaveEntry[]> {
+  const { data: leave } = await supabase
+    .from("leave_requests")
+    .select("id, staff_id, start_date, end_date, status, type, half_day_start, half_day_end")
+    .in("status", ["approved", "pending"])
+    .lte("start_date", rangeEnd)
+    .gte("end_date", rangeStart);
+
+  const rows = (leave ?? []) as LeaveRow[];
+  const staffIds = [...new Set(rows.map((r) => r.staff_id))];
+  const staff = new Map<string, StaffMini>();
+  if (staffIds.length) {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, full_name, grade")
+      .in("id", staffIds);
+    for (const p of profs ?? []) {
+      staff.set(p.id, { id: p.id, full_name: p.full_name, grade: p.grade });
+    }
+  }
+
+  const out: CalendarLeaveEntry[] = [];
+  for (const r of rows) {
+    const from = r.start_date < rangeStart ? rangeStart : r.start_date;
+    const to = r.end_date > rangeEnd ? rangeEnd : r.end_date;
+    const s = staff.get(r.staff_id);
+    for (const d of eachDate(from, to)) {
+      out.push({
+        date: d,
+        staffId: r.staff_id,
+        staffName: s?.full_name ?? "Unknown",
+        grade: s?.grade ?? null,
+        type: r.type,
+        status: r.status,
+        startDate: r.start_date,
+        endDate: r.end_date,
+      });
+    }
+  }
+  return out;
+}
