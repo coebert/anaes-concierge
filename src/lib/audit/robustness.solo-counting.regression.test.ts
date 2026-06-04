@@ -140,7 +140,7 @@ describe("Regression — solo counting change does not break robustness", () => 
     fixture.theatre_sessions = [ts("t1", "am"), ts("t2", "am")];
     fixture.rota_assignments = [theatreAsn("st7-a", "am", "t1", "solo")];
 
-    const { days } = await computeRobustness(DATE, DATE);
+    const { days } = await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false });
     const am = days[0].am;
     expect(am.required).toBe(2);
     expect(am.unfilled).toBe(1); // t2 still unfilled
@@ -164,7 +164,7 @@ describe("Regression — solo counting change does not break robustness", () => 
       theatreAsn("ct2-a", "am", null, "solo"), // unassigned theatre
     ];
 
-    const { days } = await computeRobustness(DATE, DATE);
+    const { days } = await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false });
     const am = days[0].am;
     expect(am.required).toBe(1);
     expect(am.unfilled).toBe(0); // unassigned row must not bump unfilled
@@ -181,7 +181,7 @@ describe("Regression — solo counting change does not break robustness", () => 
       theatreAsn("ct2-a", "am", "t1", "supervisee"),
     ];
 
-    const { days } = await computeRobustness(DATE, DATE);
+    const { days } = await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false });
     const am = days[0].am;
     expect(am.unfilled).toBe(0);
     expect(am.consultantsAvailable).toBe(1); // only c2
@@ -195,7 +195,7 @@ describe("Regression — solo counting change does not break robustness", () => 
     fixture.theatre_sessions = [ts("t1", "am"), ts("t2", "am")];
     fixture.rota_assignments = [];
 
-    const am = (await computeRobustness(DATE, DATE)).days[0].am;
+    const am = (await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false })).days[0].am;
     expect(am.unfilled).toBe(2);
     expect(am.soloCapable).toBe(1);
     expect(am.headroom).toBe(-1);
@@ -211,7 +211,7 @@ describe("Regression — solo counting change does not break robustness", () => 
         duty_type: "spa", theatre_session_id: null, role_on_list: "solo" },
     ];
 
-    const am = (await computeRobustness(DATE, DATE)).days[0].am;
+    const am = (await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false })).days[0].am;
     expect(am.unfilled).toBe(2);
     expect(am.soloCapable).toBe(1);
     expect(am.consultantsOnSpa).toBe(1);
@@ -227,7 +227,7 @@ describe("Regression — solo counting change does not break robustness", () => 
       theatreAsn("st7-a", "pm", "t-pm", "solo"),
     ];
 
-    const { days } = await computeRobustness(DATE, DATE);
+    const { days } = await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false });
     const am = days[0].am;
     const pm = days[0].pm;
     expect(am.unfilled).toBe(1);

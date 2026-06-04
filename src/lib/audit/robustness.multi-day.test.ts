@@ -145,7 +145,7 @@ beforeEach(() => {
 });
 
 async function run() {
-  const { days } = await computeRobustness(MON, FRI);
+  const { days } = await computeRobustness(MON, FRI, [], { requireRosterEvidence: false });
   // Index by date for ergonomic assertions.
   const byDate = new Map(days.map((d) => [d.date, d]));
   return { days, byDate };
