@@ -382,7 +382,7 @@ export function SummaryDashboard() {
               List coverage breakdown — next 7 days
             </CardTitle>
             <CardDescription>
-              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA-needed sessions.
+              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA half-days (SPA is reported separately and never folded into headroom).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -399,6 +399,7 @@ export function SummaryDashboard() {
                       <th className="pb-2 pr-4 font-medium text-right">Lists</th>
                       <th className="pb-2 pr-4 font-medium text-right">Solo-capable</th>
                       <th className="pb-2 pr-4 font-medium text-right">Unfilled</th>
+                      <th className="pb-2 pr-4 font-medium text-right text-orange-700">SPA (separate)</th>
                       <th className="pb-2 font-medium">SPA needed</th>
                     </tr>
                   </thead>
@@ -407,6 +408,10 @@ export function SummaryDashboard() {
                       const totalLists = d.am.total + d.pm.total;
                       const totalSolo = d.am.soloCapable + d.pm.soloCapable;
                       const totalUnfilled = d.am.unfilled + d.pm.unfilled;
+                      const robustDay = days.find((r) => r.date === d.date);
+                      const amSpa = robustDay?.am.consultantsOnSpa ?? 0;
+                      const pmSpa = robustDay?.pm.consultantsOnSpa ?? 0;
+                      const totalSpa = amSpa + pmSpa;
                       const spaHalves: string[] = [];
                       if (d.am.spaNeeded) spaHalves.push("AM");
                       if (d.pm.spaNeeded) spaHalves.push("PM");
