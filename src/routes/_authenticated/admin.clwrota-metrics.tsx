@@ -96,9 +96,13 @@ export function ClwRotaMetricsPage() {
       {
         date: string;
         runs: number;
+        ok_runs: number;
+        failed_runs: number;
         rows_upserted: number;
         rows_failed: number;
         rows_skipped: number;
+        rows_deleted: number;
+        non_working_cleaned: number;
         chunks_first_try: number;
         chunks_retried: number;
         chunks_fell_back: number;
@@ -112,9 +116,13 @@ export function ClwRotaMetricsPage() {
       const b = buckets.get(date) ?? {
         date,
         runs: 0,
+        ok_runs: 0,
+        failed_runs: 0,
         rows_upserted: 0,
         rows_failed: 0,
         rows_skipped: 0,
+        rows_deleted: 0,
+        non_working_cleaned: 0,
         chunks_first_try: 0,
         chunks_retried: 0,
         chunks_fell_back: 0,
@@ -123,9 +131,13 @@ export function ClwRotaMetricsPage() {
         errors: 0,
       };
       b.runs += 1;
+      b.ok_runs += r.ok ? 1 : 0;
+      b.failed_runs += r.ok ? 0 : 1;
       b.rows_upserted += r.rows_upserted;
       b.rows_failed += r.rows_failed;
       b.rows_skipped += r.rows_skipped_validation;
+      b.rows_deleted += r.rows_deleted;
+      b.non_working_cleaned += r.non_working_cleaned;
       b.chunks_first_try += r.chunks_succeeded_first_try;
       b.chunks_retried += r.chunks_succeeded_after_retry;
       b.chunks_fell_back += r.chunks_fell_back_to_per_row;
@@ -144,14 +156,28 @@ export function ClwRotaMetricsPage() {
       (acc, r) => {
         acc.runs += 1;
         acc.ok += r.ok ? 1 : 0;
+        acc.failed += r.ok ? 0 : 1;
         acc.upserted += r.rows_upserted;
-        acc.failed += r.rows_failed;
+        acc.failed_rows += r.rows_failed;
         acc.skipped += r.rows_skipped_validation;
+        acc.deleted += r.rows_deleted;
+        acc.cleaned += r.non_working_cleaned;
         acc.retries += r.upsert_retries_total;
         acc.fallbacks += r.chunks_fell_back_to_per_row;
         return acc;
       },
-      { runs: 0, ok: 0, upserted: 0, failed: 0, skipped: 0, retries: 0, fallbacks: 0 },
+      {
+        runs: 0,
+        ok: 0,
+        failed: 0,
+        upserted: 0,
+        failed_rows: 0,
+        skipped: 0,
+        deleted: 0,
+        cleaned: 0,
+        retries: 0,
+        fallbacks: 0,
+      },
     );
   }, [rows]);
 
@@ -222,21 +248,23 @@ export function ClwRotaMetricsPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5 lg:grid-cols-9">
             <Stat label="Runs" value={totals.runs} />
             <Stat label="OK" value={totals.ok} tone="success" />
+            <Stat label="Failed runs" value={totals.failed} tone={totals.failed > 0 ? "danger" : undefined} />
             <Stat label="Upserted" value={totals.upserted} tone="success" />
+            <Stat label="Deleted" value={totals.deleted} tone="info" />
+            <Stat label="Non-working cleaned" value={totals.cleaned} tone="info" />
             <Stat label="Skipped" value={totals.skipped} tone="info" />
-            <Stat label="Failed rows" value={totals.failed} tone="danger" />
+            <Stat label="Failed rows" value={totals.failed_rows} tone="danger" />
             <Stat label="Write retries" value={totals.retries} tone="info" />
-            <Stat label="Per-row fallbacks" value={totals.fallbacks} tone="info" />
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle>Rows over time</CardTitle>
               <CardDescription>
-                Upserted, skipped (validation), and failed (write) per run day.
+                Upserted, deleted, non-working cleaned, skipped (validation), and failed (write) per run day.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[320px]">
@@ -251,12 +279,40 @@ export function ClwRotaMetricsPage() {
                   />
                   <Legend />
                   <Line type="monotone" dataKey="rows_upserted" stroke="#10b981" name="Upserted" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="non_working_cleaned" stroke="#0ea5e9" name="Non-working cleaned" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="rows_deleted" stroke="#a855f7" name="Deleted (total)" dot={false} strokeWidth={2} strokeDasharray="4 2" />
                   <Line type="monotone" dataKey="rows_skipped" stroke="#3b82f6" name="Skipped" dot={false} strokeWidth={2} />
                   <Line type="monotone" dataKey="rows_failed" stroke="#ef4444" name="Failed" dot={false} strokeWidth={2} />
                 </RLineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Run outcome per day</CardTitle>
+              <CardDescription>
+                Stacked bar of ok vs. failed runs. A spike in red indicates the historical safeguard or another error tripped.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={perDay} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="date" tickFormatter={(d: string) => formatDateGB(d)} fontSize={11} />
+                  <YAxis fontSize={11} allowDecimals={false} />
+                  <Tooltip
+                    labelFormatter={(d: string) => formatDateGB(d)}
+                    contentStyle={{ background: "hsl(var(--background))", borderColor: "hsl(var(--border))" }}
+                  />
+                  <Legend />
+                  <Bar dataKey="ok_runs" stackId="r" fill="#10b981" name="ok" />
+                  <Bar dataKey="failed_runs" stackId="r" fill="#ef4444" name="failed" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
 
           <Card>
             <CardHeader>
@@ -325,6 +381,8 @@ export function ClwRotaMetricsPage() {
                     <th className="py-2 pr-3 text-right">Pulled</th>
                     <th className="py-2 pr-3 text-right">Upserted</th>
                     <th className="py-2 pr-3 text-right">Skipped</th>
+                    <th className="py-2 pr-3 text-right">Deleted</th>
+                    <th className="py-2 pr-3 text-right">Cleaned</th>
                     <th className="py-2 pr-3 text-right">Failed</th>
                     <th className="py-2 pr-3 text-right">Retries</th>
                     <th className="py-2 pr-3 text-right">Fell back</th>
@@ -353,6 +411,8 @@ export function ClwRotaMetricsPage() {
                         <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
                         <td className="py-1.5 pr-3 text-right text-emerald-600">{r.rows_upserted}</td>
                         <td className="py-1.5 pr-3 text-right text-blue-600">{r.rows_skipped_validation}</td>
+                        <td className="py-1.5 pr-3 text-right text-purple-600">{r.rows_deleted}</td>
+                        <td className="py-1.5 pr-3 text-right text-sky-600">{r.non_working_cleaned}</td>
                         <td className="py-1.5 pr-3 text-right text-destructive">{r.rows_failed}</td>
                         <td className="py-1.5 pr-3 text-right">{r.upsert_retries_total}</td>
                         <td className="py-1.5 pr-3 text-right">{r.chunks_fell_back_to_per_row}</td>
