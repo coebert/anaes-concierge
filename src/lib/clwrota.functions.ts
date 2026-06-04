@@ -2177,18 +2177,26 @@ export async function performRotaSync() {
       });
     }
 
-    // --- Historical-data safeguard: verify no rows were deleted ------------
+    // --- Historical-data safeguard: verify no rows were unexpectedly deleted.
+    // We expect the post-sync count to be at least (preSyncCount minus the
+    // rows we deliberately removed in the non-working cleanup pass above).
+    // Anything below that floor indicates unexplained loss and should be
+    // surfaced as an error; matching the floor is normal.
     const { count: postCount, error: postCountErr } = await supabaseAdmin
       .from("rota_assignments")
       .select("id", { count: "exact", head: true })
       .eq("source", "clwrota");
     if (postCountErr) {
       errors.push({ label: "(historical safeguard)", error: postCountErr.message });
-    } else if ((postCount ?? 0) < preSyncCount) {
-      errors.push({
-        label: "(historical safeguard)",
-        error: `Historical data loss detected: pre-sync count ${preSyncCount}, post-sync count ${postCount ?? 0}`,
-      });
+    } else {
+      const expectedFloor = preSyncCount - nonWorkingCleaned;
+      const actual = postCount ?? 0;
+      if (actual < expectedFloor) {
+        errors.push({
+          label: "(historical safeguard)",
+          error: `Historical data loss detected: pre-sync ${preSyncCount}, post-sync ${actual}, expected at least ${expectedFloor} after non-working cleanup of ${nonWorkingCleaned} row(s).`,
+        });
+      }
     }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors`;
