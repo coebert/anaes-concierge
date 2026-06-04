@@ -227,6 +227,8 @@ export function SummaryDashboard() {
                     {days.map((d) => {
                       const risk = worstRisk(d.am.risk, d.pm.risk);
                       const headroom = Math.min(d.am.headroom, d.pm.headroom);
+                      // SPA is a SEPARATE metric — surface it alongside, never inside, headroom.
+                      const spa = d.am.consultantsOnSpa + d.pm.consultantsOnSpa;
                       return (
                         <Tooltip key={d.date}>
                           <TooltipTrigger asChild>
@@ -240,14 +242,16 @@ export function SummaryDashboard() {
                             >
                               <span className="font-medium">{shortDay(d.date)}</span>
                               <span className="text-[10px] opacity-80">headroom {headroom}</span>
+                              <span className="text-[10px] opacity-80">SPA {spa} <span className="opacity-70">(separate)</span></span>
                               <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
                             </Link>
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="text-xs">
                               {formatDateGB(d.date)}<br />
-                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, {d.am.unfilled} unfilled)<br />
-                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, {d.pm.unfilled} unfilled)
+                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, SPA {d.am.consultantsOnSpa}, {d.am.unfilled} unfilled)<br />
+                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, SPA {d.pm.consultantsOnSpa}, {d.pm.unfilled} unfilled)<br />
+                              <span className="text-muted-foreground">SPA is reported separately and never folded into headroom.</span>
                             </p>
                           </TooltipContent>
                         </Tooltip>
