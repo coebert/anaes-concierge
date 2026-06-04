@@ -248,21 +248,23 @@ export function ClwRotaMetricsPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5 lg:grid-cols-9">
             <Stat label="Runs" value={totals.runs} />
             <Stat label="OK" value={totals.ok} tone="success" />
+            <Stat label="Failed runs" value={totals.failed} tone={totals.failed > 0 ? "danger" : undefined} />
             <Stat label="Upserted" value={totals.upserted} tone="success" />
+            <Stat label="Deleted" value={totals.deleted} tone="info" />
+            <Stat label="Non-working cleaned" value={totals.cleaned} tone="info" />
             <Stat label="Skipped" value={totals.skipped} tone="info" />
-            <Stat label="Failed rows" value={totals.failed} tone="danger" />
+            <Stat label="Failed rows" value={totals.failed_rows} tone="danger" />
             <Stat label="Write retries" value={totals.retries} tone="info" />
-            <Stat label="Per-row fallbacks" value={totals.fallbacks} tone="info" />
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle>Rows over time</CardTitle>
               <CardDescription>
-                Upserted, skipped (validation), and failed (write) per run day.
+                Upserted, deleted, non-working cleaned, skipped (validation), and failed (write) per run day.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[320px]">
@@ -277,12 +279,40 @@ export function ClwRotaMetricsPage() {
                   />
                   <Legend />
                   <Line type="monotone" dataKey="rows_upserted" stroke="#10b981" name="Upserted" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="non_working_cleaned" stroke="#0ea5e9" name="Non-working cleaned" dot={false} strokeWidth={2} />
+                  <Line type="monotone" dataKey="rows_deleted" stroke="#a855f7" name="Deleted (total)" dot={false} strokeWidth={2} strokeDasharray="4 2" />
                   <Line type="monotone" dataKey="rows_skipped" stroke="#3b82f6" name="Skipped" dot={false} strokeWidth={2} />
                   <Line type="monotone" dataKey="rows_failed" stroke="#ef4444" name="Failed" dot={false} strokeWidth={2} />
                 </RLineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Run outcome per day</CardTitle>
+              <CardDescription>
+                Stacked bar of ok vs. failed runs. A spike in red indicates the historical safeguard or another error tripped.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={perDay} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="date" tickFormatter={(d: string) => formatDateGB(d)} fontSize={11} />
+                  <YAxis fontSize={11} allowDecimals={false} />
+                  <Tooltip
+                    labelFormatter={(d: string) => formatDateGB(d)}
+                    contentStyle={{ background: "hsl(var(--background))", borderColor: "hsl(var(--border))" }}
+                  />
+                  <Legend />
+                  <Bar dataKey="ok_runs" stackId="r" fill="#10b981" name="ok" />
+                  <Bar dataKey="failed_runs" stackId="r" fill="#ef4444" name="failed" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
 
           <Card>
             <CardHeader>
