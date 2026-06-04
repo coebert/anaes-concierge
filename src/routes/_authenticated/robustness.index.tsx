@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight, Info, Coffee } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
 
@@ -35,6 +35,13 @@ function RobustnessPage() {
   const days = data?.days ?? [];
   const flagged = days.filter((d) => d.am.risk !== "ok" || d.pm.risk !== "ok");
   const shortfalls = days.filter((d) => d.am.risk === "shortfall" || d.pm.risk === "shortfall");
+  // SPA is a SEPARATE metric — never folded into headroom. Aggregate the
+  // number of consultant-half-days spent on SPA across the visible window
+  // so it shows up in the audit totals on its own.
+  const spaHalfDays = days.reduce(
+    (sum, d) => sum + d.am.consultantsOnSpa + d.pm.consultantsOnSpa,
+    0,
+  );
 
   return (
     <TooltipProvider>
@@ -72,9 +79,15 @@ function RobustnessPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Days flagged" value={flagged.length} icon={AlertTriangle} tone="amber" />
           <Stat label="Days with shortfall" value={shortfalls.length} icon={ShieldAlert} tone="red" />
+          <Stat
+            label="SPA half-days (separate)"
+            value={spaHalfDays}
+            icon={Coffee}
+            tone="orange"
+          />
           <Stat
             label="Workforce (active)"
             value={data
@@ -255,7 +268,7 @@ type StatProps = {
   label: string;
   value: number | string;
   icon: typeof Activity;
-  tone: "amber" | "red" | "emerald";
+  tone: "amber" | "red" | "emerald" | "orange";
 };
 
 function UnfilledBadge({ count }: { count: number }) {
@@ -274,6 +287,8 @@ function Stat(props: StatProps) {
     ? "bg-red-500/10 text-red-600"
     : tone === "amber"
     ? "bg-amber-500/10 text-amber-600"
+    : tone === "orange"
+    ? "bg-orange-500/10 text-orange-600"
     : "bg-emerald-500/10 text-emerald-600";
   return (
     <Card>

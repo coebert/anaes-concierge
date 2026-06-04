@@ -15,7 +15,7 @@ type IconName = "check" | "coffee" | "info" | "list" | "ban" | "user-minus" | "x
 
 type MetricKey =
   | "headroom"
-  | "headroomWithSpa"
+  | "spa"
   | "supervisedOnly"
   | "excluded";
 
@@ -23,12 +23,12 @@ const METRIC_META: Record<MetricKey, { label: string; chipClass: string; explain
   headroom: {
     label: "→ headroom",
     chipClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
-    explainer: "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8).",
+    explainer: "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8). SPA is NOT included here.",
   },
-  headroomWithSpa: {
-    label: "→ headroom (+SPA)",
+  spa: {
+    label: "→ SPA (separate)",
     chipClass: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/40",
-    explainer: "Flexible cover: only counts if a consultant is pulled off SPA. Included in the headroom-with-SPA metric.",
+    explainer: "Consultants on SPA time. Tracked as a SEPARATE metric — never added into headroom. Pulling a consultant off SPA to cover a list is a disruption flag, not spare capacity.",
   },
   supervisedOnly: {
     label: "→ supervised only",
@@ -48,7 +48,7 @@ const CATEGORY_META: Record<
 > = {
   free_consultant: { label: "Free consultants (solo-capable)", tone: "border-emerald-500/40 bg-emerald-500/5", iconName: "check", order: 1, metric: "headroom" },
   free_senior_trainee: { label: "Free senior trainees ST6–8 (solo-capable)", tone: "border-emerald-500/40 bg-emerald-500/5", iconName: "check", order: 2, metric: "headroom" },
-  on_spa: { label: "Consultants on SPA (flexible cover)", tone: "border-orange-500/40 bg-orange-500/5", iconName: "coffee", order: 3, metric: "headroomWithSpa" },
+  on_spa: { label: "Consultants on SPA (separate metric)", tone: "border-orange-500/40 bg-orange-500/5", iconName: "coffee", order: 3, metric: "spa" },
   free_junior_trainee: { label: "Free junior trainees (need supervision)", tone: "border-sky-500/30 bg-sky-500/5", iconName: "info", order: 4, metric: "supervisedOnly" },
   free_sas: { label: "Free SAS (pair with consultant)", tone: "border-sky-500/30 bg-sky-500/5", iconName: "info", order: 5, metric: "supervisedOnly" },
   on_clinical_list: { label: "Excluded — already covering a list", tone: "border-slate-500/30 bg-slate-500/5", iconName: "list", order: 6, metric: "excluded" },
@@ -88,17 +88,17 @@ export function BreakdownCard({
     .filter((c) => (groups.get(c)?.length ?? 0) > 0);
 
   // Totals contributing to each metric, derived from HalfDayCapacity.
+  // SPA is reported as its own metric — NOT folded into headroom anywhere.
   const metricTotals: Record<MetricKey, number> = {
-    headroom: h.soloCapable, // free consultants + senior trainees
-    headroomWithSpa: h.consultantsOnSpa, // additional flex cover
+    headroom: h.soloCapable, // free consultants + senior trainees (SPA excluded)
+    spa: h.consultantsOnSpa, // standalone SPA metric
     supervisedOnly: h.juniorTraineesAvailable + h.sasAvailable,
-    excluded: h.onLeave + h.onOtherDuty + Math.max(0, h.required - h.unfilled === 0 ? 0 : 0), // computed inline below for accuracy
+    excluded: 0,
   };
-  // More accurate excluded total: leave + other duties + people already on a list
-  // = breakdown entries minus the available pools and SPA.
+  // Excluded = everyone in the breakdown not counted in the three pools above.
   const totalEntries = breakdown.entries.length;
   metricTotals.excluded =
-    totalEntries - metricTotals.headroom - metricTotals.headroomWithSpa - metricTotals.supervisedOnly;
+    totalEntries - metricTotals.headroom - metricTotals.spa - metricTotals.supervisedOnly;
 
   return (
     <TooltipProvider>
@@ -113,7 +113,7 @@ export function BreakdownCard({
           {/* Headroom summary chips */}
           <div className="flex flex-wrap gap-1.5 text-[11px]">
             <MetricChip metric="headroom" count={metricTotals.headroom} suffix={`= headroom ${h.headroom}`} />
-            <MetricChip metric="headroomWithSpa" count={metricTotals.headroomWithSpa} suffix={`= +SPA ${h.headroomWithSpa}`} />
+            <MetricChip metric="spa" count={metricTotals.spa} suffix="(separate, not in headroom)" />
             <MetricChip metric="supervisedOnly" count={metricTotals.supervisedOnly} />
             <MetricChip metric="excluded" count={metricTotals.excluded} />
           </div>
@@ -153,7 +153,7 @@ export function BreakdownCard({
                       const entryBorder =
                         entryMetric === "headroom"
                           ? "border-l-emerald-500"
-                          : entryMetric === "headroomWithSpa"
+                          : entryMetric === "spa"
                             ? "border-l-orange-500"
                             : entryMetric === "supervisedOnly"
                               ? "border-l-sky-500"
