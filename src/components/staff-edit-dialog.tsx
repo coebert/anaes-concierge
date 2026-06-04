@@ -90,13 +90,12 @@ function ProfileTab({ staffId }: { staffId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["profile-edit", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", staffId)
-        .single();
+      const [{ data: prof, error }, gmcRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", staffId).single(),
+        getProfileGmcNumber({ data: { staffId } }).catch(() => ({ gmc_number: null })),
+      ]);
       if (error) throw error;
-      return data;
+      return { ...prof, gmc_number: gmcRes.gmc_number } as typeof prof & { gmc_number: string | null };
     },
   });
 
