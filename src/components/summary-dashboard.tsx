@@ -472,6 +472,22 @@ export function SummaryDashboard() {
                               </TooltipContent>
                             </Tooltip>
                           </td>
+                          <td className="py-2 pr-4 text-right">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn("cursor-help text-orange-700", totalSpa === 0 && "text-muted-foreground")}>
+                                  {totalSpa}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">
+                                  AM: {amSpa} consultant(s) on SPA<br />
+                                  PM: {pmSpa} consultant(s) on SPA<br />
+                                  <span className="text-muted-foreground">SPA is a separate metric — not added into headroom.</span>
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
                           <td className="py-2">
                             {spaHalves.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
