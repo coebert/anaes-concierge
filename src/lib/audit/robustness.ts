@@ -673,7 +673,7 @@ export async function computeListCoverage(
   }
 
   // Also need SPA-needed flags from robustness
-  const { days } = await computeRobustness(rangeStart, rangeEnd);
+  const { days } = await computeRobustness(rangeStart, rangeEnd, [], options);
 
   // Build per-date required totals
   const requiredMap = new Map<string, { am: number; pm: number }>();
