@@ -44,6 +44,7 @@ function LoginPage() {
       return;
     }
     setBusy(true);
+    setRememberMe(remember);
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     setBusy(false);
     if (error) {
