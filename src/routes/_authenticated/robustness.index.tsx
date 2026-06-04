@@ -125,7 +125,7 @@ function RobustnessPage() {
           <CardHeader>
             <CardTitle className="text-base">Daily coverage headroom</CardTitle>
             <CardDescription>
-              Each cell shows the spare solo-capable headroom, with a breakdown underneath: <span className="font-mono">consultants · SPA · senior trainees</span>. Click a date to see the full breakdown.
+              Each cell shows the spare solo-capable headroom (SPA NOT included), with a separate SPA count and a breakdown underneath: <span className="font-mono">consultants · senior trainees</span> for headroom, then <span className="font-mono text-orange-700">SPA</span> shown distinctly. Click a date to see the full breakdown.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -143,10 +143,12 @@ function RobustnessPage() {
                       <ThTooltip label="Other duties" tooltip="Staff on on-call, ICU, obstetrics, teaching, admin or CIC — excluded from availability." />
                       <th className="px-2 py-1 text-center font-medium">AM lists</th>
                       <ThTooltip label="AM unfilled" tooltip="Theatre lists with no anaesthetist assigned (AM)." />
-                      <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
+                      <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in." />
+                      <ThTooltip label="AM SPA" tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom." />
                       <th className="px-2 py-1 text-center font-medium">PM lists</th>
                       <ThTooltip label="PM unfilled" tooltip="Theatre lists with no anaesthetist assigned (PM)." />
-                      <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff after covering every unfilled list. Subscript shows free consultants · consultants on SPA · free senior trainees (ST6/7/8). Staff already on a list, ICU, obstetrics or any other clinical duty are excluded." />
+                      <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in." />
+                      <ThTooltip label="PM SPA" tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom." />
                       <th className="px-2 py-1 text-left font-medium">Notes</th>
                     </tr>
                   </thead>
@@ -169,23 +171,41 @@ function RobustnessPage() {
                                 {h.headroom}
                               </span>
                               <span className="text-[10px] leading-none text-muted-foreground tabular-nums">
-                                {h.consultantsAvailable}c · {h.consultantsOnSpa}s · {h.seniorTraineesAvailable}t
+                                {h.consultantsAvailable}c · {h.seniorTraineesAvailable}t
                               </span>
                             </span>
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="max-w-[18rem]">
-                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs {h.unfilled} unfilled list(s).
+                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs {h.unfilled} unfilled list(s). SPA is reported separately and NOT included in this number.
                               <br />
                               <span className="text-muted-foreground">
                                 Free consultants: {h.consultantsAvailable} ·
-                                Consultants on SPA: {h.consultantsOnSpa} ·
                                 Free senior trainees: {h.seniorTraineesAvailable} ·
                                 Junior trainees: {h.juniorTraineesAvailable} ·
                                 SAS: {h.sasAvailable}
                                 <br />
                                 Staff already covering theatre, POAC, pain clinic or any other clinical activity — and anyone on ICU, obstetrics, on-call, teaching, admin or CIC — are excluded from these counts.
                               </span>
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                      const renderSpa = (h: typeof d.am) => (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={cn(
+                              "inline-block min-w-[2rem] rounded border px-2 py-0.5 text-xs font-medium tabular-nums cursor-help",
+                              h.consultantsOnSpa > 0
+                                ? "border-orange-400/60 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
+                                : "border-transparent text-muted-foreground",
+                            )}>
+                              {h.consultantsOnSpa}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="max-w-[18rem]">
+                              {h.consultantsOnSpa} consultant(s) on SPA this half-day. Separate metric — never folded into headroom. Pulling someone off SPA to cover a list disrupts their job-plan time and is flagged distinctly.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -208,11 +228,13 @@ function RobustnessPage() {
                             <UnfilledBadge count={d.am.unfilled} />
                           </td>
                           <td className="px-2 py-1.5 text-center">{renderCell(d.am)}</td>
+                          <td className="px-2 py-1.5 text-center">{renderSpa(d.am)}</td>
                           <td className="px-2 py-1.5 text-center">{d.pm.required}</td>
                           <td className="px-2 py-1.5 text-center">
                             <UnfilledBadge count={d.pm.unfilled} />
                           </td>
                           <td className="px-2 py-1.5 text-center">{renderCell(d.pm)}</td>
+                          <td className="px-2 py-1.5 text-center">{renderSpa(d.pm)}</td>
                           <td className="px-2 py-1.5 text-xs text-muted-foreground">
                             {notes.length === 0 ? "—" : notes.join(" · ")}
                           </td>

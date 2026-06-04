@@ -146,11 +146,17 @@ function SimulatePage() {
                   <tr>
                     <th className="px-2 py-1 text-left font-medium">Date</th>
                     <th className="px-2 py-1 text-center font-medium" colSpan={2}>AM headroom</th>
+                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>AM SPA <span className="font-normal opacity-70">(separate)</span></th>
                     <th className="px-2 py-1 text-center font-medium" colSpan={2}>PM headroom</th>
+                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>PM SPA <span className="font-normal opacity-70">(separate)</span></th>
                     <th className="px-2 py-1 text-left font-medium">Verdict</th>
                   </tr>
                   <tr>
                     <th />
+                    <th className="px-2 text-[10px] font-normal">Base</th>
+                    <th className="px-2 text-[10px] font-normal">Sim</th>
+                    <th className="px-2 text-[10px] font-normal">Base</th>
+                    <th className="px-2 text-[10px] font-normal">Sim</th>
                     <th className="px-2 text-[10px] font-normal">Base</th>
                     <th className="px-2 text-[10px] font-normal">Sim</th>
                     <th className="px-2 text-[10px] font-normal">Base</th>
@@ -178,12 +184,16 @@ function SimulatePage() {
                             {s.am.headroom}
                           </span>
                         </td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">{base.am.consultantsOnSpa}</td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">{s.am.consultantsOnSpa}</td>
                         <td className="px-2 py-1.5 text-center">{base.pm.headroom}</td>
                         <td className="px-2 py-1.5 text-center">
                           <span className={cn("inline-block min-w-[2rem] rounded px-1.5 py-0.5 font-medium", riskColor(s.pm.risk))}>
                             {s.pm.headroom}
                           </span>
                         </td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">{base.pm.consultantsOnSpa}</td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">{s.pm.consultantsOnSpa}</td>
                         <td className={cn(
                           "px-2 py-1.5 font-medium",
                           verdict === "New shortfall" && "text-red-600",

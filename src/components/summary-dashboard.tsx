@@ -227,6 +227,8 @@ export function SummaryDashboard() {
                     {days.map((d) => {
                       const risk = worstRisk(d.am.risk, d.pm.risk);
                       const headroom = Math.min(d.am.headroom, d.pm.headroom);
+                      // SPA is a SEPARATE metric — surface it alongside, never inside, headroom.
+                      const spa = d.am.consultantsOnSpa + d.pm.consultantsOnSpa;
                       return (
                         <Tooltip key={d.date}>
                           <TooltipTrigger asChild>
@@ -240,14 +242,16 @@ export function SummaryDashboard() {
                             >
                               <span className="font-medium">{shortDay(d.date)}</span>
                               <span className="text-[10px] opacity-80">headroom {headroom}</span>
+                              <span className="text-[10px] opacity-80">SPA {spa} <span className="opacity-70">(separate)</span></span>
                               <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
                             </Link>
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="text-xs">
                               {formatDateGB(d.date)}<br />
-                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, {d.am.unfilled} unfilled)<br />
-                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, {d.pm.unfilled} unfilled)
+                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, SPA {d.am.consultantsOnSpa}, {d.am.unfilled} unfilled)<br />
+                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, SPA {d.pm.consultantsOnSpa}, {d.pm.unfilled} unfilled)<br />
+                              <span className="text-muted-foreground">SPA is reported separately and never folded into headroom.</span>
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -378,7 +382,7 @@ export function SummaryDashboard() {
               List coverage breakdown — next 7 days
             </CardTitle>
             <CardDescription>
-              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA-needed sessions.
+              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA half-days (SPA is reported separately and never folded into headroom).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -395,6 +399,7 @@ export function SummaryDashboard() {
                       <th className="pb-2 pr-4 font-medium text-right">Lists</th>
                       <th className="pb-2 pr-4 font-medium text-right">Solo-capable</th>
                       <th className="pb-2 pr-4 font-medium text-right">Unfilled</th>
+                      <th className="pb-2 pr-4 font-medium text-right text-orange-700">SPA (separate)</th>
                       <th className="pb-2 font-medium">SPA needed</th>
                     </tr>
                   </thead>
@@ -403,6 +408,10 @@ export function SummaryDashboard() {
                       const totalLists = d.am.total + d.pm.total;
                       const totalSolo = d.am.soloCapable + d.pm.soloCapable;
                       const totalUnfilled = d.am.unfilled + d.pm.unfilled;
+                      const robustDay = days.find((r) => r.date === d.date);
+                      const amSpa = robustDay?.am.consultantsOnSpa ?? 0;
+                      const pmSpa = robustDay?.pm.consultantsOnSpa ?? 0;
+                      const totalSpa = amSpa + pmSpa;
                       const spaHalves: string[] = [];
                       if (d.am.spaNeeded) spaHalves.push("AM");
                       if (d.pm.spaNeeded) spaHalves.push("PM");
@@ -459,6 +468,22 @@ export function SummaryDashboard() {
                                 <p className="text-xs">
                                   AM: {d.am.unfilled} unfilled<br />
                                   PM: {d.pm.unfilled} unfilled
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn("cursor-help text-orange-700", totalSpa === 0 && "text-muted-foreground")}>
+                                  {totalSpa}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">
+                                  AM: {amSpa} consultant(s) on SPA<br />
+                                  PM: {pmSpa} consultant(s) on SPA<br />
+                                  <span className="text-muted-foreground">SPA is a separate metric — not added into headroom.</span>
                                 </p>
                               </TooltipContent>
                             </Tooltip>
