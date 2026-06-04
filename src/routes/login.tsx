@@ -56,6 +56,7 @@ function LoginPage() {
 
   const handleGoogle = async () => {
     setBusy(true);
+    setRememberMe(remember);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
