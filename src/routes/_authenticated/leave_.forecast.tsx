@@ -11,7 +11,7 @@ import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { loadLeavePressure, pressureColor, type DayPressure } from "@/lib/audit/leave-pressure";
 import { LeaveMonthlyCalendar } from "@/components/leave-monthly-calendar";
 
-export const Route = createFileRoute("/_authenticated/leave/forecast")({
+export const Route = createFileRoute("/_authenticated/leave_/forecast")({
   component: LeaveForecastPage,
 });
 
