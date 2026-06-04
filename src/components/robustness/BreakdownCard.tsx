@@ -15,7 +15,7 @@ type IconName = "check" | "coffee" | "info" | "list" | "ban" | "user-minus" | "x
 
 type MetricKey =
   | "headroom"
-  | "headroomWithSpa"
+  | "spa"
   | "supervisedOnly"
   | "excluded";
 
@@ -23,12 +23,12 @@ const METRIC_META: Record<MetricKey, { label: string; chipClass: string; explain
   headroom: {
     label: "→ headroom",
     chipClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
-    explainer: "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8).",
+    explainer: "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8). SPA is NOT included here.",
   },
-  headroomWithSpa: {
-    label: "→ headroom (+SPA)",
+  spa: {
+    label: "→ SPA (separate)",
     chipClass: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/40",
-    explainer: "Flexible cover: only counts if a consultant is pulled off SPA. Included in the headroom-with-SPA metric.",
+    explainer: "Consultants on SPA time. Tracked as a SEPARATE metric — never added into headroom. Pulling a consultant off SPA to cover a list is a disruption flag, not spare capacity.",
   },
   supervisedOnly: {
     label: "→ supervised only",
