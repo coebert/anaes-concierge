@@ -2249,6 +2249,8 @@ export async function performRotaSync() {
         rows_skipped_validation: skipped.length,
         rows_failed: errors.length,
         errors_count: errors.length,
+        rows_deleted: nonWorkingCleaned,
+        non_working_cleaned: nonWorkingCleaned,
         notes: rotaNotes,
       });
     if (rotaMetricsErr) {
