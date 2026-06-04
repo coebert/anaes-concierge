@@ -111,6 +111,16 @@ function LoginPage() {
                 required
               />
             </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="remember"
+                checked={remember}
+                onCheckedChange={(v) => setRemember(v === true)}
+              />
+              <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                Keep me signed in
+              </Label>
+            </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
             </Button>
