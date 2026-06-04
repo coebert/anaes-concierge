@@ -119,11 +119,13 @@ export type Database = {
           errors_count: number
           id: string
           is_backfill: boolean
+          non_working_cleaned: number
           notes: string | null
           ok: boolean
           per_row_attempts: number
           per_row_failed: number
           per_row_succeeded: number
+          rows_deleted: number
           rows_drafted: number
           rows_failed: number
           rows_pulled: number
@@ -143,11 +145,13 @@ export type Database = {
           errors_count?: number
           id?: string
           is_backfill?: boolean
+          non_working_cleaned?: number
           notes?: string | null
           ok: boolean
           per_row_attempts?: number
           per_row_failed?: number
           per_row_succeeded?: number
+          rows_deleted?: number
           rows_drafted?: number
           rows_failed?: number
           rows_pulled?: number
@@ -167,11 +171,13 @@ export type Database = {
           errors_count?: number
           id?: string
           is_backfill?: boolean
+          non_working_cleaned?: number
           notes?: string | null
           ok?: boolean
           per_row_attempts?: number
           per_row_failed?: number
           per_row_succeeded?: number
+          rows_deleted?: number
           rows_drafted?: number
           rows_failed?: number
           rows_pulled?: number
