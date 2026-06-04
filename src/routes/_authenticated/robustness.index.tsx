@@ -35,6 +35,13 @@ function RobustnessPage() {
   const days = data?.days ?? [];
   const flagged = days.filter((d) => d.am.risk !== "ok" || d.pm.risk !== "ok");
   const shortfalls = days.filter((d) => d.am.risk === "shortfall" || d.pm.risk === "shortfall");
+  // SPA is a SEPARATE metric — never folded into headroom. Aggregate the
+  // number of consultant-half-days spent on SPA across the visible window
+  // so it shows up in the audit totals on its own.
+  const spaHalfDays = days.reduce(
+    (sum, d) => sum + d.am.consultantsOnSpa + d.pm.consultantsOnSpa,
+    0,
+  );
 
   return (
     <TooltipProvider>
