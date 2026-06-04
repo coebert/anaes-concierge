@@ -32,6 +32,8 @@ const baseRow = {
   upsert_retries_total: 0,
   errors_count: 0,
   notes: null,
+  rows_deleted: 0,
+  non_working_cleaned: 0,
 };
 
 /** Simulates an unvalidated server handler that just hands its DB rows
