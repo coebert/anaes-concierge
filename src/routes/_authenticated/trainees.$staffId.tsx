@@ -78,10 +78,10 @@ function TraineeDetailPage() {
         : { data: [] as any[] };
 
       // Mirror the overview page: a "solo" entry on a theatre session that
-      // also has a consultant rostered is in fact supervised. Without this
-      // reclassification, the detail page disagrees with the overview's
-      // solo/supervised counts and curriculum-progress percentages.
-      const consultantSessionIds = new Set<string>();
+      // also has a consultant OR SAS doctor rostered is in fact supervised.
+      // Without this reclassification, the detail page disagrees with the
+      // overview's solo/supervised counts and curriculum-progress percentages.
+      const supervisorSessionIds = new Set<string>();
       if (tsIds.length) {
         const { data: tsAssigns, error: e6 } = await supabase
           .from("rota_assignments")
@@ -89,11 +89,11 @@ function TraineeDetailPage() {
             "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
           )
           .in("theatre_session_id", tsIds)
-          .eq("profiles.grade", "consultant")
+          .in("profiles.grade", ["consultant", "sas"])
           .range(0, 9999);
         if (e6) throw e6;
         for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
-          if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
+          if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
         }
       }
 
@@ -102,7 +102,7 @@ function TraineeDetailPage() {
         role_on_list:
           a.role_on_list === "solo" &&
           a.theatre_session_id &&
-          consultantSessionIds.has(a.theatre_session_id)
+          supervisorSessionIds.has(a.theatre_session_id)
             ? "supervised"
             : a.role_on_list,
       }));

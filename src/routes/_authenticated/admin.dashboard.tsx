@@ -610,13 +610,15 @@ function AdminDashboardPage() {
     }
 
     // Trainees genuinely working solo today: must be assigned to a theatre
-    // AM/PM list, role = solo, no supervisor, and no consultant sharing
-    // the same theatre_session_id.
-    const consultantSessionsToday = new Set<string>();
+    // AM/PM list, role = solo, no supervisor, and no consultant OR SAS
+    // doctor sharing the same theatre_session_id.
+    const supervisorSessionsToday = new Set<string>();
     for (const a of data.assignments) {
       if (!a.theatre_session_id) continue;
       const p = profilesById.get(a.staff_id);
-      if (p?.grade === "consultant") consultantSessionsToday.add(a.theatre_session_id);
+      if (p?.grade === "consultant" || p?.grade === "sas") {
+        supervisorSessionsToday.add(a.theatre_session_id);
+      }
     }
     const traineeSolo = data.assignments
       .filter((a) => {
@@ -626,9 +628,9 @@ function AdminDashboardPage() {
         if (a.supervisor_id) return false;
         const p = profilesById.get(a.staff_id);
         if (!p || p.grade !== "trainee") return false;
-        // Require a theatre_session_id so we can verify no consultant is on it.
+        // Require a theatre_session_id so we can verify no supervisor is on it.
         if (!a.theatre_session_id) return false;
-        if (consultantSessionsToday.has(a.theatre_session_id)) return false;
+        if (supervisorSessionsToday.has(a.theatre_session_id)) return false;
         return true;
       })
       .map((a) => profilesById.get(a.staff_id)!)
