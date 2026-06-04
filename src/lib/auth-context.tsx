@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { shouldDropSessionOnLoad } from "@/lib/remember-me";
 
 export type AppRole = "admin" | "rota_coordinator" | "staff";
 export type StaffGrade = "consultant" | "sas" | "trainee";
