@@ -153,7 +153,7 @@ export function BreakdownCard({
                       const entryBorder =
                         entryMetric === "headroom"
                           ? "border-l-emerald-500"
-                          : entryMetric === "headroomWithSpa"
+                          : entryMetric === "spa"
                             ? "border-l-orange-500"
                             : entryMetric === "supervisedOnly"
                               ? "border-l-sky-500"
