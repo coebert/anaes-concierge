@@ -456,6 +456,7 @@ export async function computeRobustness(
     const dow = new Date(date + "T00:00:00Z").getUTCDay();
     const offToday = leaveByDate.get(date) ?? new Set<string>();
     const otherDutyToday = dailyUnavailable.get(date) ?? new Set<string>();
+    const rosteredToday = workingToday.get(date) ?? new Set<string>();
 
     const mkHalf = (req: number, half: SessionHalf): HalfDayCapacity => {
       const halfKey = `${date}|${half}`;
@@ -470,6 +471,11 @@ export async function computeRobustness(
         if (extraStaffOff.has(s.id)) continue;
         if ((s.ltft_days_off ?? []).includes(dow)) continue;
         if (otherDutyToday.has(s.id)) continue;
+        // Only count staff who have evidence of being rostered to work today.
+        // CLWRota records a row for every working slot, so no rows = not on
+        // duty (e.g. day off in a rolling rota, between rotations, etc.).
+        if (!rosteredToday.has(s.id)) continue;
+
 
         const grade = (s.grade as Grade) ?? "unknown";
         const isSpa = spaThisHalf.has(s.id);
