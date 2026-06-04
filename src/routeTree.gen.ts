@@ -30,7 +30,7 @@ import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
-import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave.forecast'
+import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
@@ -164,9 +164,9 @@ const AuthenticatedRobustnessConsultantFeasibilityRoute =
   } as any)
 const AuthenticatedLeaveForecastRoute =
   AuthenticatedLeaveForecastRouteImport.update({
-    id: '/forecast',
-    path: '/forecast',
-    getParentRoute: () => AuthenticatedLeaveRoute,
+    id: '/leave_/forecast',
+    path: '/leave/forecast',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedCoordinatorRotaRoute =
   AuthenticatedCoordinatorRotaRouteImport.update({
@@ -296,7 +296,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/chat': typeof AuthenticatedChatRouteWithChildren
-  '/leave': typeof AuthenticatedLeaveRouteWithChildren
+  '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
@@ -337,7 +337,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
-  '/leave': typeof AuthenticatedLeaveRouteWithChildren
+  '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
@@ -382,7 +382,7 @@ export interface FileRoutesById {
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
-  '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
+  '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/chat': typeof ApiChatRoute
@@ -404,7 +404,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
-  '/_authenticated/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -535,7 +535,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/duties'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
-    | '/_authenticated/leave/forecast'
+    | '/_authenticated/leave_/forecast'
     | '/_authenticated/robustness/consultant-feasibility'
     | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/simulate'
@@ -709,12 +709,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/leave/forecast': {
-      id: '/_authenticated/leave/forecast'
-      path: '/forecast'
+    '/_authenticated/leave_/forecast': {
+      id: '/_authenticated/leave_/forecast'
+      path: '/leave/forecast'
       fullPath: '/leave/forecast'
       preLoaderRoute: typeof AuthenticatedLeaveForecastRouteImport
-      parentRoute: typeof AuthenticatedLeaveRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/coordinator/rota': {
       id: '/_authenticated/coordinator/rota'
@@ -886,17 +886,6 @@ const AuthenticatedChatRouteChildren: AuthenticatedChatRouteChildren = {
 const AuthenticatedChatRouteWithChildren =
   AuthenticatedChatRoute._addFileChildren(AuthenticatedChatRouteChildren)
 
-interface AuthenticatedLeaveRouteChildren {
-  AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
-}
-
-const AuthenticatedLeaveRouteChildren: AuthenticatedLeaveRouteChildren = {
-  AuthenticatedLeaveForecastRoute: AuthenticatedLeaveForecastRoute,
-}
-
-const AuthenticatedLeaveRouteWithChildren =
-  AuthenticatedLeaveRoute._addFileChildren(AuthenticatedLeaveRouteChildren)
-
 interface AuthenticatedTraineesRouteChildren {
   AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
   AuthenticatedTraineesStartDateAuditRoute: typeof AuthenticatedTraineesStartDateAuditRoute
@@ -917,7 +906,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
-  AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
+  AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -937,6 +926,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
+  AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
@@ -948,7 +938,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRouteWithChildren,
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
-  AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
+  AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
@@ -968,6 +958,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
+  AuthenticatedLeaveForecastRoute: AuthenticatedLeaveForecastRoute,
   AuthenticatedRobustnessConsultantFeasibilityRoute:
     AuthenticatedRobustnessConsultantFeasibilityRoute,
   AuthenticatedRobustnessListFeasibilityRoute:
@@ -994,3 +985,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
