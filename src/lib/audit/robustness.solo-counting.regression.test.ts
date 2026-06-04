@@ -244,7 +244,7 @@ describe("Regression — solo counting change does not break per-day list covera
     fixture.theatre_sessions = [ts("t1", "am")];
     fixture.rota_assignments = [theatreAsn("ct2-a", "am", "t1", "solo")];
 
-    const cov = await computeListCoverage(DATE, DATE);
+    const cov = await computeListCoverage(DATE, DATE, { requireRosterEvidence: false });
     expect(cov).toHaveLength(1);
     expect(cov[0].am).toEqual({
       total: 1,
@@ -260,7 +260,7 @@ describe("Regression — solo counting change does not break per-day list covera
     fixture.theatre_sessions = [ts("t1", "am")];
     fixture.rota_assignments = [theatreAsn("st7-a", "am", "t1", "solo")];
 
-    const am = (await computeListCoverage(DATE, DATE))[0].am;
+    const am = (await computeListCoverage(DATE, DATE, { requireRosterEvidence: false }))[0].am;
     expect(am.soloCapable).toBe(1);
     expect(am.supervised).toBe(0);
     expect(am.unfilled).toBe(0);
@@ -274,7 +274,7 @@ describe("Regression — solo counting change does not break per-day list covera
       theatreAsn("ct2-a", "am", "t1", "supervisee"),
     ];
 
-    const am = (await computeListCoverage(DATE, DATE))[0].am;
+    const am = (await computeListCoverage(DATE, DATE, { requireRosterEvidence: false }))[0].am;
     expect(am.total).toBe(1);
     expect(am.soloCapable).toBe(1);
     expect(am.supervised).toBe(0);
@@ -286,7 +286,7 @@ describe("Regression — solo counting change does not break per-day list covera
     fixture.theatre_sessions = [ts("t1", "am"), ts("t2", "am")];
     fixture.rota_assignments = [theatreAsn("c1", "am", "t1", "solo")];
 
-    const am = (await computeListCoverage(DATE, DATE))[0].am;
+    const am = (await computeListCoverage(DATE, DATE, { requireRosterEvidence: false }))[0].am;
     expect(am.total).toBe(2);
     expect(am.soloCapable).toBe(1);
     expect(am.supervised).toBe(0);
@@ -305,7 +305,7 @@ describe("Regression — solo counting change does not break per-day list covera
       theatreAsn("st7-a", "pm", "t-pm-1", "solo"),  // solo-capable PM
     ];
 
-    const day = (await computeListCoverage(DATE, DATE))[0];
+    const day = (await computeListCoverage(DATE, DATE, { requireRosterEvidence: false }))[0];
     expect(day.am).toMatchObject({ total: 2, soloCapable: 1, supervised: 1, unfilled: 0 });
     expect(day.pm).toMatchObject({ total: 1, soloCapable: 1, supervised: 0, unfilled: 0 });
   });
@@ -323,7 +323,7 @@ describe("Regression — solo counting change does not break per-day list covera
         profiles: profileOf("c-spa") },
     ];
 
-    const cov = await computeListCoverage("2026-06-01", "2026-06-07");
+    const cov = await computeListCoverage("2026-06-01", "2026-06-07", { requireRosterEvidence: false });
     // 2026-06-01 Mon … 2026-06-05 Fri → 5 weekdays.
     expect(cov.map((d) => d.date)).toEqual([
       "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
