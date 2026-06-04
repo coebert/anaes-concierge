@@ -59,6 +59,8 @@ export const clwRotaSyncMetricRowSchema = z.object({
   errors_count: z.number(),
   notes: z.string().nullable(),
   is_backfill: z.boolean(),
+  rows_deleted: z.number(),
+  non_working_cleaned: z.number(),
 }) satisfies z.ZodType<ClwRotaSyncMetricRow>;
 
 export const listClwRotaSyncMetricsResponseSchema = z.object({
