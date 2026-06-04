@@ -125,7 +125,7 @@ function RobustnessPage() {
           <CardHeader>
             <CardTitle className="text-base">Daily coverage headroom</CardTitle>
             <CardDescription>
-              Each cell shows the spare solo-capable headroom, with a breakdown underneath: <span className="font-mono">consultants · SPA · senior trainees</span>. Click a date to see the full breakdown.
+              Each cell shows the spare solo-capable headroom (SPA NOT included), with a separate SPA count and a breakdown underneath: <span className="font-mono">consultants · senior trainees</span> for headroom, then <span className="font-mono text-orange-700">SPA</span> shown distinctly. Click a date to see the full breakdown.
             </CardDescription>
           </CardHeader>
           <CardContent>
