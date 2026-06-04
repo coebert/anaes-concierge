@@ -171,23 +171,41 @@ function RobustnessPage() {
                                 {h.headroom}
                               </span>
                               <span className="text-[10px] leading-none text-muted-foreground tabular-nums">
-                                {h.consultantsAvailable}c · {h.consultantsOnSpa}s · {h.seniorTraineesAvailable}t
+                                {h.consultantsAvailable}c · {h.seniorTraineesAvailable}t
                               </span>
                             </span>
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="max-w-[18rem]">
-                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs {h.unfilled} unfilled list(s).
+                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs {h.unfilled} unfilled list(s). SPA is reported separately and NOT included in this number.
                               <br />
                               <span className="text-muted-foreground">
                                 Free consultants: {h.consultantsAvailable} ·
-                                Consultants on SPA: {h.consultantsOnSpa} ·
                                 Free senior trainees: {h.seniorTraineesAvailable} ·
                                 Junior trainees: {h.juniorTraineesAvailable} ·
                                 SAS: {h.sasAvailable}
                                 <br />
                                 Staff already covering theatre, POAC, pain clinic or any other clinical activity — and anyone on ICU, obstetrics, on-call, teaching, admin or CIC — are excluded from these counts.
                               </span>
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                      const renderSpa = (h: typeof d.am) => (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={cn(
+                              "inline-block min-w-[2rem] rounded border px-2 py-0.5 text-xs font-medium tabular-nums cursor-help",
+                              h.consultantsOnSpa > 0
+                                ? "border-orange-400/60 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
+                                : "border-transparent text-muted-foreground",
+                            )}>
+                              {h.consultantsOnSpa}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="max-w-[18rem]">
+                              {h.consultantsOnSpa} consultant(s) on SPA this half-day. Separate metric — never folded into headroom. Pulling someone off SPA to cover a list disrupts their job-plan time and is flagged distinctly.
                             </p>
                           </TooltipContent>
                         </Tooltip>
