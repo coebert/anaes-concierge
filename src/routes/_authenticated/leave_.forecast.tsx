@@ -215,7 +215,7 @@ function LeaveForecastPage() {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        <Link to="/leave" className="underline">Back to my leave</Link>
+        <Link to="/leave" className="underline">Back to leave</Link>
         {" · "}
         Weekends excluded. Pending leave is included so you can pre-empt approval pressure.
       </div>

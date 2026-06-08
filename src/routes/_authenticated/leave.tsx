@@ -814,11 +814,11 @@ function LeavePage() {
           </Card>
         </TabsContent>
 
-        {/* ---------------- My requests (original view) ---------------- */}
+        {/* ---------------- Leave overview ---------------- */}
         <TabsContent value="mine">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">My requests</CardTitle>
+              <CardTitle className="text-base">Leave overview</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
