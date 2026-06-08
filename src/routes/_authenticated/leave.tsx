@@ -165,6 +165,30 @@ function LeavePage() {
 
   useEffect(() => { void load(); }, [user?.id]);
 
+  // Refetch yearLeave whenever the selected leave year changes, so prior
+  // and future years return their own rows (the main load only covers a
+  // sliding window around today).
+  useEffect(() => {
+    if (!user) return;
+    const yStart = new Date(selectedYearStartISO + "T00:00:00Z");
+    const yEnd = new Date(yStart);
+    yEnd.setUTCFullYear(yEnd.getUTCFullYear() + 1);
+    const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
+    void supabase
+      .from("leave_requests")
+      .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
+      .in("status", ["approved", "pending"])
+      .lte("start_date", fmtIso(yEnd))
+      .gte("end_date", fmtIso(yStart))
+      .order("start_date", { ascending: true })
+      .range(0, 9999)
+      .then(({ data, error }) => {
+        if (error) toast.error(error.message);
+        else setYearLeave((data ?? []) as LeaveRow[]);
+      });
+  }, [user?.id, selectedYearStartISO]);
+
+
   const cancel = async (id: string) => {
     const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
     if (error) return toast.error(error.message);
