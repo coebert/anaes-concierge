@@ -329,7 +329,7 @@ function LeavePage() {
     const out: Summary[] = [];
     for (const p of profiles) {
       const a = allowanceByStaff.get(p.id);
-      const yearStartISO = a?.leave_year_start ?? defaultYearStartISO;
+      const yearStartISO = selectedYearStartISO;
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
       const professionalAllowance = Number(a?.professional_days ?? DEFAULT_PROFESSIONAL);
