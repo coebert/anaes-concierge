@@ -388,7 +388,7 @@ function LeavePage() {
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
           <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
-          <TabsTrigger value="mine">My requests</TabsTrigger>
+          <TabsTrigger value="mine">Leave overview</TabsTrigger>
         </TabsList>
 
         {/* ---------------- Day search + breakdown ---------------- */}
