@@ -274,17 +274,26 @@ function LeavePage() {
 
   const allowanceRows = useMemo(() => {
     type Bucket = { taken: number; booked: number };
+    type BucketKey =
+      | "annual" | "study" | "professional"
+      | "sick" | "parental" | "compassionate" | "other";
     type Summary = {
       profile: ProfileRow;
       yearStartISO: string;
       annualAllowance: number;
       studyAllowance: number;
       professionalAllowance: number;
-      annual: Bucket;
-      study: Bucket;
-      professional: Bucket;
-      other: Bucket;
+      buckets: Record<BucketKey, Bucket>;
     };
+    const emptyBuckets = (): Record<BucketKey, Bucket> => ({
+      annual: { taken: 0, booked: 0 },
+      study: { taken: 0, booked: 0 },
+      professional: { taken: 0, booked: 0 },
+      sick: { taken: 0, booked: 0 },
+      parental: { taken: 0, booked: 0 },
+      compassionate: { taken: 0, booked: 0 },
+      other: { taken: 0, booked: 0 },
+    });
     const out: Summary[] = [];
     for (const p of profiles) {
       const a = allowanceByStaff.get(p.id);
@@ -292,24 +301,22 @@ function LeavePage() {
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
       const professionalAllowance = Number(a?.professional_days ?? DEFAULT_PROFESSIONAL);
-      const buckets: Record<"annual" | "study" | "professional" | "other", Bucket> = {
-        annual: { taken: 0, booked: 0 },
-        study: { taken: 0, booked: 0 },
-        professional: { taken: 0, booked: 0 },
-        other: { taken: 0, booked: 0 },
-      };
+      const buckets = emptyBuckets();
       for (const r of yearLeave) {
         if (r.staff_id !== p.id) continue;
         if (!leaveOverlapsYear(r, yearStartISO)) continue;
         const days = leaveWorkingDays(r);
         if (days <= 0) continue;
-        const bucketKey: "annual" | "study" | "professional" | "other" =
+        const k: BucketKey =
           r.type === "annual" ? "annual"
           : r.type === "study" ? "study"
           : r.type === "professional" ? "professional"
+          : r.type === "sick" ? "sick"
+          : r.type === "parental" ? "parental"
+          : r.type === "compassionate" ? "compassionate"
           : "other";
-        if (r.status === "approved") buckets[bucketKey].taken += days;
-        else if (r.status === "pending") buckets[bucketKey].booked += days;
+        if (r.status === "approved") buckets[k].taken += days;
+        else if (r.status === "pending") buckets[k].booked += days;
       }
       out.push({
         profile: p,
@@ -317,10 +324,7 @@ function LeavePage() {
         annualAllowance,
         studyAllowance,
         professionalAllowance,
-        annual: buckets.annual,
-        study: buckets.study,
-        professional: buckets.professional,
-        other: buckets.other,
+        buckets,
       });
     }
     return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
