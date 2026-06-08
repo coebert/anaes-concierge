@@ -241,6 +241,7 @@ export function auditTcs2016(
   const summarise = (s: Shift): ShiftSummary => ({
     date: s.date,
     session: s.session,
+    sessions: s.sessions,
     hours: s.hours,
     duty_type: s.duty_type,
     isNight: s.isNight,
