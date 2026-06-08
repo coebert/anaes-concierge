@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { cn, formatDateGB } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +88,19 @@ function LeavePage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
+  // Default leave year start: April 1st of the current (or prior, if before
+  // April) calendar year — the NHS convention.
+  const defaultYearStartISO = useMemo(() => {
+    const t = new Date();
+    const year = t.getUTCMonth() >= 3 ? t.getUTCFullYear() : t.getUTCFullYear() - 1;
+    return `${year}-04-01`;
+  }, []);
+
+  // Selected leave year for the Allowances tab (uniform across all staff
+  // when set — overrides any per-staff leave_year_start so the table is
+  // consistent for prior- and future-year viewing).
+  const [selectedYearStartISO, setSelectedYearStartISO] = useState<string>(defaultYearStartISO);
+
   // Day-search state: defaults to today.
   const [pickedDate, setPickedDate] = useState<Date>(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -150,6 +164,30 @@ function LeavePage() {
   };
 
   useEffect(() => { void load(); }, [user?.id]);
+
+  // Refetch yearLeave whenever the selected leave year changes, so prior
+  // and future years return their own rows (the main load only covers a
+  // sliding window around today).
+  useEffect(() => {
+    if (!user) return;
+    const yStart = new Date(selectedYearStartISO + "T00:00:00Z");
+    const yEnd = new Date(yStart);
+    yEnd.setUTCFullYear(yEnd.getUTCFullYear() + 1);
+    const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
+    void supabase
+      .from("leave_requests")
+      .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
+      .in("status", ["approved", "pending"])
+      .lte("start_date", fmtIso(yEnd))
+      .gte("end_date", fmtIso(yStart))
+      .order("start_date", { ascending: true })
+      .range(0, 9999)
+      .then(({ data, error }) => {
+        if (error) toast.error(error.message);
+        else setYearLeave((data ?? []) as LeaveRow[]);
+      });
+  }, [user?.id, selectedYearStartISO]);
+
 
   const cancel = async (id: string) => {
     const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
@@ -256,15 +294,9 @@ function LeavePage() {
   }, [sickRows]);
 
 
-  // --- Allowance summary: per-staff balances for the current leave year. ---
-  // Default leave year start: April 1st of the current (or prior, if before
-  // April) calendar year — the NHS convention. Per-staff overrides come from
-  // leave_allowances.leave_year_start.
-  const defaultYearStartISO = useMemo(() => {
-    const t = new Date();
-    const year = t.getUTCMonth() >= 3 ? t.getUTCFullYear() : t.getUTCFullYear() - 1;
-    return `${year}-04-01`;
-  }, []);
+  // --- Allowance summary: per-staff balances for the selected leave year. ---
+
+
 
   const allowanceByStaff = useMemo(() => {
     const m = new Map<string, AllowanceRow>();
@@ -297,7 +329,7 @@ function LeavePage() {
     const out: Summary[] = [];
     for (const p of profiles) {
       const a = allowanceByStaff.get(p.id);
-      const yearStartISO = a?.leave_year_start ?? defaultYearStartISO;
+      const yearStartISO = selectedYearStartISO;
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
       const professionalAllowance = Number(a?.professional_days ?? DEFAULT_PROFESSIONAL);
@@ -328,7 +360,7 @@ function LeavePage() {
       });
     }
     return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
-  }, [profiles, yearLeave, allowanceByStaff, defaultYearStartISO]);
+  }, [profiles, yearLeave, allowanceByStaff, selectedYearStartISO]);
 
   const allowanceVisible = useMemo(() => {
     const q = allowanceFilter.trim().toLowerCase();
@@ -656,12 +688,34 @@ function LeavePage() {
                   count as 0.5. Study and professional leave are tracked separately.
                 </CardDescription>
               </div>
-              <Input
-                value={allowanceFilter}
-                onChange={(e) => setAllowanceFilter(e.target.value)}
-                placeholder="Filter by name / grade…"
-                className="w-[260px]"
-              />
+              <div className="flex items-end gap-2">
+                <Select value={selectedYearStartISO} onValueChange={setSelectedYearStartISO}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const baseYear = Number(defaultYearStartISO.slice(0, 4));
+                      const opts: { iso: string; label: string }[] = [];
+                      for (let y = baseYear + 2; y >= baseYear - 5; y--) {
+                        opts.push({
+                          iso: `${y}-04-01`,
+                          label: `Apr ${y} – Mar ${y + 1}${y === baseYear ? " (current)" : ""}`,
+                        });
+                      }
+                      return opts.map((o) => (
+                        <SelectItem key={o.iso} value={o.iso}>{o.label}</SelectItem>
+                      ));
+                    })()}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={allowanceFilter}
+                  onChange={(e) => setAllowanceFilter(e.target.value)}
+                  placeholder="Filter by name / grade…"
+                  className="w-[260px]"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
