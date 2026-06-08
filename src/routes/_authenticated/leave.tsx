@@ -129,7 +129,10 @@ function LeavePage() {
     const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
 
     // Rely on RLS: staff see own rows; coords/admins see everyone.
-    const [leaveRes, profRes, allowRes, yearLeaveRes] = await Promise.all([
+    // NOTE: yearLeave is fetched by a separate effect keyed on
+    // selectedYearStartISO, so it isn't loaded here (avoids a race where
+    // this load completes after the year-specific fetch and overwrites it).
+    const [leaveRes, profRes, allowRes] = await Promise.all([
       supabase
         .from("leave_requests")
         .select("*")
@@ -144,22 +147,13 @@ function LeavePage() {
       supabase
         .from("leave_allowances")
         .select("staff_id, leave_year_start, annual_days, study_days, professional_days"),
-      supabase
-        .from("leave_requests")
-        .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
-        .in("status", ["approved", "pending"])
-        .gte("end_date", fmtIso(yearLookback))
-        .order("start_date", { ascending: true })
-        .range(0, 9999),
     ]);
     if (leaveRes.error) toast.error(leaveRes.error.message);
     if (profRes.error) toast.error(profRes.error.message);
     if (allowRes.error) toast.error(allowRes.error.message);
-    if (yearLeaveRes.error) toast.error(yearLeaveRes.error.message);
     setRows((leaveRes.data ?? []) as LeaveRow[]);
     setProfiles((profRes.data ?? []) as ProfileRow[]);
     setAllowances((allowRes.data ?? []) as AllowanceRow[]);
-    setYearLeave((yearLeaveRes.data ?? []) as LeaveRow[]);
     setLoading(false);
   };
 
