@@ -146,6 +146,7 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
       endMs: arr[arr.length - 1].endMs,
       hours: totalH,
       session: arr[0].session,
+      sessions: arr.map((x) => x.session),
       duty_type: arr.map((x) => x.duty_type).join("+"),
       isNight: false,
       isLong: totalH > 10,
