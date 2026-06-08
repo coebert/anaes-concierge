@@ -412,15 +412,33 @@ const SESSION_LABEL: Record<ShiftSummary["session"], string> = {
   night: "Night (21:00–08:00 +1)",
 };
 
+// Start/end hours per half-day, used to render the true span of a merged
+// shift (e.g. AM+PM = 08:00–18:00, AM+PM+eve = 08:00–21:00).
+const SESSION_BOUNDS: Record<ShiftSummary["session"], { start: string; end: string }> = {
+  am: { start: "08:00", end: "13:00" },
+  pm: { start: "13:00", end: "18:00" },
+  eve: { start: "18:00", end: "21:00" },
+  night: { start: "21:00", end: "08:00 +1" },
+};
+
+function shiftLabel(s: ShiftSummary): string {
+  const parts = s.sessions && s.sessions.length > 0 ? s.sessions : [s.session];
+  if (parts.length === 1) return SESSION_LABEL[parts[0]];
+  const tag = parts.map((p) => p.toUpperCase()).join("+");
+  const start = SESSION_BOUNDS[parts[0]].start;
+  const end = SESSION_BOUNDS[parts[parts.length - 1]].end;
+  return `${tag} (${start}–${end})`;
+}
+
 function ShiftRow({ s }: { s: ShiftSummary }) {
   const tags: string[] = [];
   if (s.isNight) tags.push("night");
   if (s.isLong) tags.push("long >10h");
   if (s.isWeekend) tags.push("weekend");
   return (
-    <li className="grid grid-cols-[110px_140px_1fr_auto] items-center gap-2 border-b py-1 text-xs last:border-b-0">
+    <li className="grid grid-cols-[110px_180px_1fr_auto] items-center gap-2 border-b py-1 text-xs last:border-b-0">
       <span className="font-mono">{formatDateGB(s.date)}</span>
-      <span className="text-muted-foreground">{SESSION_LABEL[s.session]}</span>
+      <span className="text-muted-foreground">{shiftLabel(s)}</span>
       <span className="truncate" title={s.duty_type}>{s.duty_type || "—"}</span>
       <span className="flex items-center gap-1">
         <span className="tabular-nums">{s.hours} h</span>

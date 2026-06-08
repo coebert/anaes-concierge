@@ -26,6 +26,8 @@ export type RuleStatus = "pass" | "fail" | "warn" | "indeterminate";
 export type ShiftSummary = {
   date: string;          // session_date (night shifts: the day it starts)
   session: Session;
+  /** All constituent half-day sessions merged into this shift (chronological). */
+  sessions: Session[];
   hours: number;
   duty_type: string;
   isNight: boolean;
@@ -85,6 +87,8 @@ type Shift = {
   endMs: number;
   hours: number;
   session: Session;
+  /** All half-day sessions merged into this shift (chronological). */
+  sessions: Session[];
   duty_type: string;
   isNight: boolean;
   isLong: boolean;       // >= 10h
@@ -109,6 +113,7 @@ function toShift(a: AuditAssignment): Shift {
     endMs,
     hours,
     session: a.session,
+    sessions: [a.session],
     duty_type: a.duty_type,
     isNight: a.session === "night",
     // TCS 2016: a "long shift" lasts MORE than 10 hours. A standard AM+PM
@@ -141,6 +146,7 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
       endMs: arr[arr.length - 1].endMs,
       hours: totalH,
       session: arr[0].session,
+      sessions: arr.map((x) => x.session),
       duty_type: arr.map((x) => x.duty_type).join("+"),
       isNight: false,
       isLong: totalH > 10,
@@ -235,6 +241,7 @@ export function auditTcs2016(
   const summarise = (s: Shift): ShiftSummary => ({
     date: s.date,
     session: s.session,
+    sessions: s.sessions,
     hours: s.hours,
     duty_type: s.duty_type,
     isNight: s.isNight,
