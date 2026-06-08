@@ -132,7 +132,14 @@ function TcsAuditPage() {
       }
 
       const map = new Map<string, AuditAssignment[]>();
+      const seen = new Set<string>();
       for (const a of all) {
+        // Defensive dedupe — one row per (staff, date, session). Prevents an
+        // AM session from ever being counted twice if the upstream query
+        // ever returns overlapping pages.
+        const key = `${a.staff_id}|${a.session_date}|${a.session}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         const arr = map.get(a.staff_id) ?? [];
         const role =
           a.role_on_list === "solo" &&
