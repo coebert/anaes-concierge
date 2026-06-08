@@ -113,6 +113,7 @@ function toShift(a: AuditAssignment): Shift {
     endMs,
     hours,
     session: a.session,
+    sessions: [a.session],
     duty_type: a.duty_type,
     isNight: a.session === "night",
     // TCS 2016: a "long shift" lasts MORE than 10 hours. A standard AM+PM
