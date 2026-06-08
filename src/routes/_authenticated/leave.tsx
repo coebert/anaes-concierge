@@ -274,17 +274,26 @@ function LeavePage() {
 
   const allowanceRows = useMemo(() => {
     type Bucket = { taken: number; booked: number };
+    type BucketKey =
+      | "annual" | "study" | "professional"
+      | "sick" | "parental" | "compassionate" | "other";
     type Summary = {
       profile: ProfileRow;
       yearStartISO: string;
       annualAllowance: number;
       studyAllowance: number;
       professionalAllowance: number;
-      annual: Bucket;
-      study: Bucket;
-      professional: Bucket;
-      other: Bucket;
+      buckets: Record<BucketKey, Bucket>;
     };
+    const emptyBuckets = (): Record<BucketKey, Bucket> => ({
+      annual: { taken: 0, booked: 0 },
+      study: { taken: 0, booked: 0 },
+      professional: { taken: 0, booked: 0 },
+      sick: { taken: 0, booked: 0 },
+      parental: { taken: 0, booked: 0 },
+      compassionate: { taken: 0, booked: 0 },
+      other: { taken: 0, booked: 0 },
+    });
     const out: Summary[] = [];
     for (const p of profiles) {
       const a = allowanceByStaff.get(p.id);
@@ -292,24 +301,22 @@ function LeavePage() {
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
       const professionalAllowance = Number(a?.professional_days ?? DEFAULT_PROFESSIONAL);
-      const buckets: Record<"annual" | "study" | "professional" | "other", Bucket> = {
-        annual: { taken: 0, booked: 0 },
-        study: { taken: 0, booked: 0 },
-        professional: { taken: 0, booked: 0 },
-        other: { taken: 0, booked: 0 },
-      };
+      const buckets = emptyBuckets();
       for (const r of yearLeave) {
         if (r.staff_id !== p.id) continue;
         if (!leaveOverlapsYear(r, yearStartISO)) continue;
         const days = leaveWorkingDays(r);
         if (days <= 0) continue;
-        const bucketKey: "annual" | "study" | "professional" | "other" =
+        const k: BucketKey =
           r.type === "annual" ? "annual"
           : r.type === "study" ? "study"
           : r.type === "professional" ? "professional"
+          : r.type === "sick" ? "sick"
+          : r.type === "parental" ? "parental"
+          : r.type === "compassionate" ? "compassionate"
           : "other";
-        if (r.status === "approved") buckets[bucketKey].taken += days;
-        else if (r.status === "pending") buckets[bucketKey].booked += days;
+        if (r.status === "approved") buckets[k].taken += days;
+        else if (r.status === "pending") buckets[k].booked += days;
       }
       out.push({
         profile: p,
@@ -317,10 +324,7 @@ function LeavePage() {
         annualAllowance,
         studyAllowance,
         professionalAllowance,
-        annual: buckets.annual,
-        study: buckets.study,
-        professional: buckets.professional,
-        other: buckets.other,
+        buckets,
       });
     }
     return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
@@ -673,26 +677,30 @@ function LeavePage() {
                         <TableHead>Grade</TableHead>
                         <TableHead className="text-right" title="Annual taken (approved) / booked (pending)">Annual taken/booked</TableHead>
                         <TableHead className="text-right">Annual allowance</TableHead>
-                        <TableHead className="text-right">Annual remaining</TableHead>
+                        <TableHead className="text-right" title="Allowance minus taken only (booked future leave is NOT subtracted)">Annual remaining (excl. booked)</TableHead>
+                        <TableHead className="text-right" title="Annual remaining minus booked future leave">Annual remaining (after booked)</TableHead>
                         <TableHead className="text-right">Study taken/booked</TableHead>
                         <TableHead className="text-right">Study allowance</TableHead>
                         <TableHead className="text-right">Study remaining</TableHead>
                         <TableHead className="text-right">Professional taken/booked</TableHead>
                         <TableHead className="text-right">Professional allowance</TableHead>
                         <TableHead className="text-right">Professional remaining</TableHead>
-                        <TableHead className="text-right" title="Sick / parental / compassionate / other — informational only, not deducted from an allowance">Other taken/booked</TableHead>
+                        <TableHead className="text-right" title="Sick leave — informational only, not deducted from an allowance">Sick taken/booked</TableHead>
+                        <TableHead className="text-right" title="Parental leave — informational only">Parental taken/booked</TableHead>
+                        <TableHead className="text-right" title="Compassionate leave — informational only">Compassionate taken/booked</TableHead>
+                        <TableHead className="text-right" title="Any other leave type — informational only">Other taken/booked</TableHead>
                         <TableHead className="text-xs text-muted-foreground">Leave year</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {allowanceVisible.map((s) => {
-                        const annualUsed = s.annual.taken + s.annual.booked;
-                        const annualRem = s.annualAllowance - annualUsed;
-                        const studyUsed = s.study.taken + s.study.booked;
+                        const b = s.buckets;
+                        const annualRemExcl = s.annualAllowance - b.annual.taken;
+                        const annualRemAfter = annualRemExcl - b.annual.booked;
+                        const studyUsed = b.study.taken + b.study.booked;
                         const studyRem = s.studyAllowance - studyUsed;
-                        const profUsed = s.professional.taken + s.professional.booked;
+                        const profUsed = b.professional.taken + b.professional.booked;
                         const profRem = s.professionalAllowance - profUsed;
-                        const otherUsed = s.other.taken + s.other.booked;
                         const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
                         const remTone = (rem: number) =>
                           rem < 0 ? "text-destructive font-semibold"
@@ -703,16 +711,19 @@ function LeavePage() {
                             <TableCell className="font-medium">{s.profile.full_name}</TableCell>
                             <TableCell>{gradeLabel(s.profile.grade)}</TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {fmt(s.annual.taken)} / {fmt(s.annual.booked)}
+                              {fmt(b.annual.taken)} / {fmt(b.annual.booked)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-muted-foreground">
                               {fmt(s.annualAllowance)}
                             </TableCell>
-                            <TableCell className={cn("text-right tabular-nums", remTone(annualRem))}>
-                              {fmt(annualRem)}
+                            <TableCell className={cn("text-right tabular-nums", remTone(annualRemExcl))}>
+                              {fmt(annualRemExcl)}
+                            </TableCell>
+                            <TableCell className={cn("text-right tabular-nums", remTone(annualRemAfter))}>
+                              {fmt(annualRemAfter)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {fmt(s.study.taken)} / {fmt(s.study.booked)}
+                              {fmt(b.study.taken)} / {fmt(b.study.booked)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-muted-foreground">
                               {fmt(s.studyAllowance)}
@@ -721,7 +732,7 @@ function LeavePage() {
                               {fmt(studyRem)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {fmt(s.professional.taken)} / {fmt(s.professional.booked)}
+                              {fmt(b.professional.taken)} / {fmt(b.professional.booked)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-muted-foreground">
                               {fmt(s.professionalAllowance)}
@@ -730,7 +741,16 @@ function LeavePage() {
                               {fmt(profRem)}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-muted-foreground">
-                              {fmt(s.other.taken)} / {fmt(s.other.booked)}
+                              {fmt(b.sick.taken)} / {fmt(b.sick.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(b.parental.taken)} / {fmt(b.parental.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(b.compassionate.taken)} / {fmt(b.compassionate.booked)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {fmt(b.other.taken)} / {fmt(b.other.booked)}
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground font-mono">
                               {formatDateGB(s.yearStartISO)}
