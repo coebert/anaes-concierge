@@ -270,15 +270,9 @@ function LeavePage() {
   }, [sickRows]);
 
 
-  // --- Allowance summary: per-staff balances for the current leave year. ---
-  // Default leave year start: April 1st of the current (or prior, if before
-  // April) calendar year — the NHS convention. Per-staff overrides come from
-  // leave_allowances.leave_year_start.
-  const defaultYearStartISO = useMemo(() => {
-    const t = new Date();
-    const year = t.getUTCMonth() >= 3 ? t.getUTCFullYear() : t.getUTCFullYear() - 1;
-    return `${year}-04-01`;
-  }, []);
+  // --- Allowance summary: per-staff balances for the selected leave year. ---
+
+
 
   const allowanceByStaff = useMemo(() => {
     const m = new Map<string, AllowanceRow>();
