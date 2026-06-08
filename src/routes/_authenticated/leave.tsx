@@ -688,12 +688,34 @@ function LeavePage() {
                   count as 0.5. Study and professional leave are tracked separately.
                 </CardDescription>
               </div>
-              <Input
-                value={allowanceFilter}
-                onChange={(e) => setAllowanceFilter(e.target.value)}
-                placeholder="Filter by name / grade…"
-                className="w-[260px]"
-              />
+              <div className="flex items-end gap-2">
+                <Select value={selectedYearStartISO} onValueChange={setSelectedYearStartISO}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const baseYear = Number(defaultYearStartISO.slice(0, 4));
+                      const opts: { iso: string; label: string }[] = [];
+                      for (let y = baseYear + 2; y >= baseYear - 5; y--) {
+                        opts.push({
+                          iso: `${y}-04-01`,
+                          label: `Apr ${y} – Mar ${y + 1}${y === baseYear ? " (current)" : ""}`,
+                        });
+                      }
+                      return opts.map((o) => (
+                        <SelectItem key={o.iso} value={o.iso}>{o.label}</SelectItem>
+                      ));
+                    })()}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={allowanceFilter}
+                  onChange={(e) => setAllowanceFilter(e.target.value)}
+                  placeholder="Filter by name / grade…"
+                  className="w-[260px]"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
