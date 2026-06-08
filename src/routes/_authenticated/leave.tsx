@@ -360,7 +360,7 @@ function LeavePage() {
       });
     }
     return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
-  }, [profiles, yearLeave, allowanceByStaff, defaultYearStartISO]);
+  }, [profiles, yearLeave, allowanceByStaff, selectedYearStartISO]);
 
   const allowanceVisible = useMemo(() => {
     const q = allowanceFilter.trim().toLowerCase();
