@@ -87,6 +87,8 @@ type Shift = {
   endMs: number;
   hours: number;
   session: Session;
+  /** All half-day sessions merged into this shift (chronological). */
+  sessions: Session[];
   duty_type: string;
   isNight: boolean;
   isLong: boolean;       // >= 10h
