@@ -65,7 +65,11 @@ function TcsAuditPage() {
           .from("rota_assignments")
           .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id")
           .in("staff_id", ids)
+          // Deterministic multi-key order so OFFSET pagination cannot return
+          // the same row twice (or skip rows) when sessions share a date.
           .order("session_date", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("session", { ascending: true })
           .range(offset, offset + PAGE - 1);
         if (since) q = q.gte("session_date", since);
         const { data: page, error: e2 } = await q;
