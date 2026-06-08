@@ -42,7 +42,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/", label: "Audit dashboard", icon: LayoutDashboard },
   { to: "/trainees", label: "Trainee audit", icon: GraduationCap, traineeOnly: true },
-  { to: "/leave", label: "My leave", icon: ClipboardList },
+  { to: "/leave", label: "Leave", icon: ClipboardList },
   { to: "/leave/forecast", label: "Leave forecast", icon: Activity, roles: ["admin", "rota_coordinator"] },
   { to: "/robustness", label: "Robustness", icon: ShieldCheck, roles: ["admin", "rota_coordinator"] },
   { to: "/calendar", label: "Global calendar", icon: CalendarDays },
