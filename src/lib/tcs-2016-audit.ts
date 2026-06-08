@@ -26,6 +26,8 @@ export type RuleStatus = "pass" | "fail" | "warn" | "indeterminate";
 export type ShiftSummary = {
   date: string;          // session_date (night shifts: the day it starts)
   session: Session;
+  /** All constituent half-day sessions merged into this shift (chronological). */
+  sessions: Session[];
   hours: number;
   duty_type: string;
   isNight: boolean;
