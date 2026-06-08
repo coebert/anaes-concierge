@@ -88,6 +88,19 @@ function LeavePage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
+  // Default leave year start: April 1st of the current (or prior, if before
+  // April) calendar year — the NHS convention.
+  const defaultYearStartISO = useMemo(() => {
+    const t = new Date();
+    const year = t.getUTCMonth() >= 3 ? t.getUTCFullYear() : t.getUTCFullYear() - 1;
+    return `${year}-04-01`;
+  }, []);
+
+  // Selected leave year for the Allowances tab (uniform across all staff
+  // when set — overrides any per-staff leave_year_start so the table is
+  // consistent for prior- and future-year viewing).
+  const [selectedYearStartISO, setSelectedYearStartISO] = useState<string>(defaultYearStartISO);
+
   // Day-search state: defaults to today.
   const [pickedDate, setPickedDate] = useState<Date>(() => new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
