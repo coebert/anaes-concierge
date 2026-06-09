@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin/theatres")({
   component: AdminTheatresPage,
 });
 
-type Kind = "main" | "day_surgery";
+type Kind = "main" | "day_surgery" | "private";
 
 function AdminTheatresPage() {
   return (
