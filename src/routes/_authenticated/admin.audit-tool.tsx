@@ -45,6 +45,17 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Download, Database, AlertCircle, RotateCcw, Sparkles } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 
