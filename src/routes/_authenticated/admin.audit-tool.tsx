@@ -646,12 +646,14 @@ async function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutpu
   XLSX.writeFile(wb, `audit-reports-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-function downloadPdf(
+async function downloadPdf(
   rows: Array<Record<string, unknown>>,
   columns: string[],
   filename: string,
   sql?: string,
 ) {
+  const { jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(14);
   doc.text(filename, 40, 40);
