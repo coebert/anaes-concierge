@@ -1572,7 +1572,7 @@ export function resolveOffsiteTheatreAlias(
   return undefined;
 }
 
-
+async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
   const { data, error } = await supabaseAdmin
     .from("duty_type_mappings")
     .select("duty_type, pattern, match_type, grade_filter, trainee_seniority_filter, priority, active")
