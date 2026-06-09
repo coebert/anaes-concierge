@@ -24,9 +24,11 @@ import {
   ArrowLeft,
   CalendarX,
   LineChart,
+  Sparkles,
 
   Menu,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,7 @@ const COORDINATOR_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/dashboard", label: "Rota audit data", icon: Activity, roles: ["admin"] },
+  { to: "/admin/audit-tool", label: "AI audit tool", icon: Sparkles, roles: ["admin"] },
   { to: "/admin/tcs-audit", label: "TCS 2016 audit", icon: ShieldCheck, roles: ["admin"] },
   { to: "/admin/rota-gaps", label: "Rota gaps", icon: CalendarX, roles: ["admin"] },
   { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
@@ -73,6 +76,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
 
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { signOut, user, roles, hasRole, grade } = useAuth();
