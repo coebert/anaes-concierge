@@ -113,6 +113,7 @@ function TheatresCard() {
                   <SelectContent>
                     <SelectItem value="main">main</SelectItem>
                     <SelectItem value="day_surgery">day surgery</SelectItem>
+                    <SelectItem value="private">private (NHH)</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="ml-auto flex items-center gap-2">
