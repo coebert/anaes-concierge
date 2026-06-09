@@ -215,6 +215,23 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
+  const { data: spaAdmin } = useQuery({
+    queryKey: ["spa-admin", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,duty_type")
+        .in("duty_type", ["spa", "admin"])
+        .in("session", ["am", "pm"])
+        .gte("session_date", startIso).lte("session_date", endIso);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; staff_id: string; session: SessionHalf; session_date: string;
+        duty_type: "spa" | "admin";
+      }>;
+    },
+  });
+
   const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
     queryKey: ["staff-active-with-grade-safe"],
@@ -353,6 +370,65 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                               });
                             })()}
 
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground/40 text-[10px]">—</div>
+                        )}
+                      </td>
+                    );
+                  }),
+                )}
+              </tr>
+            ))}
+            {/* SPA and Admin sessions — non-clinical, broken down per AM/PM. */}
+            {([
+              { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
+              { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
+            ] as const).map((row) => (
+              <tr key={row.key} className={cn("align-top", row.tint)}>
+                <td className="border-r border-t p-2 font-medium whitespace-nowrap">
+                  {row.label}
+                  <div className="text-[10px] text-muted-foreground">{row.sub}</div>
+                </td>
+                {days.flatMap((d) =>
+                  (["am", "pm"] as SessionHalf[]).map((s) => {
+                    const dayIso = iso(d);
+                    const cell = (spaAdmin ?? [])
+                      .filter((a) => a.duty_type === row.key && a.session_date === dayIso && a.session === s);
+                    const sorted = [...cell].sort(
+                      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+                    );
+                    const isPm = s === "pm";
+                    return (
+                      <td
+                        key={row.key + dayIso + s}
+                        className={cn(
+                          "min-w-[110px] border-b border-t p-1.5 align-top",
+                          isPm ? "border-r" : "border-r border-r-border/30",
+                        )}
+                      >
+                        {sorted.length > 0 ? (
+                          <div className="space-y-1">
+                            {sorted.map((a) => {
+                              const sp = staffById(a.staff_id);
+                              const isConsultant = sp?.grade === "consultant";
+                              const isTrainee = sp?.grade === "trainee";
+                              return (
+                                <Link
+                                  key={a.id}
+                                  to="/calendar/staff/$staffId"
+                                  params={{ staffId: a.staff_id }}
+                                  className={cn(
+                                    "block truncate text-[10px] hover:underline",
+                                    isConsultant && "font-bold",
+                                    isTrainee && "text-blue-600 dark:text-blue-400",
+                                  )}
+                                >
+                                  {staffName(a.staff_id)}
+                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
+                                </Link>
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className="text-muted-foreground/40 text-[10px]">—</div>
