@@ -122,26 +122,15 @@ export const Route = createFileRoute("/api/audit-tool")({
             }),
             execute: async ({ tables }) => {
               if (!tables || tables.length === 0) {
-                const { data, error } = await adminClient
-                  .from("information_schema.tables" as never)
-                  .select("table_name")
-                  .eq("table_schema", "public");
-                if (error) {
-                  // Fallback: hardcoded list
-                  return {
-                    tables: [
-                      "profiles", "rota_assignments", "leave_requests", "leave_allowances",
-                      "job_plans", "fixed_sessions", "theatres", "theatre_sessions",
-                      "specialties", "custom_rota_rules", "rota_rules", "duty_type_mappings",
-                      "duty_type_pool_rules", "user_roles", "trainee_targets",
-                      "rota_change_log", "rota_reclassification_log", "access_requests",
-                      "clwrota_sync_metrics", "clwrota_sync_state", "ai_conversations",
-                      "ai_messages",
-                    ],
-                  };
-                }
-                return { tables: (data ?? []).map((r: any) => r.table_name) };
+                const { data, error } = await userClient.rpc("admin_run_readonly_sql", {
+                  p_query:
+                    "SELECT table_name FROM information_schema.tables " +
+                    "WHERE table_schema = 'public' ORDER BY table_name",
+                });
+                if (error) return { error: error.message };
+                return { tables: (data as Array<{ table_name: string }>).map((r) => r.table_name) };
               }
+
               // Use the readonly SQL to fetch columns
               const sql = `SELECT table_name, column_name, data_type
                 FROM information_schema.columns

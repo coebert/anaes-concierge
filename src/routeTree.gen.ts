@@ -16,6 +16,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
@@ -47,6 +48,7 @@ import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
+import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
@@ -84,6 +86,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuditToolRoute = ApiAuditToolRouteImport.update({
+  id: '/api/audit-tool',
+  path: '/api/audit-tool',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedTraineesRoute = AuthenticatedTraineesRouteImport.update({
@@ -262,6 +269,12 @@ const AuthenticatedAdminClwrotaMetricsRoute =
     path: '/admin/clwrota-metrics',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAuditToolRoute =
+  AuthenticatedAdminAuditToolRouteImport.update({
+    id: '/admin/audit-tool',
+    path: '/admin/audit-tool',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminAccessRequestsRoute =
   AuthenticatedAdminAccessRequestsRouteImport.update({
     id: '/admin/access-requests',
@@ -299,8 +312,10 @@ export interface FileRoutesByFullPath {
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
@@ -340,9 +355,11 @@ export interface FileRoutesByTo {
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
@@ -385,9 +402,11 @@ export interface FileRoutesById {
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/_authenticated/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
@@ -431,8 +450,10 @@ export interface FileRouteTypes {
     | '/leave'
     | '/me'
     | '/trainees'
+    | '/api/audit-tool'
     | '/api/chat'
     | '/admin/access-requests'
+    | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/dashboard'
     | '/admin/duty-categories'
@@ -472,9 +493,11 @@ export interface FileRouteTypes {
     | '/leave'
     | '/me'
     | '/trainees'
+    | '/api/audit-tool'
     | '/api/chat'
     | '/'
     | '/admin/access-requests'
+    | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/dashboard'
     | '/admin/duty-categories'
@@ -516,9 +539,11 @@ export interface FileRouteTypes {
     | '/_authenticated/leave'
     | '/_authenticated/me'
     | '/_authenticated/trainees'
+    | '/api/audit-tool'
     | '/api/chat'
     | '/_authenticated/'
     | '/_authenticated/admin/access-requests'
+    | '/_authenticated/admin/audit-tool'
     | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/duty-categories'
@@ -555,6 +580,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  ApiAuditToolRoute: typeof ApiAuditToolRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksClwrotaSyncRoute: typeof ApiPublicHooksClwrotaSyncRoute
@@ -609,6 +635,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/audit-tool': {
+      id: '/api/audit-tool'
+      path: '/api/audit-tool'
+      fullPath: '/api/audit-tool'
+      preLoaderRoute: typeof ApiAuditToolRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/trainees': {
@@ -828,6 +861,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminClwrotaMetricsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/audit-tool': {
+      id: '/_authenticated/admin/audit-tool'
+      path: '/admin/audit-tool'
+      fullPath: '/admin/audit-tool'
+      preLoaderRoute: typeof AuthenticatedAdminAuditToolRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/access-requests': {
       id: '/_authenticated/admin/access-requests'
       path: '/admin/access-requests'
@@ -911,6 +951,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
+  AuthenticatedAdminAuditToolRoute: typeof AuthenticatedAdminAuditToolRoute
   AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
@@ -943,6 +984,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
+  AuthenticatedAdminAuditToolRoute: AuthenticatedAdminAuditToolRoute,
   AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
@@ -978,6 +1020,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  ApiAuditToolRoute: ApiAuditToolRoute,
   ApiChatRoute: ApiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksClwrotaSyncRoute: ApiPublicHooksClwrotaSyncRoute,
