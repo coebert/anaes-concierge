@@ -198,6 +198,8 @@ function TheatreGridPage() {
 
 type Theatre = { id: string; name: string; kind: "main" | "day_surgery" | "private" };
 
+const DAY_COL_PX = 280; // ~140px per am/pm session cell
+
 function VirtualGrid({
   theatres, days, cellIndex, specialties, onUpsert, onRemove,
 }: {
@@ -218,44 +220,65 @@ function VirtualGrid({
     getItemKey: (i) => theatres[i].id,
   });
 
-  const items = rowVirt.getVirtualItems();
-  const total = rowVirt.getTotalSize();
-  const paddingTop = items.length ? items[0].start : 0;
-  const paddingBottom = items.length ? total - items[items.length - 1].end : 0;
+  const colVirt = useVirtualizer({
+    count: days.length,
+    getScrollElement: () => scrollRef.current,
+    horizontal: true,
+    estimateSize: () => DAY_COL_PX,
+    overscan: 2,
+    getItemKey: (i) => isoDate(days[i]),
+  });
+
+  const rowItems = rowVirt.getVirtualItems();
+  const rowTotal = rowVirt.getTotalSize();
+  const paddingTop = rowItems.length ? rowItems[0].start : 0;
+  const paddingBottom = rowItems.length ? rowTotal - rowItems[rowItems.length - 1].end : 0;
+
+  const colItems = colVirt.getVirtualItems();
+  const colTotal = colVirt.getTotalSize();
+  const paddingLeft = colItems.length ? colItems[0].start : 0;
+  const paddingRight = colItems.length ? colTotal - colItems[colItems.length - 1].end : 0;
 
   return (
     <div
       ref={scrollRef}
       className="relative max-h-[70vh] overflow-auto rounded-md border"
     >
-      <table className="w-full border-collapse text-xs">
+      <table className="border-collapse text-xs" style={{ width: 160 + colTotal }}>
         <thead className="sticky top-0 z-20 bg-card shadow-[0_1px_0_0_hsl(var(--border))]">
           <tr>
-            <th className="sticky left-0 z-30 bg-card p-2 text-left font-medium">Theatre</th>
-            {days.map((d, i) => (
-              <th key={i} colSpan={2} className="border-l p-2 text-center font-medium">
-                {weekdayShort(d)} <span className="text-muted-foreground">{formatDateGB(isoDate(d)).slice(0, 5)}</span>
-              </th>
-            ))}
+            <th className="sticky left-0 z-30 bg-card p-2 text-left font-medium" style={{ width: 160 }}>Theatre</th>
+            {paddingLeft > 0 && <th aria-hidden style={{ width: paddingLeft }} />}
+            {colItems.map((c) => {
+              const d = days[c.index];
+              return (
+                <th key={c.key} colSpan={2} className="border-l p-2 text-center font-medium" style={{ width: c.size }}>
+                  {weekdayShort(d)} <span className="text-muted-foreground">{formatDateGB(isoDate(d)).slice(0, 5)}</span>
+                </th>
+              );
+            })}
+            {paddingRight > 0 && <th aria-hidden style={{ width: paddingRight }} />}
           </tr>
           <tr className="text-[10px] uppercase text-muted-foreground">
-            <th className="sticky left-0 z-30 bg-card"></th>
-            {days.flatMap((d, i) =>
+            <th className="sticky left-0 z-30 bg-card" style={{ width: 160 }}></th>
+            {paddingLeft > 0 && <th aria-hidden style={{ width: paddingLeft }} />}
+            {colItems.flatMap((c) =>
               SESSIONS.map((s) => (
-                <th key={`${i}-${s}`} className="border-l p-1 text-center font-medium">
+                <th key={`${c.key}-${s}`} className="border-l p-1 text-center font-medium" style={{ width: c.size / 2 }}>
                   {s}
                 </th>
               )),
             )}
+            {paddingRight > 0 && <th aria-hidden style={{ width: paddingRight }} />}
           </tr>
         </thead>
         <tbody>
           {paddingTop > 0 && (
             <tr aria-hidden style={{ height: paddingTop }}>
-              <td colSpan={1 + days.length * 2} />
+              <td colSpan={1 + 2 + colItems.length * 2} />
             </tr>
           )}
-          {items.map((v) => {
+          {rowItems.map((v) => {
             const t = theatres[v.index];
             return (
               <tr
@@ -264,16 +287,17 @@ function VirtualGrid({
                 data-index={v.index}
                 className="border-t align-top"
               >
-                <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium">
+                <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium" style={{ width: 160 }}>
                   {t.name}
                   <div className="text-[10px] uppercase text-muted-foreground">{t.kind}</div>
                 </td>
-                {days.flatMap((d) => {
-                  const date = isoDate(d);
+                {paddingLeft > 0 && <td aria-hidden style={{ width: paddingLeft }} />}
+                {colItems.flatMap((c) => {
+                  const date = isoDate(days[c.index]);
                   return SESSIONS.map((s) => {
                     const cell = cellIndex.get(`${t.id}|${date}|${s}`);
                     return (
-                      <td key={`${date}-${s}`} className="border-l p-1 align-top">
+                      <td key={`${date}-${s}`} className="border-l p-1 align-top" style={{ width: c.size / 2 }}>
                         <Cell
                           cell={cell}
                           theatreId={t.id}
@@ -288,12 +312,13 @@ function VirtualGrid({
                     );
                   });
                 })}
+                {paddingRight > 0 && <td aria-hidden style={{ width: paddingRight }} />}
               </tr>
             );
           })}
           {paddingBottom > 0 && (
             <tr aria-hidden style={{ height: paddingBottom }}>
-              <td colSpan={1 + days.length * 2} />
+              <td colSpan={1 + 2 + colItems.length * 2} />
             </tr>
           )}
         </tbody>
