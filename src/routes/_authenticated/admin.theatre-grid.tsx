@@ -80,6 +80,8 @@ function TheatreGridPage() {
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["theatre-sessions-grid", startISO, endISO],
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
