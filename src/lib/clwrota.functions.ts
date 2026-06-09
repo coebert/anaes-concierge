@@ -1920,7 +1920,11 @@ export async function performRotaSync(
         // sets is_non_sag accordingly unless an admin has set
         // non_sag_override on the session.
         const nonSagRegex = /\bnon[\s-]?sag\b|\bnot[\s-]sag\b/i;
-        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""}`;
+        // Include the raw (un-stripped) anaesthetist name — on NHH lists
+        // covered by NHS job plans, CLWRota appends "[Non-SAG]" after the
+        // anaesthetist's rota_name (e.g. "Dr S Abbas [Non-SAG]"). The
+        // surgical slot_titles column does not carry this tag.
+        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""} ${personNameRaw ?? ""}`;
         const isNonSag = nonSagRegex.test(labelBlob);
         // Strip any "[Non-SAG]" / "(non sag)" tag from the consultant
         // name before persisting so UI shows just "Dr S Abbas", not
