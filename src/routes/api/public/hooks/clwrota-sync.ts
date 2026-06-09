@@ -33,7 +33,8 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           return new Response("Unauthorized", { status: 401 });
         }
 
-        const stepParam = new URL(request.url).searchParams.get("step");
+        const params = new URL(request.url).searchParams;
+        const stepParam = params.get("step");
         const steps: Step[] =
           stepParam && (VALID_STEPS as string[]).includes(stepParam)
             ? [stepParam as Step]
@@ -49,13 +50,29 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           );
         }
 
+        // Optional explicit date window for the rota step — used by
+        // historical backfills to walk a long range in Worker-sized slices
+        // (the default report URL spans 30 days back / 120 ahead).
+        const fromDate = params.get("from");
+        const toDate = params.get("to");
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+        if ((fromDate && !dateRe.test(fromDate)) || (toDate && !dateRe.test(toDate))) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "from/to must be YYYY-MM-DD." }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
         // Dynamic import — keeps server-only modules out of the client bundle.
         const { performStaffSync, performRotaSync, performLeaveSync } =
           await import("@/lib/clwrota.functions");
 
         const runners: Record<Step, () => Promise<unknown>> = {
           staff: performStaffSync,
-          rota: performRotaSync,
+          rota: () =>
+            fromDate && toDate
+              ? performRotaSync({ from: fromDate, to: toDate })
+              : performRotaSync(),
           leave: performLeaveSync,
         };
 
