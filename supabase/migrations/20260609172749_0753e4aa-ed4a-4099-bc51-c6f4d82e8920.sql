@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.admin_run_readonly_sql(text) FROM anon, PUBLIC;
