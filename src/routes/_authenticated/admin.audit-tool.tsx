@@ -75,8 +75,25 @@ interface RunSqlOutput {
   error?: string;
 }
 
+const STORAGE_KEY_PREFIX = "audit-tool:messages:";
+
+function loadStoredMessages(userId: string | undefined): UIMessage[] {
+  if (typeof window === "undefined" || !userId) return [];
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY_PREFIX + userId);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as UIMessage[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function AuditToolPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
+  const userId = user?.id;
+  const storageKey = userId ? STORAGE_KEY_PREFIX + userId : null;
+
   const [resetKey, setResetKey] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -95,8 +112,12 @@ function AuditToolPage() {
     [],
   );
 
+  // Lazy-load persisted messages so the conversation survives reloads & navigation.
+  const initialMessages = useMemo(() => loadStoredMessages(userId), [userId]);
+
   const { messages, sendMessage, status, error, setMessages } = useChat({
-    id: `audit-${resetKey}`,
+    id: `audit-${userId ?? "anon"}-${resetKey}`,
+    messages: initialMessages,
     transport,
     onError: (err) => {
       console.error(err);
@@ -106,6 +127,20 @@ function AuditToolPage() {
 
   const [input, setInput] = useState("");
   const isBusy = status === "submitted" || status === "streaming";
+
+  // Persist messages to localStorage so prior Q&A is retained across sessions.
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      if (messages.length === 0) {
+        window.localStorage.removeItem(storageKey);
+      } else {
+        window.localStorage.setItem(storageKey, JSON.stringify(messages));
+      }
+    } catch {
+      // localStorage may be full or unavailable; ignore silently.
+    }
+  }, [messages, storageKey, status]);
 
   useEffect(() => {
     if (!isBusy) textareaRef.current?.focus();
@@ -129,6 +164,13 @@ function AuditToolPage() {
   const onReset = () => {
     setMessages([]);
     setInput("");
+    if (storageKey) {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    }
     setResetKey((k) => k + 1);
   };
 
