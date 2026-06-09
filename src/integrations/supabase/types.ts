@@ -1076,6 +1076,7 @@ export type Database = {
         | "admin"
         | "teaching"
         | "non_clinical"
+        | "nhh_oncall"
       leave_status: "pending" | "approved" | "rejected" | "cancelled"
       leave_type:
         | "annual"
@@ -1096,7 +1097,7 @@ export type Database = {
       rota_source: "manual" | "clwrota"
       session_half: "am" | "pm" | "eve" | "night"
       staff_grade: "consultant" | "sas" | "trainee"
-      theatre_kind: "main" | "day_surgery"
+      theatre_kind: "main" | "day_surgery" | "private"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1243,6 +1244,7 @@ export const Constants = {
         "admin",
         "teaching",
         "non_clinical",
+        "nhh_oncall",
       ],
       leave_status: ["pending", "approved", "rejected", "cancelled"],
       leave_type: [
@@ -1266,7 +1268,7 @@ export const Constants = {
       rota_source: ["manual", "clwrota"],
       session_half: ["am", "pm", "eve", "night"],
       staff_grade: ["consultant", "sas", "trainee"],
-      theatre_kind: ["main", "day_surgery"],
+      theatre_kind: ["main", "day_surgery", "private"],
     },
   },
 } as const
