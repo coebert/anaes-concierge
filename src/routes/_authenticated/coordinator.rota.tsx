@@ -319,6 +319,15 @@ function RotaGridPage() {
                         >
                           {ts ? (
                             <div className="space-y-1">
+                              {ts.is_non_sag && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                  title="NHH list covered as part of NHS job plan (non-SAG)"
+                                >
+                                  Non-SAG
+                                </Badge>
+                              )}
                               {specialtyName(ts.specialty_id) && (
                                 <div className="font-medium truncate">{specialtyName(ts.specialty_id)}</div>
                               )}
