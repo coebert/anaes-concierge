@@ -1803,9 +1803,20 @@ export async function performRotaSync(
       ]);
       const personFirst = pick(row, ["person.first_name"]);
       const personLast = pick(row, ["person.last_name"]);
-      const personName =
+      const personNameRaw =
         pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
         ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+      // Strip any "[Non-SAG]" / "(non sag)" tag from the anaesthetist's name
+      // before using it for staff matching — CLWRota appends the tag after
+      // the rota_name on NHH lists covered as part of NHS job plans
+      // ("Dr S Abbas [Non-SAG]"). Without stripping, the name lookup misses
+      // because "dr s abbas [non-sag]" doesn't equal "dr s abbas".
+      const personName = personNameRaw
+        ? personNameRaw
+            .replace(/[\s]*[\[\(\{][^\]\)\}]*non[\s-]?sag[^\]\)\}]*[\]\)\}]/gi, "")
+            .replace(/[\s,;|\-–—]*\bnon[\s-]?sag\b[\s,;|\-–—]*$/gi, "")
+            .trim() || null
+        : null;
       const theatreName = pick(row, [
         "place.name", "place.external_code",
         "theatre", "location", "room", "Theatre", "list", "Location",
