@@ -316,7 +316,7 @@ function Stat({
 
 function ActionCard({
   to, icon: Icon, title, body,
-}: { to: string; icon: typeof Users; title: string; body: string }) {
+}: { to: string; icon: typeof Users; title: React.ReactNode; body: React.ReactNode }) {
   return (
     <Link to={to} className="group">
       <Card className="h-full transition-colors group-hover:border-primary/40">
