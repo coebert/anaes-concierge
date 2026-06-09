@@ -503,6 +503,15 @@ function TraineesPage() {
                           ICU block only
                         </Badge>
                       ) : null}
+                      {(trainee as { left_at?: string | null }).left_at ? (
+                        <Badge
+                          variant="outline"
+                          className="ml-2 text-xs border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                          title="Automatically marked inactive after >4 weeks with no rota assignment and no approved leave."
+                        >
+                          No longer at Salisbury · since {format(new Date((trainee as { left_at: string }).left_at), "d MMM yyyy")}
+                        </Badge>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       {trainee.training_level ? (
