@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -170,7 +171,7 @@ function TheatreGridPage() {
             Empty cells become new sessions when you choose a specialty or type a consultant.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : !theatres?.length ? (
@@ -178,72 +179,129 @@ function TheatreGridPage() {
               No active theatres. Add some in Theatres first.
             </p>
           ) : (
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 bg-card p-2 text-left font-medium">Theatre</th>
-                  {days.map((d, i) => (
-                    <th key={i} colSpan={2} className="border-l p-2 text-center font-medium">
-                      {weekdayShort(d)} <span className="text-muted-foreground">{formatDateGB(isoDate(d)).slice(0, 5)}</span>
-                    </th>
-                  ))}
-                </tr>
-                <tr className="text-[10px] uppercase text-muted-foreground">
-                  <th className="sticky left-0 z-10 bg-card"></th>
-                  {days.flatMap((d, i) =>
-                    SESSIONS.map((s) => (
-                      <th key={`${i}-${s}`} className="border-l p-1 text-center font-medium">
-                        {s}
-                      </th>
-                    )),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {theatres.map((t) => (
-                  <tr key={t.id} className="border-t align-top">
-                    <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium">
-                      {t.name}
-                      <div className="text-[10px] uppercase text-muted-foreground">{t.kind}</div>
-                    </td>
-                    {days.flatMap((d) => {
-                      const date = isoDate(d);
-                      return SESSIONS.map((s) => {
-                        const cell = cellIndex.get(`${t.id}|${date}|${s}`);
-                        return (
-                          <td key={`${t.id}-${date}-${s}`} className="border-l p-1 align-top">
-                            <Cell
-                              cell={cell}
-                              theatreId={t.id}
-                              date={date}
-                              session={s}
-                              theatreKind={t.kind}
-                              specialties={specialties ?? []}
-                              onChange={(patch) =>
-                                upsert.mutate({
-                                  cell,
-                                  theatre_id: t.id,
-                                  session_date: date,
-                                  session: s,
-                                  patch,
-                                })
-                              }
-                              onClear={() => cell && remove.mutate(cell.id)}
-                            />
-                          </td>
-                        );
-                      });
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <VirtualGrid
+              theatres={theatres}
+              days={days}
+              cellIndex={cellIndex}
+              specialties={specialties ?? []}
+              onUpsert={(theatre_id, session_date, session, cell, patch) =>
+                upsert.mutate({ cell, theatre_id, session_date, session, patch })
+              }
+              onRemove={(id) => remove.mutate(id)}
+            />
           )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+type Theatre = { id: string; name: string; kind: "main" | "day_surgery" | "private" };
+
+function VirtualGrid({
+  theatres, days, cellIndex, specialties, onUpsert, onRemove,
+}: {
+  theatres: Theatre[];
+  days: Date[];
+  cellIndex: Map<string, SessionRow>;
+  specialties: { id: string; name: string }[];
+  onUpsert: (theatreId: string, date: string, session: Sess, cell: SessionRow | undefined, patch: SessionPatch) => void;
+  onRemove: (id: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const rowVirt = useVirtualizer({
+    count: theatres.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 92,
+    overscan: 6,
+    getItemKey: (i) => theatres[i].id,
+  });
+
+  const items = rowVirt.getVirtualItems();
+  const total = rowVirt.getTotalSize();
+  const paddingTop = items.length ? items[0].start : 0;
+  const paddingBottom = items.length ? total - items[items.length - 1].end : 0;
+
+  return (
+    <div
+      ref={scrollRef}
+      className="relative max-h-[70vh] overflow-auto rounded-md border"
+    >
+      <table className="w-full border-collapse text-xs">
+        <thead className="sticky top-0 z-20 bg-card shadow-[0_1px_0_0_hsl(var(--border))]">
+          <tr>
+            <th className="sticky left-0 z-30 bg-card p-2 text-left font-medium">Theatre</th>
+            {days.map((d, i) => (
+              <th key={i} colSpan={2} className="border-l p-2 text-center font-medium">
+                {weekdayShort(d)} <span className="text-muted-foreground">{formatDateGB(isoDate(d)).slice(0, 5)}</span>
+              </th>
+            ))}
+          </tr>
+          <tr className="text-[10px] uppercase text-muted-foreground">
+            <th className="sticky left-0 z-30 bg-card"></th>
+            {days.flatMap((d, i) =>
+              SESSIONS.map((s) => (
+                <th key={`${i}-${s}`} className="border-l p-1 text-center font-medium">
+                  {s}
+                </th>
+              )),
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {paddingTop > 0 && (
+            <tr aria-hidden style={{ height: paddingTop }}>
+              <td colSpan={1 + days.length * 2} />
+            </tr>
+          )}
+          {items.map((v) => {
+            const t = theatres[v.index];
+            return (
+              <tr
+                key={t.id}
+                ref={rowVirt.measureElement}
+                data-index={v.index}
+                className="border-t align-top"
+              >
+                <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium">
+                  {t.name}
+                  <div className="text-[10px] uppercase text-muted-foreground">{t.kind}</div>
+                </td>
+                {days.flatMap((d) => {
+                  const date = isoDate(d);
+                  return SESSIONS.map((s) => {
+                    const cell = cellIndex.get(`${t.id}|${date}|${s}`);
+                    return (
+                      <td key={`${date}-${s}`} className="border-l p-1 align-top">
+                        <Cell
+                          cell={cell}
+                          theatreId={t.id}
+                          date={date}
+                          session={s}
+                          theatreKind={t.kind}
+                          specialties={specialties}
+                          onChange={(patch) => onUpsert(t.id, date, s, cell, patch)}
+                          onClear={() => cell && onRemove(cell.id)}
+                        />
+                      </td>
+                    );
+                  });
+                })}
+              </tr>
+            );
+          })}
+          {paddingBottom > 0 && (
+            <tr aria-hidden style={{ height: paddingBottom }}>
+              <td colSpan={1 + days.length * 2} />
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 
 function Cell({
   cell, theatreId, date, session, theatreKind, specialties, onChange, onClear,
