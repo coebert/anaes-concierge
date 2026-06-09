@@ -53,9 +53,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+// xlsx / jspdf / jspdf-autotable are large; lazy-loaded inside the
+// download helpers below to keep them out of the SSR + initial client
+// bundle (they previously caused build OOM).
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 
