@@ -41,7 +41,8 @@ type SessionPatch = Partial<
 function TheatreGridPage() {
   const [anchor, setAnchor] = useState<Date>(new Date());
   const [mode, setMode] = useState<ViewMode>("week");
-  const [includeWeekend, setIncludeWeekend] = useState(false);
+  // Default to including weekends — some theatre lists (incl. private hospital) run on Sat/Sun.
+  const [includeWeekend, setIncludeWeekend] = useState(true);
 
   const days = useMemo(() => buildDays(anchor, mode, includeWeekend), [anchor, mode, includeWeekend]);
   const startISO = isoDate(days[0]);
