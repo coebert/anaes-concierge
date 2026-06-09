@@ -79,7 +79,8 @@ function fmt(d: Date) {
 
 function RotaGridPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  // Show full week including Sat/Sun — some theatre lists (incl. private hospital) run on weekends.
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
