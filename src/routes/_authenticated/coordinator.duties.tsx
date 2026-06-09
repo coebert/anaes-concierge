@@ -52,7 +52,7 @@ const DUTY_CONFIG: DutyConfig[] = [
   { type: "general_consultant_oncall", label: "General consultant on-call", slots: ALL_SLOTS },
   { type: "registrar_oncall", label: "Registrar on-call", slots: ALL_SLOTS },
   { type: "sho_oncall", label: "SHO on-call", slots: ALL_SLOTS },
-  { type: "spa", label: "SPA (Supporting Professional Activities)", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
+  { type: "spa", label: "SPA (Supporting Professional Activities)", slots: ["am", "pm"], description: "Non-patient-facing scheduled time", glossary: "SPA" as const },
   { type: "admin", label: "Admin / management", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
   { type: "teaching", label: "Teaching", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
   { type: "non_clinical", label: "Other non-clinical", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
