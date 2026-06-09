@@ -1903,10 +1903,22 @@ export async function performRotaSync(
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
         // Detect "non-SAG" NHH lists (NHS job-planned work at New Hall
         // Hospital). Matches case-insensitive keywords anywhere in the
-        // free-text label columns; sync sets is_non_sag accordingly
-        // unless an admin has set non_sag_override on the session.
-        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""}`.toLowerCase();
-        const isNonSag = /\bnon[\s-]?sag\b|\bnot[\s-]sag\b/.test(labelBlob);
+        // free-text label columns — including bracketed tags appended
+        // after the consultant name e.g. "Dr S Abbas [Non-SAG]". Sync
+        // sets is_non_sag accordingly unless an admin has set
+        // non_sag_override on the session.
+        const nonSagRegex = /\bnon[\s-]?sag\b|\bnot[\s-]sag\b/i;
+        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""}`;
+        const isNonSag = nonSagRegex.test(labelBlob);
+        // Strip any "[Non-SAG]" / "(non sag)" tag from the consultant
+        // name before persisting so UI shows just "Dr S Abbas", not
+        // "Dr S Abbas [Non-SAG]". The flag is captured separately.
+        const cleanedConsultant = consultantName
+          ? consultantName
+              .replace(/[\s]*[\[\(\{][^\]\)\}]*non[\s-]?sag[^\]\)\}]*[\]\)\}]/gi, "")
+              .replace(/[\s,;|\-–—]*\bnon[\s-]?sag\b[\s,;|\-–—]*$/gi, "")
+              .trim() || null
+          : null;
         // Last write wins for surgical_consultant, but for specialty we
         // keep any non-null name/id already collected — otherwise a later
         // row with a blank slot_speciality would wipe the value out and
@@ -1918,7 +1930,7 @@ export async function performRotaSync(
           session,
           specialty_id: specialtyId ?? prior?.specialty_id ?? null,
           specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
-          surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
+          surgical_consultant: cleanedConsultant ?? prior?.surgical_consultant ?? null,
           is_non_sag: isNonSag || (prior?.is_non_sag ?? false),
         });
       }
