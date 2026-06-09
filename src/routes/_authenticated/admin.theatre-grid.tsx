@@ -304,34 +304,20 @@ function Cell({
       {theatreKind === "private" && (
         <label
           className="flex cursor-pointer items-center gap-1.5 text-[10px] text-muted-foreground"
-          title="Mark this NHH list as non-SAG (NHS job-planned). Saving overrides automatic CLWRota detection."
+          title="Mark this NHH list as non-SAG (NHS job-planned)."
         >
           <input
             type="checkbox"
             className="h-3 w-3 accent-amber-500"
             checked={cell?.is_non_sag ?? false}
-            onChange={(e) =>
-              onChange({ is_non_sag: e.target.checked, non_sag_override: true })
-            }
+            onChange={(e) => onChange({ is_non_sag: e.target.checked })}
           />
           <span className={cell?.is_non_sag ? "font-medium text-amber-600 dark:text-amber-400" : ""}>
             Non-SAG
           </span>
-          {cell?.non_sag_override && (
-            <button
-              type="button"
-              className="ml-auto text-[9px] underline opacity-70 hover:opacity-100"
-              onClick={(e) => {
-                e.preventDefault();
-                onChange({ non_sag_override: false });
-              }}
-              title="Re-enable automatic detection from CLWRota"
-            >
-              auto
-            </button>
-          )}
         </label>
       )}
+
     </div>
   );
 }
