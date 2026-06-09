@@ -1737,6 +1737,11 @@ export async function performRotaSync() {
       // specialty didn't exist when the row was first parsed.
       specialty_name_key: string | null;
       surgical_consultant: string | null;
+      // True when the raw CLWRota labels for this session match a
+      // "non-SAG" keyword (NHH list covered as part of a consultant's NHS
+      // job plan rather than private work). Applied as a default; an
+      // admin's non_sag_override flag suppresses sync writes.
+      is_non_sag: boolean;
     };
     type AssignmentDraft = {
       staff_id: string;
@@ -1869,6 +1874,12 @@ export async function performRotaSync() {
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
+        // Detect "non-SAG" NHH lists (NHS job-planned work at New Hall
+        // Hospital). Matches case-insensitive keywords anywhere in the
+        // free-text label columns; sync sets is_non_sag accordingly
+        // unless an admin has set non_sag_override on the session.
+        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""}`.toLowerCase();
+        const isNonSag = /\bnon[\s-]?sag\b|\bnot[\s-]sag\b/.test(labelBlob);
         // Last write wins for surgical_consultant, but for specialty we
         // keep any non-null name/id already collected — otherwise a later
         // row with a blank slot_speciality would wipe the value out and
@@ -1881,6 +1892,7 @@ export async function performRotaSync() {
           specialty_id: specialtyId ?? prior?.specialty_id ?? null,
           specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
           surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
+          is_non_sag: isNonSag || (prior?.is_non_sag ?? false),
         });
       }
 
@@ -1994,6 +2006,33 @@ export async function performRotaSync() {
       }));
     await upsertSessions(withSpecialty);
     await upsertSessions(withoutSpecialty);
+
+    // --- Pass 3b: apply is_non_sag from the feed, skipping any sessions
+    // an admin has manually overridden. Done as two bulk UPDATEs (one
+    // per truthiness) to avoid clobbering admin-set values.
+    const trueIds: string[] = [];
+    const falseIds: string[] = [];
+    for (const d of allDrafts) {
+      const id = sessionIdByKey.get(`${d.session_date}|${d.theatre_id}|${d.session}`);
+      if (!id) continue;
+      (d.is_non_sag ? trueIds : falseIds).push(id);
+    }
+    const applyNonSag = async (ids: string[], value: boolean) => {
+      const CHUNK = 500;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK);
+        const { error: nsErr } = await supabaseAdmin
+          .from("theatre_sessions")
+          .update({ is_non_sag: value })
+          .in("id", chunk)
+          .eq("non_sag_override", false);
+        if (nsErr) {
+          errors.push({ label: `(is_non_sag=${value} chunk)`, error: nsErr.message });
+        }
+      }
+    };
+    if (trueIds.length > 0) await applyNonSag(trueIds, true);
+    if (falseIds.length > 0) await applyNonSag(falseIds, false);
 
 
     // --- Pass 4: bulk-upsert rota assignments (dedup external id). -----------

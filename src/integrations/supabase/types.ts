@@ -872,6 +872,8 @@ export type Database = {
           clwrota_external_id: string | null
           created_at: string
           id: string
+          is_non_sag: boolean
+          non_sag_override: boolean
           notes: string | null
           session: Database["public"]["Enums"]["session_half"]
           session_date: string
@@ -884,6 +886,8 @@ export type Database = {
           clwrota_external_id?: string | null
           created_at?: string
           id?: string
+          is_non_sag?: boolean
+          non_sag_override?: boolean
           notes?: string | null
           session: Database["public"]["Enums"]["session_half"]
           session_date: string
@@ -896,6 +900,8 @@ export type Database = {
           clwrota_external_id?: string | null
           created_at?: string
           id?: string
+          is_non_sag?: boolean
+          non_sag_override?: boolean
           notes?: string | null
           session?: Database["public"]["Enums"]["session_half"]
           session_date?: string

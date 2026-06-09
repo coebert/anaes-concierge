@@ -30,7 +30,13 @@ type SessionRow = {
   session: Sess;
   specialty_id: string | null;
   surgical_consultant: string | null;
+  is_non_sag: boolean;
+  non_sag_override: boolean;
 };
+
+type SessionPatch = Partial<
+  Pick<SessionRow, "specialty_id" | "surgical_consultant" | "is_non_sag" | "non_sag_override">
+>;
 
 function TheatreGridPage() {
   const [anchor, setAnchor] = useState<Date>(new Date());
@@ -74,7 +80,7 @@ function TheatreGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,session_date,session,specialty_id,surgical_consultant")
+        .select("id,theatre_id,session_date,session,specialty_id,surgical_consultant,is_non_sag,non_sag_override")
         .gte("session_date", startISO)
         .lte("session_date", endISO);
       if (error) throw error;
@@ -96,7 +102,7 @@ function TheatreGridPage() {
       theatre_id: string;
       session_date: string;
       session: Sess;
-      patch: Partial<Pick<SessionRow, "specialty_id" | "surgical_consultant">>;
+      patch: SessionPatch;
     }) => {
       if (args.cell) {
         const { error } = await supabase
@@ -111,6 +117,8 @@ function TheatreGridPage() {
           session: args.session,
           specialty_id: args.patch.specialty_id ?? null,
           surgical_consultant: args.patch.surgical_consultant ?? null,
+          is_non_sag: args.patch.is_non_sag ?? false,
+          non_sag_override: args.patch.non_sag_override ?? false,
         });
         if (error) throw error;
       }
@@ -204,6 +212,7 @@ function TheatreGridPage() {
                               theatreId={t.id}
                               date={date}
                               session={s}
+                              theatreKind={t.kind}
                               specialties={specialties ?? []}
                               onChange={(patch) =>
                                 upsert.mutate({
@@ -232,14 +241,15 @@ function TheatreGridPage() {
 }
 
 function Cell({
-  cell, theatreId, date, session, specialties, onChange, onClear,
+  cell, theatreId, date, session, theatreKind, specialties, onChange, onClear,
 }: {
   cell: SessionRow | undefined;
   theatreId: string;
   date: string;
   session: Sess;
+  theatreKind: "main" | "day_surgery" | "private";
   specialties: { id: string; name: string }[];
-  onChange: (patch: Partial<Pick<SessionRow, "specialty_id" | "surgical_consultant">>) => void;
+  onChange: (patch: SessionPatch) => void;
   onClear: () => void;
 }) {
   const [consultant, setConsultant] = useState(cell?.surgical_consultant ?? "");
@@ -291,6 +301,37 @@ function Cell({
           </Button>
         )}
       </div>
+      {theatreKind === "private" && (
+        <label
+          className="flex cursor-pointer items-center gap-1.5 text-[10px] text-muted-foreground"
+          title="Mark this NHH list as non-SAG (NHS job-planned). Saving overrides automatic CLWRota detection."
+        >
+          <input
+            type="checkbox"
+            className="h-3 w-3 accent-amber-500"
+            checked={cell?.is_non_sag ?? false}
+            onChange={(e) =>
+              onChange({ is_non_sag: e.target.checked, non_sag_override: true })
+            }
+          />
+          <span className={cell?.is_non_sag ? "font-medium text-amber-600 dark:text-amber-400" : ""}>
+            Non-SAG
+          </span>
+          {cell?.non_sag_override && (
+            <button
+              type="button"
+              className="ml-auto text-[9px] underline opacity-70 hover:opacity-100"
+              onClick={(e) => {
+                e.preventDefault();
+                onChange({ non_sag_override: false });
+              }}
+              title="Re-enable automatic detection from CLWRota"
+            >
+              auto
+            </button>
+          )}
+        </label>
+      )}
     </div>
   );
 }

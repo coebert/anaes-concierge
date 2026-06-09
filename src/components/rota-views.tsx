@@ -176,7 +176,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id")
+        .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id,is_non_sag")
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
       return data;
@@ -295,6 +295,15 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                       >
                         {ts ? (
                           <div className="space-y-1">
+                            {ts.is_non_sag && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                title="NHH list covered as part of NHS job plan (non-SAG)"
+                              >
+                                Non-SAG
+                              </Badge>
+                            )}
                             {spec && <div className="font-bold truncate text-green-600 dark:text-green-400">{spec}</div>}
                             {ts.surgical_consultant && (
                               <div className="text-[10px] text-muted-foreground truncate">
@@ -446,7 +455,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,specialty_id,surgical_consultant")
+        .select("id,theatre_id,specialty_id,surgical_consultant,is_non_sag")
         .in("id", sessionIds);
       if (error) throw error;
       return data;
@@ -541,6 +550,15 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                       {a ? (
                         <div className="space-y-0.5">
                           <div className="font-medium">{theatre?.name ?? "—"}</div>
+                          {session?.is_non_sag && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                              title="NHH list covered as part of NHS job plan (non-SAG)"
+                            >
+                              Non-SAG
+                            </Badge>
+                          )}
                           {spec && <div className="text-muted-foreground">{spec.name}</div>}
                           {session?.surgical_consultant && (
                             <div className="text-muted-foreground">{session.surgical_consultant}</div>
