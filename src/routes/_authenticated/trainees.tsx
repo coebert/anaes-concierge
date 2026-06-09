@@ -172,6 +172,31 @@ function TraineesPage() {
         return acc;
       }, {});
 
+      // Future assignments (today+ through end of rotation) — used to flag
+      // "ICU block only" trainees whose remaining rotation has no theatre work.
+      let futureAssignments: Array<{
+        staff_id: string;
+        duty_type: string | null;
+        session_date: string;
+      }> = [];
+      if (traineeIds.length) {
+        const { data: futureRows, error: eFut } = await supabase
+          .from("rota_assignments")
+          .select("staff_id,duty_type,session_date")
+          .in("staff_id", traineeIds)
+          .gt("session_date", todayIso)
+          .range(0, 49999);
+        if (eFut) throw eFut;
+        futureAssignments = (futureRows ?? []) as typeof futureAssignments;
+      }
+      const futureByStaff = futureAssignments.reduce<Record<string, Array<{ duty_type: string | null; session_date: string }>>>(
+        (acc, a) => {
+          (acc[a.staff_id] ||= []).push({ duty_type: a.duty_type, session_date: a.session_date });
+          return acc;
+        },
+        {},
+      );
+
       return {
         trainees: trainees ?? [],
         targets: targets ?? [],
@@ -179,6 +204,7 @@ function TraineesPage() {
         tsSpecMap: tsMap,
         assignmentsByStaff: clinicalByStaff,
         allAssignmentsByStaff: allByStaff,
+        futureAssignmentsByStaff: futureByStaff,
       };
     },
   });
