@@ -204,24 +204,8 @@ function classify(
   return "below";
 }
 
-const PAGE_SIZE = 1000;
+import { fetchAllRowsPaged, idKey, rotaAssignmentKey } from "./paginate";
 
-async function fetchAllRows<T>(
-  fetchPage: (from: number, to: number) => PromiseLike<{
-    data: T[] | null;
-    error: { message: string } | null;
-  }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(error.message);
-    const page = data ?? [];
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
-  }
-  return rows;
-}
 
 // -------- core compute --------
 
@@ -257,51 +241,63 @@ export async function computeListFeasibility(
   void isoMonthsAgo;
 
   const [profiles, theatres, specialties, sessions, assignments] = await Promise.all([
-    fetchAllRows((from, to) =>
-      supabase
-        .from("profiles")
-        .select("id, full_name, grade, active, ltft_days_off")
-        .order("full_name", { nullsFirst: false })
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ id: string; full_name: string | null; grade: string | null; active: boolean | null; ltft_days_off: number[] | null }>(
+      (from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, full_name, grade, active, ltft_days_off")
+          .order("full_name", { nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "list-feasibility.profiles" },
     ),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("theatres")
-        .select("id, name")
-        .order("name", { nullsFirst: false })
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ id: string; name: string | null }>(
+      (from, to) =>
+        supabase
+          .from("theatres")
+          .select("id, name")
+          .order("name", { nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "list-feasibility.theatres" },
     ),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("specialties")
-        .select("id, name")
-        .order("name", { nullsFirst: false })
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ id: string; name: string | null }>(
+      (from, to) =>
+        supabase
+          .from("specialties")
+          .select("id, name")
+          .order("name", { nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "list-feasibility.specialties" },
     ),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("theatre_sessions")
-        .select("id, session_date, session, theatre_id, surgical_consultant, specialty_id")
-        .gte("session_date", windowStart)
-        .lte("session_date", windowEnd)
-        .order("session_date", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ id: string; session_date: string; session: string; theatre_id: string | null; surgical_consultant: string | null; specialty_id: string | null }>(
+      (from, to) =>
+        supabase
+          .from("theatre_sessions")
+          .select("id, session_date, session, theatre_id, surgical_consultant, specialty_id")
+          .gte("session_date", windowStart)
+          .lte("session_date", windowEnd)
+          .order("session_date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "list-feasibility.theatre_sessions" },
     ),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id, notes")
-        .gte("session_date", windowStart)
-        .lte("session_date", windowEnd)
-        .order("session_date", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string; theatre_session_id: string | null; notes: string | null }>(
+      (from, to) =>
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id, notes")
+          .gte("session_date", windowStart)
+          .lte("session_date", windowEnd)
+          .order("session_date", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("session", { ascending: true })
+          .range(from, to),
+      { rowKey: rotaAssignmentKey, label: "list-feasibility.rota_assignments" },
     ),
   ]);
+
 
   // Specialty IDs that represent emergency / unscheduled work. These lists
   // are not regular bookings and shouldn't be expected to have a fixed

@@ -13,6 +13,7 @@ import {
   computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
+import { fetchAllRowsPaged, rotaAssignmentKey } from "@/lib/audit/paginate";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
@@ -64,26 +65,28 @@ function RotaGapsPage() {
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) return { trainees: [], datesByStaff: new Map<string, Set<string>>(), today };
 
-      // Paginate to avoid the 1000-row server cap.
-      const PAGE = 1000;
-      const all: Array<{ staff_id: string; session_date: string }> = [];
-      let offset = 0;
-      while (true) {
-        let q = supabase
-          .from("rota_assignments")
-          .select("staff_id, session_date")
-          .in("staff_id", ids)
-          .order("session_date", { ascending: true })
-          .range(offset, offset + PAGE - 1);
-        if (since) q = q.gte("session_date", since);
-        const { data: page, error: e2 } = await q;
-        if (e2) throw e2;
-        const rows = page ?? [];
-        all.push(...rows);
-        if (rows.length < PAGE) break;
-        offset += PAGE;
-        if (offset > 50_000) break;
-      }
+      // Paginate via the shared helper: deterministic order + boundary
+      // overlap detection + dedupe by (staff, date, session).
+      const all = await fetchAllRowsPaged<{
+        staff_id: string;
+        session_date: string;
+        session: string;
+      }>(
+        (from, to) => {
+          let q = supabase
+            .from("rota_assignments")
+            .select("staff_id, session_date, session")
+            .in("staff_id", ids)
+            .order("session_date", { ascending: true })
+            .order("staff_id", { ascending: true })
+            .order("session", { ascending: true })
+            .range(from, to);
+          if (since) q = q.gte("session_date", since);
+          return q;
+        },
+        { rowKey: rotaAssignmentKey, label: "rota-gaps.rota_assignments" },
+      );
+
 
       const datesByStaff = new Map<string, Set<string>>();
       for (const r of all) {

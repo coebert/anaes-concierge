@@ -109,24 +109,8 @@ export interface ValidationOptions {
   todayOverride?: string;
 }
 
-const PAGE_SIZE = 1000;
+import { fetchAllRowsPaged, idKey, rotaAssignmentKey } from "./paginate";
 
-async function fetchAllRows<T>(
-  fetchPage: (from: number, to: number) => PromiseLike<{
-    data: T[] | null;
-    error: { message: string } | null;
-  }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(error.message);
-    const page = data ?? [];
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
-  }
-  return rows;
-}
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -164,16 +148,18 @@ export async function validateConsultantPatterns(
   // Fetch custom non-working labels first so the model can honour them too
   // (otherwise the model would re-flag the same cells the sampler considers
   // off-day, and "Apply all fixes & re-run" would never change the report).
-  const customLabels = await fetchAllRows((from, to) =>
-    supabase
-      .from("validation_custom_non_working_labels")
-      .select("token")
-      .order("token", { ascending: true })
-      .range(from, to),
+  const customLabels = await fetchAllRowsPaged<{ token: string }>(
+    (from, to) =>
+      supabase
+        .from("validation_custom_non_working_labels")
+        .select("token")
+        .order("token", { ascending: true })
+        .range(from, to),
+    { rowKey: (r) => r.token, label: "validation.custom_labels" },
   );
 
   const extraNonWorkingTokens = (customLabels ?? [])
-    .map((r) => (r as { token: string }).token)
+    .map((r) => r.token)
     .filter((t): t is string => typeof t === "string" && t.length > 0);
 
   // Run the model (with the same extra tokens) and pull raw rota rows +
@@ -185,24 +171,30 @@ export async function validateConsultantPatterns(
       todayOverride: opts.todayOverride,
       extraNonWorkingTokens,
     }),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("profiles")
-        .select("id, grade, active")
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ id: string; grade: string | null; active: boolean | null }>(
+      (from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, grade, active")
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "validation.profiles" },
     ),
-    fetchAllRows((from, to) =>
-      supabase
-        .from("rota_assignments")
-        .select("staff_id, session_date, session, duty_type, role_on_list, notes")
-        .gte("session_date", windowStart)
-        .lte("session_date", windowEnd)
-        .order("session_date", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRowsPaged<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string; notes: string | null }>(
+      (from, to) =>
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, session_date, session, duty_type, role_on_list, notes")
+          .gte("session_date", windowStart)
+          .lte("session_date", windowEnd)
+          .order("session_date", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("session", { ascending: true })
+          .range(from, to),
+      { rowKey: rotaAssignmentKey, label: "validation.rota_assignments" },
     ),
   ]);
+
 
   const consultantIds = new Set<string>();
   for (const p of profiles ?? []) {

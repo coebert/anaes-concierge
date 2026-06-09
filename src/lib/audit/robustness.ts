@@ -1,29 +1,28 @@
 import { compareBySurname } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchAllRowsPaged,
+  idKey,
+  rotaAssignmentKey,
+  type PaginateOptions,
+} from "./paginate";
 
 /**
  * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
  * robustness window, `rota_assignments` and `theatre_sessions` routinely
  * exceed that and the audit ends up reasoning over a truncated slice
  * (producing false shortfalls / phantom unfilled lists). Paginate every
- * read used by this module through this helper.
+ * read used by this module through the shared helper, which also dedupes
+ * across page boundaries.
  */
-const PAGE_SIZE = 1000;
-async function fetchAllRows<T>(
+function fetchAllRows<T>(
   build: (
     from: number,
     to: number,
   ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  opts: PaginateOptions<T> = {},
 ): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await build(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    const batch = (data ?? []) as T[];
-    out.push(...batch);
-    if (batch.length < PAGE_SIZE) break;
-  }
-  return out;
+  return fetchAllRowsPaged<T>(build, opts);
 }
 
 /**
@@ -275,6 +274,7 @@ export async function computeRobustness(
           .eq("active", true)
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.profiles" },
       ),
       fetchAllRows<{
         staff_id: string;
@@ -288,8 +288,14 @@ export async function computeRobustness(
           .eq("status", "approved")
           .lte("start_date", rangeEnd)
           .gte("end_date", rangeStart)
-          .order("id", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("start_date", { ascending: true })
+          .order("end_date", { ascending: true })
           .range(from, to),
+        {
+          rowKey: (r) => `${r.staff_id}|${r.start_date}|${r.end_date}`,
+          label: "robustness.leave_requests",
+        },
       ),
       fetchAllRows<{
         id: string;
@@ -305,6 +311,7 @@ export async function computeRobustness(
           .lte("session_date", rangeEnd)
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.theatre_sessions" },
       ),
       fetchAllRows<{
         staff_id: string;
@@ -320,8 +327,11 @@ export async function computeRobustness(
           )
           .gte("session_date", rangeStart)
           .lte("session_date", rangeEnd)
-          .order("id", { ascending: true })
+          .order("session_date", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("session", { ascending: true })
           .range(from, to),
+        { rowKey: rotaAssignmentKey, label: "robustness.rota_assignments" },
       ),
       fetchAllRows<{ id: string; name: string }>((from, to) =>
         supabase
@@ -329,8 +339,10 @@ export async function computeRobustness(
           .select("id, name")
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.specialties" },
       ),
     ]);
+
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll
@@ -597,6 +609,7 @@ export async function computeListCoverage(
         .lte("session_date", rangeEnd)
         .order("id", { ascending: true })
         .range(from, to),
+      { rowKey: idKey, label: "list-coverage.theatre_sessions" },
     ),
     fetchAllRows<{ id: string; name: string }>((from, to) =>
       supabase
@@ -604,8 +617,10 @@ export async function computeListCoverage(
         .select("id, name")
         .order("id", { ascending: true })
         .range(from, to),
+      { rowKey: idKey, label: "list-coverage.specialties" },
     ),
   ]);
+
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll
