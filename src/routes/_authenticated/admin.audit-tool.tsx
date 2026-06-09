@@ -586,3 +586,156 @@ function downloadCsv(
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+function safeName(name: string): string {
+  return name.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60) || "report";
+}
+
+function rowsToAOA(
+  rows: Array<Record<string, unknown>>,
+  columns: string[],
+): unknown[][] {
+  const header = columns;
+  const body = rows.map((r) =>
+    columns.map((c) => {
+      const v = r[c];
+      if (v == null) return "";
+      if (typeof v === "object") return JSON.stringify(v);
+      return v;
+    }),
+  );
+  return [header, ...body];
+}
+
+function downloadExcel(
+  rows: Array<Record<string, unknown>>,
+  columns: string[],
+  filename: string,
+) {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rowsToAOA(rows, columns));
+  XLSX.utils.book_append_sheet(wb, ws, safeName(filename).slice(0, 31));
+  XLSX.writeFile(wb, `${safeName(filename)}.xlsx`);
+}
+
+function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
+  const wb = XLSX.utils.book_new();
+  const used = new Set<string>();
+  reports.forEach((r, i) => {
+    const rows = r.output.rows ?? r.output.rowsPreview ?? [];
+    const columns =
+      r.output.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
+    const aoa =
+      rows.length === 0
+        ? [[r.output.error ?? "No rows returned."]]
+        : rowsToAOA(rows, columns);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    // Excel sheet names: max 31 chars, no []:*?/\
+    let base =
+      (r.output.title ?? `Report ${i + 1}`)
+        .replace(/[[\]:*?/\\]/g, "")
+        .slice(0, 28) || `Report ${i + 1}`;
+    let name = base;
+    let n = 2;
+    while (used.has(name)) name = `${base} ${n++}`.slice(0, 31);
+    used.add(name);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+  XLSX.writeFile(wb, `audit-reports-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+function downloadPdf(
+  rows: Array<Record<string, unknown>>,
+  columns: string[],
+  filename: string,
+  sql?: string,
+) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  doc.setFontSize(14);
+  doc.text(filename, 40, 40);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(
+    `Generated ${new Date().toLocaleString()} — ${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
+    40,
+    56,
+  );
+  doc.setTextColor(0);
+  autoTable(doc, {
+    startY: 72,
+    head: [columns],
+    body: rows.map((r) =>
+      columns.map((c) => {
+        const v = r[c];
+        if (v == null) return "";
+        if (typeof v === "object") return JSON.stringify(v);
+        return String(v);
+      }),
+    ),
+    styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+    headStyles: { fillColor: [60, 60, 60] },
+    margin: { left: 40, right: 40 },
+  });
+  if (sql) {
+    const lastY =
+      (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
+        ?.finalY ?? 72;
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text("SQL:", 40, lastY + 20);
+    const wrapped = doc.splitTextToSize(sql, doc.internal.pageSize.getWidth() - 80);
+    doc.text(wrapped, 40, lastY + 32);
+  }
+  doc.save(`${safeName(filename)}.pdf`);
+}
+
+function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  doc.setFontSize(16);
+  doc.text("Audit Reports", 40, 40);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Generated ${new Date().toLocaleString()}`, 40, 56);
+  doc.setTextColor(0);
+
+  reports.forEach((r, i) => {
+    if (i > 0) doc.addPage();
+    const startY = i === 0 ? 80 : 40;
+    const rows = r.output.rows ?? r.output.rowsPreview ?? [];
+    const columns =
+      r.output.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
+    doc.setFontSize(12);
+    doc.text(r.output.title ?? `Report ${i + 1}`, 40, startY);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(
+      `${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
+      40,
+      startY + 14,
+    );
+    doc.setTextColor(0);
+    if (r.output.error) {
+      doc.setTextColor(180, 0, 0);
+      doc.text(r.output.error, 40, startY + 32);
+      doc.setTextColor(0);
+      return;
+    }
+    autoTable(doc, {
+      startY: startY + 22,
+      head: [columns],
+      body: rows.map((row) =>
+        columns.map((c) => {
+          const v = row[c];
+          if (v == null) return "";
+          if (typeof v === "object") return JSON.stringify(v);
+          return String(v);
+        }),
+      ),
+      styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+      headStyles: { fillColor: [60, 60, 60] },
+      margin: { left: 40, right: 40 },
+    });
+  });
+
+  doc.save(`audit-reports-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
