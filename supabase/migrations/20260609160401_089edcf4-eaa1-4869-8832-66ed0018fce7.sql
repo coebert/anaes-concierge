@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.mark_departed_trainees() FROM anon, authenticated, PUBLIC;
