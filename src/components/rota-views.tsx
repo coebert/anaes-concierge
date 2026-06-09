@@ -446,7 +446,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,specialty_id,surgical_consultant")
+        .select("id,theatre_id,specialty_id,surgical_consultant,is_non_sag")
         .in("id", sessionIds);
       if (error) throw error;
       return data;
