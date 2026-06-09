@@ -39,10 +39,9 @@ type RotaRole =
   | "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session";
 
 export const Route = createFileRoute("/_authenticated/coordinator/rota")({
-  beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) throw redirect({ to: "/login" });
-  },
+  // Auth gate is provided by the parent `_authenticated` layout. Server-side
+  // privileged operations are enforced inside each server function via an
+  // explicit role check; UI gating below is presentational only.
   component: RotaGridGuard,
 });
 
