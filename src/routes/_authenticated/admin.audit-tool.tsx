@@ -53,9 +53,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+// xlsx / jspdf / jspdf-autotable are large; lazy-loaded inside the
+// download helpers below to keep them out of the SSR + initial client
+// bundle (they previously caused build OOM).
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 
@@ -607,18 +607,20 @@ function rowsToAOA(
   return [header, ...body];
 }
 
-function downloadExcel(
+async function downloadExcel(
   rows: Array<Record<string, unknown>>,
   columns: string[],
   filename: string,
 ) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(rowsToAOA(rows, columns));
   XLSX.utils.book_append_sheet(wb, ws, safeName(filename).slice(0, 31));
   XLSX.writeFile(wb, `${safeName(filename)}.xlsx`);
 }
 
-function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
+async function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const used = new Set<string>();
   reports.forEach((r, i) => {
@@ -644,12 +646,14 @@ function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) 
   XLSX.writeFile(wb, `audit-reports-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-function downloadPdf(
+async function downloadPdf(
   rows: Array<Record<string, unknown>>,
   columns: string[],
   filename: string,
   sql?: string,
 ) {
+  const { jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(14);
   doc.text(filename, 40, 40);
@@ -689,7 +693,9 @@ function downloadPdf(
   doc.save(`${safeName(filename)}.pdf`);
 }
 
-function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
+async function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
+  const { jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(16);
   doc.text("Audit Reports", 40, 40);
