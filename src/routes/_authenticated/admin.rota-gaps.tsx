@@ -13,6 +13,7 @@ import {
   computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
+import { fetchAllRowsPaged, rotaAssignmentKey } from "@/lib/audit/paginate";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
