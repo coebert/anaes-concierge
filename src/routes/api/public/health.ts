@@ -229,10 +229,17 @@ async function checkKeyTables(): Promise<HealthCheck> {
 }
 
 
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export const Route = createFileRoute("/api/public/health")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         const checks = await Promise.all([
           checkDatabase(),
           checkAiGateway(),
@@ -249,15 +256,21 @@ export const Route = createFileRoute("/api/public/health")({
             ? "degraded"
             : "healthy";
 
-        const body: HealthResponse = {
-          status,
-          timestamp: new Date().toISOString(),
-          version,
-          checks,
-        };
+        // Detailed per-check output (latencies, configured-or-not flags, upstream
+        // names) is only returned to trusted callers presenting the shared
+        // X-Health-Secret header. Anonymous callers get a minimal status only,
+        // so the endpoint can't be used to map infrastructure or detect missing
+        // secrets. When no secret is configured, default to minimal output.
+        const provided = request.headers.get("x-health-secret") ?? "";
+        const expected = process.env.HEALTH_DETAILS_SECRET ?? "";
+        const detailed = expected.length > 0 && timingSafeEqualStr(provided, expected);
+
+        const body: HealthResponse | { status: HealthResponse["status"]; timestamp: string } = detailed
+          ? { status, timestamp: new Date().toISOString(), version, checks }
+          : { status, timestamp: new Date().toISOString() };
 
         return Response.json(body, {
-          status: status === "healthy" ? 200 : status === "degraded" ? 200 : 503,
+          status: status === "unhealthy" ? 503 : 200,
           headers: {
             "Cache-Control": "no-store",
             "Content-Type": "application/json",
