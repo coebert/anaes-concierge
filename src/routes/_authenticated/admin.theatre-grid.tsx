@@ -241,14 +241,15 @@ function TheatreGridPage() {
 }
 
 function Cell({
-  cell, theatreId, date, session, specialties, onChange, onClear,
+  cell, theatreId, date, session, theatreKind, specialties, onChange, onClear,
 }: {
   cell: SessionRow | undefined;
   theatreId: string;
   date: string;
   session: Sess;
+  theatreKind: "main" | "day_surgery" | "private";
   specialties: { id: string; name: string }[];
-  onChange: (patch: Partial<Pick<SessionRow, "specialty_id" | "surgical_consultant">>) => void;
+  onChange: (patch: SessionPatch) => void;
   onClear: () => void;
 }) {
   const [consultant, setConsultant] = useState(cell?.surgical_consultant ?? "");
