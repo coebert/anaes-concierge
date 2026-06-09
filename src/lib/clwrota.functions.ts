@@ -1518,6 +1518,60 @@ export function classifyDutyType(
   return "theatre";
 }
 
+/**
+ * Resolve an off-site / specialty-room theatre from free-text label(s) when
+ * the exact-name lookup misses. CLWRota labels these locations
+ * inconsistently across the rota (e.g. "Endoscopy" vs "Endo GA" vs
+ * "Endoscopy GA", "Laser (Paeds)" vs "Laser", "NHH Theatre 3" vs "NHH T3"
+ * vs "NHH 3" vs bare "NHH"), so we keyword-match against a small set of
+ * known off-site theatres.
+ *
+ * Returns the matched theatre id (from the provided lower-cased name map)
+ * or undefined when nothing reasonable matches. The caller is expected to
+ * have already tried an exact lookup.
+ */
+export function resolveOffsiteTheatreAlias(
+  text: string | null | undefined,
+  theatreByName: Map<string, string>,
+): string | undefined {
+  if (!text) return undefined;
+  const t = text.toLowerCase();
+  if (!t.trim()) return undefined;
+
+  // NHH (New Hall Hospital) — optionally with a numbered theatre.
+  // Accepts "nhh theatre 3", "nhh t3", "nhh 3", or bare "nhh" / "new hall".
+  // Excludes "nhh 1st oncall" which is classified as a duty, not a theatre.
+  if (/\b(nhh|new\s*hall)\b/.test(t) && !/on.?call/.test(t)) {
+    const numMatch = t.match(/\b(?:nhh|new\s*hall)\s*(?:theatre\s*|t)?(\d)\b/);
+    const n = numMatch ? numMatch[1] : "1";
+    return (
+      theatreByName.get(`nhh theatre ${n}`) ??
+      theatreByName.get("nhh theatre 1") ??
+      theatreByName.get("nhh")
+    );
+  }
+
+  // Order matters: more specific keywords first.
+  const aliases: Array<{ test: RegExp; names: string[] }> = [
+    // Endoscopy room — "Endoscopy", "Endo GA", "Endo".
+    { test: /\bendo(scopy)?\b/, names: ["endo", "endoscopy"] },
+    // MRI suite (anaesthetic cover for scans).
+    { test: /\bmri\b/, names: ["mri"] },
+    // Cardioversions — only the procedure list, not generic "cardiac" surgery.
+    { test: /\bcardiover(sion)?s?\b/, names: ["cardioversions", "cardioversion"] },
+    // Laser room — "Laser", "Laser (Paeds)".
+    { test: /\blaser\b/, names: ["laser"] },
+  ];
+  for (const a of aliases) {
+    if (!a.test.test(t)) continue;
+    for (const n of a.names) {
+      const id = theatreByName.get(n);
+      if (id) return id;
+    }
+  }
+  return undefined;
+}
+
 async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
   const { data, error } = await supabaseAdmin
     .from("duty_type_mappings")
@@ -1792,6 +1846,14 @@ export async function performRotaSync() {
       if (!theatreId && consultantName) {
         const candidate = theatreByName.get(consultantName.toLowerCase().trim());
         if (candidate) theatreId = candidate;
+      }
+      // Off-site / specialty-room aliases. CLWRota labels vary
+      // ("Endoscopy" / "Endo GA" / "Laser (Paeds)" / "NHH Theatre 3" /
+      // "NHH T3" / "NHH 3" …) so fall back to keyword matching against the
+      // free-text location and slot-title columns.
+      if (!theatreId) {
+        const aliasText = `${theatreName ?? ""} ${consultantName ?? ""}`;
+        theatreId = resolveOffsiteTheatreAlias(aliasText, theatreByName);
       }
 
       // Classify duty type from free-text labels + staff grade.
