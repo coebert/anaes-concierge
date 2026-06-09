@@ -139,6 +139,7 @@ function TheatresCard() {
             <SelectContent>
               <SelectItem value="main">main</SelectItem>
               <SelectItem value="day_surgery">day surgery</SelectItem>
+              <SelectItem value="private">private (NHH)</SelectItem>
             </SelectContent>
           </Select>
           <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>
