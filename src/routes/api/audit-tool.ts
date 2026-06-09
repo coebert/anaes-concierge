@@ -109,7 +109,7 @@ export const Route = createFileRoute("/api/audit-tool")({
         }
 
         const userClient = getUserClient(auth.token);
-        const adminClient = getAdminClient();
+
 
         const tools = {
           describe_schema: tool({
