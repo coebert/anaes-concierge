@@ -2,8 +2,6 @@ import { Link, useLocation, useNavigate, useRouterState } from "@tanstack/react-
 import { type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut, Stethoscope, ChevronRight } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
