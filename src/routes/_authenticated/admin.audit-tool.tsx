@@ -607,11 +607,12 @@ function rowsToAOA(
   return [header, ...body];
 }
 
-function downloadExcel(
+async function downloadExcel(
   rows: Array<Record<string, unknown>>,
   columns: string[],
   filename: string,
 ) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(rowsToAOA(rows, columns));
   XLSX.utils.book_append_sheet(wb, ws, safeName(filename).slice(0, 31));
