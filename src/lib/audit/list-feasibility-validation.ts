@@ -109,24 +109,8 @@ export interface ValidationOptions {
   todayOverride?: string;
 }
 
-const PAGE_SIZE = 1000;
+import { fetchAllRowsPaged, idKey, rotaAssignmentKey } from "./paginate";
 
-async function fetchAllRows<T>(
-  fetchPage: (from: number, to: number) => PromiseLike<{
-    data: T[] | null;
-    error: { message: string } | null;
-  }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(error.message);
-    const page = data ?? [];
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
-  }
-  return rows;
-}
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
