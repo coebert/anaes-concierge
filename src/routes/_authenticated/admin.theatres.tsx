@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin/theatres")({
   component: AdminTheatresPage,
 });
 
-type Kind = "main" | "day_surgery";
+type Kind = "main" | "day_surgery" | "private";
 
 function AdminTheatresPage() {
   return (
@@ -113,6 +113,7 @@ function TheatresCard() {
                   <SelectContent>
                     <SelectItem value="main">main</SelectItem>
                     <SelectItem value="day_surgery">day surgery</SelectItem>
+                    <SelectItem value="private">private (NHH)</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="ml-auto flex items-center gap-2">
@@ -138,6 +139,7 @@ function TheatresCard() {
             <SelectContent>
               <SelectItem value="main">main</SelectItem>
               <SelectItem value="day_surgery">day surgery</SelectItem>
+              <SelectItem value="private">private (NHH)</SelectItem>
             </SelectContent>
           </Select>
           <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>

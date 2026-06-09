@@ -257,7 +257,11 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                 <td className="border-r p-2 font-medium whitespace-nowrap">
                   {t.name}
                   <div className="text-[10px] text-muted-foreground">
-                    {t.kind === "main" ? "Main" : "Day surgery"}
+                    {t.kind === "main"
+                      ? "Main"
+                      : t.kind === "day_surgery"
+                      ? "Day surgery"
+                      : "Private (NHH)"}
                   </div>
                 </td>
                 {days.flatMap((d) =>
