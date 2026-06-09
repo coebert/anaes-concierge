@@ -274,8 +274,10 @@ export async function computeRobustness(
           .eq("active", true)
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.profiles" },
       ),
       fetchAllRows<{
+        id: string;
         staff_id: string;
         start_date: string;
         end_date: string;
@@ -283,12 +285,13 @@ export async function computeRobustness(
       }>((from, to) =>
         supabase
           .from("leave_requests")
-          .select("staff_id, start_date, end_date, status")
+          .select("id, staff_id, start_date, end_date, status")
           .eq("status", "approved")
           .lte("start_date", rangeEnd)
           .gte("end_date", rangeStart)
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.leave_requests" },
       ),
       fetchAllRows<{
         id: string;
@@ -304,6 +307,7 @@ export async function computeRobustness(
           .lte("session_date", rangeEnd)
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.theatre_sessions" },
       ),
       fetchAllRows<{
         staff_id: string;
@@ -319,8 +323,11 @@ export async function computeRobustness(
           )
           .gte("session_date", rangeStart)
           .lte("session_date", rangeEnd)
-          .order("id", { ascending: true })
+          .order("session_date", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("session", { ascending: true })
           .range(from, to),
+        { rowKey: rotaAssignmentKey, label: "robustness.rota_assignments" },
       ),
       fetchAllRows<{ id: string; name: string }>((from, to) =>
         supabase
@@ -328,8 +335,10 @@ export async function computeRobustness(
           .select("id, name")
           .order("id", { ascending: true })
           .range(from, to),
+        { rowKey: idKey, label: "robustness.specialties" },
       ),
     ]);
+
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll
