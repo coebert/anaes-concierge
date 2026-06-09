@@ -241,7 +241,7 @@ function DutiesPage() {
           <CardHeader>
             <CardTitle className="text-base">
               {duty.type === "spa" ? (
-                <>SPA <span className="text-muted-foreground font-normal">(Supporting Professional Activities)</span></>
+                <><GlossaryTerm>SPA</GlossaryTerm> <span className="text-muted-foreground font-normal">(Supporting Professional Activities)</span></>
               ) : (
                 duty.label
               )}
