@@ -2067,32 +2067,9 @@ export async function performRotaSync(
     await upsertSessions(withSpecialty);
     await upsertSessions(withoutSpecialty);
 
-    // --- Pass 3b: apply is_non_sag from the feed, skipping any sessions
-    // an admin has manually overridden. Done as two bulk UPDATEs (one
-    // per truthiness) to avoid clobbering admin-set values.
-    const trueIds: string[] = [];
-    const falseIds: string[] = [];
-    for (const d of allDrafts) {
-      const id = sessionIdByKey.get(`${d.session_date}|${d.theatre_id}|${d.session}`);
-      if (!id) continue;
-      (d.is_non_sag ? trueIds : falseIds).push(id);
-    }
-    const applyNonSag = async (ids: string[], value: boolean) => {
-      const CHUNK = 500;
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const chunk = ids.slice(i, i + CHUNK);
-        const { error: nsErr } = await supabaseAdmin
-          .from("theatre_sessions")
-          .update({ is_non_sag: value })
-          .in("id", chunk)
-          .eq("non_sag_override", false);
-        if (nsErr) {
-          errors.push({ label: `(is_non_sag=${value} chunk)`, error: nsErr.message });
-        }
-      }
-    };
-    if (trueIds.length > 0) await applyNonSag(trueIds, true);
-    if (falseIds.length > 0) await applyNonSag(falseIds, false);
+    // is_non_sag is admin-managed via the theatre-grid checkbox. Sync no
+    // longer writes it (the CLWRota feed does not carry a non-SAG tag).
+
 
 
     // --- Pass 4: bulk-upsert rota assignments (dedup external id). -----------
