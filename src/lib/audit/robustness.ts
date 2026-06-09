@@ -1,29 +1,28 @@
 import { compareBySurname } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchAllRowsPaged,
+  idKey,
+  rotaAssignmentKey,
+  type PaginateOptions,
+} from "./paginate";
 
 /**
  * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
  * robustness window, `rota_assignments` and `theatre_sessions` routinely
  * exceed that and the audit ends up reasoning over a truncated slice
  * (producing false shortfalls / phantom unfilled lists). Paginate every
- * read used by this module through this helper.
+ * read used by this module through the shared helper, which also dedupes
+ * across page boundaries.
  */
-const PAGE_SIZE = 1000;
-async function fetchAllRows<T>(
+function fetchAllRows<T>(
   build: (
     from: number,
     to: number,
   ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  opts: PaginateOptions<T> = {},
 ): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await build(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    const batch = (data ?? []) as T[];
-    out.push(...batch);
-    if (batch.length < PAGE_SIZE) break;
-  }
-  return out;
+  return fetchAllRowsPaged<T>(build, opts);
 }
 
 /**
