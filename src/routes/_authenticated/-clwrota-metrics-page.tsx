@@ -7,7 +7,7 @@
  * row-failure creep) and confirm the recent backoff/retry changes are
  * actually helping.
  */
-import { createFileRoute } from "@tanstack/react-router";
+// route file is a thin shim — see admin.clwrota-metrics.tsx
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -41,28 +41,8 @@ import {
 } from "@/lib/clwrota-metrics-types";
 import { formatDateGB } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/admin/clwrota-metrics")({
-  head: () => ({
-    meta: [
-      { title: "CLWRota sync metrics — Anaesthetic Concierge" },
-      {
-        name: "description",
-        content:
-          "Admin dashboard charting CLWRota sync reliability: retries, fallbacks, succeeded, skipped, and failed rows over time.",
-      },
-    ],
-  }),
-  component: ClwRotaMetricsPage,
-  errorComponent: ({ error }) => (
-    <div className="p-6">
-      <h1 className="text-lg font-semibold text-destructive">
-        Could not load CLWRota sync metrics
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-    </div>
-  ),
-  notFoundComponent: () => <div className="p-6">Page not found.</div>,
-});
+
+
 
 type MetricRow = ClwRotaSyncMetricRow;
 

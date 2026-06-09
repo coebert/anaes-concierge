@@ -29,6 +29,7 @@ import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedTraineesStartDateAuditRouteImport } from './routes/_authenticated/trainees.start-date-audit'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
+import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
@@ -46,6 +47,7 @@ import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
@@ -155,6 +157,12 @@ const AuthenticatedRobustnessSimulateRoute =
     path: '/robustness/simulate',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedRobustnessListFeasibilityRoute =
+  AuthenticatedRobustnessListFeasibilityRouteImport.update({
+    id: '/robustness/list-feasibility',
+    path: '/robustness/list-feasibility',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedRobustnessConsultantFeasibilityRoute =
   AuthenticatedRobustnessConsultantFeasibilityRouteImport.update({
     id: '/robustness/consultant-feasibility',
@@ -255,6 +263,12 @@ const AuthenticatedAdminDashboardRoute =
     path: '/admin/dashboard',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminClwrotaMetricsRoute =
+  AuthenticatedAdminClwrotaMetricsRouteImport.update({
+    id: '/admin/clwrota-metrics',
+    path: '/admin/clwrota-metrics',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminAuditToolRoute =
   AuthenticatedAdminAuditToolRouteImport.update({
     id: '/admin/audit-tool',
@@ -302,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
+  '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -319,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
@@ -344,6 +360,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
+  '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -361,6 +378,7 @@ export interface FileRoutesByTo {
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
@@ -389,6 +407,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/_authenticated/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
+  '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -406,6 +425,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
@@ -434,6 +454,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/admin/access-requests'
     | '/admin/audit-tool'
+    | '/admin/clwrota-metrics'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -451,6 +472,7 @@ export interface FileRouteTypes {
     | '/coordinator/rota'
     | '/leave/forecast'
     | '/robustness/consultant-feasibility'
+    | '/robustness/list-feasibility'
     | '/robustness/simulate'
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
@@ -476,6 +498,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/access-requests'
     | '/admin/audit-tool'
+    | '/admin/clwrota-metrics'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -493,6 +516,7 @@ export interface FileRouteTypes {
     | '/coordinator/rota'
     | '/leave/forecast'
     | '/robustness/consultant-feasibility'
+    | '/robustness/list-feasibility'
     | '/robustness/simulate'
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
@@ -520,6 +544,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/admin/access-requests'
     | '/_authenticated/admin/audit-tool'
+    | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
@@ -537,6 +562,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/leave_/forecast'
     | '/_authenticated/robustness/consultant-feasibility'
+    | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/simulate'
     | '/_authenticated/trainees/$staffId'
     | '/_authenticated/trainees/start-date-audit'
@@ -702,6 +728,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRobustnessSimulateRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/robustness/list-feasibility': {
+      id: '/_authenticated/robustness/list-feasibility'
+      path: '/robustness/list-feasibility'
+      fullPath: '/robustness/list-feasibility'
+      preLoaderRoute: typeof AuthenticatedRobustnessListFeasibilityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/robustness/consultant-feasibility': {
       id: '/_authenticated/robustness/consultant-feasibility'
       path: '/robustness/consultant-feasibility'
@@ -821,6 +854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/clwrota-metrics': {
+      id: '/_authenticated/admin/clwrota-metrics'
+      path: '/admin/clwrota-metrics'
+      fullPath: '/admin/clwrota-metrics'
+      preLoaderRoute: typeof AuthenticatedAdminClwrotaMetricsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/audit-tool': {
       id: '/_authenticated/admin/audit-tool'
       path: '/admin/audit-tool'
@@ -912,6 +952,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
   AuthenticatedAdminAuditToolRoute: typeof AuthenticatedAdminAuditToolRoute
+  AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
@@ -928,6 +969,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
   AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
   AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
   AuthenticatedRobustnessDayDateRoute: typeof AuthenticatedRobustnessDayDateRoute
@@ -943,6 +985,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
   AuthenticatedAdminAuditToolRoute: AuthenticatedAdminAuditToolRoute,
+  AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
@@ -960,6 +1003,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedLeaveForecastRoute: AuthenticatedLeaveForecastRoute,
   AuthenticatedRobustnessConsultantFeasibilityRoute:
     AuthenticatedRobustnessConsultantFeasibilityRoute,
+  AuthenticatedRobustnessListFeasibilityRoute:
+    AuthenticatedRobustnessListFeasibilityRoute,
   AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
   AuthenticatedRobustnessIndexRoute: AuthenticatedRobustnessIndexRoute,
   AuthenticatedRobustnessDayDateRoute: AuthenticatedRobustnessDayDateRoute,

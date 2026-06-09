@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -49,9 +49,6 @@ import {
 
 
 
-export const Route = createFileRoute("/_authenticated/robustness/list-feasibility")({
-  component: ListFeasibilityPage,
-});
 
 export function ListFeasibilityPage() {
   // "Applied" state — what the query actually runs against.
