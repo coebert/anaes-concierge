@@ -1687,6 +1687,34 @@ export async function performRotaSync(
       rows = parsed.rows;
       parseError = parsed.parseError;
       if (rows.length > 0) sampleKeys = Object.keys(rows[0]);
+
+      // ---- Post-parse date-window filter ---------------------------------
+      // The upstream CLWRota report endpoint ignores `start_date`/`end_date`
+      // query params and returns the full multi-month dataset regardless
+      // of the URL window we sent. That means a "weekly" backfill call
+      // still pays the full per-row matching + upsert cost — and the Worker
+      // exceeds its CPU budget on long ranges (HTTP 502).
+      //
+      // To make chunked historical backfills actually complete, filter the
+      // parsed rows down to the explicit `from..to` window here (when one
+      // was passed). The fetch + parse still touches the whole payload,
+      // but every downstream pass (staff matching, theatre_sessions
+      // upserts, rota_assignments upserts, non-working cleanup,
+      // solo-rate validation) only processes rows inside the window.
+      if (opts.from && opts.to) {
+        const from = opts.from;
+        const to = opts.to;
+        const before = rows.length;
+        rows = rows.filter((r) => {
+          const d = normaliseDate(
+            pick(r, ["date", "session_date", "Date", "rota_date", "day"]) ?? null,
+          );
+          return d != null && d >= from && d <= to;
+        });
+        console.info(
+          `[clwrota] window filter ${from}..${to}: ${rows.length}/${before} rows kept`,
+        );
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       await supabaseAdmin.from("clwrota_sync_state").upsert({
