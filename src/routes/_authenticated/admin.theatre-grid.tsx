@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,12 +211,21 @@ function VirtualGrid({
   onRemove: (id: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rangeKey = `${isoDate(days[0])}|${isoDate(days[days.length - 1])}`;
+
+  // Snap scroll back to the top-left when the date range changes so the
+  // virtualizer doesn't have to re-measure inherited mid-page offsets — that
+  // re-measure is the source of the visible jump when jumping weeks.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: 0, left: 0 });
+  }, [rangeKey]);
 
   const rowVirt = useVirtualizer({
     count: theatres.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 92,
-    overscan: 6,
+    overscan: 8,
     getItemKey: (i) => theatres[i].id,
   });
 
@@ -225,7 +234,7 @@ function VirtualGrid({
     getScrollElement: () => scrollRef.current,
     horizontal: true,
     estimateSize: () => DAY_COL_PX,
-    overscan: 2,
+    overscan: 3,
     getItemKey: (i) => isoDate(days[i]),
   });
 
@@ -242,7 +251,8 @@ function VirtualGrid({
   return (
     <div
       ref={scrollRef}
-      className="relative max-h-[70vh] overflow-auto rounded-md border"
+      className="relative max-h-[70vh] overflow-auto rounded-md border [contain:strict] [overscroll-behavior:contain]"
+      style={{ willChange: "scroll-position" }}
     >
       <table className="border-collapse text-xs" style={{ width: 160 + colTotal }}>
         <thead className="sticky top-0 z-20 bg-card shadow-[0_1px_0_0_hsl(var(--border))]">
@@ -283,9 +293,9 @@ function VirtualGrid({
             return (
               <tr
                 key={t.id}
-                ref={rowVirt.measureElement}
                 data-index={v.index}
                 className="border-t align-top"
+                style={{ height: v.size, contain: "layout paint" }}
               >
                 <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium" style={{ width: 160 }}>
                   {t.name}
