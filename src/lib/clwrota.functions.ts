@@ -534,6 +534,27 @@ export function clampDateWindow(
   }
 }
 
+/**
+ * Force a CLWRota report URL to an explicit `from..to` date window
+ * (YYYY-MM-DD). Used by chunked historical backfills so the caller can
+ * walk a long range in Worker-sized slices.
+ */
+export function explicitDateWindow(
+  rawUrl: string,
+  from: string,
+  to: string,
+): string {
+  if (!rawUrl) return rawUrl;
+  try {
+    const u = new URL(rawUrl);
+    u.searchParams.set("start_date", from);
+    u.searchParams.set("end_date", to);
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 
 
 
@@ -1603,7 +1624,9 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
     return performRotaSync();
   });
 
-export async function performRotaSync() {
+export async function performRotaSync(
+  opts: { from?: string; to?: string; daysBack?: number; daysAhead?: number } = {},
+) {
     const startedAt = Date.now();
     const { apiKey } = getEnv();
 
@@ -1625,8 +1648,8 @@ export async function performRotaSync() {
 
 
     const url = settings?.rota_report_url;
-    const daysBack = settings?.sync_days_back ?? 30;
-    const daysAhead = settings?.sync_days_ahead ?? 120;
+    const daysBack = opts.daysBack ?? settings?.sync_days_back ?? 30;
+    const daysAhead = opts.daysAhead ?? settings?.sync_days_ahead ?? 120;
     const emptyResult = {
       ok: false as boolean,
       message: "",
@@ -1651,7 +1674,11 @@ export async function performRotaSync() {
     let sampleKeys: string[] = [];
     let parseError: string | null = null;
     try {
-      const text = await fetchReportRaw(clampDateWindow(url, { daysBack, daysAhead }), apiKey);
+      const windowedUrl =
+        opts.from && opts.to
+          ? explicitDateWindow(url, opts.from, opts.to)
+          : clampDateWindow(url, { daysBack, daysAhead });
+      const text = await fetchReportRaw(windowedUrl, apiKey);
 
 
       rawPreview = text.slice(0, 500);
