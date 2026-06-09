@@ -288,13 +288,38 @@ function AuditToolPage() {
               </CardContent>
             </Card>
           ) : (
-            reports.map((r) => <ReportCard key={r.id} output={r.output} />)
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground">
+                  {reports.length} {reports.length === 1 ? "report" : "reports"} in this conversation
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="mr-1.5 h-3.5 w-3.5" />
+                      Export all
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel className="text-xs">Combined export</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => downloadAllExcel(reports)}>
+                      Excel workbook (.xlsx)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => downloadAllPdf(reports)}>
+                      PDF document (.pdf)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {reports.map((r) => <ReportCard key={r.id} output={r.output} />)}
+            </>
           )}
         </div>
       </div>
     </div>
   );
 }
+
 
 function ChatBubble({ message }: { message: UIMessage }) {
   return (
