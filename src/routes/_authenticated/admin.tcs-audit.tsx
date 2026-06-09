@@ -53,33 +53,33 @@ function TcsAuditPage() {
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>(), leaveByStaff: new Map<string, Set<string>>(), todayISO, sinceISO: since };
 
-      // Fetch in pages of 1000 to avoid Supabase's default row cap silently
-      // truncating high-volume trainees (a single .range(0, 9999) request
-      // can still be capped server-side).
-      const PAGE = 1000;
-      const all: Array<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string; theatre_session_id: string | null }> = [];
-      let offset = 0;
-      // Loop until a page returns fewer than PAGE rows.
-      while (true) {
-        let q = supabase
-          .from("rota_assignments")
-          .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id")
-          .in("staff_id", ids)
-          // Deterministic multi-key order so OFFSET pagination cannot return
-          // the same row twice (or skip rows) when sessions share a date.
-          .order("session_date", { ascending: true })
-          .order("staff_id", { ascending: true })
-          .order("session", { ascending: true })
-          .range(offset, offset + PAGE - 1);
-        if (since) q = q.gte("session_date", since);
-        const { data: page, error: e2 } = await q;
-        if (e2) throw e2;
-        const rows = page ?? [];
-        all.push(...rows);
-        if (rows.length < PAGE) break;
-        offset += PAGE;
-        if (offset > 50_000) break; // hard safety stop
-      }
+      // Fetch through the shared paginator: deterministic order +
+      // page-boundary overlap detection + dedupe by (staff, date, session).
+      const all = await fetchAllRowsPaged<{
+        staff_id: string;
+        session_date: string;
+        session: string;
+        duty_type: string;
+        role_on_list: string;
+        theatre_session_id: string | null;
+      }>(
+        (from, to) => {
+          let q = supabase
+            .from("rota_assignments")
+            .select(
+              "staff_id, session_date, session, duty_type, role_on_list, theatre_session_id",
+            )
+            .in("staff_id", ids)
+            .order("session_date", { ascending: true })
+            .order("staff_id", { ascending: true })
+            .order("session", { ascending: true })
+            .range(from, to);
+          if (since) q = q.gte("session_date", since);
+          return q;
+        },
+        { rowKey: rotaAssignmentKey, label: "tcs-audit.rota_assignments" },
+      );
+
 
       // Pull approved leave so the audit can (a) bridge "consecutive days"
       // runs across leave days and (b) exclude leave days from the WTD
