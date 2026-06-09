@@ -294,7 +294,6 @@ function VirtualGrid({
                 key={t.id}
                 data-index={v.index}
                 className="border-t align-top"
-                style={{ height: v.size, contain: "layout paint" }}
               >
                 <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium" style={{ width: 160 }}>
                   {t.name}
