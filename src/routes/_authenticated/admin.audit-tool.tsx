@@ -400,15 +400,26 @@ function ReportCard({ output }: { output: RunSqlOutput }) {
               {rowCount >= 5000 && " (capped at 5000)"}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadCsv(rows, columns, output.title ?? "report")}
-            disabled={rows.length === 0}
-          >
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={rows.length === 0}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => downloadCsv(rows, columns, output.title ?? "report")}>
+                CSV (.csv)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => downloadExcel(rows, columns, output.title ?? "report")}>
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => downloadPdf(rows, columns, output.title ?? "report", output.sql)}>
+                PDF (.pdf)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
