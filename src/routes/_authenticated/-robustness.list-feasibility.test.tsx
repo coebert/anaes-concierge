@@ -62,7 +62,8 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => ({ select: () => ({ data: [], error: null }) }) },
 }));
 
-import { Route, ListFeasibilityPage } from "./-list-feasibility-page";
+import { ListFeasibilityPage } from "./-list-feasibility-page";
+import { Route } from "./robustness.list-feasibility";
 
 // --- Fixture --------------------------------------------------------------
 
