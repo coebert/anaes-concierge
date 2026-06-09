@@ -534,6 +534,27 @@ export function clampDateWindow(
   }
 }
 
+/**
+ * Force a CLWRota report URL to an explicit `from..to` date window
+ * (YYYY-MM-DD). Used by chunked historical backfills so the caller can
+ * walk a long range in Worker-sized slices.
+ */
+export function explicitDateWindow(
+  rawUrl: string,
+  from: string,
+  to: string,
+): string {
+  if (!rawUrl) return rawUrl;
+  try {
+    const u = new URL(rawUrl);
+    u.searchParams.set("start_date", from);
+    u.searchParams.set("end_date", to);
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 
 
 
