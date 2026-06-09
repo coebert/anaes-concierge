@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
+import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
@@ -172,6 +173,31 @@ function TraineesPage() {
         return acc;
       }, {});
 
+      // Future assignments (today+ through end of rotation) — used to flag
+      // "ICU block only" trainees whose remaining rotation has no theatre work.
+      let futureAssignments: Array<{
+        staff_id: string;
+        duty_type: string | null;
+        session_date: string;
+      }> = [];
+      if (traineeIds.length) {
+        const { data: futureRows, error: eFut } = await supabase
+          .from("rota_assignments")
+          .select("staff_id,duty_type,session_date")
+          .in("staff_id", traineeIds)
+          .gt("session_date", todayIso)
+          .range(0, 49999);
+        if (eFut) throw eFut;
+        futureAssignments = (futureRows ?? []) as typeof futureAssignments;
+      }
+      const futureByStaff = futureAssignments.reduce<Record<string, Array<{ duty_type: string | null; session_date: string }>>>(
+        (acc, a) => {
+          (acc[a.staff_id] ||= []).push({ duty_type: a.duty_type, session_date: a.session_date });
+          return acc;
+        },
+        {},
+      );
+
       return {
         trainees: trainees ?? [],
         targets: targets ?? [],
@@ -179,6 +205,7 @@ function TraineesPage() {
         tsSpecMap: tsMap,
         assignmentsByStaff: clinicalByStaff,
         allAssignmentsByStaff: allByStaff,
+        futureAssignmentsByStaff: futureByStaff,
       };
     },
   });
@@ -210,7 +237,14 @@ function TraineesPage() {
         const overall = progress.length
           ? Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length)
           : null;
-        return { trainee: t, progress, overall };
+        const rotationEnd =
+          (t as { rotation_end_date?: string | null }).rotation_end_date ?? null;
+        const icuOnly = isIcuBlockOnly(
+          data.futureAssignmentsByStaff[t.id] ?? [],
+          todayISO(),
+          rotationEnd,
+        );
+        return { trainee: t, progress, overall, icuOnly };
       })
       .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [data, filter]);
@@ -445,7 +479,7 @@ function TraineesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ trainee, progress, overall }) => (
+                {rows.map(({ trainee, progress, overall, icuOnly }) => (
                   <TableRow key={trainee.id} className="cursor-pointer">
                     <TableCell>
                       <Link
@@ -458,6 +492,15 @@ function TraineesPage() {
                       {isNotYetStarted(trainee.start_date) ? (
                         <Badge variant="outline" className="ml-2 text-xs">
                           Not yet started · {format(new Date(trainee.start_date), "d MMM yyyy")}
+                        </Badge>
+                      ) : null}
+                      {icuOnly ? (
+                        <Badge
+                          variant="outline"
+                          className="ml-2 text-xs border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                          title="All remaining assignments in this rotation are ICU shifts — no theatre lists scheduled."
+                        >
+                          ICU block only
                         </Badge>
                       ) : null}
                     </TableCell>
