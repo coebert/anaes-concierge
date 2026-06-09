@@ -550,6 +550,15 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                       {a ? (
                         <div className="space-y-0.5">
                           <div className="font-medium">{theatre?.name ?? "—"}</div>
+                          {session?.is_non_sag && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                              title="NHH list covered as part of NHS job plan (non-SAG)"
+                            >
+                              Non-SAG
+                            </Badge>
+                          )}
                           {spec && <div className="text-muted-foreground">{spec.name}</div>}
                           {session?.surgical_consultant && (
                             <div className="text-muted-foreground">{session.surgical_consultant}</div>
