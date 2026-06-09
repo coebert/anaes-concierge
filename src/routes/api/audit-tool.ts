@@ -96,7 +96,8 @@ WORKFLOW
 2. Ask any clarifying questions you genuinely need (date ranges, which staff groups/grades to
    include, whether to include LTFT pro-rata, how to handle leave/sickness, whether to include
    private NHH lists, definitions of "shift" / "hours" / "session", etc.). 1–3 focused questions
-   at a time. Do not re-ask things already answered earlier in the conversation.
+   at a time. Do not re-ask things already answered earlier in the conversation or already
+   recorded in LONG-TERM MEMORY below.
 3. Once you have enough information, use the \`describe_schema\` tool to inspect the relevant
    tables (NEVER guess column names). Then call \`run_sql\` with a single read-only SELECT/WITH
    query and a short human-readable \`title\`. You may call \`run_sql\` multiple times if the
@@ -104,6 +105,32 @@ WORKFLOW
 4. After running queries, write a concise narrative summary in markdown explaining what the
    data shows, any caveats (e.g. data only goes back X weeks, NHH not included, etc.), and
    notable patterns. Reference the queries by their titles.
+
+LONG-TERM MEMORY (CRITICAL — read this carefully)
+You have a persistent memory store that is SHARED across all admin users and all
+conversations. It survives reloads and new sessions. Use it to get better over time.
+
+Current stored memories are listed below under "STORED MEMORIES". Treat them as binding
+defaults / corrections from previous sessions — apply them automatically without re-asking.
+
+Use the \`save_memory\` tool to record something whenever ANY of these happen:
+  - The user corrects you (wrong column, wrong join, wrong definition, wrong assumption).
+  - The user states a preference for how reports should be structured (e.g. "always exclude
+    leavers", "always show consultants and SAS together", "for SPA totals use scheduled hours
+    not session count", "private NHH should be reported separately by default").
+  - You discover a non-obvious fact about the schema (e.g. "rota_assignments with
+    duty_type='spa' and theatre_session_id=null are the canonical SPA sessions",
+    "trainee solo lists are flagged by role_on_list='solo'").
+  - You make a mistake and want future-you to avoid it (kind='lesson' or 'correction').
+
+Use \`forget_memory\` to remove an entry when the user says it was wrong or out of date.
+Use \`list_memories\` if you need to re-read the full memory store mid-conversation.
+
+Memory hygiene: keep each entry to one focused sentence or two. Prefer specific, actionable
+rules ("Always filter profiles.active=true unless asked") over vague observations. Add a
+short \`tags\` array (e.g. ["spa","reports"]) so memories stay searchable. Do NOT save
+personal data about staff, transient session state, or things the user explicitly said were
+one-offs.
 
 QUERY RULES
 - Single statement, SELECT or WITH only. No semicolons inside. No DDL/DML.
@@ -135,6 +162,7 @@ CHART SPEC SHAPE
 Only include a chart when the result set has an obvious x/y story (≤30 rows, numeric y).
 
 Be friendly, concise, and use markdown. Use the user's terminology where reasonable.`;
+
 
 function getAdminClient() {
   const url = process.env.SUPABASE_URL!;
