@@ -85,6 +85,3 @@ export function CommandPalette() {
     </>
   );
 }
-
-// re-export to make TypeScript happy when AuthState isn't directly referenced
-export type _UnusedAuthState = AuthState;
