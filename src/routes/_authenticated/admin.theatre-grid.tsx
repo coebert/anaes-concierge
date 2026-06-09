@@ -30,7 +30,13 @@ type SessionRow = {
   session: Sess;
   specialty_id: string | null;
   surgical_consultant: string | null;
+  is_non_sag: boolean;
+  non_sag_override: boolean;
 };
+
+type SessionPatch = Partial<
+  Pick<SessionRow, "specialty_id" | "surgical_consultant" | "is_non_sag" | "non_sag_override">
+>;
 
 function TheatreGridPage() {
   const [anchor, setAnchor] = useState<Date>(new Date());
