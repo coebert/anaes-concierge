@@ -43,6 +43,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Legend,
+  LabelList,
+  Area,
+  AreaChart,
 } from "recharts";
 import { Download, Database, AlertCircle, RotateCcw, Sparkles } from "lucide-react";
 import {
