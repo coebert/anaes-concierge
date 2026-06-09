@@ -96,7 +96,8 @@ WORKFLOW
 2. Ask any clarifying questions you genuinely need (date ranges, which staff groups/grades to
    include, whether to include LTFT pro-rata, how to handle leave/sickness, whether to include
    private NHH lists, definitions of "shift" / "hours" / "session", etc.). 1–3 focused questions
-   at a time. Do not re-ask things already answered earlier in the conversation.
+   at a time. Do not re-ask things already answered earlier in the conversation or already
+   recorded in LONG-TERM MEMORY below.
 3. Once you have enough information, use the \`describe_schema\` tool to inspect the relevant
    tables (NEVER guess column names). Then call \`run_sql\` with a single read-only SELECT/WITH
    query and a short human-readable \`title\`. You may call \`run_sql\` multiple times if the
@@ -104,6 +105,32 @@ WORKFLOW
 4. After running queries, write a concise narrative summary in markdown explaining what the
    data shows, any caveats (e.g. data only goes back X weeks, NHH not included, etc.), and
    notable patterns. Reference the queries by their titles.
+
+LONG-TERM MEMORY (CRITICAL — read this carefully)
+You have a persistent memory store that is SHARED across all admin users and all
+conversations. It survives reloads and new sessions. Use it to get better over time.
+
+Current stored memories are listed below under "STORED MEMORIES". Treat them as binding
+defaults / corrections from previous sessions — apply them automatically without re-asking.
+
+Use the \`save_memory\` tool to record something whenever ANY of these happen:
+  - The user corrects you (wrong column, wrong join, wrong definition, wrong assumption).
+  - The user states a preference for how reports should be structured (e.g. "always exclude
+    leavers", "always show consultants and SAS together", "for SPA totals use scheduled hours
+    not session count", "private NHH should be reported separately by default").
+  - You discover a non-obvious fact about the schema (e.g. "rota_assignments with
+    duty_type='spa' and theatre_session_id=null are the canonical SPA sessions",
+    "trainee solo lists are flagged by role_on_list='solo'").
+  - You make a mistake and want future-you to avoid it (kind='lesson' or 'correction').
+
+Use \`forget_memory\` to remove an entry when the user says it was wrong or out of date.
+Use \`list_memories\` if you need to re-read the full memory store mid-conversation.
+
+Memory hygiene: keep each entry to one focused sentence or two. Prefer specific, actionable
+rules ("Always filter profiles.active=true unless asked") over vague observations. Add a
+short \`tags\` array (e.g. ["spa","reports"]) so memories stay searchable. Do NOT save
+personal data about staff, transient session state, or things the user explicitly said were
+one-offs.
 
 QUERY RULES
 - Single statement, SELECT or WITH only. No semicolons inside. No DDL/DML.
@@ -135,6 +162,7 @@ CHART SPEC SHAPE
 Only include a chart when the result set has an obvious x/y story (≤30 rows, numeric y).
 
 Be friendly, concise, and use markdown. Use the user's terminology where reasonable.`;
+
 
 function getAdminClient() {
   const url = process.env.SUPABASE_URL!;
@@ -192,7 +220,28 @@ export const Route = createFileRoute("/api/audit-tool")({
         }
 
         const userClient = getUserClient(auth.token);
+        const adminClient = getAdminClient();
 
+        // Load long-term memories (shared across all admins) and inject into system prompt.
+        const { data: memoryRows } = await adminClient
+          .from("audit_assistant_memories")
+          .select("id, kind, content, tags, created_at")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        const memoryBlock =
+          memoryRows && memoryRows.length > 0
+            ? memoryRows
+                .map(
+                  (m) =>
+                    `- [${m.kind}] (id=${m.id}${
+                      m.tags && m.tags.length ? `, tags=${m.tags.join(",")}` : ""
+                    }) ${m.content}`,
+                )
+                .join("\n")
+            : "(no memories yet — save useful lessons as you learn them)";
+
+        const fullSystem = `${SYSTEM_PROMPT}\n\nSTORED MEMORIES (newest first):\n${memoryBlock}`;
 
         const tools = {
           describe_schema: tool({
@@ -265,18 +314,80 @@ export const Route = createFileRoute("/api/audit-tool")({
               };
             },
           }),
+
+          save_memory: tool({
+            description:
+              "Save a long-term memory shared across all admin conversations. Use whenever the " +
+              "user corrects you, states a lasting preference, or you learn a non-obvious " +
+              "schema/domain fact you want future-you to remember. Keep `content` to one or two " +
+              "focused sentences. `kind`: 'lesson' (mistake to avoid), 'correction' (user " +
+              "corrected a fact), 'preference' (how the user wants reports), 'fact' (durable " +
+              "schema/domain fact).",
+            inputSchema: z.object({
+              kind: z.enum(["lesson", "preference", "fact", "correction"]),
+              content: z.string().min(5).max(1000),
+              tags: z.array(z.string().max(40)).max(8).optional(),
+            }),
+            execute: async ({ kind, content, tags }) => {
+              const { data, error } = await adminClient
+                .from("audit_assistant_memories")
+                .insert({
+                  kind,
+                  content,
+                  tags: tags ?? [],
+                  created_by: auth.userId,
+                })
+                .select("id")
+                .single();
+              if (error) return { error: error.message };
+              return { saved: true, id: data.id };
+            },
+          }),
+
+          forget_memory: tool({
+            description:
+              "Delete a stored memory by id. Use when the user says a stored memory is wrong " +
+              "or out of date. The id is shown in the STORED MEMORIES block of the system prompt.",
+            inputSchema: z.object({ id: z.string().uuid() }),
+            execute: async ({ id }) => {
+              const { error } = await adminClient
+                .from("audit_assistant_memories")
+                .delete()
+                .eq("id", id);
+              if (error) return { error: error.message };
+              return { deleted: true, id };
+            },
+          }),
+
+          list_memories: tool({
+            description:
+              "Return the full current memory store. Usually unnecessary because memories are " +
+              "already injected into the system prompt, but useful if you need a fresh read " +
+              "after saving/deleting.",
+            inputSchema: z.object({}).optional(),
+            execute: async () => {
+              const { data, error } = await adminClient
+                .from("audit_assistant_memories")
+                .select("id, kind, content, tags, created_at")
+                .order("created_at", { ascending: false })
+                .limit(200);
+              if (error) return { error: error.message };
+              return { memories: data ?? [] };
+            },
+          }),
         };
 
         const gateway = createLovableAiGatewayProvider(key);
         const result = streamText({
           model: gateway("google/gemini-2.5-pro"),
-          system: SYSTEM_PROMPT,
+          system: fullSystem,
           messages: await convertToModelMessages(messages),
           tools,
           stopWhen: stepCountIs(50),
         });
 
         return result.toUIMessageStreamResponse({ originalMessages: messages });
+
       },
     },
   },

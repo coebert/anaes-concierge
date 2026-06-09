@@ -109,6 +109,36 @@ export type Database = {
           },
         ]
       }
+      audit_assistant_memories: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clwrota_sync_metrics: {
         Row: {
           chunks_fell_back_to_per_row: number
