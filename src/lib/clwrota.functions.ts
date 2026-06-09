@@ -1793,6 +1793,14 @@ export async function performRotaSync() {
         const candidate = theatreByName.get(consultantName.toLowerCase().trim());
         if (candidate) theatreId = candidate;
       }
+      // Off-site / specialty-room aliases. CLWRota labels vary
+      // ("Endoscopy" / "Endo GA" / "Laser (Paeds)" / "NHH Theatre 3" /
+      // "NHH T3" / "NHH 3" …) so fall back to keyword matching against the
+      // free-text location and slot-title columns.
+      if (!theatreId) {
+        const aliasText = `${theatreName ?? ""} ${consultantName ?? ""}`;
+        theatreId = resolveOffsiteTheatreAlias(aliasText, theatreByName);
+      }
 
       // Classify duty type from free-text labels + staff grade.
       const prof = profById.get(staffId);
