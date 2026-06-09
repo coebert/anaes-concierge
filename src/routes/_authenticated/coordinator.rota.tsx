@@ -106,7 +106,7 @@ function RotaGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id")
+        .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id,is_non_sag")
         .gte("session_date", startIso)
         .lte("session_date", endIso);
       if (error) throw error;
