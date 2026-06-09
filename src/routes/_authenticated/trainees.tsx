@@ -479,7 +479,7 @@ function TraineesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ trainee, progress, overall }) => (
+                {rows.map(({ trainee, progress, overall, icuOnly }) => (
                   <TableRow key={trainee.id} className="cursor-pointer">
                     <TableCell>
                       <Link
@@ -492,6 +492,15 @@ function TraineesPage() {
                       {isNotYetStarted(trainee.start_date) ? (
                         <Badge variant="outline" className="ml-2 text-xs">
                           Not yet started · {format(new Date(trainee.start_date), "d MMM yyyy")}
+                        </Badge>
+                      ) : null}
+                      {icuOnly ? (
+                        <Badge
+                          variant="outline"
+                          className="ml-2 text-xs border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                          title="All remaining assignments in this rotation are ICU shifts — no theatre lists scheduled."
+                        >
+                          ICU block only
                         </Badge>
                       ) : null}
                     </TableCell>
