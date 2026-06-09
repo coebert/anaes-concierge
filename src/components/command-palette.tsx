@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
-import { useAuth, type AuthState } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
 import { filterNavForUser, groupNav, NAV_GROUPS } from "@/lib/navigation";
 
 export function CommandPalette() {
