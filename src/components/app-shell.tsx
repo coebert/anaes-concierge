@@ -212,7 +212,3 @@ function prettifySegment(pathname: string) {
   const last = pathname.split("/").filter(Boolean).pop() ?? "";
   return last.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-// Silence unused-import warning for Button (kept available if downstream code reverts).
-const _ButtonRef = Button;
-void _ButtonRef;
