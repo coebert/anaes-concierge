@@ -1941,32 +1941,13 @@ export async function performRotaSync(
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
-        // Detect "non-SAG" NHH lists (NHS job-planned work at New Hall
-        // Hospital). Matches case-insensitive keywords anywhere in the
-        // free-text label columns — including bracketed tags appended
-        // after the consultant name e.g. "Dr S Abbas [Non-SAG]". Sync
-        // sets is_non_sag accordingly unless an admin has set
-        // non_sag_override on the session.
-        const nonSagRegex = /\bnon[\s-]?sag\b|\bnot[\s-]sag\b/i;
-        // Include the raw (un-stripped) anaesthetist name — on NHH lists
-        // covered by NHS job plans, CLWRota appends "[Non-SAG]" after the
-        // anaesthetist's rota_name (e.g. "Dr S Abbas [Non-SAG]"). The
-        // surgical slot_titles column does not carry this tag.
-        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""} ${personNameRaw ?? ""}`;
-        const isNonSag = nonSagRegex.test(labelBlob);
-        // Strip any "[Non-SAG]" / "(non sag)" tag from the consultant
-        // name before persisting so UI shows just "Dr S Abbas", not
-        // "Dr S Abbas [Non-SAG]". The flag is captured separately.
-        const cleanedConsultant = consultantName
-          ? consultantName
-              .replace(/[\s]*[\[\(\{][^\]\)\}]*non[\s-]?sag[^\]\)\}]*[\]\)\}]/gi, "")
-              .replace(/[\s,;|\-–—]*\bnon[\s-]?sag\b[\s,;|\-–—]*$/gi, "")
-              .trim() || null
-          : null;
-        // Last write wins for surgical_consultant, but for specialty we
-        // keep any non-null name/id already collected — otherwise a later
-        // row with a blank slot_speciality would wipe the value out and
-        // produce "matched-but-no-specialty" rows on trainee dashboards.
+        // NOTE: "non-SAG" classification is admin-managed via the
+        // theatre-grid Non-SAG checkbox. The upstream CLWRota feed does
+        // not carry a non-SAG tag (verified by inspecting raw responses
+        // from /central_api/query/assignments: zero occurrences of "sag"
+        // across all fields), so sync never writes `is_non_sag` — it
+        // only inserts/updates specialty + surgical_consultant and lets
+        // the admin flag persist on every subsequent sync.
         const prior = sessionDraftsByKey.get(theatreSessionKey);
         sessionDraftsByKey.set(theatreSessionKey, {
           session_date,
@@ -1974,10 +1955,10 @@ export async function performRotaSync(
           session,
           specialty_id: specialtyId ?? prior?.specialty_id ?? null,
           specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
-          surgical_consultant: cleanedConsultant ?? prior?.surgical_consultant ?? null,
-          is_non_sag: isNonSag || (prior?.is_non_sag ?? false),
+          surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
         });
       }
+
 
       assignmentDrafts.push({
         staff_id: staffId,
