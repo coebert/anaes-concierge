@@ -277,7 +277,6 @@ export async function computeRobustness(
         { rowKey: idKey, label: "robustness.profiles" },
       ),
       fetchAllRows<{
-        id: string;
         staff_id: string;
         start_date: string;
         end_date: string;
@@ -285,13 +284,18 @@ export async function computeRobustness(
       }>((from, to) =>
         supabase
           .from("leave_requests")
-          .select("id, staff_id, start_date, end_date, status")
+          .select("staff_id, start_date, end_date, status")
           .eq("status", "approved")
           .lte("start_date", rangeEnd)
           .gte("end_date", rangeStart)
-          .order("id", { ascending: true })
+          .order("staff_id", { ascending: true })
+          .order("start_date", { ascending: true })
+          .order("end_date", { ascending: true })
           .range(from, to),
-        { rowKey: idKey, label: "robustness.leave_requests" },
+        {
+          rowKey: (r) => `${r.staff_id}|${r.start_date}|${r.end_date}`,
+          label: "robustness.leave_requests",
+        },
       ),
       fetchAllRows<{
         id: string;
