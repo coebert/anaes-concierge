@@ -251,8 +251,7 @@ function VirtualGrid({
   return (
     <div
       ref={scrollRef}
-      className="relative max-h-[70vh] overflow-auto rounded-md border [contain:strict] [overscroll-behavior:contain]"
-      style={{ willChange: "scroll-position" }}
+      className="relative max-h-[70vh] overflow-auto rounded-md border [overscroll-behavior:contain]"
     >
       <table className="border-collapse text-xs" style={{ width: 160 + colTotal }}>
         <thead className="sticky top-0 z-20 bg-card shadow-[0_1px_0_0_hsl(var(--border))]">
@@ -295,7 +294,6 @@ function VirtualGrid({
                 key={t.id}
                 data-index={v.index}
                 className="border-t align-top"
-                style={{ height: v.size, contain: "layout paint" }}
               >
                 <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium" style={{ width: 160 }}>
                   {t.name}
