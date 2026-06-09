@@ -252,3 +252,38 @@ export function computeFullAudit(args: {
     displacement: computeDisplacement(args),
   };
 }
+
+/* ---------- ICU-block-only detection ----------
+ *
+ * A trainee is considered to be on an "ICU block only" when every remaining
+ * clinical day in their rotation window is an ICU shift (no theatre lists,
+ * obstetrics, on-calls etc.). Non-patient-facing days (SPA, teaching, admin,
+ * non-clinical) are treated as neutral — they neither qualify nor disqualify.
+ */
+export const ICU_DUTY_TYPES = new Set(["icu_trainee", "icu_ct2_plus"]);
+const NEUTRAL_DUTY_TYPES = new Set(["spa", "admin", "teaching", "non_clinical"]);
+
+export function isIcuBlockOnly(
+  assignments: Array<{ duty_type: string | null; session_date: string }>,
+  fromDateIso: string,
+  rotationEndDateIso: string | null,
+): boolean {
+  const window = assignments.filter((a) => {
+    if (!a.session_date || a.session_date < fromDateIso) return false;
+    if (rotationEndDateIso && a.session_date > rotationEndDateIso) return false;
+    return true;
+  });
+  if (window.length === 0) return false;
+  let hasIcu = false;
+  for (const a of window) {
+    const dt = a.duty_type ?? "";
+    if (NEUTRAL_DUTY_TYPES.has(dt)) continue;
+    if (ICU_DUTY_TYPES.has(dt)) {
+      hasIcu = true;
+      continue;
+    }
+    // Any other clinical duty type (theatre, obstetrics, on-call, …) disqualifies.
+    return false;
+  }
+  return hasIcu;
+}
