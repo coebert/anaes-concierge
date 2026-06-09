@@ -20,7 +20,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     acronym: "NHH",
     category: "theatre",
     definition:
-      "The local private hospital where the department also provides anaesthetic cover. It has 5 theatres (NHH Theatre 1–5). Do not confuse this with the on-call duty type 'nhh_oncall' (\"Night Hospital\" out-of-hours cover)."
+      "The local private hospital where the department also provides anaesthetic cover. It has 5 theatres (NHH Theatre 1–5). Do not confuse this with the on-call duty type 'nhh_oncall' (\"Night Hospital\" out-of-hours cover).",
     related: ["CoD"],
   },
   {
