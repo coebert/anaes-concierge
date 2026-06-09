@@ -1737,6 +1737,11 @@ export async function performRotaSync() {
       // specialty didn't exist when the row was first parsed.
       specialty_name_key: string | null;
       surgical_consultant: string | null;
+      // True when the raw CLWRota labels for this session match a
+      // "non-SAG" keyword (NHH list covered as part of a consultant's NHS
+      // job plan rather than private work). Applied as a default; an
+      // admin's non_sag_override flag suppresses sync writes.
+      is_non_sag: boolean;
     };
     type AssignmentDraft = {
       staff_id: string;
