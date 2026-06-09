@@ -298,7 +298,7 @@ function TraineeDashboard() {
 /* ---------- Building blocks ---------- */
 function Stat({
   label, value, icon: Icon,
-}: { label: string; value: number | string; icon: typeof Users }) {
+}: { label: React.ReactNode; value: number | string; icon: typeof Users }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
