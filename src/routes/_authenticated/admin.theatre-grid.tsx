@@ -102,7 +102,7 @@ function TheatreGridPage() {
       theatre_id: string;
       session_date: string;
       session: Sess;
-      patch: Partial<Pick<SessionRow, "specialty_id" | "surgical_consultant">>;
+      patch: SessionPatch;
     }) => {
       if (args.cell) {
         const { error } = await supabase
@@ -117,6 +117,8 @@ function TheatreGridPage() {
           session: args.session,
           specialty_id: args.patch.specialty_id ?? null,
           surgical_consultant: args.patch.surgical_consultant ?? null,
+          is_non_sag: args.patch.is_non_sag ?? false,
+          non_sag_override: args.patch.non_sag_override ?? false,
         });
         if (error) throw error;
       }
