@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
+import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
