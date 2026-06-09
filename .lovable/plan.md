@@ -1,64 +1,89 @@
-# Pivot to an audit-first app
+# Streamlining the app's information architecture
 
-The product reframes around three audit pillars sourced from synced CLWRota data. AI rota-writing stays available but moves out of the primary navigation. No data is destroyed.
+The sidebar currently shows ~25 flat links across three sections (Main, Coordinator tools, Administration with 13 entries). Names overlap ("Audit dashboard" vs "Rota audit data" vs "AI audit tool" vs "TCS 2016 audit"), related tools are scattered, and there is no search. The plan groups related views, collapses rarely-used ones, and adds a global command palette so power users never have to scroll the sidebar.
 
-## 1. Navigation & home page reshape
+## 1. Regrouped, collapsible sidebar
 
-- New home page (`/`) becomes an **Audit dashboard**: three headline cards (Trainee experience, Leave pressure, Rota robustness) plus a freshness indicator for the last CLWRota sync.
-- Top-level nav order: **Home · Trainees · Leave · Robustness · Rota · Coordinator tools**.
-- A new collapsed "Coordinator tools" group holds the existing AI-assisted surfaces: `/coordinator/rota` candidate editor, chat assistant's rota-writing tools, and `/admin/rules` custom rules. They keep working; they just stop being the entry point.
+Replace the three flat lists with **task-oriented groups** built on the shadcn `Sidebar` (collapsible to icon-rail). Proposed grouping:
 
-## 2. Trainee experience audit (`/trainees` + `/trainees/$staffId`)
+```text
+Home                       /                (audit dashboard)
 
-Four lenses, all derived from `rota_assignments` + `theatre_sessions` + `specialties` + `trainee_targets`:
+Rota
+ ├─ Theatre rota           /coordinator/rota
+ ├─ Theatre grid           /admin/theatre-grid       (admin)
+ ├─ Duties & on-call       /coordinator/duties
+ ├─ Rota gaps              /admin/rota-gaps          (admin)
+ └─ My rota                /me
 
-1. **Specialty breadth vs target** — heatmap of sessions per specialty per trainee per rolling window (4w / 12w / since rotation start), red/amber/green vs `trainee_targets.required_sessions`. Surfaces both under- and over-exposure.
-2. **Solo vs supervised mix** — stacked bar per trainee with the running ratio against `required_solo` / `required_supervised`, plus a trend line.
-3. **Named supervisor exposure** — diversity index: distinct consultants the trainee has worked with in the window, list of who they've never been paired with, flag for "narrow exposure" when below a configurable threshold.
-4. **Time-on-list / displacement** — counts of sessions where a trainee was reassigned off a training list (training role removed and replaced with `solo` duty), using `rota_change_log` + `locally_modified` flag to detect the displacement. Aggregates lost training hours per trainee.
+Leave
+ ├─ My leave               /leave
+ ├─ Approve leave          /coordinator/leave        (coord)
+ ├─ Leave forecast         /leave/forecast           (coord)
+ └─ Global calendar        /calendar
 
-Per-trainee page combines all four with date-range filter and CSV export.
+Audits & robustness
+ ├─ Robustness overview    /robustness
+ ├─ List feasibility       /robustness/list-feasibility
+ ├─ Consultant feasibility /robustness/consultant-feasibility
+ ├─ Simulator              /robustness/simulate
+ ├─ Trainee audit          /trainees                (trainee/admin)
+ ├─ TCS 2016 audit         /admin/tcs-audit         (admin)
+ ├─ Rota audit data        /admin/dashboard         (admin)
+ └─ AI audit tool          /admin/audit-tool        (admin)
 
-## 3. Leave pressure forecast (`/leave/forecast`)
+Assistant
+ └─ AI assistant           /chat
 
-- Calendar heatmap (day cell darkens with concurrent approved + pending leave count), filterable by grade and specialty.
-- Sidebar shows top-10 highest-pressure weeks in the next 6 months and recurring annual hot spots (school holidays, Christmas, August handover) derived from prior years' approved leave.
-- "Surge prediction" panel ranks upcoming weeks by request density relative to capacity; flags weeks projected to exceed a configurable threshold (default: >25% of any grade off).
-- Per-day drill-in lists the people off and links back to their leave request.
+Setup                                                (admin, collapsed by default)
+ ├─ Staff
+ ├─ Job plans
+ ├─ Theatres
+ ├─ Duty mappings
+ ├─ Duty categories
+ ├─ Working rules
+ ├─ Access requests
+ ├─ CLWRota metrics
+ └─ Settings
 
-## 4. Rota robustness — default report + what-if
+Account
+ └─ My account             /account
+```
 
-Default view (`/robustness`) is the **forward-looking risk report**:
+Each group renders as a `SidebarGroup` with a label; "Setup" starts collapsed via `defaultOpen={false}`. The active branch auto-expands using `useRouterState`. Icon-rail mode keeps the sidebar usable when collapsed.
 
-- For each session in the next 12 weeks, compute baseline staffing headroom: required staff for the listed theatres (from `theatre_sessions`) minus available staff after subtracting confirmed leave, fixed commitments, post-on-call rest, and LTFT days off.
-- Each session row gets a coverage score (green/amber/red) and a primary risk reason (e.g. "Only 1 consultant spare", "All trainees committed").
-- Weekly summary cards highlight the worst days.
+## 2. Global command palette (Cmd/Ctrl + K)
 
-Drill-in opens the **what-if simulator** (`/robustness/simulate?date=…`):
+Add a `CommandDialog` (shadcn `cmdk`) wired to the same grouped catalogue. It opens from anywhere with a keyboard shortcut or a search-shaped button in the top bar, and lets users jump straight to any tool by typing 2–3 letters. This is the single biggest agility win: 25 items become irrelevant when search is one keypress away.
 
-- Select a date and add hypothetical absences by grade/specialty/named person.
-- The engine re-runs the same coverage calculation and produces an outcome:
-  - Lists that can still run as planned
-  - Lists where a trainee would need to be moved to solo (and which trainee, based on grade + recent solo deficit)
-  - Lists that would have to be cancelled
-- Shows a one-line summary: *"2 cancellations, 3 trainees pulled from training, 1 SPA reallocated"* and an exportable PDF for the coordinator.
+## 3. Renames for clarity
 
-## 5. Coordinator tools section (kept, de-emphasised)
+A few labels overload the word "audit". Proposed renames (no route changes):
 
-- `/coordinator/rota` (AI candidate suggestions), chat rota tools, `/admin/rules` (custom rota rules) all remain functional and reachable from the "Coordinator tools" nav group.
-- The home page no longer surfaces them; the chat assistant's system prompt is updated so rota-writing is offered as an opt-in capability rather than the primary suggestion.
-- No tables dropped, no server functions removed.
+- "Audit dashboard" (home) → **"Home"**
+- "Rota audit data" → **"Rota source data"**
+- "AI audit tool" → **"AI audit assistant"** (or fold into the Assistant group)
+- "Rota editor" → **"Theatre rota"** (it is the theatre weekly editor)
+
+## 4. Home page becomes a launcher
+
+The current `/` is a dense audit dashboard. Add a compact **"Jump to…"** strip at the top with the 6 most-used tools for the user's role (e.g. Theatre rota, Approve leave, Robustness, Theatre grid, My rota, AI assistant). Existing dashboard content stays below. This shortens the path for the common journeys users described as hard to find.
+
+## 5. Top-bar polish
+
+- Desktop: add a slim top bar (currently mobile-only) containing the sidebar toggle, the Cmd+K search button, and the user menu. Removes the always-visible "Back" button on every page and replaces it with breadcrumbs derived from `useRouterState` matches.
+- Mobile: same Sheet drawer, now grouped, plus a Cmd+K button.
 
 ## Technical notes
 
-- **New tables**: none required for pillars 2 and 3 (everything is derivable from existing tables). For pillar 4 we add a single `robustness_settings` row (default thresholds: minimum consultants per session by specialty, % off-sick warning level) — admin-editable.
-- **New server functions** (all `createServerFn` + `requireSupabaseAuth`, in new `src/lib/audit/`):
-  - `getTraineeAudit({ staffId?, from, to })`
-  - `getLeavePressure({ from, to, grade? })`
-  - `getRobustnessReport({ from, to })`
-  - `simulateRobustness({ date, absences: [{ grade, count } | { staffId }] })`
-- **New routes**: `/_authenticated/index.tsx` (rewrite), `/_authenticated/trainees.tsx` (rebuild around lenses), `/_authenticated/leave.forecast.tsx`, `/_authenticated/robustness.tsx`, `/_authenticated/robustness.simulate.tsx`.
-- **Reused logic**: `solo-stats.ts`, `trainee-metrics.ts`, `rota-validation.ts`, leave allowance utilities — all stay; new audit functions compose them.
-- Implementation order: (a) nav + home reshape and Coordinator-tools grouping → (b) trainee audit lenses → (c) leave forecast → (d) robustness report → (e) what-if simulator.
+- Centralise the nav catalogue in `src/lib/navigation.ts` as `{ id, label, to, icon, roles?, group }[]` so the sidebar, command palette, and home launcher all read from one source. Eliminates the current drift between `NAV` / `COORDINATOR_NAV` / `ADMIN_NAV`.
+- Replace the hand-rolled `<aside>` in `src/components/app-shell.tsx` with shadcn `Sidebar` + `SidebarProvider`. Keep the existing `useAuth` role filtering — apply it once when computing visible items from the catalogue.
+- Command palette: new `src/components/command-palette.tsx` using `Command*` from `@/components/ui/command` inside `CommandDialog`. Register a global `useEffect` keydown listener for Cmd/Ctrl+K.
+- Breadcrumbs: small helper that turns the active route's `staticData.title` (added per route) or pathname segments into `Breadcrumb` items. Falls back to the route label from the nav catalogue.
+- No backend or business-logic changes; this is presentation/IA only.
 
-Build phase (a) plus the trainee lenses first to make the audit shift visible, then layer leave and robustness on top. Each phase is independently shippable.
+## Out of scope
+
+- Renaming URL paths (would break bookmarks).
+- Removing any tool — every existing view stays reachable.
+- Visual redesign / theming.
