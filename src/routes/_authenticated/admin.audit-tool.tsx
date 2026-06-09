@@ -43,6 +43,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Legend,
+  LabelList,
+  Area,
+  AreaChart,
 } from "recharts";
 import { Download, Database, AlertCircle, RotateCcw, Sparkles } from "lucide-react";
 import {
@@ -476,13 +480,37 @@ function ReportCard({ output }: { output: RunSqlOutput }) {
   );
 }
 
+// A wide, perceptually-distinct categorical palette so multi-series charts
+// stay legible even with 8+ series. Falls through to the theme's chart tokens
+// for the first five so colors track the design system in light/dark mode.
 const CHART_COLORS = [
-  "hsl(var(--chart-1, 220 70% 50%))",
-  "hsl(var(--chart-2, 160 60% 45%))",
-  "hsl(var(--chart-3, 30 80% 55%))",
-  "hsl(var(--chart-4, 280 65% 60%))",
-  "hsl(var(--chart-5, 0 70% 55%))",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "oklch(0.62 0.21 145)", // emerald
+  "oklch(0.65 0.19 25)",  // coral
+  "oklch(0.58 0.22 295)", // violet
+  "oklch(0.72 0.16 90)",  // amber
+  "oklch(0.55 0.18 220)", // azure
+  "oklch(0.6 0.2 340)",   // magenta
+  "oklch(0.68 0.15 180)", // teal
 ];
+
+function colorAt(i: number): string {
+  return CHART_COLORS[i % CHART_COLORS.length];
+}
+
+function formatTick(v: unknown): string {
+  if (typeof v === "number") {
+    if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
+    if (Math.abs(v) >= 1_000) return (v / 1_000).toFixed(1) + "k";
+    return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  }
+  const s = String(v ?? "");
+  return s.length > 16 ? s.slice(0, 15) + "…" : s;
+}
 
 function ChartView({
   chart,
@@ -492,7 +520,7 @@ function ChartView({
   rows: Array<Record<string, unknown>>;
 }) {
   const config = Object.fromEntries(
-    chart.yKeys.map((k, i) => [k, { label: k, color: CHART_COLORS[i % CHART_COLORS.length] }]),
+    chart.yKeys.map((k, i) => [k, { label: k, color: colorAt(i) }]),
   );
   // Coerce numeric strings to numbers for the y-axes.
   const data = rows.map((r) => {
@@ -506,52 +534,139 @@ function ChartView({
     return out;
   });
 
+  const isLong = data.length > 12;
+  const chartHeight = chart.type === "pie" ? 320 : 300;
+
   return (
-    <ChartContainer config={config} className="h-[260px] w-full">
-      {chart.type === "bar" ? (
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={chart.xKey} tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          {chart.yKeys.map((k, i) => (
-            <Bar key={k} dataKey={k} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-          ))}
-        </BarChart>
-      ) : chart.type === "line" ? (
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={chart.xKey} tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          {chart.yKeys.map((k, i) => (
-            <Line
-              key={k}
-              type="monotone"
-              dataKey={k}
-              stroke={CHART_COLORS[i % CHART_COLORS.length]}
-              strokeWidth={2}
-              dot={false}
-            />
-          ))}
-        </LineChart>
-      ) : (
-        <PieChart>
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Pie
-            data={data}
-            dataKey={chart.yKeys[0]}
-            nameKey={chart.xKey}
-            outerRadius={90}
-            label
-          >
-            {data.map((_, i) => (
-              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-            ))}
-          </Pie>
-        </PieChart>
+    <div className="space-y-2">
+      {chart.title && (
+        <div className="text-sm font-medium text-foreground">{chart.title}</div>
       )}
-    </ChartContainer>
+      <ChartContainer config={config} className="w-full" style={{ height: chartHeight }}>
+        {chart.type === "bar" ? (
+          <BarChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: isLong ? 48 : 16 }}>
+            <defs>
+              {chart.yKeys.map((k, i) => (
+                <linearGradient key={k} id={`bar-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colorAt(i)} stopOpacity={0.95} />
+                  <stop offset="100%" stopColor={colorAt(i)} stopOpacity={0.55} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey={chart.xKey}
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+              angle={isLong ? -35 : 0}
+              textAnchor={isLong ? "end" : "middle"}
+              interval={isLong ? "preserveStartEnd" : 0}
+              height={isLong ? 60 : 30}
+              tickFormatter={(v) => formatTick(v)}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => formatTick(v)}
+              width={48}
+            />
+            <ChartTooltip cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }} content={<ChartTooltipContent />} />
+            {chart.yKeys.length > 1 && (
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
+            )}
+            {chart.yKeys.map((k, i) => (
+              <Bar
+                key={k}
+                dataKey={k}
+                fill={`url(#bar-grad-${i})`}
+                stroke={colorAt(i)}
+                strokeWidth={1}
+                radius={[6, 6, 0, 0]}
+                maxBarSize={56}
+              />
+            ))}
+          </BarChart>
+        ) : chart.type === "line" ? (
+          <AreaChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: isLong ? 48 : 16 }}>
+            <defs>
+              {chart.yKeys.map((k, i) => (
+                <linearGradient key={k} id={`line-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={colorAt(i)} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={colorAt(i)} stopOpacity={0.02} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey={chart.xKey}
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={{ stroke: "hsl(var(--border))" }}
+              angle={isLong ? -35 : 0}
+              textAnchor={isLong ? "end" : "middle"}
+              interval={isLong ? "preserveStartEnd" : 0}
+              height={isLong ? 60 : 30}
+              tickFormatter={(v) => formatTick(v)}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => formatTick(v)}
+              width={48}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            {chart.yKeys.length > 1 && (
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
+            )}
+            {chart.yKeys.map((k, i) => (
+              <Area
+                key={k}
+                type="monotone"
+                dataKey={k}
+                stroke={colorAt(i)}
+                strokeWidth={2.25}
+                fill={`url(#line-grad-${i})`}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                dot={data.length <= 30 ? { r: 3, strokeWidth: 1.5, stroke: "hsl(var(--background))", fill: colorAt(i) } : false}
+              />
+            ))}
+          </AreaChart>
+        ) : (
+          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <ChartTooltip content={<ChartTooltipContent nameKey={chart.xKey} />} />
+            <Legend
+              wrapperStyle={{ fontSize: 11 }}
+              iconType="circle"
+              layout="vertical"
+              align="right"
+              verticalAlign="middle"
+            />
+            <Pie
+              data={data}
+              dataKey={chart.yKeys[0]}
+              nameKey={chart.xKey}
+              innerRadius={55}
+              outerRadius={110}
+              paddingAngle={2}
+              stroke="hsl(var(--background))"
+              strokeWidth={2}
+              label={(entry: { percent?: number }) =>
+                entry.percent && entry.percent > 0.04 ? `${(entry.percent * 100).toFixed(0)}%` : ""
+              }
+              labelLine={false}
+            >
+              {data.map((_, i) => (
+                <Cell key={i} fill={colorAt(i)} />
+              ))}
+              <LabelList dataKey={chart.xKey} position="outside" style={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+            </Pie>
+          </PieChart>
+        )}
+      </ChartContainer>
+    </div>
   );
 }
 
