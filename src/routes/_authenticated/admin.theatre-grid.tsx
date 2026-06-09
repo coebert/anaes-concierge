@@ -80,7 +80,7 @@ function TheatreGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,session_date,session,specialty_id,surgical_consultant")
+        .select("id,theatre_id,session_date,session,specialty_id,surgical_consultant,is_non_sag,non_sag_override")
         .gte("session_date", startISO)
         .lte("session_date", endISO);
       if (error) throw error;
