@@ -220,7 +220,28 @@ export const Route = createFileRoute("/api/audit-tool")({
         }
 
         const userClient = getUserClient(auth.token);
+        const adminClient = getAdminClient();
 
+        // Load long-term memories (shared across all admins) and inject into system prompt.
+        const { data: memoryRows } = await adminClient
+          .from("audit_assistant_memories")
+          .select("id, kind, content, tags, created_at")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        const memoryBlock =
+          memoryRows && memoryRows.length > 0
+            ? memoryRows
+                .map(
+                  (m) =>
+                    `- [${m.kind}] (id=${m.id}${
+                      m.tags && m.tags.length ? `, tags=${m.tags.join(",")}` : ""
+                    }) ${m.content}`,
+                )
+                .join("\n")
+            : "(no memories yet — save useful lessons as you learn them)";
+
+        const fullSystem = `${SYSTEM_PROMPT}\n\nSTORED MEMORIES (newest first):\n${memoryBlock}`;
 
         const tools = {
           describe_schema: tool({
@@ -293,18 +314,80 @@ export const Route = createFileRoute("/api/audit-tool")({
               };
             },
           }),
+
+          save_memory: tool({
+            description:
+              "Save a long-term memory shared across all admin conversations. Use whenever the " +
+              "user corrects you, states a lasting preference, or you learn a non-obvious " +
+              "schema/domain fact you want future-you to remember. Keep `content` to one or two " +
+              "focused sentences. `kind`: 'lesson' (mistake to avoid), 'correction' (user " +
+              "corrected a fact), 'preference' (how the user wants reports), 'fact' (durable " +
+              "schema/domain fact).",
+            inputSchema: z.object({
+              kind: z.enum(["lesson", "preference", "fact", "correction"]),
+              content: z.string().min(5).max(1000),
+              tags: z.array(z.string().max(40)).max(8).optional(),
+            }),
+            execute: async ({ kind, content, tags }) => {
+              const { data, error } = await adminClient
+                .from("audit_assistant_memories")
+                .insert({
+                  kind,
+                  content,
+                  tags: tags ?? [],
+                  created_by: auth.userId,
+                })
+                .select("id")
+                .single();
+              if (error) return { error: error.message };
+              return { saved: true, id: data.id };
+            },
+          }),
+
+          forget_memory: tool({
+            description:
+              "Delete a stored memory by id. Use when the user says a stored memory is wrong " +
+              "or out of date. The id is shown in the STORED MEMORIES block of the system prompt.",
+            inputSchema: z.object({ id: z.string().uuid() }),
+            execute: async ({ id }) => {
+              const { error } = await adminClient
+                .from("audit_assistant_memories")
+                .delete()
+                .eq("id", id);
+              if (error) return { error: error.message };
+              return { deleted: true, id };
+            },
+          }),
+
+          list_memories: tool({
+            description:
+              "Return the full current memory store. Usually unnecessary because memories are " +
+              "already injected into the system prompt, but useful if you need a fresh read " +
+              "after saving/deleting.",
+            inputSchema: z.object({}).optional(),
+            execute: async () => {
+              const { data, error } = await adminClient
+                .from("audit_assistant_memories")
+                .select("id, kind, content, tags, created_at")
+                .order("created_at", { ascending: false })
+                .limit(200);
+              if (error) return { error: error.message };
+              return { memories: data ?? [] };
+            },
+          }),
         };
 
         const gateway = createLovableAiGatewayProvider(key);
         const result = streamText({
           model: gateway("google/gemini-2.5-pro"),
-          system: SYSTEM_PROMPT,
+          system: fullSystem,
           messages: await convertToModelMessages(messages),
           tools,
           stopWhen: stepCountIs(50),
         });
 
         return result.toUIMessageStreamResponse({ originalMessages: messages });
+
       },
     },
   },
