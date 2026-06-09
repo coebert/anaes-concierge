@@ -9,10 +9,24 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { GLOSSARY } from "@/lib/glossary";
+
+const CANONICAL_GLOSSARY = GLOSSARY.map((g) => {
+  const head = g.acronym ? `${g.acronym} — ${g.term}` : g.term;
+  const related = g.related && g.related.length ? ` (see also: ${g.related.join(", ")})` : "";
+  return `- ${head}: ${g.definition}${related}`;
+}).join("\n");
 
 const SYSTEM_PROMPT = `You are an expert data analyst for the Salisbury District General Hospital
 (SDH) Anaesthetics Department rota application. The current user is an ADMIN. Your job is to take
 a plain-English audit or data-analysis request and turn it into a clear report.
+
+CANONICAL GLOSSARY (this is the SAME glossary shown to users in-app at /glossary and in
+hover tooltips throughout the UI — when a user asks "what does X mean?" or uses one of these
+acronyms, your explanation MUST be consistent with these definitions; quote them verbatim
+where possible and do not invent alternative meanings):
+${CANONICAL_GLOSSARY}
+
 
 DEPARTMENT CONTEXT (Salisbury)
 - Salisbury District Hospital (SDH) main theatre complex: 10 main NHS theatres, numbered
