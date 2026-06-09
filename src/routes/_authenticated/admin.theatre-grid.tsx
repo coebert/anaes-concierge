@@ -53,6 +53,7 @@ function TheatreGridPage() {
 
   const { data: theatres } = useQuery({
     queryKey: ["theatres"],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatres")
@@ -66,6 +67,7 @@ function TheatreGridPage() {
 
   const { data: specialties } = useQuery({
     queryKey: ["specialties"],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("specialties")
@@ -78,6 +80,8 @@ function TheatreGridPage() {
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["theatre-sessions-grid", startISO, endISO],
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")

@@ -100,7 +100,7 @@ vi.mock("@/integrations/supabase/client", () => {
   return { supabase: { from: (table: string) => tableApi(table) } };
 });
 
-import { ListFeasibilityPage } from "./robustness.list-feasibility";
+import { ListFeasibilityPage } from "./-list-feasibility-page";
 
 // --- Fixtures ------------------------------------------------------------
 

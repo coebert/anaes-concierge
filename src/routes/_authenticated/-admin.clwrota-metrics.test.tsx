@@ -49,7 +49,7 @@ vi.mock("@/lib/clwrota.functions", () => ({
 }));
 
 // Import AFTER the mocks are registered.
-import { ClwRotaMetricsPage } from "./admin.clwrota-metrics";
+import { ClwRotaMetricsPage } from "./-clwrota-metrics-page";
 
 function renderPage() {
   const client = new QueryClient({
