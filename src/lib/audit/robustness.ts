@@ -605,6 +605,7 @@ export async function computeListCoverage(
         .lte("session_date", rangeEnd)
         .order("id", { ascending: true })
         .range(from, to),
+      { rowKey: idKey, label: "list-coverage.theatre_sessions" },
     ),
     fetchAllRows<{ id: string; name: string }>((from, to) =>
       supabase
@@ -612,8 +613,10 @@ export async function computeListCoverage(
         .select("id, name")
         .order("id", { ascending: true })
         .range(from, to),
+      { rowKey: idKey, label: "list-coverage.specialties" },
     ),
   ]);
+
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll
