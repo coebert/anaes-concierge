@@ -619,7 +619,8 @@ async function downloadExcel(
   XLSX.writeFile(wb, `${safeName(filename)}.xlsx`);
 }
 
-function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
+async function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const used = new Set<string>();
   reports.forEach((r, i) => {
