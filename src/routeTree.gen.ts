@@ -20,6 +20,7 @@ import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
+import { Route as AuthenticatedGlossaryRouteImport } from './routes/_authenticated/glossary'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
@@ -106,6 +107,11 @@ const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
 const AuthenticatedLeaveRoute = AuthenticatedLeaveRouteImport.update({
   id: '/leave',
   path: '/leave',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedGlossaryRoute = AuthenticatedGlossaryRouteImport.update({
+  id: '/glossary',
+  path: '/glossary',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/chat': typeof AuthenticatedChatRouteWithChildren
+  '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -352,6 +359,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
+  '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -399,6 +407,7 @@ export interface FileRoutesById {
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
+  '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -447,6 +456,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/calendar'
     | '/chat'
+    | '/glossary'
     | '/leave'
     | '/me'
     | '/trainees'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/account'
     | '/calendar'
+    | '/glossary'
     | '/leave'
     | '/me'
     | '/trainees'
@@ -536,6 +547,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account'
     | '/_authenticated/calendar'
     | '/_authenticated/chat'
+    | '/_authenticated/glossary'
     | '/_authenticated/leave'
     | '/_authenticated/me'
     | '/_authenticated/trainees'
@@ -663,6 +675,13 @@ declare module '@tanstack/react-router' {
       path: '/leave'
       fullPath: '/leave'
       preLoaderRoute: typeof AuthenticatedLeaveRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/glossary': {
+      id: '/_authenticated/glossary'
+      path: '/glossary'
+      fullPath: '/glossary'
+      preLoaderRoute: typeof AuthenticatedGlossaryRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/chat': {
@@ -946,6 +965,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
+  AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
@@ -979,6 +999,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRouteWithChildren,
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
+  AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,

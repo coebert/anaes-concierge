@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpen,
   Briefcase,
   Building2,
   CalendarDays,
@@ -82,6 +83,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "rota-gaps", label: "Rota gaps", to: "/admin/rota-gaps",
     icon: CalendarX, group: "rota", roles: ["admin"] },
   { id: "rota-me", label: "My rota", to: "/me", icon: CalendarRange, group: "rota" },
+  { id: "glossary", label: "Glossary", to: "/glossary", icon: BookOpen, group: "rota",
+    keywords: ["terms", "abbreviations", "definitions", "SPA", "NHH", "DCC"] },
 
   // Leave
   { id: "leave-mine", label: "My leave", to: "/leave", icon: ClipboardList, group: "leave" },

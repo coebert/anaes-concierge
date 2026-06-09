@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDateLongGB, formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+import { GlossaryTerm } from "@/components/glossary-tooltip";
 
 export const Route = createFileRoute("/_authenticated/coordinator/duties")({
   component: DutiesPage,
@@ -238,7 +239,13 @@ function DutiesPage() {
       {DUTY_CONFIG.map((duty) => (
         <Card key={duty.type}>
           <CardHeader>
-            <CardTitle className="text-base">{duty.label}</CardTitle>
+            <CardTitle className="text-base">
+              {duty.type === "spa" ? (
+                <><GlossaryTerm>SPA</GlossaryTerm> <span className="text-muted-foreground font-normal">(Supporting Professional Activities)</span></>
+              ) : (
+                duty.label
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full border-collapse text-xs">
