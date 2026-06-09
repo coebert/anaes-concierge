@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpen,
   Briefcase,
   Building2,
   CalendarDays,
