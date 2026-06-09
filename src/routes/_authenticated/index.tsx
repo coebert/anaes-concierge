@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
-import { GlossaryTerm } from "@/components/glossary-tooltip";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
