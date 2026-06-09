@@ -85,9 +85,12 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
     const canSeeEmail = access.isAdmin || access.isCoordinator;
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade")
+      .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade,left_at")
       .eq("grade", "trainee")
-      .eq("active", true)
+      // Include inactive trainees that the daily routine has flagged as
+      // departed so the UI can still surface them with a 'no longer at
+      // Salisbury' badge.
+      .or("active.eq.true,left_at.not.is.null")
       .order("full_name");
     if (error) throw new Error(error.message);
     return (data ?? []).map((row) => ({ ...row, email: canSeeEmail ? row.email : null }));

@@ -600,6 +600,7 @@ export type Database = {
           gmc_number: string | null
           grade: Database["public"]["Enums"]["staff_grade"] | null
           id: string
+          left_at: string | null
           ltft_days_off: number[]
           rotation_end_date: string | null
           start_date: string | null
@@ -615,6 +616,7 @@ export type Database = {
           gmc_number?: string | null
           grade?: Database["public"]["Enums"]["staff_grade"] | null
           id: string
+          left_at?: string | null
           ltft_days_off?: number[]
           rotation_end_date?: string | null
           start_date?: string | null
@@ -630,6 +632,7 @@ export type Database = {
           gmc_number?: string | null
           grade?: Database["public"]["Enums"]["staff_grade"] | null
           id?: string
+          left_at?: string | null
           ltft_days_off?: number[]
           rotation_end_date?: string | null
           start_date?: string | null
@@ -1053,6 +1056,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      mark_departed_trainees: {
+        Args: never
+        Returns: {
+          left_at: string
+          staff_id: string
+        }[]
       }
       session_start_ts: {
         Args: {
