@@ -226,7 +226,7 @@ function ConsultantSasDashboard() {
         <Stat label="Sessions next 14 days" value={data?.upcoming ?? "—"} icon={CalendarRange} />
         <Stat label="Pending leave" value={data?.pendingLeave ?? "—"} icon={ClipboardList} />
         <Stat label="Total PAs" value={data?.jobPlan?.total_pas ?? "—"} icon={Briefcase} />
-        <Stat label="LTFT %" value={data?.jobPlan?.ltft_percentage ?? "—"} icon={Stethoscope} />
+        <Stat label={<>LTFT <GlossaryTerm>%</GlossaryTerm></>} value={data?.jobPlan?.ltft_percentage ?? "—"} icon={Stethoscope} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
