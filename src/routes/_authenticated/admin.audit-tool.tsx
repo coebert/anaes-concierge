@@ -693,7 +693,9 @@ async function downloadPdf(
   doc.save(`${safeName(filename)}.pdf`);
 }
 
-function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
+async function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
+  const { jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(16);
   doc.text("Audit Reports", 40, 40);
