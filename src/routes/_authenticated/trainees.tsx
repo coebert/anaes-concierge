@@ -237,7 +237,14 @@ function TraineesPage() {
         const overall = progress.length
           ? Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length)
           : null;
-        return { trainee: t, progress, overall };
+        const rotationEnd =
+          (t as { rotation_end_date?: string | null }).rotation_end_date ?? null;
+        const icuOnly = isIcuBlockOnly(
+          data.futureAssignmentsByStaff[t.id] ?? [],
+          todayISO(),
+          rotationEnd,
+        );
+        return { trainee: t, progress, overall, icuOnly };
       })
       .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [data, filter]);
