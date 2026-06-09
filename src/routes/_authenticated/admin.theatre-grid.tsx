@@ -212,6 +212,7 @@ function TheatreGridPage() {
                               theatreId={t.id}
                               date={date}
                               session={s}
+                              theatreKind={t.kind}
                               specialties={specialties ?? []}
                               onChange={(patch) =>
                                 upsert.mutate({
