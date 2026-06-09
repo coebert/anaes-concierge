@@ -1803,9 +1803,20 @@ export async function performRotaSync(
       ]);
       const personFirst = pick(row, ["person.first_name"]);
       const personLast = pick(row, ["person.last_name"]);
-      const personName =
+      const personNameRaw =
         pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
         ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
+      // Strip any "[Non-SAG]" / "(non sag)" tag from the anaesthetist's name
+      // before using it for staff matching — CLWRota appends the tag after
+      // the rota_name on NHH lists covered as part of NHS job plans
+      // ("Dr S Abbas [Non-SAG]"). Without stripping, the name lookup misses
+      // because "dr s abbas [non-sag]" doesn't equal "dr s abbas".
+      const personName = personNameRaw
+        ? personNameRaw
+            .replace(/[\s]*[\[\(\{][^\]\)\}]*non[\s-]?sag[^\]\)\}]*[\]\)\}]/gi, "")
+            .replace(/[\s,;|\-–—]*\bnon[\s-]?sag\b[\s,;|\-–—]*$/gi, "")
+            .trim() || null
+        : null;
       const theatreName = pick(row, [
         "place.name", "place.external_code",
         "theatre", "location", "room", "Theatre", "list", "Location",
@@ -1909,7 +1920,11 @@ export async function performRotaSync(
         // sets is_non_sag accordingly unless an admin has set
         // non_sag_override on the session.
         const nonSagRegex = /\bnon[\s-]?sag\b|\bnot[\s-]sag\b/i;
-        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""}`;
+        // Include the raw (un-stripped) anaesthetist name — on NHH lists
+        // covered by NHS job plans, CLWRota appends "[Non-SAG]" after the
+        // anaesthetist's rota_name (e.g. "Dr S Abbas [Non-SAG]"). The
+        // surgical slot_titles column does not carry this tag.
+        const labelBlob = `${theatreName ?? ""} ${consultantName ?? ""} ${specialtyName ?? ""} ${roleRaw ?? ""} ${personNameRaw ?? ""}`;
         const isNonSag = nonSagRegex.test(labelBlob);
         // Strip any "[Non-SAG]" / "(non sag)" tag from the consultant
         // name before persisting so UI shows just "Dr S Abbas", not
