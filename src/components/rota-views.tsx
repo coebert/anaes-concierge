@@ -215,6 +215,23 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
+  const { data: spaAdmin } = useQuery({
+    queryKey: ["spa-admin", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,duty_type")
+        .in("duty_type", ["spa", "admin"])
+        .in("session", ["am", "pm"])
+        .gte("session_date", startIso).lte("session_date", endIso);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; staff_id: string; session: SessionHalf; session_date: string;
+        duty_type: "spa" | "admin";
+      }>;
+    },
+  });
+
   const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
     queryKey: ["staff-active-with-grade-safe"],
