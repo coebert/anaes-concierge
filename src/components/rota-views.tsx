@@ -200,6 +200,21 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
+  const { data: nhhOncall } = useQuery({
+    queryKey: ["nhh-oncall", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date")
+        .eq("duty_type", "nhh_oncall")
+        .gte("session_date", startIso).lte("session_date", endIso);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; staff_id: string; session: string; session_date: string;
+      }>;
+    },
+  });
+
   const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
     queryKey: ["staff-active-with-grade-safe"],
@@ -339,6 +354,54 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                 )}
               </tr>
             ))}
+            {/* NHH 1st On-call — out-of-hours cover for New Hall Hospital.
+                Spans the whole day so we render one cell per date (colSpan=2). */}
+            <tr className="align-top bg-purple-500/5">
+              <td className="border-r border-t p-2 font-medium whitespace-nowrap">
+                NHH 1st On-call
+                <div className="text-[10px] text-muted-foreground">Out of hours</div>
+              </td>
+              {days.map((d) => {
+                const dayIso = iso(d);
+                const dayAssigns = (nhhOncall ?? []).filter(
+                  (a) => a.session_date === dayIso,
+                );
+                // De-dupe by staff (a consultant may appear under eve+night).
+                const uniqueStaff = Array.from(
+                  new Set(dayAssigns.map((a) => a.staff_id)),
+                );
+                return (
+                  <td
+                    key={"nhh-" + dayIso}
+                    colSpan={2}
+                    className="min-w-[110px] border-b border-t border-r p-1.5 align-top"
+                  >
+                    {uniqueStaff.length > 0 ? (
+                      <div className="space-y-1">
+                        <Badge
+                          variant="outline"
+                          className="px-1 py-0 text-[9px] border-purple-500 text-purple-700 dark:text-purple-300"
+                        >
+                          OOH
+                        </Badge>
+                        {uniqueStaff.map((sid) => (
+                          <Link
+                            key={sid}
+                            to="/calendar/staff/$staffId"
+                            params={{ staffId: sid }}
+                            className="block truncate text-[10px] font-bold hover:underline"
+                          >
+                            {staffName(sid)}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground/40 text-[10px]">—</div>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
           </tbody>
         </table>
       </CardContent>
