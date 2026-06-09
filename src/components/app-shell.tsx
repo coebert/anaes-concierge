@@ -1,110 +1,53 @@
-import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate, useRouterState } from "@tanstack/react-router";
+import { type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
-import {
-  CalendarDays,
-  LayoutDashboard,
-  CalendarRange,
-  GraduationCap,
-  MessageSquare,
-  Settings,
-  LogOut,
-  Stethoscope,
-  ClipboardList,
-  Users,
-  Building2,
-  Briefcase,
-  SlidersHorizontal,
-  ShieldCheck,
-  Grid3x3,
-  UserPlus,
-  UserCircle,
-  Activity,
-  Wrench,
-  ArrowLeft,
-  CalendarX,
-  LineChart,
-  Sparkles,
-
-  Menu,
-} from "lucide-react";
+import { LogOut, Stethoscope, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-
-interface NavItem {
-  to: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  roles?: Array<"admin" | "rota_coordinator" | "staff">;
-  traineeOnly?: boolean;
-}
-
-const NAV: NavItem[] = [
-  { to: "/", label: "Audit dashboard", icon: LayoutDashboard },
-  { to: "/trainees", label: "Trainee audit", icon: GraduationCap, traineeOnly: true },
-  { to: "/leave", label: "Leave", icon: ClipboardList },
-  { to: "/leave/forecast", label: "Leave forecast", icon: Activity, roles: ["admin", "rota_coordinator"] },
-  { to: "/robustness", label: "Robustness", icon: ShieldCheck, roles: ["admin", "rota_coordinator"] },
-  { to: "/calendar", label: "Global calendar", icon: CalendarDays },
-  { to: "/me", label: "My rota", icon: CalendarRange },
-  { to: "/account", label: "My account", icon: UserCircle },
-];
-
-const COORDINATOR_NAV: NavItem[] = [
-  { to: "/coordinator/rota", label: "Rota editor", icon: CalendarRange, roles: ["admin", "rota_coordinator"] },
-  { to: "/coordinator/duties", label: "Duties & on-call", icon: Stethoscope, roles: ["admin", "rota_coordinator"] },
-  { to: "/coordinator/leave", label: "Approve leave", icon: ClipboardList, roles: ["admin", "rota_coordinator"] },
-  { to: "/chat", label: "AI assistant", icon: MessageSquare, roles: ["admin", "rota_coordinator"] },
-  { to: "/admin/rules", label: "Working rules", icon: SlidersHorizontal, roles: ["admin"] },
-];
-
-const ADMIN_NAV: NavItem[] = [
-  { to: "/admin/dashboard", label: "Rota audit data", icon: Activity, roles: ["admin"] },
-  { to: "/admin/audit-tool", label: "AI audit tool", icon: Sparkles, roles: ["admin"] },
-  { to: "/admin/tcs-audit", label: "TCS 2016 audit", icon: ShieldCheck, roles: ["admin"] },
-  { to: "/admin/rota-gaps", label: "Rota gaps", icon: CalendarX, roles: ["admin"] },
-  { to: "/admin/staff", label: "Staff", icon: Users, roles: ["admin"] },
-  { to: "/admin/access-requests", label: "Access requests", icon: UserPlus, roles: ["admin"] },
-  { to: "/admin/job-plans", label: "Job plans", icon: Briefcase, roles: ["admin"] },
-  { to: "/admin/theatres", label: "Theatres", icon: Building2, roles: ["admin"] },
-  { to: "/admin/theatre-grid", label: "Theatre grid", icon: Grid3x3, roles: ["admin"] },
-  { to: "/admin/duty-mappings", label: "Duty mappings", icon: Wrench, roles: ["admin"] },
-  { to: "/admin/duty-categories", label: "Duty categories", icon: Wrench, roles: ["admin"] },
-  { to: "/admin/clwrota-metrics", label: "CLWRota sync metrics", icon: LineChart, roles: ["admin"] },
-  { to: "/admin/settings", label: "Settings", icon: Settings, roles: ["admin"] },
-
-];
-
+import {
+  filterNavForUser,
+  groupNav,
+  NAV_GROUPS,
+  type NavGroup,
+  type NavItem,
+} from "@/lib/navigation";
+import { CommandPalette } from "@/components/command-palette";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { signOut, user, roles, hasRole, grade } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  // Close the mobile drawer on navigation.
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const handleSignOut = async () => {
     await signOut();
     void navigate({ to: "/login" });
   };
+
   const isAdmin = hasRole("admin");
-  const visibleMain = NAV.filter(
-    (i) =>
-      (!i.traineeOnly || isAdmin || grade === "trainee") &&
-      (!i.roles || i.roles.some((r) => hasRole(r))),
-  );
-  const visibleCoord = COORDINATOR_NAV.filter(
-    (i) => !i.roles || i.roles.some((r) => hasRole(r)),
-  );
-  const visibleAdmin = ADMIN_NAV.filter(
-    (i) => !i.roles || i.roles.some((r) => hasRole(r)),
-  );
+  const visibleItems = filterNavForUser({ hasRole, grade });
+  const grouped = groupNav(visibleItems);
 
   const roleLabel = isAdmin
     ? "Admin"
@@ -118,141 +61,160 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? "SAS"
     : "Staff";
 
-  const navBody = (
-    <>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4 text-sm">
-        <NavSection items={visibleMain} currentPath={location.pathname} />
-
-        {visibleCoord.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Wrench className="h-3 w-3" />
-              Coordinator tools
-            </div>
-            <NavSection items={visibleCoord} currentPath={location.pathname} />
-          </div>
-        )}
-
-        {visibleAdmin.length > 0 && (
-          <div className="space-y-1">
-            <div className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Administration
-            </div>
-            <NavSection items={visibleAdmin} currentPath={location.pathname} />
-          </div>
-        )}
-      </nav>
-
-      <div className="space-y-2 border-t p-3 text-sm">
-        <div className="px-1">
-          <div className="truncate font-medium">{user?.email}</div>
-          <div className="text-xs text-muted-foreground">{roleLabel}</div>
-        </div>
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign out
-        </Button>
-      </div>
-    </>
-  );
-
-  const brand = (
-    <div className="flex items-center gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <Stethoscope className="h-5 w-5" />
-      </div>
-      <div className="min-w-0">
-        <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
-        <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="flex min-h-screen bg-muted/30">
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
-        <div className="border-b px-4 py-4">{brand}</div>
-        {navBody}
-      </aside>
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="border-b">
+          <div className="flex items-center gap-2 px-2 py-1">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Stethoscope className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
+              <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>
+            </div>
+          </div>
+        </SidebarHeader>
 
-      <main className="flex-1 min-w-0">
-        {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur md:hidden">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open menu" className="min-h-11 min-w-11">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="flex w-72 max-w-[85vw] flex-col p-0">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <div className="border-b px-4 py-4">{brand}</div>
-              {navBody}
-            </SheetContent>
-          </Sheet>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
+        <SidebarContent>
+          {NAV_GROUPS.map((group) => {
+            const items = grouped.get(group.id) ?? [];
+            if (items.length === 0) return null;
+            return (
+              <NavSectionGroup
+                key={group.id}
+                group={group}
+                items={items}
+                pathname={pathname}
+              />
+            );
+          })}
+        </SidebarContent>
+
+        <SidebarFooter className="border-t">
+          <div className="px-2 group-data-[collapsible=icon]:hidden">
+            <div className="truncate text-sm font-medium">{user?.email}</div>
+            <div className="text-xs text-muted-foreground">{roleLabel}</div>
+          </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Sign out" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4" />
+                <span>Sign out</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur">
+          <SidebarTrigger />
+          <div className="ml-auto">
+            <CommandPalette />
           </div>
         </header>
-
-        <div className="mx-auto max-w-7xl p-3 sm:p-4 md:p-8">
-          {location.pathname !== "/" && <BackButton />}
+        <div className="mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-8">
+          <Breadcrumbs pathname={location.pathname} items={visibleItems} />
           {children}
         </div>
-      </main>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
-function BackButton() {
-  const router = useRouter();
-  const navigate = useNavigate();
-  const canGoBack = router.history.length > 1;
+function isActive(pathname: string, to: string) {
+  if (to === "/") return pathname === "/";
+  return pathname === to || pathname.startsWith(to + "/");
+}
+
+function NavSectionGroup({
+  group,
+  items,
+  pathname,
+}: {
+  group: NavGroup;
+  items: NavItem[];
+  pathname: string;
+}) {
+  const hasActive = items.some((i) => isActive(pathname, i.to));
+  const defaultOpen = group.defaultOpen ?? true;
+  const open = hasActive || defaultOpen;
+
+  // Home and Account groups are single-item — render flat without collapsible chrome.
+  if (items.length === 1 && (group.id === "home" || group.id === "account")) {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {items.map((item) => (
+              <NavLeaf key={item.id} item={item} pathname={pathname} />
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
   return (
-    <div className="mb-3 md:mb-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          if (canGoBack) router.history.back();
-          else void navigate({ to: "/" });
-        }}
-        className="-ml-2 text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="mr-1.5 h-4 w-4" />
-        Back
-      </Button>
-    </div>
+    <Collapsible defaultOpen={open} className="group/collapsible">
+      <SidebarGroup>
+        <SidebarGroupLabel asChild>
+          <CollapsibleTrigger className="flex w-full items-center justify-between">
+            <span>{group.label}</span>
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+          </CollapsibleTrigger>
+        </SidebarGroupLabel>
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => (
+                <NavLeaf key={item.id} item={item} pathname={pathname} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
   );
 }
 
-function NavSection({ items, currentPath }: { items: NavItem[]; currentPath: string }) {
+function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
+  const Icon = item.icon;
+  const active = isActive(pathname, item.to);
   return (
-    <ul className="space-y-1">
-      {items.map((item) => {
-        const Icon = item.icon;
-        const active =
-          item.to === "/"
-            ? currentPath === "/"
-            : currentPath === item.to || currentPath.startsWith(item.to + "/");
-        return (
-          <li key={item.to}>
-            <Link
-              to={item.to}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors md:py-2",
-                active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+        <Link to={item.to} className={cn("flex items-center gap-2")}>
+          <Icon className="h-4 w-4" />
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
+
+function Breadcrumbs({ pathname, items }: { pathname: string; items: NavItem[] }) {
+  if (pathname === "/") return null;
+  // Find the nav item whose `to` is the longest prefix of pathname.
+  const match = items
+    .filter((i) => i.to !== "/" && (pathname === i.to || pathname.startsWith(i.to + "/")))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  const label = match?.label ?? prettifySegment(pathname);
+  return (
+    <nav className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground md:mb-4">
+      <Link to="/" className="hover:text-foreground">Home</Link>
+      <ChevronRight className="h-3 w-3" />
+      <span className="text-foreground">{label}</span>
+    </nav>
+  );
+}
+
+function prettifySegment(pathname: string) {
+  const last = pathname.split("/").filter(Boolean).pop() ?? "";
+  return last.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Silence unused-import warning for Button (kept available if downstream code reverts).
+const _ButtonRef = Button;
+void _ButtonRef;
