@@ -1039,6 +1039,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_run_readonly_sql: { Args: { p_query: string }; Returns: Json }
       current_user_is_coordinator_or_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
