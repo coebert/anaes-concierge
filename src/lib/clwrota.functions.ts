@@ -1619,9 +1619,10 @@ async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
  */
 export const syncClwRotaRota = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
+  .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
-    return performRotaSync();
+    return performRotaSync({ from: data?.from, to: data?.to });
   });
 
 export async function performRotaSync(
