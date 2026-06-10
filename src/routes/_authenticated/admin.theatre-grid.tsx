@@ -14,7 +14,7 @@ import { Trash2 } from "lucide-react";
 import { formatDateGB } from "@/lib/utils";
 import { isoDate, weekdayShort } from "@/lib/theatre-grid-dates";
 import {
-  ViewModeToggle, PeriodNav, buildDays, type ViewMode,
+  ViewModeToggle, PeriodNav, buildDays, SessionChip, type ViewMode,
 } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
