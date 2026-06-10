@@ -274,12 +274,13 @@ function VirtualGrid({
             {colItems.flatMap((c) =>
               SESSIONS.map((s) => (
                 <th key={`${c.key}-${s}`} className="border-l p-1 text-center font-medium" style={{ width: c.size / 2 }}>
-                  {s}
+                  <SessionChip half={s} />
                 </th>
               )),
             )}
             {paddingRight > 0 && <th aria-hidden style={{ width: paddingRight }} />}
           </tr>
+
         </thead>
         <tbody>
           {paddingTop > 0 && (
