@@ -314,6 +314,9 @@ function PoacAuditPage() {
                 <TableRow>
                   <TableHead>Week starting</TableHead>
                   <TableHead className="text-right">Total POAC</TableHead>
+                  <TableHead className="text-right">Consultant</TableHead>
+                  <TableHead className="text-right">SAS</TableHead>
+                  <TableHead className="text-right">Trainee</TableHead>
                   <TableHead className="text-right">Wed AM</TableHead>
                   <TableHead className="text-right">Wed PM</TableHead>
                   <TableHead className="text-right">Baseline</TableHead>
@@ -333,6 +336,15 @@ function PoacAuditPage() {
                       <TableCell className="text-right tabular-nums">
                         {w.total}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {w.consultant}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {w.sas}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {w.trainee}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {w.wedAm}
                       </TableCell>
@@ -351,6 +363,7 @@ function PoacAuditPage() {
                           <span className="text-muted-foreground">0</span>
                         )}
                       </TableCell>
+
                       <TableCell>
                         <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
                           <div
