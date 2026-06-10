@@ -262,7 +262,40 @@ function ConsultantAuditsPage() {
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {grantsCheck.isLoading ? (
+        <p className="text-sm text-muted-foreground">Checking data access…</p>
+      ) : grantsCheck.error ? (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 text-sm text-destructive">
+            Data access health check failed:{" "}
+            {(grantsCheck.error as Error).message}
+          </CardContent>
+        </Card>
+      ) : grantsCheck.data && !grantsCheck.data.ok ? (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 space-y-2 text-sm">
+            <p className="font-medium text-destructive">
+              Required tables are not reachable via the Data API.
+            </p>
+            <p className="text-muted-foreground">
+              Missing GRANTs for the signed-in role on:{" "}
+              <span className="font-mono">
+                {grantsCheck.data.missing.join(", ")}
+              </span>
+              . Ask an administrator to restore the table grants before this
+              page can run.
+            </p>
+            {grantsCheck.data.otherErrors.length > 0 && (
+              <p className="text-muted-foreground text-xs">
+                Other probe errors:{" "}
+                {grantsCheck.data.otherErrors
+                  .map((e) => `${e.table}: ${e.message}`)
+                  .join("; ")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : error ? (
         <Card className="border-destructive/40">
