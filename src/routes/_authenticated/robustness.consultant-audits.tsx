@@ -31,7 +31,7 @@ function ConsultantAuditsPage() {
   const [to, setTo] = useState<string>(todayIso());
   const [filter, setFilter] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["consultant-audits", from, to],
     queryFn: async () => {
       // Consultants
@@ -45,6 +45,7 @@ function ConsultantAuditsPage() {
       if (!consultantIds.length) {
         return { rows: [] as ConsultantRow[] };
       }
+      const consultantIdSet = new Set(consultantIds);
 
       // NHH (private) theatre sessions in range — used to identify SAG / non-SAG.
       const { data: theatres, error: te } = await supabase
@@ -55,41 +56,63 @@ function ConsultantAuditsPage() {
       if (te) throw te;
       const privateTheatreIds = new Set((theatres ?? []).map((t) => t.id));
 
-      const { data: sessions, error: se } = await supabase
-        .from("theatre_sessions")
-        .select("id,theatre_id,is_non_sag,session_date")
-        .gte("session_date", from)
-        .lte("session_date", to);
-      if (se) throw se;
-
+      // Pull theatre sessions in range (paginated) so we can flag NHH lists.
       const sagById = new Map<string, boolean>(); // true = non-SAG, false = SAG
-      for (const s of sessions ?? []) {
-        if (!privateTheatreIds.has(s.theatre_id)) continue;
-        sagById.set(s.id, !!s.is_non_sag);
+      {
+        const PAGE = 1000;
+        let offset = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: page, error: se } = await supabase
+            .from("theatre_sessions")
+            .select("id,theatre_id,is_non_sag,session_date")
+            .gte("session_date", from)
+            .lte("session_date", to)
+            .range(offset, offset + PAGE - 1);
+          if (se) throw se;
+          for (const s of page ?? []) {
+            if (!privateTheatreIds.has(s.theatre_id)) continue;
+            sagById.set(s.id, !!s.is_non_sag);
+          }
+          if (!page || page.length < PAGE) break;
+          offset += PAGE;
+        }
       }
 
-      // Assignments in range for these consultants
-      const { data: assignments, error: ae } = await supabase
-        .from("rota_assignments")
-        .select("staff_id,duty_type,theatre_session_id,session_date,session")
-        .gte("session_date", from)
-        .lte("session_date", to)
-        .in("staff_id", consultantIds);
-      if (ae) throw ae;
-
+      // Per-consultant counters.
       const counts = new Map<
         string,
         { spa: number; sag: number; nonSag: number }
       >();
       for (const id of consultantIds) counts.set(id, { spa: 0, sag: 0, nonSag: 0 });
 
-      for (const a of assignments ?? []) {
-        const c = counts.get(a.staff_id);
-        if (!c) continue;
-        if (a.duty_type === "spa") c.spa += 1;
-        if (a.theatre_session_id && sagById.has(a.theatre_session_id)) {
-          if (sagById.get(a.theatre_session_id)) c.nonSag += 1;
-          else c.sag += 1;
+      // Pull rota assignments in range (paginated). We don't filter by staff_id
+      // in the query to avoid URL-length limits with 50+ UUIDs; we drop
+      // non-consultant rows in the loop below via the counts map.
+      {
+        const PAGE = 1000;
+        let offset = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: page, error: ae } = await supabase
+            .from("rota_assignments")
+            .select("staff_id,duty_type,theatre_session_id,session_date,session")
+            .gte("session_date", from)
+            .lte("session_date", to)
+            .range(offset, offset + PAGE - 1);
+          if (ae) throw ae;
+          for (const a of page ?? []) {
+            if (!consultantIdSet.has(a.staff_id)) continue;
+            const c = counts.get(a.staff_id);
+            if (!c) continue;
+            if (a.duty_type === "spa") c.spa += 1;
+            if (a.theatre_session_id && sagById.has(a.theatre_session_id)) {
+              if (sagById.get(a.theatre_session_id)) c.nonSag += 1;
+              else c.sag += 1;
+            }
+          }
+          if (!page || page.length < PAGE) break;
+          offset += PAGE;
         }
       }
 
@@ -181,6 +204,12 @@ function ConsultantAuditsPage() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : error ? (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 text-sm text-destructive">
+            Failed to load consultant audits: {(error as Error).message}
+          </CardContent>
+        </Card>
       ) : !filtered.length ? (
         <p className="text-sm text-muted-foreground">No consultants found.</p>
       ) : (
