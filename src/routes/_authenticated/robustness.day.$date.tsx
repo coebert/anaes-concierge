@@ -14,6 +14,7 @@ import {
   type DayDetailSession, type HalfDayCapacity, type OtherDutyDetail,
 } from "@/lib/audit/robustness";
 import { BreakdownCard } from "@/components/robustness/BreakdownCard";
+import { SessionChip } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
   component: DayDetailPage,
