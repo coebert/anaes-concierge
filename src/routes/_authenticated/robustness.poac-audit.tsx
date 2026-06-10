@@ -274,6 +274,13 @@ function PoacAuditPage() {
             sas: b.sas,
             trainee: b.trainee,
             unknown: b.unknown,
+            // The baseline slot is one Wed AM/PM session. If a consultant
+            // covered that slot, subtract it from consultant work to get the
+            // "additional" consultant sessions.
+            additionalConsultant: Math.max(
+              0,
+              b.consultant - (b.wedHasConsultant ? 1 : 0),
+            ),
           };
         })
         .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
@@ -298,8 +305,10 @@ function PoacAuditPage() {
           sas: acc.sas + w.sas,
           trainee: acc.trainee + w.trainee,
           unknown: acc.unknown + w.unknown,
+          additionalConsultant: acc.additionalConsultant + w.additionalConsultant,
         }),
-        { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
+        { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
+
       );
 
       return { weeks, totals, drilldown, baselineViolations };
