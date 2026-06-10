@@ -432,9 +432,115 @@ function PoacAuditPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Session drill-down</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Every matched POAU/POAC session in the selected range, grouped by the
+            covering anaesthetist&rsquo;s grade. &lsquo;Theatre (CLWRota)&rsquo;
+            shows the original terminology stored from the CLWRota feed
+            (e.g. POAU, POAC, pre-op assessment).
+          </p>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : !drilldown.length ? (
+            <p className="text-sm text-muted-foreground">
+              No POAC sessions found in this range.
+            </p>
+          ) : (
+            <Tabs defaultValue="consultant">
+              <TabsList>
+                <TabsTrigger value="consultant">
+                  Consultant ({totals.consultant})
+                </TabsTrigger>
+                <TabsTrigger value="sas">SAS ({totals.sas})</TabsTrigger>
+                <TabsTrigger value="trainee">
+                  Trainee ({totals.trainee})
+                </TabsTrigger>
+                {totals.unknown > 0 ? (
+                  <TabsTrigger value="unknown">
+                    Unknown ({totals.unknown})
+                  </TabsTrigger>
+                ) : null}
+              </TabsList>
+              {(["consultant", "sas", "trainee", "unknown"] as const).map((g) => (
+                <TabsContent key={g} value={g} className="mt-3">
+                  <DrilldownTable rows={drilldown.filter((r) => r.grade === g)} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+function DrilldownTable({ rows }: { rows: DrilldownRow[] }) {
+  if (!rows.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No matched sessions for this grade in the selected range.
+      </p>
+    );
+  }
+  // Group by staff for readability while keeping the row-level detail.
+  const byStaff = new Map<string, DrilldownRow[]>();
+  for (const r of rows) {
+    const key = r.staffId ?? `__name__${r.staffName}`;
+    const arr = byStaff.get(key) ?? [];
+    arr.push(r);
+    byStaff.set(key, arr);
+  }
+  const groups = Array.from(byStaff.entries())
+    .map(([k, list]) => ({ key: k, name: list[0].staffName, list }))
+    .sort((a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
+
+  return (
+    <div className="space-y-5">
+      {groups.map((g) => (
+        <div key={g.key} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">{g.name}</h3>
+            <Badge variant="secondary">{g.list.length} session{g.list.length === 1 ? "" : "s"}</Badge>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Half</TableHead>
+                <TableHead>Theatre (CLWRota)</TableHead>
+                <TableHead>Specialty</TableHead>
+                <TableHead>Surgical consultant</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {g.list.map((r) => (
+                <TableRow key={r.assignmentId}>
+                  <TableCell className="font-medium">{formatDateGB(r.date)}</TableCell>
+                  <TableCell className="uppercase tabular-nums">{r.session}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.theatreName}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.specialty ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.surgicalConsultant ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 function SummaryCard({
   label,
