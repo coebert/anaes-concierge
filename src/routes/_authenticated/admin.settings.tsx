@@ -440,8 +440,52 @@ function SettingsPage() {
                         : "Syncing…"
                   : "Sync all from CLWRota"}
               </Button>
+              <Button
+                variant="secondary"
+                onClick={() => backfillNonSagMut.mutate()}
+                disabled={backfillNonSagMut.isPending || !credsOk || !rotaUrl.trim()}
+                title="Re-scan the CLWRota rota feed and tick the Non-SAG checkbox on every theatre-grid session tagged as Non-SAG. Admin overrides are preserved."
+              >
+                {backfillNonSagMut.isPending ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                )}
+                {backfillNonSagMut.isPending ? "Backfilling…" : "Backfill Non-SAG labels"}
+              </Button>
             </div>
           </div>
+
+          {backfillNonSagMut.data && (
+            <div className="rounded-md border border-border p-3 text-xs space-y-2">
+              <div className="font-medium text-sm">Last Non-SAG backfill</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Stat label="Rows scanned" value={backfillNonSagMut.data.rowsScanned} />
+                <Stat label="Rows tagged" value={backfillNonSagMut.data.rowsTagged} tone="info" />
+                <Stat
+                  label="Sessions updated"
+                  value={backfillNonSagMut.data.sessionsUpdated}
+                  tone="success"
+                />
+                <Stat
+                  label="Kept (override)"
+                  value={backfillNonSagMut.data.sessionsSkippedOverride}
+                />
+              </div>
+              {backfillNonSagMut.data.unmatched.length > 0 && (
+                <details className="rounded border border-border p-2">
+                  <summary className="cursor-pointer font-medium">
+                    Unmatched theatres ({backfillNonSagMut.data.unmatched.length})
+                  </summary>
+                  <div className="mt-2 text-muted-foreground">
+                    {backfillNonSagMut.data.unmatched.join(", ")}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+
+
 
           {leaveMut.data && (
             <div className="rounded-md border border-border p-3 text-xs space-y-3">
