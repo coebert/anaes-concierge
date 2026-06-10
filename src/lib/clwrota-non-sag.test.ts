@@ -4,7 +4,7 @@ import { isNonSagRotaLabel } from "./clwrota-labels";
 /**
  * Regression tests for the Non-SAG marker detection used during CLWRota
  * sync. The sync passes each row's free-text fields (person.rota_name,
- * slot_titles, role, theatre, specialty) through isNonSagRotaLabel and
+ * slot_titles, extra_type, role, theatre, specialty) through isNonSagRotaLabel and
  * propagates a positive match onto theatre_sessions.is_non_sag.
  *
  * If these tests fail, the theatre grid's "Non-SAG" backfill from CLWRota
@@ -51,6 +51,8 @@ describe("isNonSagRotaLabel — positive matches", () => {
     expect(isNonSagRotaLabel(["Dr Patel [Non-SAG]", null, null, null, null])).toBe(true);
     // slot_titles / consultant
     expect(isNonSagRotaLabel([null, "Mr Lee (Non-SAG)", null, null, null])).toBe(true);
+    // extra_type.name — CLWRota's current feed carries the label here
+    expect(isNonSagRotaLabel([null, null, "Non-SAG", null, null, null])).toBe(true);
     // role
     expect(isNonSagRotaLabel([null, null, "Non-SAG cover", null, null])).toBe(true);
     // theatre
