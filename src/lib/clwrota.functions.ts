@@ -106,7 +106,7 @@ export const getClwRotaSettings = createServerFn({ method: "GET" })
 
 const urlOrNull = z.preprocess(
   (v) => (typeof v === "string" && v.trim() === "" ? null : v),
-  z.string().url().max(2000).nullable(),
+  z.string().url().max(8000).nullable(),
 );
 const SettingsSchema = z.object({
   rota_report_url: urlOrNull,
