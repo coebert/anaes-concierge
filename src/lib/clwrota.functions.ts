@@ -2180,7 +2180,9 @@ export async function performRotaSync(
         theatre_session_id: a.theatre_session_key ? sessionIdByKey.get(a.theatre_session_key) ?? null : null,
         clwrota_external_id: a.clwrota_external_id,
         notes: a.notes,
+        is_non_sag: a.is_non_sag,
       }));
+
 
     let assignmentsUpserted = 0;
     for (let i = 0; i < uniqueAssignments.length; i += ASSIGN_CHUNK) {
