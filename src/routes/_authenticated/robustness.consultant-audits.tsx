@@ -13,6 +13,10 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Stethoscope } from "lucide-react";
 import { splitName } from "@/lib/utils";
 import { checkTableGrants } from "@/lib/grants-healthcheck.functions";
+import {
+  classifyConsultantAssignment,
+  type SagMark,
+} from "@/lib/audit/consultant-non-sag-classify";
 
 const REQUIRED_TABLES = [
   "profiles",
@@ -89,8 +93,6 @@ function ConsultantAuditsPage() {
       // The `non_sag_override` flag tracks whether an admin has explicitly
       // set the value (vs the default false); we surface it as evidence that
       // the marking has been actively reviewed.
-      type SagClass = "sag" | "non_sag";
-      type SagMark = { kind: SagClass; reviewed: boolean };
       const sagBySession = new Map<string, SagMark>();
       {
         const PAGE = 1000;
@@ -155,34 +157,12 @@ function ConsultantAuditsPage() {
             if (!consultantIdSet.has(a.staff_id)) continue;
             const c = counts.get(a.staff_id);
             if (!c) continue;
-            // SPA: any assignment marked as a SPA duty.
-            if (a.duty_type === "spa") c.spa += 1;
-
-            // Non-SAG classification — three sources, deduped per row:
-            //   1) the assignment itself is flagged non-SAG by the CLWRota
-            //      feed (covers theatre-less NHH lists and non-SAG on-call);
-            //   2) the linked theatre_session at an NHH (private) theatre
-            //      is marked non-SAG;
-            //   3) otherwise, if it's a theatre row at an NHH theatre, it
-            //      counts as a SAG list.
-            const assignmentNonSag = a.is_non_sag === true;
-            const sessionMark = a.theatre_session_id
-              ? sagBySession.get(a.theatre_session_id)
-              : undefined;
-
-            if (assignmentNonSag) {
+            const result = classifyConsultantAssignment(a, sagBySession);
+            if (result.bucket === "spa") c.spa += 1;
+            else if (result.bucket === "sag") c.sag += 1;
+            else if (result.bucket === "non_sag") {
               c.nonSag += 1;
-              if (sessionMark?.reviewed) c.nonSagReviewed += 1;
-              continue;
-            }
-            if (a.duty_type !== "theatre") continue;
-            if (!a.theatre_session_id) continue;
-            if (!sessionMark) continue; // not an NHH session
-            if (sessionMark.kind === "non_sag") {
-              c.nonSag += 1;
-              if (sessionMark.reviewed) c.nonSagReviewed += 1;
-            } else {
-              c.sag += 1;
+              if (result.reviewed) c.nonSagReviewed += 1;
             }
           }
           if (!page || page.length < PAGE) break;
