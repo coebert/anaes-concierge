@@ -118,7 +118,7 @@ export function LeaveMonthlyCalendar() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
@@ -169,7 +169,7 @@ export function LeaveMonthlyCalendar() {
               <div
                 key={iso}
                 className={cn(
-                  "min-h-[88px] rounded-md border p-1 text-xs",
+                  "min-h-[64px] rounded-md border p-1 text-xs sm:min-h-[88px]",
                   inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
                   isToday && "ring-2 ring-primary",
                 )}

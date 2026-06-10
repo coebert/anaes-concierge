@@ -137,11 +137,11 @@ export function PeriodNav({
     return `Week of ${fmt(ws)}`;
   })();
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" size="sm" onClick={() => onChange(shiftAnchor(anchor, mode, -1))}>
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <div className="rounded-md border px-3 py-1 text-xs font-medium tabular-nums min-w-[180px] text-center">
+      <div className="flex-1 min-w-[140px] rounded-md border px-3 py-1 text-xs font-medium tabular-nums text-center sm:flex-none sm:min-w-[180px]">
         {label}
       </div>
       <Button variant="outline" size="sm" onClick={() => onChange(shiftAnchor(anchor, mode, 1))}>
