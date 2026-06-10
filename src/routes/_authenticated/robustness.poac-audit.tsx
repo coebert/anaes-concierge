@@ -13,6 +13,12 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
+import {
+  computePoacWeeklyStats,
+  validatePoacBaseline,
+  type PoacBaselineViolation,
+} from "@/lib/audit/poac-baseline";
+
 
 type DrilldownRow = {
   assignmentId: string;
