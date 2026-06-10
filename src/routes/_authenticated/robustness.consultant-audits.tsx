@@ -204,6 +204,12 @@ function ConsultantAuditsPage() {
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : error ? (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 text-sm text-destructive">
+            Failed to load consultant audits: {(error as Error).message}
+          </CardContent>
+        </Card>
       ) : !filtered.length ? (
         <p className="text-sm text-muted-foreground">No consultants found.</p>
       ) : (
