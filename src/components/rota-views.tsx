@@ -38,6 +38,39 @@ export function fmt(d: Date) {
 
 export type ViewMode = "day" | "week" | "month";
 
+/**
+ * Small pill used to mark AM / PM session columns and labels.
+ * Distinct tones for AM (sky) vs PM (indigo) help scanning the grid quickly.
+ */
+export function SessionChip({
+  half,
+  active = false,
+  className,
+}: {
+  half: "am" | "pm";
+  active?: boolean;
+  className?: string;
+}) {
+  const isAm = half === "am";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] tabular-nums transition-colors",
+        isAm
+          ? "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+          : "border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+        active &&
+          (isAm
+            ? "bg-sky-500 text-white border-sky-500 shadow-sm"
+            : "bg-indigo-500 text-white border-indigo-500 shadow-sm"),
+        className,
+      )}
+    >
+      {half.toUpperCase()}
+    </span>
+  );
+}
+
 export function startOfMonth(d: Date) {
   const x = new Date(d.getFullYear(), d.getMonth(), 1);
   x.setHours(0, 0, 0, 0);
