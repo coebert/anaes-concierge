@@ -146,7 +146,7 @@ function ConsultantAuditsPage() {
         while (true) {
           const { data: page, error: ae } = await supabase
             .from("rota_assignments")
-            .select("staff_id,duty_type,theatre_session_id,session_date,session")
+            .select("staff_id,duty_type,theatre_session_id,session_date,session,is_non_sag")
             .gte("session_date", from)
             .lte("session_date", to)
             .range(offset, offset + PAGE - 1);
@@ -157,17 +157,30 @@ function ConsultantAuditsPage() {
             if (!c) continue;
             // SPA: any assignment marked as a SPA duty.
             if (a.duty_type === "spa") c.spa += 1;
-            // SAG vs non-SAG only applies to clinical theatre lists actually
-            // worked at an NHH (private) theatre. Skip non-theatre duties
-            // (admin, SPA, on-call) even if they somehow point at an NHH
-            // theatre_session — they are not "lists worked at NHH".
+
+            // Non-SAG classification — three sources, deduped per row:
+            //   1) the assignment itself is flagged non-SAG by the CLWRota
+            //      feed (covers theatre-less NHH lists and non-SAG on-call);
+            //   2) the linked theatre_session at an NHH (private) theatre
+            //      is marked non-SAG;
+            //   3) otherwise, if it's a theatre row at an NHH theatre, it
+            //      counts as a SAG list.
+            const assignmentNonSag = a.is_non_sag === true;
+            const sessionMark = a.theatre_session_id
+              ? sagBySession.get(a.theatre_session_id)
+              : undefined;
+
+            if (assignmentNonSag) {
+              c.nonSag += 1;
+              if (sessionMark?.reviewed) c.nonSagReviewed += 1;
+              continue;
+            }
             if (a.duty_type !== "theatre") continue;
             if (!a.theatre_session_id) continue;
-            const mark = sagBySession.get(a.theatre_session_id);
-            if (!mark) continue; // not an NHH session — ignore for SAG counts
-            if (mark.kind === "non_sag") {
+            if (!sessionMark) continue; // not an NHH session
+            if (sessionMark.kind === "non_sag") {
               c.nonSag += 1;
-              if (mark.reviewed) c.nonSagReviewed += 1;
+              if (sessionMark.reviewed) c.nonSagReviewed += 1;
             } else {
               c.sag += 1;
             }
@@ -176,6 +189,7 @@ function ConsultantAuditsPage() {
           offset += PAGE;
         }
       }
+
 
 
       const rows: ConsultantRow[] = (profiles ?? [])

@@ -1805,7 +1805,9 @@ export async function performRotaSync(
       theatre_session_key: string | null; // resolve after sessions upserted
       clwrota_external_id: string;
       notes: string | null;
+      is_non_sag: boolean;
     };
+
 
     const sessionDraftsByKey = new Map<string, SessionDraft>();
     const assignmentDrafts: AssignmentDraft[] = [];
@@ -2008,8 +2010,13 @@ export async function performRotaSync(
           : consultantName
             ? `Surgeon: ${consultantName}`
             : null,
+        // Carry the Non-SAG marker through to the assignment so non-SAG
+        // sessions that don't resolve to a specific NHH theatre (or are
+        // on-call) are still counted in audits.
+        is_non_sag: isNonSagRow,
       });
     }
+
 
     // --- Pass 2: bulk-insert any new specialties, then refresh the map. -------
     if (newSpecialtyNames.size > 0) {
@@ -2173,7 +2180,9 @@ export async function performRotaSync(
         theatre_session_id: a.theatre_session_key ? sessionIdByKey.get(a.theatre_session_key) ?? null : null,
         clwrota_external_id: a.clwrota_external_id,
         notes: a.notes,
+        is_non_sag: a.is_non_sag,
       }));
+
 
     let assignmentsUpserted = 0;
     for (let i = 0; i < uniqueAssignments.length; i += ASSIGN_CHUNK) {
@@ -3015,8 +3024,13 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
 
-    // Build the set of (theatre_id|date|session) keys the feed tags as Non-SAG.
+    // Build the set of (theatre_id|date|session) keys the feed tags as Non-SAG,
+    // PLUS the set of clwrota_external_ids of every individual non-SAG row so
+    // we can flag the corresponding rota_assignments rows even when the row
+    // doesn't resolve to a specific NHH theatre (e.g. on-call non-SAG, or
+    // non-SAG lists where CLWRota didn't populate place.name).
     const taggedKeys = new Set<string>();
+    const taggedExtIds = new Set<string>();
     const unmatched = new Set<string>();
     let rowsTagged = 0;
 
@@ -3046,6 +3060,10 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       const personName = pick(row, [
         "person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name",
       ]);
+      const personExtId = pick(row, [
+        "person.local_id", "person.esr_employee_number", "person.assignment_number",
+        "person_id", "local_id", "staff_id", "user_id",
+      ]);
       const roleRaw = pick(row, [
         "role.name", "assignment_type.name", "place_category.name",
         "role", "duty", "type", "Role", "Duty",
@@ -3066,6 +3084,13 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       const session = normaliseSession(sessRaw);
       if (!session_date || !session) continue;
 
+      // Record the assignment-level external id so we can flag the row in
+      // rota_assignments regardless of whether a theatre resolves below.
+      const extId =
+        pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
+        (personExtId && dateRaw && sessRaw ? `${personExtId}|${dateRaw}|${sessRaw}` : null);
+      if (extId) taggedExtIds.add(extId);
+
       // Resolve the theatre using the same fallbacks as the main sync:
       // place.name → slot_titles match → off-site / specialty-room alias.
       let theatreId: string | undefined;
@@ -3080,22 +3105,48 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
         );
       }
       if (!theatreId) {
-        unmatched.add(theatreName ?? consultantName ?? "(unknown theatre)");
+        // Theatre-less non-SAG row (e.g. on-call non-SAG). Still recorded via
+        // taggedExtIds above so the assignment gets flagged.
+        unmatched.add(theatreName ?? consultantName ?? "(no specific theatre)");
         continue;
       }
 
       taggedKeys.add(`${theatreId}|${session_date}|${session}`);
     }
 
+
+    // Flag matching rota_assignments rows so the per-assignment is_non_sag
+    // marker is in sync with the feed. Runs even when no theatre-keyed
+    // sessions matched, because non-SAG on-call / theatre-less rows still
+    // need their assignment flagged.
+    let assignmentsUpdated = 0;
+    if (taggedExtIds.size > 0) {
+      const extIds = Array.from(taggedExtIds);
+      const ASGN_CHUNK = 500;
+      for (let i = 0; i < extIds.length; i += ASGN_CHUNK) {
+        const chunk = extIds.slice(i, i + ASGN_CHUNK);
+        const { error: updErr, count } = await supabaseAdmin
+          .from("rota_assignments")
+          .update({ is_non_sag: true }, { count: "exact" })
+          .in("clwrota_external_id", chunk)
+          .eq("is_non_sag", false);
+        if (updErr) throw new Error(updErr.message);
+        assignmentsUpdated += count ?? 0;
+      }
+    }
+
     if (taggedKeys.size === 0) {
       return {
         ok: true,
-        message: `Scanned ${rows.length} feed rows. No Non-SAG tags found.`,
+        message:
+          `Scanned ${rows.length} feed rows · ${rowsTagged} tagged Non-SAG · ` +
+          `flagged ${assignmentsUpdated} assignment(s) (no theatre-keyed sessions matched).`,
         rowsScanned: rows.length,
         rowsTagged,
         sessionsMatched: 0,
         sessionsUpdated: 0,
         sessionsSkippedOverride: 0,
+        assignmentsUpdated,
         unmatched: Array.from(unmatched),
       };
     }
@@ -3140,6 +3191,9 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       message:
         `Scanned ${rows.length} feed rows · ${rowsTagged} tagged Non-SAG · ` +
         `matched ${sessionsMatched} session(s) · updated ${sessionsUpdated}` +
+        (assignmentsUpdated > 0
+          ? ` · flagged ${assignmentsUpdated} assignment(s)`
+          : "") +
         (sessionsSkippedOverride > 0
           ? ` · ${sessionsSkippedOverride} kept due to admin override`
           : ""),
@@ -3148,6 +3202,8 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       sessionsMatched,
       sessionsUpdated,
       sessionsSkippedOverride,
+      assignmentsUpdated,
       unmatched: Array.from(unmatched),
     };
+
   });

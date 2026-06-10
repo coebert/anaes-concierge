@@ -677,6 +677,7 @@ export type Database = {
           created_at: string
           duty_type: Database["public"]["Enums"]["duty_type"]
           id: string
+          is_non_sag: boolean
           locally_modified: boolean
           notes: string | null
           role_on_list: Database["public"]["Enums"]["rota_role"]
@@ -693,6 +694,7 @@ export type Database = {
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
           id?: string
+          is_non_sag?: boolean
           locally_modified?: boolean
           notes?: string | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
@@ -709,6 +711,7 @@ export type Database = {
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
           id?: string
+          is_non_sag?: boolean
           locally_modified?: boolean
           notes?: string | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
