@@ -32,6 +32,7 @@ import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
+import { Route as AuthenticatedRobustnessConsultantAuditsRouteImport } from './routes/_authenticated/robustness.consultant-audits'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
@@ -173,6 +174,12 @@ const AuthenticatedRobustnessConsultantFeasibilityRoute =
   AuthenticatedRobustnessConsultantFeasibilityRouteImport.update({
     id: '/robustness/consultant-feasibility',
     path: '/robustness/consultant-feasibility',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRobustnessConsultantAuditsRoute =
+  AuthenticatedRobustnessConsultantAuditsRouteImport.update({
+    id: '/robustness/consultant-audits',
+    path: '/robustness/consultant-audits',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedLeaveForecastRoute =
@@ -340,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -385,6 +393,7 @@ export interface FileRoutesByTo {
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -433,6 +442,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/_authenticated/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/leave/forecast'
+    | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/list-feasibility'
     | '/robustness/simulate'
@@ -526,6 +537,7 @@ export interface FileRouteTypes {
     | '/coordinator/leave'
     | '/coordinator/rota'
     | '/leave/forecast'
+    | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/list-feasibility'
     | '/robustness/simulate'
@@ -573,6 +585,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/leave_/forecast'
+    | '/_authenticated/robustness/consultant-audits'
     | '/_authenticated/robustness/consultant-feasibility'
     | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/simulate'
@@ -759,6 +772,13 @@ declare module '@tanstack/react-router' {
       path: '/robustness/consultant-feasibility'
       fullPath: '/robustness/consultant-feasibility'
       preLoaderRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/robustness/consultant-audits': {
+      id: '/_authenticated/robustness/consultant-audits'
+      path: '/robustness/consultant-audits'
+      fullPath: '/robustness/consultant-audits'
+      preLoaderRoute: typeof AuthenticatedRobustnessConsultantAuditsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/leave_/forecast': {
@@ -988,6 +1008,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
   AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
+  AuthenticatedRobustnessConsultantAuditsRoute: typeof AuthenticatedRobustnessConsultantAuditsRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
@@ -1022,6 +1043,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
   AuthenticatedLeaveForecastRoute: AuthenticatedLeaveForecastRoute,
+  AuthenticatedRobustnessConsultantAuditsRoute:
+    AuthenticatedRobustnessConsultantAuditsRoute,
   AuthenticatedRobustnessConsultantFeasibilityRoute:
     AuthenticatedRobustnessConsultantFeasibilityRoute,
   AuthenticatedRobustnessListFeasibilityRoute:
