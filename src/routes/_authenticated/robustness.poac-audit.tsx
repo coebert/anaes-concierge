@@ -231,14 +231,24 @@ function PoacAuditPage() {
         return x.staffName.localeCompare(y.staffName);
       });
 
+      // Compute baseline/additional via the shared, unit-tested rule so the
+      // UI numbers can never drift from the validator's expectations.
+      const baselineStats = computePoacWeeklyStats(
+        assignmentList.map((a) => ({
+          date: a.session_date,
+          session: a.session,
+          staffId: a.staff_id,
+        })),
+      );
+      const baselineByWeek = new Map(baselineStats.map((s) => [s.weekStart, s] as const));
+
       const weeks: WeekRow[] = Array.from(buckets.entries())
         .map(([k, b]) => {
+          const stat = baselineByWeek.get(k);
           const wedAm = b.wedAm.size;
           const wedPm = b.wedPm.size;
-          // Baseline = one consultant on Wednesday (AM or PM, not both).
-          const baseline = (wedAm > 0 || wedPm > 0) ? 1 : 0;
-
-          const additional = Math.max(0, b.total - baseline);
+          const baseline = stat?.baseline ?? ((wedAm > 0 || wedPm > 0) ? 1 : 0);
+          const additional = stat?.additional ?? Math.max(0, b.total - baseline);
           return {
             weekStart: k,
             total: b.total,
@@ -253,6 +263,18 @@ function PoacAuditPage() {
           };
         })
         .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+
+      const baselineViolations = validatePoacBaseline(
+        weeks.map((w) => ({
+          weekStart: w.weekStart,
+          total: w.total,
+          wedAm: w.wedAm,
+          wedPm: w.wedPm,
+          baseline: (w.baseline === 1 ? 1 : 0) as 0 | 1,
+          additional: w.additional,
+        })),
+      );
+
 
       const totals = weeks.reduce(
         (acc, w) => ({
