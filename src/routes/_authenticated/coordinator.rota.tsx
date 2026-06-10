@@ -24,6 +24,7 @@ import {
 } from "@/lib/rota-validation";
 import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { SessionChip } from "@/components/rota-views";
 
 const DEFAULT_RULES: RotaRules = {
   sessions_per_pa: 1,
