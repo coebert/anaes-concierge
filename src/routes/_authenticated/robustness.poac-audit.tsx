@@ -295,8 +295,9 @@ function PoacAuditPage() {
         <p className="text-sm text-muted-foreground">
           Weekly POAC (POAU) clinic sessions covered by anaesthetists.
           &lsquo;Additional&rsquo; counts anything above the baseline of one
-          consultant on Wednesday AM and one on Wednesday PM.
+          consultant on Wednesday (either AM or PM, not both).
         </p>
+
       </div>
 
       <Card>
