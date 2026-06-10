@@ -14,10 +14,39 @@ import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function shortDay(iso: string) {
   const d = new Date(iso + "T00:00:00Z");
   return `${DAY_NAMES[d.getUTCDay()]} ${d.getUTCDate()}`;
+}
+
+function dayParts(iso: string) {
+  const d = new Date(iso + "T00:00:00Z");
+  return {
+    weekday: DAY_NAMES[d.getUTCDay()],
+    day: d.getUTCDate(),
+    month: MONTH_NAMES[d.getUTCMonth()],
+  };
+}
+
+// Sleeker, tonal styling for the day-risk chip surface. Distinct from the
+// flat fill used in dense tables so the dashboard row reads as primary tiles.
+function dayChipSurface(risk: "ok" | "tight" | "shortfall" | "spa_required") {
+  if (risk === "shortfall")
+    return "border-red-500/50 bg-red-500/10 hover:bg-red-500/15 hover:border-red-500/70";
+  if (risk === "spa_required")
+    return "border-orange-400/50 bg-orange-400/10 hover:bg-orange-400/15 hover:border-orange-500/70";
+  if (risk === "tight")
+    return "border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/15 hover:border-amber-500/70";
+  return "border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/60";
+}
+
+function dayChipAccent(risk: "ok" | "tight" | "shortfall" | "spa_required") {
+  if (risk === "shortfall") return "bg-red-500 text-white";
+  if (risk === "spa_required") return "bg-orange-500 text-white";
+  if (risk === "tight") return "bg-amber-500 text-white";
+  return "bg-emerald-500 text-white";
 }
 
 function worstRisk(a: "ok" | "tight" | "shortfall" | "spa_required", b: "ok" | "tight" | "shortfall" | "spa_required") {
