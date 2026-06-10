@@ -1,0 +1,277 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Stethoscope } from "lucide-react";
+import { splitName } from "@/lib/utils";
+
+export const Route = createFileRoute(
+  "/_authenticated/robustness/consultant-audits",
+)({
+  component: ConsultantAuditsPage,
+});
+
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function ConsultantAuditsPage() {
+  const [from, setFrom] = useState<string>(isoDaysAgo(90));
+  const [to, setTo] = useState<string>(todayIso());
+  const [filter, setFilter] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["consultant-audits", from, to],
+    queryFn: async () => {
+      // Consultants
+      const { data: profiles, error: pe } = await supabase
+        .from("profiles")
+        .select("id,full_name,email,grade,active")
+        .eq("grade", "consultant")
+        .eq("active", true);
+      if (pe) throw pe;
+      const consultantIds = (profiles ?? []).map((p) => p.id);
+      if (!consultantIds.length) {
+        return { rows: [] as ConsultantRow[] };
+      }
+
+      // NHH (private) theatre sessions in range — used to identify SAG / non-SAG.
+      const { data: theatres, error: te } = await supabase
+        .from("theatres")
+        .select("id,kind,active")
+        .eq("kind", "private")
+        .eq("active", true);
+      if (te) throw te;
+      const privateTheatreIds = new Set((theatres ?? []).map((t) => t.id));
+
+      const { data: sessions, error: se } = await supabase
+        .from("theatre_sessions")
+        .select("id,theatre_id,is_non_sag,session_date")
+        .gte("session_date", from)
+        .lte("session_date", to);
+      if (se) throw se;
+
+      const sagById = new Map<string, boolean>(); // true = non-SAG, false = SAG
+      for (const s of sessions ?? []) {
+        if (!privateTheatreIds.has(s.theatre_id)) continue;
+        sagById.set(s.id, !!s.is_non_sag);
+      }
+
+      // Assignments in range for these consultants
+      const { data: assignments, error: ae } = await supabase
+        .from("rota_assignments")
+        .select("staff_id,duty_type,theatre_session_id,session_date,session")
+        .gte("session_date", from)
+        .lte("session_date", to)
+        .in("staff_id", consultantIds);
+      if (ae) throw ae;
+
+      const counts = new Map<
+        string,
+        { spa: number; sag: number; nonSag: number }
+      >();
+      for (const id of consultantIds) counts.set(id, { spa: 0, sag: 0, nonSag: 0 });
+
+      for (const a of assignments ?? []) {
+        const c = counts.get(a.staff_id);
+        if (!c) continue;
+        if (a.duty_type === "spa") c.spa += 1;
+        if (a.theatre_session_id && sagById.has(a.theatre_session_id)) {
+          if (sagById.get(a.theatre_session_id)) c.nonSag += 1;
+          else c.sag += 1;
+        }
+      }
+
+      const rows: ConsultantRow[] = (profiles ?? [])
+        .map((p) => {
+          const c = counts.get(p.id)!;
+          return {
+            id: p.id,
+            full_name: p.full_name ?? p.email ?? "—",
+            email: p.email ?? "",
+            ...splitName(p.full_name),
+            spa: c.spa,
+            sag: c.sag,
+            nonSag: c.nonSag,
+            nhhTotal: c.sag + c.nonSag,
+          };
+        })
+        .sort(
+          (a, b) =>
+            (a.surname || "").localeCompare(b.surname || "") ||
+            (a.firstName || "").localeCompare(b.firstName || ""),
+        );
+
+      return { rows };
+    },
+  });
+
+  const filtered = useMemo(() => {
+    const rows = data?.rows ?? [];
+    if (!filter) return rows;
+    const q = filter.toLowerCase();
+    return rows.filter(
+      (r) =>
+        r.full_name.toLowerCase().includes(q) ||
+        r.email.toLowerCase().includes(q),
+    );
+  }, [data, filter]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Consultant audits</h1>
+        <p className="text-sm text-muted-foreground">
+          Per-consultant SPA, SAG and non-SAG session counts within a chosen
+          date range. SAG lists are NHH (private) lists not marked
+          &lsquo;non-SAG&rsquo;; non-SAG lists are NHH lists explicitly tagged
+          as covered under the consultant&rsquo;s NHS job plan.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="from">From</Label>
+              <Input
+                id="from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="w-[170px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="to">To</Label>
+              <Input
+                id="to"
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="w-[170px]"
+              />
+            </div>
+            <div className="space-y-1 flex-1 min-w-[200px]">
+              <Label htmlFor="filter">Search</Label>
+              <Input
+                id="filter"
+                placeholder="Filter by name or email…"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : !filtered.length ? (
+        <p className="text-sm text-muted-foreground">No consultants found.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((r) => (
+            <Card key={r.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start gap-2">
+                  <div className="rounded-md bg-primary/10 p-2 text-primary">
+                    <Stethoscope className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base leading-tight truncate">
+                      {r.full_name}
+                    </CardTitle>
+                    {r.email && (
+                      <CardDescription className="truncate text-xs">
+                        {r.email}
+                      </CardDescription>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Stat label="SPA sessions" value={r.spa} hint="duty_type = SPA" />
+                <Stat
+                  label="SAG sessions"
+                  value={r.sag}
+                  hint="NHH lists (SAG)"
+                  tone="primary"
+                />
+                <Stat
+                  label="Non-SAG sessions"
+                  value={r.nonSag}
+                  hint="NHH lists marked non-SAG"
+                  tone="amber"
+                />
+                <div className="flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">
+                  <span>NHH total</span>
+                  <Badge variant="secondary">{r.nhhTotal}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type ConsultantRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  title?: string;
+  firstName?: string;
+  surname?: string;
+  spa: number;
+  sag: number;
+  nonSag: number;
+  nhhTotal: number;
+};
+
+function Stat({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  tone?: "default" | "primary" | "amber";
+}) {
+  const toneClass =
+    tone === "primary"
+      ? "text-primary"
+      : tone === "amber"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-foreground";
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{label}</div>
+        {hint && (
+          <div className="text-[11px] text-muted-foreground">{hint}</div>
+        )}
+      </div>
+      <div className={`text-2xl font-semibold tabular-nums ${toneClass}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
