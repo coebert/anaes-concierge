@@ -261,6 +261,18 @@ function ConsultantAuditsPage() {
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                queryClient.invalidateQueries({
+                  queryKey: ["consultant-audits", from, to],
+                })
+              }
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
           </div>
         </CardContent>
       </Card>
