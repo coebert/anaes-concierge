@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -9,7 +9,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Stethoscope } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Stethoscope } from "lucide-react";
 import { splitName } from "@/lib/utils";
 import { checkTableGrants } from "@/lib/grants-healthcheck.functions";
 
@@ -39,6 +40,8 @@ function ConsultantAuditsPage() {
   const [from, setFrom] = useState<string>(isoDaysAgo(90));
   const [to, setTo] = useState<string>(todayIso());
   const [filter, setFilter] = useState("");
+
+  const queryClient = useQueryClient();
 
   const checkGrants = useServerFn(checkTableGrants);
   const grantsCheck = useQuery({
@@ -258,6 +261,18 @@ function ConsultantAuditsPage() {
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                queryClient.invalidateQueries({
+                  queryKey: ["consultant-audits", from, to],
+                })
+              }
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
           </div>
         </CardContent>
       </Card>
