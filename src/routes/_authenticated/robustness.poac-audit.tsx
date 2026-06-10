@@ -11,7 +11,22 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
+
+type DrilldownRow = {
+  assignmentId: string;
+  sessionId: string | null;
+  date: string;
+  session: "am" | "pm" | string;
+  staffId: string | null;
+  staffName: string;
+  grade: "consultant" | "sas" | "trainee" | "unknown";
+  theatreName: string;
+  specialty: string | null;
+  surgicalConsultant: string | null;
+};
+
 
 export const Route = createFileRoute("/_authenticated/robustness/poac-audit")({
   component: PoacAuditPage,
