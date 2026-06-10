@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -10,6 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Stethoscope } from "lucide-react";
 import { splitName } from "@/lib/utils";
+import { checkTableGrants } from "@/lib/grants-healthcheck.functions";
+
+const REQUIRED_TABLES = [
+  "profiles",
+  "theatres",
+  "theatre_sessions",
+  "rota_assignments",
+] as const;
 
 export const Route = createFileRoute(
   "/_authenticated/robustness/consultant-audits",
@@ -31,8 +40,17 @@ function ConsultantAuditsPage() {
   const [to, setTo] = useState<string>(todayIso());
   const [filter, setFilter] = useState("");
 
+  const checkGrants = useServerFn(checkTableGrants);
+  const grantsCheck = useQuery({
+    queryKey: ["consultant-audits-grants-check"],
+    queryFn: () => checkGrants({ data: { tables: [...REQUIRED_TABLES] } }),
+    staleTime: 5 * 60_000,
+  });
+  const grantsOk = grantsCheck.data?.ok === true;
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["consultant-audits", from, to],
+    enabled: grantsOk,
     queryFn: async () => {
       // Consultants
       const { data: profiles, error: pe } = await supabase
@@ -244,7 +262,40 @@ function ConsultantAuditsPage() {
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {grantsCheck.isLoading ? (
+        <p className="text-sm text-muted-foreground">Checking data access…</p>
+      ) : grantsCheck.error ? (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 text-sm text-destructive">
+            Data access health check failed:{" "}
+            {(grantsCheck.error as Error).message}
+          </CardContent>
+        </Card>
+      ) : grantsCheck.data && !grantsCheck.data.ok ? (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 space-y-2 text-sm">
+            <p className="font-medium text-destructive">
+              Required tables are not reachable via the Data API.
+            </p>
+            <p className="text-muted-foreground">
+              Missing GRANTs for the signed-in role on:{" "}
+              <span className="font-mono">
+                {grantsCheck.data.missing.join(", ")}
+              </span>
+              . Ask an administrator to restore the table grants before this
+              page can run.
+            </p>
+            {grantsCheck.data.otherErrors.length > 0 && (
+              <p className="text-muted-foreground text-xs">
+                Other probe errors:{" "}
+                {grantsCheck.data.otherErrors
+                  .map((e) => `${e.table}: ${e.message}`)
+                  .join("; ")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : error ? (
         <Card className="border-destructive/40">
