@@ -2010,8 +2010,13 @@ export async function performRotaSync(
           : consultantName
             ? `Surgeon: ${consultantName}`
             : null,
+        // Carry the Non-SAG marker through to the assignment so non-SAG
+        // sessions that don't resolve to a specific NHH theatre (or are
+        // on-call) are still counted in audits.
+        is_non_sag: isNonSagRow,
       });
     }
+
 
     // --- Pass 2: bulk-insert any new specialties, then refresh the map. -------
     if (newSpecialtyNames.size > 0) {
