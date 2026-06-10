@@ -294,12 +294,13 @@ function PoacAuditPage() {
         { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
       );
 
-      return { weeks, totals, drilldown };
+      return { weeks, totals, drilldown, baselineViolations };
     },
   });
 
   const weeks = data?.weeks ?? [];
   const drilldown = data?.drilldown ?? [];
+  const baselineViolations: PoacBaselineViolation[] = data?.baselineViolations ?? [];
 
   const totals = data?.totals ?? {
     total: 0,
@@ -309,6 +310,7 @@ function PoacAuditPage() {
     trainee: 0,
     unknown: 0,
   };
+
 
 
   const maxTotal = useMemo(
