@@ -380,7 +380,56 @@ function PoacAuditPage() {
       </div>
 
 
-      <Card>
+      <Card
+        className={
+          baselineViolations.length
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-emerald-500/40 bg-emerald-500/5"
+        }
+      >
+        <CardHeader>
+          <CardTitle className="text-base">
+            Baseline rule validation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {weeks.length === 0 ? (
+            <p className="text-muted-foreground">
+              No weeks in range — nothing to validate.
+            </p>
+          ) : baselineViolations.length === 0 ? (
+            <p>
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15">
+                PASS
+              </Badge>{" "}
+              All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the
+              rule: at most one Wednesday baseline session (AM or PM, not both).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p>
+                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15">
+                  {baselineViolations.length} violation
+                  {baselineViolations.length === 1 ? "" : "s"}
+                </Badge>{" "}
+                Some weeks do not satisfy the baseline rule.
+              </p>
+              <ul className="list-disc pl-5 text-muted-foreground">
+                {baselineViolations.slice(0, 10).map((v) => (
+                  <li key={`${v.weekStart}-${v.reason}`}>
+                    Week of {formatDateGB(v.weekStart)} — {v.reason}
+                  </li>
+                ))}
+                {baselineViolations.length > 10 ? (
+                  <li>…and {baselineViolations.length - 10} more.</li>
+                ) : null}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
         <CardHeader>
           <CardTitle className="text-base">Weekly breakdown</CardTitle>
         </CardHeader>
