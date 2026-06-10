@@ -1858,6 +1858,10 @@ export async function performRotaSync(
       const consultantName = pick(row, [
         "slot_titles", "consultant", "surgeon", "surgical_consultant", "Consultant",
       ]);
+      const extraTypeName = pick(row, [
+        "extra_type.name", "extra_type.description", "extra_type.local_id",
+        "extra_type_name", "extra_type", "Extra type", "Extra Type",
+      ]);
       const roleRaw = pick(row, [
         "role.name", "assignment_type.name", "place_category.name",
         "role", "duty", "type", "Role", "Duty",
@@ -1948,6 +1952,7 @@ export async function performRotaSync(
       const isNonSagRow = isNonSagRotaLabel([
         personNameRaw,
         consultantName,
+        extraTypeName,
         roleRaw,
         theatreName,
         specialtyName,
