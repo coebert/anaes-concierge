@@ -74,7 +74,9 @@ type WeekRow = {
   sas: number;
   trainee: number;
   unknown: number;
+  additionalConsultant: number;
 };
+
 
 // Match any theatre that represents the Pre-Operative Assessment clinic,
 // regardless of which terminology is in use (POAU, POAC, "pre-op assessment",
@@ -111,7 +113,7 @@ function PoacAuditPage() {
       const theatreNameById = new Map(poacTheatres.map((t) => [t.id, t.name] as const));
       const emptyResult = {
         weeks: [] as WeekRow[],
-        totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
+        totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
         drilldown: [] as DrilldownRow[],
         baselineViolations: [] as PoacBaselineViolation[],
       };
@@ -179,6 +181,7 @@ function PoacAuditPage() {
           total: number;
           wedAm: Set<string>;
           wedPm: Set<string>;
+          wedHasConsultant: boolean;
           consultant: number;
           sas: number;
           trainee: number;
@@ -192,6 +195,7 @@ function PoacAuditPage() {
             total: 0,
             wedAm: new Set(),
             wedPm: new Set(),
+            wedHasConsultant: false,
             consultant: 0,
             sas: 0,
             trainee: 0,
@@ -218,7 +222,9 @@ function PoacAuditPage() {
         if (d.getDay() === 3) {
           if (a.session === "am") b.wedAm.add(a.staff_id);
           else if (a.session === "pm") b.wedPm.add(a.staff_id);
+          if (grade === "consultant") b.wedHasConsultant = true;
         }
+
         drilldown.push({
           assignmentId: a.id,
           sessionId: a.theatre_session_id ?? null,
@@ -268,6 +274,13 @@ function PoacAuditPage() {
             sas: b.sas,
             trainee: b.trainee,
             unknown: b.unknown,
+            // The baseline slot is one Wed AM/PM session. If a consultant
+            // covered that slot, subtract it from consultant work to get the
+            // "additional" consultant sessions.
+            additionalConsultant: Math.max(
+              0,
+              b.consultant - (b.wedHasConsultant ? 1 : 0),
+            ),
           };
         })
         .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
@@ -292,8 +305,10 @@ function PoacAuditPage() {
           sas: acc.sas + w.sas,
           trainee: acc.trainee + w.trainee,
           unknown: acc.unknown + w.unknown,
+          additionalConsultant: acc.additionalConsultant + w.additionalConsultant,
         }),
-        { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
+        { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
+
       );
 
       return { weeks, totals, drilldown, baselineViolations };
@@ -311,7 +326,9 @@ function PoacAuditPage() {
     sas: 0,
     trainee: 0,
     unknown: 0,
+    additionalConsultant: 0,
   };
+
 
 
 
@@ -362,7 +379,7 @@ function PoacAuditPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Weeks shown" value={weeks.length} />
         <SummaryCard label="Total POAC sessions" value={totals.total} tone="primary" />
         <SummaryCard
@@ -370,7 +387,13 @@ function PoacAuditPage() {
           value={totals.additional}
           tone="amber"
         />
+        <SummaryCard
+          label="Total additional consultant sessions"
+          value={totals.additionalConsultant}
+          tone="amber"
+        />
       </div>
+
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Consultant sessions" value={totals.consultant} tone="primary" />
