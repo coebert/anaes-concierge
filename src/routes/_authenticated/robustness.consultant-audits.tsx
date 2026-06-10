@@ -47,17 +47,30 @@ function ConsultantAuditsPage() {
       }
       const consultantIdSet = new Set(consultantIds);
 
-      // NHH (private) theatre sessions in range — used to identify SAG / non-SAG.
+      // NHH (private) theatres. Include inactive private theatres (e.g.
+      // "NHH (legacy)") so historical NHH lists are still classified
+      // consistently with how they appear elsewhere in the rota UI.
       const { data: theatres, error: te } = await supabase
         .from("theatres")
-        .select("id,kind,active")
-        .eq("kind", "private")
-        .eq("active", true);
+        .select("id,name,kind,active")
+        .eq("kind", "private");
       if (te) throw te;
-      const privateTheatreIds = new Set((theatres ?? []).map((t) => t.id));
+      const privateTheatres = new Map(
+        (theatres ?? []).map((t) => [t.id, t] as const),
+      );
 
-      // Pull theatre sessions in range (paginated) so we can flag NHH lists.
-      const sagById = new Map<string, boolean>(); // true = non-SAG, false = SAG
+      // SAG classification for an NHH theatre session.
+      //   - sag   : NHH list with is_non_sag = false
+      //   - non_sag: NHH list with is_non_sag = true
+      // This mirrors the existing rota markings: the "Non-SAG" badge in
+      // rota-views.tsx and the admin theatre-grid checkbox both key off
+      // `theatre_sessions.is_non_sag` for theatres of kind = 'private' only.
+      // The `non_sag_override` flag tracks whether an admin has explicitly
+      // set the value (vs the default false); we surface it as evidence that
+      // the marking has been actively reviewed.
+      type SagClass = "sag" | "non_sag";
+      type SagMark = { kind: SagClass; reviewed: boolean };
+      const sagBySession = new Map<string, SagMark>();
       {
         const PAGE = 1000;
         let offset = 0;
@@ -65,14 +78,22 @@ function ConsultantAuditsPage() {
         while (true) {
           const { data: page, error: se } = await supabase
             .from("theatre_sessions")
-            .select("id,theatre_id,is_non_sag,session_date")
+            .select(
+              "id,theatre_id,is_non_sag,non_sag_override,session_date",
+            )
             .gte("session_date", from)
             .lte("session_date", to)
             .range(offset, offset + PAGE - 1);
           if (se) throw se;
           for (const s of page ?? []) {
-            if (!privateTheatreIds.has(s.theatre_id)) continue;
-            sagById.set(s.id, !!s.is_non_sag);
+            // Explicit NHH check: only private-theatre sessions are eligible
+            // for SAG / non-SAG classification.
+            if (!privateTheatres.has(s.theatre_id)) continue;
+            const isNonSag = s.is_non_sag === true;
+            sagBySession.set(s.id, {
+              kind: isNonSag ? "non_sag" : "sag",
+              reviewed: s.non_sag_override === true,
+            });
           }
           if (!page || page.length < PAGE) break;
           offset += PAGE;
@@ -82,9 +103,17 @@ function ConsultantAuditsPage() {
       // Per-consultant counters.
       const counts = new Map<
         string,
-        { spa: number; sag: number; nonSag: number }
+        {
+          spa: number;
+          sag: number;
+          nonSag: number;
+          /** Non-SAG lists flagged as explicitly reviewed by an admin. */
+          nonSagReviewed: number;
+        }
       >();
-      for (const id of consultantIds) counts.set(id, { spa: 0, sag: 0, nonSag: 0 });
+      for (const id of consultantIds) {
+        counts.set(id, { spa: 0, sag: 0, nonSag: 0, nonSagReviewed: 0 });
+      }
 
       // Pull rota assignments in range (paginated). We don't filter by staff_id
       // in the query to avoid URL-length limits with 50+ UUIDs; we drop
@@ -105,16 +134,28 @@ function ConsultantAuditsPage() {
             if (!consultantIdSet.has(a.staff_id)) continue;
             const c = counts.get(a.staff_id);
             if (!c) continue;
+            // SPA: any assignment marked as a SPA duty.
             if (a.duty_type === "spa") c.spa += 1;
-            if (a.theatre_session_id && sagById.has(a.theatre_session_id)) {
-              if (sagById.get(a.theatre_session_id)) c.nonSag += 1;
-              else c.sag += 1;
+            // SAG vs non-SAG only applies to clinical theatre lists actually
+            // worked at an NHH (private) theatre. Skip non-theatre duties
+            // (admin, SPA, on-call) even if they somehow point at an NHH
+            // theatre_session — they are not "lists worked at NHH".
+            if (a.duty_type !== "theatre") continue;
+            if (!a.theatre_session_id) continue;
+            const mark = sagBySession.get(a.theatre_session_id);
+            if (!mark) continue; // not an NHH session — ignore for SAG counts
+            if (mark.kind === "non_sag") {
+              c.nonSag += 1;
+              if (mark.reviewed) c.nonSagReviewed += 1;
+            } else {
+              c.sag += 1;
             }
           }
           if (!page || page.length < PAGE) break;
           offset += PAGE;
         }
       }
+
 
       const rows: ConsultantRow[] = (profiles ?? [])
         .map((p) => {
@@ -127,6 +168,7 @@ function ConsultantAuditsPage() {
             spa: c.spa,
             sag: c.sag,
             nonSag: c.nonSag,
+            nonSagReviewed: c.nonSagReviewed,
             nhhTotal: c.sag + c.nonSag,
           };
         })
@@ -244,7 +286,11 @@ function ConsultantAuditsPage() {
                 <Stat
                   label="Non-SAG sessions"
                   value={r.nonSag}
-                  hint="NHH lists marked non-SAG"
+                  hint={
+                    r.nonSag > 0
+                      ? `NHH lists marked non-SAG (${r.nonSagReviewed}/${r.nonSag} admin-reviewed)`
+                      : "NHH lists marked non-SAG"
+                  }
                   tone="amber"
                 />
                 <div className="flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">
@@ -270,6 +316,7 @@ type ConsultantRow = {
   spa: number;
   sag: number;
   nonSag: number;
+  nonSagReviewed: number;
   nhhTotal: number;
 };
 
