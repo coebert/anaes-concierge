@@ -118,7 +118,7 @@ export function LeaveMonthlyCalendar() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
