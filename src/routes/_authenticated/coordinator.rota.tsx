@@ -287,10 +287,15 @@ function RotaGridPage() {
               <tr className="text-muted-foreground">
                 <th className="border-b border-r p-1"></th>
                 {days.flatMap((d) => [
-                  <th key={iso(d) + "am"} className="border-b p-1 font-normal">AM</th>,
-                  <th key={iso(d) + "pm"} className="border-b border-r p-1 font-normal">PM</th>,
+                  <th key={iso(d) + "am"} className="border-b p-1 font-normal">
+                    <SessionChip half="am" />
+                  </th>,
+                  <th key={iso(d) + "pm"} className="border-b border-r p-1 font-normal">
+                    <SessionChip half="pm" />
+                  </th>,
                 ])}
               </tr>
+
             </thead>
             <tbody>
               {theatres?.map((t) => (
