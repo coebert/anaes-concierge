@@ -289,6 +289,14 @@ function PoacAuditPage() {
         />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard label="Consultant sessions" value={totals.consultant} tone="primary" />
+        <SummaryCard label="SAS sessions" value={totals.sas} />
+        <SummaryCard label="Trainee sessions" value={totals.trainee} />
+        <SummaryCard label="Unknown grade" value={totals.unknown} tone={totals.unknown ? "amber" : "default"} />
+      </div>
+
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Weekly breakdown</CardTitle>
