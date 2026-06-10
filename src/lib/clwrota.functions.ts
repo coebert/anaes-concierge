@@ -1805,7 +1805,9 @@ export async function performRotaSync(
       theatre_session_key: string | null; // resolve after sessions upserted
       clwrota_external_id: string;
       notes: string | null;
+      is_non_sag: boolean;
     };
+
 
     const sessionDraftsByKey = new Map<string, SessionDraft>();
     const assignmentDrafts: AssignmentDraft[] = [];
