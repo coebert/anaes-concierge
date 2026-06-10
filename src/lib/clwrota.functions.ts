@@ -1945,12 +1945,13 @@ export async function performRotaSync(
       // to the consultant slot, person.rota_name, role, theatre or specialty
       // text. If any field on a theatre row carries the tag, the whole list
       // is non-SAG and the theatre-grid Non-SAG flag should be set.
-      const isNonSagRow =
-        NON_SAG_REGEX.test(personNameRaw ?? "") ||
-        NON_SAG_REGEX.test(consultantName ?? "") ||
-        NON_SAG_REGEX.test(roleRaw ?? "") ||
-        NON_SAG_REGEX.test(theatreName ?? "") ||
-        NON_SAG_REGEX.test(specialtyName ?? "");
+      const isNonSagRow = isNonSagRotaLabel([
+        personNameRaw,
+        consultantName,
+        roleRaw,
+        theatreName,
+        specialtyName,
+      ]);
 
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
