@@ -14,7 +14,7 @@ import { Trash2 } from "lucide-react";
 import { formatDateGB } from "@/lib/utils";
 import { isoDate, weekdayShort } from "@/lib/theatre-grid-dates";
 import {
-  ViewModeToggle, PeriodNav, buildDays, type ViewMode,
+  ViewModeToggle, PeriodNav, buildDays, SessionChip, type ViewMode,
 } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
@@ -274,12 +274,13 @@ function VirtualGrid({
             {colItems.flatMap((c) =>
               SESSIONS.map((s) => (
                 <th key={`${c.key}-${s}`} className="border-l p-1 text-center font-medium" style={{ width: c.size / 2 }}>
-                  {s}
+                  <SessionChip half={s} />
                 </th>
               )),
             )}
             {paddingRight > 0 && <th aria-hidden style={{ width: paddingRight }} />}
           </tr>
+
         </thead>
         <tbody>
           {paddingTop > 0 && (

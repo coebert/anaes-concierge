@@ -9,15 +9,44 @@ import {
 } from "@/components/ui/tooltip";
 import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks, CalendarOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { computeRobustness, computeListCoverage, riskColor, riskLabel } from "@/lib/audit/robustness";
+import { computeRobustness, computeListCoverage, riskLabel } from "@/lib/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function shortDay(iso: string) {
   const d = new Date(iso + "T00:00:00Z");
   return `${DAY_NAMES[d.getUTCDay()]} ${d.getUTCDate()}`;
+}
+
+function dayParts(iso: string) {
+  const d = new Date(iso + "T00:00:00Z");
+  return {
+    weekday: DAY_NAMES[d.getUTCDay()],
+    day: d.getUTCDate(),
+    month: MONTH_NAMES[d.getUTCMonth()],
+  };
+}
+
+// Sleeker, tonal styling for the day-risk chip surface. Distinct from the
+// flat fill used in dense tables so the dashboard row reads as primary tiles.
+function dayChipSurface(risk: "ok" | "tight" | "shortfall" | "spa_required") {
+  if (risk === "shortfall")
+    return "border-red-500/50 bg-red-500/10 hover:bg-red-500/15 hover:border-red-500/70";
+  if (risk === "spa_required")
+    return "border-orange-400/50 bg-orange-400/10 hover:bg-orange-400/15 hover:border-orange-500/70";
+  if (risk === "tight")
+    return "border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/15 hover:border-amber-500/70";
+  return "border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/60";
+}
+
+function dayChipAccent(risk: "ok" | "tight" | "shortfall" | "spa_required") {
+  if (risk === "shortfall") return "bg-red-500 text-white";
+  if (risk === "spa_required") return "bg-orange-500 text-white";
+  if (risk === "tight") return "bg-amber-500 text-white";
+  return "bg-emerald-500 text-white";
 }
 
 function worstRisk(a: "ok" | "tight" | "shortfall" | "spa_required", b: "ok" | "tight" | "shortfall" | "spa_required") {
@@ -229,21 +258,50 @@ export function SummaryDashboard() {
                       const headroom = Math.min(d.am.headroom, d.pm.headroom);
                       // SPA is a SEPARATE metric — surface it alongside, never inside, headroom.
                       const spa = d.am.consultantsOnSpa + d.pm.consultantsOnSpa;
+                      const parts = dayParts(d.date);
+                      const isToday = d.date === today;
                       return (
                         <Tooltip key={d.date}>
                           <TooltipTrigger asChild>
                             <Link
                               to="/robustness/day/$date"
                               params={{ date: d.date }}
+                              aria-label={`${parts.weekday} ${parts.day} ${parts.month} — ${riskLabel(risk)}, headroom ${headroom}, SPA ${spa}`}
                               className={cn(
-                                "flex min-w-[5.5rem] flex-col items-center rounded-md border px-3 py-2 text-xs transition-colors hover:border-primary/60",
-                                riskColor(risk),
+                                "group/daychip relative flex min-w-[5.75rem] flex-col items-stretch overflow-hidden rounded-lg border text-xs shadow-sm transition-all duration-150",
+                                "hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                                dayChipSurface(risk),
+                                isToday && "ring-2 ring-primary/60 ring-offset-1 ring-offset-background",
                               )}
                             >
-                              <span className="font-medium">{shortDay(d.date)}</span>
-                              <span className="text-[10px] opacity-80">headroom {headroom}</span>
-                              <span className="text-[10px] opacity-80">SPA {spa} <span className="opacity-70">(separate)</span></span>
-                              <span className="text-[10px] opacity-80">{riskLabel(risk)}</span>
+                              <div className="flex items-baseline justify-between gap-1.5 px-2.5 pt-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {parts.weekday}
+                                </span>
+                                {isToday ? (
+                                  <span className="rounded-sm bg-primary/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-primary">
+                                    Today
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground/80">{parts.month}</span>
+                                )}
+                              </div>
+                              <div className="flex items-baseline gap-1.5 px-2.5 pb-1">
+                                <span className="text-base font-semibold leading-none tabular-nums text-foreground">
+                                  {parts.day}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground tabular-nums">
+                                  hr <span className="font-semibold text-foreground">{headroom}</span>
+                                  <span className="mx-1 text-muted-foreground/50">·</span>
+                                  spa <span className={cn("font-semibold tabular-nums", spa > 0 ? "text-orange-600 dark:text-orange-400" : "text-foreground/70")}>{spa}</span>
+                                </span>
+                              </div>
+                              <div className={cn(
+                                "mt-auto px-2.5 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide",
+                                dayChipAccent(risk),
+                              )}>
+                                {riskLabel(risk)}
+                              </div>
                             </Link>
                           </TooltipTrigger>
                           <TooltipContent side="top">
@@ -260,6 +318,7 @@ export function SummaryDashboard() {
                   </div>
                   <RobustnessLegend />
                 </>
+
               )}
             </CardContent>
           </Card>
