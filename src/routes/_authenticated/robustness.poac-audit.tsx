@@ -11,7 +11,22 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
+
+type DrilldownRow = {
+  assignmentId: string;
+  sessionId: string | null;
+  date: string;
+  session: "am" | "pm" | string;
+  staffId: string | null;
+  staffName: string;
+  grade: "consultant" | "sas" | "trainee" | "unknown";
+  theatreName: string;
+  specialty: string | null;
+  surgicalConsultant: string | null;
+};
+
 
 export const Route = createFileRoute("/_authenticated/robustness/poac-audit")({
   component: PoacAuditPage,
@@ -85,53 +100,69 @@ function PoacAuditPage() {
         .select("id,name")
         .or(POAC_THEATRE_FILTER);
       if (te) throw te;
-      const poacTheatreIds = (theatres ?? []).map((t) => t.id);
-      if (!poacTheatreIds.length) {
-        return {
-          weeks: [] as WeekRow[],
-          totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
-        };
-      }
+      const poacTheatres = theatres ?? [];
+      const poacTheatreIds = poacTheatres.map((t) => t.id);
+      const theatreNameById = new Map(poacTheatres.map((t) => [t.id, t.name] as const));
+      const emptyResult = {
+        weeks: [] as WeekRow[],
+        totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
+        drilldown: [] as DrilldownRow[],
+      };
+      if (!poacTheatreIds.length) return emptyResult;
 
       // All POAC theatre sessions in range.
       const { data: sessions, error: se } = await supabase
         .from("theatre_sessions")
-        .select("id,session_date,session,theatre_id")
+        .select("id,session_date,session,theatre_id,specialty_id,surgical_consultant")
         .in("theatre_id", poacTheatreIds)
         .gte("session_date", from)
         .lte("session_date", to);
       if (se) throw se;
-      const sessionIds = (sessions ?? []).map((s) => s.id);
-      if (!sessionIds.length) {
-        return {
-          weeks: [] as WeekRow[],
-          totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
-        };
+      const sessionList = sessions ?? [];
+      const sessionIds = sessionList.map((s) => s.id);
+      if (!sessionIds.length) return emptyResult;
+      const sessionById = new Map(sessionList.map((s) => [s.id, s] as const));
+
+      // Resolve specialty names referenced by these sessions.
+      const specialtyIds = Array.from(
+        new Set(sessionList.map((s) => s.specialty_id).filter(Boolean)),
+      ) as string[];
+      const specialtyNameById = new Map<string, string>();
+      if (specialtyIds.length) {
+        const { data: specs, error: spe } = await supabase
+          .from("specialties")
+          .select("id,name")
+          .in("id", specialtyIds);
+        if (spe) throw spe;
+        for (const s of specs ?? []) specialtyNameById.set(s.id, s.name);
       }
-      const sessionById = new Map(
-        (sessions ?? []).map((s) => [s.id, s] as const),
-      );
 
       // Assignments to those POAC sessions in range.
       const { data: assignments, error: ae } = await supabase
         .from("rota_assignments")
-        .select("staff_id,session_date,session,theatre_session_id")
+        .select("id,staff_id,session_date,session,theatre_session_id")
         .in("theatre_session_id", sessionIds);
       if (ae) throw ae;
+      const assignmentList = assignments ?? [];
 
-      // Resolve grade for each staff member appearing in assignments.
+      // Resolve grade + name for each staff member appearing in assignments.
       const staffIds = Array.from(
-        new Set((assignments ?? []).map((a) => a.staff_id).filter(Boolean)),
+        new Set(assignmentList.map((a) => a.staff_id).filter(Boolean)),
       ) as string[];
-      const gradeByStaff = new Map<string, string | null>();
+      const staffById = new Map<string, { grade: string | null; full_name: string | null }>();
       if (staffIds.length) {
         const { data: profs, error: pe } = await supabase
           .from("profiles")
-          .select("id,grade")
+          .select("id,grade,full_name")
           .in("id", staffIds);
         if (pe) throw pe;
-        for (const p of profs ?? []) gradeByStaff.set(p.id, p.grade ?? null);
+        for (const p of profs ?? []) {
+          staffById.set(p.id, { grade: p.grade ?? null, full_name: p.full_name ?? null });
+        }
       }
+
+      const normGrade = (g: string | null | undefined): DrilldownRow["grade"] =>
+        g === "consultant" || g === "sas" || g === "trainee" ? g : "unknown";
 
       // Bucket by ISO-week-start (Monday).
       const buckets = new Map<
@@ -146,7 +177,6 @@ function PoacAuditPage() {
           unknown: number;
         }
       >();
-
       const ensure = (k: string) => {
         let b = buckets.get(k);
         if (!b) {
@@ -164,26 +194,42 @@ function PoacAuditPage() {
         return b;
       };
 
-      for (const a of assignments ?? []) {
-        const sess = a.theatre_session_id
-          ? sessionById.get(a.theatre_session_id)
-          : null;
+      const drilldown: DrilldownRow[] = [];
+
+      for (const a of assignmentList) {
+        const sess = a.theatre_session_id ? sessionById.get(a.theatre_session_id) : null;
         if (!sess) continue;
         const d = parseDateLocal(a.session_date);
         if (!d) continue;
         const wk = fmtIso(weekStart(d));
         const b = ensure(wk);
         b.total += 1;
-        const grade = a.staff_id ? gradeByStaff.get(a.staff_id) : null;
-        if (grade === "consultant") b.consultant += 1;
-        else if (grade === "sas") b.sas += 1;
-        else if (grade === "trainee") b.trainee += 1;
-        else b.unknown += 1;
+        const staff = a.staff_id ? staffById.get(a.staff_id) : undefined;
+        const grade = normGrade(staff?.grade);
+        b[grade] += 1;
         if (d.getDay() === 3) {
           if (a.session === "am") b.wedAm.add(a.staff_id);
           else if (a.session === "pm") b.wedPm.add(a.staff_id);
         }
+        drilldown.push({
+          assignmentId: a.id,
+          sessionId: a.theatre_session_id ?? null,
+          date: a.session_date,
+          session: a.session,
+          staffId: a.staff_id,
+          staffName: staff?.full_name ?? "(unknown staff)",
+          grade,
+          theatreName: theatreNameById.get(sess.theatre_id) ?? "(unknown)",
+          specialty: sess.specialty_id ? (specialtyNameById.get(sess.specialty_id) ?? null) : null,
+          surgicalConsultant: sess.surgical_consultant ?? null,
+        });
       }
+
+      drilldown.sort((x, y) => {
+        if (x.date !== y.date) return y.date.localeCompare(x.date);
+        if (x.session !== y.session) return String(x.session).localeCompare(String(y.session));
+        return x.staffName.localeCompare(y.staffName);
+      });
 
       const weeks: WeekRow[] = Array.from(buckets.entries())
         .map(([k, b]) => {
@@ -218,11 +264,13 @@ function PoacAuditPage() {
         { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
       );
 
-      return { weeks, totals };
+      return { weeks, totals, drilldown };
     },
   });
 
   const weeks = data?.weeks ?? [];
+  const drilldown = data?.drilldown ?? [];
+
   const totals = data?.totals ?? {
     total: 0,
     additional: 0,
@@ -384,9 +432,115 @@ function PoacAuditPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Session drill-down</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Every matched POAU/POAC session in the selected range, grouped by the
+            covering anaesthetist&rsquo;s grade. &lsquo;Theatre (CLWRota)&rsquo;
+            shows the original terminology stored from the CLWRota feed
+            (e.g. POAU, POAC, pre-op assessment).
+          </p>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : !drilldown.length ? (
+            <p className="text-sm text-muted-foreground">
+              No POAC sessions found in this range.
+            </p>
+          ) : (
+            <Tabs defaultValue="consultant">
+              <TabsList>
+                <TabsTrigger value="consultant">
+                  Consultant ({totals.consultant})
+                </TabsTrigger>
+                <TabsTrigger value="sas">SAS ({totals.sas})</TabsTrigger>
+                <TabsTrigger value="trainee">
+                  Trainee ({totals.trainee})
+                </TabsTrigger>
+                {totals.unknown > 0 ? (
+                  <TabsTrigger value="unknown">
+                    Unknown ({totals.unknown})
+                  </TabsTrigger>
+                ) : null}
+              </TabsList>
+              {(["consultant", "sas", "trainee", "unknown"] as const).map((g) => (
+                <TabsContent key={g} value={g} className="mt-3">
+                  <DrilldownTable rows={drilldown.filter((r) => r.grade === g)} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+function DrilldownTable({ rows }: { rows: DrilldownRow[] }) {
+  if (!rows.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No matched sessions for this grade in the selected range.
+      </p>
+    );
+  }
+  // Group by staff for readability while keeping the row-level detail.
+  const byStaff = new Map<string, DrilldownRow[]>();
+  for (const r of rows) {
+    const key = r.staffId ?? `__name__${r.staffName}`;
+    const arr = byStaff.get(key) ?? [];
+    arr.push(r);
+    byStaff.set(key, arr);
+  }
+  const groups = Array.from(byStaff.entries())
+    .map(([k, list]) => ({ key: k, name: list[0].staffName, list }))
+    .sort((a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
+
+  return (
+    <div className="space-y-5">
+      {groups.map((g) => (
+        <div key={g.key} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">{g.name}</h3>
+            <Badge variant="secondary">{g.list.length} session{g.list.length === 1 ? "" : "s"}</Badge>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Half</TableHead>
+                <TableHead>Theatre (CLWRota)</TableHead>
+                <TableHead>Specialty</TableHead>
+                <TableHead>Surgical consultant</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {g.list.map((r) => (
+                <TableRow key={r.assignmentId}>
+                  <TableCell className="font-medium">{formatDateGB(r.date)}</TableCell>
+                  <TableCell className="uppercase tabular-nums">{r.session}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.theatreName}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.specialty ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.surgicalConsultant ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 function SummaryCard({
   label,
