@@ -40,9 +40,6 @@ function ConsultantAuditsPage() {
   const [to, setTo] = useState<string>(todayIso());
   const [filter, setFilter] = useState("");
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["consultant-audits", from, to],
-    queryFn: async () => {
   const checkGrants = useServerFn(checkTableGrants);
   const grantsCheck = useQuery({
     queryKey: ["consultant-audits-grants-check"],
