@@ -113,7 +113,9 @@ function PoacAuditPage() {
         weeks: [] as WeekRow[],
         totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
         drilldown: [] as DrilldownRow[],
+        baselineViolations: [] as PoacBaselineViolation[],
       };
+
       if (!poacTheatreIds.length) return emptyResult;
 
       // All POAC theatre sessions in range.
