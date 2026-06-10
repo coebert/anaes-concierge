@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
+import { isNonSagRotaLabel, isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
 import { evaluateHistoricalSafeguard } from "./clwrota-historical-safeguard";
 import {
   parseListClwRotaSyncMetricsResponse,
@@ -1814,9 +1814,8 @@ export async function performRotaSync(
     // tags as Non-SAG on any of their assignments. Detected from "[Non-SAG]"
     // / "(non sag)" markers CLWRota appends to person.rota_name, slot_titles
     // and other free-text fields on NHH-style lists covered as part of NHS
-    // job plans.
+    // job plans. Detection lives in isNonSagRotaLabel (see clwrota-labels.ts).
     const nonSagSessionKeys = new Set<string>();
-    const NON_SAG_REGEX = /\bnon[\s\-_]?sag\b/i;
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
@@ -1946,12 +1945,13 @@ export async function performRotaSync(
       // to the consultant slot, person.rota_name, role, theatre or specialty
       // text. If any field on a theatre row carries the tag, the whole list
       // is non-SAG and the theatre-grid Non-SAG flag should be set.
-      const isNonSagRow =
-        NON_SAG_REGEX.test(personNameRaw ?? "") ||
-        NON_SAG_REGEX.test(consultantName ?? "") ||
-        NON_SAG_REGEX.test(roleRaw ?? "") ||
-        NON_SAG_REGEX.test(theatreName ?? "") ||
-        NON_SAG_REGEX.test(specialtyName ?? "");
+      const isNonSagRow = isNonSagRotaLabel([
+        personNameRaw,
+        consultantName,
+        roleRaw,
+        theatreName,
+        specialtyName,
+      ]);
 
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {

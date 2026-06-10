@@ -32,3 +32,22 @@ export function isNonWorkingRotaLabel(
     return normalisedExtras.some((tok) => text.includes(tok));
   });
 }
+/**
+ * CLWRota tags NHH-style lists covered as part of NHS job plans with a
+ * "[Non-SAG]" marker appended to free-text fields (person.rota_name,
+ * slot_titles, role, theatre, specialty). The tag varies in casing,
+ * separator ("non-sag", "non sag", "NON_SAG") and enclosing punctuation
+ * ("[Non-SAG]", "(non sag)", "Dr X - Non-SAG", "List 1 NonSAG cover").
+ *
+ * Returns true when any of the provided fields carries the marker as a
+ * standalone token. Plain words containing the substring "sag" (e.g.
+ * "saga", "sagittal") must NOT match — the regex enforces word boundaries
+ * around the whole "non-sag" token.
+ */
+const NON_SAG_REGEX = /\bnon[\s\-_]?sag\b/i;
+
+export function isNonSagRotaLabel(
+  fields: Array<string | null | undefined>,
+): boolean {
+  return fields.some((f) => (f ? NON_SAG_REGEX.test(f) : false));
+}
