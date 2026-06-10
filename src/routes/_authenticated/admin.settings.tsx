@@ -236,6 +236,26 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // One-click backfill: re-scans the CLWRota rota feed and ticks the
+  // Non-SAG checkbox on every theatre-grid session whose feed row carries
+  // a "[Non-SAG]" tag. Sessions with an admin override are left alone.
+  const backfillNonSagMut = useMutation({
+    mutationFn: () => backfillNonSag({ data: {} }),
+    onSuccess: (res) => {
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+      if (res.sessionsUpdated > 0) {
+        toast.success(res.message);
+      } else {
+        toast.message(res.message);
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
 
 
