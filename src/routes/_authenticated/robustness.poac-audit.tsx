@@ -379,7 +379,7 @@ function PoacAuditPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Weeks shown" value={weeks.length} />
         <SummaryCard label="Total POAC sessions" value={totals.total} tone="primary" />
         <SummaryCard
@@ -387,7 +387,13 @@ function PoacAuditPage() {
           value={totals.additional}
           tone="amber"
         />
+        <SummaryCard
+          label="Total additional consultant sessions"
+          value={totals.additionalConsultant}
+          tone="amber"
+        />
       </div>
+
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Consultant sessions" value={totals.consultant} tone="primary" />
