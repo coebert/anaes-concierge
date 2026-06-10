@@ -326,7 +326,9 @@ function PoacAuditPage() {
     sas: 0,
     trainee: 0,
     unknown: 0,
+    additionalConsultant: 0,
   };
+
 
 
 
