@@ -1814,9 +1814,8 @@ export async function performRotaSync(
     // tags as Non-SAG on any of their assignments. Detected from "[Non-SAG]"
     // / "(non sag)" markers CLWRota appends to person.rota_name, slot_titles
     // and other free-text fields on NHH-style lists covered as part of NHS
-    // job plans.
+    // job plans. Detection lives in isNonSagRotaLabel (see clwrota-labels.ts).
     const nonSagSessionKeys = new Set<string>();
-    const NON_SAG_REGEX = /\bnon[\s\-_]?sag\b/i;
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
