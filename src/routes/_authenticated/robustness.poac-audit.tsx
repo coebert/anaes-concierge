@@ -179,6 +179,7 @@ function PoacAuditPage() {
           total: number;
           wedAm: Set<string>;
           wedPm: Set<string>;
+          wedHasConsultant: boolean;
           consultant: number;
           sas: number;
           trainee: number;
@@ -192,6 +193,7 @@ function PoacAuditPage() {
             total: 0,
             wedAm: new Set(),
             wedPm: new Set(),
+            wedHasConsultant: false,
             consultant: 0,
             sas: 0,
             trainee: 0,
@@ -218,7 +220,9 @@ function PoacAuditPage() {
         if (d.getDay() === 3) {
           if (a.session === "am") b.wedAm.add(a.staff_id);
           else if (a.session === "pm") b.wedPm.add(a.staff_id);
+          if (grade === "consultant") b.wedHasConsultant = true;
         }
+
         drilldown.push({
           assignmentId: a.id,
           sessionId: a.theatre_session_id ?? null,
