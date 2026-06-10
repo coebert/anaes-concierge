@@ -218,11 +218,12 @@ function PeopleCard({
 }
 
 function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
+  const half = label.toLowerCase() === "pm" ? "pm" : "am";
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center justify-between">
-          <span>{label}</span>
+        <CardTitle className="text-sm flex items-center justify-between gap-2">
+          <SessionChip half={half} active />
           <Tooltip>
             <TooltipTrigger asChild>
               <span className={cn("rounded px-2 py-0.5 text-xs font-medium cursor-help", riskColor(h.risk))}>
@@ -240,6 +241,7 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
           </Tooltip>
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-2">
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <Stat label="Lists" value={h.required} tooltip="Theatre lists scheduled for this half-day." />
