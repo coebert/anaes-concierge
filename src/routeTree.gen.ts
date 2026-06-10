@@ -30,6 +30,7 @@ import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedTraineesStartDateAuditRouteImport } from './routes/_authenticated/trainees.start-date-audit'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
+import { Route as AuthenticatedRobustnessPoacAuditRouteImport } from './routes/_authenticated/robustness.poac-audit'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
 import { Route as AuthenticatedRobustnessConsultantAuditsRouteImport } from './routes/_authenticated/robustness.consultant-audits'
@@ -162,6 +163,12 @@ const AuthenticatedRobustnessSimulateRoute =
   AuthenticatedRobustnessSimulateRouteImport.update({
     id: '/robustness/simulate',
     path: '/robustness/simulate',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRobustnessPoacAuditRoute =
+  AuthenticatedRobustnessPoacAuditRouteImport.update({
+    id: '/robustness/poac-audit',
+    path: '/robustness/poac-audit',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedRobustnessListFeasibilityRoute =
@@ -350,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
+  '/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
@@ -396,6 +404,7 @@ export interface FileRoutesByTo {
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
+  '/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/_authenticated/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
+  '/_authenticated/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
@@ -494,6 +504,7 @@ export interface FileRouteTypes {
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/list-feasibility'
+    | '/robustness/poac-audit'
     | '/robustness/simulate'
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
@@ -540,6 +551,7 @@ export interface FileRouteTypes {
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/list-feasibility'
+    | '/robustness/poac-audit'
     | '/robustness/simulate'
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
@@ -588,6 +600,7 @@ export interface FileRouteTypes {
     | '/_authenticated/robustness/consultant-audits'
     | '/_authenticated/robustness/consultant-feasibility'
     | '/_authenticated/robustness/list-feasibility'
+    | '/_authenticated/robustness/poac-audit'
     | '/_authenticated/robustness/simulate'
     | '/_authenticated/trainees/$staffId'
     | '/_authenticated/trainees/start-date-audit'
@@ -758,6 +771,13 @@ declare module '@tanstack/react-router' {
       path: '/robustness/simulate'
       fullPath: '/robustness/simulate'
       preLoaderRoute: typeof AuthenticatedRobustnessSimulateRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/robustness/poac-audit': {
+      id: '/_authenticated/robustness/poac-audit'
+      path: '/robustness/poac-audit'
+      fullPath: '/robustness/poac-audit'
+      preLoaderRoute: typeof AuthenticatedRobustnessPoacAuditRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/robustness/list-feasibility': {
@@ -1011,6 +1031,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRobustnessConsultantAuditsRoute: typeof AuthenticatedRobustnessConsultantAuditsRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
+  AuthenticatedRobustnessPoacAuditRoute: typeof AuthenticatedRobustnessPoacAuditRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
   AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
   AuthenticatedRobustnessDayDateRoute: typeof AuthenticatedRobustnessDayDateRoute
@@ -1049,6 +1070,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
     AuthenticatedRobustnessConsultantFeasibilityRoute,
   AuthenticatedRobustnessListFeasibilityRoute:
     AuthenticatedRobustnessListFeasibilityRoute,
+  AuthenticatedRobustnessPoacAuditRoute: AuthenticatedRobustnessPoacAuditRoute,
   AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
   AuthenticatedRobustnessIndexRoute: AuthenticatedRobustnessIndexRoute,
   AuthenticatedRobustnessDayDateRoute: AuthenticatedRobustnessDayDateRoute,
