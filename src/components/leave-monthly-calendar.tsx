@@ -169,7 +169,7 @@ export function LeaveMonthlyCalendar() {
               <div
                 key={iso}
                 className={cn(
-                  "min-h-[88px] rounded-md border p-1 text-xs",
+                  "min-h-[64px] rounded-md border p-1 text-xs sm:min-h-[88px]",
                   inMonth ? "bg-card" : "bg-muted/30 text-muted-foreground",
                   isToday && "ring-2 ring-primary",
                 )}
