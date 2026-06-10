@@ -87,12 +87,10 @@ describe("isNonSagRotaLabel — negative matches", () => {
     expect(isNonSagRotaLabel(["non-clinical SPA"])).toBe(false);
   });
 
-  it("does not match 'nonsag' run together (must have a separator)", () => {
-    // Current CLWRota feed always uses a separator. If upstream ever drops
-    // the separator, loosen the regex AND update this expectation
-    // together so the change is deliberate.
+  it("also matches 'nonsag' run together (separator is optional)", () => {
+    // The regex allows zero or one separator characters between "non" and
+    // "sag", so "nonsag" matches. If upstream ever needs a strict
+    // separator, tighten the regex and update this expectation together.
     expect(isNonSagRotaLabel(["nonsag"])).toBe(true);
-    // The regex allows zero or one separator chars, so "nonsag" DOES match.
-    // Kept here as documentation of the current behaviour.
   });
 });
