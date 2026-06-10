@@ -74,7 +74,9 @@ type WeekRow = {
   sas: number;
   trainee: number;
   unknown: number;
+  additionalConsultant: number;
 };
+
 
 // Match any theatre that represents the Pre-Operative Assessment clinic,
 // regardless of which terminology is in use (POAU, POAC, "pre-op assessment",
