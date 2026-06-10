@@ -252,7 +252,7 @@ function RotaGridPage() {
             Week of {fmt(days[0])} — click any cell to set the surgical list and assign anaesthetists.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
