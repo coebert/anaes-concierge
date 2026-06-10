@@ -3115,15 +3115,38 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
     }
 
 
+    // Flag matching rota_assignments rows so the per-assignment is_non_sag
+    // marker is in sync with the feed. Runs even when no theatre-keyed
+    // sessions matched, because non-SAG on-call / theatre-less rows still
+    // need their assignment flagged.
+    let assignmentsUpdated = 0;
+    if (taggedExtIds.size > 0) {
+      const extIds = Array.from(taggedExtIds);
+      const ASGN_CHUNK = 500;
+      for (let i = 0; i < extIds.length; i += ASGN_CHUNK) {
+        const chunk = extIds.slice(i, i + ASGN_CHUNK);
+        const { error: updErr, count } = await supabaseAdmin
+          .from("rota_assignments")
+          .update({ is_non_sag: true }, { count: "exact" })
+          .in("clwrota_external_id", chunk)
+          .eq("is_non_sag", false);
+        if (updErr) throw new Error(updErr.message);
+        assignmentsUpdated += count ?? 0;
+      }
+    }
+
     if (taggedKeys.size === 0) {
       return {
         ok: true,
-        message: `Scanned ${rows.length} feed rows. No Non-SAG tags found.`,
+        message:
+          `Scanned ${rows.length} feed rows · ${rowsTagged} tagged Non-SAG · ` +
+          `flagged ${assignmentsUpdated} assignment(s) (no theatre-keyed sessions matched).`,
         rowsScanned: rows.length,
         rowsTagged,
         sessionsMatched: 0,
         sessionsUpdated: 0,
         sessionsSkippedOverride: 0,
+        assignmentsUpdated,
         unmatched: Array.from(unmatched),
       };
     }
@@ -3168,6 +3191,9 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       message:
         `Scanned ${rows.length} feed rows · ${rowsTagged} tagged Non-SAG · ` +
         `matched ${sessionsMatched} session(s) · updated ${sessionsUpdated}` +
+        (assignmentsUpdated > 0
+          ? ` · flagged ${assignmentsUpdated} assignment(s)`
+          : "") +
         (sessionsSkippedOverride > 0
           ? ` · ${sessionsSkippedOverride} kept due to admin override`
           : ""),
@@ -3176,6 +3202,8 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       sessionsMatched,
       sessionsUpdated,
       sessionsSkippedOverride,
+      assignmentsUpdated,
       unmatched: Array.from(unmatched),
     };
+
   });
