@@ -79,15 +79,18 @@ function PoacAuditPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["poac-audit", from, to],
     queryFn: async () => {
-      // POAU theatre = POAC clinic.
+      // POAU theatre = POAC clinic. Match all common terminology variants.
       const { data: theatres, error: te } = await supabase
         .from("theatres")
         .select("id,name")
-        .ilike("name", "%poau%");
+        .or(POAC_THEATRE_FILTER);
       if (te) throw te;
       const poacTheatreIds = (theatres ?? []).map((t) => t.id);
       if (!poacTheatreIds.length) {
-        return { weeks: [] as WeekRow[], totals: { total: 0, additional: 0 } };
+        return {
+          weeks: [] as WeekRow[],
+          totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
+        };
       }
 
       // All POAC theatre sessions in range.
@@ -100,7 +103,10 @@ function PoacAuditPage() {
       if (se) throw se;
       const sessionIds = (sessions ?? []).map((s) => s.id);
       if (!sessionIds.length) {
-        return { weeks: [] as WeekRow[], totals: { total: 0, additional: 0 } };
+        return {
+          weeks: [] as WeekRow[],
+          totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
+        };
       }
       const sessionById = new Map(
         (sessions ?? []).map((s) => [s.id, s] as const),
@@ -113,18 +119,46 @@ function PoacAuditPage() {
         .in("theatre_session_id", sessionIds);
       if (ae) throw ae;
 
-      // Bucket by ISO-week-start (Monday). Use the assignment's own date so
-      // weekly aggregation does not depend on theatre_sessions being unique
-      // per half — count one row per assignment.
+      // Resolve grade for each staff member appearing in assignments.
+      const staffIds = Array.from(
+        new Set((assignments ?? []).map((a) => a.staff_id).filter(Boolean)),
+      ) as string[];
+      const gradeByStaff = new Map<string, string | null>();
+      if (staffIds.length) {
+        const { data: profs, error: pe } = await supabase
+          .from("profiles")
+          .select("id,grade")
+          .in("id", staffIds);
+        if (pe) throw pe;
+        for (const p of profs ?? []) gradeByStaff.set(p.id, p.grade ?? null);
+      }
+
+      // Bucket by ISO-week-start (Monday).
       const buckets = new Map<
         string,
-        { total: number; wedAm: Set<string>; wedPm: Set<string> }
+        {
+          total: number;
+          wedAm: Set<string>;
+          wedPm: Set<string>;
+          consultant: number;
+          sas: number;
+          trainee: number;
+          unknown: number;
+        }
       >();
 
       const ensure = (k: string) => {
         let b = buckets.get(k);
         if (!b) {
-          b = { total: 0, wedAm: new Set(), wedPm: new Set() };
+          b = {
+            total: 0,
+            wedAm: new Set(),
+            wedPm: new Set(),
+            consultant: 0,
+            sas: 0,
+            trainee: 0,
+            unknown: 0,
+          };
           buckets.set(k, b);
         }
         return b;
@@ -140,7 +174,11 @@ function PoacAuditPage() {
         const wk = fmtIso(weekStart(d));
         const b = ensure(wk);
         b.total += 1;
-        // Wednesday baseline tracking. getDay(): 3 = Wednesday.
+        const grade = a.staff_id ? gradeByStaff.get(a.staff_id) : null;
+        if (grade === "consultant") b.consultant += 1;
+        else if (grade === "sas") b.sas += 1;
+        else if (grade === "trainee") b.trainee += 1;
+        else b.unknown += 1;
         if (d.getDay() === 3) {
           if (a.session === "am") b.wedAm.add(a.staff_id);
           else if (a.session === "pm") b.wedPm.add(a.staff_id);
@@ -151,7 +189,6 @@ function PoacAuditPage() {
         .map(([k, b]) => {
           const wedAm = b.wedAm.size;
           const wedPm = b.wedPm.size;
-          // Baseline = at most one consultant on Wed AM + at most one on Wed PM.
           const baseline = (wedAm > 0 ? 1 : 0) + (wedPm > 0 ? 1 : 0);
           const additional = Math.max(0, b.total - baseline);
           return {
@@ -161,6 +198,10 @@ function PoacAuditPage() {
             wedPm,
             baseline,
             additional,
+            consultant: b.consultant,
+            sas: b.sas,
+            trainee: b.trainee,
+            unknown: b.unknown,
           };
         })
         .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
@@ -169,8 +210,12 @@ function PoacAuditPage() {
         (acc, w) => ({
           total: acc.total + w.total,
           additional: acc.additional + w.additional,
+          consultant: acc.consultant + w.consultant,
+          sas: acc.sas + w.sas,
+          trainee: acc.trainee + w.trainee,
+          unknown: acc.unknown + w.unknown,
         }),
-        { total: 0, additional: 0 },
+        { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
       );
 
       return { weeks, totals };
@@ -178,7 +223,15 @@ function PoacAuditPage() {
   });
 
   const weeks = data?.weeks ?? [];
-  const totals = data?.totals ?? { total: 0, additional: 0 };
+  const totals = data?.totals ?? {
+    total: 0,
+    additional: 0,
+    consultant: 0,
+    sas: 0,
+    trainee: 0,
+    unknown: 0,
+  };
+
 
   const maxTotal = useMemo(
     () => weeks.reduce((m, w) => Math.max(m, w.total), 0),
