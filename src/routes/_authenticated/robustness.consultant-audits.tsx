@@ -316,6 +316,7 @@ type ConsultantRow = {
   spa: number;
   sag: number;
   nonSag: number;
+  nonSagReviewed: number;
   nhhTotal: number;
 };
 
