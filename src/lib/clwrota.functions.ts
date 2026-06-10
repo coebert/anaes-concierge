@@ -1810,6 +1810,13 @@ export async function performRotaSync(
     const sessionDraftsByKey = new Map<string, SessionDraft>();
     const assignmentDrafts: AssignmentDraft[] = [];
     const newSpecialtyNames = new Set<string>();
+    // Theatre-session keys (date|theatreId|session) that the upstream feed
+    // tags as Non-SAG on any of their assignments. Detected from "[Non-SAG]"
+    // / "(non sag)" markers CLWRota appends to person.rota_name, slot_titles
+    // and other free-text fields on NHH-style lists covered as part of NHS
+    // job plans.
+    const nonSagSessionKeys = new Set<string>();
+    const NON_SAG_REGEX = /\bnon[\s\-_]?sag\b/i;
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
