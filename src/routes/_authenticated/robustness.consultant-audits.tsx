@@ -43,6 +43,18 @@ function ConsultantAuditsPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["consultant-audits", from, to],
     queryFn: async () => {
+  const checkGrants = useServerFn(checkTableGrants);
+  const grantsCheck = useQuery({
+    queryKey: ["consultant-audits-grants-check"],
+    queryFn: () => checkGrants({ data: { tables: [...REQUIRED_TABLES] } }),
+    staleTime: 5 * 60_000,
+  });
+  const grantsOk = grantsCheck.data?.ok === true;
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["consultant-audits", from, to],
+    enabled: grantsOk,
+    queryFn: async () => {
       // Consultants
       const { data: profiles, error: pe } = await supabase
         .from("profiles")
