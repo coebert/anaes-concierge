@@ -235,7 +235,9 @@ function PoacAuditPage() {
         .map(([k, b]) => {
           const wedAm = b.wedAm.size;
           const wedPm = b.wedPm.size;
-          const baseline = (wedAm > 0 ? 1 : 0) + (wedPm > 0 ? 1 : 0);
+          // Baseline = one consultant on Wednesday (AM or PM, not both).
+          const baseline = (wedAm > 0 || wedPm > 0) ? 1 : 0;
+
           const additional = Math.max(0, b.total - baseline);
           return {
             weekStart: k,
@@ -293,8 +295,9 @@ function PoacAuditPage() {
         <p className="text-sm text-muted-foreground">
           Weekly POAC (POAU) clinic sessions covered by anaesthetists.
           &lsquo;Additional&rsquo; counts anything above the baseline of one
-          consultant on Wednesday AM and one on Wednesday PM.
+          consultant on Wednesday (either AM or PM, not both).
         </p>
+
       </div>
 
       <Card>
