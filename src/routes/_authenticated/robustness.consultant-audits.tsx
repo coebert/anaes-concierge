@@ -168,6 +168,7 @@ function ConsultantAuditsPage() {
             spa: c.spa,
             sag: c.sag,
             nonSag: c.nonSag,
+            nonSagReviewed: c.nonSagReviewed,
             nhhTotal: c.sag + c.nonSag,
           };
         })
