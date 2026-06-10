@@ -2956,3 +2956,188 @@ export async function performLeaveSync() {
 
 
 
+
+/**
+ * Re-fetch the CLWRota rota report, identify every row tagged "[Non-SAG]"
+ * (or similar) in any free-text field, and tick the Non-SAG checkbox on the
+ * matching theatre_sessions row. Used by the Admin → Settings "Backfill
+ * Non-SAG labels" button so admins don't have to wait for the next full
+ * rota sync to see flags propagate.
+ *
+ * - Only updates sessions where `non_sag_override = false` so any deliberate
+ *   admin choice on the theatre grid is preserved.
+ * - Does NOT touch rota_assignments, specialties, theatre allocations or
+ *   any other session field — strictly an is_non_sag = true write.
+ */
+export const backfillNonSagLabels = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { apiKey } = getEnv();
+
+    const { data: settings, error: loadErr } = await supabaseAdmin
+      .from("clwrota_sync_state")
+      .select("rota_report_url, sync_days_back, sync_days_ahead")
+      .eq("id", 1)
+      .maybeSingle();
+    if (loadErr) throw new Error(loadErr.message);
+    const url = settings?.rota_report_url;
+    if (!url) {
+      return {
+        ok: false,
+        message: "No rota report URL configured.",
+        rowsScanned: 0,
+        rowsTagged: 0,
+        sessionsMatched: 0,
+        sessionsUpdated: 0,
+        sessionsSkippedOverride: 0,
+        unmatched: [] as string[],
+      };
+    }
+    const daysBack = settings?.sync_days_back ?? 30;
+    const daysAhead = settings?.sync_days_ahead ?? 120;
+
+    const windowedUrl =
+      data?.from && data?.to
+        ? explicitDateWindow(url, data.from, data.to)
+        : clampDateWindow(url, { daysBack, daysAhead });
+    const text = await fetchReportRaw(windowedUrl, apiKey);
+    const parsed = parseRows(text);
+    const rows = parsed.rows;
+
+    const { data: theatres } = await supabaseAdmin.from("theatres").select("id, name");
+    const theatreByName = new Map<string, string>();
+    for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
+
+    // Build the set of (theatre_id|date|session) keys the feed tags as Non-SAG.
+    const taggedKeys = new Set<string>();
+    const unmatched = new Set<string>();
+    let rowsTagged = 0;
+
+    for (const row of rows) {
+      const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
+      const sessRaw = pick(row, [
+        "session.rota_label", "shift.rota_label",
+        "session.name", "shift.name",
+        "session", "session_half", "half", "Session", "period", "shift", "time",
+        "start_time",
+      ]);
+      const theatreName = pick(row, [
+        "place.name", "place.external_code",
+        "theatre", "location", "room", "Theatre", "list", "Location",
+      ]);
+      const specialtyName = pick(row, [
+        "slot_speciality", "service.local_name", "service.long_name",
+        "specialty", "speciality", "service", "Specialty", "Service",
+      ]);
+      const consultantName = pick(row, [
+        "slot_titles", "consultant", "surgeon", "surgical_consultant", "Consultant",
+      ]);
+      const personName = pick(row, [
+        "person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name",
+      ]);
+      const roleRaw = pick(row, [
+        "role.name", "assignment_type.name", "place_category.name",
+        "role", "duty", "type", "Role", "Duty",
+      ]);
+
+      const isNonSag = isNonSagRotaLabel([
+        personName,
+        consultantName,
+        roleRaw,
+        theatreName,
+        specialtyName,
+      ]);
+      if (!isNonSag) continue;
+      rowsTagged++;
+
+      const session_date = normaliseDate(dateRaw);
+      const session = normaliseSession(sessRaw);
+      if (!session_date || !session) continue;
+
+      // Resolve the theatre using the same fallbacks as the main sync:
+      // place.name → slot_titles match → off-site / specialty-room alias.
+      let theatreId: string | undefined;
+      if (theatreName) theatreId = theatreByName.get(theatreName.toLowerCase().trim());
+      if (!theatreId && consultantName) {
+        theatreId = theatreByName.get(consultantName.toLowerCase().trim());
+      }
+      if (!theatreId) {
+        theatreId = resolveOffsiteTheatreAlias(
+          `${theatreName ?? ""} ${consultantName ?? ""}`,
+          theatreByName,
+        );
+      }
+      if (!theatreId) {
+        unmatched.add(theatreName ?? consultantName ?? "(unknown theatre)");
+        continue;
+      }
+
+      taggedKeys.add(`${theatreId}|${session_date}|${session}`);
+    }
+
+    if (taggedKeys.size === 0) {
+      return {
+        ok: true,
+        message: `Scanned ${rows.length} feed rows. No Non-SAG tags found.`,
+        rowsScanned: rows.length,
+        rowsTagged,
+        sessionsMatched: 0,
+        sessionsUpdated: 0,
+        sessionsSkippedOverride: 0,
+        unmatched: Array.from(unmatched),
+      };
+    }
+
+    // Resolve theatre_session IDs in bulk for every tagged key.
+    const dates = Array.from(new Set(Array.from(taggedKeys).map((k) => k.split("|")[1]))).sort();
+    const minDate = dates[0];
+    const maxDate = dates[dates.length - 1];
+    const { data: sessionRows, error: sessErr } = await supabaseAdmin
+      .from("theatre_sessions")
+      .select("id, theatre_id, session_date, session, is_non_sag, non_sag_override")
+      .gte("session_date", minDate)
+      .lte("session_date", maxDate);
+    if (sessErr) throw new Error(sessErr.message);
+
+    const toUpdate: string[] = [];
+    let sessionsSkippedOverride = 0;
+    let sessionsMatched = 0;
+    for (const s of sessionRows ?? []) {
+      const key = `${s.theatre_id}|${s.session_date}|${s.session}`;
+      if (!taggedKeys.has(key)) continue;
+      sessionsMatched++;
+      if (s.non_sag_override) { sessionsSkippedOverride++; continue; }
+      if (s.is_non_sag) continue;
+      toUpdate.push(s.id);
+    }
+
+    let sessionsUpdated = 0;
+    const CHUNK = 500;
+    for (let i = 0; i < toUpdate.length; i += CHUNK) {
+      const chunk = toUpdate.slice(i, i + CHUNK);
+      const { error: updErr, count } = await supabaseAdmin
+        .from("theatre_sessions")
+        .update({ is_non_sag: true }, { count: "exact" })
+        .in("id", chunk);
+      if (updErr) throw new Error(updErr.message);
+      sessionsUpdated += count ?? 0;
+    }
+
+    return {
+      ok: true,
+      message:
+        `Scanned ${rows.length} feed rows · ${rowsTagged} tagged Non-SAG · ` +
+        `matched ${sessionsMatched} session(s) · updated ${sessionsUpdated}` +
+        (sessionsSkippedOverride > 0
+          ? ` · ${sessionsSkippedOverride} kept due to admin override`
+          : ""),
+      rowsScanned: rows.length,
+      rowsTagged,
+      sessionsMatched,
+      sessionsUpdated,
+      sessionsSkippedOverride,
+      unmatched: Array.from(unmatched),
+    };
+  });
