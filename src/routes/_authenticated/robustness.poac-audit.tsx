@@ -49,7 +49,28 @@ type WeekRow = {
   wedPm: number;
   baseline: number;
   additional: number;
+  consultant: number;
+  sas: number;
+  trainee: number;
+  unknown: number;
 };
+
+// Match any theatre that represents the Pre-Operative Assessment clinic,
+// regardless of which terminology is in use (POAU, POAC, "pre-op assessment",
+// "preoperative assessment", "pre-assessment", etc.).
+const POAC_THEATRE_FILTER = [
+  "name.ilike.%poau%",
+  "name.ilike.%poac%",
+  "name.ilike.%pre-op%",
+  "name.ilike.%pre op%",
+  "name.ilike.%preop%",
+  "name.ilike.%pre-assess%",
+  "name.ilike.%pre assess%",
+  "name.ilike.%preassess%",
+  "name.ilike.%pre-operative%",
+  "name.ilike.%preoperative%",
+].join(",");
+
 
 function PoacAuditPage() {
   const [from, setFrom] = useState<string>(isoDaysAgo(7 * 12));
