@@ -1810,6 +1810,13 @@ export async function performRotaSync(
     const sessionDraftsByKey = new Map<string, SessionDraft>();
     const assignmentDrafts: AssignmentDraft[] = [];
     const newSpecialtyNames = new Set<string>();
+    // Theatre-session keys (date|theatreId|session) that the upstream feed
+    // tags as Non-SAG on any of their assignments. Detected from "[Non-SAG]"
+    // / "(non sag)" markers CLWRota appends to person.rota_name, slot_titles
+    // and other free-text fields on NHH-style lists covered as part of NHS
+    // job plans.
+    const nonSagSessionKeys = new Set<string>();
+    const NON_SAG_REGEX = /\bnon[\s\-_]?sag\b/i;
 
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
@@ -1934,16 +1941,29 @@ export async function performRotaSync(
       );
 
 
+      // Detect Non-SAG markers anywhere in this row's free-text fields.
+      // CLWRota tags NHH/non-SAG lists by appending "[Non-SAG]" (or similar)
+      // to the consultant slot, person.rota_name, role, theatre or specialty
+      // text. If any field on a theatre row carries the tag, the whole list
+      // is non-SAG and the theatre-grid Non-SAG flag should be set.
+      const isNonSagRow =
+        NON_SAG_REGEX.test(personNameRaw ?? "") ||
+        NON_SAG_REGEX.test(consultantName ?? "") ||
+        NON_SAG_REGEX.test(roleRaw ?? "") ||
+        NON_SAG_REGEX.test(theatreName ?? "") ||
+        NON_SAG_REGEX.test(specialtyName ?? "");
+
       let theatreSessionKey: string | null = null;
       if (dutyType === "theatre" && theatreId) {
         theatreSessionKey = `${session_date}|${theatreId}|${session}`;
-        // NOTE: "non-SAG" classification is admin-managed via the
-        // theatre-grid Non-SAG checkbox. The upstream CLWRota feed does
-        // not carry a non-SAG tag (verified by inspecting raw responses
-        // from /central_api/query/assignments: zero occurrences of "sag"
-        // across all fields), so sync never writes `is_non_sag` — it
-        // only inserts/updates specialty + surgical_consultant and lets
-        // the admin flag persist on every subsequent sync.
+        if (isNonSagRow) nonSagSessionKeys.add(theatreSessionKey);
+        // "non-SAG" classification is normally admin-managed via the
+        // theatre-grid Non-SAG checkbox. When the upstream CLWRota feed
+        // actually carries a "[Non-SAG]" tag on any field of the row
+        // (NHH-style lists covered as part of NHS job plans), we propagate
+        // it to theatre_sessions.is_non_sag after the bulk upsert below —
+        // but only for sessions whose non_sag_override flag is false, so
+        // any admin override on the theatre grid still wins.
         const prior = sessionDraftsByKey.get(theatreSessionKey);
         sessionDraftsByKey.set(theatreSessionKey, {
           session_date,
@@ -2067,8 +2087,38 @@ export async function performRotaSync(
     await upsertSessions(withSpecialty);
     await upsertSessions(withoutSpecialty);
 
-    // is_non_sag is admin-managed via the theatre-grid checkbox. Sync no
-    // longer writes it (the CLWRota feed does not carry a non-SAG tag).
+    // Propagate Non-SAG tags detected in the feed onto theatre_sessions.
+    // Only sessions with non_sag_override = false are updated, so any admin
+    // override on the theatre grid still wins. Runs in chunks against the
+    // session IDs resolved during the bulk upsert above.
+    let nonSagApplied = 0;
+    if (nonSagSessionKeys.size > 0) {
+      const ids = Array.from(nonSagSessionKeys)
+        .map((k) => sessionIdByKey.get(k))
+        .filter((v): v is string => Boolean(v));
+      const NON_SAG_CHUNK = 500;
+      for (let i = 0; i < ids.length; i += NON_SAG_CHUNK) {
+        const chunk = ids.slice(i, i + NON_SAG_CHUNK);
+        const { error: nsErr, count } = await supabaseAdmin
+          .from("theatre_sessions")
+          .update({ is_non_sag: true }, { count: "exact" })
+          .in("id", chunk)
+          .eq("non_sag_override", false)
+          .eq("is_non_sag", false);
+        if (nsErr) {
+          errors.push({ label: `(non-SAG flag chunk ${i}-${i + chunk.length})`, error: nsErr.message });
+          continue;
+        }
+        nonSagApplied += count ?? 0;
+      }
+      if (nonSagApplied > 0) {
+        skipped.push({
+          label: "non-SAG flags applied from CLWRota",
+          reason: `${nonSagApplied} theatre session(s) marked Non-SAG based on upstream tags`,
+        });
+      }
+    }
+
 
 
 
