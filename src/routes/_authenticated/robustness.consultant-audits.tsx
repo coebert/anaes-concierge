@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { RefreshCw, Stethoscope } from "lucide-react";
 import { splitName } from "@/lib/utils";
 import { checkTableGrants } from "@/lib/grants-healthcheck.functions";
