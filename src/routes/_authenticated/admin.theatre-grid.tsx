@@ -407,8 +407,15 @@ function Cell({
             type="checkbox"
             className="h-3 w-3 accent-amber-500"
             checked={cell?.is_non_sag ?? false}
-            onChange={(e) => onChange({ is_non_sag: e.target.checked })}
+            onChange={(e) =>
+              // Setting non_sag_override = true locks the admin's choice
+              // so the nightly CLWRota sync can't flip it back: the sync
+              // only auto-checks Non-SAG on sessions where override is
+              // still false.
+              onChange({ is_non_sag: e.target.checked, non_sag_override: true })
+            }
           />
+
           <span className={cell?.is_non_sag ? "font-medium text-amber-600 dark:text-amber-400" : ""}>
             Non-SAG
           </span>
