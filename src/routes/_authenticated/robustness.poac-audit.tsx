@@ -13,6 +13,12 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
+import {
+  computePoacWeeklyStats,
+  validatePoacBaseline,
+  type PoacBaselineViolation,
+} from "@/lib/audit/poac-baseline";
+
 
 type DrilldownRow = {
   assignmentId: string;
@@ -107,7 +113,9 @@ function PoacAuditPage() {
         weeks: [] as WeekRow[],
         totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
         drilldown: [] as DrilldownRow[],
+        baselineViolations: [] as PoacBaselineViolation[],
       };
+
       if (!poacTheatreIds.length) return emptyResult;
 
       // All POAC theatre sessions in range.
@@ -231,14 +239,24 @@ function PoacAuditPage() {
         return x.staffName.localeCompare(y.staffName);
       });
 
+      // Compute baseline/additional via the shared, unit-tested rule so the
+      // UI numbers can never drift from the validator's expectations.
+      const baselineStats = computePoacWeeklyStats(
+        assignmentList.map((a) => ({
+          date: a.session_date,
+          session: a.session,
+          staffId: a.staff_id,
+        })),
+      );
+      const baselineByWeek = new Map(baselineStats.map((s) => [s.weekStart, s] as const));
+
       const weeks: WeekRow[] = Array.from(buckets.entries())
         .map(([k, b]) => {
+          const stat = baselineByWeek.get(k);
           const wedAm = b.wedAm.size;
           const wedPm = b.wedPm.size;
-          // Baseline = one consultant on Wednesday (AM or PM, not both).
-          const baseline = (wedAm > 0 || wedPm > 0) ? 1 : 0;
-
-          const additional = Math.max(0, b.total - baseline);
+          const baseline = stat?.baseline ?? ((wedAm > 0 || wedPm > 0) ? 1 : 0);
+          const additional = stat?.additional ?? Math.max(0, b.total - baseline);
           return {
             weekStart: k,
             total: b.total,
@@ -254,6 +272,18 @@ function PoacAuditPage() {
         })
         .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
 
+      const baselineViolations = validatePoacBaseline(
+        weeks.map((w) => ({
+          weekStart: w.weekStart,
+          total: w.total,
+          wedAm: w.wedAm,
+          wedPm: w.wedPm,
+          baseline: (w.baseline === 1 ? 1 : 0) as 0 | 1,
+          additional: w.additional,
+        })),
+      );
+
+
       const totals = weeks.reduce(
         (acc, w) => ({
           total: acc.total + w.total,
@@ -266,12 +296,13 @@ function PoacAuditPage() {
         { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0 },
       );
 
-      return { weeks, totals, drilldown };
+      return { weeks, totals, drilldown, baselineViolations };
     },
   });
 
   const weeks = data?.weeks ?? [];
   const drilldown = data?.drilldown ?? [];
+  const baselineViolations: PoacBaselineViolation[] = data?.baselineViolations ?? [];
 
   const totals = data?.totals ?? {
     total: 0,
@@ -281,6 +312,7 @@ function PoacAuditPage() {
     trainee: 0,
     unknown: 0,
   };
+
 
 
   const maxTotal = useMemo(
@@ -348,8 +380,58 @@ function PoacAuditPage() {
       </div>
 
 
+      <Card
+        className={
+          baselineViolations.length
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-emerald-500/40 bg-emerald-500/5"
+        }
+      >
+        <CardHeader>
+          <CardTitle className="text-base">
+            Baseline rule validation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {weeks.length === 0 ? (
+            <p className="text-muted-foreground">
+              No weeks in range — nothing to validate.
+            </p>
+          ) : baselineViolations.length === 0 ? (
+            <p>
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15">
+                PASS
+              </Badge>{" "}
+              All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the
+              rule: at most one Wednesday baseline session (AM or PM, not both).
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p>
+                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15">
+                  {baselineViolations.length} violation
+                  {baselineViolations.length === 1 ? "" : "s"}
+                </Badge>{" "}
+                Some weeks do not satisfy the baseline rule.
+              </p>
+              <ul className="list-disc pl-5 text-muted-foreground">
+                {baselineViolations.slice(0, 10).map((v) => (
+                  <li key={`${v.weekStart}-${v.reason}`}>
+                    Week of {formatDateGB(v.weekStart)} — {v.reason}
+                  </li>
+                ))}
+                {baselineViolations.length > 10 ? (
+                  <li>…and {baselineViolations.length - 10} more.</li>
+                ) : null}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
+
           <CardTitle className="text-base">Weekly breakdown</CardTitle>
         </CardHeader>
         <CardContent>
