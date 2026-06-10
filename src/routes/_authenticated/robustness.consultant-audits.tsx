@@ -286,7 +286,11 @@ function ConsultantAuditsPage() {
                 <Stat
                   label="Non-SAG sessions"
                   value={r.nonSag}
-                  hint="NHH lists marked non-SAG"
+                  hint={
+                    r.nonSag > 0
+                      ? `NHH lists marked non-SAG (${r.nonSagReviewed}/${r.nonSag} admin-reviewed)`
+                      : "NHH lists marked non-SAG"
+                  }
                   tone="amber"
                 />
                 <div className="flex items-center justify-between border-t pt-2 text-xs text-muted-foreground">
