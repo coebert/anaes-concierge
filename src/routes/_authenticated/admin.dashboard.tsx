@@ -431,15 +431,26 @@ function AdminDashboardPage() {
   const traineeMetricRows = useMemo(() => {
     if (!traineeMetricsData) return [];
     return traineeMetricsData.trainees
-      .map((t) => ({
-        trainee: t,
-        metrics: computeTraineeMetrics(
-          traineeMetricsData.assignmentsByStaff.get(t.id) ?? [],
-          t.start_date,
-          traineeMetricsData.tsSpecMap,
-          traineeMetricsData.specNameMap,
-        ),
-      }))
+      .map((t) => {
+        const icuOnly = isIcuBlockOnly(
+          traineeMetricsData.futureByStaff.get(t.id) ?? [],
+          todayISO(),
+          (t as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+        );
+        return {
+          trainee: t,
+          icuOnly,
+          metrics: computeTraineeMetrics(
+            traineeMetricsData.assignmentsByStaff.get(t.id) ?? [],
+            t.start_date,
+            traineeMetricsData.tsSpecMap,
+            traineeMetricsData.specNameMap,
+            Date.now(),
+            (t as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+            icuOnly,
+          ),
+        };
+      })
       .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [traineeMetricsData]);
 
@@ -1266,13 +1277,15 @@ function AdminDashboardPage() {
               <div className="text-sm text-muted-foreground">No active trainees on record.</div>
             ) : (
               <div className="grid gap-4 xl:grid-cols-2">
-                {traineeMetricRows.map(({ trainee, metrics }) => (
+                {traineeMetricRows.map(({ trainee, metrics, icuOnly }) => (
                   <TraineeMetricsCard
                     key={trainee.id}
                     title={trainee.full_name || "—"}
                     subtitle={trainee.training_level ?? "No level set"}
                     metrics={metrics}
                     startDate={trainee.start_date}
+                    rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
+                    icuBlockOnly={icuOnly}
                   />
                 ))}
               </div>
