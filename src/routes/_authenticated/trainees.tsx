@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { chunkIds } from "@/lib/supabase-chunked";
+import { fetchAllRowsPaged, idKey } from "@/lib/audit/paginate";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
@@ -79,6 +80,7 @@ function TraineesPage() {
       const traineeIds = (trainees ?? []).map((t) => t.id);
       const todayIso = todayISO();
       let allAssignments: Array<{
+        id: string;
         staff_id: string;
         role_on_list: string;
         session: string;
@@ -97,15 +99,26 @@ function TraineesPage() {
         // trainee summary/audit must not report “no theatre lists” for a
         // trainee who has matched theatre sessions already imported ahead of
         // today.
-        const { data: rows, error: e4 } = await supabase
-          .from("rota_assignments")
-          .select(
-            "staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
-          )
-          .in("staff_id", traineeIds)
-          .range(0, 49999);
-        if (e4) throw e4;
-        allAssignments = (rows ?? []) as typeof allAssignments;
+        const assignmentPages = await Promise.all(
+          chunkIds(traineeIds).map((ids) =>
+            fetchAllRowsPaged<typeof allAssignments[number]>(
+              (from, to) =>
+                supabase
+                  .from("rota_assignments")
+                  .select(
+                    "id,staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
+                  )
+                  .in("staff_id", ids)
+                  .order("staff_id", { ascending: true })
+                  .order("session_date", { ascending: true })
+                  .order("session", { ascending: true })
+                  .order("id", { ascending: true })
+                  .range(from, to),
+              { rowKey: idKey, label: "trainees-overview-assignments" },
+            ),
+          ),
+        );
+        allAssignments = assignmentPages.flat();
       }
       const tsIds = Array.from(
         new Set(allAssignments.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
@@ -203,19 +216,30 @@ function TraineesPage() {
       // Future assignments (today+ through end of rotation) — used to flag
       // "ICU block only" trainees whose remaining rotation has no theatre work.
       let futureAssignments: Array<{
+        id: string;
         staff_id: string;
         duty_type: string | null;
         session_date: string;
       }> = [];
       if (traineeIds.length) {
-        const { data: futureRows, error: eFut } = await supabase
-          .from("rota_assignments")
-          .select("staff_id,duty_type,session_date")
-          .in("staff_id", traineeIds)
-          .gt("session_date", todayIso)
-          .range(0, 49999);
-        if (eFut) throw eFut;
-        futureAssignments = (futureRows ?? []) as typeof futureAssignments;
+        const futurePages = await Promise.all(
+          chunkIds(traineeIds).map((ids) =>
+            fetchAllRowsPaged<typeof futureAssignments[number]>(
+              (from, to) =>
+                supabase
+                  .from("rota_assignments")
+                  .select("id,staff_id,duty_type,session_date")
+                  .in("staff_id", ids)
+                  .gt("session_date", todayIso)
+                  .order("staff_id", { ascending: true })
+                  .order("session_date", { ascending: true })
+                  .order("id", { ascending: true })
+                  .range(from, to),
+              { rowKey: idKey, label: "trainees-overview-future-assignments" },
+            ),
+          ),
+        );
+        futureAssignments = futurePages.flat();
       }
       const futureByStaff = futureAssignments.reduce<Record<string, Array<{ duty_type: string | null; session_date: string }>>>(
         (acc, a) => {
