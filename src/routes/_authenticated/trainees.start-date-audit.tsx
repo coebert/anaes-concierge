@@ -274,6 +274,7 @@ function AuditPage() {
                         {t.full_name || t.email}
                       </Link>
                       {decisionBadge(t.decision)}
+                      {t.icu_block_only ? <IcuBlockBadge /> : null}
                       {t.leave_source_warnings.length > 0 ? (
                         <Badge
                           variant="destructive"
