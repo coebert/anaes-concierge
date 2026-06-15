@@ -333,7 +333,8 @@ describe("emergency detection — CLWRota sync failures across consecutive updat
     am = await audit();
     expect(am.required, "all signals now gone → planned").toBe(3);
     expect(am.unfilled).toBe(1);
-    expect(am.risk).not.toBe("shortfall"); // c3 absorbs the gap
+    expect(am.risk).toBe("shortfall"); // surfaced gap, no roster-evidenced spare
+
 
     // Sync #5: recovery — successful sync re-applies both emergency
     // signals. Classification reverts immediately.
