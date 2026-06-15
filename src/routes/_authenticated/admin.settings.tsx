@@ -269,6 +269,8 @@ function SettingsPage() {
     // a later audit can use its own 2 attempts.
     setRetryAttempt(0);
     setRetriedTrainees([]);
+    setStalledCause(null);
+    lastMismatchSignature.current = null;
     setTimeout(() => validateMut.mutate(), 250);
   };
 
