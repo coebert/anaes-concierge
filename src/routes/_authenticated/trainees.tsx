@@ -461,7 +461,7 @@ function TraineesPage() {
                   setToDate(d);
                 }
               }}
-              placeholder="Today"
+              placeholder="All"
             />
             <Button
               variant="ghost"
