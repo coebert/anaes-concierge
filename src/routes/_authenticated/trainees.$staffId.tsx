@@ -178,6 +178,15 @@ function TraineeDetailPage() {
     ["solo", "supervised", "supervising"].includes(a.role_on_list),
   );
 
+  const rotationEnd =
+    (data.profile as { rotation_end_date?: string | null }).rotation_end_date ??
+    null;
+  const icuOnly = isIcuBlockOnly(
+    data.futureAssignments,
+    todayISO(),
+    rotationEnd,
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -187,15 +196,27 @@ function TraineeDetailPage() {
         >
           <ArrowLeft className="h-3 w-3" /> All trainees
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          {data.profile.full_name || data.profile.email}
-        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {data.profile.full_name || data.profile.email}
+          </h1>
+          {icuOnly ? <IcuBlockBadge /> : null}
+        </div>
         <p className="text-sm text-muted-foreground">
           {data.profile.training_level ?? "No level set"} · {data.profile.email}
         </p>
       </div>
 
+      {icuOnly ? (
+        <div className="rounded-md border border-sky-500/40 bg-sky-500/5 px-3 py-2 text-sm text-sky-800 dark:text-sky-200">
+          This trainee is currently on an ICU block. No theatre lists are
+          expected for the remainder of their rotation, so any "no matched
+          theatre list" warnings can be safely ignored.
+        </div>
+      ) : null}
+
       {audit && <AuditLenses audit={audit} />}
+
 
 
       <Card>
