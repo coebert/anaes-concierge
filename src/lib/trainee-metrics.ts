@@ -36,6 +36,8 @@ export type TraineeMetrics = {
   totalClinical: number;
   onCallLists: number;
   onCallPct: number | null;
+  icuLists: number;
+  obstetricsLists: number;
   totalAssignments: number;
   /** Theatre-duty rows with no matched theatre_session_id (unmatched CLWRota labels). */
   unmatchedTheatreRows: number;
