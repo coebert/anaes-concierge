@@ -107,10 +107,12 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
     expect(m.totalAssignments).toBe(70);
     expect(m.daytimeLists).toBe(0);
     expect(m.unmatchedTheatreRows).toBe(0);
-    // ICU rolls up to shift-days (30 whole-day ICU shifts, not 60 sessions)
-    // and the 10 evening on-calls keep per-session granularity. 30 + 10 = 40.
-    expect(m.onCallLists).toBe(40);
-    expect(m.icuLists).toBe(30);
+    // ICU rolls up to shift-days. The fixture's `(i % 28) + 1` produces
+    // 28 distinct dates across i=0..29 (days 1 and 2 repeat), so 28 ICU
+    // shifts + 10 evening on-calls = 38.
+    expect(m.onCallLists).toBe(38);
+    expect(m.icuLists).toBe(28);
+
     expect(codes(m)).toContain("no_theatre_rows_non_theatre_block");
     expect(codes(m)).not.toContain("no_theatre_session_rows");
 
