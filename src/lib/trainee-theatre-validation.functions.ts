@@ -245,13 +245,67 @@ export async function performTraineeTheatreValidation(
     return b.unmatched - a.unmatched;
   });
 
+  // ICU-block detection: for trainees flagged as mismatched, check whether
+  // their remaining rotation (today → rotation_end_date) is ICU-only. Those
+  // trainees aren't expected to have theatre lists, so we move them out of
+  // the warning list and surface them separately for transparency.
+  const traineeById = new Map(
+    (trainees ?? []).map((t) => [t.id, t] as const),
+  );
+  const onIcuBlock: TraineeOnIcuBlock[] = [];
+  const finalMismatches: TraineeTheatreMismatch[] = [];
+  if (mismatches.length > 0) {
+    const todayIso = isoDateOffset(0);
+    const flaggedIds = mismatches.map((m) => m.staff_id);
+    const futureByStaff = new Map<
+      string,
+      Array<{ duty_type: string | null; session_date: string }>
+    >();
+    for (let i = 0; i < flaggedIds.length; i += CHUNK) {
+      const slice = flaggedIds.slice(i, i + CHUNK);
+      const { data: futRows, error: fErr } = await supabaseAdmin
+        .from("rota_assignments")
+        .select("staff_id, duty_type, session_date")
+        .in("staff_id", slice)
+        .gte("session_date", todayIso)
+        .lte("session_date", to)
+        .range(0, 49999);
+      if (fErr) throw new Error(fErr.message);
+      for (const r of futRows ?? []) {
+        const list = futureByStaff.get(r.staff_id) ?? [];
+        list.push({ duty_type: r.duty_type, session_date: r.session_date });
+        futureByStaff.set(r.staff_id, list);
+      }
+    }
+    for (const m of mismatches) {
+      const t = traineeById.get(m.staff_id);
+      const rotationEnd =
+        (t as { rotation_end_date?: string | null } | undefined)
+          ?.rotation_end_date ?? null;
+      const future = futureByStaff.get(m.staff_id) ?? [];
+      if (isIcuBlockOnly(future, todayIso, rotationEnd)) {
+        onIcuBlock.push({
+          staff_id: m.staff_id,
+          full_name: m.full_name,
+          unmatchedTheatreRows: m.unmatched,
+        });
+      } else {
+        finalMismatches.push(m);
+      }
+    }
+    onIcuBlock.sort((a, b) =>
+      (a.full_name ?? a.staff_id).localeCompare(b.full_name ?? b.staff_id),
+    );
+  }
+
   return {
-    ok: mismatches.length === 0,
+    ok: finalMismatches.length === 0,
     window: { from, to },
     traineesScanned: trainees?.length ?? 0,
     traineesWithTheatreRows,
     fullyMatched,
-    mismatches,
+    mismatches: finalMismatches,
+    onIcuBlock,
   };
 }
 
