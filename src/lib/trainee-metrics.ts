@@ -15,7 +15,8 @@ export type TraineeMetricsWarning = {
     | "low_real_list_count"
     | "no_real_lists"
     | "high_unmatched_ratio"
-    | "no_theatre_session_rows";
+    | "no_theatre_session_rows"
+    | "no_theatre_rows_non_theatre_block";
   message: string;
 };
 
@@ -166,11 +167,45 @@ export function computeTraineeMetrics(
   if (suppressTheatreWarnings) {
     // See above — no theatre-list warning expected for ICU blocks.
   } else if (totalTheatreRows === 0) {
-    warnings.push({
-      level: "info",
-      code: "no_theatre_session_rows",
-      message: "No theatre rows imported for this trainee.",
-    });
+    // Distinguish two very different situations that both end up with zero
+    // imported theatre rows:
+    //   1. A genuine data-quality problem (no clinical activity recorded at
+    //      all, or the CLWRota feed isn't producing usable rows for this
+    //      trainee). This is the original "no theatre rows imported" case.
+    //   2. The trainee has been clinically active in the window but doing
+    //      ICU, on-calls, or obstetrics — so they correctly have no theatre
+    //      rows. `isIcuBlockOnly` (which gates `suppressTheatreWarnings`)
+    //      only checks the *future* window, so a trainee whose remaining
+    //      rotation includes theatre work but whose recent past is all
+    //      ICU/on-call would otherwise still trip the import-quality alarm.
+    const NON_THEATRE_CLINICAL = new Set([
+      "icu_trainee",
+      "icu_ct2_plus",
+      "icu_consultant_oncall",
+      "general_consultant_oncall",
+      "registrar_oncall",
+      "sho_oncall",
+      "consultant_in_charge",
+      "obstetrics",
+      "obstetrics_2nd",
+    ]);
+    const hasNonTheatreClinical = assignments.some(
+      (a) => a.duty_type != null && NON_THEATRE_CLINICAL.has(a.duty_type),
+    );
+    if (hasNonTheatreClinical) {
+      warnings.push({
+        level: "info",
+        code: "no_theatre_rows_non_theatre_block",
+        message:
+          "No daytime theatre lists in this window — trainee has been on ICU / on-call / obstetrics duties.",
+      });
+    } else {
+      warnings.push({
+        level: "info",
+        code: "no_theatre_session_rows",
+        message: "No theatre rows imported for this trainee.",
+      });
+    }
   } else if (unmatchedTheatreRows / totalTheatreRows >= HIGH_UNMATCHED_RATIO) {
     const pct = Math.round((unmatchedTheatreRows / totalTheatreRows) * 100);
     warnings.push({
