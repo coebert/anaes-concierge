@@ -312,12 +312,19 @@ function AdminDashboardPage() {
       );
       const tsSpecMap = new Map<string, string | null>();
       if (tsIds.length) {
-        const { data: ts, error: e4 } = await supabase
-          .from("theatre_sessions")
-          .select("id, specialty_id")
-          .in("id", tsIds);
-        if (e4) throw e4;
-        for (const t of ts ?? []) tsSpecMap.set(t.id, t.specialty_id ?? null);
+        // Chunked `.in()` lookup — see src/lib/supabase-chunked.ts. Across all
+        // active trainees the distinct theatre-session ID set easily exceeds
+        // the PostgREST URL length limit; a single .in() request silently
+        // truncates and leaves sessions without a specialty.
+        const results = await Promise.all(
+          chunkIds(tsIds).map((c) =>
+            supabase.from("theatre_sessions").select("id, specialty_id").in("id", c),
+          ),
+        );
+        for (const { data: ts, error: e4 } of results) {
+          if (e4) throw e4;
+          for (const t of ts ?? []) tsSpecMap.set(t.id, t.specialty_id ?? null);
+        }
       }
       const specNameMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
       const assignmentsByStaff = new Map<string, typeof assignments>();
