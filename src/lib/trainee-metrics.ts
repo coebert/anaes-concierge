@@ -145,7 +145,7 @@ export function computeTraineeMetrics(
   ).length;
   const totalTheatreRows = daytimeLists + unmatchedTheatreRows;
   const warnings: TraineeMetricsWarning[] = [];
-  if (daytimeLists === 0) {
+  if (daytimeLists === 0 && totalTheatreRows > 0) {
     warnings.push({
       level: "warn",
       code: "no_real_lists",
