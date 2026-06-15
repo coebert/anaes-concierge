@@ -14,6 +14,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
 import { chunkIds } from "@/lib/supabase-chunked";
+import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
+
 import {
   computePoacWeeklyStats,
   validatePoacBaseline,
@@ -22,24 +24,37 @@ import {
 
 // PostgREST defaults to a 1000-row response cap. Walk the result set in
 // pages so audits over long date ranges (or as data grows) cannot silently
-// drop rows and under-report sessions/assignments.
+// drop rows and under-report sessions/assignments. Returns the rows plus a
+// page count and a `complete` flag (true when the final page was shorter
+// than the page size, proving the cap was not hit).
 async function fetchAllPaged<T>(
   build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   pageSize = 1000,
-): Promise<T[]> {
+): Promise<{ rows: T[]; pages: number; complete: boolean }> {
   const out: T[] = [];
   let offset = 0;
+  let pages = 0;
+  let complete = true;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { data, error } = await build(offset, offset + pageSize - 1);
     if (error) throw error;
     const rows = data ?? [];
     out.push(...rows);
-    if (rows.length < pageSize) break;
+    pages += 1;
+    if (rows.length < pageSize) {
+      complete = true;
+      break;
+    }
+    // Full page — keep walking. If the very next page returns empty we still
+    // count as complete; only a full page with no further fetch would be
+    // ambiguous, and the loop always fetches the next page in that case.
+    complete = false;
     offset += pageSize;
   }
-  return out;
+  return { rows: out, pages, complete };
 }
+
 
 
 type DrilldownRow = {
@@ -133,14 +148,30 @@ function PoacAuditPage() {
       const poacTheatres = theatres ?? [];
       const poacTheatreIds = poacTheatres.map((t) => t.id);
       const theatreNameById = new Map(poacTheatres.map((t) => [t.id, t.name] as const));
+      const emptyCoverage = {
+        steps: [
+          { label: "theatre_sessions", chunks: 0, pages: 0, rows: 0, complete: true },
+          { label: "rota_assignments", chunks: 0, pages: 0, rows: 0, complete: true },
+          { label: "specialties", chunks: 0, pages: 0, rows: 0, complete: true },
+          { label: "profiles", chunks: 0, pages: 0, rows: 0, complete: true },
+        ],
+      };
       const emptyResult = {
         weeks: [] as WeekRow[],
         totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
         drilldown: [] as DrilldownRow[],
         baselineViolations: [] as PoacBaselineViolation[],
+        coverage: emptyCoverage,
       };
 
       if (!poacTheatreIds.length) return emptyResult;
+
+
+      // Track pagination/chunking coverage for the UI status indicator.
+      const sessionCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+      const assignmentCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+      const specialtyCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+      const staffCov = { chunks: 0, pages: 0, rows: 0, complete: true };
 
       // All POAC theatre sessions in range — paged to defeat the 1000-row
       // default cap, and chunked on theatre_id to avoid URL-length truncation
@@ -154,7 +185,7 @@ function PoacAuditPage() {
         surgical_consultant: string | null;
       }> = [];
       for (const theatreSlice of chunkIds(poacTheatreIds)) {
-        const pageRows = await fetchAllPaged((lo, hi) =>
+        const res = await fetchAllPaged((lo, hi) =>
           supabase
             .from("theatre_sessions")
             .select("id,session_date,session,theatre_id,specialty_id,surgical_consultant")
@@ -163,10 +194,26 @@ function PoacAuditPage() {
             .lte("session_date", to)
             .range(lo, hi),
         );
-        sessionList.push(...pageRows);
+        sessionList.push(...res.rows);
+        sessionCov.chunks += 1;
+        sessionCov.pages += res.pages;
+        sessionCov.rows += res.rows.length;
+        if (!res.complete) sessionCov.complete = false;
       }
       const sessionIds = sessionList.map((s) => s.id);
-      if (!sessionIds.length) return emptyResult;
+      if (!sessionIds.length) {
+        return {
+          ...emptyResult,
+          coverage: {
+            steps: [
+              { label: "theatre_sessions", ...sessionCov },
+              { label: "rota_assignments", ...assignmentCov },
+              { label: "specialties", ...specialtyCov },
+              { label: "profiles", ...staffCov },
+            ],
+          },
+        };
+      }
       const sessionById = new Map(sessionList.map((s) => [s.id, s] as const));
 
       // Resolve specialty names referenced by these sessions.
@@ -180,7 +227,11 @@ function PoacAuditPage() {
           .select("id,name")
           .in("id", slice);
         if (spe) throw spe;
-        for (const s of specs ?? []) specialtyNameById.set(s.id, s.name);
+        const rows = specs ?? [];
+        for (const s of rows) specialtyNameById.set(s.id, s.name);
+        specialtyCov.chunks += 1;
+        specialtyCov.pages += 1;
+        specialtyCov.rows += rows.length;
       }
 
       // Assignments to those POAC sessions in range — chunked on
@@ -194,14 +245,18 @@ function PoacAuditPage() {
         theatre_session_id: string | null;
       }> = [];
       for (const slice of chunkIds(sessionIds)) {
-        const pageRows = await fetchAllPaged((lo, hi) =>
+        const res = await fetchAllPaged((lo, hi) =>
           supabase
             .from("rota_assignments")
             .select("id,staff_id,session_date,session,theatre_session_id")
             .in("theatre_session_id", slice)
             .range(lo, hi),
         );
-        assignmentList.push(...pageRows);
+        assignmentList.push(...res.rows);
+        assignmentCov.chunks += 1;
+        assignmentCov.pages += res.pages;
+        assignmentCov.rows += res.rows.length;
+        if (!res.complete) assignmentCov.complete = false;
       }
 
       // Resolve grade + name for each staff member appearing in assignments.
@@ -215,10 +270,15 @@ function PoacAuditPage() {
           .select("id,grade,full_name")
           .in("id", slice);
         if (pe) throw pe;
-        for (const p of profs ?? []) {
+        const rows = profs ?? [];
+        for (const p of rows) {
           staffById.set(p.id, { grade: p.grade ?? null, full_name: p.full_name ?? null });
         }
+        staffCov.chunks += 1;
+        staffCov.pages += 1;
+        staffCov.rows += rows.length;
       }
+
 
       const normGrade = (g: string | null | undefined): DrilldownRow["grade"] =>
         g === "consultant" || g === "sas" || g === "trainee" ? g : "unknown";
@@ -360,13 +420,28 @@ function PoacAuditPage() {
 
       );
 
-      return { weeks, totals, drilldown, baselineViolations };
+      return {
+        weeks,
+        totals,
+        drilldown,
+        baselineViolations,
+        coverage: {
+          steps: [
+            { label: "theatre_sessions", ...sessionCov },
+            { label: "rota_assignments", ...assignmentCov },
+            { label: "specialties", ...specialtyCov },
+            { label: "profiles", ...staffCov },
+          ],
+        },
+      };
     },
   });
 
   const weeks = data?.weeks ?? [];
   const drilldown = data?.drilldown ?? [];
   const baselineViolations: PoacBaselineViolation[] = data?.baselineViolations ?? [];
+  const coverage = data?.coverage ?? null;
+
 
   const totals = data?.totals ?? {
     total: 0,
@@ -428,7 +503,10 @@ function PoacAuditPage() {
         </CardContent>
       </Card>
 
+      <AuditCoverageBadge coverage={coverage} />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
         <SummaryCard label="Weeks shown" value={weeks.length} />
         <SummaryCard label="Total POAC sessions" value={totals.total} tone="primary" />
         <SummaryCard

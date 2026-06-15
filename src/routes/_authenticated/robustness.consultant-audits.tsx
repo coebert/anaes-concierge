@@ -17,6 +17,7 @@ import {
   classifyConsultantAssignment,
   type SagMark,
 } from "@/lib/audit/consultant-non-sag-classify";
+import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
 
 const REQUIRED_TABLES = [
   "profiles",
@@ -67,8 +68,14 @@ function ConsultantAuditsPage() {
         .eq("active", true);
       if (pe) throw pe;
       const consultantIds = (profiles ?? []).map((p) => p.id);
+      const emptyCoverage = {
+        steps: [
+          { label: "theatre_sessions", chunks: 1, pages: 0, rows: 0, complete: true },
+          { label: "rota_assignments", chunks: 1, pages: 0, rows: 0, complete: true },
+        ],
+      };
       if (!consultantIds.length) {
-        return { rows: [] as ConsultantRow[] };
+        return { rows: [] as ConsultantRow[], coverage: emptyCoverage };
       }
       const consultantIdSet = new Set(consultantIds);
 
@@ -94,6 +101,7 @@ function ConsultantAuditsPage() {
       // set the value (vs the default false); we surface it as evidence that
       // the marking has been actively reviewed.
       const sagBySession = new Map<string, SagMark>();
+      const sessionCov = { chunks: 1, pages: 0, rows: 0, complete: true };
       {
         const PAGE = 1000;
         let offset = 0;
@@ -108,7 +116,10 @@ function ConsultantAuditsPage() {
             .lte("session_date", to)
             .range(offset, offset + PAGE - 1);
           if (se) throw se;
-          for (const s of page ?? []) {
+          const rows = page ?? [];
+          sessionCov.pages += 1;
+          sessionCov.rows += rows.length;
+          for (const s of rows) {
             // Explicit NHH check: only private-theatre sessions are eligible
             // for SAG / non-SAG classification.
             if (!privateTheatres.has(s.theatre_id)) continue;
@@ -118,7 +129,11 @@ function ConsultantAuditsPage() {
               reviewed: s.non_sag_override === true,
             });
           }
-          if (!page || page.length < PAGE) break;
+          if (rows.length < PAGE) {
+            sessionCov.complete = true;
+            break;
+          }
+          sessionCov.complete = false;
           offset += PAGE;
         }
       }
@@ -141,6 +156,7 @@ function ConsultantAuditsPage() {
       // Pull rota assignments in range (paginated). We don't filter by staff_id
       // in the query to avoid URL-length limits with 50+ UUIDs; we drop
       // non-consultant rows in the loop below via the counts map.
+      const assignmentCov = { chunks: 1, pages: 0, rows: 0, complete: true };
       {
         const PAGE = 1000;
         let offset = 0;
@@ -153,7 +169,10 @@ function ConsultantAuditsPage() {
             .lte("session_date", to)
             .range(offset, offset + PAGE - 1);
           if (ae) throw ae;
-          for (const a of page ?? []) {
+          const rows = page ?? [];
+          assignmentCov.pages += 1;
+          assignmentCov.rows += rows.length;
+          for (const a of rows) {
             if (!consultantIdSet.has(a.staff_id)) continue;
             const c = counts.get(a.staff_id);
             if (!c) continue;
@@ -165,10 +184,15 @@ function ConsultantAuditsPage() {
               if (result.reviewed) c.nonSagReviewed += 1;
             }
           }
-          if (!page || page.length < PAGE) break;
+          if (rows.length < PAGE) {
+            assignmentCov.complete = true;
+            break;
+          }
+          assignmentCov.complete = false;
           offset += PAGE;
         }
       }
+
 
 
 
@@ -193,7 +217,15 @@ function ConsultantAuditsPage() {
             (a.firstName || "").localeCompare(b.firstName || ""),
         );
 
-      return { rows };
+      return {
+        rows,
+        coverage: {
+          steps: [
+            { label: "theatre_sessions", ...sessionCov },
+            { label: "rota_assignments", ...assignmentCov },
+          ],
+        },
+      };
     },
   });
 
@@ -270,6 +302,8 @@ function ConsultantAuditsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AuditCoverageBadge coverage={data?.coverage ?? null} />
 
       {grantsCheck.isLoading ? (
         <p className="text-sm text-muted-foreground">Checking data access…</p>
