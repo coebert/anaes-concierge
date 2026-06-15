@@ -31,6 +31,7 @@ function TraineeDetailPage() {
         { data: assignments, error: e2 },
         { data: targets, error: e3 },
         { data: specs, error: e4 },
+        { data: futureRows, error: e5 },
       ] = await Promise.all([
         // Select `locally_modified` so the displacement lens actually works
         // — previously this column was missing from the projection, so every
@@ -48,10 +49,19 @@ function TraineeDetailPage() {
           .range(0, 9999),
         supabase.from("trainee_targets").select("*"),
         supabase.from("specialties").select("id,name"),
+        // Future rota assignments — used to flag "ICU block only" trainees
+        // whose remaining rotation contains no theatre work.
+        supabase
+          .from("rota_assignments")
+          .select("session_date,duty_type")
+          .eq("staff_id", staffId)
+          .gt("session_date", today)
+          .range(0, 9999),
       ]);
       if (e2) throw e2;
       if (e3) throw e3;
       if (e4) throw e4;
+      if (e5) throw e5;
 
       const tsIds = Array.from(
         new Set(
