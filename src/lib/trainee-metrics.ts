@@ -283,9 +283,14 @@ export function computeTraineeMetrics(
     totalClinical,
     onCallLists,
     onCallPct,
+    icuLists,
+    obstetricsLists,
     totalAssignments,
     unmatchedTheatreRows,
     warnings,
+    specialtyBreakdown,
+  };
+}
     specialtyBreakdown,
   };
 }
