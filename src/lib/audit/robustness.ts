@@ -303,10 +303,11 @@ export async function computeRobustness(
         session: string;
         specialty_id: string | null;
         surgical_consultant: string | null;
+        theatre_id: string | null;
       }>((from, to) =>
         supabase
           .from("theatre_sessions")
-          .select("id, session_date, session, specialty_id, surgical_consultant")
+          .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
           .gte("session_date", rangeStart)
           .lte("session_date", rangeEnd)
           .order("id", { ascending: true })
@@ -342,6 +343,19 @@ export async function computeRobustness(
         { rowKey: idKey, label: "robustness.specialties" },
       ),
     ]);
+
+  // Theatres marked inactive (e.g. "NHH (legacy)") may still have stale
+  // theatre_sessions rows from earlier syncs. Those phantom lists inflate
+  // the "required" count and surface as a false consultant shortfall even
+  // though every real theatre is fully staffed. Drop them up-front so they
+  // don't contribute to demand or coverage.
+  const { data: inactiveTheatreRows } = await supabase
+    .from("theatres")
+    .select("id")
+    .eq("active", false);
+  const inactiveTheatreIds = new Set(
+    (inactiveTheatreRows ?? []).map((t) => t.id as string),
+  );
 
 
   const emergencySpecialtyIds = new Set(
