@@ -360,6 +360,7 @@ function TraineesPage() {
             asOfMs,
             (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
             icuOnly,
+            isJuniorTraineeLevel((trainee as { training_level?: string | null }).training_level),
           ),
         };
       });
