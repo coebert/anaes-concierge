@@ -173,7 +173,7 @@ export function TodayInHospital() {
               site="sdh"
             />
             <SiteBlock
-              title="Norfolk House Hospital (NHH)"
+              title="New Hall Hospital (NHH)"
               subtitle="Off-site — not at Salisbury District Hospital"
               am={data.am}
               pm={data.pm}
