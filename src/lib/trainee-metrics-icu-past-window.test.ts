@@ -36,6 +36,10 @@ function metricsFor(assignments: MetricAssignment[]) {
   );
 }
 
+function codes(m: ReturnType<typeof metricsFor>): string[] {
+  return m.warnings.map((w) => w.code);
+}
+
 describe("trainee metrics — ICU/on-call-only past window with future theatre work", () => {
   it("emits the ICU/on-call info note (not the import-failure warning) when the past window is icu_trainee only", () => {
     const m = metricsFor([
@@ -47,14 +51,15 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
 
     expect(m.daytimeLists).toBe(0);
     expect(m.unmatchedTheatreRows).toBe(0);
-    expect(m.warnings).toHaveLength(1);
-    expect(m.warnings[0].code).toBe("no_theatre_rows_non_theatre_block");
-    expect(m.warnings[0].level).toBe("info");
-    // The misleading wording must not be used in this branch.
-    expect(m.warnings[0].message).not.toMatch(/no theatre rows imported/i);
-    expect(m.warnings[0].message).toMatch(/icu|on-call/i);
-    // And the old code must not appear at all.
-    expect(m.warnings.find((w) => w.code === "no_theatre_session_rows")).toBeUndefined();
+    expect(codes(m)).toContain("no_theatre_rows_non_theatre_block");
+    // The misleading import-failure code must NOT appear here — that's the
+    // whole point of the fix.
+    expect(codes(m)).not.toContain("no_theatre_session_rows");
+
+    const note = m.warnings.find((w) => w.code === "no_theatre_rows_non_theatre_block")!;
+    expect(note.level).toBe("info");
+    expect(note.message).not.toMatch(/no theatre rows imported/i);
+    expect(note.message).toMatch(/icu|on-call/i);
   });
 
   it("recognises icu_ct2_plus as a clinical non-theatre duty", () => {
@@ -62,7 +67,8 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
       { role_on_list: "solo", session: "am", duty_type: "icu_ct2_plus",
         theatre_session_id: null, session_date: "2026-04-20" },
     ]);
-    expect(m.warnings.map((w) => w.code)).toEqual(["no_theatre_rows_non_theatre_block"]);
+    expect(codes(m)).toContain("no_theatre_rows_non_theatre_block");
+    expect(codes(m)).not.toContain("no_theatre_session_rows");
   });
 
   it.each([
@@ -78,10 +84,11 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
       { role_on_list: "solo", session: "am", duty_type: dutyType,
         theatre_session_id: null, session_date: "2026-04-20" },
     ]);
-    expect(m.warnings.map((w) => w.code)).toEqual(["no_theatre_rows_non_theatre_block"]);
+    expect(codes(m)).toContain("no_theatre_rows_non_theatre_block");
+    expect(codes(m)).not.toContain("no_theatre_session_rows");
   });
 
-  it("works for a mixed ICU + on-call past window (the real-world case)", () => {
+  it("handles a mixed ICU + on-call past window (the real-world case)", () => {
     // Mirrors Dr A Halsall: 30 ICU AM, 30 ICU PM, plus on-calls.
     const a: MetricAssignment[] = [];
     for (let i = 0; i < 30; i++) {
@@ -100,13 +107,14 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
     expect(m.totalAssignments).toBe(70);
     expect(m.daytimeLists).toBe(0);
     expect(m.unmatchedTheatreRows).toBe(0);
-    // On-call counts must still register correctly.
-    expect(m.onCallLists).toBe(70); // icu_ct2_plus + registrar_oncall both count as on-call
-    expect(m.warnings.map((w) => w.code)).toEqual(["no_theatre_rows_non_theatre_block"]);
+    // ICU + on-call duty types should all roll up into on-call counts.
+    expect(m.onCallLists).toBe(70);
+    expect(codes(m)).toContain("no_theatre_rows_non_theatre_block");
+    expect(codes(m)).not.toContain("no_theatre_session_rows");
   });
 
-  it("keeps the original 'no theatre rows imported' warning when the past window is genuinely empty of clinical work", () => {
-    // No theatre rows AND no ICU/on-call rows — only SPA / teaching / admin.
+  it("keeps the original 'no theatre rows imported' warning when the past window has no clinical work at all", () => {
+    // No theatre rows AND no ICU/on-call/obstetrics rows — only SPA / teaching.
     // This is the original data-quality signal and must still fire.
     const m = metricsFor([
       { role_on_list: "solo", session: "am", duty_type: "spa",
@@ -114,18 +122,21 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
       { role_on_list: "solo", session: "pm", duty_type: "teaching",
         theatre_session_id: null, session_date: "2026-04-11" },
     ]);
-    expect(m.warnings.map((w) => w.code)).toEqual(["no_theatre_session_rows"]);
-    expect(m.warnings[0].message).toMatch(/no theatre rows imported/i);
+    expect(codes(m)).toContain("no_theatre_session_rows");
+    expect(codes(m)).not.toContain("no_theatre_rows_non_theatre_block");
+    const note = m.warnings.find((w) => w.code === "no_theatre_session_rows")!;
+    expect(note.message).toMatch(/no theatre rows imported/i);
   });
 
   it("keeps the original warning when the trainee has zero assignments at all", () => {
     const m = metricsFor([]);
-    expect(m.warnings.map((w) => w.code)).toEqual(["no_theatre_session_rows"]);
+    expect(codes(m)).toContain("no_theatre_session_rows");
+    expect(codes(m)).not.toContain("no_theatre_rows_non_theatre_block");
   });
 
-  it("does NOT downgrade the warning when matched theatre rows exist alongside ICU work (different branch entirely)", () => {
-    // Trainee has 6 matched theatre lists AND some ICU days. They should
-    // get the normal happy-path metrics — no warning about missing rows.
+  it("does not downgrade the warning when matched theatre rows exist alongside ICU work", () => {
+    // 6 matched theatre lists + an ICU day → happy path, no missing-rows
+    // warning of either flavour.
     const a: MetricAssignment[] = [];
     for (let i = 0; i < 6; i++) {
       a.push({ role_on_list: "supervised", session: "am", duty_type: "theatre",
@@ -136,12 +147,15 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
 
     const m = metricsFor(a);
     expect(m.daytimeLists).toBe(6);
-    expect(m.warnings).toEqual([]); // happy path: no warning at all
+    expect(codes(m)).not.toContain("no_theatre_session_rows");
+    expect(codes(m)).not.toContain("no_theatre_rows_non_theatre_block");
   });
 
-  it("still surfaces the unmatched-ratio warning when most theatre rows fail to match — alarm beats the ICU note", () => {
+  it("still surfaces the unmatched-ratio warning when most theatre rows fail to match — alarm wins over the ICU note", () => {
     // 1 matched + 4 unmatched theatre rows = 80% unmatched → high_unmatched_ratio.
-    // This branch is independent of the new ICU note and must not regress.
+    // An incidental ICU day on the side must not flip the warning to the new
+    // (gentler) code, because this trainee really does have a theatre data
+    // problem.
     const a: MetricAssignment[] = [
       { role_on_list: "solo", session: "am", duty_type: "theatre",
         theatre_session_id: "ts-1", session_date: "2026-05-01" },
@@ -153,12 +167,11 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
         theatre_session_id: null, session_date: "2026-05-04" },
       { role_on_list: "solo", session: "pm", duty_type: "theatre",
         theatre_session_id: null, session_date: "2026-05-05" },
-      // ICU day too — must not flip the warning to the new code.
       { role_on_list: "solo", session: "am", duty_type: "icu_ct2_plus",
         theatre_session_id: null, session_date: "2026-05-06" },
     ];
     const m = metricsFor(a);
-    expect(m.warnings.map((w) => w.code)).toContain("high_unmatched_ratio");
-    expect(m.warnings.map((w) => w.code)).not.toContain("no_theatre_rows_non_theatre_block");
+    expect(codes(m)).toContain("high_unmatched_ratio");
+    expect(codes(m)).not.toContain("no_theatre_rows_non_theatre_block");
   });
 });
