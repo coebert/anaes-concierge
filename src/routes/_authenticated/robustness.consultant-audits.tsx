@@ -41,6 +41,26 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Count whole weeks spanned by an inclusive [from, to] date range, treating
+ * any partial week as a full week. Weeks are Monday-anchored: we snap `from`
+ * back to its Monday and `to` forward to its Sunday, then divide the span
+ * by 7. Returns 0 for an invalid/empty range.
+ */
+export function weeksInRangeInclusive(from: string, to: string): number {
+  const start = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  if (end < start) return 0;
+  // Monday = 1 … Sunday = 7 (ISO). JS getUTCDay: Sun=0..Sat=6.
+  const startDow = (start.getUTCDay() + 6) % 7; // days since Monday
+  const endDow = (end.getUTCDay() + 6) % 7;
+  start.setUTCDate(start.getUTCDate() - startDow);
+  end.setUTCDate(end.getUTCDate() + (6 - endDow));
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  return Math.ceil(days / 7);
+}
+
 function ConsultantAuditsPage() {
   const [from, setFrom] = useState<string>(isoDaysAgo(90));
   const [to, setTo] = useState<string>(todayIso());
