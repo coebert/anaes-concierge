@@ -64,15 +64,18 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
         }
 
         // Dynamic import — keeps server-only modules out of the client bundle.
-        const { performStaffSync, performRotaSync, performLeaveSync } =
+        const { performStaffSync, performRotaSync, performRotaSyncChunked, performLeaveSync } =
           await import("@/lib/clwrota.functions");
+
+        const sliceParam = params.get("sliceDays");
+        const sliceDays = sliceParam ? Math.max(1, Number(sliceParam) || 30) : undefined;
 
         const runners: Record<Step, () => Promise<unknown>> = {
           staff: performStaffSync,
           rota: () =>
             fromDate && toDate
               ? performRotaSync({ from: fromDate, to: toDate })
-              : performRotaSync(),
+              : performRotaSyncChunked({ sliceDays }),
           leave: performLeaveSync,
         };
 
