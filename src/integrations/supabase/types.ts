@@ -903,6 +903,47 @@ export type Database = {
         }
         Relationships: []
       }
+      theatre_name_aliases: {
+        Row: {
+          active: boolean
+          alias: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          theatre_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          alias: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          theatre_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          alias?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          theatre_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theatre_name_aliases_theatre_id_fkey"
+            columns: ["theatre_id"]
+            isOneToOne: false
+            referencedRelation: "theatres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theatre_sessions: {
         Row: {
           clwrota_external_id: string | null
