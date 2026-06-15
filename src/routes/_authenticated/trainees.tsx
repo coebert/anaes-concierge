@@ -515,15 +515,7 @@ function TraineesPage() {
                           Not yet started · {format(new Date(trainee.start_date), "d MMM yyyy")}
                         </Badge>
                       ) : null}
-                      {icuOnly ? (
-                        <Badge
-                          variant="outline"
-                          className="ml-2 text-xs border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                          title="All remaining assignments in this rotation are ICU shifts — no theatre lists scheduled."
-                        >
-                          ICU block only
-                        </Badge>
-                      ) : null}
+                      {icuOnly ? <IcuBlockBadge className="ml-2" /> : null}
                       {(trainee as { left_at?: string | null }).left_at ? (
                         <Badge
                           variant="outline"
