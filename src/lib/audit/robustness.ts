@@ -916,6 +916,12 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   ]);
 
   const theatreNameById = new Map((theatres ?? []).map((t) => [t.id, t.name]));
+  const inactiveTheatreIds = new Set(
+    (theatres ?? []).filter((t) => (t as { active?: boolean }).active === false).map((t) => t.id),
+  );
+  // Drop stale theatre_sessions attached to inactive theatres (e.g. legacy
+  // NHH) so they don't appear as unfilled lists in the day drilldown.
+  const ts = tsAll.filter((t) => !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id as string)));
   const specialtyNameById = new Map((specialties ?? []).map((s) => [s.id, s.name]));
 
   const profById = new Map(
