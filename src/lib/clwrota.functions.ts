@@ -2098,11 +2098,23 @@ export async function performRotaSync(
     // necessary for idempotence: only columns we KNOW a fresh value for
     // are sent, so a missing column on rerun preserves the prior value.
     const sessionBuckets = new Map<string, Array<Record<string, unknown>>>();
+    // Every bucket must include at least one NON-key column so PostgREST
+    // can generate a valid `ON CONFLICT DO UPDATE SET …` clause. Without
+    // it the `__` bucket (rows whose feed has neither specialty nor
+    // consultant) ran a key-only INSERT which, on conflict with an
+    // existing row, returned no row from RETURNING — so sessionIdByKey
+    // never learned that session's id, and every rota_assignment that
+    // referenced that key was then saved with theatre_session_id = NULL,
+    // making them disappear from /trainees as "unmatched theatre rows".
+    // Always writing `updated_at = now()` is the harmless no-op SET that
+    // both fixes RETURNING and gives us a sync-touch timestamp for debug.
+    const nowIso = new Date().toISOString();
     for (const d of allDrafts) {
       const base: Record<string, unknown> = {
         session_date: d.session_date,
         theatre_id: d.theatre_id,
         session: d.session,
+        updated_at: nowIso,
       };
       if (d.specialty_id != null) base.specialty_id = d.specialty_id;
       if (d.surgical_consultant != null) base.surgical_consultant = d.surgical_consultant;
