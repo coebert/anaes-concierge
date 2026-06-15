@@ -2475,7 +2475,8 @@ export async function performRotaSync(
     }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors`;
-    await supabaseAdmin.from("clwrota_sync_state").upsert({
+    const runOk = errors.length === 0;
+    const stateUpdate: Record<string, unknown> = {
       id: 1,
       last_sync_at: new Date().toISOString(),
       last_status: errors.length
@@ -2489,7 +2490,13 @@ export async function performRotaSync(
           ? warnings.slice(0, 3).map((w) => `${w.label}: ${w.reason}`).join("; ")
           : null,
       last_pulled_rows: rows.length,
-    });
+    };
+    // Stamp the "high water mark" only on a fully clean run. Incremental
+    // syncs use this timestamp to compute their from..to window, so
+    // advancing it on a partial run would cause changes inside the failed
+    // slice to be permanently skipped by the next incremental pass.
+    if (runOk) stateUpdate.last_successful_rota_sync_at = new Date().toISOString();
+    await supabaseAdmin.from("clwrota_sync_state").upsert(stateUpdate);
 
     const rotaDurationMs = Date.now() - startedAt;
     console.info(
