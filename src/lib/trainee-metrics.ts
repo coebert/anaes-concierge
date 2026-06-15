@@ -151,14 +151,33 @@ export function computeTraineeMetrics(
     "obstetrics_2nd",
     "consultant_in_charge",
   ]);
-  const onCallLists = assignments.filter(
-    (a) => a.duty_type != null && ONCALL_DUTY_TYPES.has(a.duty_type),
-  ).length;
   const ICU_DUTY_TYPES = new Set(["icu_trainee", "icu_ct2_plus"]);
   const OBSTETRICS_DUTY_TYPES = new Set(["obstetrics", "obstetrics_2nd"]);
-  const icuLists = assignments.filter(
+
+  // CLWRota seeds one row per half-day session. A whole-day ICU shift
+  // therefore arrives as AM + PM (sometimes + evening) rows on the same
+  // date — treating each row as a separate "shift" triples the reported
+  // ICU load. Collapse ICU rows to one shift per (trainee, date). Rows
+  // missing a session_date fall back to row identity so we never silently
+  // merge unrelated entries.
+  const icuRows = assignments.filter(
     (a) => a.duty_type != null && ICU_DUTY_TYPES.has(a.duty_type),
+  );
+  const icuShiftKey = (a: MetricAssignment, idx: number) =>
+    a.session_date ?? `__no-date-${idx}`;
+  const icuLists = new Set(icuRows.map((a, i) => icuShiftKey(a, i))).size;
+
+  // Same logic for on-call counting: ICU days collapse to one shift per
+  // date so they aren't triple-counted as three on-call sessions. Other
+  // on-call duty types keep per-session granularity (an evening on-call
+  // is a distinct commitment from a daytime on-call on the same date).
+  const nonIcuOnCall = assignments.filter(
+    (a) =>
+      a.duty_type != null &&
+      ONCALL_DUTY_TYPES.has(a.duty_type) &&
+      !ICU_DUTY_TYPES.has(a.duty_type),
   ).length;
+  const onCallLists = nonIcuOnCall + icuLists;
   const obstetricsLists = assignments.filter(
     (a) => a.duty_type != null && OBSTETRICS_DUTY_TYPES.has(a.duty_type),
   ).length;
@@ -166,6 +185,7 @@ export function computeTraineeMetrics(
   const onCallPct = totalAssignments > 0
     ? Math.round((onCallLists / totalAssignments) * 1000) / 10
     : null;
+
 
   // Only real lists (matched to a theatre_session) count toward the clinical
   // specialty breakdown — otherwise unmatched "solo" default rows pollute it
