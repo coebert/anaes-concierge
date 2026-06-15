@@ -43,31 +43,94 @@ function addDaysISO(iso: string, days: number): string {
 }
 
 /**
+ * A single trainee's sync_missing span, tagged with the metrics needed to
+ * prioritise it: how many working days are missing and which trainee it
+ * belongs to (so merged spans can count distinct trainees covered).
+ */
+interface SpanInput {
+  startISO: string;
+  endISO: string;
+  missingDays: number;
+  traineeId: string;
+}
+
+export interface MergedSpan {
+  startISO: string;
+  endISO: string;
+  /** Sum of missing weekdays across every trainee gap inside this span. */
+  missingDays: number;
+  /** Distinct trainees with at least one gap inside this span. */
+  trainees: number;
+}
+
+/**
  * Merge overlapping or near-adjacent date ranges so a single targeted sync
  * can cover several trainees' sync_missing gaps in one request. We pad the
  * join distance by `bridgeDays` (default 7) because the upstream CLWRota
  * report is windowed and one slightly wider request is cheaper than many
- * narrow ones.
+ * narrow ones. Aggregated `missingDays` / `trainees` metrics drive the
+ * prioritisation selector — the caller decides which merged span to sync
+ * first when time or API limits apply.
  */
-function mergeRanges(
-  ranges: Array<{ startISO: string; endISO: string }>,
-  bridgeDays = 7,
-): Array<{ startISO: string; endISO: string }> {
-  if (ranges.length === 0) return [];
-  const sorted = [...ranges].sort((a, b) =>
+export function mergeRanges(spans: SpanInput[], bridgeDays = 7): MergedSpan[] {
+  if (spans.length === 0) return [];
+  const sorted = [...spans].sort((a, b) =>
     a.startISO < b.startISO ? -1 : a.startISO > b.startISO ? 1 : 0,
   );
-  const merged: Array<{ startISO: string; endISO: string }> = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    const bridgeEnd = addDaysISO(last.endISO, bridgeDays);
-    if (sorted[i].startISO <= bridgeEnd) {
-      if (sorted[i].endISO > last.endISO) last.endISO = sorted[i].endISO;
+  type Acc = MergedSpan & { traineeSet: Set<string> };
+  const acc: Acc[] = [];
+  for (const s of sorted) {
+    const last = acc[acc.length - 1];
+    if (last && s.startISO <= addDaysISO(last.endISO, bridgeDays)) {
+      if (s.endISO > last.endISO) last.endISO = s.endISO;
+      last.missingDays += s.missingDays;
+      last.traineeSet.add(s.traineeId);
+      last.trainees = last.traineeSet.size;
     } else {
-      merged.push({ ...sorted[i] });
+      const set = new Set<string>([s.traineeId]);
+      acc.push({
+        startISO: s.startISO,
+        endISO: s.endISO,
+        missingDays: s.missingDays,
+        trainees: 1,
+        traineeSet: set,
+      });
     }
   }
-  return merged;
+  return acc.map(({ traineeSet: _omit, ...m }) => m);
+}
+
+export type SyncPriority = "coverage" | "recency" | "trainees";
+
+const PRIORITY_LABEL: Record<SyncPriority, string> = {
+  coverage: "Most missing days first",
+  recency: "Most recent gaps first",
+  trainees: "Most trainees affected first",
+};
+
+export function prioritiseSpans(spans: MergedSpan[], priority: SyncPriority): MergedSpan[] {
+  const sorted = [...spans];
+  switch (priority) {
+    case "coverage":
+      sorted.sort((a, b) =>
+        b.missingDays - a.missingDays ||
+        (a.startISO < b.startISO ? 1 : a.startISO > b.startISO ? -1 : 0),
+      );
+      break;
+    case "recency":
+      sorted.sort((a, b) =>
+        (a.endISO < b.endISO ? 1 : a.endISO > b.endISO ? -1 : 0) ||
+        b.missingDays - a.missingDays,
+      );
+      break;
+    case "trainees":
+      sorted.sort((a, b) =>
+        b.trainees - a.trainees ||
+        b.missingDays - a.missingDays,
+      );
+      break;
+  }
+  return sorted;
 }
 
 type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
