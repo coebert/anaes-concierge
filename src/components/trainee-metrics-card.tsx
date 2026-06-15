@@ -25,6 +25,8 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
     supervisedLists,
     onCallLists,
     onCallPct,
+    icuLists,
+    obstetricsLists,
     totalAssignments,
     specialtyBreakdown,
     warnings,
@@ -122,6 +124,10 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
             sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"}
           />
           <Metric label="Total assignments" value={totalAssignments.toString()} />
+        </dl>
+        <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
+          <Metric label="ICU shifts" value={icuLists.toString()} sub="day & on-call ICU" />
+          <Metric label="Obstetrics shifts" value={obstetricsLists.toString()} sub="labour ward" />
         </dl>
 
         <section aria-labelledby={`specialty-heading-${title.replace(/\s+/g, "-")}`}>

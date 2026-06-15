@@ -36,6 +36,8 @@ export type TraineeMetrics = {
   totalClinical: number;
   onCallLists: number;
   onCallPct: number | null;
+  icuLists: number;
+  obstetricsLists: number;
   totalAssignments: number;
   /** Theatre-duty rows with no matched theatre_session_id (unmatched CLWRota labels). */
   unmatchedTheatreRows: number;
@@ -151,6 +153,14 @@ export function computeTraineeMetrics(
   ]);
   const onCallLists = assignments.filter(
     (a) => a.duty_type != null && ONCALL_DUTY_TYPES.has(a.duty_type),
+  ).length;
+  const ICU_DUTY_TYPES = new Set(["icu_trainee", "icu_ct2_plus"]);
+  const OBSTETRICS_DUTY_TYPES = new Set(["obstetrics", "obstetrics_2nd"]);
+  const icuLists = assignments.filter(
+    (a) => a.duty_type != null && ICU_DUTY_TYPES.has(a.duty_type),
+  ).length;
+  const obstetricsLists = assignments.filter(
+    (a) => a.duty_type != null && OBSTETRICS_DUTY_TYPES.has(a.duty_type),
   ).length;
   const totalAssignments = assignments.length;
   const onCallPct = totalAssignments > 0
@@ -273,9 +283,12 @@ export function computeTraineeMetrics(
     totalClinical,
     onCallLists,
     onCallPct,
+    icuLists,
+    obstetricsLists,
     totalAssignments,
     unmatchedTheatreRows,
     warnings,
     specialtyBreakdown,
   };
 }
+
