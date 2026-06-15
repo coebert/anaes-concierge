@@ -43,31 +43,94 @@ function addDaysISO(iso: string, days: number): string {
 }
 
 /**
+ * A single trainee's sync_missing span, tagged with the metrics needed to
+ * prioritise it: how many working days are missing and which trainee it
+ * belongs to (so merged spans can count distinct trainees covered).
+ */
+interface SpanInput {
+  startISO: string;
+  endISO: string;
+  missingDays: number;
+  traineeId: string;
+}
+
+export interface MergedSpan {
+  startISO: string;
+  endISO: string;
+  /** Sum of missing weekdays across every trainee gap inside this span. */
+  missingDays: number;
+  /** Distinct trainees with at least one gap inside this span. */
+  trainees: number;
+}
+
+/**
  * Merge overlapping or near-adjacent date ranges so a single targeted sync
  * can cover several trainees' sync_missing gaps in one request. We pad the
  * join distance by `bridgeDays` (default 7) because the upstream CLWRota
  * report is windowed and one slightly wider request is cheaper than many
- * narrow ones.
+ * narrow ones. Aggregated `missingDays` / `trainees` metrics drive the
+ * prioritisation selector — the caller decides which merged span to sync
+ * first when time or API limits apply.
  */
-function mergeRanges(
-  ranges: Array<{ startISO: string; endISO: string }>,
-  bridgeDays = 7,
-): Array<{ startISO: string; endISO: string }> {
-  if (ranges.length === 0) return [];
-  const sorted = [...ranges].sort((a, b) =>
+export function mergeRanges(spans: SpanInput[], bridgeDays = 7): MergedSpan[] {
+  if (spans.length === 0) return [];
+  const sorted = [...spans].sort((a, b) =>
     a.startISO < b.startISO ? -1 : a.startISO > b.startISO ? 1 : 0,
   );
-  const merged: Array<{ startISO: string; endISO: string }> = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    const bridgeEnd = addDaysISO(last.endISO, bridgeDays);
-    if (sorted[i].startISO <= bridgeEnd) {
-      if (sorted[i].endISO > last.endISO) last.endISO = sorted[i].endISO;
+  type Acc = MergedSpan & { traineeSet: Set<string> };
+  const acc: Acc[] = [];
+  for (const s of sorted) {
+    const last = acc[acc.length - 1];
+    if (last && s.startISO <= addDaysISO(last.endISO, bridgeDays)) {
+      if (s.endISO > last.endISO) last.endISO = s.endISO;
+      last.missingDays += s.missingDays;
+      last.traineeSet.add(s.traineeId);
+      last.trainees = last.traineeSet.size;
     } else {
-      merged.push({ ...sorted[i] });
+      const set = new Set<string>([s.traineeId]);
+      acc.push({
+        startISO: s.startISO,
+        endISO: s.endISO,
+        missingDays: s.missingDays,
+        trainees: 1,
+        traineeSet: set,
+      });
     }
   }
-  return merged;
+  return acc.map(({ traineeSet: _omit, ...m }) => m);
+}
+
+export type SyncPriority = "coverage" | "recency" | "trainees";
+
+const PRIORITY_LABEL: Record<SyncPriority, string> = {
+  coverage: "Most missing days first",
+  recency: "Most recent gaps first",
+  trainees: "Most trainees affected first",
+};
+
+export function prioritiseSpans(spans: MergedSpan[], priority: SyncPriority): MergedSpan[] {
+  const sorted = [...spans];
+  switch (priority) {
+    case "coverage":
+      sorted.sort((a, b) =>
+        b.missingDays - a.missingDays ||
+        (a.startISO < b.startISO ? 1 : a.startISO > b.startISO ? -1 : 0),
+      );
+      break;
+    case "recency":
+      sorted.sort((a, b) =>
+        (a.endISO < b.endISO ? 1 : a.endISO > b.endISO ? -1 : 0) ||
+        b.missingDays - a.missingDays,
+      );
+      break;
+    case "trainees":
+      sorted.sort((a, b) =>
+        b.trainees - a.trainees ||
+        b.missingDays - a.missingDays,
+      );
+      break;
+  }
+  return sorted;
 }
 
 type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
@@ -94,6 +157,7 @@ function RotaGapsPage() {
   const [filter, setFilter] = useState("");
   const [hideClean, setHideClean] = useState(true);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
+  const [priority, setPriority] = useState<SyncPriority>("coverage");
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
@@ -208,16 +272,21 @@ function RotaGapsPage() {
   // across the currently filtered trainees. Pre/post-rotation and
   // LTFT/weekend days are excluded — re-fetching them won't add any rows.
   const syncTargets = useMemo(() => {
-    const spans: Array<{ startISO: string; endISO: string }> = [];
+    const spans: SpanInput[] = [];
     for (const r of rows) {
       for (const range of r.classified.ranges) {
         if (range.kind === "sync_missing") {
-          spans.push({ startISO: range.startISO, endISO: range.endISO });
+          spans.push({
+            startISO: range.startISO,
+            endISO: range.endISO,
+            missingDays: range.days,
+            traineeId: r.trainee.id,
+          });
         }
       }
     }
-    return mergeRanges(spans);
-  }, [rows]);
+    return prioritiseSpans(mergeRanges(spans), priority);
+  }, [rows, priority]);
 
   const syncableDays = useMemo(
     () => rows.reduce((sum, r) => sum + r.classified.counts.sync_missing, 0),
@@ -305,55 +374,93 @@ function RotaGapsPage() {
           </div>
 
           <Card>
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <CardContent className="flex flex-wrap items-end justify-between gap-3 p-4">
               <div className="text-sm">
                 <div className="font-medium">Targeted CLWRota sync</div>
                 <div className="text-xs text-muted-foreground">
                   {syncableDays > 0
-                    ? `Will fetch ${syncTargets.length} merged range${syncTargets.length === 1 ? "" : "s"} covering ${syncableDays} missing weekday${syncableDays === 1 ? "" : "s"}.`
+                    ? `Will fetch ${syncTargets.length} merged range${syncTargets.length === 1 ? "" : "s"} covering ${syncableDays} missing weekday${syncableDays === 1 ? "" : "s"}. Ranges run in priority order — stop any time to keep the highest-impact fills.`
                     : "No sync-missing gaps in the current filter — nothing to fetch."}
                 </div>
               </div>
-              <Button
-                onClick={runTargetedSync}
-                disabled={syncTargets.length === 0 || progress?.running}
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
-                {progress?.running
-                  ? `Syncing ${progress.current + 1} / ${progress.total}…`
-                  : "Sync gaps"}
-              </Button>
+              <div className="flex items-end gap-2">
+                <div className="w-56">
+                  <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
+                  <Select
+                    value={priority}
+                    onValueChange={(v) => setPriority(v as SyncPriority)}
+                    disabled={progress?.running}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(PRIORITY_LABEL) as SyncPriority[]).map((k) => (
+                        <SelectItem key={k} value={k}>{PRIORITY_LABEL[k]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={runTargetedSync}
+                  disabled={syncTargets.length === 0 || progress?.running}
+                  className="gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
+                  {progress?.running
+                    ? `Syncing ${progress.current + 1} / ${progress.total}…`
+                    : "Sync gaps"}
+                </Button>
+              </div>
             </CardContent>
-            {progress && progress.perRange.length > 0 && (
+            {syncTargets.length > 0 && (
               <CardContent className="border-t pt-3">
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  Planned ranges (in run order)
+                </div>
                 <ul className="divide-y rounded-md border text-sm">
-                  {progress.perRange.map((p) => (
-                    <li
-                      key={`${p.from}-${p.to}`}
-                      className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                    >
-                      <span className="font-mono text-xs">
-                        {formatDateGB(p.from)} → {formatDateGB(p.to)}
-                      </span>
-                      <span className="flex items-center gap-2 text-xs">
-                        {p.ok ? (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-600">
-                            {p.upserted ?? 0} upserted
+                  {syncTargets.map((t, i) => {
+                    const done = progress?.perRange.find(
+                      (p) => p.from === t.startISO && p.to === t.endISO,
+                    );
+                    const active = progress?.running && progress.current === i;
+                    return (
+                      <li
+                        key={`${t.startISO}-${t.endISO}`}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                            #{i + 1}
                           </Badge>
-                        ) : (
-                          <Badge variant="destructive">Failed</Badge>
-                        )}
-                        {p.message && (
-                          <span className="text-muted-foreground">{p.message}</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+                          <span className="font-mono text-xs">
+                            {formatDateGB(t.startISO)} → {formatDateGB(t.endISO)}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground">
+                            {t.missingDays} day{t.missingDays === 1 ? "" : "s"} · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
+                          </span>
+                          {done ? (
+                            done.ok ? (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                {done.upserted ?? 0} upserted
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" title={done.message}>Failed</Badge>
+                            )
+                          ) : active ? (
+                            <Badge variant="secondary">Running…</Badge>
+                          ) : progress?.running ? (
+                            <Badge variant="outline">Queued</Badge>
+                          ) : null}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </CardContent>
             )}
           </Card>
+
 
 
           {rows.length === 0 ? (
