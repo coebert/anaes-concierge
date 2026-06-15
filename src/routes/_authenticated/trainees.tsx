@@ -374,6 +374,19 @@ function TraineesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, rows, fromISO, toISO, asOfMs, today]);
 
+  const complianceSummary = useMemo(() => {
+    const total = data?.trainees.length ?? 0;
+    const inactive = (data?.trainees ?? []).filter(
+      (t) =>
+        (t as { left_at?: string | null }).left_at ||
+        (t as { active?: boolean | null }).active === false,
+    ).length;
+    const active = total - inactive;
+    const notYetStarted = notYetStartedTrainees.length;
+    const includedInCompliance = metricRows.length;
+    return { total, active, inactive, notYetStarted, includedInCompliance };
+  }, [data, notYetStartedTrainees, metricRows]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
@@ -390,6 +403,35 @@ function TraineesPage() {
           className="max-w-xs"
         />
       </div>
+      {data ? (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
+            <div>
+              <span className="font-semibold">{complianceSummary.includedInCompliance}</span>
+              <span className="ml-1 text-muted-foreground">
+                included in rota compliance checks
+              </span>
+            </div>
+            <span className="text-muted-foreground">·</span>
+            <div className="text-muted-foreground">
+              <span className="font-medium text-foreground">{complianceSummary.active}</span>{" "}
+              active of {complianceSummary.total} on record
+            </div>
+            {complianceSummary.inactive > 0 ? (
+              <div className="text-muted-foreground">
+                <span className="font-medium text-foreground">{complianceSummary.inactive}</span>{" "}
+                excluded (left Trust)
+              </div>
+            ) : null}
+            {complianceSummary.notYetStarted > 0 ? (
+              <div className="text-muted-foreground">
+                <span className="font-medium text-foreground">{complianceSummary.notYetStarted}</span>{" "}
+                excluded (not yet started)
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
       {notYetStartedTrainees.length > 0 ? (
         <Card>
           <CardHeader className="pb-2">
