@@ -3093,9 +3093,16 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
     const parsed = parseRows(text);
     const rows = parsed.rows;
 
-    const { data: theatres } = await supabaseAdmin.from("theatres").select("id, name");
+    const [{ data: theatres }, theatreAliases] = await Promise.all([
+      supabaseAdmin.from("theatres").select("id, name"),
+      loadTheatreNameAliases(),
+    ]);
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
+    // Merge admin-configured aliases (real names always win).
+    for (const [aliasKey, theatreId] of theatreAliases) {
+      if (!theatreByName.has(aliasKey)) theatreByName.set(aliasKey, theatreId);
+    }
 
     // Build the set of (theatre_id|date|session) keys the feed tags as Non-SAG,
     // PLUS the set of clwrota_external_ids of every individual non-SAG row so
