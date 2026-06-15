@@ -91,7 +91,7 @@ export async function performTraineeTheatreValidation(
 
   const { data: trainees, error: tErr } = await supabaseAdmin
     .from("profiles")
-    .select("id, full_name")
+    .select("id, full_name, rotation_end_date")
     .eq("grade", "trainee")
     .eq("active", true);
   if (tErr) throw new Error(tErr.message);
@@ -105,6 +105,7 @@ export async function performTraineeTheatreValidation(
       traineesWithTheatreRows: 0,
       fullyMatched: 0,
       mismatches: [],
+      onIcuBlock: [],
     };
   }
 
