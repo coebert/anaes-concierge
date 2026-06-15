@@ -303,10 +303,11 @@ export async function computeRobustness(
         session: string;
         specialty_id: string | null;
         surgical_consultant: string | null;
+        theatre_id: string | null;
       }>((from, to) =>
         supabase
           .from("theatre_sessions")
-          .select("id, session_date, session, specialty_id, surgical_consultant")
+          .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
           .gte("session_date", rangeStart)
           .lte("session_date", rangeEnd)
           .order("id", { ascending: true })
@@ -343,6 +344,19 @@ export async function computeRobustness(
       ),
     ]);
 
+  // Theatres marked inactive (e.g. "NHH (legacy)") may still have stale
+  // theatre_sessions rows from earlier syncs. Those phantom lists inflate
+  // the "required" count and surface as a false consultant shortfall even
+  // though every real theatre is fully staffed. Drop them up-front so they
+  // don't contribute to demand or coverage.
+  const { data: inactiveTheatreRows } = await supabase
+    .from("theatres")
+    .select("id")
+    .eq("active", false);
+  const inactiveTheatreIds = new Set(
+    (inactiveTheatreRows ?? []).map((t) => t.id as string),
+  );
+
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll
@@ -350,9 +364,13 @@ export async function computeRobustness(
       .map((s) => s.id),
   );
 
-  // Drop emergency / CEPOD sessions from the planned-list demand model.
+  // Drop emergency / CEPOD sessions from the planned-list demand model,
+  // and drop sessions attached to inactive theatres (stale rows from old
+  // syncs would otherwise look like an unfilled list).
   const theatreSessions = theatreSessionsRaw.filter(
-    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+    (t) =>
+      !isEmergencyTheatreSession(t, emergencySpecialtyIds) &&
+      !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id)),
   );
   const emergencySessionIds = new Set(
     theatreSessionsRaw
@@ -594,17 +612,18 @@ export async function computeListCoverage(
   options: RobustnessOptions = {},
 ): Promise<DayListCoverage[]> {
 
-  const [sessionsRaw, specialtiesAll] = await Promise.all([
+  const [sessionsRaw, specialtiesAll, inactiveTheatreRows] = await Promise.all([
     fetchAllRows<{
       id: string;
       session_date: string;
       session: string;
       specialty_id: string | null;
       surgical_consultant: string | null;
+      theatre_id: string | null;
     }>((from, to) =>
       supabase
         .from("theatre_sessions")
-        .select("id, session_date, session, specialty_id, surgical_consultant")
+        .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
         .gte("session_date", rangeStart)
         .lte("session_date", rangeEnd)
         .order("id", { ascending: true })
@@ -619,6 +638,7 @@ export async function computeListCoverage(
         .range(from, to),
       { rowKey: idKey, label: "list-coverage.specialties" },
     ),
+    supabase.from("theatres").select("id").eq("active", false).then((r) => r.data ?? []),
   ]);
 
 
@@ -627,8 +647,13 @@ export async function computeListCoverage(
       .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
       .map((s) => s.id),
   );
+  const inactiveTheatreIds = new Set(
+    (inactiveTheatreRows as Array<{ id: string }>).map((t) => t.id),
+  );
   const sessions = sessionsRaw.filter(
-    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+    (t) =>
+      !isEmergencyTheatreSession(t, emergencySpecialtyIds) &&
+      !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id)),
   );
 
   const tsIds = sessions.map((s) => s.id);
@@ -877,20 +902,26 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
       .select("training_level, specialty_id, required_sessions, required_solo, required_supervised"),
   ]);
 
-  const ts = theatreSessions ?? [];
-  const theatreIds = [...new Set(ts.map((t) => t.theatre_id).filter(Boolean))] as string[];
-  const specialtyIds = [...new Set(ts.map((t) => t.specialty_id).filter(Boolean))] as string[];
+  const tsAll = theatreSessions ?? [];
+  const theatreIds = [...new Set(tsAll.map((t) => t.theatre_id).filter(Boolean))] as string[];
+  const specialtyIds = [...new Set(tsAll.map((t) => t.specialty_id).filter(Boolean))] as string[];
 
   const [{ data: theatres }, { data: specialties }] = await Promise.all([
     theatreIds.length
-      ? supabase.from("theatres").select("id, name").in("id", theatreIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      ? supabase.from("theatres").select("id, name, active").in("id", theatreIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string; active: boolean }> }),
     specialtyIds.length
       ? supabase.from("specialties").select("id, name").in("id", specialtyIds)
       : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
   ]);
 
   const theatreNameById = new Map((theatres ?? []).map((t) => [t.id, t.name]));
+  const inactiveTheatreIds = new Set(
+    (theatres ?? []).filter((t) => (t as { active?: boolean }).active === false).map((t) => t.id),
+  );
+  // Drop stale theatre_sessions attached to inactive theatres (e.g. legacy
+  // NHH) so they don't appear as unfilled lists in the day drilldown.
+  const ts = tsAll.filter((t) => !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id as string)));
   const specialtyNameById = new Map((specialties ?? []).map((s) => [s.id, s.name]));
 
   const profById = new Map(
