@@ -73,24 +73,27 @@ export const getClwRotaSyncStatus = createServerFn({ method: "GET" })
     if (roleErr) throw new Error(roleErr.message);
     if (!isAdmin) throw new Error("Admin role required");
 
+    // After the admin check, switch to the service-role client. The cron
+    // RPC is restricted to service_role (never callable by signed-in
+    // users) so it must be invoked here, not via the user-scoped client.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     const [stateRes, metricsRes, cronRes] = await Promise.all([
-      supabase
+      supabaseAdmin
         .from("clwrota_sync_state")
         .select(
           "last_sync_at, last_successful_rota_sync_at, last_status, last_error, last_pulled_rows, sync_days_back, sync_days_ahead, incremental_days_back, incremental_days_ahead",
         )
         .eq("id", 1)
         .maybeSingle(),
-      supabase
+      supabaseAdmin
         .from("clwrota_sync_metrics")
         .select(
           "id, sync_kind, run_at, ok, duration_ms, rows_pulled, rows_upserted, rows_failed, rows_skipped_validation, errors_count, notes",
         )
         .order("run_at", { ascending: false })
         .limit(60),
-      // cron schema isn't exposed via PostgREST; the SECURITY DEFINER
-      // helper filters to clwrota* jobs and returns the latest runs.
-      supabase.rpc("list_clwrota_cron_runs", { p_limit: 50 }),
+      supabaseAdmin.rpc("list_clwrota_cron_runs", { p_limit: 50 }),
     ]);
 
     if (stateRes.error) throw new Error(stateRes.error.message);
