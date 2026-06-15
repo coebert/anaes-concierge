@@ -17,6 +17,7 @@ import {
   classifyConsultantAssignment,
   type SagMark,
 } from "@/lib/audit/consultant-non-sag-classify";
+import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
 
 const REQUIRED_TABLES = [
   "profiles",
