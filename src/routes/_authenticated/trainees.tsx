@@ -264,6 +264,18 @@ function TraineesPage() {
         const overall = progress.length
           ? Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length)
           : null;
+        const firstAssignmentDate = (data.allAssignmentsByStaff[t.id] ?? []).reduce<string | null>(
+          (earliest, a) => {
+            const d = a.session_date ?? null;
+            if (!d) return earliest;
+            return earliest === null || d < earliest ? d : earliest;
+          },
+          null,
+        );
+        const effectiveStartDate =
+          firstAssignmentDate && (!t.start_date || firstAssignmentDate < t.start_date)
+            ? firstAssignmentDate
+            : t.start_date;
         const rotationEnd =
           (t as { rotation_end_date?: string | null }).rotation_end_date ?? null;
         const icuOnly = isIcuBlockOnly(
@@ -271,7 +283,7 @@ function TraineesPage() {
           todayISO(),
           rotationEnd,
         );
-        return { trainee: t, progress, overall, icuOnly };
+        return { trainee: t, progress, overall, icuOnly, effectiveStartDate };
       })
       .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [data, filter]);
@@ -292,9 +304,9 @@ function TraineesPage() {
   const notYetStartedTrainees = useMemo(
     () =>
       rows
-        .filter(({ trainee }) => isNotYetStarted(trainee.start_date))
+        .filter(({ effectiveStartDate }) => isNotYetStarted(effectiveStartDate))
         .sort((a, b) =>
-          (a.trainee.start_date ?? "").localeCompare(b.trainee.start_date ?? ""),
+          (a.effectiveStartDate ?? "").localeCompare(b.effectiveStartDate ?? ""),
         ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, today],
@@ -303,8 +315,8 @@ function TraineesPage() {
   const metricRows = useMemo(() => {
     if (!data) return [];
     return rows
-      .filter(({ trainee }) => !isNotYetStarted(trainee.start_date))
-      .map(({ trainee, icuOnly }) => {
+      .filter(({ effectiveStartDate }) => !isNotYetStarted(effectiveStartDate))
+      .map(({ trainee, icuOnly, effectiveStartDate }) => {
         const all = data.allAssignmentsByStaff[trainee.id] ?? [];
         const filtered = all.filter((a) => {
           const d = a.session_date ?? "";
@@ -317,7 +329,7 @@ function TraineesPage() {
           icuOnly,
           metrics: computeTraineeMetrics(
             filtered,
-            trainee.start_date,
+            effectiveStartDate,
             data.tsSpecMap,
             data.specMap,
             asOfMs,
