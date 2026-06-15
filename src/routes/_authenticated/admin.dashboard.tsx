@@ -303,7 +303,8 @@ function AdminDashboardPage() {
           .from("rota_assignments")
           .select("staff_id, role_on_list, session, duty_type, theatre_session_id, session_date")
           .in("staff_id", ids)
-          .lte("session_date", today),
+          .lte("session_date", today)
+          .range(0, 49999),
         supabase.from("specialties").select("id, name"),
         supabase
           .from("rota_assignments")
@@ -326,7 +327,7 @@ function AdminDashboardPage() {
         // truncates and leaves sessions without a specialty.
         const results = await Promise.all(
           chunkIds(tsIds).map((c) =>
-            supabase.from("theatre_sessions").select("id, specialty_id").in("id", c),
+            supabase.from("theatre_sessions").select("id, specialty_id").in("id", c).range(0, 49999),
           ),
         );
         for (const { data: ts, error: e4 } of results) {

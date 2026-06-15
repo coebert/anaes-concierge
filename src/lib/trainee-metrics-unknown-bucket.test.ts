@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { chunkIds } from "./supabase-chunked";
 import { computeTraineeMetrics, type MetricAssignment } from "./trainee-metrics";
+import { isIcuBlockOnly } from "./audit/trainee-audit";
 
 /**
  * End-to-end regression check for the "Unknown specialty" truncation bug.
@@ -283,5 +284,44 @@ describe("'Unknown' specialty bucket — regression guard", () => {
     const buggyUnknown = buggyMetrics.specialtyBreakdown.find((b) => b.name === "Unknown");
     expect(buggyUnknown).toBeDefined();
     expect(buggyUnknown!.count).toBeGreaterThan(0);
+  });
+});
+
+describe("ICU block metric warning suppression", () => {
+  it("treats ICU weekdays plus trainee on-calls as an ICU block", () => {
+    expect(
+      isIcuBlockOnly(
+        [
+          { duty_type: "icu_ct2_plus", session_date: "2026-06-16" },
+          { duty_type: "icu_ct2_plus", session_date: "2026-06-17" },
+          { duty_type: "registrar_oncall", session_date: "2026-06-18" },
+        ],
+        "2026-06-15",
+        null,
+      ),
+    ).toBe(true);
+  });
+
+  it("suppresses no-matched-theatre-list warnings for ICU blocks", () => {
+    const metrics = computeTraineeMetrics(
+      [
+        {
+          role_on_list: "solo",
+          session: "am",
+          duty_type: "theatre",
+          theatre_session_id: null,
+          session_date: "2026-05-01",
+        },
+      ],
+      "2026-04-01",
+      new Map(),
+      new Map(),
+      new Date("2026-06-15").getTime(),
+      null,
+      true,
+    );
+
+    expect(metrics.daytimeLists).toBe(0);
+    expect(metrics.warnings).toEqual([]);
   });
 });

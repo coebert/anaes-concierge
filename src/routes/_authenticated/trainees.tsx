@@ -298,7 +298,7 @@ function TraineesPage() {
     if (!data) return [];
     return rows
       .filter(({ trainee }) => !isNotYetStarted(trainee.start_date))
-      .map(({ trainee }) => {
+      .map(({ trainee, icuOnly }) => {
         const all = data.allAssignmentsByStaff[trainee.id] ?? [];
         const filtered = all.filter((a) => {
           const d = a.session_date ?? "";
@@ -306,7 +306,6 @@ function TraineesPage() {
           if (d > toISO) return false;
           return true;
         });
-        const icuOnly = rows.find((r) => r.trainee.id === trainee.id)?.icuOnly ?? false;
         return {
           trainee,
           icuOnly,
