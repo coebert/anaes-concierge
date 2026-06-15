@@ -131,8 +131,45 @@ function SettingsPage() {
   // double-fire validation between the retry's sync and its own validate.
   const MAX_AUTO_RETRIES = 2;
   const retryInFlight = useRef(false);
+  // Signature of the previous retry's mismatch set — staff_id + unmatched
+  // count per trainee, sorted. If a retry produces an identical signature,
+  // the sync cannot fix these trainees and we abort early.
+  const lastMismatchSignature = useRef<string | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [retriedTrainees, setRetriedTrainees] = useState<string[]>([]);
+  const [stalledCause, setStalledCause] = useState<string | null>(null);
+
+  const summarizeRootCauses = (
+    mismatches: ReadonlyArray<{ likelyCause: string; likelyCauseExplanation: string }>,
+  ) => {
+    const counts = new Map<string, { n: number; example: string }>();
+    for (const m of mismatches) {
+      const entry = counts.get(m.likelyCause) ?? { n: 0, example: m.likelyCauseExplanation };
+      entry.n += 1;
+      counts.set(m.likelyCause, entry);
+    }
+    const labels: Record<string, string> = {
+      theatre_name_alias_missing: "theatre name alias missing in the mapping table",
+      no_theatre_sessions_on_those_days: "no theatre listing imported for those days (off-site / feed gap)",
+      mixed: "a mix of label mismatches and missing theatre listings",
+      unknown: "no diagnostic available",
+    };
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1].n - a[1].n);
+    const top = sorted[0];
+    if (!top) return { primary: "unknown", text: "" };
+    const breakdown = sorted
+      .map(([cause, v]) => `${v.n}× ${labels[cause] ?? cause}`)
+      .join("; ");
+    return { primary: top[0], text: breakdown, example: top[1].example };
+  };
+
+  const buildSignature = (
+    mismatches: ReadonlyArray<{ staff_id: string; unmatched: number }>,
+  ) =>
+    mismatches
+      .map((m) => `${m.staff_id}:${m.unmatched}`)
+      .sort()
+      .join("|");
 
   const validateMut = useMutation({
     mutationFn: () => validateMatches({ data: {} }),
@@ -147,8 +184,10 @@ function SettingsPage() {
           `Trainee theatre audit: all ${traineesWithTheatreRows} trainee(s) with theatre rows are fully matched${suffix}.`,
         );
         retryInFlight.current = false;
+        lastMismatchSignature.current = null;
         setRetryAttempt(0);
         setRetriedTrainees([]);
+        setStalledCause(null);
         return;
       }
 
@@ -158,6 +197,24 @@ function SettingsPage() {
         `${mismatches.length} of ${traineesWithTheatreRows} trainee(s) still have unmatched lists` +
         ` (${noMatch} with no matches, ${highRatio} with >50% unmatched, ${fullyMatched} fully matched).`;
 
+      const signature = buildSignature(mismatches);
+      const causes = summarizeRootCauses(mismatches);
+      const stalled =
+        retryAttempt > 0 && lastMismatchSignature.current === signature;
+
+      // Safeguard: if the previous retry produced the same mismatch set,
+      // further re-syncs won't help — surface the likely root cause and stop.
+      if (stalled) {
+        retryInFlight.current = false;
+        setStalledCause(causes.text);
+        toast.warning(
+          `Trainee theatre audit: ${summary} Mismatch set unchanged after retry ${retryAttempt} — stopping. Likely cause: ${causes.text}.`,
+        );
+        return;
+      }
+
+      lastMismatchSignature.current = signature;
+
       // Auto-retry: re-sync the rota window and re-validate, up to MAX_AUTO_RETRIES.
       if (retryAttempt < MAX_AUTO_RETRIES && rotaUrl.trim()) {
         const nextAttempt = retryAttempt + 1;
@@ -165,6 +222,7 @@ function SettingsPage() {
         setRetriedTrainees(
           mismatches.map((m) => m.full_name ?? m.staff_id),
         );
+        setStalledCause(null);
         retryInFlight.current = true;
         toast.message(
           `Trainee theatre audit: ${summary} Re-syncing rota (attempt ${nextAttempt}/${MAX_AUTO_RETRIES}) for ${mismatches.length} trainee(s)…`,
@@ -188,11 +246,14 @@ function SettingsPage() {
 
       // Out of retries (or no rota URL configured).
       retryInFlight.current = false;
+      setStalledCause(causes.text);
       const exhausted =
         retryAttempt >= MAX_AUTO_RETRIES
           ? ` after ${MAX_AUTO_RETRIES} targeted retries`
           : "";
-      toast.warning(`Trainee theatre audit${exhausted}: ${summary}`);
+      toast.warning(
+        `Trainee theatre audit${exhausted}: ${summary} Likely cause: ${causes.text}.`,
+      );
     },
     onError: (e: Error) => {
       retryInFlight.current = false;
