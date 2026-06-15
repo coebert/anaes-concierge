@@ -224,9 +224,12 @@ export type Database = {
         Row: {
           auto_reclassify_trainee_solo: boolean
           id: number
+          incremental_days_ahead: number
+          incremental_days_back: number
           last_error: string | null
           last_pulled_rows: number | null
           last_status: string | null
+          last_successful_rota_sync_at: string | null
           last_sync_at: string | null
           leave_report_url: string | null
           rota_report_url: string | null
@@ -237,9 +240,12 @@ export type Database = {
         Insert: {
           auto_reclassify_trainee_solo?: boolean
           id?: number
+          incremental_days_ahead?: number
+          incremental_days_back?: number
           last_error?: string | null
           last_pulled_rows?: number | null
           last_status?: string | null
+          last_successful_rota_sync_at?: string | null
           last_sync_at?: string | null
           leave_report_url?: string | null
           rota_report_url?: string | null
@@ -250,9 +256,12 @@ export type Database = {
         Update: {
           auto_reclassify_trainee_solo?: boolean
           id?: number
+          incremental_days_ahead?: number
+          incremental_days_back?: number
           last_error?: string | null
           last_pulled_rows?: number | null
           last_status?: string | null
+          last_successful_rota_sync_at?: string | null
           last_sync_at?: string | null
           leave_report_url?: string | null
           rota_report_url?: string | null
