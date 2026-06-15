@@ -19,24 +19,29 @@ import {
   syncClwRotaStaff,
   syncClwRotaRota,
   syncClwRotaLeave,
+  performStaffSync,
+  performRotaSync,
+  performLeaveSync,
 } from "./clwrota.functions";
 
-// Derive result types from the bound RPC fn (the .handler return type), so
-// the hooks expose the same shape callers previously read from the mutation.
-type Bound<T> = ReturnType<typeof useServerFn<T extends (...args: never) => unknown ? T : never>>;
-type ResultOf<T> = Awaited<ReturnType<Bound<T>>>;
+// Result shapes match the underlying handler bodies, which simply return the
+// performXxxSync helpers. Sourcing types from the helpers keeps the rich
+// payload type (counts, sample keys, diagnostics) for downstream consumers.
+export type SyncStaffResult = Awaited<ReturnType<typeof performStaffSync>>;
+export type SyncRotaResult = Awaited<ReturnType<typeof performRotaSync>>;
+export type SyncLeaveResult = Awaited<ReturnType<typeof performLeaveSync>>;
 
-export function useSyncClwRotaStaff(): () => Promise<ResultOf<typeof syncClwRotaStaff>> {
+export function useSyncClwRotaStaff(): () => Promise<SyncStaffResult> {
   const fn = useServerFn(syncClwRotaStaff);
-  return () => fn();
+  return () => fn() as Promise<SyncStaffResult>;
 }
 
-export function useSyncClwRotaRota(): () => Promise<ResultOf<typeof syncClwRotaRota>> {
+export function useSyncClwRotaRota(): () => Promise<SyncRotaResult> {
   const fn = useServerFn(syncClwRotaRota);
-  return () => fn();
+  return () => fn() as Promise<SyncRotaResult>;
 }
 
-export function useSyncClwRotaLeave(): () => Promise<ResultOf<typeof syncClwRotaLeave>> {
+export function useSyncClwRotaLeave(): () => Promise<SyncLeaveResult> {
   const fn = useServerFn(syncClwRotaLeave);
-  return () => fn();
+  return () => fn() as Promise<SyncLeaveResult>;
 }
