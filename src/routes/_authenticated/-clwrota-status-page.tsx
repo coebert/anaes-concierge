@@ -123,11 +123,11 @@ export function ClwRotaStatusPage() {
     refetchInterval: 60_000,
   });
 
-  const cronByJob = useMemo(
+  const cronByJob = useMemo<Map<string, ClwRotaCronRow[]>>(
     () => (data ? groupCronByJob(data.cron) : new Map()),
     [data],
   );
-  const metricsByKind = useMemo(
+  const metricsByKind = useMemo<Map<string, ClwRotaMetricRow[]>>(
     () => (data ? groupMetricsByKind(data.metrics) : new Map()),
     [data],
   );
