@@ -107,10 +107,13 @@ describe("trainee metrics — ICU/on-call-only past window with future theatre w
     expect(m.totalAssignments).toBe(70);
     expect(m.daytimeLists).toBe(0);
     expect(m.unmatchedTheatreRows).toBe(0);
-    // ICU + on-call duty types should all roll up into on-call counts.
-    expect(m.onCallLists).toBe(70);
+    // ICU rolls up to shift-days (30 whole-day ICU shifts, not 60 sessions)
+    // and the 10 evening on-calls keep per-session granularity. 30 + 10 = 40.
+    expect(m.onCallLists).toBe(40);
+    expect(m.icuLists).toBe(30);
     expect(codes(m)).toContain("no_theatre_rows_non_theatre_block");
     expect(codes(m)).not.toContain("no_theatre_session_rows");
+
   });
 
   it("keeps the original 'no theatre rows imported' warning when the past window has no clinical work at all", () => {
