@@ -106,15 +106,35 @@ function TraineesPage() {
       const tsIds = Array.from(
         new Set(allAssignments.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
       );
-      let tsMap = new Map<string, string | null>();
+      // PostgREST `.in()` filters are serialised into the request URL. With
+      // ~1000+ distinct UUIDs across all active trainees this URL exceeds
+      // the edge proxy's length limit and the response is silently truncated
+      // or rejected — theatre sessions that didn't make it back are then
+      // bucketed as "Unknown" specialty in the per-trainee metric card,
+      // hiding (for example) most of a trainee's ENT lists. Chunk the
+      // lookups so each request URL stays well under the limit.
+      // UUIDs are 36 chars + comma → 200 IDs ≈ 7.4KB.
+      const TS_ID_CHUNK = 200;
+      const tsIdChunks: string[][] = [];
+      for (let i = 0; i < tsIds.length; i += TS_ID_CHUNK) {
+        tsIdChunks.push(tsIds.slice(i, i + TS_ID_CHUNK));
+      }
+
+      const tsMap = new Map<string, string | null>();
       if (tsIds.length) {
-        const { data: ts, error: e5 } = await supabase
-          .from("theatre_sessions")
-          .select("id,specialty_id")
-          .in("id", tsIds)
-          .range(0, 49999);
-        if (e5) throw e5;
-        tsMap = new Map((ts ?? []).map((s) => [s.id, s.specialty_id]));
+        const tsResults = await Promise.all(
+          tsIdChunks.map((c) =>
+            supabase
+              .from("theatre_sessions")
+              .select("id,specialty_id")
+              .in("id", c)
+              .range(0, 49999),
+          ),
+        );
+        for (const { data: ts, error: e5 } of tsResults) {
+          if (e5) throw e5;
+          for (const s of ts ?? []) tsMap.set(s.id, s.specialty_id);
+        }
       }
 
       // Determine which theatre sessions have a supervisor-capable doctor
@@ -128,15 +148,21 @@ function TraineesPage() {
         // so PostgREST can't auto-resolve `profiles!inner` — disambiguate via
         // the staff_id FK constraint name. Without this hint the embed throws
         // and the whole query errors out, leaving the page empty.
-        const { data: tsAssigns, error: e6 } = await supabase
-          .from("rota_assignments")
-          .select("theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
-          .in("theatre_session_id", tsIds)
-          .in("profiles.grade", ["consultant", "sas"])
-          .range(0, 49999);
-        if (e6) throw e6;
-        for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
-          if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
+        const supResults = await Promise.all(
+          tsIdChunks.map((c) =>
+            supabase
+              .from("rota_assignments")
+              .select("theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
+              .in("theatre_session_id", c)
+              .in("profiles.grade", ["consultant", "sas"])
+              .range(0, 49999),
+          ),
+        );
+        for (const { data: tsAssigns, error: e6 } of supResults) {
+          if (e6) throw e6;
+          for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+            if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
+          }
         }
       }
 
