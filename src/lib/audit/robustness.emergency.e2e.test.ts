@@ -340,12 +340,26 @@ describe("computeRobustness — emergency list detection (conflicts & missing si
     // is unstaffed AND the consultant pool is fully spoken for, we get a
     // real shortfall — proving the previous tests' `required = 1` outcomes
     // aren't an artefact of the candidate being silently dropped for some
-    // other reason.
+    // other reason. Single-consultant pool, fully booked on the AM anchor.
     fixture.profiles = [
       { id: "c1", grade: "consultant", training_level: null, ltft_days_off: [], active: true },
-      { id: "c2", grade: "consultant", training_level: null, ltft_days_off: [], active: true },
     ];
-    seedAnchorLists(); // c1 covers AM anchor, c2 covers PM anchor
+    // AM anchor only — c1 covers it; no PM anchor needed for this control.
+    fixture.theatre_sessions.push({
+      id: "ts-anchor-am",
+      session_date: DATE,
+      session: "am",
+      specialty_id: SPEC_ORTHO,
+      surgical_consultant: "Dr Anchor",
+      theatre_id: T_ANCHOR,
+    });
+    fixture.rota_assignments.push({
+      staff_id: "c1",
+      session_date: DATE,
+      session: "am",
+      duty_type: "theatre",
+      theatre_session_id: "ts-anchor-am",
+    });
     addCandidate("am", {
       specialty_id: SPEC_ORTHO,
       surgical_consultant: "Dr Jones — routine list",
@@ -356,4 +370,5 @@ describe("computeRobustness — emergency list detection (conflicts & missing si
     expect(am.unfilled).toBe(1);
     expect(am.risk).toBe("shortfall");
   });
+
 });
