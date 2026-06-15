@@ -121,7 +121,7 @@ function SettingsPage() {
   });
 
   const staffMut = useMutation({
-    mutationFn: () => syncStaff({}),
+    mutationFn: () => syncStaff(),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["staff"] });
@@ -131,7 +131,7 @@ function SettingsPage() {
   });
 
   const rotaMut = useMutation({
-    mutationFn: () => syncRota({}),
+    mutationFn: () => syncRota(),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["rota"] });
@@ -142,7 +142,7 @@ function SettingsPage() {
   });
 
   const leaveMut = useMutation({
-    mutationFn: () => syncLeave({}),
+    mutationFn: () => syncLeave(),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["leave-requests"] });
