@@ -327,6 +327,7 @@ function TraineesPage() {
         return {
           trainee,
           icuOnly,
+          effectiveStartDate,
           metrics: computeTraineeMetrics(
             filtered,
             effectiveStartDate,
@@ -485,13 +486,13 @@ function TraineesPage() {
           <p className="text-sm text-muted-foreground">No trainees on record.</p>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
-            {metricRows.map(({ trainee, metrics, icuOnly }) => (
+            {metricRows.map(({ trainee, metrics, icuOnly, effectiveStartDate }) => (
               <TraineeMetricsCard
                 key={trainee.id}
                 title={trainee.full_name || trainee.email || "—"}
                 subtitle={trainee.training_level ?? "No level set"}
                 metrics={metrics}
-                startDate={metrics.weeksAtSalisbury === null ? trainee.start_date : undefined}
+                startDate={effectiveStartDate}
                 rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
                 icuBlockOnly={icuOnly}
               />
