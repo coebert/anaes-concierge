@@ -124,29 +124,90 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Targeted auto-retry: when the post-sync audit flags mismatched trainees,
+  // we re-run the rota sync (the step that establishes theatre_session_id
+  // links) and re-validate, up to MAX_AUTO_RETRIES times. The retry path
+  // bypasses the per-step auto-validate hook via `retryInFlight` so we don't
+  // double-fire validation between the retry's sync and its own validate.
+  const MAX_AUTO_RETRIES = 2;
+  const retryInFlight = useRef(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [retriedTrainees, setRetriedTrainees] = useState<string[]>([]);
+
   const validateMut = useMutation({
     mutationFn: () => validateMatches({ data: {} }),
     onSuccess: (res) => {
       const { mismatches, traineesWithTheatreRows, fullyMatched } = res;
       if (mismatches.length === 0) {
+        const suffix =
+          retryAttempt > 0
+            ? ` after ${retryAttempt} targeted retry${retryAttempt === 1 ? "" : "s"}`
+            : "";
         toast.success(
-          `Trainee theatre audit: all ${traineesWithTheatreRows} trainee(s) with theatre rows are fully matched.`,
+          `Trainee theatre audit: all ${traineesWithTheatreRows} trainee(s) with theatre rows are fully matched${suffix}.`,
         );
-      } else {
-        const noMatch = mismatches.filter((m) => m.reason === "no_matches").length;
-        const highRatio = mismatches.length - noMatch;
-        toast.warning(
-          `Trainee theatre audit: ${mismatches.length} of ${traineesWithTheatreRows} trainee(s) still have unmatched lists` +
-            ` (${noMatch} with no matches, ${highRatio} with >${Math.round(0.5 * 100)}% unmatched, ${fullyMatched} fully matched).`,
-        );
+        retryInFlight.current = false;
+        setRetryAttempt(0);
+        setRetriedTrainees([]);
+        return;
       }
+
+      const noMatch = mismatches.filter((m) => m.reason === "no_matches").length;
+      const highRatio = mismatches.length - noMatch;
+      const summary =
+        `${mismatches.length} of ${traineesWithTheatreRows} trainee(s) still have unmatched lists` +
+        ` (${noMatch} with no matches, ${highRatio} with >50% unmatched, ${fullyMatched} fully matched).`;
+
+      // Auto-retry: re-sync the rota window and re-validate, up to MAX_AUTO_RETRIES.
+      if (retryAttempt < MAX_AUTO_RETRIES && rotaUrl.trim()) {
+        const nextAttempt = retryAttempt + 1;
+        setRetryAttempt(nextAttempt);
+        setRetriedTrainees(
+          mismatches.map((m) => m.full_name ?? m.staff_id),
+        );
+        retryInFlight.current = true;
+        toast.message(
+          `Trainee theatre audit: ${summary} Re-syncing rota (attempt ${nextAttempt}/${MAX_AUTO_RETRIES}) for ${mismatches.length} trainee(s)…`,
+        );
+        // Fire-and-forget; rotaMut.onSuccess short-circuits validation while
+        // retryInFlight is true, then we kick a fresh validate ourselves.
+        rotaMut
+          .mutateAsync()
+          .then(() => {
+            setTimeout(() => validateMut.mutate(), 250);
+          })
+          .catch((err: unknown) => {
+            retryInFlight.current = false;
+            const msg = err instanceof Error ? err.message : String(err);
+            toast.error(
+              `Targeted re-sync (attempt ${nextAttempt}/${MAX_AUTO_RETRIES}) failed: ${msg}`,
+            );
+          });
+        return;
+      }
+
+      // Out of retries (or no rota URL configured).
+      retryInFlight.current = false;
+      const exhausted =
+        retryAttempt >= MAX_AUTO_RETRIES
+          ? ` after ${MAX_AUTO_RETRIES} targeted retry${MAX_AUTO_RETRIES === 1 ? "" : "s"}`
+          : "";
+      toast.warning(`Trainee theatre audit${exhausted}: ${summary}`);
     },
-    onError: (e: Error) => toast.error(`Trainee theatre audit failed: ${e.message}`),
+    onError: (e: Error) => {
+      retryInFlight.current = false;
+      toast.error(`Trainee theatre audit failed: ${e.message}`);
+    },
   });
 
   const runValidationAfter = () => {
-    // Re-validate after a small delay so React Query invalidations resolve
-    // and any in-flight backend writes have committed.
+    // Skip the auto-validation that follows a retry's sync — the retry path
+    // explicitly calls validateMut.mutate() once the rota write completes.
+    if (retryInFlight.current) return;
+    // Reset the retry counter at the start of a fresh user-initiated cycle so
+    // a later audit can use its own 2 attempts.
+    setRetryAttempt(0);
+    setRetriedTrainees([]);
     setTimeout(() => validateMut.mutate(), 250);
   };
 
