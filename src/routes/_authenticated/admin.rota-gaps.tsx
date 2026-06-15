@@ -374,55 +374,93 @@ function RotaGapsPage() {
           </div>
 
           <Card>
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <CardContent className="flex flex-wrap items-end justify-between gap-3 p-4">
               <div className="text-sm">
                 <div className="font-medium">Targeted CLWRota sync</div>
                 <div className="text-xs text-muted-foreground">
                   {syncableDays > 0
-                    ? `Will fetch ${syncTargets.length} merged range${syncTargets.length === 1 ? "" : "s"} covering ${syncableDays} missing weekday${syncableDays === 1 ? "" : "s"}.`
+                    ? `Will fetch ${syncTargets.length} merged range${syncTargets.length === 1 ? "" : "s"} covering ${syncableDays} missing weekday${syncableDays === 1 ? "" : "s"}. Ranges run in priority order — stop any time to keep the highest-impact fills.`
                     : "No sync-missing gaps in the current filter — nothing to fetch."}
                 </div>
               </div>
-              <Button
-                onClick={runTargetedSync}
-                disabled={syncTargets.length === 0 || progress?.running}
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
-                {progress?.running
-                  ? `Syncing ${progress.current + 1} / ${progress.total}…`
-                  : "Sync gaps"}
-              </Button>
+              <div className="flex items-end gap-2">
+                <div className="w-56">
+                  <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
+                  <Select
+                    value={priority}
+                    onValueChange={(v) => setPriority(v as SyncPriority)}
+                    disabled={progress?.running}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(PRIORITY_LABEL) as SyncPriority[]).map((k) => (
+                        <SelectItem key={k} value={k}>{PRIORITY_LABEL[k]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={runTargetedSync}
+                  disabled={syncTargets.length === 0 || progress?.running}
+                  className="gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
+                  {progress?.running
+                    ? `Syncing ${progress.current + 1} / ${progress.total}…`
+                    : "Sync gaps"}
+                </Button>
+              </div>
             </CardContent>
-            {progress && progress.perRange.length > 0 && (
+            {syncTargets.length > 0 && (
               <CardContent className="border-t pt-3">
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  Planned ranges (in run order)
+                </div>
                 <ul className="divide-y rounded-md border text-sm">
-                  {progress.perRange.map((p) => (
-                    <li
-                      key={`${p.from}-${p.to}`}
-                      className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                    >
-                      <span className="font-mono text-xs">
-                        {formatDateGB(p.from)} → {formatDateGB(p.to)}
-                      </span>
-                      <span className="flex items-center gap-2 text-xs">
-                        {p.ok ? (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-600">
-                            {p.upserted ?? 0} upserted
+                  {syncTargets.map((t, i) => {
+                    const done = progress?.perRange.find(
+                      (p) => p.from === t.startISO && p.to === t.endISO,
+                    );
+                    const active = progress?.running && progress.current === i;
+                    return (
+                      <li
+                        key={`${t.startISO}-${t.endISO}`}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                            #{i + 1}
                           </Badge>
-                        ) : (
-                          <Badge variant="destructive">Failed</Badge>
-                        )}
-                        {p.message && (
-                          <span className="text-muted-foreground">{p.message}</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+                          <span className="font-mono text-xs">
+                            {formatDateGB(t.startISO)} → {formatDateGB(t.endISO)}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground">
+                            {t.missingDays} day{t.missingDays === 1 ? "" : "s"} · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
+                          </span>
+                          {done ? (
+                            done.ok ? (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                {done.upserted ?? 0} upserted
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" title={done.message}>Failed</Badge>
+                            )
+                          ) : active ? (
+                            <Badge variant="secondary">Running…</Badge>
+                          ) : progress?.running ? (
+                            <Badge variant="outline">Queued</Badge>
+                          ) : null}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </CardContent>
             )}
           </Card>
+
 
 
           {rows.length === 0 ? (
