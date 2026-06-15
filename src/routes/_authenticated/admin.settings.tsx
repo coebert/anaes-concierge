@@ -124,12 +124,39 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const validateMut = useMutation({
+    mutationFn: () => validateMatches({ data: {} }),
+    onSuccess: (res) => {
+      const { mismatches, traineesWithTheatreRows, fullyMatched } = res;
+      if (mismatches.length === 0) {
+        toast.success(
+          `Trainee theatre audit: all ${traineesWithTheatreRows} trainee(s) with theatre rows are fully matched.`,
+        );
+      } else {
+        const noMatch = mismatches.filter((m) => m.reason === "no_matches").length;
+        const highRatio = mismatches.length - noMatch;
+        toast.warning(
+          `Trainee theatre audit: ${mismatches.length} of ${traineesWithTheatreRows} trainee(s) still have unmatched lists` +
+            ` (${noMatch} with no matches, ${highRatio} with >${Math.round(0.5 * 100)}% unmatched, ${fullyMatched} fully matched).`,
+        );
+      }
+    },
+    onError: (e: Error) => toast.error(`Trainee theatre audit failed: ${e.message}`),
+  });
+
+  const runValidationAfter = () => {
+    // Re-validate after a small delay so React Query invalidations resolve
+    // and any in-flight backend writes have committed.
+    setTimeout(() => validateMut.mutate(), 250);
+  };
+
   const staffMut = useMutation({
     mutationFn: () => syncStaff(),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["staff"] });
       void qc.invalidateQueries({ queryKey: ["profiles"] });
+      runValidationAfter();
       return res;
     },
   });
@@ -141,6 +168,7 @@ function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["rota"] });
       void qc.invalidateQueries({ queryKey: ["rota-assignments"] });
       void qc.invalidateQueries({ queryKey: ["theatre-sessions"] });
+      runValidationAfter();
       return res;
     },
   });
@@ -151,6 +179,7 @@ function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["leave-requests"] });
       void qc.invalidateQueries({ queryKey: ["leave"] });
+      runValidationAfter();
       return res;
     },
   });
