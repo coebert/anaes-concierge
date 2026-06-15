@@ -15,7 +15,8 @@ export type TraineeMetricsWarning = {
     | "low_real_list_count"
     | "no_real_lists"
     | "high_unmatched_ratio"
-    | "no_theatre_session_rows";
+    | "no_theatre_session_rows"
+    | "no_theatre_rows_non_theatre_block";
   message: string;
 };
 
