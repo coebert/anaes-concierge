@@ -11,7 +11,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { computeProgress } from "@/lib/competency-utils";
-import { computeFullAudit, type AuditAssignment, type AuditTheatreSession, type AuditTarget } from "@/lib/audit/trainee-audit";
+import { computeFullAudit, isIcuBlockOnly, type AuditAssignment, type AuditTheatreSession, type AuditTarget } from "@/lib/audit/trainee-audit";
+import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { ArrowLeft, AlertTriangle, Sparkles, Users } from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
