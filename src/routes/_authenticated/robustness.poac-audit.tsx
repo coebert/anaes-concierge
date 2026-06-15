@@ -408,13 +408,28 @@ function PoacAuditPage() {
 
       );
 
-      return { weeks, totals, drilldown, baselineViolations };
+      return {
+        weeks,
+        totals,
+        drilldown,
+        baselineViolations,
+        coverage: {
+          steps: [
+            { label: "theatre_sessions", ...sessionCov },
+            { label: "rota_assignments", ...assignmentCov },
+            { label: "specialties", ...specialtyCov },
+            { label: "profiles", ...staffCov },
+          ],
+        },
+      };
     },
   });
 
   const weeks = data?.weeks ?? [];
   const drilldown = data?.drilldown ?? [];
   const baselineViolations: PoacBaselineViolation[] = data?.baselineViolations ?? [];
+  const coverage = data?.coverage ?? null;
+
 
   const totals = data?.totals ?? {
     total: 0,
