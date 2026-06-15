@@ -411,6 +411,10 @@ function ConsultantAuditsPage() {
                   <span>NHH total</span>
                   <Badge variant="secondary">{r.nhhTotal}</Badge>
                 </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Weeks in period</span>
+                  <Badge variant="outline">{weeksInPeriod}</Badge>
+                </div>
               </CardContent>
             </Card>
           ))}
