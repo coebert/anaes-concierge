@@ -387,7 +387,7 @@ function TraineesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {notYetStartedTrainees.map(({ trainee }) => (
+                {notYetStartedTrainees.map(({ trainee, effectiveStartDate }) => (
                   <TableRow key={trainee.id}>
                     <TableCell>
                       <Link
@@ -407,8 +407,8 @@ function TraineesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {trainee.start_date
-                          ? format(new Date(trainee.start_date), "PPP")
+                        {effectiveStartDate
+                          ? format(new Date(effectiveStartDate), "PPP")
                           : "Unknown"}
                       </Badge>
                     </TableCell>
@@ -491,7 +491,7 @@ function TraineesPage() {
                 title={trainee.full_name || trainee.email || "—"}
                 subtitle={trainee.training_level ?? "No level set"}
                 metrics={metrics}
-                startDate={trainee.start_date}
+                startDate={metrics.weeksAtSalisbury === null ? trainee.start_date : undefined}
                 rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
                 icuBlockOnly={icuOnly}
               />
@@ -521,7 +521,7 @@ function TraineesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ trainee, progress, overall, icuOnly }) => (
+                {rows.map(({ trainee, progress, overall, icuOnly, effectiveStartDate }) => (
                   <TableRow key={trainee.id} className="cursor-pointer">
                     <TableCell>
                       <Link
@@ -531,9 +531,9 @@ function TraineesPage() {
                       >
                         {trainee.full_name || trainee.email}
                       </Link>
-                      {isNotYetStarted(trainee.start_date) ? (
+                      {isNotYetStarted(effectiveStartDate) ? (
                         <Badge variant="outline" className="ml-2 text-xs">
-                          Not yet started · {format(new Date(trainee.start_date), "d MMM yyyy")}
+                          Not yet started · {format(new Date(effectiveStartDate), "d MMM yyyy")}
                         </Badge>
                       ) : null}
                       {icuOnly ? <IcuBlockBadge className="ml-2" /> : null}
