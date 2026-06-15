@@ -422,7 +422,10 @@ function RotaGapsPage() {
                   <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
                   <Select
                     value={priority}
-                    onValueChange={(v) => setPriority(v as SyncPriority)}
+                    onValueChange={(v) => {
+                      setPriority(v as SyncPriority);
+                      setRunLimit(null);
+                    }}
                     disabled={progress?.running}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -433,22 +436,48 @@ function RotaGapsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="w-32">
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Run top
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={syncTargets.length || 1}
+                    value={effectiveLimit}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (!Number.isFinite(n)) setRunLimit(null);
+                      else setRunLimit(Math.max(1, Math.min(syncTargets.length, n)));
+                    }}
+                    disabled={syncTargets.length === 0 || progress?.running}
+                  />
+                </div>
                 <Button
                   onClick={runTargetedSync}
-                  disabled={syncTargets.length === 0 || progress?.running}
+                  disabled={plannedSlice.length === 0 || progress?.running}
                   className="gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
                   {progress?.running
                     ? `Syncing ${progress.current + 1} / ${progress.total}…`
-                    : "Sync gaps"}
+                    : `Sync top ${plannedSlice.length}`}
                 </Button>
               </div>
             </CardContent>
             {syncTargets.length > 0 && (
               <CardContent className="border-t pt-3">
-                <div className="mb-2 text-xs font-medium text-muted-foreground">
-                  Planned ranges (in run order)
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-medium text-muted-foreground">
+                    Planned ranges (in run order)
+                  </span>
+                  <span className="text-muted-foreground">
+                    Projected coverage of top {effectiveLimit}:{" "}
+                    <span className="font-medium text-foreground">
+                      {plannedCoverage.cumulativeDays} / {syncableDays} days
+                      {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                    </span>
+                  </span>
                 </div>
                 <ul className="divide-y rounded-md border text-sm">
                   {syncTargets.map((t, i) => {
