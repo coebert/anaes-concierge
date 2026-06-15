@@ -673,41 +673,68 @@ function SettingsPage() {
                   and an unmatched ratio below 50%.
                 </div>
               ) : (
-                <details className="rounded border border-border p-2" open>
-                  <summary className="cursor-pointer font-medium">
-                    Trainees with unmatched theatre rows ({validateMut.data.mismatches.length})
-                  </summary>
-                  <div className="mt-2 overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="text-muted-foreground">
-                        <tr className="text-left">
-                          <th className="py-1 pr-2">Trainee</th>
-                          <th className="py-1 pr-2">Matched</th>
-                          <th className="py-1 pr-2">Unmatched</th>
-                          <th className="py-1 pr-2">Unmatched %</th>
-                          <th className="py-1 pr-2">Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {validateMut.data.mismatches.map((m) => (
-                          <tr key={m.staff_id} className="border-t border-border/50">
-                            <td className="py-1 pr-2">{m.full_name ?? m.staff_id}</td>
-                            <td className="py-1 pr-2">{m.matched}</td>
-                            <td className="py-1 pr-2">{m.unmatched}</td>
-                            <td className="py-1 pr-2">
-                              {Math.round(m.unmatchedRatio * 100)}%
-                            </td>
-                            <td className="py-1 pr-2">
-                              {m.reason === "no_matches"
-                                ? "No matched lists"
-                                : "High unmatched ratio"}
-                            </td>
+                <>
+                  {stalledCause && (
+                    <div className="flex items-start gap-1.5 rounded border border-amber-300 bg-amber-50 px-2 py-1.5 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+                      <XCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                      <div>
+                        <div className="font-medium">
+                          Retry stopped — mismatch set unchanged.
+                        </div>
+                        <div>Likely root cause: {stalledCause}.</div>
+                      </div>
+                    </div>
+                  )}
+                  <details className="rounded border border-border p-2" open>
+                    <summary className="cursor-pointer font-medium">
+                      Trainees with unmatched theatre rows ({validateMut.data.mismatches.length})
+                    </summary>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="text-muted-foreground">
+                          <tr className="text-left">
+                            <th className="py-1 pr-2">Trainee</th>
+                            <th className="py-1 pr-2">Matched</th>
+                            <th className="py-1 pr-2">Unmatched</th>
+                            <th className="py-1 pr-2">Unmatched %</th>
+                            <th className="py-1 pr-2">Reason</th>
+                            <th className="py-1 pr-2">Likely cause</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
+                        </thead>
+                        <tbody>
+                          {validateMut.data.mismatches.map((m) => (
+                            <tr key={m.staff_id} className="border-t border-border/50 align-top">
+                              <td className="py-1 pr-2">{m.full_name ?? m.staff_id}</td>
+                              <td className="py-1 pr-2">{m.matched}</td>
+                              <td className="py-1 pr-2">{m.unmatched}</td>
+                              <td className="py-1 pr-2">
+                                {Math.round(m.unmatchedRatio * 100)}%
+                              </td>
+                              <td className="py-1 pr-2">
+                                {m.reason === "no_matches"
+                                  ? "No matched lists"
+                                  : "High unmatched ratio"}
+                              </td>
+                              <td className="py-1 pr-2" title={m.likelyCauseExplanation}>
+                                {m.likelyCause === "theatre_name_alias_missing"
+                                  ? "Alias missing"
+                                  : m.likelyCause === "no_theatre_sessions_on_those_days"
+                                    ? "No theatre listing"
+                                    : m.likelyCause === "mixed"
+                                      ? "Mixed"
+                                      : "Unknown"}
+                                {" "}
+                                <span className="text-muted-foreground">
+                                  ({m.unmatchedWithOtherTheatreSessions}/{m.unmatched} on days with a theatre)
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </>
               )}
             </div>
           )}
