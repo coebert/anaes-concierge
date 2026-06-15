@@ -2475,7 +2475,8 @@ export async function performRotaSync(
     }
 
     const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors`;
-    await supabaseAdmin.from("clwrota_sync_state").upsert({
+    const runOk = errors.length === 0;
+    const stateUpdate: Record<string, unknown> = {
       id: 1,
       last_sync_at: new Date().toISOString(),
       last_status: errors.length
@@ -2489,7 +2490,13 @@ export async function performRotaSync(
           ? warnings.slice(0, 3).map((w) => `${w.label}: ${w.reason}`).join("; ")
           : null,
       last_pulled_rows: rows.length,
-    });
+    };
+    // Stamp the "high water mark" only on a fully clean run. Incremental
+    // syncs use this timestamp to compute their from..to window, so
+    // advancing it on a partial run would cause changes inside the failed
+    // slice to be permanently skipped by the next incremental pass.
+    if (runOk) stateUpdate.last_successful_rota_sync_at = new Date().toISOString();
+    await supabaseAdmin.from("clwrota_sync_state").upsert(stateUpdate);
 
     const rotaDurationMs = Date.now() - startedAt;
     console.info(
@@ -2668,6 +2675,71 @@ export async function performRotaSyncChunked(
   agg.message = `Chunked rota sync: ${agg.slices} slice(s) of ≤${sliceDays}d, ${agg.assignmentsUpserted} assignments upserted, ${agg.errors.length} error(s).`;
   return agg;
 }
+
+/**
+ * Incremental rota sync: re-syncs only the date window that may have
+ * changed since the last fully-successful rota sync, instead of the
+ * full default 30-back / 120-ahead window.
+ *
+ * Why this exists
+ * ---------------
+ * The default (chunked) sync re-processes ~150 days of theatre rows on
+ * every run, which is the right behaviour for nightly backfills but is
+ * wasteful when an admin wants to top up after a small upstream edit, or
+ * when a more frequent intra-day cron just needs to pick up today's
+ * changes. The incremental mode keeps the upstream fetch — CLWRota
+ * ignores `start_date`/`end_date` and returns the full payload anyway —
+ * but narrows every downstream pass (staff/theatre matching, upserts,
+ * solo-rate validation) to a small window:
+ *
+ *     from = today − incremental_days_back (overlap, default 3d)
+ *     to   = today + incremental_days_ahead (default 14d)
+ *
+ * The "days back" overlap exists because upstream edits commonly touch
+ * rota dates a day or two in the past (late swaps, retroactive duty
+ * changes). Always re-syncing a few days back catches those without
+ * needing a full window pass.
+ *
+ * If no prior successful run exists (fresh project, or the high-water
+ * mark has never been stamped), we fall back to the chunked full sync so
+ * the first run still hydrates the database.
+ */
+export async function performRotaSyncIncremental(
+  opts: { daysBack?: number; daysAhead?: number } = {},
+): Promise<Awaited<ReturnType<typeof performRotaSync>> & { mode: "incremental" | "full"; windowFrom: string | null; windowTo: string | null }> {
+  const { data: settings } = await supabaseAdmin
+    .from("clwrota_sync_state")
+    .select("last_successful_rota_sync_at, incremental_days_back, incremental_days_ahead")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const hasPriorSuccess = !!settings?.last_successful_rota_sync_at;
+  if (!hasPriorSuccess) {
+    console.info("[clwrota] incremental sync: no prior successful run, falling back to chunked full sync");
+    const full = await performRotaSyncChunked();
+    return { ...full, mode: "full", windowFrom: null, windowTo: null };
+  }
+
+  const daysBack = Math.max(0, opts.daysBack ?? settings?.incremental_days_back ?? 3);
+  const daysAhead = Math.max(1, opts.daysAhead ?? settings?.incremental_days_ahead ?? 14);
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setUTCDate(start.getUTCDate() - daysBack);
+  const end = new Date(today);
+  end.setUTCDate(end.getUTCDate() + daysAhead);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const from = fmt(start);
+  const to = fmt(end);
+
+  console.info(`[clwrota] incremental rota sync window ${from}..${to} (last success ${settings.last_successful_rota_sync_at})`);
+
+  const r = await performRotaSync({ from, to });
+  return { ...r, mode: "incremental", windowFrom: from, windowTo: to };
+}
+
+
 
 
 

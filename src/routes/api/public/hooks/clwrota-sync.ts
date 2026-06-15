@@ -64,18 +64,30 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
         }
 
         // Dynamic import — keeps server-only modules out of the client bundle.
-        const { performStaffSync, performRotaSync, performRotaSyncChunked, performLeaveSync } =
-          await import("@/lib/clwrota.functions");
+        const {
+          performStaffSync,
+          performRotaSync,
+          performRotaSyncChunked,
+          performRotaSyncIncremental,
+          performLeaveSync,
+        } = await import("@/lib/clwrota.functions");
 
         const sliceParam = params.get("sliceDays");
         const sliceDays = sliceParam ? Math.max(1, Number(sliceParam) || 30) : undefined;
+        // `mode=incremental` re-syncs only the small window since the last
+        // successful run (default ~3d back, 14d ahead). Cheap enough to run
+        // on a sub-hourly cron. Ignored when an explicit from/to is given.
+        const mode = (params.get("mode") ?? "").toLowerCase();
+        const incremental = mode === "incremental";
 
         const runners: Record<Step, () => Promise<unknown>> = {
           staff: performStaffSync,
           rota: () =>
             fromDate && toDate
               ? performRotaSync({ from: fromDate, to: toDate })
-              : performRotaSyncChunked({ sliceDays }),
+              : incremental
+                ? performRotaSyncIncremental()
+                : performRotaSyncChunked({ sliceDays }),
           leave: performLeaveSync,
         };
 
