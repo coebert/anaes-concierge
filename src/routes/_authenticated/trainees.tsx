@@ -257,6 +257,7 @@ function TraineesPage() {
         assignmentsByStaff: clinicalByStaff,
         allAssignmentsByStaff: allByStaff,
         futureAssignmentsByStaff: futureByStaff,
+        supervisorSessionIds,
       };
     },
   });
@@ -361,6 +362,7 @@ function TraineesPage() {
             (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
             icuOnly,
             isJuniorTraineeLevel((trainee as { training_level?: string | null }).training_level),
+            data.supervisorSessionIds,
           ),
         };
       });

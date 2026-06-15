@@ -76,6 +76,7 @@ export function computeTraineeMetrics(
   rotationEndDate: string | null | undefined = null,
   suppressTheatreWarnings: boolean = false,
   juniorTrainee: boolean = false,
+  supervisorSessionIds: ReadonlySet<string> | null = null,
 ): TraineeMetrics {
   const start = startDate ? new Date(startDate) : null;
   const weeksAtSalisbury = start
@@ -86,16 +87,27 @@ export function computeTraineeMetrics(
     ? Math.max(0, Math.ceil((end.getTime() - now) / (1000 * 60 * 60 * 24 * 7)))
     : null;
 
-  // Treat a row's effective role as 'supervised' for junior trainees who are
-  // marked 'solo' on a theatre row — they are clinically never solo, and a
-  // missing consultant row is an import-quality artefact.
-  const effectiveRole = (a: MetricAssignment): string =>
-    juniorTrainee &&
-    a.role_on_list === "solo" &&
-    a.duty_type === "theatre" &&
-    a.theatre_session_id != null
-      ? "supervised"
-      : a.role_on_list;
+  // Treat a row's effective role as 'supervised' when:
+  //   - the trainee is too junior to ever run a list solo, OR
+  //   - the same theatre session has a consultant/SAS doctor rostered
+  //     (the trainee is marked "solo" only because the clwrota import
+  //     defaults role_on_list to "solo" when it can't pin a supervisor on
+  //     the row). Without this, the overview's solo counts disagree with
+  //     the per-trainee detail page, which already applies the same rule.
+  const effectiveRole = (a: MetricAssignment): string => {
+    if (
+      a.role_on_list !== "solo" ||
+      a.duty_type !== "theatre" ||
+      a.theatre_session_id == null
+    ) {
+      return a.role_on_list;
+    }
+    if (juniorTrainee) return "supervised";
+    if (supervisorSessionIds && supervisorSessionIds.has(a.theatre_session_id)) {
+      return "supervised";
+    }
+    return a.role_on_list;
+  };
 
   // A real anaesthetic list requires a theatre_session_id (i.e. it was matched
   // to a known theatre booking on import). Rows with duty_type='theatre' but
