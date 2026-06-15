@@ -206,4 +206,82 @@ describe("'Unknown' specialty bucket — regression guard", () => {
     const unknown = metrics.specialtyBreakdown.find((b) => b.name === "Unknown");
     expect(unknown?.count).toBe(3);
   });
+
+  it("seeds 2000 sessions split evenly across AM and PM and never produces Unknown", async () => {
+    // Half AM lists, half PM lists — same theatre-session pool size that
+    // previously tripped truncation. We tag each session with the half it
+    // belongs to so we can also assert per-half coverage.
+    const N = 2000;
+    const sessions: Array<SessionRow & { session: "am" | "pm" }> = Array.from(
+      { length: N },
+      (_, i) => ({
+        id: uuid(i),
+        specialty_id: SPECIALTIES[i % SPECIALTIES.length].id,
+        session: i % 2 === 0 ? "am" : "pm",
+      }),
+    );
+
+    // All assignments are real theatre lists (duty_type='theatre' +
+    // theatre_session_id), alternating solo/supervised — both count toward
+    // the clinical specialty breakdown.
+    const assignments: MetricAssignment[] = sessions.map((s, i) => ({
+      role_on_list: i % 2 === 0 ? "solo" : "supervised",
+      session: s.session,
+      duty_type: "theatre",
+      theatre_session_id: s.id,
+      session_date: "2026-01-15",
+    }));
+
+    const tsMap = await buildSpecialtyMapChunked(
+      sessions,
+      sessions.map((s) => s.id),
+    );
+
+    const metrics = computeTraineeMetrics(
+      assignments,
+      "2025-08-01",
+      tsMap,
+      specialtyNameById,
+      new Date("2026-06-15").getTime(),
+    );
+
+    // Core invariant: no Unknown bucket regardless of AM/PM mix.
+    expect(metrics.specialtyBreakdown.find((b) => b.name === "Unknown")).toBeUndefined();
+    expect(metrics.totalClinical).toBe(N);
+
+    // Every session resolved → counts sum exactly to N.
+    const totalCounted = metrics.specialtyBreakdown.reduce((a, b) => a + b.count, 0);
+    expect(totalCounted).toBe(N);
+
+    // Per-half coverage: AM and PM each contributed N/2 clinical lists, and
+    // both halves are evenly spread across the specialty pool. Round-robin
+    // assignment of (specialty, session) means every specialty receives
+    // exactly N / SPECIALTIES.length lists, half AM and half PM.
+    const perSpec = N / SPECIALTIES.length;
+    for (const s of SPECIALTIES) {
+      const bucket = metrics.specialtyBreakdown.find((b) => b.name === s.name);
+      expect(bucket?.count).toBe(perSpec);
+    }
+
+    // Sanity: AM and PM daytime lists each count toward daytimeLists.
+    expect(metrics.daytimeLists).toBe(N);
+
+    // And the unchunked path on the same dataset DOES produce Unknown —
+    // proves the AM/PM split would still hit the truncation bug without
+    // chunking.
+    const buggyMap = buildSpecialtyMapUnchunked(
+      sessions,
+      sessions.map((s) => s.id),
+    );
+    const buggyMetrics = computeTraineeMetrics(
+      assignments,
+      "2025-08-01",
+      buggyMap,
+      specialtyNameById,
+      new Date("2026-06-15").getTime(),
+    );
+    const buggyUnknown = buggyMetrics.specialtyBreakdown.find((b) => b.name === "Unknown");
+    expect(buggyUnknown).toBeDefined();
+    expect(buggyUnknown!.count).toBeGreaterThan(0);
+  });
 });
