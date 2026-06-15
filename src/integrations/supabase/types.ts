@@ -1145,6 +1145,7 @@ export type Database = {
         }
         Returns: string
       }
+      trigger_clwrota_sync: { Args: { p_step: string }; Returns: number }
     }
     Enums: {
       access_request_status: "pending" | "approved" | "declined"
