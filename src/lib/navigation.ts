@@ -133,6 +133,8 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Briefcase, group: "setup", roles: ["admin"] },
   { id: "setup-theatres", label: "Theatres", to: "/admin/theatres",
     icon: Building2, group: "setup", roles: ["admin"] },
+  { id: "setup-theatre-aliases", label: "Theatre name aliases", to: "/admin/theatre-aliases",
+    icon: Building2, group: "setup", roles: ["admin"] },
   { id: "setup-duty-map", label: "Duty mappings", to: "/admin/duty-mappings",
     icon: Wrench, group: "setup", roles: ["admin"] },
   { id: "setup-duty-cat", label: "Duty categories", to: "/admin/duty-categories",
