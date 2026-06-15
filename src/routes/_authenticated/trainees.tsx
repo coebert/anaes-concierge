@@ -266,6 +266,11 @@ function TraineesPage() {
     if (!data) return [];
     return data.trainees
       .filter((t) => {
+        // Exclude trainees who have left the Trust from the current view and
+        // from all derived compliance/metrics. Departure is signalled by
+        // either an explicit `left_at` date or `active=false`.
+        if ((t as { left_at?: string | null }).left_at) return false;
+        if ((t as { active?: boolean | null }).active === false) return false;
         if (!filter) return true;
         const q = filter.toLowerCase();
         return (
