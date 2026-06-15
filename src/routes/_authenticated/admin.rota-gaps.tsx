@@ -157,6 +157,7 @@ function RotaGapsPage() {
   const [filter, setFilter] = useState("");
   const [hideClean, setHideClean] = useState(true);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
+  const [priority, setPriority] = useState<SyncPriority>("coverage");
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
