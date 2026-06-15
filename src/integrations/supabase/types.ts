@@ -1145,6 +1145,11 @@ export type Database = {
         }
         Returns: string
       }
+      trigger_clwrota_sync: { Args: { p_step: string }; Returns: number }
+      upsert_vault_secret: {
+        Args: { p_description?: string; p_name: string; p_secret: string }
+        Returns: string
+      }
     }
     Enums: {
       access_request_status: "pending" | "approved" | "declined"
