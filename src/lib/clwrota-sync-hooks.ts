@@ -21,21 +21,22 @@ import {
   syncClwRotaLeave,
 } from "./clwrota.functions";
 
-type SyncStaffResult = Awaited<ReturnType<typeof syncClwRotaStaff>>;
-type SyncRotaResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
-type SyncLeaveResult = Awaited<ReturnType<typeof syncClwRotaLeave>>;
+// Derive result types from the bound RPC fn (the .handler return type), so
+// the hooks expose the same shape callers previously read from the mutation.
+type Bound<T> = ReturnType<typeof useServerFn<T extends (...args: never) => unknown ? T : never>>;
+type ResultOf<T> = Awaited<ReturnType<Bound<T>>>;
 
-export function useSyncClwRotaStaff(): () => Promise<SyncStaffResult> {
+export function useSyncClwRotaStaff(): () => Promise<ResultOf<typeof syncClwRotaStaff>> {
   const fn = useServerFn(syncClwRotaStaff);
   return () => fn();
 }
 
-export function useSyncClwRotaRota(): () => Promise<SyncRotaResult> {
+export function useSyncClwRotaRota(): () => Promise<ResultOf<typeof syncClwRotaRota>> {
   const fn = useServerFn(syncClwRotaRota);
   return () => fn();
 }
 
-export function useSyncClwRotaLeave(): () => Promise<SyncLeaveResult> {
+export function useSyncClwRotaLeave(): () => Promise<ResultOf<typeof syncClwRotaLeave>> {
   const fn = useServerFn(syncClwRotaLeave);
   return () => fn();
 }
