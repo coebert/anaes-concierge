@@ -44,6 +44,28 @@ export type TraineeMetrics = {
   specialtyBreakdown: Array<{ name: string; count: number; percent: number }>;
 };
 
+/**
+ * Training levels at which a trainee is too junior to ever run a theatre list
+ * solo. Any imported `role_on_list='solo'` row for a doctor at one of these
+ * levels is treated as `supervised` for metric purposes — the clwrota import
+ * defaults to "solo" when it can't determine a supervisor, and a missing
+ * consultant row on a junior trainee's list is a data-quality artefact, not
+ * a clinical reality.
+ */
+export const JUNIOR_TRAINEE_LEVELS: ReadonlySet<string> = new Set([
+  "FY2",
+  "ACCS",
+  "CT1",
+  "CT2",
+  "ST1",
+  "ST2",
+]);
+
+export function isJuniorTraineeLevel(level: string | null | undefined): boolean {
+  return !!level && JUNIOR_TRAINEE_LEVELS.has(level.trim().toUpperCase().replace(/\s+/g, ""))
+    || (!!level && JUNIOR_TRAINEE_LEVELS.has(level.trim()));
+}
+
 export function computeTraineeMetrics(
   assignments: MetricAssignment[],
   startDate: string | null | undefined,
@@ -52,6 +74,7 @@ export function computeTraineeMetrics(
   now: number = Date.now(),
   rotationEndDate: string | null | undefined = null,
   suppressTheatreWarnings: boolean = false,
+  juniorTrainee: boolean = false,
 ): TraineeMetrics {
   const start = startDate ? new Date(startDate) : null;
   const weeksAtSalisbury = start
@@ -61,6 +84,17 @@ export function computeTraineeMetrics(
   const weeksRemaining = end
     ? Math.max(0, Math.ceil((end.getTime() - now) / (1000 * 60 * 60 * 24 * 7)))
     : null;
+
+  // Treat a row's effective role as 'supervised' for junior trainees who are
+  // marked 'solo' on a theatre row — they are clinically never solo, and a
+  // missing consultant row is an import-quality artefact.
+  const effectiveRole = (a: MetricAssignment): string =>
+    juniorTrainee &&
+    a.role_on_list === "solo" &&
+    a.duty_type === "theatre" &&
+    a.theatre_session_id != null
+      ? "supervised"
+      : a.role_on_list;
 
   // A real anaesthetic list requires a theatre_session_id (i.e. it was matched
   // to a known theatre booking on import). Rows with duty_type='theatre' but
@@ -78,11 +112,11 @@ export function computeTraineeMetrics(
   const daytimeLists = daytimeAssignments.length;
   const soloLists = assignments.filter(
     (a) =>
-      a.role_on_list === "solo" &&
+      effectiveRole(a) === "solo" &&
       a.duty_type === "theatre" &&
       a.theatre_session_id != null,
   ).length;
-  const soloDaytimeLists = daytimeAssignments.filter((a) => a.role_on_list === "solo").length;
+  const soloDaytimeLists = daytimeAssignments.filter((a) => effectiveRole(a) === "solo").length;
   const soloDaytimePct = daytimeLists > 0
     ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10
     : null;
