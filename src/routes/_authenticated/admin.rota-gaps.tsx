@@ -204,6 +204,57 @@ function RotaGapsPage() {
   const totalGapDays = rows.reduce((sum, r) => sum + r.report.totalMissingDays, 0);
   const totalRanges = rows.reduce((sum, r) => sum + r.report.ranges.length, 0);
 
+  // Targeted sync covers only the date spans classified as `sync_missing`
+  // across the currently filtered trainees. Pre/post-rotation and
+  // LTFT/weekend days are excluded — re-fetching them won't add any rows.
+  const syncTargets = useMemo(() => {
+    const spans: Array<{ startISO: string; endISO: string }> = [];
+    for (const r of rows) {
+      for (const range of r.classified.ranges) {
+        if (range.kind === "sync_missing") {
+          spans.push({ startISO: range.startISO, endISO: range.endISO });
+        }
+      }
+    }
+    return mergeRanges(spans);
+  }, [rows]);
+
+  const syncableDays = useMemo(
+    () => rows.reduce((sum, r) => sum + r.classified.counts.sync_missing, 0),
+    [rows],
+  );
+
+  async function runTargetedSync() {
+    if (syncTargets.length === 0) return;
+    setProgress({ running: true, current: 0, total: syncTargets.length, perRange: [] });
+    const perRange: SyncProgress["perRange"] = [];
+    for (let i = 0; i < syncTargets.length; i++) {
+      const { startISO, endISO } = syncTargets[i];
+      setProgress({ running: true, current: i, total: syncTargets.length, perRange: [...perRange] });
+      try {
+        const res: SyncResult = await syncRota({
+          data: { from: startISO, to: endISO },
+        });
+        perRange.push({
+          from: startISO,
+          to: endISO,
+          ok: res.ok !== false,
+          message: res.message,
+          upserted: res.assignmentsUpserted,
+        });
+      } catch (err) {
+        perRange.push({
+          from: startISO,
+          to: endISO,
+          ok: false,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    setProgress({ running: false, current: syncTargets.length, total: syncTargets.length, perRange });
+    await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
