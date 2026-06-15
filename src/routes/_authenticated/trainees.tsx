@@ -24,6 +24,7 @@ import { compareBySurname } from "@/lib/name-sort";
 import { chunkIds } from "@/lib/supabase-chunked";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
+import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
