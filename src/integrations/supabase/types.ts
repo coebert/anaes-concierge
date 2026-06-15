@@ -1140,6 +1140,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_clwrota_cron_runs: {
+        Args: { p_limit?: number }
+        Returns: {
+          active: boolean
+          command: string
+          end_time: string
+          jobname: string
+          return_message: string
+          runid: number
+          schedule: string
+          start_time: string
+          status: string
+        }[]
+      }
       mark_departed_trainees: {
         Args: never
         Returns: {
