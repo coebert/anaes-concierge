@@ -50,10 +50,10 @@ function TraineesPage() {
   const { hasRole } = useAuth();
   const [filter, setFilter] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = useState<Date | undefined>(new Date());
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
 
   const [debouncedFrom, setDebouncedFrom] = useState<Date | undefined>(undefined);
-  const [debouncedTo, setDebouncedTo] = useState<Date | undefined>(new Date());
+  const [debouncedTo, setDebouncedTo] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -289,11 +289,11 @@ function TraineesPage() {
   }, [data, filter]);
 
   const { fromISO, toISO, asOfMs } = useMemo(() => {
-    const to = debouncedTo ?? new Date();
+    const to = debouncedTo ?? null;
     return {
       fromISO: debouncedFrom ? format(debouncedFrom, "yyyy-MM-dd") : null,
-      toISO: format(to, "yyyy-MM-dd"),
-      asOfMs: to.getTime(),
+      toISO: to ? format(to, "yyyy-MM-dd") : null,
+      asOfMs: (to ?? new Date()).getTime(),
     };
   }, [debouncedFrom, debouncedTo]);
 
@@ -321,7 +321,7 @@ function TraineesPage() {
         const filtered = all.filter((a) => {
           const d = a.session_date ?? "";
           if (fromISO && d < fromISO) return false;
-          if (d > toISO) return false;
+          if (toISO && d > toISO) return false;
           return true;
         });
         return {
@@ -468,7 +468,7 @@ function TraineesPage() {
               size="sm"
               onClick={() => {
                 setFromDate(undefined);
-                setToDate(new Date());
+                setToDate(undefined);
               }}
             >
               Reset
@@ -477,8 +477,10 @@ function TraineesPage() {
         </div>
         <p className="text-xs text-muted-foreground">
           {fromISO
-            ? `Counting assignments from ${fromISO} through ${toISO}.`
-            : `Counting all assignments up to ${toISO}.`}
+            ? `Counting assignments from ${fromISO}${toISO ? ` through ${toISO}` : " onward"}.`
+            : toISO
+              ? `Counting all assignments up to ${toISO}.`
+              : "Counting all imported assignments."}
         </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
