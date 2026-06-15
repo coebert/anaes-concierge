@@ -1602,6 +1602,29 @@ export function resolveOffsiteTheatreAlias(
   return undefined;
 }
 
+/**
+ * Load admin-configured theatre name aliases. Returns a map of
+ * lowercased/trimmed alias → theatre_id for the active rows only.
+ *
+ * Aliases let coordinators teach the sync that an imported rota label
+ * (e.g. "Main Theatre 3", "T3 (NHH)", "Endoscopy Suite") maps to a known
+ * canonical theatre, without needing a code change.
+ */
+async function loadTheatreNameAliases(): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const { data, error } = await supabaseAdmin
+    .from("theatre_name_aliases")
+    .select("alias, theatre_id, active")
+    .eq("active", true);
+  if (error || !data) return out;
+  for (const row of data) {
+    const key = (row.alias ?? "").toLowerCase().trim();
+    if (!key) continue;
+    out.set(key, row.theatre_id);
+  }
+  return out;
+}
+
 async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
   const { data, error } = await supabaseAdmin
     .from("duty_type_mappings")
@@ -1755,11 +1778,18 @@ export async function performRotaSync(
       };
     }
 
-    const [{ data: profiles }, { data: theatres }, { data: specialties }, dutyMappings] = await Promise.all([
+    const [
+      { data: profiles },
+      { data: theatres },
+      { data: specialties },
+      dutyMappings,
+      theatreAliases,
+    ] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id, grade, training_level"),
       supabaseAdmin.from("theatres").select("id, name"),
       supabaseAdmin.from("specialties").select("id, name"),
       loadDutyTypeMappings(),
+      loadTheatreNameAliases(),
     ]);
 
 
@@ -1775,6 +1805,12 @@ export async function performRotaSync(
     }
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
+    // Merge admin-configured aliases so the same lookup chain (exact match,
+    // consultant-field fallback, and resolveOffsiteTheatreAlias's internal
+    // lookups) all benefit. Real theatre names always win over aliases.
+    for (const [aliasKey, theatreId] of theatreAliases) {
+      if (!theatreByName.has(aliasKey)) theatreByName.set(aliasKey, theatreId);
+    }
     const specialtyByName = new Map<string, string>();
     for (const s of specialties ?? []) specialtyByName.set(s.name.toLowerCase().trim(), s.id);
 
@@ -3057,9 +3093,16 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
     const parsed = parseRows(text);
     const rows = parsed.rows;
 
-    const { data: theatres } = await supabaseAdmin.from("theatres").select("id, name");
+    const [{ data: theatres }, theatreAliases] = await Promise.all([
+      supabaseAdmin.from("theatres").select("id, name"),
+      loadTheatreNameAliases(),
+    ]);
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
+    // Merge admin-configured aliases (real names always win).
+    for (const [aliasKey, theatreId] of theatreAliases) {
+      if (!theatreByName.has(aliasKey)) theatreByName.set(aliasKey, theatreId);
+    }
 
     // Build the set of (theatre_id|date|session) keys the feed tags as Non-SAG,
     // PLUS the set of clwrota_external_ids of every individual non-SAG row so

@@ -41,6 +41,7 @@ import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_au
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
+import { Route as AuthenticatedAdminTheatreAliasesRouteImport } from './routes/_authenticated/admin.theatre-aliases'
 import { Route as AuthenticatedAdminTcsAuditRouteImport } from './routes/_authenticated/admin.tcs-audit'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -231,6 +232,12 @@ const AuthenticatedAdminTheatreGridRoute =
     path: '/admin/theatre-grid',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminTheatreAliasesRoute =
+  AuthenticatedAdminTheatreAliasesRouteImport.update({
+    id: '/admin/theatre-aliases',
+    path: '/admin/theatre-aliases',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminTcsAuditRoute =
   AuthenticatedAdminTcsAuditRouteImport.update({
     id: '/admin/tcs-audit',
@@ -347,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
+  '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
@@ -394,6 +402,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
+  '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
@@ -444,6 +453,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
+  '/_authenticated/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
@@ -494,6 +504,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/tcs-audit'
+    | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
@@ -541,6 +552,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/tcs-audit'
+    | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
     | '/chat/$conversationId'
@@ -590,6 +602,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
     | '/_authenticated/admin/tcs-audit'
+    | '/_authenticated/admin/theatre-aliases'
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
     | '/_authenticated/chat/$conversationId'
@@ -850,6 +863,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTheatreGridRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/theatre-aliases': {
+      id: '/_authenticated/admin/theatre-aliases'
+      path: '/admin/theatre-aliases'
+      fullPath: '/admin/theatre-aliases'
+      preLoaderRoute: typeof AuthenticatedAdminTheatreAliasesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/tcs-audit': {
       id: '/_authenticated/admin/tcs-audit'
       path: '/admin/tcs-audit'
@@ -1022,6 +1042,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminTcsAuditRoute: typeof AuthenticatedAdminTcsAuditRoute
+  AuthenticatedAdminTheatreAliasesRoute: typeof AuthenticatedAdminTheatreAliasesRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
@@ -1058,6 +1079,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
   AuthenticatedAdminTcsAuditRoute: AuthenticatedAdminTcsAuditRoute,
+  AuthenticatedAdminTheatreAliasesRoute: AuthenticatedAdminTheatreAliasesRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
