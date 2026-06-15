@@ -1,0 +1,1 @@
+INSERT INTO public.theatres (name, kind, sort_order, active) VALUES ('Day Surgery C', 'day_surgery', 12, true) ON CONFLICT (name) DO NOTHING;
