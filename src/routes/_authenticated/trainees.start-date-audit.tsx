@@ -5,7 +5,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ArrowLeft, AlertTriangle, RefreshCw, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
-import { syncClwRotaLeave } from "@/lib/clwrota.functions";
+import { useSyncClwRotaLeave } from "@/lib/clwrota-sync-hooks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
