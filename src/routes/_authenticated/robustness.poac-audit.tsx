@@ -14,6 +14,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
 import { chunkIds } from "@/lib/supabase-chunked";
+import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
+
 import {
   computePoacWeeklyStats,
   validatePoacBaseline,
