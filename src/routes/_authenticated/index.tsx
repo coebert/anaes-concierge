@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
+import { TodayInHospital } from "@/components/today-in-hospital";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
@@ -117,6 +118,8 @@ function AuditDashboard() {
           </Link>
         </CardContent>
       </Card>
+
+      <TodayInHospital />
 
       <SummaryDashboard />
 
@@ -228,6 +231,8 @@ function ConsultantSasDashboard() {
         <Stat label="LTFT %" value={data?.jobPlan?.ltft_percentage ?? "—"} icon={Stethoscope} />
       </div>
 
+      <TodayInHospital />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ActionCard to="/me" icon={CalendarRange}
           title="My rota" body="Your upcoming theatre, on-call and SPA sessions." />
@@ -280,6 +285,8 @@ function TraineeDashboard() {
         <Stat label="Sessions logged" value={data?.pastLogged ?? "—"} icon={GraduationCap} />
         <Stat label="Training level" value={data?.trainingLevel ?? "—"} icon={Stethoscope} />
       </div>
+
+      <TodayInHospital />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ActionCard to="/me" icon={CalendarRange}
