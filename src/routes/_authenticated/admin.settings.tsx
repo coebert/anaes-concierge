@@ -736,6 +736,31 @@ function SettingsPage() {
                   </details>
                 </>
               )}
+              {validateMut.data.onIcuBlock.length > 0 && (
+                <details className="rounded border border-sky-300/60 bg-sky-50/50 p-2 dark:border-sky-700/60 dark:bg-sky-950/30" open>
+                  <summary className="cursor-pointer font-medium text-sky-800 dark:text-sky-200">
+                    On ICU block — no theatre lists expected ({validateMut.data.onIcuBlock.length})
+                  </summary>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    These trainees' remaining rotation is ICU-only, so unmatched
+                    theatre rows are not treated as warnings. They have been
+                    excluded from the mismatch list above.
+                  </p>
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {validateMut.data.onIcuBlock.map((t) => (
+                      <li key={t.staff_id}>
+                        <Badge
+                          variant="outline"
+                          className="border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                          title={`${t.unmatchedTheatreRows} unmatched theatre row(s) in window — ignored because trainee is on ICU block.`}
+                        >
+                          {t.full_name ?? t.staff_id}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
           )}
 
