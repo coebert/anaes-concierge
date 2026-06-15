@@ -17,7 +17,7 @@ describe("trainee-metrics — ICU whole-day shift collapsing", () => {
       { role_on_list: "solo", session: "pm", duty_type: "icu_ct2_plus",
         theatre_session_id: null, session_date: "2026-06-15" },
     ];
-    const m = computeTraineeMetrics(a, new Map(), new Map());
+    const m = computeTraineeMetrics(a, "2026-02-01", new Map(), new Map(), new Date("2026-06-20").getTime(), null, false);
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1); // ICU rolls into on-call counts
     expect(m.totalAssignments).toBe(2);
@@ -32,7 +32,7 @@ describe("trainee-metrics — ICU whole-day shift collapsing", () => {
       { role_on_list: "solo", session: "eve", duty_type: "icu_trainee",
         theatre_session_id: null, session_date: "2026-06-15" },
     ];
-    const m = computeTraineeMetrics(a, new Map(), new Map());
+    const m = computeTraineeMetrics(a, "2026-02-01", new Map(), new Map(), new Date("2026-06-20").getTime(), null, false);
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
   });
@@ -48,7 +48,7 @@ describe("trainee-metrics — ICU whole-day shift collapsing", () => {
       { role_on_list: "solo", session: "pm", duty_type: "icu_ct2_plus",
         theatre_session_id: null, session_date: "2026-06-16" },
     ];
-    const m = computeTraineeMetrics(a, new Map(), new Map());
+    const m = computeTraineeMetrics(a, "2026-02-01", new Map(), new Map(), new Date("2026-06-20").getTime(), null, false);
     expect(m.icuLists).toBe(2);
     expect(m.onCallLists).toBe(2);
   });
@@ -66,7 +66,7 @@ describe("trainee-metrics — ICU whole-day shift collapsing", () => {
       { role_on_list: "solo", session: "eve", duty_type: "registrar_oncall",
         theatre_session_id: null, session_date: "2026-06-17" },
     ];
-    const m = computeTraineeMetrics(a, new Map(), new Map());
+    const m = computeTraineeMetrics(a, "2026-02-01", new Map(), new Map(), new Date("2026-06-20").getTime(), null, false);
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(3); // 1 ICU shift + 2 registrar on-calls
   });
@@ -80,7 +80,7 @@ describe("trainee-metrics — ICU whole-day shift collapsing", () => {
       { role_on_list: "solo", session: "pm", duty_type: "icu_ct2_plus",
         theatre_session_id: null, session_date: null },
     ];
-    const m = computeTraineeMetrics(a, new Map(), new Map());
+    const m = computeTraineeMetrics(a, "2026-02-01", new Map(), new Map(), new Date("2026-06-20").getTime(), null, false);
     expect(m.icuLists).toBe(2);
   });
 
@@ -91,7 +91,7 @@ describe("trainee-metrics — ICU whole-day shift collapsing", () => {
       { role_on_list: "solo", session: "pm", duty_type: "obstetrics",
         theatre_session_id: null, session_date: "2026-06-15" },
     ];
-    const m = computeTraineeMetrics(a, new Map(), new Map());
+    const m = computeTraineeMetrics(a, "2026-02-01", new Map(), new Map(), new Date("2026-06-20").getTime(), null, false);
     expect(m.obstetricsLists).toBe(2);
   });
 });
