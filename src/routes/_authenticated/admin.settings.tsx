@@ -24,6 +24,7 @@ import {
   useSyncClwRotaRota,
   useSyncClwRotaLeave,
 } from "@/lib/clwrota-sync-hooks";
+import { validateTraineeTheatreMatches } from "@/lib/trainee-theatre-validation.functions";
 
 
 import { formatDateGB } from "@/lib/utils";
