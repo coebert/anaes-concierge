@@ -68,8 +68,14 @@ function ConsultantAuditsPage() {
         .eq("active", true);
       if (pe) throw pe;
       const consultantIds = (profiles ?? []).map((p) => p.id);
+      const emptyCoverage = {
+        steps: [
+          { label: "theatre_sessions", chunks: 1, pages: 0, rows: 0, complete: true },
+          { label: "rota_assignments", chunks: 1, pages: 0, rows: 0, complete: true },
+        ],
+      };
       if (!consultantIds.length) {
-        return { rows: [] as ConsultantRow[] };
+        return { rows: [] as ConsultantRow[], coverage: emptyCoverage };
       }
       const consultantIdSet = new Set(consultantIds);
 
