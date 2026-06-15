@@ -319,4 +319,16 @@ export const validateTraineeTheatreMatches = createServerFn({ method: "POST" })
       })
       .parse(input ?? {}),
   )
-  .handler(async ({ data }) => performTraineeTheatreValidation(data));
+  .handler(async ({ data, context }) => {
+    // Diagnostic output exposes trainee names + rota mismatches; restrict to
+    // admins and rota coordinators (consistent with other admin-only fns).
+    const { data: roles, error: rErr } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "rota_coordinator"])
+      .limit(1);
+    if (rErr) throw new Error(rErr.message);
+    if (!roles?.length) throw new Error("Forbidden: admin or rota coordinator only.");
+    return performTraineeTheatreValidation(data);
+  });
