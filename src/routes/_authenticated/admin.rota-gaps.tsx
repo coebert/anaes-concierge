@@ -1,8 +1,10 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,9 +16,10 @@ import {
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
 import { fetchAllRowsPaged, rotaAssignmentKey } from "@/lib/audit/paginate";
+import { syncClwRotaRota } from "@/lib/clwrota.functions";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
   component: RotaGapsPage,
