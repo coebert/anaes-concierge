@@ -146,14 +146,24 @@ function PoacAuditPage() {
       const poacTheatres = theatres ?? [];
       const poacTheatreIds = poacTheatres.map((t) => t.id);
       const theatreNameById = new Map(poacTheatres.map((t) => [t.id, t.name] as const));
+      const emptyCoverage = {
+        steps: [
+          { label: "theatre_sessions", chunks: 0, pages: 0, rows: 0, complete: true },
+          { label: "rota_assignments", chunks: 0, pages: 0, rows: 0, complete: true },
+          { label: "specialties", chunks: 0, pages: 0, rows: 0, complete: true },
+          { label: "profiles", chunks: 0, pages: 0, rows: 0, complete: true },
+        ],
+      };
       const emptyResult = {
         weeks: [] as WeekRow[],
         totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
         drilldown: [] as DrilldownRow[],
         baselineViolations: [] as PoacBaselineViolation[],
+        coverage: emptyCoverage,
       };
 
       if (!poacTheatreIds.length) return emptyResult;
+
 
       // Track pagination/chunking coverage for the UI status indicator.
       const sessionCov = { chunks: 0, pages: 0, rows: 0, complete: true };
