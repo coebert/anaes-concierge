@@ -126,6 +126,10 @@ function TraineeDetailPage() {
         tsMap: new Map((ts ?? []).map((t) => [t.id, t])),
         supMap: new Map((sups ?? []).map((s) => [s.id, s.full_name])),
         theatreMap: new Map((theatres ?? []).map((t) => [t.id, t.name])),
+        futureAssignments: (futureRows ?? []) as Array<{
+          duty_type: string | null;
+          session_date: string;
+        }>,
       };
     },
   });
