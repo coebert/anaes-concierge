@@ -902,14 +902,14 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
       .select("training_level, specialty_id, required_sessions, required_solo, required_supervised"),
   ]);
 
-  const ts = theatreSessions ?? [];
-  const theatreIds = [...new Set(ts.map((t) => t.theatre_id).filter(Boolean))] as string[];
-  const specialtyIds = [...new Set(ts.map((t) => t.specialty_id).filter(Boolean))] as string[];
+  const tsAll = theatreSessions ?? [];
+  const theatreIds = [...new Set(tsAll.map((t) => t.theatre_id).filter(Boolean))] as string[];
+  const specialtyIds = [...new Set(tsAll.map((t) => t.specialty_id).filter(Boolean))] as string[];
 
   const [{ data: theatres }, { data: specialties }] = await Promise.all([
     theatreIds.length
-      ? supabase.from("theatres").select("id, name").in("id", theatreIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      ? supabase.from("theatres").select("id, name, active").in("id", theatreIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string; active: boolean }> }),
     specialtyIds.length
       ? supabase.from("specialties").select("id, name").in("id", specialtyIds)
       : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
