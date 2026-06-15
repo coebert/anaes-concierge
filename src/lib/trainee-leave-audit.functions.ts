@@ -57,6 +57,9 @@ export type AuditTrainee = {
    * or no leave_allowances row for the current year).
    */
   leave_source_warnings: string[];
+  /** True when every remaining clinical day in this trainee's rotation is
+   *  an ICU shift — no theatre lists are expected for them. */
+  icu_block_only: boolean;
 };
 
 export type LeaveSourceStatus = {
