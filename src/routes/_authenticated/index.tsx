@@ -119,6 +119,8 @@ function AuditDashboard() {
         </CardContent>
       </Card>
 
+      <TodayInHospital />
+
       <SummaryDashboard />
 
       {/* Audit pillars */}
