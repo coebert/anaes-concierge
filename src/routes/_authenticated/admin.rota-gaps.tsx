@@ -294,13 +294,46 @@ function RotaGapsPage() {
     [rows],
   );
 
+  /**
+   * Projected coverage gain for each prioritised range.
+   *
+   * `gainDays` is the range's own missing-day contribution; `cumulativeDays`
+   * and `cumulativePct` show what running the top `i + 1` ranges would close
+   * against the total `sync_missing` budget. The estimate is an upper bound
+   * — CLWRota may still skip rows we can't match — so we label it
+   * "projected".
+   */
+  const projection = useMemo(() => {
+    let running = 0;
+    return syncTargets.map((t) => {
+      running += t.missingDays;
+      return {
+        gainDays: t.missingDays,
+        gainPct: syncableDays === 0 ? 0 : t.missingDays / syncableDays,
+        cumulativeDays: running,
+        cumulativePct: syncableDays === 0 ? 0 : running / syncableDays,
+      };
+    });
+  }, [syncTargets, syncableDays]);
+
+  const effectiveLimit = runLimit ?? syncTargets.length;
+  const plannedSlice = useMemo(
+    () => syncTargets.slice(0, effectiveLimit),
+    [syncTargets, effectiveLimit],
+  );
+  const plannedCoverage = projection[effectiveLimit - 1] ?? {
+    cumulativeDays: 0,
+    cumulativePct: 0,
+  };
+
   async function runTargetedSync() {
-    if (syncTargets.length === 0) return;
-    setProgress({ running: true, current: 0, total: syncTargets.length, perRange: [] });
+    const targets = plannedSlice;
+    if (targets.length === 0) return;
+    setProgress({ running: true, current: 0, total: targets.length, perRange: [] });
     const perRange: SyncProgress["perRange"] = [];
-    for (let i = 0; i < syncTargets.length; i++) {
-      const { startISO, endISO } = syncTargets[i];
-      setProgress({ running: true, current: i, total: syncTargets.length, perRange: [...perRange] });
+    for (let i = 0; i < targets.length; i++) {
+      const { startISO, endISO } = targets[i];
+      setProgress({ running: true, current: i, total: targets.length, perRange: [...perRange] });
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
@@ -321,7 +354,7 @@ function RotaGapsPage() {
         });
       }
     }
-    setProgress({ running: false, current: syncTargets.length, total: syncTargets.length, perRange });
+    setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
   }
 
