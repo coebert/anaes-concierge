@@ -269,13 +269,15 @@ describe("emergency detection — CLWRota sync failures across consecutive updat
     });
     const am = await audit();
     expect(am.required, "demand surfaces previously-hidden emergency list").toBe(3);
-    // c3 is free in AM (only c1, c2 are allocated) so the new gap is
-    // absorbed by spare consultant capacity — no shortfall, but the
-    // headroom is reduced, which is what coordinators need to see.
+    // Only c1 and c2 have roster evidence (they're assigned to lists);
+    // c3 has no rota_assignment so doesn't count as available. The
+    // newly-surfaced list is therefore genuinely unfilled and trips a
+    // shortfall — exactly what coordinators need to see, NOT a silent
+    // exclusion.
     expect(am.unfilled).toBe(1);
-    expect(am.headroom).toBeGreaterThanOrEqual(0);
-    expect(am.risk).not.toBe("shortfall");
+    expect(am.risk).toBe("shortfall");
   });
+
 
   it("timeout that partially wrote a ROUTINE row to null fields → routine stays planned, not reclassified as emergency", async () => {
     // Symmetry guard: a partial write that nulls both fields on a
