@@ -257,6 +257,7 @@ function TraineesPage() {
         assignmentsByStaff: clinicalByStaff,
         allAssignmentsByStaff: allByStaff,
         futureAssignmentsByStaff: futureByStaff,
+        supervisorSessionIds,
       };
     },
   });
