@@ -20,6 +20,7 @@ import {
 } from "@/lib/solo-stats";
 import { chunkIds } from "@/lib/supabase-chunked";
 import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
@@ -288,25 +289,32 @@ function AdminDashboardPage() {
       const today = todayISO();
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, training_level, start_date")
+        .select("id, full_name, training_level, start_date, rotation_end_date")
         .eq("grade", "trainee")
         .eq("active", true)
         .order("full_name");
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) {
-        return { trainees: [], assignmentsByStaff: new Map(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>() };
+        return { trainees: [], assignmentsByStaff: new Map(), futureByStaff: new Map<string, Array<{ duty_type: string | null; session_date: string }>>(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>() };
       }
-      const [{ data: assignments, error: e2 }, { data: specs, error: e3 }] = await Promise.all([
+      const [{ data: assignments, error: e2 }, { data: specs, error: e3 }, { data: futureRows, error: eFuture }] = await Promise.all([
         supabase
           .from("rota_assignments")
           .select("staff_id, role_on_list, session, duty_type, theatre_session_id, session_date")
           .in("staff_id", ids)
           .lte("session_date", today),
         supabase.from("specialties").select("id, name"),
+        supabase
+          .from("rota_assignments")
+          .select("staff_id, duty_type, session_date")
+          .in("staff_id", ids)
+          .gt("session_date", today)
+          .range(0, 49999),
       ]);
       if (e2) throw e2;
       if (e3) throw e3;
+      if (eFuture) throw eFuture;
       const tsIds = Array.from(
         new Set((assignments ?? []).map((a) => a.theatre_session_id).filter(Boolean) as string[]),
       );
@@ -333,7 +341,13 @@ function AdminDashboardPage() {
         arr.push(a);
         assignmentsByStaff.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff, tsSpecMap, specNameMap };
+      const futureByStaff = new Map<string, Array<{ duty_type: string | null; session_date: string }>>();
+      for (const a of futureRows ?? []) {
+        const arr = futureByStaff.get(a.staff_id) ?? [];
+        arr.push({ duty_type: a.duty_type, session_date: a.session_date });
+        futureByStaff.set(a.staff_id, arr);
+      }
+      return { trainees: trainees ?? [], assignmentsByStaff, futureByStaff, tsSpecMap, specNameMap };
     },
   });
 
