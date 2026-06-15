@@ -65,7 +65,7 @@ function decisionBadge(decision: AuditTrainee["decision"]) {
 
 function AuditPage() {
   const fetchAudit = useServerFn(getTraineeStartDateAudit);
-  const retryLeaveSync = useServerFn(syncClwRotaLeave);
+  const retryLeaveSync = useSyncClwRotaLeave();
   const queryClient = useQueryClient();
   const { data, isLoading, error, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ["trainee-start-date-audit"],
