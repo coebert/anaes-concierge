@@ -258,12 +258,17 @@ function AdminDashboardPage() {
           .in("session", ["am", "pm"])
           .not("theatre_session_id", "is", null)
           .gte("session_date", startISO)
-          .lte("session_date", endISO),
+          .lte("session_date", endISO)
+          // The 12-month trainee summary regularly exceeds the backend's
+          // default 1,000-row page cap. Without an explicit range, later rows
+          // are dropped and some trainees appear to have zero matched lists.
+          .range(0, 49999),
         supabase
           .from("rota_assignments")
           .select("staff_id, duty_type, session_date")
           .gte("session_date", startISO)
-          .lte("session_date", endISO),
+          .lte("session_date", endISO)
+          .range(0, 49999),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (theatreRes.error) throw theatreRes.error;
