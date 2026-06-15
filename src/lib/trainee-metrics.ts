@@ -120,7 +120,7 @@ export function computeTraineeMetrics(
   const soloDaytimePct = daytimeLists > 0
     ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10
     : null;
-  const supervisedLists = assignments.filter((a) => a.role_on_list === "supervised").length;
+  const supervisedLists = assignments.filter((a) => effectiveRole(a) === "supervised").length;
   // On-call = any duty type that represents an on-call/resident-on-call
   // commitment. The previous "anything that isn't theatre" rule wrongly
   // counted SPA, admin, teaching and non-clinical sessions as on-call,
