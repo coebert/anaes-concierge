@@ -107,19 +107,12 @@ function TraineesPage() {
       const tsIds = Array.from(
         new Set(allAssignments.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
       );
-      // PostgREST `.in()` filters are serialised into the request URL. With
-      // ~1000+ distinct UUIDs across all active trainees this URL exceeds
-      // the edge proxy's length limit and the response is silently truncated
-      // or rejected — theatre sessions that didn't make it back are then
-      // bucketed as "Unknown" specialty in the per-trainee metric card,
-      // hiding (for example) most of a trainee's ENT lists. Chunk the
-      // lookups so each request URL stays well under the limit.
-      // UUIDs are 36 chars + comma → 200 IDs ≈ 7.4KB.
-      const TS_ID_CHUNK = 200;
-      const tsIdChunks: string[][] = [];
-      for (let i = 0; i < tsIds.length; i += TS_ID_CHUNK) {
-        tsIdChunks.push(tsIds.slice(i, i + TS_ID_CHUNK));
-      }
+      // Chunked `.in()` lookup — see src/lib/supabase-chunked.ts. With
+      // ~1000+ distinct UUIDs across all active trainees, a single
+      // `.in("id", tsIds)` URL exceeds the edge proxy's length limit and
+      // is silently truncated — theatre sessions that don't make it back
+      // get bucketed as "Unknown" specialty in the per-trainee metric card.
+      const tsIdChunks = chunkIds(tsIds);
 
       const tsMap = new Map<string, string | null>();
       if (tsIds.length) {
