@@ -1,8 +1,10 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,9 +16,10 @@ import {
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
 import { fetchAllRowsPaged, rotaAssignmentKey } from "@/lib/audit/paginate";
+import { syncClwRotaRota } from "@/lib/clwrota.functions";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { AlertTriangle, CheckCircle2, CalendarX } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
   component: RotaGapsPage,
@@ -39,11 +42,58 @@ function addDaysISO(iso: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/**
+ * Merge overlapping or near-adjacent date ranges so a single targeted sync
+ * can cover several trainees' sync_missing gaps in one request. We pad the
+ * join distance by `bridgeDays` (default 7) because the upstream CLWRota
+ * report is windowed and one slightly wider request is cheaper than many
+ * narrow ones.
+ */
+function mergeRanges(
+  ranges: Array<{ startISO: string; endISO: string }>,
+  bridgeDays = 7,
+): Array<{ startISO: string; endISO: string }> {
+  if (ranges.length === 0) return [];
+  const sorted = [...ranges].sort((a, b) =>
+    a.startISO < b.startISO ? -1 : a.startISO > b.startISO ? 1 : 0,
+  );
+  const merged: Array<{ startISO: string; endISO: string }> = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const bridgeEnd = addDaysISO(last.endISO, bridgeDays);
+    if (sorted[i].startISO <= bridgeEnd) {
+      if (sorted[i].endISO > last.endISO) last.endISO = sorted[i].endISO;
+    } else {
+      merged.push({ ...sorted[i] });
+    }
+  }
+  return merged;
+}
+
+type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
+
+interface SyncProgress {
+  running: boolean;
+  current: number;
+  total: number;
+  perRange: Array<{
+    from: string;
+    to: string;
+    ok: boolean;
+    message?: string;
+    upserted?: number;
+  }>;
+  error?: string;
+}
+
 function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
+  const queryClient = useQueryClient();
+  const syncRota = useServerFn(syncClwRotaRota);
   const [windowChoice, setWindowChoice] = useState<WindowChoice>("90");
   const [filter, setFilter] = useState("");
   const [hideClean, setHideClean] = useState(true);
+  const [progress, setProgress] = useState<SyncProgress | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
@@ -154,6 +204,57 @@ function RotaGapsPage() {
   const totalGapDays = rows.reduce((sum, r) => sum + r.report.totalMissingDays, 0);
   const totalRanges = rows.reduce((sum, r) => sum + r.report.ranges.length, 0);
 
+  // Targeted sync covers only the date spans classified as `sync_missing`
+  // across the currently filtered trainees. Pre/post-rotation and
+  // LTFT/weekend days are excluded — re-fetching them won't add any rows.
+  const syncTargets = useMemo(() => {
+    const spans: Array<{ startISO: string; endISO: string }> = [];
+    for (const r of rows) {
+      for (const range of r.classified.ranges) {
+        if (range.kind === "sync_missing") {
+          spans.push({ startISO: range.startISO, endISO: range.endISO });
+        }
+      }
+    }
+    return mergeRanges(spans);
+  }, [rows]);
+
+  const syncableDays = useMemo(
+    () => rows.reduce((sum, r) => sum + r.classified.counts.sync_missing, 0),
+    [rows],
+  );
+
+  async function runTargetedSync() {
+    if (syncTargets.length === 0) return;
+    setProgress({ running: true, current: 0, total: syncTargets.length, perRange: [] });
+    const perRange: SyncProgress["perRange"] = [];
+    for (let i = 0; i < syncTargets.length; i++) {
+      const { startISO, endISO } = syncTargets[i];
+      setProgress({ running: true, current: i, total: syncTargets.length, perRange: [...perRange] });
+      try {
+        const res: SyncResult = await syncRota({
+          data: { from: startISO, to: endISO },
+        });
+        perRange.push({
+          from: startISO,
+          to: endISO,
+          ok: res.ok !== false,
+          message: res.message,
+          upserted: res.assignmentsUpserted,
+        });
+      } catch (err) {
+        perRange.push({
+          from: startISO,
+          to: endISO,
+          ok: false,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    setProgress({ running: false, current: syncTargets.length, total: syncTargets.length, perRange });
+    await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -202,6 +303,58 @@ function RotaGapsPage() {
             <Stat icon={CalendarX} tone="bad" label="Missing weekdays" value={totalGapDays} />
             <Stat icon={CalendarX} tone="muted" label="Distinct gap ranges" value={totalRanges} />
           </div>
+
+          <Card>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="text-sm">
+                <div className="font-medium">Targeted CLWRota sync</div>
+                <div className="text-xs text-muted-foreground">
+                  {syncableDays > 0
+                    ? `Will fetch ${syncTargets.length} merged range${syncTargets.length === 1 ? "" : "s"} covering ${syncableDays} missing weekday${syncableDays === 1 ? "" : "s"}.`
+                    : "No sync-missing gaps in the current filter — nothing to fetch."}
+                </div>
+              </div>
+              <Button
+                onClick={runTargetedSync}
+                disabled={syncTargets.length === 0 || progress?.running}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
+                {progress?.running
+                  ? `Syncing ${progress.current + 1} / ${progress.total}…`
+                  : "Sync gaps"}
+              </Button>
+            </CardContent>
+            {progress && progress.perRange.length > 0 && (
+              <CardContent className="border-t pt-3">
+                <ul className="divide-y rounded-md border text-sm">
+                  {progress.perRange.map((p) => (
+                    <li
+                      key={`${p.from}-${p.to}`}
+                      className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                    >
+                      <span className="font-mono text-xs">
+                        {formatDateGB(p.from)} → {formatDateGB(p.to)}
+                      </span>
+                      <span className="flex items-center gap-2 text-xs">
+                        {p.ok ? (
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                            {p.upserted ?? 0} upserted
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">Failed</Badge>
+                        )}
+                        {p.message && (
+                          <span className="text-muted-foreground">{p.message}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            )}
+          </Card>
+
 
           {rows.length === 0 ? (
             <Card>
