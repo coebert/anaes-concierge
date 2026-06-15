@@ -2052,11 +2052,18 @@ export async function performRotaSync(
 
     // --- Pass 3: bulk-upsert theatre sessions in chunks. ----------------------
     // Split drafts into two batches:
-    //   • withSpecialty: upsert the full row, including specialty_id, so a
-    //     known specialty overwrites any prior null.
-    //   • withoutSpecialty: upsert WITHOUT the specialty_id column so an
-    //     existing booking that already has a specialty isn't blanked out
-    //     just because today's feed row didn't include one.
+    //   • Idempotent rerun: the upsert key (session_date, theatre_id,
+    //     session) is a real UNIQUE constraint, so a second sync over the
+    //     same window can never insert a duplicate row — every conflicting
+    //     row UPDATEs the existing one in place.
+    //   • Preserve existing mappings: PostgREST builds the
+    //     INSERT...ON CONFLICT DO UPDATE SET clause from the columns
+    //     present in the FIRST row of each batch. Any column we OMIT from
+    //     the payload is not touched on conflict. We therefore split the
+    //     drafts into buckets by which optional columns we actually have
+    //     a non-null value for, so a sync that doesn't see a consultant or
+    //     specialty for a given booking on this run leaves the previously-
+    //     stored value intact instead of blanking it.
     const allDrafts = Array.from(sessionDraftsByKey.values());
     const sessionIdByKey = new Map<string, string>();
     const SESSION_CHUNK = 1000;
@@ -2070,8 +2077,9 @@ export async function performRotaSync(
         const chunk = rows.slice(i, i + SESSION_CHUNK);
         const { data, error: sessErr } = await supabaseAdmin
           .from("theatre_sessions")
-          // Cast: chunk is a partial-column payload (specialty_id may be
-          // omitted on purpose) which doesn't fit the generated row shape.
+          // Cast: chunk is a partial-column payload (specialty_id /
+          // surgical_consultant may be omitted on purpose) which doesn't
+          // fit the generated row shape.
           .upsert(chunk as never, { onConflict: "session_date,theatre_id,session" })
           .select("id, session_date, theatre_id, session");
         if (sessErr) {
@@ -2085,25 +2093,29 @@ export async function performRotaSync(
       }
     };
 
-    const withSpecialty = allDrafts
-      .filter((d) => d.specialty_id != null)
-      .map((d) => ({
+    // Bucket drafts by (hasSpecialty, hasConsultant) so each bucket's
+    // upsert payload has the same column shape — required by PostgREST and
+    // necessary for idempotence: only columns we KNOW a fresh value for
+    // are sent, so a missing column on rerun preserves the prior value.
+    const sessionBuckets = new Map<string, Array<Record<string, unknown>>>();
+    for (const d of allDrafts) {
+      const base: Record<string, unknown> = {
         session_date: d.session_date,
         theatre_id: d.theatre_id,
         session: d.session,
-        specialty_id: d.specialty_id,
-        surgical_consultant: d.surgical_consultant,
-      }));
-    const withoutSpecialty = allDrafts
-      .filter((d) => d.specialty_id == null)
-      .map((d) => ({
-        session_date: d.session_date,
-        theatre_id: d.theatre_id,
-        session: d.session,
-        surgical_consultant: d.surgical_consultant,
-      }));
-    await upsertSessions(withSpecialty);
-    await upsertSessions(withoutSpecialty);
+      };
+      if (d.specialty_id != null) base.specialty_id = d.specialty_id;
+      if (d.surgical_consultant != null) base.surgical_consultant = d.surgical_consultant;
+      const key = `${d.specialty_id != null ? "S" : "_"}${d.surgical_consultant != null ? "C" : "_"}`;
+      const arr = sessionBuckets.get(key) ?? [];
+      arr.push(base);
+      sessionBuckets.set(key, arr);
+    }
+    // Deterministic order keeps the four bucket runs predictable in logs.
+    for (const key of ["SC", "S_", "_C", "__"]) {
+      const rows = sessionBuckets.get(key);
+      if (rows && rows.length) await upsertSessions(rows);
+    }
 
     // Propagate Non-SAG tags detected in the feed onto theatre_sessions.
     // Only sessions with non_sag_override = false are updated, so any admin
