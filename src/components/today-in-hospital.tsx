@@ -13,7 +13,7 @@ import { listActiveStaffSafe } from "@/lib/staff-directory.functions";
  * sessions, grouped by grade. Non-clinical duty types (SPA, admin, teaching,
  * non-clinical) are excluded so the panel reflects on-site clinical presence.
  *
- * Staff working at NHH (Norfolk House / off-site) are shown in a separate
+ * Staff working at NHH (New Hall / off-site) are shown in a separate
  * section so it's clear they are not on the Salisbury District Hospital site.
  * Theatre duty rows show the specific theatre name they're allocated to.
  */
