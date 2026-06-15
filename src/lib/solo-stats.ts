@@ -14,6 +14,7 @@ export type SoloAssignment = {
 export type SoloProfile = {
   id: string;
   grade: "consultant" | "sas" | "trainee" | string | null;
+  training_level?: string | null;
 };
 
 /** A grade is "supervisor-capable" if its presence on a theatre list means a
@@ -51,7 +52,12 @@ export function buildConsultantSessionSet(
  *  - role_on_list === 'solo'
  *  - no supervisor_id, and any supervisor that is set is not supervisor-capable
  *  - theatre_session_id is known and no consultant or SAS shares it
+ *  - the trainee is NOT a junior (FY2/ACCS/CT1/CT2/ST1/ST2) — those grades
+ *    are too junior to ever genuinely run a list solo, so we treat any
+ *    "solo" import as a data-quality artefact rather than a real solo list.
  */
+const JUNIOR_LEVELS = new Set(["FY2", "ACCS", "CT1", "CT2", "ST1", "ST2"]);
+
 export function isSoloTraineeAssignment(
   a: SoloAssignment,
   supervisorCapableSessionIds: Set<string>,
@@ -64,5 +70,10 @@ export function isSoloTraineeAssignment(
   }
   if (!a.theatre_session_id) return false;
   if (supervisorCapableSessionIds.has(a.theatre_session_id)) return false;
+  const level = profilesById.get(a.staff_id)?.training_level;
+  if (level) {
+    const norm = level.trim().toUpperCase().replace(/\s+/g, "");
+    if (JUNIOR_LEVELS.has(norm)) return false;
+  }
   return true;
 }

@@ -108,12 +108,17 @@ function TraineeDetailPage() {
         }
       }
 
+      const isJuniorTrainee = (() => {
+        const lvl = profile?.training_level?.trim().toUpperCase().replace(/\s+/g, "");
+        return !!lvl && ["FY2", "ACCS", "CT1", "CT2", "ST1", "ST2"].includes(lvl);
+      })();
+
       const normalisedAssignments = (assignments ?? []).map((a) => ({
         ...a,
         role_on_list:
           a.role_on_list === "solo" &&
           a.theatre_session_id &&
-          supervisorSessionIds.has(a.theatre_session_id)
+          (supervisorSessionIds.has(a.theatre_session_id) || isJuniorTrainee)
             ? "supervised"
             : a.role_on_list,
       }));

@@ -19,7 +19,7 @@ import {
   type SoloProfile,
 } from "@/lib/solo-stats";
 import { chunkIds } from "@/lib/supabase-chunked";
-import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { computeTraineeMetrics, isJuniorTraineeLevel } from "@/lib/trainee-metrics";
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
@@ -454,6 +454,7 @@ function AdminDashboardPage() {
             Date.now(),
             (t as { rotation_end_date?: string | null }).rotation_end_date ?? null,
             icuOnly,
+            isJuniorTraineeLevel((t as { training_level?: string | null }).training_level),
           ),
         };
       })
@@ -477,7 +478,10 @@ function AdminDashboardPage() {
     }
 
     const profilesById = new Map<string, SoloProfile>(
-      soloMonthly.profiles.map((p) => [p.id, { id: p.id, grade: p.grade ?? null }]),
+      soloMonthly.profiles.map((p) => [
+        p.id,
+        { id: p.id, grade: p.grade ?? null, training_level: p.training_level ?? null },
+      ]),
     );
     const consultantOnSession = buildConsultantSessionSet(
       soloMonthly.theatreAssignments,

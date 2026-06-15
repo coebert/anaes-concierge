@@ -23,7 +23,7 @@ import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { chunkIds } from "@/lib/supabase-chunked";
 import { fetchAllRowsPaged, idKey } from "@/lib/audit/paginate";
-import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
+import { computeTraineeMetrics, isJuniorTraineeLevel, type MetricAssignment } from "@/lib/trainee-metrics";
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
@@ -360,6 +360,7 @@ function TraineesPage() {
             asOfMs,
             (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
             icuOnly,
+            isJuniorTraineeLevel((trainee as { training_level?: string | null }).training_level),
           ),
         };
       });
