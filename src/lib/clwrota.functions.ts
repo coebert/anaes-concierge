@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isNonSagRotaLabel, isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
+import { SUPABASE_IN_CHUNK } from "./supabase-chunked";
 import { evaluateHistoricalSafeguard } from "./clwrota-historical-safeguard";
 import {
   parseListClwRotaSyncMetricsResponse,
@@ -298,7 +299,12 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       { id: string; specialty_name?: string | null; surgical_consultant?: string | null; notes?: string | null }
     >();
     if (tsIds.length > 0) {
-      const TS_CHUNK = 500;
+      // UUIDs in the URL — cap at SUPABASE_IN_CHUNK (200) so the request
+      // never crosses the edge proxy's ~16 KB length limit. A larger chunk
+      // (we previously used 500 ≈ 18.5 KB of just the id list) silently
+      // truncated, leaving theatre-session enrichment incomplete and feeding
+      // "Unknown" specialty rows into trainee metrics.
+      const TS_CHUNK = SUPABASE_IN_CHUNK;
       for (let i = 0; i < tsIds.length; i += TS_CHUNK) {
         const chunk = tsIds.slice(i, i + TS_CHUNK);
         const { data: tsRows, error: tsErr } = await supabaseAdmin
@@ -2108,7 +2114,11 @@ export async function performRotaSync(
       const ids = Array.from(nonSagSessionKeys)
         .map((k) => sessionIdByKey.get(k))
         .filter((v): v is string => Boolean(v));
-      const NON_SAG_CHUNK = 500;
+      // UUIDs in the URL on a bulk UPDATE — same proxy-truncation risk as
+      // bulk reads. Previously 500, which could silently skip flagging some
+      // freshly-upserted sessions as non-SAG, leaving them to be counted as
+      // ordinary theatre lists by downstream consultant/trainee audits.
+      const NON_SAG_CHUNK = SUPABASE_IN_CHUNK;
       for (let i = 0; i < ids.length; i += NON_SAG_CHUNK) {
         const chunk = ids.slice(i, i + NON_SAG_CHUNK);
         const { error: nsErr, count } = await supabaseAdmin
@@ -3175,7 +3185,8 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
     }
 
     let sessionsUpdated = 0;
-    const CHUNK = 500;
+    // UUIDs in the URL — see SUPABASE_IN_CHUNK for the proxy cap rationale.
+    const CHUNK = SUPABASE_IN_CHUNK;
     for (let i = 0; i < toUpdate.length; i += CHUNK) {
       const chunk = toUpdate.slice(i, i + CHUNK);
       const { error: updErr, count } = await supabaseAdmin
