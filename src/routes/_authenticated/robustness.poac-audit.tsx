@@ -155,6 +155,12 @@ function PoacAuditPage() {
 
       if (!poacTheatreIds.length) return emptyResult;
 
+      // Track pagination/chunking coverage for the UI status indicator.
+      const sessionCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+      const assignmentCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+      const specialtyCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+      const staffCov = { chunks: 0, pages: 0, rows: 0, complete: true };
+
       // All POAC theatre sessions in range — paged to defeat the 1000-row
       // default cap, and chunked on theatre_id to avoid URL-length truncation
       // if the trust ever splits POAC across many theatres.
@@ -167,7 +173,7 @@ function PoacAuditPage() {
         surgical_consultant: string | null;
       }> = [];
       for (const theatreSlice of chunkIds(poacTheatreIds)) {
-        const pageRows = await fetchAllPaged((lo, hi) =>
+        const res = await fetchAllPaged((lo, hi) =>
           supabase
             .from("theatre_sessions")
             .select("id,session_date,session,theatre_id,specialty_id,surgical_consultant")
@@ -176,10 +182,26 @@ function PoacAuditPage() {
             .lte("session_date", to)
             .range(lo, hi),
         );
-        sessionList.push(...pageRows);
+        sessionList.push(...res.rows);
+        sessionCov.chunks += 1;
+        sessionCov.pages += res.pages;
+        sessionCov.rows += res.rows.length;
+        if (!res.complete) sessionCov.complete = false;
       }
       const sessionIds = sessionList.map((s) => s.id);
-      if (!sessionIds.length) return emptyResult;
+      if (!sessionIds.length) {
+        return {
+          ...emptyResult,
+          coverage: {
+            steps: [
+              { label: "theatre_sessions", ...sessionCov },
+              { label: "rota_assignments", ...assignmentCov },
+              { label: "specialties", ...specialtyCov },
+              { label: "profiles", ...staffCov },
+            ],
+          },
+        };
+      }
       const sessionById = new Map(sessionList.map((s) => [s.id, s] as const));
 
       // Resolve specialty names referenced by these sessions.
@@ -193,7 +215,11 @@ function PoacAuditPage() {
           .select("id,name")
           .in("id", slice);
         if (spe) throw spe;
-        for (const s of specs ?? []) specialtyNameById.set(s.id, s.name);
+        const rows = specs ?? [];
+        for (const s of rows) specialtyNameById.set(s.id, s.name);
+        specialtyCov.chunks += 1;
+        specialtyCov.pages += 1;
+        specialtyCov.rows += rows.length;
       }
 
       // Assignments to those POAC sessions in range — chunked on
@@ -207,14 +233,18 @@ function PoacAuditPage() {
         theatre_session_id: string | null;
       }> = [];
       for (const slice of chunkIds(sessionIds)) {
-        const pageRows = await fetchAllPaged((lo, hi) =>
+        const res = await fetchAllPaged((lo, hi) =>
           supabase
             .from("rota_assignments")
             .select("id,staff_id,session_date,session,theatre_session_id")
             .in("theatre_session_id", slice)
             .range(lo, hi),
         );
-        assignmentList.push(...pageRows);
+        assignmentList.push(...res.rows);
+        assignmentCov.chunks += 1;
+        assignmentCov.pages += res.pages;
+        assignmentCov.rows += res.rows.length;
+        if (!res.complete) assignmentCov.complete = false;
       }
 
       // Resolve grade + name for each staff member appearing in assignments.
@@ -228,10 +258,15 @@ function PoacAuditPage() {
           .select("id,grade,full_name")
           .in("id", slice);
         if (pe) throw pe;
-        for (const p of profs ?? []) {
+        const rows = profs ?? [];
+        for (const p of rows) {
           staffById.set(p.id, { grade: p.grade ?? null, full_name: p.full_name ?? null });
         }
+        staffCov.chunks += 1;
+        staffCov.pages += 1;
+        staffCov.rows += rows.length;
       }
+
 
       const normGrade = (g: string | null | undefined): DrilldownRow["grade"] =>
         g === "consultant" || g === "sas" || g === "trainee" ? g : "unknown";
