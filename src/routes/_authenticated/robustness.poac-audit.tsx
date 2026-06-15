@@ -13,11 +13,33 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
+import { chunkIds } from "@/lib/supabase-chunked";
 import {
   computePoacWeeklyStats,
   validatePoacBaseline,
   type PoacBaselineViolation,
 } from "@/lib/audit/poac-baseline";
+
+// PostgREST defaults to a 1000-row response cap. Walk the result set in
+// pages so audits over long date ranges (or as data grows) cannot silently
+// drop rows and under-report sessions/assignments.
+async function fetchAllPaged<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  pageSize = 1000,
+): Promise<T[]> {
+  const out: T[] = [];
+  let offset = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await build(offset, offset + pageSize - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+  return out;
+}
 
 
 type DrilldownRow = {
