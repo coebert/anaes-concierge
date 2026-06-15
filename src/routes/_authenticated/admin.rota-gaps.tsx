@@ -485,10 +485,12 @@ function RotaGapsPage() {
                       (p) => p.from === t.startISO && p.to === t.endISO,
                     );
                     const active = progress?.running && progress.current === i;
+                    const proj = projection[i];
+                    const included = i < effectiveLimit;
                     return (
                       <li
                         key={`${t.startISO}-${t.endISO}`}
-                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                        className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${included ? "" : "opacity-60"}`}
                       >
                         <span className="flex items-center gap-2">
                           <Badge variant="outline" className="px-1 py-0 text-[10px]">
@@ -497,11 +499,20 @@ function RotaGapsPage() {
                           <span className="font-mono text-xs">
                             {formatDateGB(t.startISO)} → {formatDateGB(t.endISO)}
                           </span>
+                          {!included && (
+                            <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                              skipped
+                            </Badge>
+                          )}
                         </span>
                         <span className="flex items-center gap-2 text-xs">
                           <span className="text-muted-foreground">
-                            {t.missingDays} day{t.missingDays === 1 ? "" : "s"} · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
+                            +{proj.gainDays} day{proj.gainDays === 1 ? "" : "s"}
+                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
                           </span>
+                          <Badge variant="outline" className="px-1 py-0 text-[10px]" title="Cumulative projected coverage if you run through this range">
+                            cum {Math.round(proj.cumulativePct * 100)}%
+                          </Badge>
                           {done ? (
                             done.ok ? (
                               <Badge className="bg-emerald-600 hover:bg-emerald-600">
@@ -512,7 +523,7 @@ function RotaGapsPage() {
                             )
                           ) : active ? (
                             <Badge variant="secondary">Running…</Badge>
-                          ) : progress?.running ? (
+                          ) : progress?.running && included ? (
                             <Badge variant="outline">Queued</Badge>
                           ) : null}
                         </span>
