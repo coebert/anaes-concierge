@@ -1778,11 +1778,18 @@ export async function performRotaSync(
       };
     }
 
-    const [{ data: profiles }, { data: theatres }, { data: specialties }, dutyMappings] = await Promise.all([
+    const [
+      { data: profiles },
+      { data: theatres },
+      { data: specialties },
+      dutyMappings,
+      theatreAliases,
+    ] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id, grade, training_level"),
       supabaseAdmin.from("theatres").select("id, name"),
       supabaseAdmin.from("specialties").select("id, name"),
       loadDutyTypeMappings(),
+      loadTheatreNameAliases(),
     ]);
 
 
@@ -1798,6 +1805,12 @@ export async function performRotaSync(
     }
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
+    // Merge admin-configured aliases so the same lookup chain (exact match,
+    // consultant-field fallback, and resolveOffsiteTheatreAlias's internal
+    // lookups) all benefit. Real theatre names always win over aliases.
+    for (const [aliasKey, theatreId] of theatreAliases) {
+      if (!theatreByName.has(aliasKey)) theatreByName.set(aliasKey, theatreId);
+    }
     const specialtyByName = new Map<string, string>();
     for (const s of specialties ?? []) specialtyByName.set(s.name.toLowerCase().trim(), s.id);
 
