@@ -14,6 +14,7 @@ export type SoloAssignment = {
 export type SoloProfile = {
   id: string;
   grade: "consultant" | "sas" | "trainee" | string | null;
+  training_level?: string | null;
 };
 
 /** A grade is "supervisor-capable" if its presence on a theatre list means a
