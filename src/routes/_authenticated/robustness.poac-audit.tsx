@@ -22,24 +22,37 @@ import {
 
 // PostgREST defaults to a 1000-row response cap. Walk the result set in
 // pages so audits over long date ranges (or as data grows) cannot silently
-// drop rows and under-report sessions/assignments.
+// drop rows and under-report sessions/assignments. Returns the rows plus a
+// page count and a `complete` flag (true when the final page was shorter
+// than the page size, proving the cap was not hit).
 async function fetchAllPaged<T>(
   build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   pageSize = 1000,
-): Promise<T[]> {
+): Promise<{ rows: T[]; pages: number; complete: boolean }> {
   const out: T[] = [];
   let offset = 0;
+  let pages = 0;
+  let complete = true;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { data, error } = await build(offset, offset + pageSize - 1);
     if (error) throw error;
     const rows = data ?? [];
     out.push(...rows);
-    if (rows.length < pageSize) break;
+    pages += 1;
+    if (rows.length < pageSize) {
+      complete = true;
+      break;
+    }
+    // Full page — keep walking. If the very next page returns empty we still
+    // count as complete; only a full page with no further fetch would be
+    // ambiguous, and the loop always fetches the next page in that case.
+    complete = false;
     offset += pageSize;
   }
-  return out;
+  return { rows: out, pages, complete };
 }
+
 
 
 type DrilldownRow = {
