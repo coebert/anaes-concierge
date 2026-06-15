@@ -145,6 +145,8 @@ export const NAV_ITEMS: NavItem[] = [
     icon: UserPlus, group: "setup", roles: ["admin"] },
   { id: "setup-clwrota", label: "CLWRota sync metrics", to: "/admin/clwrota-metrics",
     icon: LineChart, group: "setup", roles: ["admin"] },
+  { id: "setup-clwrota-status", label: "CLWRota sync status", to: "/admin/clwrota-status",
+    icon: Activity, group: "setup", roles: ["admin"] },
   { id: "setup-settings", label: "Settings", to: "/admin/settings",
     icon: Settings, group: "setup", roles: ["admin"] },
 
