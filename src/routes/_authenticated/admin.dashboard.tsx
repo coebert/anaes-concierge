@@ -478,7 +478,10 @@ function AdminDashboardPage() {
     }
 
     const profilesById = new Map<string, SoloProfile>(
-      soloMonthly.profiles.map((p) => [p.id, { id: p.id, grade: p.grade ?? null }]),
+      soloMonthly.profiles.map((p) => [
+        p.id,
+        { id: p.id, grade: p.grade ?? null, training_level: p.training_level ?? null },
+      ]),
     );
     const consultantOnSession = buildConsultantSessionSet(
       soloMonthly.theatreAssignments,
