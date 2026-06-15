@@ -260,6 +260,8 @@ function ConsultantAuditsPage() {
     );
   }, [data, filter]);
 
+  const weeksInPeriod = useMemo(() => weeksInRangeInclusive(from, to), [from, to]);
+
   return (
     <div className="space-y-6">
       <div>
