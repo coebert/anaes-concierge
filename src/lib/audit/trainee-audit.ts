@@ -261,7 +261,17 @@ export function computeFullAudit(args: {
  * non-clinical) are treated as neutral — they neither qualify nor disqualify.
  */
 export const ICU_DUTY_TYPES = new Set(["icu_trainee", "icu_ct2_plus"]);
-const NEUTRAL_DUTY_TYPES = new Set(["spa", "admin", "teaching", "non_clinical"]);
+const NON_LIST_DUTY_TYPES = new Set([
+  "spa",
+  "admin",
+  "teaching",
+  "non_clinical",
+  "icu_consultant_oncall",
+  "general_consultant_oncall",
+  "registrar_oncall",
+  "sho_oncall",
+  "consultant_in_charge",
+]);
 
 export function isIcuBlockOnly(
   assignments: Array<{ duty_type: string | null; session_date: string }>,
@@ -277,7 +287,7 @@ export function isIcuBlockOnly(
   let hasIcu = false;
   for (const a of window) {
     const dt = a.duty_type ?? "";
-    if (NEUTRAL_DUTY_TYPES.has(dt)) continue;
+    if (NON_LIST_DUTY_TYPES.has(dt)) continue;
     if (ICU_DUTY_TYPES.has(dt)) {
       hasIcu = true;
       continue;
