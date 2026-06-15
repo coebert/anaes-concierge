@@ -14,14 +14,16 @@ import {
   getClwRotaSettings,
   saveClwRotaSettings,
   testClwRotaConnection,
-  syncClwRotaStaff,
-  syncClwRotaRota,
-  syncClwRotaLeave,
   listReclassificationRuns,
   undoReclassificationRun,
   investigateAndFixTraineeSolo,
   backfillNonSagLabels,
 } from "@/lib/clwrota.functions";
+import {
+  useSyncClwRotaStaff,
+  useSyncClwRotaRota,
+  useSyncClwRotaLeave,
+} from "@/lib/clwrota-sync-hooks";
 
 
 import { formatDateGB } from "@/lib/utils";
@@ -61,9 +63,9 @@ function SettingsPage() {
   const getSettings = useServerFn(getClwRotaSettings);
   const saveSettings = useServerFn(saveClwRotaSettings);
   const testConn = useServerFn(testClwRotaConnection);
-  const syncStaff = useServerFn(syncClwRotaStaff);
-  const syncRota = useServerFn(syncClwRotaRota);
-  const syncLeave = useServerFn(syncClwRotaLeave);
+  const syncStaff = useSyncClwRotaStaff();
+  const syncRota = useSyncClwRotaRota();
+  const syncLeave = useSyncClwRotaLeave();
   const backfillNonSag = useServerFn(backfillNonSagLabels);
 
   const { data, isLoading } = useQuery({
