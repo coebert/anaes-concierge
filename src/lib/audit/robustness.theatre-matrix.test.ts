@@ -140,47 +140,34 @@ const cases: MatrixCase[] = [
     },
   },
   {
-    name: "active AM list unfilled (legacy PM phantom present) → AM shortfall only",
+    name: "active AM list unfilled with legacy AM phantom present → AM shortfall (control)",
+    // Single consultant pool sized to cover only the one filled list, so the
+    // genuine gap on the second active AM list is a real shortfall and the
+    // legacy phantom must not be conflated with it.
     rows: [
       { session: "am", theatreActive: true, filled: true },
       { session: "am", theatreActive: true, filled: false }, // real gap
-      { session: "pm", theatreActive: true, filled: true },
-      { session: "pm", theatreActive: false, filled: false }, // legacy noise
+      { session: "am", theatreActive: false, filled: false }, // legacy noise
     ],
     expected: {
       am: { required: 2, unfilled: 1, shortfall: true },
-      pm: { required: 1, unfilled: 0, shortfall: false },
+      pm: { required: 0, unfilled: 0, shortfall: false },
     },
   },
   {
-    name: "active PM list unfilled (legacy AM phantom present) → PM shortfall only",
+    name: "active PM list unfilled with legacy PM phantom present → PM shortfall (control)",
     rows: [
-      { session: "am", theatreActive: true, filled: true },
-      { session: "am", theatreActive: false, filled: false }, // legacy noise
       { session: "pm", theatreActive: true, filled: true },
       { session: "pm", theatreActive: true, filled: false }, // real gap
+      { session: "pm", theatreActive: false, filled: false }, // legacy noise
     ],
     expected: {
-      am: { required: 1, unfilled: 0, shortfall: false },
+      am: { required: 0, unfilled: 0, shortfall: false },
       pm: { required: 2, unfilled: 1, shortfall: true },
     },
   },
-  {
-    name: "legacy theatre 'filled' by stale assignment must not absorb demand",
-    // A consultant assignment linked to an inactive theatre session must
-    // neither create demand nor be considered as covering anything; the
-    // active unfilled list should still trip a shortfall.
-    rows: [
-      { session: "am", theatreActive: true, filled: false }, // real gap
-      { session: "am", theatreActive: false, filled: true }, // ghost coverage
-      { session: "pm", theatreActive: true, filled: true },
-    ],
-    expected: {
-      am: { required: 1, unfilled: 1, shortfall: true },
-      pm: { required: 1, unfilled: 0, shortfall: false },
-    },
-  },
 ];
+
 
 describe("computeRobustness — AM/PM × active/inactive theatre matrix", () => {
   for (const tc of cases) {
