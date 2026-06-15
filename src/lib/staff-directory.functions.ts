@@ -114,7 +114,7 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     const [{ data: profile, error: e1 }, supRes] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id,full_name,email,training_level,grade,start_date")
+        .select("id,full_name,email,training_level,grade,start_date,rotation_end_date")
         .eq("id", data.staffId)
         .maybeSingle(),
       data.supervisorIds.length
