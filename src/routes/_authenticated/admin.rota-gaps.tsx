@@ -42,11 +42,58 @@ function addDaysISO(iso: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/**
+ * Merge overlapping or near-adjacent date ranges so a single targeted sync
+ * can cover several trainees' sync_missing gaps in one request. We pad the
+ * join distance by `bridgeDays` (default 7) because the upstream CLWRota
+ * report is windowed and one slightly wider request is cheaper than many
+ * narrow ones.
+ */
+function mergeRanges(
+  ranges: Array<{ startISO: string; endISO: string }>,
+  bridgeDays = 7,
+): Array<{ startISO: string; endISO: string }> {
+  if (ranges.length === 0) return [];
+  const sorted = [...ranges].sort((a, b) =>
+    a.startISO < b.startISO ? -1 : a.startISO > b.startISO ? 1 : 0,
+  );
+  const merged: Array<{ startISO: string; endISO: string }> = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const bridgeEnd = addDaysISO(last.endISO, bridgeDays);
+    if (sorted[i].startISO <= bridgeEnd) {
+      if (sorted[i].endISO > last.endISO) last.endISO = sorted[i].endISO;
+    } else {
+      merged.push({ ...sorted[i] });
+    }
+  }
+  return merged;
+}
+
+type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
+
+interface SyncProgress {
+  running: boolean;
+  current: number;
+  total: number;
+  perRange: Array<{
+    from: string;
+    to: string;
+    ok: boolean;
+    message?: string;
+    upserted?: number;
+  }>;
+  error?: string;
+}
+
 function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
+  const queryClient = useQueryClient();
+  const syncRota = useServerFn(syncClwRotaRota);
   const [windowChoice, setWindowChoice] = useState<WindowChoice>("90");
   const [filter, setFilter] = useState("");
   const [hideClean, setHideClean] = useState(true);
+  const [progress, setProgress] = useState<SyncProgress | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
