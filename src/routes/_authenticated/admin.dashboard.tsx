@@ -301,7 +301,7 @@ function AdminDashboardPage() {
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) {
-        return { trainees: [], assignmentsByStaff: new Map(), futureByStaff: new Map<string, Array<{ duty_type: string | null; session_date: string }>>(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>() };
+        return { trainees: [], assignmentsByStaff: new Map(), futureByStaff: new Map<string, Array<{ duty_type: string | null; session_date: string }>>(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>(), supervisorSessionIds: new Set<string>() };
       }
       const [{ data: assignments, error: e2 }, { data: specs, error: e3 }, { data: futureRows, error: eFuture }] = await Promise.all([
         supabase
