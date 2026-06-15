@@ -286,6 +286,8 @@ function TraineeDashboard() {
         <Stat label="Training level" value={data?.trainingLevel ?? "—"} icon={Stethoscope} />
       </div>
 
+      <TodayInHospital />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ActionCard to="/me" icon={CalendarRange}
           title="My rota" body="Your upcoming sessions and supervisors." />
