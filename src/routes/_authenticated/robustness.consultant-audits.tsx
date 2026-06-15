@@ -303,6 +303,8 @@ function ConsultantAuditsPage() {
         </CardContent>
       </Card>
 
+      <AuditCoverageBadge coverage={data?.coverage ?? null} />
+
       {grantsCheck.isLoading ? (
         <p className="text-sm text-muted-foreground">Checking data access…</p>
       ) : grantsCheck.error ? (
