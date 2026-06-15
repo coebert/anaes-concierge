@@ -217,7 +217,15 @@ function ConsultantAuditsPage() {
             (a.firstName || "").localeCompare(b.firstName || ""),
         );
 
-      return { rows };
+      return {
+        rows,
+        coverage: {
+          steps: [
+            { label: "theatre_sessions", ...sessionCov },
+            { label: "rota_assignments", ...assignmentCov },
+          ],
+        },
+      };
     },
   });
 
