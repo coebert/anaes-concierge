@@ -210,18 +210,27 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     }
 
     // Future first assignment for "no activity & no counted leave" trainees.
+    // Also drives ICU-block detection — pull duty_type so we can decide
+    // whether the trainee's remaining rotation is ICU-only.
     const { data: futureRows, error: fErr } = await supabaseAdmin
       .from("rota_assignments")
-      .select("staff_id, session_date")
+      .select("staff_id, session_date, duty_type")
       .in("staff_id", ids)
       .gt("session_date", today)
       .order("session_date", { ascending: true })
       .range(0, 49999);
     if (fErr) throw new Error(fErr.message);
     const firstFuture = new Map<string, string>();
+    const futureByStaff = new Map<
+      string,
+      Array<{ duty_type: string | null; session_date: string }>
+    >();
     for (const r of futureRows ?? []) {
       if (!firstFuture.has(r.staff_id))
         firstFuture.set(r.staff_id, r.session_date);
+      const list = futureByStaff.get(r.staff_id) ?? [];
+      list.push({ duty_type: r.duty_type, session_date: r.session_date });
+      futureByStaff.set(r.staff_id, list);
     }
 
     const out: AuditTrainee[] = (trainees ?? []).map((t) => {
@@ -246,6 +255,11 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
           "No leave_allowances row — entitlement is unknown, day-count audits will be incomplete.",
         );
       }
+      const icu_block_only = isIcuBlockOnly(
+        futureByStaff.get(t.id) ?? [],
+        today,
+        (t as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+      );
       return {
         id: t.id,
         full_name: t.full_name as string | null,
@@ -259,6 +273,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
           a.start_date.localeCompare(b.start_date),
         ),
         leave_source_warnings: warnings,
+        icu_block_only,
       };
     });
 
