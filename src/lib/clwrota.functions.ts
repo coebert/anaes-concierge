@@ -2564,6 +2564,113 @@ export async function performRotaSync(
     };
 }
 
+/**
+ * Slice-by-slice variant of {@link performRotaSync} that walks the live
+ * sync window (daysBack..daysAhead) in N-day chunks, calling
+ * `performRotaSync({ from, to })` for each slice.
+ *
+ * Why this exists
+ * ---------------
+ * The upstream CLWRota report endpoint ignores `start_date`/`end_date`
+ * query params and returns the full multi-month dataset regardless of the
+ * URL window we sent (see comment in performRotaSync). When the default
+ * 150-day window is fetched in one go, `await res.text()` materialises the
+ * entire department-wide payload in the Worker's memory and trips the
+ * Workers runtime guard:
+ *
+ *     Memory limit would be exceeded before EOF.
+ *
+ * Splitting the window into smaller slices keeps the post-parse
+ * `theatre_sessions` / `rota_assignments` upsert work bounded per slice
+ * (the post-parse window filter discards anything outside [from..to]) and
+ * lets the worker GC between slices.
+ *
+ * The aggregate result mirrors `performRotaSync`'s shape so callers can
+ * treat it as a drop-in replacement. Per-slice errors are captured but do
+ * NOT abort the run — partial progress is preferable to losing the whole
+ * window. The aggregate `ok` flag is true only when every slice succeeded.
+ */
+export async function performRotaSyncChunked(
+  opts: { daysBack?: number; daysAhead?: number; sliceDays?: number } = {},
+): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number }> {
+  const sliceDays = Math.max(1, opts.sliceDays ?? 30);
+
+  const { data: settings } = await supabaseAdmin
+    .from("clwrota_sync_state")
+    .select("sync_days_back, sync_days_ahead")
+    .eq("id", 1)
+    .maybeSingle();
+  const daysBack = opts.daysBack ?? settings?.sync_days_back ?? 30;
+  const daysAhead = opts.daysAhead ?? settings?.sync_days_ahead ?? 120;
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setUTCDate(start.getUTCDate() - daysBack);
+  const end = new Date(today);
+  end.setUTCDate(end.getUTCDate() + daysAhead);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  type RotaResult = Awaited<ReturnType<typeof performRotaSync>>;
+  const agg: RotaResult & { slices: number } = {
+    ok: true,
+    message: "",
+    total: 0,
+    sessionsUpserted: 0,
+    assignmentsUpserted: 0,
+    skipped: [],
+    warnings: [],
+    errors: [],
+    rawPreview: "",
+    sampleKeys: [],
+    unmatchedTheatres: [],
+    unmatchedStaff: [],
+    traineeStartPredictions: null,
+    slices: 0,
+  };
+
+  const unmatchedT = new Set<string>();
+  const unmatchedS = new Set<string>();
+
+  for (let cursor = new Date(start); cursor <= end; ) {
+    const sliceEnd = new Date(cursor);
+    sliceEnd.setUTCDate(sliceEnd.getUTCDate() + sliceDays - 1);
+    if (sliceEnd > end) sliceEnd.setTime(end.getTime());
+    const from = fmt(cursor);
+    const to = fmt(sliceEnd);
+    agg.slices += 1;
+    try {
+      const r = await performRotaSync({ from, to });
+      agg.total += r.total;
+      agg.sessionsUpserted += r.sessionsUpserted;
+      agg.assignmentsUpserted += r.assignmentsUpserted;
+      agg.skipped.push(...r.skipped);
+      agg.warnings.push(...r.warnings);
+      agg.errors.push(...r.errors);
+      if (!agg.rawPreview && r.rawPreview) agg.rawPreview = r.rawPreview;
+      if (agg.sampleKeys.length === 0 && r.sampleKeys.length > 0) agg.sampleKeys = r.sampleKeys;
+      for (const t of r.unmatchedTheatres) unmatchedT.add(t);
+      for (const s of r.unmatchedStaff) unmatchedS.add(s);
+      if (r.traineeStartPredictions) agg.traineeStartPredictions = r.traineeStartPredictions;
+      if (!r.ok) agg.ok = false;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      agg.errors.push({ label: `slice ${from}..${to}`, error: msg });
+      agg.ok = false;
+      console.error(`[clwrota] rota slice ${from}..${to} failed:`, msg);
+    }
+    cursor = new Date(sliceEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  agg.unmatchedTheatres = Array.from(unmatchedT);
+  agg.unmatchedStaff = Array.from(unmatchedS);
+  agg.message = `Chunked rota sync: ${agg.slices} slice(s) of ≤${sliceDays}d, ${agg.assignmentsUpserted} assignments upserted, ${agg.errors.length} error(s).`;
+  return agg;
+}
+
+
+
 // =====================================================================
 // Leave sync
 // =====================================================================
