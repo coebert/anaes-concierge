@@ -190,7 +190,7 @@ function SettingsPage() {
       retryInFlight.current = false;
       const exhausted =
         retryAttempt >= MAX_AUTO_RETRIES
-          ? ` after ${MAX_AUTO_RETRIES} targeted retry${MAX_AUTO_RETRIES === 1 ? "" : "s"}`
+          ? ` after ${MAX_AUTO_RETRIES} targeted retries`
           : "";
       toast.warning(`Trainee theatre audit${exhausted}: ${summary}`);
     },
