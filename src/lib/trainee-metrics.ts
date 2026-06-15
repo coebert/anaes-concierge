@@ -290,7 +290,3 @@ export function computeTraineeMetrics(
     warnings,
     specialtyBreakdown,
   };
-}
-    specialtyBreakdown,
-  };
-}
