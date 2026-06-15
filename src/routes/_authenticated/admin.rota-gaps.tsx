@@ -304,6 +304,58 @@ function RotaGapsPage() {
             <Stat icon={CalendarX} tone="muted" label="Distinct gap ranges" value={totalRanges} />
           </div>
 
+          <Card>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="text-sm">
+                <div className="font-medium">Targeted CLWRota sync</div>
+                <div className="text-xs text-muted-foreground">
+                  {syncableDays > 0
+                    ? `Will fetch ${syncTargets.length} merged range${syncTargets.length === 1 ? "" : "s"} covering ${syncableDays} missing weekday${syncableDays === 1 ? "" : "s"}.`
+                    : "No sync-missing gaps in the current filter — nothing to fetch."}
+                </div>
+              </div>
+              <Button
+                onClick={runTargetedSync}
+                disabled={syncTargets.length === 0 || progress?.running}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
+                {progress?.running
+                  ? `Syncing ${progress.current + 1} / ${progress.total}…`
+                  : "Sync gaps"}
+              </Button>
+            </CardContent>
+            {progress && progress.perRange.length > 0 && (
+              <CardContent className="border-t pt-3">
+                <ul className="divide-y rounded-md border text-sm">
+                  {progress.perRange.map((p) => (
+                    <li
+                      key={`${p.from}-${p.to}`}
+                      className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                    >
+                      <span className="font-mono text-xs">
+                        {formatDateGB(p.from)} → {formatDateGB(p.to)}
+                      </span>
+                      <span className="flex items-center gap-2 text-xs">
+                        {p.ok ? (
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                            {p.upserted ?? 0} upserted
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">Failed</Badge>
+                        )}
+                        {p.message && (
+                          <span className="text-muted-foreground">{p.message}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            )}
+          </Card>
+
+
           {rows.length === 0 ? (
             <Card>
               <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
