@@ -145,7 +145,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
 
     const { data: trainees, error: tErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, email, start_date, clwrota_external_id")
+      .select("id, full_name, email, start_date, clwrota_external_id, rotation_end_date")
       .eq("grade", "trainee")
       .eq("active", true);
     if (tErr) throw new Error(tErr.message);
