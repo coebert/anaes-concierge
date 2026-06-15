@@ -566,13 +566,26 @@ function SettingsPage() {
           {validateMut.data && (
             <div className="rounded-md border border-border p-3 text-xs space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="font-medium text-sm">
+                <div className="font-medium text-sm flex items-center gap-2">
                   Post-sync trainee theatre audit
+                  {retryAttempt > 0 && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {rotaMut.isPending || validateMut.isPending
+                        ? `Retry ${retryAttempt}/${MAX_AUTO_RETRIES} in progress…`
+                        : `${retryAttempt}/${MAX_AUTO_RETRIES} retries used`}
+                    </Badge>
+                  )}
                 </div>
                 <div className="text-muted-foreground">
                   Window {validateMut.data.window.from} → {validateMut.data.window.to}
                 </div>
               </div>
+              {retriedTrainees.length > 0 && (
+                <div className="text-[11px] text-muted-foreground">
+                  Last targeted retry covered: {retriedTrainees.slice(0, 8).join(", ")}
+                  {retriedTrainees.length > 8 ? `, +${retriedTrainees.length - 8} more` : ""}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Stat label="Trainees scanned" value={validateMut.data.traineesScanned} />
                 <Stat
