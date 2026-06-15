@@ -353,6 +353,11 @@ function RotaGapsPage() {
           message: err instanceof Error ? err.message : String(err),
         });
       }
+      // Refresh the gap report after every range so the planned-coverage
+      // projection, per-trainee gap list, and summary stats reflect the
+      // rows just written. We await it so the next range's projection is
+      // computed against the freshly reduced set of remaining gaps.
+      await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
     }
     setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
