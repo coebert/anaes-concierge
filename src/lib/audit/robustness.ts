@@ -364,9 +364,13 @@ export async function computeRobustness(
       .map((s) => s.id),
   );
 
-  // Drop emergency / CEPOD sessions from the planned-list demand model.
+  // Drop emergency / CEPOD sessions from the planned-list demand model,
+  // and drop sessions attached to inactive theatres (stale rows from old
+  // syncs would otherwise look like an unfilled list).
   const theatreSessions = theatreSessionsRaw.filter(
-    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+    (t) =>
+      !isEmergencyTheatreSession(t, emergencySpecialtyIds) &&
+      !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id)),
   );
   const emergencySessionIds = new Set(
     theatreSessionsRaw
