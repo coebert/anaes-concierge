@@ -142,15 +142,29 @@ function PoacAuditPage() {
 
       if (!poacTheatreIds.length) return emptyResult;
 
-      // All POAC theatre sessions in range.
-      const { data: sessions, error: se } = await supabase
-        .from("theatre_sessions")
-        .select("id,session_date,session,theatre_id,specialty_id,surgical_consultant")
-        .in("theatre_id", poacTheatreIds)
-        .gte("session_date", from)
-        .lte("session_date", to);
-      if (se) throw se;
-      const sessionList = sessions ?? [];
+      // All POAC theatre sessions in range — paged to defeat the 1000-row
+      // default cap, and chunked on theatre_id to avoid URL-length truncation
+      // if the trust ever splits POAC across many theatres.
+      const sessionList: Array<{
+        id: string;
+        session_date: string;
+        session: string;
+        theatre_id: string;
+        specialty_id: string | null;
+        surgical_consultant: string | null;
+      }> = [];
+      for (const theatreSlice of chunkIds(poacTheatreIds)) {
+        const pageRows = await fetchAllPaged((lo, hi) =>
+          supabase
+            .from("theatre_sessions")
+            .select("id,session_date,session,theatre_id,specialty_id,surgical_consultant")
+            .in("theatre_id", theatreSlice)
+            .gte("session_date", from)
+            .lte("session_date", to)
+            .range(lo, hi),
+        );
+        sessionList.push(...pageRows);
+      }
       const sessionIds = sessionList.map((s) => s.id);
       if (!sessionIds.length) return emptyResult;
       const sessionById = new Map(sessionList.map((s) => [s.id, s] as const));
@@ -160,33 +174,46 @@ function PoacAuditPage() {
         new Set(sessionList.map((s) => s.specialty_id).filter(Boolean)),
       ) as string[];
       const specialtyNameById = new Map<string, string>();
-      if (specialtyIds.length) {
+      for (const slice of chunkIds(specialtyIds)) {
         const { data: specs, error: spe } = await supabase
           .from("specialties")
           .select("id,name")
-          .in("id", specialtyIds);
+          .in("id", slice);
         if (spe) throw spe;
         for (const s of specs ?? []) specialtyNameById.set(s.id, s.name);
       }
 
-      // Assignments to those POAC sessions in range.
-      const { data: assignments, error: ae } = await supabase
-        .from("rota_assignments")
-        .select("id,staff_id,session_date,session,theatre_session_id")
-        .in("theatre_session_id", sessionIds);
-      if (ae) throw ae;
-      const assignmentList = assignments ?? [];
+      // Assignments to those POAC sessions in range — chunked on
+      // theatre_session_id and paged per chunk so neither URL length nor
+      // the 1000-row cap can silently drop rows from the audit totals.
+      const assignmentList: Array<{
+        id: string;
+        staff_id: string;
+        session_date: string;
+        session: string;
+        theatre_session_id: string | null;
+      }> = [];
+      for (const slice of chunkIds(sessionIds)) {
+        const pageRows = await fetchAllPaged((lo, hi) =>
+          supabase
+            .from("rota_assignments")
+            .select("id,staff_id,session_date,session,theatre_session_id")
+            .in("theatre_session_id", slice)
+            .range(lo, hi),
+        );
+        assignmentList.push(...pageRows);
+      }
 
       // Resolve grade + name for each staff member appearing in assignments.
       const staffIds = Array.from(
         new Set(assignmentList.map((a) => a.staff_id).filter(Boolean)),
       ) as string[];
       const staffById = new Map<string, { grade: string | null; full_name: string | null }>();
-      if (staffIds.length) {
+      for (const slice of chunkIds(staffIds)) {
         const { data: profs, error: pe } = await supabase
           .from("profiles")
           .select("id,grade,full_name")
-          .in("id", staffIds);
+          .in("id", slice);
         if (pe) throw pe;
         for (const p of profs ?? []) {
           staffById.set(p.id, { grade: p.grade ?? null, full_name: p.full_name ?? null });
