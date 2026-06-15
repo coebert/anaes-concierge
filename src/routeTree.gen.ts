@@ -54,6 +54,7 @@ import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
+import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
@@ -308,6 +309,12 @@ const AuthenticatedAdminAccessRequestsRoute =
     path: '/admin/access-requests',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const ApiPublicHooksSeedClwrotaVaultRoute =
+  ApiPublicHooksSeedClwrotaVaultRouteImport.update({
+    id: '/api/public/hooks/seed-clwrota-vault',
+    path: '/api/public/hooks/seed-clwrota-vault',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksClwrotaSyncRoute =
   ApiPublicHooksClwrotaSyncRouteImport.update({
     id: '/api/public/hooks/clwrota-sync',
@@ -375,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
+  '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -423,6 +431,7 @@ export interface FileRoutesByTo {
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
+  '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -474,6 +483,7 @@ export interface FileRoutesById {
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
+  '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -525,6 +535,7 @@ export interface FileRouteTypes {
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/hooks/clwrota-sync'
+    | '/api/public/hooks/seed-clwrota-vault'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/hooks/clwrota-sync'
+    | '/api/public/hooks/seed-clwrota-vault'
   id:
     | '__root__'
     | '/_authenticated'
@@ -623,6 +635,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calendar/staff/$staffId'
     | '/_authenticated/robustness/day/$date'
     | '/api/public/hooks/clwrota-sync'
+    | '/api/public/hooks/seed-clwrota-vault'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -635,6 +648,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicHooksClwrotaSyncRoute: typeof ApiPublicHooksClwrotaSyncRoute
+  ApiPublicHooksSeedClwrotaVaultRoute: typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -954,6 +968,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAccessRequestsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/seed-clwrota-vault': {
+      id: '/api/public/hooks/seed-clwrota-vault'
+      path: '/api/public/hooks/seed-clwrota-vault'
+      fullPath: '/api/public/hooks/seed-clwrota-vault'
+      preLoaderRoute: typeof ApiPublicHooksSeedClwrotaVaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/clwrota-sync': {
       id: '/api/public/hooks/clwrota-sync'
       path: '/api/public/hooks/clwrota-sync'
@@ -1112,6 +1133,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicHooksClwrotaSyncRoute: ApiPublicHooksClwrotaSyncRoute,
+  ApiPublicHooksSeedClwrotaVaultRoute: ApiPublicHooksSeedClwrotaVaultRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
