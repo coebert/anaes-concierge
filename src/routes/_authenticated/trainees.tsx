@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { chunkIds } from "@/lib/supabase-chunked";
+import { fetchAllRowsPaged, idKey } from "@/lib/audit/paginate";
 import { computeTraineeMetrics, type MetricAssignment } from "@/lib/trainee-metrics";
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
@@ -50,10 +51,10 @@ function TraineesPage() {
   const { hasRole } = useAuth();
   const [filter, setFilter] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = useState<Date | undefined>(new Date());
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
 
   const [debouncedFrom, setDebouncedFrom] = useState<Date | undefined>(undefined);
-  const [debouncedTo, setDebouncedTo] = useState<Date | undefined>(new Date());
+  const [debouncedTo, setDebouncedTo] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -79,6 +80,7 @@ function TraineesPage() {
       const traineeIds = (trainees ?? []).map((t) => t.id);
       const todayIso = todayISO();
       let allAssignments: Array<{
+        id: string;
         staff_id: string;
         role_on_list: string;
         session: string;
@@ -92,18 +94,31 @@ function TraineesPage() {
         // active trainees collectively easily exceed that. Truncated reads
         // were silently dropping assignments from longer-tenured trainees,
         // making their progress percentages look artificially low.
-        // Also restrict to sessions on/before today so future-scheduled lists
-        // don't pre-credit curriculum progress.
-        const { data: rows, error: e4 } = await supabase
-          .from("rota_assignments")
-          .select(
-            "staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
-          )
-          .in("staff_id", traineeIds)
-          .lte("session_date", todayIso)
-          .range(0, 49999);
-        if (e4) throw e4;
-        allAssignments = (rows ?? []) as typeof allAssignments;
+        // Pull the full imported assignment set, including future scheduled
+        // lists. Curriculum progress is still capped to today below, but the
+        // trainee summary/audit must not report “no theatre lists” for a
+        // trainee who has matched theatre sessions already imported ahead of
+        // today.
+        const assignmentPages = await Promise.all(
+          chunkIds(traineeIds).map((ids) =>
+            fetchAllRowsPaged<typeof allAssignments[number]>(
+              (from, to) =>
+                supabase
+                  .from("rota_assignments")
+                  .select(
+                    "id,staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
+                  )
+                  .in("staff_id", ids)
+                  .order("staff_id", { ascending: true })
+                  .order("session_date", { ascending: true })
+                  .order("session", { ascending: true })
+                  .order("id", { ascending: true })
+                  .range(from, to),
+              { rowKey: idKey, label: "trainees-overview-assignments" },
+            ),
+          ),
+        );
+        allAssignments = assignmentPages.flat();
       }
       const tsIds = Array.from(
         new Set(allAssignments.map((a) => a.theatre_session_id).filter(Boolean) as string[]),
@@ -170,7 +185,11 @@ function TraineesPage() {
 
       // Competency progress only counts clinical lists (solo/supervised) up to today.
       const clinicalByStaff = allAssignments
-        .filter((a) => a.role_on_list === "solo" || a.role_on_list === "supervised")
+        .filter(
+          (a) =>
+            (a.role_on_list === "solo" || a.role_on_list === "supervised") &&
+            a.session_date <= todayIso,
+        )
         .reduce<Record<string, Array<{ specialty_id: string | null; role_on_list: string }>>>(
           (acc, a) => {
             (acc[a.staff_id] ||= []).push({
@@ -197,19 +216,30 @@ function TraineesPage() {
       // Future assignments (today+ through end of rotation) — used to flag
       // "ICU block only" trainees whose remaining rotation has no theatre work.
       let futureAssignments: Array<{
+        id: string;
         staff_id: string;
         duty_type: string | null;
         session_date: string;
       }> = [];
       if (traineeIds.length) {
-        const { data: futureRows, error: eFut } = await supabase
-          .from("rota_assignments")
-          .select("staff_id,duty_type,session_date")
-          .in("staff_id", traineeIds)
-          .gt("session_date", todayIso)
-          .range(0, 49999);
-        if (eFut) throw eFut;
-        futureAssignments = (futureRows ?? []) as typeof futureAssignments;
+        const futurePages = await Promise.all(
+          chunkIds(traineeIds).map((ids) =>
+            fetchAllRowsPaged<typeof futureAssignments[number]>(
+              (from, to) =>
+                supabase
+                  .from("rota_assignments")
+                  .select("id,staff_id,duty_type,session_date")
+                  .in("staff_id", ids)
+                  .gt("session_date", todayIso)
+                  .order("staff_id", { ascending: true })
+                  .order("session_date", { ascending: true })
+                  .order("id", { ascending: true })
+                  .range(from, to),
+              { rowKey: idKey, label: "trainees-overview-future-assignments" },
+            ),
+          ),
+        );
+        futureAssignments = futurePages.flat();
       }
       const futureByStaff = futureAssignments.reduce<Record<string, Array<{ duty_type: string | null; session_date: string }>>>(
         (acc, a) => {
@@ -258,6 +288,18 @@ function TraineesPage() {
         const overall = progress.length
           ? Math.round(progress.reduce((s, p) => s + p.percent, 0) / progress.length)
           : null;
+        const firstAssignmentDate = (data.allAssignmentsByStaff[t.id] ?? []).reduce<string | null>(
+          (earliest, a) => {
+            const d = a.session_date ?? null;
+            if (!d) return earliest;
+            return earliest === null || d < earliest ? d : earliest;
+          },
+          null,
+        );
+        const effectiveStartDate =
+          firstAssignmentDate && (!t.start_date || firstAssignmentDate < t.start_date)
+            ? firstAssignmentDate
+            : t.start_date;
         const rotationEnd =
           (t as { rotation_end_date?: string | null }).rotation_end_date ?? null;
         const icuOnly = isIcuBlockOnly(
@@ -265,17 +307,17 @@ function TraineesPage() {
           todayISO(),
           rotationEnd,
         );
-        return { trainee: t, progress, overall, icuOnly };
+        return { trainee: t, progress, overall, icuOnly, effectiveStartDate };
       })
       .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [data, filter]);
 
   const { fromISO, toISO, asOfMs } = useMemo(() => {
-    const to = debouncedTo ?? new Date();
+    const to = debouncedTo ?? null;
     return {
       fromISO: debouncedFrom ? format(debouncedFrom, "yyyy-MM-dd") : null,
-      toISO: format(to, "yyyy-MM-dd"),
-      asOfMs: to.getTime(),
+      toISO: to ? format(to, "yyyy-MM-dd") : null,
+      asOfMs: (to ?? new Date()).getTime(),
     };
   }, [debouncedFrom, debouncedTo]);
 
@@ -286,9 +328,9 @@ function TraineesPage() {
   const notYetStartedTrainees = useMemo(
     () =>
       rows
-        .filter(({ trainee }) => isNotYetStarted(trainee.start_date))
+        .filter(({ effectiveStartDate }) => isNotYetStarted(effectiveStartDate))
         .sort((a, b) =>
-          (a.trainee.start_date ?? "").localeCompare(b.trainee.start_date ?? ""),
+          (a.effectiveStartDate ?? "").localeCompare(b.effectiveStartDate ?? ""),
         ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, today],
@@ -297,21 +339,22 @@ function TraineesPage() {
   const metricRows = useMemo(() => {
     if (!data) return [];
     return rows
-      .filter(({ trainee }) => !isNotYetStarted(trainee.start_date))
-      .map(({ trainee, icuOnly }) => {
+      .filter(({ effectiveStartDate }) => !isNotYetStarted(effectiveStartDate))
+      .map(({ trainee, icuOnly, effectiveStartDate }) => {
         const all = data.allAssignmentsByStaff[trainee.id] ?? [];
         const filtered = all.filter((a) => {
           const d = a.session_date ?? "";
           if (fromISO && d < fromISO) return false;
-          if (d > toISO) return false;
+          if (toISO && d > toISO) return false;
           return true;
         });
         return {
           trainee,
           icuOnly,
+          effectiveStartDate,
           metrics: computeTraineeMetrics(
             filtered,
-            trainee.start_date,
+            effectiveStartDate,
             data.tsSpecMap,
             data.specMap,
             asOfMs,
@@ -369,7 +412,7 @@ function TraineesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {notYetStartedTrainees.map(({ trainee }) => (
+                {notYetStartedTrainees.map(({ trainee, effectiveStartDate }) => (
                   <TableRow key={trainee.id}>
                     <TableCell>
                       <Link
@@ -389,8 +432,8 @@ function TraineesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {trainee.start_date
-                          ? format(new Date(trainee.start_date), "PPP")
+                        {effectiveStartDate
+                          ? format(new Date(effectiveStartDate), "PPP")
                           : "Unknown"}
                       </Badge>
                     </TableCell>
@@ -442,14 +485,14 @@ function TraineesPage() {
                   setToDate(d);
                 }
               }}
-              placeholder="Today"
+              placeholder="All"
             />
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setFromDate(undefined);
-                setToDate(new Date());
+                setToDate(undefined);
               }}
             >
               Reset
@@ -458,8 +501,10 @@ function TraineesPage() {
         </div>
         <p className="text-xs text-muted-foreground">
           {fromISO
-            ? `Counting assignments from ${fromISO} through ${toISO}.`
-            : `Counting all assignments up to ${toISO}.`}
+            ? `Counting assignments from ${fromISO}${toISO ? ` through ${toISO}` : " onward"}.`
+            : toISO
+              ? `Counting all assignments up to ${toISO}.`
+              : "Counting all imported assignments."}
         </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
@@ -467,13 +512,13 @@ function TraineesPage() {
           <p className="text-sm text-muted-foreground">No trainees on record.</p>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
-            {metricRows.map(({ trainee, metrics, icuOnly }) => (
+            {metricRows.map(({ trainee, metrics, icuOnly, effectiveStartDate }) => (
               <TraineeMetricsCard
                 key={trainee.id}
                 title={trainee.full_name || trainee.email || "—"}
                 subtitle={trainee.training_level ?? "No level set"}
                 metrics={metrics}
-                startDate={trainee.start_date}
+                startDate={effectiveStartDate}
                 rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
                 icuBlockOnly={icuOnly}
               />
@@ -503,7 +548,7 @@ function TraineesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ trainee, progress, overall, icuOnly }) => (
+                {rows.map(({ trainee, progress, overall, icuOnly, effectiveStartDate }) => (
                   <TableRow key={trainee.id} className="cursor-pointer">
                     <TableCell>
                       <Link
@@ -513,9 +558,9 @@ function TraineesPage() {
                       >
                         {trainee.full_name || trainee.email}
                       </Link>
-                      {isNotYetStarted(trainee.start_date) ? (
+                      {isNotYetStarted(effectiveStartDate) ? (
                         <Badge variant="outline" className="ml-2 text-xs">
-                          Not yet started · {format(new Date(trainee.start_date), "d MMM yyyy")}
+                          Not yet started · {format(new Date(effectiveStartDate), "d MMM yyyy")}
                         </Badge>
                       ) : null}
                       {icuOnly ? <IcuBlockBadge className="ml-2" /> : null}
