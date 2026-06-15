@@ -612,17 +612,18 @@ export async function computeListCoverage(
   options: RobustnessOptions = {},
 ): Promise<DayListCoverage[]> {
 
-  const [sessionsRaw, specialtiesAll] = await Promise.all([
+  const [sessionsRaw, specialtiesAll, inactiveTheatreRows] = await Promise.all([
     fetchAllRows<{
       id: string;
       session_date: string;
       session: string;
       specialty_id: string | null;
       surgical_consultant: string | null;
+      theatre_id: string | null;
     }>((from, to) =>
       supabase
         .from("theatre_sessions")
-        .select("id, session_date, session, specialty_id, surgical_consultant")
+        .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
         .gte("session_date", rangeStart)
         .lte("session_date", rangeEnd)
         .order("id", { ascending: true })
@@ -637,6 +638,7 @@ export async function computeListCoverage(
         .range(from, to),
       { rowKey: idKey, label: "list-coverage.specialties" },
     ),
+    supabase.from("theatres").select("id").eq("active", false).then((r) => r.data ?? []),
   ]);
 
 
@@ -645,8 +647,13 @@ export async function computeListCoverage(
       .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
       .map((s) => s.id),
   );
+  const inactiveTheatreIds = new Set(
+    (inactiveTheatreRows as Array<{ id: string }>).map((t) => t.id),
+  );
   const sessions = sessionsRaw.filter(
-    (t) => !isEmergencyTheatreSession(t, emergencySpecialtyIds),
+    (t) =>
+      !isEmergencyTheatreSession(t, emergencySpecialtyIds) &&
+      !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id)),
   );
 
   const tsIds = sessions.map((s) => s.id);
