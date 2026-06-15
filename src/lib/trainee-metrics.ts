@@ -62,8 +62,9 @@ export const JUNIOR_TRAINEE_LEVELS: ReadonlySet<string> = new Set([
 ]);
 
 export function isJuniorTraineeLevel(level: string | null | undefined): boolean {
-  return !!level && JUNIOR_TRAINEE_LEVELS.has(level.trim().toUpperCase().replace(/\s+/g, ""))
-    || (!!level && JUNIOR_TRAINEE_LEVELS.has(level.trim()));
+  if (!level) return false;
+  const norm = level.trim().toUpperCase().replace(/\s+/g, "");
+  return JUNIOR_TRAINEE_LEVELS.has(norm);
 }
 
 export function computeTraineeMetrics(
