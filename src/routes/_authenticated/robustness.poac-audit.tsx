@@ -501,7 +501,10 @@ function PoacAuditPage() {
         </CardContent>
       </Card>
 
+      <AuditCoverageBadge coverage={coverage} />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
         <SummaryCard label="Weeks shown" value={weeks.length} />
         <SummaryCard label="Total POAC sessions" value={totals.total} tone="primary" />
         <SummaryCard
