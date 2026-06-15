@@ -63,9 +63,9 @@ function SettingsPage() {
   const getSettings = useServerFn(getClwRotaSettings);
   const saveSettings = useServerFn(saveClwRotaSettings);
   const testConn = useServerFn(testClwRotaConnection);
-  const syncStaff = useServerFn(syncClwRotaStaff);
-  const syncRota = useServerFn(syncClwRotaRota);
-  const syncLeave = useServerFn(syncClwRotaLeave);
+  const syncStaff = useSyncClwRotaStaff();
+  const syncRota = useSyncClwRotaRota();
+  const syncLeave = useSyncClwRotaLeave();
   const backfillNonSag = useServerFn(backfillNonSagLabels);
 
   const { data, isLoading } = useQuery({
