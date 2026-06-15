@@ -24,6 +24,7 @@ import {
   useSyncClwRotaRota,
   useSyncClwRotaLeave,
 } from "@/lib/clwrota-sync-hooks";
+import { validateTraineeTheatreMatches } from "@/lib/trainee-theatre-validation.functions";
 
 
 import { formatDateGB } from "@/lib/utils";
@@ -67,6 +68,7 @@ function SettingsPage() {
   const syncRota = useSyncClwRotaRota();
   const syncLeave = useSyncClwRotaLeave();
   const backfillNonSag = useServerFn(backfillNonSagLabels);
+  const validateMatches = useServerFn(validateTraineeTheatreMatches);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
@@ -122,12 +124,39 @@ function SettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const validateMut = useMutation({
+    mutationFn: () => validateMatches({ data: {} }),
+    onSuccess: (res) => {
+      const { mismatches, traineesWithTheatreRows, fullyMatched } = res;
+      if (mismatches.length === 0) {
+        toast.success(
+          `Trainee theatre audit: all ${traineesWithTheatreRows} trainee(s) with theatre rows are fully matched.`,
+        );
+      } else {
+        const noMatch = mismatches.filter((m) => m.reason === "no_matches").length;
+        const highRatio = mismatches.length - noMatch;
+        toast.warning(
+          `Trainee theatre audit: ${mismatches.length} of ${traineesWithTheatreRows} trainee(s) still have unmatched lists` +
+            ` (${noMatch} with no matches, ${highRatio} with >${Math.round(0.5 * 100)}% unmatched, ${fullyMatched} fully matched).`,
+        );
+      }
+    },
+    onError: (e: Error) => toast.error(`Trainee theatre audit failed: ${e.message}`),
+  });
+
+  const runValidationAfter = () => {
+    // Re-validate after a small delay so React Query invalidations resolve
+    // and any in-flight backend writes have committed.
+    setTimeout(() => validateMut.mutate(), 250);
+  };
+
   const staffMut = useMutation({
     mutationFn: () => syncStaff(),
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["staff"] });
       void qc.invalidateQueries({ queryKey: ["profiles"] });
+      runValidationAfter();
       return res;
     },
   });
@@ -139,6 +168,7 @@ function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["rota"] });
       void qc.invalidateQueries({ queryKey: ["rota-assignments"] });
       void qc.invalidateQueries({ queryKey: ["theatre-sessions"] });
+      runValidationAfter();
       return res;
     },
   });
@@ -149,6 +179,7 @@ function SettingsPage() {
       void qc.invalidateQueries({ queryKey: ["clwrota-settings"] });
       void qc.invalidateQueries({ queryKey: ["leave-requests"] });
       void qc.invalidateQueries({ queryKey: ["leave"] });
+      runValidationAfter();
       return res;
     },
   });
@@ -455,8 +486,95 @@ function SettingsPage() {
                 )}
                 {backfillNonSagMut.isPending ? "Backfilling…" : "Backfill Non-SAG labels"}
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => validateMut.mutate()}
+                disabled={validateMut.isPending}
+                title="Re-check every active trainee for unmatched theatre rows in the current sync window."
+              >
+                {validateMut.isPending ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                )}
+                {validateMut.isPending ? "Validating…" : "Validate trainee theatre matches"}
+              </Button>
             </div>
           </div>
+
+          {validateMut.data && (
+            <div className="rounded-md border border-border p-3 text-xs space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-medium text-sm">
+                  Post-sync trainee theatre audit
+                </div>
+                <div className="text-muted-foreground">
+                  Window {validateMut.data.window.from} → {validateMut.data.window.to}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Stat label="Trainees scanned" value={validateMut.data.traineesScanned} />
+                <Stat
+                  label="With theatre rows"
+                  value={validateMut.data.traineesWithTheatreRows}
+                />
+                <Stat
+                  label="Fully matched"
+                  value={validateMut.data.fullyMatched}
+                  tone="success"
+                />
+                <Stat
+                  label="Mismatches"
+                  value={validateMut.data.mismatches.length}
+                  tone={validateMut.data.mismatches.length ? "danger" : "success"}
+                />
+              </div>
+              {validateMut.data.mismatches.length === 0 ? (
+                <div className="flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3" />
+                  All trainees with theatre rows have at least one matched list
+                  and an unmatched ratio below 50%.
+                </div>
+              ) : (
+                <details className="rounded border border-border p-2" open>
+                  <summary className="cursor-pointer font-medium">
+                    Trainees with unmatched theatre rows ({validateMut.data.mismatches.length})
+                  </summary>
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="text-muted-foreground">
+                        <tr className="text-left">
+                          <th className="py-1 pr-2">Trainee</th>
+                          <th className="py-1 pr-2">Matched</th>
+                          <th className="py-1 pr-2">Unmatched</th>
+                          <th className="py-1 pr-2">Unmatched %</th>
+                          <th className="py-1 pr-2">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {validateMut.data.mismatches.map((m) => (
+                          <tr key={m.staff_id} className="border-t border-border/50">
+                            <td className="py-1 pr-2">{m.full_name ?? m.staff_id}</td>
+                            <td className="py-1 pr-2">{m.matched}</td>
+                            <td className="py-1 pr-2">{m.unmatched}</td>
+                            <td className="py-1 pr-2">
+                              {Math.round(m.unmatchedRatio * 100)}%
+                            </td>
+                            <td className="py-1 pr-2">
+                              {m.reason === "no_matches"
+                                ? "No matched lists"
+                                : "High unmatched ratio"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+
 
           {backfillNonSagMut.data && (
             <div className="rounded-md border border-border p-3 text-xs space-y-2">
