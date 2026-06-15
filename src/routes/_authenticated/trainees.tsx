@@ -306,8 +306,10 @@ function TraineesPage() {
           if (d > toISO) return false;
           return true;
         });
+        const icuOnly = rows.find((r) => r.trainee.id === trainee.id)?.icuOnly ?? false;
         return {
           trainee,
+          icuOnly,
           metrics: computeTraineeMetrics(
             filtered,
             trainee.start_date,
@@ -315,6 +317,7 @@ function TraineesPage() {
             data.specMap,
             asOfMs,
             (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null,
+            icuOnly,
           ),
         };
       });
@@ -465,7 +468,7 @@ function TraineesPage() {
           <p className="text-sm text-muted-foreground">No trainees on record.</p>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
-            {metricRows.map(({ trainee, metrics }) => (
+            {metricRows.map(({ trainee, metrics, icuOnly }) => (
               <TraineeMetricsCard
                 key={trainee.id}
                 title={trainee.full_name || trainee.email || "—"}
@@ -473,6 +476,7 @@ function TraineesPage() {
                 metrics={metrics}
                 startDate={trainee.start_date}
                 rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
+                icuBlockOnly={icuOnly}
               />
             ))}
           </div>
