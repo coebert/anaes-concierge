@@ -325,6 +325,12 @@ function AdminDashboardPage() {
         new Set((assignments ?? []).map((a) => a.theatre_session_id).filter(Boolean) as string[]),
       );
       const tsSpecMap = new Map<string, string | null>();
+      // Sessions where a consultant/SAS doctor is ALSO rostered — used to
+      // reclassify trainee "solo" rows on the same session as "supervised".
+      // Without this, the dashboard's solo counts are inflated by import-time
+      // defaults (clwrota sets role_on_list='solo' when it can't pin a
+      // supervisor) and disagree with the /trainees overview + detail pages.
+      const supervisorSessionIds = new Set<string>();
       if (tsIds.length) {
         // Chunked `.in()` lookup — see src/lib/supabase-chunked.ts. Across all
         // active trainees the distinct theatre-session ID set easily exceeds
@@ -338,6 +344,24 @@ function AdminDashboardPage() {
         for (const { data: ts, error: e4 } of results) {
           if (e4) throw e4;
           for (const t of ts ?? []) tsSpecMap.set(t.id, t.specialty_id ?? null);
+        }
+        const supResults = await Promise.all(
+          chunkIds(tsIds).map((c) =>
+            supabase
+              .from("rota_assignments")
+              .select(
+                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              )
+              .in("theatre_session_id", c)
+              .in("profiles.grade", ["consultant", "sas"])
+              .range(0, 49999),
+          ),
+        );
+        for (const { data: tsAssigns, error: e5 } of supResults) {
+          if (e5) throw e5;
+          for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+            if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
+          }
         }
       }
       const specNameMap = new Map((specs ?? []).map((s) => [s.id, s.name]));
@@ -353,7 +377,7 @@ function AdminDashboardPage() {
         arr.push({ duty_type: a.duty_type, session_date: a.session_date });
         futureByStaff.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff, futureByStaff, tsSpecMap, specNameMap };
+      return { trainees: trainees ?? [], assignmentsByStaff, futureByStaff, tsSpecMap, specNameMap, supervisorSessionIds };
     },
   });
 
