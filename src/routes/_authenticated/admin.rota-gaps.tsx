@@ -272,16 +272,21 @@ function RotaGapsPage() {
   // across the currently filtered trainees. Pre/post-rotation and
   // LTFT/weekend days are excluded — re-fetching them won't add any rows.
   const syncTargets = useMemo(() => {
-    const spans: Array<{ startISO: string; endISO: string }> = [];
+    const spans: SpanInput[] = [];
     for (const r of rows) {
       for (const range of r.classified.ranges) {
         if (range.kind === "sync_missing") {
-          spans.push({ startISO: range.startISO, endISO: range.endISO });
+          spans.push({
+            startISO: range.startISO,
+            endISO: range.endISO,
+            missingDays: range.days,
+            traineeId: r.trainee.id,
+          });
         }
       }
     }
-    return mergeRanges(spans);
-  }, [rows]);
+    return prioritiseSpans(mergeRanges(spans), priority);
+  }, [rows, priority]);
 
   const syncableDays = useMemo(
     () => rows.reduce((sum, r) => sum + r.classified.counts.sync_missing, 0),
