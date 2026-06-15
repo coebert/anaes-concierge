@@ -126,7 +126,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
           <Metric label="Total assignments" value={totalAssignments.toString()} />
         </dl>
         <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
-          <Metric label="ICU shifts" value={icuLists.toString()} sub="day & on-call ICU" />
+          <Metric label="ICU shifts" value={icuLists.toString()} sub="whole-day shifts (AM+PM count as 1)" />
           <Metric label="Obstetrics shifts" value={obstetricsLists.toString()} sub="labour ward" />
         </dl>
 
