@@ -68,6 +68,7 @@ function SettingsPage() {
   const syncRota = useSyncClwRotaRota();
   const syncLeave = useSyncClwRotaLeave();
   const backfillNonSag = useServerFn(backfillNonSagLabels);
+  const validateMatches = useServerFn(validateTraineeTheatreMatches);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clwrota-settings"],
