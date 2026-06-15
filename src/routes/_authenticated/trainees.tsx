@@ -92,15 +92,17 @@ function TraineesPage() {
         // active trainees collectively easily exceed that. Truncated reads
         // were silently dropping assignments from longer-tenured trainees,
         // making their progress percentages look artificially low.
-        // Also restrict to sessions on/before today so future-scheduled lists
-        // don't pre-credit curriculum progress.
+        // Pull the full imported assignment set, including future scheduled
+        // lists. Curriculum progress is still capped to today below, but the
+        // trainee summary/audit must not report “no theatre lists” for a
+        // trainee who has matched theatre sessions already imported ahead of
+        // today.
         const { data: rows, error: e4 } = await supabase
           .from("rota_assignments")
           .select(
             "staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
           )
           .in("staff_id", traineeIds)
-          .lte("session_date", todayIso)
           .range(0, 49999);
         if (e4) throw e4;
         allAssignments = (rows ?? []) as typeof allAssignments;
@@ -170,7 +172,11 @@ function TraineesPage() {
 
       // Competency progress only counts clinical lists (solo/supervised) up to today.
       const clinicalByStaff = allAssignments
-        .filter((a) => a.role_on_list === "solo" || a.role_on_list === "supervised")
+        .filter(
+          (a) =>
+            (a.role_on_list === "solo" || a.role_on_list === "supervised") &&
+            a.session_date <= todayIso,
+        )
         .reduce<Record<string, Array<{ specialty_id: string | null; role_on_list: string }>>>(
           (acc, a) => {
             (acc[a.staff_id] ||= []).push({
