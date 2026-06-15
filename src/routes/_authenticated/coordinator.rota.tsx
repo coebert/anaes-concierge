@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Plus, Trash2, AlertTriangle, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { cn, parseDateLocal, formatDateLongGB } from "@/lib/utils";
+import { cn, parseDateLocal, formatDateLongGB, toISODateLocal } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -73,7 +73,7 @@ function startOfWeek(d: Date) {
 function addDays(d: Date, n: number) {
   const x = new Date(d); x.setDate(x.getDate() + n); return x;
 }
-function iso(d: Date) { return d.toISOString().slice(0, 10); }
+function iso(d: Date) { return toISODateLocal(d); }
 function fmt(d: Date) {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
