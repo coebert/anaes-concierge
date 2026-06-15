@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 import type { TraineeMetrics } from "@/lib/trainee-metrics";
 
@@ -9,11 +10,12 @@ type Props = {
   metrics: TraineeMetrics;
   startDate: string | null | undefined;
   rotationEndDate?: string | null | undefined;
+  icuBlockOnly?: boolean;
   title?: string;
   subtitle?: string;
 };
 
-export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title = "Metrics", subtitle }: Props) {
+export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlockOnly = false, title = "Metrics", subtitle }: Props) {
   const {
     weeksAtSalisbury,
     weeksRemaining,
@@ -49,7 +51,10 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, title 
         {announcement}
       </div>
       <CardHeader className="pb-2 p-4 sm:p-6 sm:pb-2">
-        <CardTitle className="text-base">{title}</CardTitle>
+        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+          <span>{title}</span>
+          {icuBlockOnly ? <IcuBlockBadge /> : null}
+        </CardTitle>
         {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">

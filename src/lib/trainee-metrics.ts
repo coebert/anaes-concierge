@@ -50,6 +50,7 @@ export function computeTraineeMetrics(
   specialtyNameById: Map<string, string>,
   now: number = Date.now(),
   rotationEndDate: string | null | undefined = null,
+  suppressTheatreWarnings: boolean = false,
 ): TraineeMetrics {
   const start = startDate ? new Date(startDate) : null;
   const weeksAtSalisbury = start
@@ -145,7 +146,10 @@ export function computeTraineeMetrics(
   ).length;
   const totalTheatreRows = daytimeLists + unmatchedTheatreRows;
   const warnings: TraineeMetricsWarning[] = [];
-  if (daytimeLists === 0 && totalTheatreRows > 0) {
+  if (suppressTheatreWarnings) {
+    // ICU-block trainees can legitimately have no matched theatre lists, so
+    // keep the metrics visible but suppress theatre-list data-quality warnings.
+  } else if (daytimeLists === 0 && totalTheatreRows > 0) {
     warnings.push({
       level: "warn",
       code: "no_real_lists",
@@ -159,7 +163,9 @@ export function computeTraineeMetrics(
       message: `Only ${daytimeLists} matched daytime list${daytimeLists === 1 ? "" : "s"} — solo% is based on a very small sample.`,
     });
   }
-  if (totalTheatreRows === 0) {
+  if (suppressTheatreWarnings) {
+    // See above — no theatre-list warning expected for ICU blocks.
+  } else if (totalTheatreRows === 0) {
     warnings.push({
       level: "info",
       code: "no_theatre_session_rows",
