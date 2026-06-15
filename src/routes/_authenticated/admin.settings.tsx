@@ -14,14 +14,16 @@ import {
   getClwRotaSettings,
   saveClwRotaSettings,
   testClwRotaConnection,
-  syncClwRotaStaff,
-  syncClwRotaRota,
-  syncClwRotaLeave,
   listReclassificationRuns,
   undoReclassificationRun,
   investigateAndFixTraineeSolo,
   backfillNonSagLabels,
 } from "@/lib/clwrota.functions";
+import {
+  useSyncClwRotaStaff,
+  useSyncClwRotaRota,
+  useSyncClwRotaLeave,
+} from "@/lib/clwrota-sync-hooks";
 
 
 import { formatDateGB } from "@/lib/utils";
