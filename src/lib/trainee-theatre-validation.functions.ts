@@ -47,6 +47,16 @@ export type TraineeTheatreMismatch = {
   likelyCauseExplanation: string;
 };
 
+export type TraineeOnIcuBlock = {
+  staff_id: string;
+  full_name: string | null;
+  /** Theatre rows in the window that didn't link to a theatre_session_id —
+   *  surfaced for transparency, but NOT counted as a warning because the
+   *  trainee's remaining rotation is ICU-only and no theatre lists are
+   *  expected. */
+  unmatchedTheatreRows: number;
+};
+
 export type ValidateTraineeTheatreMatchesResult = {
   ok: boolean;
   window: { from: string; to: string };
@@ -54,6 +64,9 @@ export type ValidateTraineeTheatreMatchesResult = {
   traineesWithTheatreRows: number;
   fullyMatched: number;
   mismatches: TraineeTheatreMismatch[];
+  /** Trainees whose remaining rotation is ICU-only. They're excluded from
+   *  the mismatch list because they're not expected to have theatre lists. */
+  onIcuBlock: TraineeOnIcuBlock[];
 };
 
 function isoDateOffset(days: number): string {
