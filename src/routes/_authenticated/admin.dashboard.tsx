@@ -19,7 +19,7 @@ import {
   type SoloProfile,
 } from "@/lib/solo-stats";
 import { chunkIds } from "@/lib/supabase-chunked";
-import { computeTraineeMetrics } from "@/lib/trainee-metrics";
+import { computeTraineeMetrics, isJuniorTraineeLevel } from "@/lib/trainee-metrics";
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
