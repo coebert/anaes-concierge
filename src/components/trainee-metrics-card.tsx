@@ -25,6 +25,8 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
     supervisedLists,
     onCallLists,
     onCallPct,
+    icuLists,
+    obstetricsLists,
     totalAssignments,
     specialtyBreakdown,
     warnings,
