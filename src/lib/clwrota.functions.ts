@@ -1580,6 +1580,9 @@ export function resolveOffsiteTheatreAlias(
 
   // Order matters: more specific keywords first.
   const aliases: Array<{ test: RegExp; names: string[] }> = [
+    // Acute Pain Service is a real procedural pain list location, but the
+    // configured theatre is named simply "Pain".
+    { test: /\bacute\s+pain\s+(service|list)?\b|\bpain\s+service\b/, names: ["pain"] },
     // Endoscopy room — "Endoscopy", "Endo GA", "Endo".
     { test: /\bendo(scopy)?\b/, names: ["endo", "endoscopy"] },
     // MRI suite (anaesthetic cover for scans).
