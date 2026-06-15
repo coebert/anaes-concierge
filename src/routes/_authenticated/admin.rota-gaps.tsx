@@ -158,6 +158,7 @@ function RotaGapsPage() {
   const [hideClean, setHideClean] = useState(true);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [priority, setPriority] = useState<SyncPriority>("coverage");
+  const [runLimit, setRunLimit] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
@@ -293,13 +294,46 @@ function RotaGapsPage() {
     [rows],
   );
 
+  /**
+   * Projected coverage gain for each prioritised range.
+   *
+   * `gainDays` is the range's own missing-day contribution; `cumulativeDays`
+   * and `cumulativePct` show what running the top `i + 1` ranges would close
+   * against the total `sync_missing` budget. The estimate is an upper bound
+   * — CLWRota may still skip rows we can't match — so we label it
+   * "projected".
+   */
+  const projection = useMemo(() => {
+    let running = 0;
+    return syncTargets.map((t) => {
+      running += t.missingDays;
+      return {
+        gainDays: t.missingDays,
+        gainPct: syncableDays === 0 ? 0 : t.missingDays / syncableDays,
+        cumulativeDays: running,
+        cumulativePct: syncableDays === 0 ? 0 : running / syncableDays,
+      };
+    });
+  }, [syncTargets, syncableDays]);
+
+  const effectiveLimit = runLimit ?? syncTargets.length;
+  const plannedSlice = useMemo(
+    () => syncTargets.slice(0, effectiveLimit),
+    [syncTargets, effectiveLimit],
+  );
+  const plannedCoverage = projection[effectiveLimit - 1] ?? {
+    cumulativeDays: 0,
+    cumulativePct: 0,
+  };
+
   async function runTargetedSync() {
-    if (syncTargets.length === 0) return;
-    setProgress({ running: true, current: 0, total: syncTargets.length, perRange: [] });
+    const targets = plannedSlice;
+    if (targets.length === 0) return;
+    setProgress({ running: true, current: 0, total: targets.length, perRange: [] });
     const perRange: SyncProgress["perRange"] = [];
-    for (let i = 0; i < syncTargets.length; i++) {
-      const { startISO, endISO } = syncTargets[i];
-      setProgress({ running: true, current: i, total: syncTargets.length, perRange: [...perRange] });
+    for (let i = 0; i < targets.length; i++) {
+      const { startISO, endISO } = targets[i];
+      setProgress({ running: true, current: i, total: targets.length, perRange: [...perRange] });
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
@@ -320,7 +354,7 @@ function RotaGapsPage() {
         });
       }
     }
-    setProgress({ running: false, current: syncTargets.length, total: syncTargets.length, perRange });
+    setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
   }
 
@@ -388,7 +422,10 @@ function RotaGapsPage() {
                   <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
                   <Select
                     value={priority}
-                    onValueChange={(v) => setPriority(v as SyncPriority)}
+                    onValueChange={(v) => {
+                      setPriority(v as SyncPriority);
+                      setRunLimit(null);
+                    }}
                     disabled={progress?.running}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -399,22 +436,48 @@ function RotaGapsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="w-32">
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Run top
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={syncTargets.length || 1}
+                    value={effectiveLimit}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (!Number.isFinite(n)) setRunLimit(null);
+                      else setRunLimit(Math.max(1, Math.min(syncTargets.length, n)));
+                    }}
+                    disabled={syncTargets.length === 0 || progress?.running}
+                  />
+                </div>
                 <Button
                   onClick={runTargetedSync}
-                  disabled={syncTargets.length === 0 || progress?.running}
+                  disabled={plannedSlice.length === 0 || progress?.running}
                   className="gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${progress?.running ? "animate-spin" : ""}`} />
                   {progress?.running
                     ? `Syncing ${progress.current + 1} / ${progress.total}…`
-                    : "Sync gaps"}
+                    : `Sync top ${plannedSlice.length}`}
                 </Button>
               </div>
             </CardContent>
             {syncTargets.length > 0 && (
               <CardContent className="border-t pt-3">
-                <div className="mb-2 text-xs font-medium text-muted-foreground">
-                  Planned ranges (in run order)
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-medium text-muted-foreground">
+                    Planned ranges (in run order)
+                  </span>
+                  <span className="text-muted-foreground">
+                    Projected coverage of top {effectiveLimit}:{" "}
+                    <span className="font-medium text-foreground">
+                      {plannedCoverage.cumulativeDays} / {syncableDays} days
+                      {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                    </span>
+                  </span>
                 </div>
                 <ul className="divide-y rounded-md border text-sm">
                   {syncTargets.map((t, i) => {
@@ -422,10 +485,12 @@ function RotaGapsPage() {
                       (p) => p.from === t.startISO && p.to === t.endISO,
                     );
                     const active = progress?.running && progress.current === i;
+                    const proj = projection[i];
+                    const included = i < effectiveLimit;
                     return (
                       <li
                         key={`${t.startISO}-${t.endISO}`}
-                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                        className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${included ? "" : "opacity-60"}`}
                       >
                         <span className="flex items-center gap-2">
                           <Badge variant="outline" className="px-1 py-0 text-[10px]">
@@ -434,11 +499,20 @@ function RotaGapsPage() {
                           <span className="font-mono text-xs">
                             {formatDateGB(t.startISO)} → {formatDateGB(t.endISO)}
                           </span>
+                          {!included && (
+                            <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                              skipped
+                            </Badge>
+                          )}
                         </span>
                         <span className="flex items-center gap-2 text-xs">
                           <span className="text-muted-foreground">
-                            {t.missingDays} day{t.missingDays === 1 ? "" : "s"} · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
+                            +{proj.gainDays} day{proj.gainDays === 1 ? "" : "s"}
+                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
                           </span>
+                          <Badge variant="outline" className="px-1 py-0 text-[10px]" title="Cumulative projected coverage if you run through this range">
+                            cum {Math.round(proj.cumulativePct * 100)}%
+                          </Badge>
                           {done ? (
                             done.ok ? (
                               <Badge className="bg-emerald-600 hover:bg-emerald-600">
@@ -449,7 +523,7 @@ function RotaGapsPage() {
                             )
                           ) : active ? (
                             <Badge variant="secondary">Running…</Badge>
-                          ) : progress?.running ? (
+                          ) : progress?.running && included ? (
                             <Badge variant="outline">Queued</Badge>
                           ) : null}
                         </span>
