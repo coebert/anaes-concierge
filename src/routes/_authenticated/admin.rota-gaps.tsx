@@ -462,7 +462,7 @@ function RotaGapsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Rota gaps</h1>
           <p className="text-sm text-muted-foreground">
-            Working weekdays inside each trainee's rotation where no rota assignment was synced.
+            Working weekdays for every active staff member where no rota assignment was synced.
             Contiguous gaps — including spans bridged by weekends or LTFT off days — are grouped into ranges.
           </p>
         </div>
