@@ -44,7 +44,7 @@ function CalendarSubscribeCard() {
   // the preview host (id-preview--…lovable.app), which would redirect to the
   // Lovable auth bridge and fail. The published site serves /api/public/* without auth.
   const PUBLISHED_ORIGIN = "https://anaes-concierge.lovable.app";
-  const httpUrl = token ? `${PUBLISHED_ORIGIN}/api/public/calendar/${token}.ics` : "";
+  const httpUrl = token ? `${PUBLISHED_ORIGIN}/api/public/calendar/${token}` : "";
   const webcalUrl = httpUrl.replace(/^https?:/, "webcal:");
 
   async function load() {
