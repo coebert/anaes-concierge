@@ -40,7 +40,7 @@ export const Route = createFileRoute("/api/public/hooks/seed-clwrota-vault")({
         // Treat "secret not configured" and "wrong secret" identically so the
         // endpoint never leaks configuration state to unauthenticated probes.
         if (!expected || !provided || !timingSafeEqualStr(provided, expected)) {
-          return GENERIC_UNAUTH;
+          return genericUnauthorized();
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
