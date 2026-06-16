@@ -614,9 +614,35 @@ function RotaGapsPage() {
                           </Badge>
                           {done ? (
                             done.ok ? (
-                              <Badge className="bg-emerald-600 hover:bg-emerald-600">
-                                {done.upserted ?? 0} upserted
-                              </Badge>
+                              <>
+                                <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                  {done.upserted ?? 0} upserted
+                                </Badge>
+                                {done.gapsFilled != null && done.gapsBefore != null ? (
+                                  done.gapsFilled > 0 ? (
+                                    <Badge
+                                      className="bg-emerald-600/80 hover:bg-emerald-600/80"
+                                      title={`Sync-missing weekdays in this range: ${done.gapsBefore} before → ${done.gapsAfter} after`}
+                                    >
+                                      {done.gapsFilled} / {done.gapsBefore} gaps filled
+                                    </Badge>
+                                  ) : done.gapsBefore === 0 ? (
+                                    <Badge
+                                      variant="outline"
+                                      title="No sync-missing weekdays in this range when the sync started"
+                                    >
+                                      no gaps to fill
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="destructive"
+                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing — CLWRota may not have returned rows for those days.`}
+                                    >
+                                      0 / {done.gapsBefore} gaps filled
+                                    </Badge>
+                                  )
+                                ) : null}
+                              </>
                             ) : (
                               <Badge variant="destructive" title={done.message}>Failed</Badge>
                             )
