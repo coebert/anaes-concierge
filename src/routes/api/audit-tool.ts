@@ -163,6 +163,26 @@ CHART SPEC SHAPE
 { "type": "bar" | "line" | "pie", "xKey": "<column>", "yKeys": ["<column>"], "title": "..." }
 Only include a chart when the result set has an obvious x/y story (≤30 rows, numeric y).
 
+PROFESSIONAL REPORTS (\`generate_report\` tool)
+When the user asks for a "report", "audit report", "summary", "writeup", "briefing" or
+similar, OR after you have run enough queries to draw conclusions, call \`generate_report\`
+to produce a structured, professional-looking audit report. The UI renders it inline as a
+formatted document and exposes a one-click PDF export, so this is the preferred final
+deliverable for any non-trivial analysis.
+
+Requirements for a good report:
+- title: short, specific (e.g. "Consultant Weekly Clinical Hours — Q1 2026").
+- executive_summary: 2–4 sentences in plain prose giving the headline answer.
+- key_findings: 3–7 succinct bullets, each one self-contained and quantified where possible.
+- sections: 2–5 sections, each with a heading and either prose, bullets, or a chart
+  (or any combination). Use charts to make patterns visible — bar for comparisons,
+  line for trends over time, pie/doughnut for shares of a whole (max ~6 slices).
+- recommendations (optional): concrete next steps the admin can take.
+- caveats (optional): data limitations, exclusions, assumptions.
+- Tone: professional, concise, evidence-led. No filler. Reference data from prior
+  \`run_sql\` queries by their titles where relevant.
+- Charts: keep labels short, data ≤ 20 points per dataset, ≤ 4 datasets per chart.
+
 Be friendly, concise, and use markdown. Use the user's terminology where reasonable.`;
 
 
@@ -207,6 +227,76 @@ function isoDaysAgo(days: number) {
   d.setUTCDate(d.getUTCDate() - days);
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Build a QuickChart.io URL for a chart spec produced by the
+ * `generate_report` tool. QuickChart renders Chart.js configs as PNG/SVG
+ * server-side so the same image embeds cleanly in both the inline UI and
+ * the downloadable PDF.
+ */
+function buildQuickChartUrl(chart: {
+  type: "bar" | "line" | "pie" | "doughnut";
+  title?: string;
+  labels: string[];
+  datasets: Array<{ label: string; data: number[] }>;
+}): string {
+  // Professional, accessible palette (chosen for print + screen contrast).
+  const palette = [
+    "#2563eb", "#16a34a", "#dc2626", "#d97706",
+    "#7c3aed", "#0891b2", "#db2777", "#65a30d",
+  ];
+
+  const isCategorical = chart.type === "pie" || chart.type === "doughnut";
+  const datasets = chart.datasets.map((ds, i) => {
+    if (isCategorical) {
+      return {
+        label: ds.label,
+        data: ds.data,
+        backgroundColor: chart.labels.map((_, j) => palette[j % palette.length]),
+        borderColor: "#ffffff",
+        borderWidth: 2,
+      };
+    }
+    const color = palette[i % palette.length];
+    return {
+      label: ds.label,
+      data: ds.data,
+      backgroundColor: chart.type === "line" ? color + "33" : color,
+      borderColor: color,
+      borderWidth: 2,
+      fill: chart.type === "line",
+      tension: chart.type === "line" ? 0.3 : 0,
+      pointRadius: chart.type === "line" ? 3 : 0,
+    };
+  });
+
+  const config = {
+    type: chart.type,
+    data: { labels: chart.labels, datasets },
+    options: {
+      plugins: {
+        title: chart.title
+          ? { display: true, text: chart.title, font: { size: 16, weight: "bold" } }
+          : { display: false },
+        legend: {
+          display: isCategorical || chart.datasets.length > 1,
+          position: isCategorical ? "right" : "top",
+          labels: { font: { size: 12 } },
+        },
+      },
+      scales: isCategorical
+        ? undefined
+        : {
+            y: { beginAtZero: true, grid: { color: "#e5e7eb" } },
+            x: { grid: { display: false } },
+          },
+    },
+  };
+
+  const encoded = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?w=720&h=380&bkg=white&format=png&c=${encoded}`;
+}
+
 
 /**
  * Build a compact, current-data snapshot of the rota dataset to inject into
@@ -685,6 +775,62 @@ export const Route = createFileRoute("/api/audit-tool")({
                 .limit(limit ?? 10);
               if (error) return { error: error.message };
               return { staff: data ?? [] };
+            },
+          }),
+
+          generate_report: tool({
+            description:
+              "Produce a structured, professional audit report from the analysis you have done. " +
+              "The UI renders this inline as a formatted document with chart graphics and offers " +
+              "one-click PDF export. Call this once you have enough evidence (typically after one " +
+              "or more run_sql calls) — it is the preferred final deliverable. Charts you include " +
+              "here are rendered server-side as crisp PNGs so they look identical in chat and PDF.",
+            inputSchema: z.object({
+              title: z.string().min(3).max(160),
+              executive_summary: z.string().min(20).max(2000),
+              key_findings: z.array(z.string().min(3).max(500)).min(1).max(10),
+              sections: z
+                .array(
+                  z.object({
+                    heading: z.string().min(2).max(160),
+                    prose: z.string().max(4000).optional(),
+                    bullets: z.array(z.string().min(2).max(500)).max(15).optional(),
+                    chart: z
+                      .object({
+                        type: z.enum(["bar", "line", "pie", "doughnut"]),
+                        title: z.string().max(160).optional(),
+                        labels: z.array(z.string()).min(1).max(30),
+                        datasets: z
+                          .array(
+                            z.object({
+                              label: z.string().min(1).max(80),
+                              data: z.array(z.number()).min(1).max(30),
+                            }),
+                          )
+                          .min(1)
+                          .max(4),
+                      })
+                      .optional(),
+                  }),
+                )
+                .min(1)
+                .max(8),
+              recommendations: z.array(z.string().min(3).max(500)).max(8).optional(),
+              caveats: z.array(z.string().min(3).max(500)).max(8).optional(),
+            }),
+            execute: async (input) => {
+              // Pre-build QuickChart URLs server-side. The UI just renders them
+              // as <img>, and the PDF exporter fetches them as PNGs.
+              const sections = input.sections.map((s) => {
+                if (!s.chart) return s;
+                const chartUrl = buildQuickChartUrl(s.chart);
+                return { ...s, chartUrl };
+              });
+              return {
+                ...input,
+                sections,
+                generatedAt: new Date().toISOString(),
+              };
             },
           }),
         };
