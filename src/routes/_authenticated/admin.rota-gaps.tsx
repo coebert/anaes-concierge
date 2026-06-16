@@ -236,8 +236,7 @@ function RotaGapsPage() {
 
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, training_level, start_date, rotation_end_date, ltft_days_off")
-        .eq("grade", "trainee")
+        .select("id, full_name, grade, training_level, start_date, rotation_end_date, ltft_days_off")
         .eq("active", true)
         .order("full_name");
       if (e1) throw e1;
@@ -463,7 +462,7 @@ function RotaGapsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Rota gaps</h1>
           <p className="text-sm text-muted-foreground">
-            Working weekdays inside each trainee's rotation where no rota assignment was synced.
+            Working weekdays for every active staff member where no rota assignment was synced.
             Contiguous gaps — including spans bridged by weekends or LTFT off days — are grouped into ranges.
           </p>
         </div>
@@ -491,7 +490,7 @@ function RotaGapsPage() {
               checked={hideClean}
               onChange={(e) => setHideClean(e.target.checked)}
             />
-            Hide trainees with no gaps
+            Hide staff with no gaps
           </label>
         </div>
       </header>
@@ -501,7 +500,7 @@ function RotaGapsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Stat icon={AlertTriangle} tone="bad" label="Trainees with gaps" value={traineesWithGaps} />
+            <Stat icon={AlertTriangle} tone="bad" label="Staff with gaps" value={traineesWithGaps} />
             <Stat icon={CalendarX} tone="bad" label="Missing weekdays" value={totalGapDays} />
             <Stat icon={CalendarX} tone="muted" label="Distinct gap ranges" value={totalRanges} />
           </div>
@@ -628,7 +627,7 @@ function RotaGapsPage() {
                         <span className="flex items-center gap-2 text-xs">
                           <span className="text-muted-foreground">
                             +{proj.gainDays} day{proj.gainDays === 1 ? "" : "s"}
-                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
+                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} staff
                           </span>
                           <Badge variant="outline" className="px-1 py-0 text-[10px]" title="Cumulative projected coverage if you run through this range">
                             cum {Math.round(proj.cumulativePct * 100)}%
@@ -688,8 +687,8 @@ function RotaGapsPage() {
               <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 {hideClean
-                  ? "No trainees with missing days in this window."
-                  : "No trainees match the current filter."}
+                  ? "No staff with missing days in this window."
+                  : "No staff match the current filter."}
               </CardContent>
             </Card>
           ) : (
@@ -699,13 +698,20 @@ function RotaGapsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="text-base">
-                        <Link
-                          to="/trainees/$staffId"
-                          params={{ staffId: trainee.id }}
-                          className="hover:underline"
-                        >
-                          {trainee.full_name || "—"}
-                        </Link>
+                        {trainee.grade === "trainee" ? (
+                          <Link
+                            to="/trainees/$staffId"
+                            params={{ staffId: trainee.id }}
+                            className="hover:underline"
+                          >
+                            {trainee.full_name || "—"}
+                          </Link>
+                        ) : (
+                          <span>{trainee.full_name || "—"}</span>
+                        )}
+                        {trainee.grade && trainee.grade !== "trainee" && (
+                          <Badge variant="outline" className="ml-2 capitalize">{trainee.grade}</Badge>
+                        )}
                         {trainee.training_level && (
                           <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
                         )}
