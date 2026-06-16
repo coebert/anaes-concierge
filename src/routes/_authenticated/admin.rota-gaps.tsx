@@ -945,8 +945,9 @@ function RotaGapsPage() {
                     return (
                       <li
                         key={`${t.startISO}-${t.endISO}`}
-                        className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${included ? "" : "opacity-60"}`}
+                        className={`flex flex-col gap-1 px-3 py-2 ${included ? "" : "opacity-60"}`}
                       >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="flex items-center gap-2">
                           <Badge variant="outline" className="px-1 py-0 text-[10px]">
                             #{i + 1}
@@ -987,6 +988,14 @@ function RotaGapsPage() {
                                     {done.inserted} new
                                   </Badge>
                                 )}
+                                {done.rowsInWindow != null && (
+                                  <Badge
+                                    variant="outline"
+                                    title={`Raw rows CLWRota returned for this date window. Compare with 'upserted' to see how many rows survived parsing/filtering. ${done.staffCovered ?? 0} distinct staff appeared in the feed.`}
+                                  >
+                                    {done.rowsInWindow} rows · {done.staffCovered ?? 0} staff
+                                  </Badge>
+                                )}
                                 {done.gapsFilled != null && done.gapsBefore != null ? (
                                   done.gapsFilled > 0 ? (
                                     <Badge
@@ -1005,7 +1014,7 @@ function RotaGapsPage() {
                                   ) : (
                                     <Badge
                                       variant="destructive"
-                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing — CLWRota returned ${done.inserted ?? 0} new row(s) for this window, so the upstream feed likely has no data for the affected trainees on those days (they may have rotated off this service in CLWRota, or be on long-term leave).`}
+                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing. Expand for per-trainee reasons.`}
                                     >
                                       0 / {done.gapsBefore} gaps filled
                                     </Badge>
@@ -1029,9 +1038,94 @@ function RotaGapsPage() {
                             <Badge variant="outline">Queued</Badge>
                           ) : null}
                         </span>
+                        </div>
+                        {done?.traineeDiagnostics && done.traineeDiagnostics.length > 0 && (
+                          <details className="mt-1 rounded-md border bg-muted/30 px-2 py-1 text-xs">
+                            <summary className="cursor-pointer select-none text-muted-foreground">
+                              Per-trainee diagnostics ({done.traineeDiagnostics.length})
+                              {(() => {
+                                const noCov = done.traineeDiagnostics!.filter((d) => d.status === "no_upstream_coverage").length;
+                                const stale = done.traineeDiagnostics!.filter((d) => d.status === "covered_no_new_dates").length;
+                                const partial = done.traineeDiagnostics!.filter((d) => d.status === "partially_filled").length;
+                                const full = done.traineeDiagnostics!.filter((d) => d.status === "fully_filled").length;
+                                const parts = [
+                                  full ? `${full} fully` : null,
+                                  partial ? `${partial} partial` : null,
+                                  stale ? `${stale} stale-only` : null,
+                                  noCov ? `${noCov} no-upstream` : null,
+                                ].filter(Boolean);
+                                return parts.length ? ` — ${parts.join(", ")}` : "";
+                              })()}
+                            </summary>
+                            <table className="mt-2 w-full text-left">
+                              <thead className="text-[10px] uppercase text-muted-foreground">
+                                <tr>
+                                  <th className="py-1 pr-2 font-normal">Trainee</th>
+                                  <th className="py-1 pr-2 font-normal">Before</th>
+                                  <th className="py-1 pr-2 font-normal">After</th>
+                                  <th className="py-1 pr-2 font-normal">Filled</th>
+                                  <th className="py-1 pr-2 font-normal" title="Distinct upstream session_dates returned for this trainee in the request window">Upstream dates</th>
+                                  <th className="py-1 pr-2 font-normal" title="Of those upstream dates, how many were new rows vs. already-known existing rows">New / Existing</th>
+                                  <th className="py-1 pr-2 font-normal">Upstream window</th>
+                                  <th className="py-1 pr-2 font-normal">Why</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {done.traineeDiagnostics.map((d) => {
+                                  const reason =
+                                    d.status === "fully_filled"
+                                      ? "All gaps closed."
+                                      : d.status === "partially_filled"
+                                      ? "Upstream covered some but not all gap dates in this range."
+                                      : d.status === "covered_no_new_dates"
+                                      ? "Upstream returned rows for this trainee, but every returned date was already on file — no new dates to add. Likely a duty-type / classification mismatch, or the gap dates fall outside what CLWRota holds for this trainee."
+                                      : d.status === "no_upstream_coverage"
+                                      ? "CLWRota returned NO rows for this trainee in this window — they may have rotated off the service, be on long-term leave, or their CLWRota record stops before this date range."
+                                      : "No sync-missing weekdays in range.";
+                                  const statusTone =
+                                    d.status === "fully_filled"
+                                      ? "text-emerald-700 dark:text-emerald-400"
+                                      : d.status === "partially_filled"
+                                      ? "text-amber-700 dark:text-amber-400"
+                                      : d.status === "covered_no_new_dates"
+                                      ? "text-amber-700 dark:text-amber-400"
+                                      : d.status === "no_upstream_coverage"
+                                      ? "text-red-700 dark:text-red-400"
+                                      : "text-muted-foreground";
+                                  return (
+                                    <tr key={d.traineeId} className="border-t border-border/40">
+                                      <td className="py-1 pr-2 font-medium">{d.name}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.gapsBefore}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.gapsAfter}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.gapsFilled}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.upstreamDatesCovered}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.upstreamInsertedDates} / {d.upstreamExistingDates}</td>
+                                      <td className="py-1 pr-2 font-mono text-[10px]">
+                                        {d.firstUpstreamDate ? `${d.firstUpstreamDate} → ${d.lastUpstreamDate}` : "—"}
+                                      </td>
+                                      <td className={`py-1 pr-2 ${statusTone}`}>{reason}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                            {done.topSkipReasons && done.topSkipReasons.length > 0 && (
+                              <div className="mt-2 text-[10px] text-muted-foreground">
+                                Top skip reasons across all rows in this window:{" "}
+                                {done.topSkipReasons.map((r, idx) => (
+                                  <span key={r.reason}>
+                                    {idx > 0 ? " · " : ""}
+                                    <span className="font-mono">{r.reason}</span> ({r.count})
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </details>
+                        )}
                       </li>
                     );
                   })}
+
                 </ul>
               </CardContent>
             )}
