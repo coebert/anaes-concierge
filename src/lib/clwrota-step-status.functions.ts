@@ -162,3 +162,53 @@ export const getClwRotaStepStatus = createServerFn({ method: "GET" })
 
     return { steps, rateLimiterRuns };
   });
+
+/**
+ * Admin-only manual trigger for a single sync step. Routes through
+ * `public.trigger_clwrota_sync_rate_limited`, so the shared rate-limiter
+ * (and per-step advisory lock) still decides whether the HTTP call fires
+ * or is suppressed.
+ *
+ * Returns `{ fired: true, requestId }` when the rate-limiter dispatched
+ * the call, or `{ fired: false }` when it was skipped because the minimum
+ * interval has not elapsed or another sync of the same step is in flight.
+ */
+export type RunStepResult =
+  | { fired: true; step: SyncStep; requestId: number }
+  | { fired: false; step: SyncStep; reason: "rate-limited-or-locked" };
+
+export const runClwRotaStepRateLimited = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { step: SyncStep }) => {
+    if (!STEPS.includes(data?.step)) {
+      throw new Error(`step must be one of: ${STEPS.join(", ")}`);
+    }
+    return data;
+  })
+  .handler(async ({ data, context }): Promise<RunStepResult> => {
+    const { supabase, userId } = context;
+
+    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (roleErr) throw new Error(roleErr.message);
+    if (!isAdmin) throw new Error("Admin role required");
+
+    // The rate-limited trigger is SECURITY DEFINER but EXECUTE has been
+    // revoked from `authenticated` — call it via the service-role client
+    // so it runs with the elevated privileges it was designed for.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: requestId, error } = await supabaseAdmin.rpc(
+      "trigger_clwrota_sync_rate_limited",
+      { p_step: data.step },
+    );
+    if (error) throw new Error(error.message);
+
+    if (requestId == null) {
+      return { fired: false, step: data.step, reason: "rate-limited-or-locked" };
+    }
+    return { fired: true, step: data.step, requestId: Number(requestId) };
+  });
+
