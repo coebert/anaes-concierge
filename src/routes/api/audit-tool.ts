@@ -388,12 +388,6 @@ async function autoExtractMemory(opts: {
   });
   if (error) console.warn("autoExtractMemory: insert failed", error.message);
 }
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  return !!data;
-}
 
 export const Route = createFileRoute("/api/audit-tool")({
   server: {
