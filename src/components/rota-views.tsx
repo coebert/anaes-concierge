@@ -655,11 +655,24 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
           ) ?? [];
           const isToday = dayIso === iso(new Date());
           return (
+          const isExpanded = expandedDays.has(dayIso);
+          return (
             <Card key={dayIso} className={cn(isToday && "ring-2 ring-primary")}>
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 text-sm font-medium">{fmt(d)}</div>
-                  {isToday && <Badge variant="default" className="shrink-0 text-[9px]">Today</Badge>}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isToday && <Badge variant="default" className="text-[9px]">Today</Badge>}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => toggleDay(dayIso)}
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 {dayLeave.map((l) => (
                   <div key={l.id} className="rounded bg-amber-500/10 p-2 text-xs">
@@ -667,42 +680,60 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                     <span className="text-muted-foreground">{l.status}</span>
                   </div>
                 ))}
-                <div className="grid grid-cols-1 gap-2">
-                  {(["am", "pm"] as SessionHalf[]).map((sh) => {
-                    const a = dayAssigns.find((x) => x.session === sh);
-                    const session = a && ts?.find((s) => s.id === a.theatre_session_id);
-                    const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
-                    const spec = session && specs?.find((s) => s.id === session.specialty_id);
-                    return (
-                      <div key={sh} className="rounded border p-3 text-xs">
-                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{sh}</div>
-                        {a ? (
-                          <div className="space-y-1">
-                            <div className="min-w-0 truncate font-medium">{theatre?.name ?? "—"}</div>
-                            {session?.is_non_sag && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                title="NHH list covered as part of NHS job plan (non-SAG)"
-                              >
-                                Non-SAG
+                {isExpanded ? (
+                  <div className="grid grid-cols-1 gap-2">
+                    {(["am", "pm"] as SessionHalf[]).map((sh) => {
+                      const a = dayAssigns.find((x) => x.session === sh);
+                      const session = a && ts?.find((s) => s.id === a.theatre_session_id);
+                      const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
+                      const spec = session && specs?.find((s) => s.id === session.specialty_id);
+                      return (
+                        <div key={sh} className="rounded border p-3 text-xs">
+                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{sh}</div>
+                          {a ? (
+                            <div className="space-y-1">
+                              <div className="min-w-0 truncate font-medium">{theatre?.name ?? "—"}</div>
+                              {session?.is_non_sag && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                  title="NHH list covered as part of NHS job plan (non-SAG)"
+                                >
+                                  Non-SAG
+                                </Badge>
+                              )}
+                              {spec && <div className="min-w-0 truncate text-muted-foreground">{spec.name}</div>}
+                              {session?.surgical_consultant && (
+                                <div className="min-w-0 truncate text-muted-foreground">{session.surgical_consultant}</div>
+                              )}
+                              <Badge variant="outline" className="text-[9px]">
+                                {a.role_on_list}
                               </Badge>
-                            )}
-                            {spec && <div className="min-w-0 truncate text-muted-foreground">{spec.name}</div>}
-                            {session?.surgical_consultant && (
-                              <div className="min-w-0 truncate text-muted-foreground">{session.surgical_consultant}</div>
-                            )}
-                            <Badge variant="outline" className="text-[9px]">
-                              {a.role_on_list}
-                            </Badge>
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground/60">—</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                            </div>
+                          ) : (
+                            <div className="text-muted-foreground/60">—</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {(["am", "pm"] as SessionHalf[]).map((sh) => {
+                      const a = dayAssigns.find((x) => x.session === sh);
+                      const session = a && ts?.find((s) => s.id === a.theatre_session_id);
+                      const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
+                      return (
+                        <div key={sh} className="flex items-center gap-2 text-xs">
+                          <SessionChip half={sh} className="scale-90 origin-left" />
+                          <span className="min-w-0 truncate">
+                            {theatre?.name ?? <span className="text-muted-foreground/60">—</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
