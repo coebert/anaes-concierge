@@ -48,7 +48,8 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { Download, Database, AlertCircle, RotateCcw, Sparkles } from "lucide-react";
+import { Download, Database, AlertCircle, RotateCcw, Sparkles, FileText } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
