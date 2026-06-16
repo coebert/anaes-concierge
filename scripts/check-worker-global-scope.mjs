@@ -22,7 +22,7 @@
  *   - dynamic import() calls
  *   - top-level `await`
  *
- * Scope: every src/**/*.{ts,tsx} file that ends up in the Worker bundle.
+ * Scope: every TypeScript file under src/ that ends up in the Worker bundle.
  * Excluded: vendored shadcn UI, generated files, test files, `.d.ts`, and
  * `*.client.ts(x)` (those never run on the server).
  *
