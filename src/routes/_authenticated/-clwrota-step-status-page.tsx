@@ -223,6 +223,30 @@ export function ClwRotaStepStatusPage() {
                     ? `Last ran ${relativeFrom(latest.run_at)}`
                     : "No sync has been recorded yet."}
                 </CardDescription>
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    variant={ready ? "default" : "outline"}
+                    onClick={() => runMutation.mutate(step)}
+                    disabled={
+                      runMutation.isPending && runMutation.variables === step
+                    }
+                    title={
+                      ready
+                        ? `Run ${step} sync now`
+                        : `Rate-limiter will likely skip this — next allowed ${
+                            next ? relativeFrom(next) : "soon"
+                          }`
+                    }
+                  >
+                    {runMutation.isPending && runMutation.variables === step ? (
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3 mr-2" />
+                    )}
+                    Run {step} sync
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <dl className="grid grid-cols-2 gap-3 text-sm">
