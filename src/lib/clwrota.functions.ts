@@ -2595,6 +2595,8 @@ export async function performRotaSync(
       total: rows.length,
       sessionsUpserted,
       assignmentsUpserted,
+      assignmentsInserted,
+      assignmentsUpdated,
       skipped,
       warnings,
       errors,
