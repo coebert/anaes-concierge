@@ -110,10 +110,31 @@ function decisionBadge(d: "fired" | "skipped" | "unknown") {
 
 export function ClwRotaStepStatusPage() {
   const fetchStatus = useServerFn(getClwRotaStepStatus);
+  const runStep = useServerFn(runClwRotaStepRateLimited);
+  const queryClient = useQueryClient();
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["clwrota-step-status"],
     queryFn: () => fetchStatus(),
     refetchInterval: 60_000,
+  });
+
+  const runMutation = useMutation<RunStepResult, Error, SyncStep>({
+    mutationFn: (step) => runStep({ data: { step } }),
+    onSuccess: (result) => {
+      if (result.fired) {
+        toast.success(
+          `${result.step} sync dispatched (request #${result.requestId}).`,
+        );
+      } else {
+        toast.info(
+          `${result.step} sync skipped — rate-limiter says it ran too recently (or another run is in flight).`,
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["clwrota-step-status"] });
+    },
+    onError: (err) => {
+      toast.error(`Could not run sync: ${err.message}`);
+    },
   });
 
   if (isLoading) {
