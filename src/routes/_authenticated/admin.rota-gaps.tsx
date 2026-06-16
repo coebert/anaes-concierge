@@ -231,12 +231,65 @@ function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
   const queryClient = useQueryClient();
   const syncRota = useServerFn(syncClwRotaRota);
+  const fetchSettings = useServerFn(getClwRotaSettings);
+  const saveSettings = useServerFn(saveClwRotaSettings);
+  const testConn = useServerFn(testClwRotaConnection);
   const [windowChoice, setWindowChoice] = useState<WindowChoice>("90");
   const [filter, setFilter] = useState("");
   const [hideClean, setHideClean] = useState(true);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [priority, setPriority] = useState<SyncPriority>("coverage");
   const [runLimit, setRunLimit] = useState<number | null>(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [rotaUrlDraft, setRotaUrlDraft] = useState("");
+
+  const settingsQ = useQuery({
+    queryKey: ["clwrota-settings"],
+    queryFn: () => fetchSettings(),
+  });
+  const currentRotaUrl = settingsQ.data?.settings?.rota_report_url ?? "";
+  const hasApiKey = settingsQ.data?.hasApiKey ?? false;
+  const hasBaseUrl = settingsQ.data?.hasBaseUrl ?? false;
+
+  // Keep the draft in sync with the loaded value but don't clobber an
+  // in-progress edit.
+  useEffect(() => {
+    if (!sourceOpen) setRotaUrlDraft(currentRotaUrl);
+  }, [currentRotaUrl, sourceOpen]);
+
+  const saveSourceMut = useMutation({
+    mutationFn: async () => {
+      const next = rotaUrlDraft.trim();
+      // Preserve every other CLWRota setting; only swap the rota URL.
+      const s = settingsQ.data?.settings;
+      await saveSettings({
+        data: {
+          rota_report_url: next || null,
+          leave_report_url: s?.leave_report_url ?? null,
+          staff_report_url: s?.staff_report_url ?? null,
+          sync_days_back: s?.sync_days_back ?? 30,
+          sync_days_ahead: s?.sync_days_ahead ?? 120,
+          auto_reclassify_trainee_solo: Boolean(
+            (s as { auto_reclassify_trainee_solo?: boolean } | null | undefined)?.auto_reclassify_trainee_solo,
+          ),
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("CLWRota source updated");
+      void queryClient.invalidateQueries({ queryKey: ["clwrota-settings"] });
+    },
+    onError: (e: Error) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const testConnMut = useMutation({
+    mutationFn: () => testConn({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(`Connected (${res.status} in ${res.elapsedMs}ms)`);
+      else toast.error(`Connection failed: ${res.status} ${res.statusText || ""}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
