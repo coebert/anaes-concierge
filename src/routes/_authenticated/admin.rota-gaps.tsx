@@ -428,6 +428,9 @@ function RotaGapsPage() {
           ok: res.ok !== false,
           message: res.message,
           upserted: res.assignmentsUpserted,
+          inserted: res.assignmentsInserted,
+          updated: res.assignmentsUpdated,
+          unmatchedStaffCount: res.unmatchedStaff?.length ?? 0,
           gapsBefore,
         };
       } catch (err) {
