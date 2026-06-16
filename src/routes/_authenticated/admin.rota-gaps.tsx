@@ -435,11 +435,17 @@ function RotaGapsPage() {
       }
 
       // Refresh the gap report after every range so the planned-coverage
-      // projection, per-trainee gap list, and summary stats reflect the
-      // rows just written. We await it so the next range's projection — and
-      // this range's post-sync verification — are computed against the
-      // freshly reduced set of remaining gaps.
+      // projection, per-staff gap list, and summary stats reflect the
+      // rows just written. We mark the query stale AND explicitly refetch
+      // so the next range — and the top-of-page statistics — are computed
+      // against the freshly reduced set of remaining gaps. `refetchQueries`
+      // resolves only after the query function has actually re-run, which
+      // `invalidateQueries` alone does not guarantee in every scenario.
       await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
+      await queryClient.refetchQueries({
+        queryKey: ["rota-gaps", windowChoice],
+        type: "active",
+      });
       const afterSnap = queryClient.getQueryData<GapSnapshot>([
         "rota-gaps",
         windowChoice,
@@ -454,6 +460,10 @@ function RotaGapsPage() {
     }
     setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
+    await queryClient.refetchQueries({
+      queryKey: ["rota-gaps", windowChoice],
+      type: "active",
+    });
   }
 
   return (
