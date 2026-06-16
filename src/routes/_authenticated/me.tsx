@@ -6,7 +6,7 @@ import { StaffWeekView } from "@/components/rota-views";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Copy, RefreshCw, Check } from "lucide-react";
+import { Calendar, Copy, RefreshCw, Check, FlaskConical, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   getCalendarFeedToken,
