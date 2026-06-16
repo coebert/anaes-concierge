@@ -435,8 +435,16 @@ function SettingsPage() {
       } else {
         toast.warning(`Partial sync — ${summary}`);
       }
+      // Single post-sync audit at the end of the Sync All run. The retry
+      // path will only kick in if mismatches look fixable (i.e. cause is
+      // alias-missing/mixed) — `no_theatre_sessions_on_those_days` is
+      // diagnosed and reported without an unhelpful re-sync loop.
+      setTimeout(() => validateMut.mutate(), 250);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      syncAllInFlight.current = false;
+      toast.error(e.message);
+    },
   });
 
   // One-click backfill: re-scans the CLWRota rota feed and ticks the
