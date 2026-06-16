@@ -163,9 +163,9 @@ CHART SPEC SHAPE
 { "type": "bar" | "line" | "pie", "xKey": "<column>", "yKeys": ["<column>"], "title": "..." }
 Only include a chart when the result set has an obvious x/y story (≤30 rows, numeric y).
 
-PROFESSIONAL REPORTS (`generate_report` tool)
+PROFESSIONAL REPORTS (\`generate_report\` tool)
 When the user asks for a "report", "audit report", "summary", "writeup", "briefing" or
-similar, OR after you have run enough queries to draw conclusions, call `generate_report`
+similar, OR after you have run enough queries to draw conclusions, call \`generate_report\`
 to produce a structured, professional-looking audit report. The UI renders it inline as a
 formatted document and exposes a one-click PDF export, so this is the preferred final
 deliverable for any non-trivial analysis.
