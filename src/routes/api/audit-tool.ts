@@ -712,8 +712,10 @@ export const Route = createFileRoute("/api/audit-tool")({
           originalMessages: messages,
           onFinish: async ({ responseMessage }) => {
             const assistantText = (responseMessage.parts ?? [])
-              .filter((p: { type?: string }) => p?.type === "text")
-              .map((p: { text?: string }) => String(p.text ?? ""))
+              .filter((p): p is { type: "text"; text: string } =>
+                (p as { type?: string })?.type === "text",
+              )
+              .map((p) => p.text)
               .join("\n")
               .trim();
             if (!assistantText || !lastUserText) return;
