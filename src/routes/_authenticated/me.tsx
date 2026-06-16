@@ -103,6 +103,67 @@ function CalendarSubscribeCard() {
     }
   }
 
+  async function runTest() {
+    setBusy(true);
+    setTestResult(null);
+    const started = performance.now();
+    try {
+      let activeToken = token;
+      if (!activeToken) {
+        const res = await getToken();
+        activeToken = res.token;
+        setToken(activeToken);
+      }
+      const url = `${PUBLISHED_ORIGIN}/api/public/calendar/${activeToken}`;
+      const resp = await fetch(url, { method: "GET", redirect: "follow" });
+      const contentType = resp.headers.get("content-type") ?? "";
+      const text = await resp.text();
+      const durationMs = Math.round(performance.now() - started);
+
+      // Basic RFC 5545 sanity: must start with BEGIN:VCALENDAR, end with END:VCALENDAR,
+      // and have matching BEGIN/END counts for VEVENT.
+      const trimmed = text.trim();
+      const startsOk = /^BEGIN:VCALENDAR/m.test(trimmed.split(/\r?\n/)[0] ?? "");
+      const endsOk = /END:VCALENDAR\s*$/.test(trimmed);
+      const beginEvents = (text.match(/^BEGIN:VEVENT/gm) ?? []).length;
+      const endEvents = (text.match(/^END:VEVENT/gm) ?? []).length;
+      const calNameMatch = text.match(/^X-WR-CALNAME:(.+)$/m);
+      const parses = resp.ok && startsOk && endsOk && beginEvents === endEvents;
+
+      setTestResult({
+        ok: resp.ok,
+        status: resp.status,
+        contentType,
+        parses,
+        eventCount: beginEvents,
+        calName: calNameMatch?.[1]?.trim(),
+        error: parses
+          ? undefined
+          : !resp.ok
+            ? `HTTP ${resp.status}`
+            : !startsOk
+              ? "Missing BEGIN:VCALENDAR header"
+              : !endsOk
+                ? "Missing END:VCALENDAR footer"
+                : `Unbalanced VEVENT blocks (${beginEvents} BEGIN / ${endEvents} END)`,
+        durationMs,
+      });
+    } catch (e: any) {
+      setTestResult({
+        ok: false,
+        status: 0,
+        contentType: "",
+        parses: false,
+        eventCount: 0,
+        error: e?.message ?? "Network error",
+        durationMs: Math.round(performance.now() - started),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
   return (
     <Card>
       <CardHeader className="pb-3">
