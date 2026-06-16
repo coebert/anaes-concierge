@@ -236,8 +236,7 @@ function RotaGapsPage() {
 
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, training_level, start_date, rotation_end_date, ltft_days_off")
-        .eq("grade", "trainee")
+        .select("id, full_name, grade, training_level, start_date, rotation_end_date, ltft_days_off")
         .eq("active", true)
         .order("full_name");
       if (e1) throw e1;
