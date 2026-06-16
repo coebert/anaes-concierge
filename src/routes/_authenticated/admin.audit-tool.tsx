@@ -574,7 +574,8 @@ async function downloadReportPdf(report: ReportOutput) {
     const size = opts.size ?? 10.5;
     doc.setFont("helvetica", opts.bold ? "bold" : "normal");
     doc.setFontSize(size);
-    doc.setTextColor(...(opts.color ?? [30, 30, 30]));
+    const c = opts.color ?? [30, 30, 30];
+    doc.setTextColor(c[0], c[1], c[2]);
     const lines = doc.splitTextToSize(text, contentWidth);
     const lineHeight = size * 1.35;
     ensureSpace(lines.length * lineHeight);
