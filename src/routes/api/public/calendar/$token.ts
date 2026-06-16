@@ -243,12 +243,15 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
 
         for (const l of leaveRes.data ?? []) {
           const uid = `leave-${l.id}@${host}`;
-          const updated = l.updated_at ? fmtUtc(new Date(l.updated_at)) : dtstamp;
+          const updatedDate = l.updated_at ? new Date(l.updated_at) : new Date();
+          const updated = fmtUtc(updatedDate);
+          const sequence = Math.floor(updatedDate.getTime() / 1000);
           const typeLabel = TITLE_CASE(String(l.type ?? "leave"));
           lines.push("BEGIN:VEVENT");
           lines.push(`UID:${uid}`);
           lines.push(`DTSTAMP:${dtstamp}`);
           lines.push(`LAST-MODIFIED:${updated}`);
+          lines.push(`SEQUENCE:${sequence}`);
           lines.push(`DTSTART;VALUE=DATE:${fmtDate(l.start_date)}`);
           lines.push(`DTEND;VALUE=DATE:${fmtDatePlus(l.end_date, 1)}`);
           lines.push(fold(`SUMMARY:${escapeText(typeLabel + " (approved)")}`));
