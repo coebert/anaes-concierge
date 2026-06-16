@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const SYNC_STEPS = ["staff", "rota", "leave"] as const;
+
+
 /**
  * Admin-only read of per-step CLWRota sync health: combines the latest
  * `clwrota_sync_metrics` row per step with the shared rate-limiter row
