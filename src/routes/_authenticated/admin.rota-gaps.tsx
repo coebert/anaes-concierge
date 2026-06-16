@@ -399,30 +399,59 @@ function RotaGapsPage() {
     for (let i = 0; i < targets.length; i++) {
       const { startISO, endISO } = targets[i];
       setProgress({ running: true, current: i, total: targets.length, perRange: [...perRange] });
+
+      // Snapshot the gap state inside this range BEFORE the sync runs, so
+      // we can compute a "gaps filled" delta once the post-sync refetch
+      // lands. The current query cache already reflects every prior range
+      // in this run because we await the invalidation below.
+      const beforeSnap = queryClient.getQueryData<GapSnapshot>([
+        "rota-gaps",
+        windowChoice,
+      ]);
+      const gapsBefore = beforeSnap
+        ? countSyncMissingInSpan(beforeSnap, startISO, endISO)
+        : undefined;
+
+      let entry: SyncProgress["perRange"][number];
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
         });
-        perRange.push({
+        entry = {
           from: startISO,
           to: endISO,
           ok: res.ok !== false,
           message: res.message,
           upserted: res.assignmentsUpserted,
-        });
+          gapsBefore,
+        };
       } catch (err) {
-        perRange.push({
+        entry = {
           from: startISO,
           to: endISO,
           ok: false,
           message: err instanceof Error ? err.message : String(err),
-        });
+          gapsBefore,
+        };
       }
+
       // Refresh the gap report after every range so the planned-coverage
       // projection, per-trainee gap list, and summary stats reflect the
-      // rows just written. We await it so the next range's projection is
-      // computed against the freshly reduced set of remaining gaps.
+      // rows just written. We await it so the next range's projection — and
+      // this range's post-sync verification — are computed against the
+      // freshly reduced set of remaining gaps.
       await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
+      const afterSnap = queryClient.getQueryData<GapSnapshot>([
+        "rota-gaps",
+        windowChoice,
+      ]);
+      if (afterSnap && gapsBefore != null) {
+        const gapsAfter = countSyncMissingInSpan(afterSnap, startISO, endISO);
+        entry.gapsAfter = gapsAfter;
+        entry.gapsFilled = Math.max(0, gapsBefore - gapsAfter);
+      }
+
+      perRange.push(entry);
     }
     setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
