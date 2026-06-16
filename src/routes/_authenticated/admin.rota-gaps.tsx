@@ -687,8 +687,8 @@ function RotaGapsPage() {
               <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 {hideClean
-                  ? "No trainees with missing days in this window."
-                  : "No trainees match the current filter."}
+                  ? "No staff with missing days in this window."
+                  : "No staff match the current filter."}
               </CardContent>
             </Card>
           ) : (
@@ -698,13 +698,20 @@ function RotaGapsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="text-base">
-                        <Link
-                          to="/trainees/$staffId"
-                          params={{ staffId: trainee.id }}
-                          className="hover:underline"
-                        >
-                          {trainee.full_name || "—"}
-                        </Link>
+                        {trainee.grade === "trainee" ? (
+                          <Link
+                            to="/trainees/$staffId"
+                            params={{ staffId: trainee.id }}
+                            className="hover:underline"
+                          >
+                            {trainee.full_name || "—"}
+                          </Link>
+                        ) : (
+                          <span>{trainee.full_name || "—"}</span>
+                        )}
+                        {trainee.grade && trainee.grade !== "trainee" && (
+                          <Badge variant="outline" className="ml-2 capitalize">{trainee.grade}</Badge>
+                        )}
                         {trainee.training_level && (
                           <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
                         )}
