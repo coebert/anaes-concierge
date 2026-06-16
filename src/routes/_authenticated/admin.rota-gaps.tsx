@@ -527,7 +527,7 @@ function RotaGapsPage() {
     setProgress({ running: true, current: 0, total: targets.length, perRange: [] });
     const perRange: SyncProgress["perRange"] = [];
     for (let i = 0; i < targets.length; i++) {
-      const { startISO, endISO } = targets[i];
+      const { startISO, endISO, traineeIds } = targets[i];
       setProgress({ running: true, current: i, total: targets.length, perRange: [...perRange] });
 
       // Snapshot the gap state inside this range BEFORE the sync runs, so
@@ -541,12 +541,52 @@ function RotaGapsPage() {
       const gapsBefore = beforeSnap
         ? countSyncMissingInSpan(beforeSnap, startISO, endISO)
         : undefined;
+      // Per-trainee gap counts BEFORE sync, for the per-range diagnostic
+      // table built once the post-sync refetch lands below.
+      const perTraineeBefore = new Map<string, number>();
+      if (beforeSnap) {
+        for (const tid of traineeIds) {
+          perTraineeBefore.set(
+            tid,
+            countSyncMissingForTraineeInSpan(beforeSnap, tid, startISO, endISO),
+          );
+        }
+      }
 
       let entry: SyncProgress["perRange"][number];
+      let coverageByStaff = new Map<string, {
+        datesCovered: number;
+        insertedDates: number;
+        existingDates: number;
+        firstDate: string;
+        lastDate: string;
+      }>();
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
         });
+        const cov = (res as SyncResult & { coverage?: {
+          rowsInWindow: number;
+          staffCoverage: Array<{ staffId: string; datesCovered: number; insertedDates: number; existingDates: number; firstDate: string; lastDate: string }>;
+          skippedReasonCounts: Record<string, number>;
+        } }).coverage;
+        if (cov) {
+          for (const sc of cov.staffCoverage) {
+            coverageByStaff.set(sc.staffId, {
+              datesCovered: sc.datesCovered,
+              insertedDates: sc.insertedDates,
+              existingDates: sc.existingDates,
+              firstDate: sc.firstDate,
+              lastDate: sc.lastDate,
+            });
+          }
+        }
+        const topSkipReasons = cov
+          ? Object.entries(cov.skippedReasonCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([reason, count]) => ({ reason, count }))
+          : [];
         entry = {
           from: startISO,
           to: endISO,
@@ -557,6 +597,9 @@ function RotaGapsPage() {
           updated: res.assignmentsUpdated,
           unmatchedStaffCount: res.unmatchedStaff?.length ?? 0,
           gapsBefore,
+          rowsInWindow: cov?.rowsInWindow,
+          staffCovered: cov?.staffCoverage.length,
+          topSkipReasons,
         };
       } catch (err) {
         entry = {
@@ -590,8 +633,59 @@ function RotaGapsPage() {
         entry.gapsFilled = Math.max(0, gapsBefore - gapsAfter);
       }
 
+      // Build per-trainee diagnostics: cross-reference gap deltas with
+      // upstream coverage so admins can see exactly why each trainee was
+      // (or wasn't) helped by this sync.
+      if (afterSnap && beforeSnap) {
+        const diag: TraineeDiagnostic[] = traineeIds.map((tid) => {
+          const trainee = beforeSnap.trainees.find((x) => x.id === tid);
+          const name = data?.trainees.find((x) => x.id === tid)?.full_name ?? tid;
+          const before = perTraineeBefore.get(tid) ?? 0;
+          const after = countSyncMissingForTraineeInSpan(afterSnap, tid, startISO, endISO);
+          const filled = Math.max(0, before - after);
+          const cov = coverageByStaff.get(tid);
+          const upstreamDatesCovered = cov?.datesCovered ?? 0;
+          const upstreamInsertedDates = cov?.insertedDates ?? 0;
+          const upstreamExistingDates = cov?.existingDates ?? 0;
+          let status: TraineeDiagnosticStatus;
+          if (before === 0) status = "no_gap_in_range";
+          else if (upstreamDatesCovered === 0) status = "no_upstream_coverage";
+          else if (filled === 0) status = "covered_no_new_dates";
+          else if (after === 0) status = "fully_filled";
+          else status = "partially_filled";
+          void trainee;
+          return {
+            traineeId: tid,
+            name,
+            gapsBefore: before,
+            gapsAfter: after,
+            gapsFilled: filled,
+            upstreamDatesCovered,
+            upstreamInsertedDates,
+            upstreamExistingDates,
+            firstUpstreamDate: cov?.firstDate ?? null,
+            lastUpstreamDate: cov?.lastDate ?? null,
+            status,
+          };
+        }).sort((a, b) => b.gapsBefore - a.gapsBefore);
+        entry.traineeDiagnostics = diag;
+
+        // Compact console summary so the troubleshooting trail is also
+        // visible in browser devtools when the user copy-pastes a bug
+        // report.
+        const summary = diag.reduce<Record<TraineeDiagnosticStatus, number>>(
+          (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
+          { fully_filled: 0, partially_filled: 0, no_upstream_coverage: 0, covered_no_new_dates: 0, no_gap_in_range: 0 },
+        );
+        console.info(
+          `[rota-gaps] ${startISO}..${endISO}: filled ${entry.gapsFilled ?? 0}/${entry.gapsBefore ?? 0} day(s); trainees:`,
+          summary,
+        );
+      }
+
       perRange.push(entry);
     }
+
     setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
     await queryClient.refetchQueries({
