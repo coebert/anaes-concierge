@@ -219,8 +219,25 @@ function SettingsPage() {
 
       lastMismatchSignature.current = signature;
 
+      // Re-syncing the rota can only fix mismatches caused by a *new* upstream
+      // payload — i.e. the rota row's theatre label was unmapped and an alias
+      // was added since the last sync. It CANNOT materialise theatre_session
+      // rows the upstream theatre feed doesn't list, so when the dominant
+      // cause is `no_theatre_sessions_on_those_days` an immediate retry is
+      // guaranteed to produce the same mismatch set and the "Retry stopped"
+      // warning. Skip the retry in that case and surface the diagnosis
+      // directly.
+      const retryWouldHelp = causes.primary !== "no_theatre_sessions_on_those_days";
+
       // Auto-retry: re-sync the rota window and re-validate, up to MAX_AUTO_RETRIES.
-      if (retryAttempt < MAX_AUTO_RETRIES && rotaUrl.trim()) {
+      // Suppressed during a Sync All run — the orchestrator runs its own final
+      // validate once all three steps complete.
+      if (
+        retryWouldHelp &&
+        !syncAllInFlight.current &&
+        retryAttempt < MAX_AUTO_RETRIES &&
+        rotaUrl.trim()
+      ) {
         const nextAttempt = retryAttempt + 1;
         setRetryAttempt(nextAttempt);
         setRetriedTrainees(
