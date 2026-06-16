@@ -51,6 +51,7 @@ import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAdminClwrotaStepStatusRouteImport } from './routes/_authenticated/admin.clwrota-step-status'
 import { Route as AuthenticatedAdminClwrotaStatusRouteImport } from './routes/_authenticated/admin.clwrota-status'
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
@@ -292,6 +293,12 @@ const AuthenticatedAdminDashboardRoute =
     path: '/admin/dashboard',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminClwrotaStepStatusRoute =
+  AuthenticatedAdminClwrotaStepStatusRouteImport.update({
+    id: '/admin/clwrota-step-status',
+    path: '/admin/clwrota-step-status',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminClwrotaStatusRoute =
   AuthenticatedAdminClwrotaStatusRouteImport.update({
     id: '/admin/clwrota-status',
@@ -360,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
+  '/admin/clwrota-step-status': typeof AuthenticatedAdminClwrotaStepStatusRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -410,6 +418,7 @@ export interface FileRoutesByTo {
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
+  '/admin/clwrota-step-status': typeof AuthenticatedAdminClwrotaStepStatusRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -463,6 +472,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
+  '/_authenticated/admin/clwrota-step-status': typeof AuthenticatedAdminClwrotaStepStatusRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -516,6 +526,7 @@ export interface FileRouteTypes {
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
+    | '/admin/clwrota-step-status'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -566,6 +577,7 @@ export interface FileRouteTypes {
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
+    | '/admin/clwrota-step-status'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -618,6 +630,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/audit-tool'
     | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/clwrota-status'
+    | '/_authenticated/admin/clwrota-step-status'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
@@ -960,6 +973,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/clwrota-step-status': {
+      id: '/_authenticated/admin/clwrota-step-status'
+      path: '/admin/clwrota-step-status'
+      fullPath: '/admin/clwrota-step-status'
+      preLoaderRoute: typeof AuthenticatedAdminClwrotaStepStatusRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/clwrota-status': {
       id: '/_authenticated/admin/clwrota-status'
       path: '/admin/clwrota-status'
@@ -1075,6 +1095,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminAuditToolRoute: typeof AuthenticatedAdminAuditToolRoute
   AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminClwrotaStatusRoute: typeof AuthenticatedAdminClwrotaStatusRoute
+  AuthenticatedAdminClwrotaStepStatusRoute: typeof AuthenticatedAdminClwrotaStepStatusRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
@@ -1113,6 +1134,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminAuditToolRoute: AuthenticatedAdminAuditToolRoute,
   AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,
   AuthenticatedAdminClwrotaStatusRoute: AuthenticatedAdminClwrotaStatusRoute,
+  AuthenticatedAdminClwrotaStepStatusRoute:
+    AuthenticatedAdminClwrotaStepStatusRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
