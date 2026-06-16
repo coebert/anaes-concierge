@@ -135,6 +135,65 @@ export function prioritiseSpans(spans: MergedSpan[], priority: SyncPriority): Me
 
 type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
 
+/**
+ * Snapshot of the rota-gaps query result used by the post-sync verification
+ * step to count how many sync-missing weekdays exist inside a date span,
+ * across every trainee whose rotation overlaps it.
+ */
+type GapSnapshot = {
+  trainees: Array<{
+    id: string;
+    start_date: string | null;
+    rotation_end_date: string | null;
+    ltft_days_off: number[] | null;
+  }>;
+  datesByStaff: Map<string, Set<string>>;
+  today: string;
+};
+
+const MS_DAY_LOCAL = 86_400_000;
+
+function isoFromDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Count working weekdays (excluding weekends and the trainee's LTFT off
+ * days) in `[fromISO, toISO]` that lie inside the trainee's rotation
+ * window and have no rota assignment. Used by the post-sync verification
+ * step to compute `filled = before - after` per synced range.
+ */
+export function countSyncMissingInSpan(
+  snap: GapSnapshot,
+  fromISO: string,
+  toISO: string,
+): number {
+  if (fromISO > toISO) return 0;
+  const [fy, fm, fd] = fromISO.split("-").map(Number);
+  const [ty, tm, td] = toISO.split("-").map(Number);
+  const from = new Date(fy, fm - 1, fd);
+  const to = new Date(ty, tm - 1, td);
+  let missing = 0;
+  for (const t of snap.trainees) {
+    const offSet = new Set<number>([0, 6, ...((t.ltft_days_off ?? []) as number[])]);
+    const rotStart = t.start_date ?? null;
+    const rotEnd = t.rotation_end_date ?? snap.today;
+    const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
+    for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
+      const iso = isoFromDate(dt);
+      if (rotStart && iso < rotStart) continue;
+      if (iso > rotEnd) continue;
+      if (offSet.has(dt.getDay())) continue;
+      if (dates.has(iso)) continue;
+      missing += 1;
+    }
+  }
+  return missing;
+}
+
 interface SyncProgress {
   running: boolean;
   current: number;
@@ -145,6 +204,12 @@ interface SyncProgress {
     ok: boolean;
     message?: string;
     upserted?: number;
+    /** Sync-missing weekdays in this range before the sync ran. */
+    gapsBefore?: number;
+    /** Sync-missing weekdays in this range after the post-sync refetch. */
+    gapsAfter?: number;
+    /** `gapsBefore − gapsAfter`; negative values are clamped to 0. */
+    gapsFilled?: number;
   }>;
   error?: string;
 }
