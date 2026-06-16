@@ -135,6 +135,10 @@ function SettingsPage() {
   // count per trainee, sorted. If a retry produces an identical signature,
   // the sync cannot fix these trainees and we abort early.
   const lastMismatchSignature = useRef<string | null>(null);
+  // True while a "Sync all" run is in flight — suppresses the per-step
+  // auto-validate (which would race the leave step and trigger spurious
+  // rota re-syncs). One validation runs at the end of the Sync All instead.
+  const syncAllInFlight = useRef(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [retriedTrainees, setRetriedTrainees] = useState<string[]>([]);
   const [stalledCause, setStalledCause] = useState<string | null>(null);
