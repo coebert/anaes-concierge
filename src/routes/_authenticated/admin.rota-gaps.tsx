@@ -490,7 +490,7 @@ function RotaGapsPage() {
               checked={hideClean}
               onChange={(e) => setHideClean(e.target.checked)}
             />
-            Hide trainees with no gaps
+            Hide staff with no gaps
           </label>
         </div>
       </header>
@@ -500,7 +500,7 @@ function RotaGapsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Stat icon={AlertTriangle} tone="bad" label="Trainees with gaps" value={traineesWithGaps} />
+            <Stat icon={AlertTriangle} tone="bad" label="Staff with gaps" value={traineesWithGaps} />
             <Stat icon={CalendarX} tone="bad" label="Missing weekdays" value={totalGapDays} />
             <Stat icon={CalendarX} tone="muted" label="Distinct gap ranges" value={totalRanges} />
           </div>
