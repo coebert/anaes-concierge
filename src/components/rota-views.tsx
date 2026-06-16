@@ -654,7 +654,6 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
             (l) => l.start_date <= dayIso && l.end_date >= dayIso,
           ) ?? [];
           const isToday = dayIso === iso(new Date());
-          return (
           const isExpanded = expandedDays.has(dayIso);
           return (
             <Card key={dayIso} className={cn(isToday && "ring-2 ring-primary")}>
