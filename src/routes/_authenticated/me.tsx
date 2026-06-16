@@ -39,6 +39,16 @@ function CalendarSubscribeCard() {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    status: number;
+    contentType: string;
+    parses: boolean;
+    eventCount: number;
+    calName?: string;
+    error?: string;
+    durationMs: number;
+  } | null>(null);
 
   // Always use the published domain — Apple Calendar can't authenticate against
   // the preview host (id-preview--…lovable.app), which would redirect to the
