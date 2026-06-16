@@ -430,7 +430,16 @@ export const Route = createFileRoute("/api/audit-tool")({
                 .join("\n")
             : "(no memories yet — save useful lessons as you learn them)";
 
-        const fullSystem = `${SYSTEM_PROMPT}\n\nSTORED MEMORIES (newest first):\n${memoryBlock}`;
+        // Live snapshot of theatres, staff groups, duty types, specialties.
+        // Best-effort: if it fails we still answer using the static prompt.
+        let snapshotBlock = "";
+        try {
+          snapshotBlock = await buildDepartmentSnapshot(adminClient);
+        } catch (e) {
+          console.warn("buildDepartmentSnapshot failed", e);
+        }
+
+        const fullSystem = `${SYSTEM_PROMPT}\n\nSTORED MEMORIES (newest first):\n${memoryBlock}${snapshotBlock}`;
 
         const tools = {
           describe_schema: tool({
