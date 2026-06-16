@@ -1,13 +1,15 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -16,10 +18,15 @@ import {
   type GapRange, type ClassifiedGapRange, type GapKind,
 } from "@/lib/rota-gaps";
 import { fetchAllRowsPaged, rotaAssignmentKey } from "@/lib/audit/paginate";
-import { syncClwRotaRota } from "@/lib/clwrota.functions";
+import {
+  syncClwRotaRota,
+  getClwRotaSettings,
+  saveClwRotaSettings,
+  testClwRotaConnection,
+} from "@/lib/clwrota.functions";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw, Plug, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
   component: RotaGapsPage,
@@ -224,12 +231,65 @@ function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
   const queryClient = useQueryClient();
   const syncRota = useServerFn(syncClwRotaRota);
+  const fetchSettings = useServerFn(getClwRotaSettings);
+  const saveSettings = useServerFn(saveClwRotaSettings);
+  const testConn = useServerFn(testClwRotaConnection);
   const [windowChoice, setWindowChoice] = useState<WindowChoice>("90");
   const [filter, setFilter] = useState("");
   const [hideClean, setHideClean] = useState(true);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [priority, setPriority] = useState<SyncPriority>("coverage");
   const [runLimit, setRunLimit] = useState<number | null>(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [rotaUrlDraft, setRotaUrlDraft] = useState("");
+
+  const settingsQ = useQuery({
+    queryKey: ["clwrota-settings"],
+    queryFn: () => fetchSettings(),
+  });
+  const currentRotaUrl = settingsQ.data?.settings?.rota_report_url ?? "";
+  const hasApiKey = settingsQ.data?.hasApiKey ?? false;
+  const hasBaseUrl = settingsQ.data?.hasBaseUrl ?? false;
+
+  // Keep the draft in sync with the loaded value but don't clobber an
+  // in-progress edit.
+  useEffect(() => {
+    if (!sourceOpen) setRotaUrlDraft(currentRotaUrl);
+  }, [currentRotaUrl, sourceOpen]);
+
+  const saveSourceMut = useMutation({
+    mutationFn: async () => {
+      const next = rotaUrlDraft.trim();
+      // Preserve every other CLWRota setting; only swap the rota URL.
+      const s = settingsQ.data?.settings;
+      await saveSettings({
+        data: {
+          rota_report_url: next || null,
+          leave_report_url: s?.leave_report_url ?? null,
+          staff_report_url: s?.staff_report_url ?? null,
+          sync_days_back: s?.sync_days_back ?? 30,
+          sync_days_ahead: s?.sync_days_ahead ?? 120,
+          auto_reclassify_trainee_solo: Boolean(
+            (s as { auto_reclassify_trainee_solo?: boolean } | null | undefined)?.auto_reclassify_trainee_solo,
+          ),
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("CLWRota source updated");
+      void queryClient.invalidateQueries({ queryKey: ["clwrota-settings"] });
+    },
+    onError: (e: Error) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const testConnMut = useMutation({
+    mutationFn: () => testConn({}),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(`Connected (${res.status} in ${res.elapsedMs}ms)`);
+      else toast.error(`Connection failed: ${res.status} ${res.statusText || ""}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["rota-gaps", windowChoice],
@@ -523,6 +583,104 @@ function RotaGapsPage() {
             <Stat icon={CalendarX} tone="bad" label="Missing weekdays" value={totalGapDays} />
             <Stat icon={CalendarX} tone="muted" label="Distinct gap ranges" value={totalRanges} />
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Plug className="h-4 w-4" /> CLWRota source
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Swap the rota report URL or refresh the auth key when CLWRota returns
+                  no rows for trainees that still appear as gaps. After saving, re-run
+                  the targeted sync below to fill the newly-covered dates.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Badge variant={hasApiKey ? "default" : "destructive"}>
+                  API key {hasApiKey ? "set" : "missing"}
+                </Badge>
+                <Badge variant={hasBaseUrl ? "default" : "destructive"}>
+                  Base URL {hasBaseUrl ? "set" : "missing"}
+                </Badge>
+                <Badge variant={currentRotaUrl ? "default" : "destructive"}>
+                  Rota URL {currentRotaUrl ? "set" : "missing"}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSourceOpen((v) => !v)}
+                >
+                  {sourceOpen ? "Hide" : "Edit"}
+                </Button>
+              </div>
+            </CardHeader>
+            {sourceOpen && (
+              <CardContent className="space-y-3 border-t pt-3 text-sm">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Rota report URL (CLWRota Central API)
+                  </label>
+                  <Textarea
+                    value={rotaUrlDraft}
+                    onChange={(e) => setRotaUrlDraft(e.target.value)}
+                    rows={4}
+                    placeholder="https://sftcr.rotamap.net/central_api/query/assignments?…"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: copy the report URL from CLWRota's "Reports" page. Targeted
+                    syncs replace the URL's <code>start_date</code> / <code>end_date</code>{" "}
+                    per range, so the date params here are just defaults.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => saveSourceMut.mutate()}
+                    disabled={
+                      saveSourceMut.isPending ||
+                      rotaUrlDraft.trim() === currentRotaUrl.trim()
+                    }
+                  >
+                    {saveSourceMut.isPending ? "Saving…" : "Save URL"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setRotaUrlDraft(currentRotaUrl);
+                    }}
+                    disabled={
+                      saveSourceMut.isPending ||
+                      rotaUrlDraft.trim() === currentRotaUrl.trim()
+                    }
+                  >
+                    Revert
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => testConnMut.mutate()}
+                    disabled={testConnMut.isPending || !hasApiKey || !hasBaseUrl}
+                  >
+                    {testConnMut.isPending ? "Testing…" : "Test connection"}
+                  </Button>
+                  <Link
+                    to="/admin/settings"
+                    className="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    Manage API key & base URL <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  The CLWRota auth key (<code>CLWROTA_API_KEY</code>) and base URL
+                  (<code>CLWROTA_BASE_URL</code>) are stored as backend secrets and
+                  rotated from Settings → CLWRota.
+                </p>
+              </CardContent>
+            )}
+          </Card>
 
           <Card>
             <CardContent className="flex flex-wrap items-end justify-between gap-3 p-4">
