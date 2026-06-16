@@ -2257,6 +2257,34 @@ export async function performRotaSync(
       }));
 
 
+    // Pre-query which of the external IDs we are about to upsert already
+    // exist. This lets us distinguish "truly new" assignment rows (insert)
+    // from rows that simply had `updated_at` bumped (update). The
+    // distinction matters for the rota-gaps tool: only inserts can fill
+    // missing dates — bumped updates leave the gap set unchanged, which is
+    // why a sync can report thousands of "upserted" rows while filling no
+    // gaps at all.
+    let preExistingExtIds = new Set<string>();
+    if (uniqueAssignments.length > 0) {
+      const extIds = uniqueAssignments.map((a) => a.clwrota_external_id);
+      const EXIST_CHUNK = SUPABASE_IN_CHUNK;
+      for (let i = 0; i < extIds.length; i += EXIST_CHUNK) {
+        const ids = extIds.slice(i, i + EXIST_CHUNK);
+        const { data: existing, error: existErr } = await supabaseAdmin
+          .from("rota_assignments")
+          .select("clwrota_external_id")
+          .in("clwrota_external_id", ids);
+        if (existErr) {
+          console.warn("[clwrota] preflight insert/update count failed:", existErr.message);
+          preExistingExtIds = new Set<string>();
+          break;
+        }
+        for (const r of existing ?? []) {
+          if (r.clwrota_external_id) preExistingExtIds.add(r.clwrota_external_id);
+        }
+      }
+    }
+
     let assignmentsUpserted = 0;
     for (let i = 0; i < uniqueAssignments.length; i += ASSIGN_CHUNK) {
       const chunk = uniqueAssignments.slice(i, i + ASSIGN_CHUNK);
@@ -2269,6 +2297,11 @@ export async function performRotaSync(
       }
       assignmentsUpserted += chunk.length;
     }
+    const assignmentsInserted = uniqueAssignments.reduce(
+      (n, a) => n + (preExistingExtIds.has(a.clwrota_external_id) ? 0 : 1),
+      0,
+    );
+    const assignmentsUpdated = Math.max(0, assignmentsUpserted - assignmentsInserted);
     if (lockedSkipped > 0) {
       skipped.push({ label: `locally-modified assignments preserved`, reason: String(lockedSkipped) });
     }
