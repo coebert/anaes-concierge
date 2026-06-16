@@ -2747,7 +2747,15 @@ export async function performRotaSyncChunked(
     unmatchedTheatres: [],
     unmatchedStaff: [],
     traineeStartPredictions: null,
+    coverage: {
+      windowFrom: null,
+      windowTo: null,
+      rowsInWindow: 0,
+      staffCoverage: [],
+      skippedReasonCounts: {},
+    },
     slices: 0,
+
   };
 
   const unmatchedT = new Set<string>();
