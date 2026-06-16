@@ -573,6 +573,120 @@ export const Route = createFileRoute("/api/audit-tool")({
               return { memories: data ?? [] };
             },
           }),
+
+          // ---- Focused reference tools ------------------------------------
+          // Complement the live snapshot with on-demand drilldowns so the
+          // model doesn't need to fall back to `run_sql` for routine
+          // questions about theatres, staffing or duty mix.
+
+          list_theatres: tool({
+            description:
+              "Return the department's theatres (one row per theatre). Use to look up exact names, " +
+              "split by kind (main / day_surgery / private), and check active status. Defaults to active only.",
+            inputSchema: z.object({
+              kind: z.enum(["main", "day_surgery", "private"]).optional(),
+              include_inactive: z.boolean().optional(),
+            }),
+            execute: async ({ kind, include_inactive }) => {
+              let q = adminClient
+                .from("theatres")
+                .select("id, name, kind, active, sort_order")
+                .order("sort_order", { ascending: true });
+              if (!include_inactive) q = q.eq("active", true);
+              if (kind) q = q.eq("kind", kind);
+              const { data, error } = await q.limit(200);
+              if (error) return { error: error.message };
+              return { theatres: data ?? [] };
+            },
+          }),
+
+          list_staff_groups: tool({
+            description:
+              "Return active staff counts broken down by grade and training_level, so you can see " +
+              "how the department is composed (e.g. how many ST5 trainees, how many SAS doctors). " +
+              "Use this before answering any question about staffing mix.",
+            inputSchema: z.object({
+              grade: z.enum(["consultant", "sas", "trainee"]).optional(),
+            }),
+            execute: async ({ grade }) => {
+              let q = adminClient
+                .from("profiles")
+                .select("grade, training_level")
+                .eq("active", true)
+                .limit(2000);
+              if (grade) q = q.eq("grade", grade);
+              const { data, error } = await q;
+              if (error) return { error: error.message };
+              const counts = new Map<string, Map<string, number>>();
+              for (const p of data ?? []) {
+                const g = (p.grade ?? "unknown") as string;
+                const lvl = (p.training_level ?? "—") as string;
+                const inner = counts.get(g) ?? new Map<string, number>();
+                inner.set(lvl, (inner.get(lvl) ?? 0) + 1);
+                counts.set(g, inner);
+              }
+              const groups = Array.from(counts.entries()).map(([g, inner]) => ({
+                grade: g,
+                total: Array.from(inner.values()).reduce((a, b) => a + b, 0),
+                training_levels: Array.from(inner.entries())
+                  .map(([level, count]) => ({ level, count }))
+                  .sort((a, b) => b.count - a.count),
+              }));
+              return { groups };
+            },
+          }),
+
+          list_duty_categories: tool({
+            description:
+              "Return a histogram of rota_assignments.duty_type values used in a date window " +
+              "(default: last 30 days). Use this to confirm which duty_types are actually in use " +
+              "and how heavily each is staffed before writing reports about duty mix.",
+            inputSchema: z.object({
+              days_back: z.number().int().min(1).max(365).optional(),
+            }),
+            execute: async ({ days_back }) => {
+              const from = isoDaysAgo(days_back ?? 30);
+              const { data, error } = await adminClient
+                .from("rota_assignments")
+                .select("duty_type")
+                .gte("session_date", from)
+                .not("duty_type", "is", null)
+                .limit(50000);
+              if (error) return { error: error.message };
+              const counts = new Map<string, number>();
+              for (const r of data ?? []) {
+                const k = r.duty_type as string;
+                counts.set(k, (counts.get(k) ?? 0) + 1);
+              }
+              return {
+                window: { from, days: days_back ?? 30 },
+                duty_types: Array.from(counts.entries())
+                  .map(([duty_type, count]) => ({ duty_type, count }))
+                  .sort((a, b) => b.count - a.count),
+              };
+            },
+          }),
+
+          find_staff: tool({
+            description:
+              "Find staff by case-insensitive partial name or email match. Returns id, name, " +
+              "grade, training level and active flag — use to resolve a name before SQL filters " +
+              "on staff_id.",
+            inputSchema: z.object({
+              query: z.string().min(1).max(120),
+              limit: z.number().int().min(1).max(20).optional(),
+            }),
+            execute: async ({ query, limit }) => {
+              const q = `%${query.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+              const { data, error } = await adminClient
+                .from("profiles")
+                .select("id, full_name, email, grade, training_level, active")
+                .or(`full_name.ilike.${q},email.ilike.${q}`)
+                .limit(limit ?? 10);
+              if (error) return { error: error.message };
+              return { staff: data ?? [] };
+            },
+          }),
         };
 
         const gateway = createLovableAiGatewayProvider(key);
@@ -584,7 +698,39 @@ export const Route = createFileRoute("/api/audit-tool")({
           stopWhen: stepCountIs(50),
         });
 
-        return result.toUIMessageStreamResponse({ originalMessages: messages });
+        // Capture the last user message up-front so the auto-extract callback
+        // can see it without re-walking the UIMessage list later.
+        const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+        const lastUserText = ((lastUserMsg?.parts ?? []) as Array<Record<string, unknown>>)
+          .filter((p) => p?.type === "text")
+          .map((p) => String(p.text ?? ""))
+          .join("\n")
+          .trim();
+        const existingMemoryContents = (memoryRows ?? []).map((m) => m.content);
+
+        return result.toUIMessageStreamResponse({
+          originalMessages: messages,
+          onFinish: async ({ responseMessage }) => {
+            const assistantText = (responseMessage.parts ?? [])
+              .filter((p: { type?: string }) => p?.type === "text")
+              .map((p: { text?: string }) => String(p.text ?? ""))
+              .join("\n")
+              .trim();
+            if (!assistantText || !lastUserText) return;
+            try {
+              await autoExtractMemory({
+                admin: adminClient,
+                apiKey: key,
+                userMessage: lastUserText,
+                assistantText,
+                existingMemoryContents,
+                createdBy: auth.userId,
+              });
+            } catch (e) {
+              console.warn("autoExtractMemory failed", e);
+            }
+          },
+        });
 
       },
     },
