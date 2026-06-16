@@ -240,10 +240,23 @@ function AuditToolPage() {
             report below.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={onReset} disabled={messages.length === 0}>
-          <RotateCcw className="mr-1.5 h-4 w-4" />
-          New audit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => void sendMessage({
+              text: "Please produce a professional audit report on this analysis using the generate_report tool. Run any additional queries you need first, then call generate_report with a clear title, executive summary, key findings as bullet points, sections with prose and charts where useful, and recommendations or caveats as appropriate.",
+            })}
+            disabled={isBusy || messages.length === 0}
+          >
+            <FileText className="mr-1.5 h-4 w-4" />
+            Generate report
+          </Button>
+          <Button variant="outline" size="sm" onClick={onReset} disabled={messages.length === 0}>
+            <RotateCcw className="mr-1.5 h-4 w-4" />
+            New audit
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
