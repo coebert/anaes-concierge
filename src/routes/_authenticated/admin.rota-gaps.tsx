@@ -627,7 +627,7 @@ function RotaGapsPage() {
                         <span className="flex items-center gap-2 text-xs">
                           <span className="text-muted-foreground">
                             +{proj.gainDays} day{proj.gainDays === 1 ? "" : "s"}
-                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} trainee{t.trainees === 1 ? "" : "s"}
+                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} staff
                           </span>
                           <Badge variant="outline" className="px-1 py-0 text-[10px]" title="Cumulative projected coverage if you run through this range">
                             cum {Math.round(proj.cumulativePct * 100)}%
