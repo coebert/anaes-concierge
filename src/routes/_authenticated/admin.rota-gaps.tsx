@@ -135,6 +135,65 @@ export function prioritiseSpans(spans: MergedSpan[], priority: SyncPriority): Me
 
 type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
 
+/**
+ * Snapshot of the rota-gaps query result used by the post-sync verification
+ * step to count how many sync-missing weekdays exist inside a date span,
+ * across every trainee whose rotation overlaps it.
+ */
+type GapSnapshot = {
+  trainees: Array<{
+    id: string;
+    start_date: string | null;
+    rotation_end_date: string | null;
+    ltft_days_off: number[] | null;
+  }>;
+  datesByStaff: Map<string, Set<string>>;
+  today: string;
+};
+
+const MS_DAY_LOCAL = 86_400_000;
+
+function isoFromDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Count working weekdays (excluding weekends and the trainee's LTFT off
+ * days) in `[fromISO, toISO]` that lie inside the trainee's rotation
+ * window and have no rota assignment. Used by the post-sync verification
+ * step to compute `filled = before - after` per synced range.
+ */
+export function countSyncMissingInSpan(
+  snap: GapSnapshot,
+  fromISO: string,
+  toISO: string,
+): number {
+  if (fromISO > toISO) return 0;
+  const [fy, fm, fd] = fromISO.split("-").map(Number);
+  const [ty, tm, td] = toISO.split("-").map(Number);
+  const from = new Date(fy, fm - 1, fd);
+  const to = new Date(ty, tm - 1, td);
+  let missing = 0;
+  for (const t of snap.trainees) {
+    const offSet = new Set<number>([0, 6, ...((t.ltft_days_off ?? []) as number[])]);
+    const rotStart = t.start_date ?? null;
+    const rotEnd = t.rotation_end_date ?? snap.today;
+    const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
+    for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
+      const iso = isoFromDate(dt);
+      if (rotStart && iso < rotStart) continue;
+      if (iso > rotEnd) continue;
+      if (offSet.has(dt.getDay())) continue;
+      if (dates.has(iso)) continue;
+      missing += 1;
+    }
+  }
+  return missing;
+}
+
 interface SyncProgress {
   running: boolean;
   current: number;
@@ -145,6 +204,12 @@ interface SyncProgress {
     ok: boolean;
     message?: string;
     upserted?: number;
+    /** Sync-missing weekdays in this range before the sync ran. */
+    gapsBefore?: number;
+    /** Sync-missing weekdays in this range after the post-sync refetch. */
+    gapsAfter?: number;
+    /** `gapsBefore − gapsAfter`; negative values are clamped to 0. */
+    gapsFilled?: number;
   }>;
   error?: string;
 }
@@ -334,30 +399,59 @@ function RotaGapsPage() {
     for (let i = 0; i < targets.length; i++) {
       const { startISO, endISO } = targets[i];
       setProgress({ running: true, current: i, total: targets.length, perRange: [...perRange] });
+
+      // Snapshot the gap state inside this range BEFORE the sync runs, so
+      // we can compute a "gaps filled" delta once the post-sync refetch
+      // lands. The current query cache already reflects every prior range
+      // in this run because we await the invalidation below.
+      const beforeSnap = queryClient.getQueryData<GapSnapshot>([
+        "rota-gaps",
+        windowChoice,
+      ]);
+      const gapsBefore = beforeSnap
+        ? countSyncMissingInSpan(beforeSnap, startISO, endISO)
+        : undefined;
+
+      let entry: SyncProgress["perRange"][number];
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
         });
-        perRange.push({
+        entry = {
           from: startISO,
           to: endISO,
           ok: res.ok !== false,
           message: res.message,
           upserted: res.assignmentsUpserted,
-        });
+          gapsBefore,
+        };
       } catch (err) {
-        perRange.push({
+        entry = {
           from: startISO,
           to: endISO,
           ok: false,
           message: err instanceof Error ? err.message : String(err),
-        });
+          gapsBefore,
+        };
       }
+
       // Refresh the gap report after every range so the planned-coverage
       // projection, per-trainee gap list, and summary stats reflect the
-      // rows just written. We await it so the next range's projection is
-      // computed against the freshly reduced set of remaining gaps.
+      // rows just written. We await it so the next range's projection — and
+      // this range's post-sync verification — are computed against the
+      // freshly reduced set of remaining gaps.
       await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
+      const afterSnap = queryClient.getQueryData<GapSnapshot>([
+        "rota-gaps",
+        windowChoice,
+      ]);
+      if (afterSnap && gapsBefore != null) {
+        const gapsAfter = countSyncMissingInSpan(afterSnap, startISO, endISO);
+        entry.gapsAfter = gapsAfter;
+        entry.gapsFilled = Math.max(0, gapsBefore - gapsAfter);
+      }
+
+      perRange.push(entry);
     }
     setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
@@ -476,11 +570,32 @@ function RotaGapsPage() {
                   <span className="font-medium text-muted-foreground">
                     Planned ranges (in run order)
                   </span>
-                  <span className="text-muted-foreground">
-                    Projected coverage of top {effectiveLimit}:{" "}
-                    <span className="font-medium text-foreground">
-                      {plannedCoverage.cumulativeDays} / {syncableDays} days
-                      {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                  <span className="flex flex-wrap items-center gap-3 text-muted-foreground">
+                    {progress && progress.perRange.length > 0 && (() => {
+                      const verified = progress.perRange.filter(
+                        (p) => p.ok && p.gapsBefore != null && p.gapsAfter != null,
+                      );
+                      if (verified.length === 0) return null;
+                      const filled = verified.reduce((n, p) => n + (p.gapsFilled ?? 0), 0);
+                      const before = verified.reduce((n, p) => n + (p.gapsBefore ?? 0), 0);
+                      const tone = before === 0
+                        ? "text-muted-foreground"
+                        : filled === 0
+                          ? "text-destructive"
+                          : "text-emerald-700 dark:text-emerald-400";
+                      return (
+                        <span title="Sum of sync-missing weekdays closed across every completed range — measured by re-querying rota_assignments after each sync.">
+                          Verified fill: <span className={`font-medium ${tone}`}>{filled} / {before} gaps</span>
+                          {progress.running ? " (so far)" : ""}
+                        </span>
+                      );
+                    })()}
+                    <span>
+                      Projected coverage of top {effectiveLimit}:{" "}
+                      <span className="font-medium text-foreground">
+                        {plannedCoverage.cumulativeDays} / {syncableDays} days
+                        {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                      </span>
                     </span>
                   </span>
                 </div>
@@ -520,9 +635,35 @@ function RotaGapsPage() {
                           </Badge>
                           {done ? (
                             done.ok ? (
-                              <Badge className="bg-emerald-600 hover:bg-emerald-600">
-                                {done.upserted ?? 0} upserted
-                              </Badge>
+                              <>
+                                <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                  {done.upserted ?? 0} upserted
+                                </Badge>
+                                {done.gapsFilled != null && done.gapsBefore != null ? (
+                                  done.gapsFilled > 0 ? (
+                                    <Badge
+                                      className="bg-emerald-600/80 hover:bg-emerald-600/80"
+                                      title={`Sync-missing weekdays in this range: ${done.gapsBefore} before → ${done.gapsAfter} after`}
+                                    >
+                                      {done.gapsFilled} / {done.gapsBefore} gaps filled
+                                    </Badge>
+                                  ) : done.gapsBefore === 0 ? (
+                                    <Badge
+                                      variant="outline"
+                                      title="No sync-missing weekdays in this range when the sync started"
+                                    >
+                                      no gaps to fill
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="destructive"
+                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing — CLWRota may not have returned rows for those days.`}
+                                    >
+                                      0 / {done.gapsBefore} gaps filled
+                                    </Badge>
+                                  )
+                                ) : null}
+                              </>
                             ) : (
                               <Badge variant="destructive" title={done.message}>Failed</Badge>
                             )
