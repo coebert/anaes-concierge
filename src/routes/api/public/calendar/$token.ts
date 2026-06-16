@@ -267,7 +267,8 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           status: 200,
           headers: {
             "Content-Type": "text/calendar; charset=utf-8",
-            "Cache-Control": "public, max-age=600",
+            // Short edge cache so a save in the app is reflected within ~1 min.
+            "Cache-Control": "public, max-age=60, must-revalidate",
             "Content-Disposition": `inline; filename="rota.ics"`,
           },
         });
