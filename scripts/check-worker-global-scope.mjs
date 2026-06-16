@@ -85,8 +85,9 @@ function classify(node) {
   if (ts.isAwaitExpression(node)) {
     return "top-level `await` expression";
   }
-  // Dynamic import() — import("mod")
-  if (ts.isImportCallExpression(node)) {
+  // Dynamic import() — import("mod"). TS represents this as a CallExpression
+  // whose `expression` is a SyntaxKind.ImportKeyword token.
+  if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
     return "top-level dynamic `import(...)` call";
   }
   if (ts.isNewExpression(node)) {
