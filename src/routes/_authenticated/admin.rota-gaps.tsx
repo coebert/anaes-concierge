@@ -570,11 +570,32 @@ function RotaGapsPage() {
                   <span className="font-medium text-muted-foreground">
                     Planned ranges (in run order)
                   </span>
-                  <span className="text-muted-foreground">
-                    Projected coverage of top {effectiveLimit}:{" "}
-                    <span className="font-medium text-foreground">
-                      {plannedCoverage.cumulativeDays} / {syncableDays} days
-                      {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                  <span className="flex flex-wrap items-center gap-3 text-muted-foreground">
+                    {progress && progress.perRange.length > 0 && (() => {
+                      const verified = progress.perRange.filter(
+                        (p) => p.ok && p.gapsBefore != null && p.gapsAfter != null,
+                      );
+                      if (verified.length === 0) return null;
+                      const filled = verified.reduce((n, p) => n + (p.gapsFilled ?? 0), 0);
+                      const before = verified.reduce((n, p) => n + (p.gapsBefore ?? 0), 0);
+                      const tone = before === 0
+                        ? "text-muted-foreground"
+                        : filled === 0
+                          ? "text-destructive"
+                          : "text-emerald-700 dark:text-emerald-400";
+                      return (
+                        <span title="Sum of sync-missing weekdays closed across every completed range — measured by re-querying rota_assignments after each sync.">
+                          Verified fill: <span className={`font-medium ${tone}`}>{filled} / {before} gaps</span>
+                          {progress.running ? " (so far)" : ""}
+                        </span>
+                      );
+                    })()}
+                    <span>
+                      Projected coverage of top {effectiveLimit}:{" "}
+                      <span className="font-medium text-foreground">
+                        {plannedCoverage.cumulativeDays} / {syncableDays} days
+                        {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                      </span>
                     </span>
                   </span>
                 </div>
