@@ -135,6 +135,10 @@ function SettingsPage() {
   // count per trainee, sorted. If a retry produces an identical signature,
   // the sync cannot fix these trainees and we abort early.
   const lastMismatchSignature = useRef<string | null>(null);
+  // True while a "Sync all" run is in flight — suppresses the per-step
+  // auto-validate (which would race the leave step and trigger spurious
+  // rota re-syncs). One validation runs at the end of the Sync All instead.
+  const syncAllInFlight = useRef(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [retriedTrainees, setRetriedTrainees] = useState<string[]>([]);
   const [stalledCause, setStalledCause] = useState<string | null>(null);
@@ -215,8 +219,25 @@ function SettingsPage() {
 
       lastMismatchSignature.current = signature;
 
+      // Re-syncing the rota can only fix mismatches caused by a *new* upstream
+      // payload — i.e. the rota row's theatre label was unmapped and an alias
+      // was added since the last sync. It CANNOT materialise theatre_session
+      // rows the upstream theatre feed doesn't list, so when the dominant
+      // cause is `no_theatre_sessions_on_those_days` an immediate retry is
+      // guaranteed to produce the same mismatch set and the "Retry stopped"
+      // warning. Skip the retry in that case and surface the diagnosis
+      // directly.
+      const retryWouldHelp = causes.primary !== "no_theatre_sessions_on_those_days";
+
       // Auto-retry: re-sync the rota window and re-validate, up to MAX_AUTO_RETRIES.
-      if (retryAttempt < MAX_AUTO_RETRIES && rotaUrl.trim()) {
+      // Suppressed during a Sync All run — the orchestrator runs its own final
+      // validate once all three steps complete.
+      if (
+        retryWouldHelp &&
+        !syncAllInFlight.current &&
+        retryAttempt < MAX_AUTO_RETRIES &&
+        rotaUrl.trim()
+      ) {
         const nextAttempt = retryAttempt + 1;
         setRetryAttempt(nextAttempt);
         setRetriedTrainees(
@@ -265,6 +286,11 @@ function SettingsPage() {
     // Skip the auto-validation that follows a retry's sync — the retry path
     // explicitly calls validateMut.mutate() once the rota write completes.
     if (retryInFlight.current) return;
+    // Sync All runs validation once at the end via its own onSuccess, so the
+    // intermediate per-step success handlers shouldn't kick off duplicate /
+    // racing validations (which previously triggered spurious rota retries
+    // while the leave step was still in flight).
+    if (syncAllInFlight.current) return;
     // Reset the retry counter at the start of a fresh user-initiated cycle so
     // a later audit can use its own 2 attempts.
     setRetryAttempt(0);
@@ -310,6 +336,19 @@ function SettingsPage() {
 
   const syncAllMut = useMutation({
     mutationFn: async () => {
+      // Mark the orchestrator as in-flight so per-step success handlers
+      // (`runValidationAfter`) skip their auto-validate — we run a single
+      // validation at the end below. Otherwise the rota step's validate
+      // could race the leave step and (with mismatches present) trigger
+      // a spurious rota re-sync that ends in "Mismatch set unchanged".
+      syncAllInFlight.current = true;
+      // Reset retry state for the fresh cycle.
+      retryInFlight.current = false;
+      lastMismatchSignature.current = null;
+      setRetryAttempt(0);
+      setRetriedTrainees([]);
+      setStalledCause(null);
+
       // Run each step independently so a single failure (e.g. a Cloudflare
       // CPU/timeout 502 on the heaviest dataset) doesn't abort the other
       // steps. Order is staff → rota → leave so rota assignments can match
@@ -372,10 +411,17 @@ function SettingsPage() {
         }
       };
 
-      const staff = await runStep("staff", staffUrl, () => staffMut.mutateAsync());
-      const rota = await runStep("rota", rotaUrl, () => rotaMut.mutateAsync());
-      const leave = await runStep("leave", leaveUrl, () => leaveMut.mutateAsync());
-      return [staff, rota, leave];
+      try {
+        const staff = await runStep("staff", staffUrl, () => staffMut.mutateAsync());
+        const rota = await runStep("rota", rotaUrl, () => rotaMut.mutateAsync());
+        const leave = await runStep("leave", leaveUrl, () => leaveMut.mutateAsync());
+        return [staff, rota, leave];
+      } finally {
+        // Clear the flag BEFORE the post-sync validation kicks off so the
+        // single end-of-run validate can use the normal retry path if it
+        // detects fixable (alias-missing) mismatches after a manual fix.
+        syncAllInFlight.current = false;
+      }
     },
     onSuccess: (results) => {
       const failed = results.filter((r) => !r.ok);
@@ -389,8 +435,16 @@ function SettingsPage() {
       } else {
         toast.warning(`Partial sync — ${summary}`);
       }
+      // Single post-sync audit at the end of the Sync All run. The retry
+      // path will only kick in if mismatches look fixable (i.e. cause is
+      // alias-missing/mixed) — `no_theatre_sessions_on_those_days` is
+      // diagnosed and reported without an unhelpful re-sync loop.
+      setTimeout(() => validateMut.mutate(), 250);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      syncAllInFlight.current = false;
+      toast.error(e.message);
+    },
   });
 
   // One-click backfill: re-scans the CLWRota rota feed and ticks the
