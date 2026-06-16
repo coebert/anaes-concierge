@@ -208,6 +208,55 @@ export function countSyncMissingInSpan(
   return missing;
 }
 
+function countSyncMissingForTraineeInSpan(
+  snap: GapSnapshot,
+  traineeId: string,
+  fromISO: string,
+  toISO: string,
+): number {
+  const t = snap.trainees.find((x) => x.id === traineeId);
+  if (!t || fromISO > toISO) return 0;
+  const offSet = new Set<number>([0, 6, ...((t.ltft_days_off ?? []) as number[])]);
+  const rotStart = t.start_date ?? null;
+  const rotEnd = t.rotation_end_date ?? snap.today;
+  const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
+  const [fy, fm, fd] = fromISO.split("-").map(Number);
+  const [ty, tm, td] = toISO.split("-").map(Number);
+  const from = new Date(fy, fm - 1, fd);
+  const to = new Date(ty, tm - 1, td);
+  let missing = 0;
+  for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
+    const iso = isoFromDate(dt);
+    if (rotStart && iso < rotStart) continue;
+    if (iso > rotEnd) continue;
+    if (offSet.has(dt.getDay())) continue;
+    if (dates.has(iso)) continue;
+    missing += 1;
+  }
+  return missing;
+}
+
+type TraineeDiagnosticStatus =
+  | "fully_filled"
+  | "partially_filled"
+  | "no_upstream_coverage"
+  | "covered_no_new_dates"
+  | "no_gap_in_range";
+
+interface TraineeDiagnostic {
+  traineeId: string;
+  name: string;
+  gapsBefore: number;
+  gapsAfter: number;
+  gapsFilled: number;
+  upstreamDatesCovered: number;
+  upstreamInsertedDates: number;
+  upstreamExistingDates: number;
+  firstUpstreamDate: string | null;
+  lastUpstreamDate: string | null;
+  status: TraineeDiagnosticStatus;
+}
+
 interface SyncProgress {
   running: boolean;
   current: number;
@@ -230,9 +279,18 @@ interface SyncProgress {
     gapsAfter?: number;
     /** `gapsBefore − gapsAfter`; negative values are clamped to 0. */
     gapsFilled?: number;
+    /** Raw upstream rows the feed returned inside the request window. */
+    rowsInWindow?: number;
+    /** Trainees covered by upstream feed in this window. */
+    staffCovered?: number;
+    /** Top skip-reason histogram for the range (capped). */
+    topSkipReasons?: Array<{ reason: string; count: number }>;
+    /** Per-trainee outcome for each trainee with a gap in this range. */
+    traineeDiagnostics?: TraineeDiagnostic[];
   }>;
   error?: string;
 }
+
 
 function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
