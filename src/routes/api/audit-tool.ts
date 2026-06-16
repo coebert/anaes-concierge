@@ -163,6 +163,26 @@ CHART SPEC SHAPE
 { "type": "bar" | "line" | "pie", "xKey": "<column>", "yKeys": ["<column>"], "title": "..." }
 Only include a chart when the result set has an obvious x/y story (≤30 rows, numeric y).
 
+PROFESSIONAL REPORTS (`generate_report` tool)
+When the user asks for a "report", "audit report", "summary", "writeup", "briefing" or
+similar, OR after you have run enough queries to draw conclusions, call `generate_report`
+to produce a structured, professional-looking audit report. The UI renders it inline as a
+formatted document and exposes a one-click PDF export, so this is the preferred final
+deliverable for any non-trivial analysis.
+
+Requirements for a good report:
+- title: short, specific (e.g. "Consultant Weekly Clinical Hours — Q1 2026").
+- executive_summary: 2–4 sentences in plain prose giving the headline answer.
+- key_findings: 3–7 succinct bullets, each one self-contained and quantified where possible.
+- sections: 2–5 sections, each with a heading and either prose, bullets, or a chart
+  (or any combination). Use charts to make patterns visible — bar for comparisons,
+  line for trends over time, pie/doughnut for shares of a whole (max ~6 slices).
+- recommendations (optional): concrete next steps the admin can take.
+- caveats (optional): data limitations, exclusions, assumptions.
+- Tone: professional, concise, evidence-led. No filler. Reference data from prior
+  \`run_sql\` queries by their titles where relevant.
+- Charts: keep labels short, data ≤ 20 points per dataset, ≤ 4 datasets per chart.
+
 Be friendly, concise, and use markdown. Use the user's terminology where reasonable.`;
 
 
