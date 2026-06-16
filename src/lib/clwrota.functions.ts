@@ -2609,6 +2609,59 @@ export async function performRotaSync(
       console.error("Trainee start-date prediction failed:", err);
     }
 
+
+    // --- Per-staff coverage diagnostics ----------------------------------
+    // For the rota-gaps tool: caller wants to know, for each trainee in
+    // the requested window, how many upstream rows came back and which
+    // were genuinely new vs. already on file. This lets the UI explain
+    // "no gaps filled" precisely (no upstream rows, only stale updates,
+    // or every returned date was already covered).
+    const datesByStaffCov = new Map<string, Set<string>>();
+    const insertedByStaff = new Map<string, Set<string>>();
+    const existingByStaff = new Map<string, Set<string>>();
+    for (const a of uniqueAssignments) {
+      let s = datesByStaffCov.get(a.staff_id);
+      if (!s) { s = new Set(); datesByStaffCov.set(a.staff_id, s); }
+      s.add(a.session_date);
+      const bucket = preExistingExtIds.has(a.clwrota_external_id)
+        ? existingByStaff
+        : insertedByStaff;
+      let b = bucket.get(a.staff_id);
+      if (!b) { b = new Set(); bucket.set(a.staff_id, b); }
+      b.add(a.session_date);
+    }
+    const staffCoverage = Array.from(datesByStaffCov.entries()).map(([staffId, dates]) => {
+      const sorted = Array.from(dates).sort();
+      return {
+        staffId,
+        name: nameByStaffId.get(staffId) ?? staffId,
+        datesCovered: dates.size,
+        firstDate: sorted[0],
+        lastDate: sorted[sorted.length - 1],
+        insertedDates: insertedByStaff.get(staffId)?.size ?? 0,
+        existingDates: existingByStaff.get(staffId)?.size ?? 0,
+      };
+    });
+    const skippedReasonCounts: Record<string, number> = {};
+    for (const s of skipped) {
+      // Bucket by the leading phrase before ":" / "(" so noisy per-row
+      // suffixes don't fragment the histogram.
+      const key = (s.reason.split(/[:(]/)[0] || s.reason).trim().slice(0, 80);
+      skippedReasonCounts[key] = (skippedReasonCounts[key] ?? 0) + 1;
+    }
+    const coverage = {
+      windowFrom: opts.from ?? null,
+      windowTo: opts.to ?? null,
+      rowsInWindow: rows.length,
+      staffCoverage,
+      skippedReasonCounts,
+    };
+    if (opts.from && opts.to) {
+      console.info(
+        `[clwrota] coverage ${opts.from}..${opts.to}: ${rows.length} rows, ${staffCoverage.length} staff covered, ${assignmentsInserted} insert / ${assignmentsUpdated} update`,
+      );
+    }
+
     return {
       ok: errors.length === 0,
       message: summary,
@@ -2625,7 +2678,9 @@ export async function performRotaSync(
       unmatchedTheatres: Array.from(unmatchedTheatres),
       unmatchedStaff: Array.from(unmatchedStaff),
       traineeStartPredictions,
+      coverage,
     };
+
 }
 
 /**
