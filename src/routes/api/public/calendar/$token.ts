@@ -157,8 +157,9 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           ),
         );
         lines.push("X-WR-TIMEZONE:Europe/London");
-        lines.push("REFRESH-INTERVAL;VALUE=DURATION:PT1H");
-        lines.push("X-PUBLISHED-TTL:PT1H");
+        // 15-minute hint — Apple Calendar uses this to pick a poll cadence.
+        lines.push("REFRESH-INTERVAL;VALUE=DURATION:PT15M");
+        lines.push("X-PUBLISHED-TTL:PT15M");
 
         // Europe/London VTIMEZONE (sufficient for current DST rules)
         lines.push(
