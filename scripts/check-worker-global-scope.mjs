@@ -14,13 +14,15 @@
  * fails the build when a top-level statement (i.e. NOT inside a function /
  * method / arrow / class body) hits a banned pattern:
  *
- *   - fetch(...), setTimeout/setInterval/setImmediate(...), queueMicrotask(...)
+ *   - fetch(...), connect(...), setTimeout/setInterval/setImmediate(...), queueMicrotask(...)
  *   - crypto.randomUUID(), crypto.getRandomValues(...), crypto.subtle.*(...)
  *   - Math.random()
- *   - new Response(...), new Request(...)
+ *   - new Response(...), new Request(...), new WebSocket(...), new XMLHttpRequest(...), new EventSource(...)
+ *   - Response.json(...), Response.redirect(...), Response.error(...)
+ *   - dynamic import() calls
  *   - top-level `await`
  *
- * Scope: every src/**\/*.{ts,tsx} file that ends up in the Worker bundle.
+ * Scope: every TypeScript file under src/ that ends up in the Worker bundle.
  * Excluded: vendored shadcn UI, generated files, test files, `.d.ts`, and
  * `*.client.ts(x)` (those never run on the server).
  *
@@ -57,6 +59,7 @@ function walk(dir) {
 
 const BANNED_IDENT = new Set([
   "fetch",
+  "connect",
   "setTimeout",
   "setInterval",
   "setImmediate",
@@ -67,9 +70,10 @@ const BANNED_IDENT = new Set([
 const BANNED_MEMBER = {
   crypto: new Set(["randomUUID", "getRandomValues", "subtle"]),
   Math: new Set(["random"]),
+  Response: new Set(["json", "redirect", "error"]),
 };
 
-const BANNED_CTOR = new Set(["Response", "Request"]);
+const BANNED_CTOR = new Set(["Response", "Request", "WebSocket", "XMLHttpRequest", "EventSource"]);
 
 /**
  * Return a violation message for the given node if it is a banned call/expr,
@@ -80,6 +84,11 @@ function classify(node) {
   // Top-level await
   if (ts.isAwaitExpression(node)) {
     return "top-level `await` expression";
+  }
+  // Dynamic import() — import("mod"). TS represents this as a CallExpression
+  // whose `expression` is a SyntaxKind.ImportKeyword token.
+  if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+    return "top-level dynamic `import(...)` call";
   }
   if (ts.isNewExpression(node)) {
     const e = node.expression;
@@ -107,6 +116,14 @@ function classify(node) {
         const firstProp = chain[0];
         if (banned.has(firstProp)) {
           return `top-level \`${root.text}.${chain.join(".")}(...)\` call`;
+        }
+      }
+      // Also catch indirect access like window.fetch, globalThis.fetch, self.fetch
+      const lastProp = chain[chain.length - 1];
+      if (BANNED_IDENT.has(lastProp) && ts.isIdentifier(root)) {
+        const rootName = root.text;
+        if (rootName === "window" || rootName === "globalThis" || rootName === "self") {
+          return `top-level \`${rootName}.${chain.join(".")}(...)\` call`;
         }
       }
     }
