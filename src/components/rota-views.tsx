@@ -652,7 +652,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                     <span className="text-muted-foreground">{l.status}</span>
                   </div>
                 ))}
-                <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2">
                   {(["am", "pm"] as SessionHalf[]).map((sh) => {
                     const a = dayAssigns.find((x) => x.session === sh);
                     const session = a && ts?.find((s) => s.id === a.theatre_session_id);
