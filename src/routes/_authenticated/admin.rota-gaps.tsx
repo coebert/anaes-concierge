@@ -585,6 +585,104 @@ function RotaGapsPage() {
           </div>
 
           <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Plug className="h-4 w-4" /> CLWRota source
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Swap the rota report URL or refresh the auth key when CLWRota returns
+                  no rows for trainees that still appear as gaps. After saving, re-run
+                  the targeted sync below to fill the newly-covered dates.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Badge variant={hasApiKey ? "default" : "destructive"}>
+                  API key {hasApiKey ? "set" : "missing"}
+                </Badge>
+                <Badge variant={hasBaseUrl ? "default" : "destructive"}>
+                  Base URL {hasBaseUrl ? "set" : "missing"}
+                </Badge>
+                <Badge variant={currentRotaUrl ? "default" : "destructive"}>
+                  Rota URL {currentRotaUrl ? "set" : "missing"}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSourceOpen((v) => !v)}
+                >
+                  {sourceOpen ? "Hide" : "Edit"}
+                </Button>
+              </div>
+            </CardHeader>
+            {sourceOpen && (
+              <CardContent className="space-y-3 border-t pt-3 text-sm">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Rota report URL (CLWRota Central API)
+                  </label>
+                  <Textarea
+                    value={rotaUrlDraft}
+                    onChange={(e) => setRotaUrlDraft(e.target.value)}
+                    rows={4}
+                    placeholder="https://sftcr.rotamap.net/central_api/query/assignments?…"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Tip: copy the report URL from CLWRota's "Reports" page. Targeted
+                    syncs replace the URL's <code>start_date</code> / <code>end_date</code>{" "}
+                    per range, so the date params here are just defaults.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => saveSourceMut.mutate()}
+                    disabled={
+                      saveSourceMut.isPending ||
+                      rotaUrlDraft.trim() === currentRotaUrl.trim()
+                    }
+                  >
+                    {saveSourceMut.isPending ? "Saving…" : "Save URL"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setRotaUrlDraft(currentRotaUrl);
+                    }}
+                    disabled={
+                      saveSourceMut.isPending ||
+                      rotaUrlDraft.trim() === currentRotaUrl.trim()
+                    }
+                  >
+                    Revert
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => testConnMut.mutate()}
+                    disabled={testConnMut.isPending || !hasApiKey || !hasBaseUrl}
+                  >
+                    {testConnMut.isPending ? "Testing…" : "Test connection"}
+                  </Button>
+                  <Link
+                    to="/admin/settings"
+                    className="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    Manage API key & base URL <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  The CLWRota auth key (<code>CLWROTA_API_KEY</code>) and base URL
+                  (<code>CLWROTA_BASE_URL</code>) are stored as backend secrets and
+                  rotated from Settings → CLWRota.
+                </p>
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
             <CardContent className="flex flex-wrap items-end justify-between gap-3 p-4">
               <div className="text-sm">
                 <div className="font-medium">Targeted CLWRota sync</div>
