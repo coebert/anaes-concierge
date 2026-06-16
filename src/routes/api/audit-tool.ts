@@ -707,6 +707,62 @@ export const Route = createFileRoute("/api/audit-tool")({
               return { staff: data ?? [] };
             },
           }),
+
+          generate_report: tool({
+            description:
+              "Produce a structured, professional audit report from the analysis you have done. " +
+              "The UI renders this inline as a formatted document with chart graphics and offers " +
+              "one-click PDF export. Call this once you have enough evidence (typically after one " +
+              "or more run_sql calls) — it is the preferred final deliverable. Charts you include " +
+              "here are rendered server-side as crisp PNGs so they look identical in chat and PDF.",
+            inputSchema: z.object({
+              title: z.string().min(3).max(160),
+              executive_summary: z.string().min(20).max(2000),
+              key_findings: z.array(z.string().min(3).max(500)).min(1).max(10),
+              sections: z
+                .array(
+                  z.object({
+                    heading: z.string().min(2).max(160),
+                    prose: z.string().max(4000).optional(),
+                    bullets: z.array(z.string().min(2).max(500)).max(15).optional(),
+                    chart: z
+                      .object({
+                        type: z.enum(["bar", "line", "pie", "doughnut"]),
+                        title: z.string().max(160).optional(),
+                        labels: z.array(z.string()).min(1).max(30),
+                        datasets: z
+                          .array(
+                            z.object({
+                              label: z.string().min(1).max(80),
+                              data: z.array(z.number()).min(1).max(30),
+                            }),
+                          )
+                          .min(1)
+                          .max(4),
+                      })
+                      .optional(),
+                  }),
+                )
+                .min(1)
+                .max(8),
+              recommendations: z.array(z.string().min(3).max(500)).max(8).optional(),
+              caveats: z.array(z.string().min(3).max(500)).max(8).optional(),
+            }),
+            execute: async (input) => {
+              // Pre-build QuickChart URLs server-side. The UI just renders them
+              // as <img>, and the PDF exporter fetches them as PNGs.
+              const sections = input.sections.map((s) => {
+                if (!s.chart) return s;
+                const chartUrl = buildQuickChartUrl(s.chart);
+                return { ...s, chartUrl };
+              });
+              return {
+                ...input,
+                sections,
+                generatedAt: new Date().toISOString(),
+              };
+            },
+          }),
         };
 
         const gateway = createLovableAiGatewayProvider(key);
