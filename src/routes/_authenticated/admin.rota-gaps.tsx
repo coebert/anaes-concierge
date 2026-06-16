@@ -68,6 +68,8 @@ export interface MergedSpan {
   missingDays: number;
   /** Distinct trainees with at least one gap inside this span. */
   trainees: number;
+  /** Distinct trainee IDs with at least one gap inside this span. */
+  traineeIds: string[];
 }
 
 /**
@@ -100,12 +102,17 @@ export function mergeRanges(spans: SpanInput[], bridgeDays = 7): MergedSpan[] {
         endISO: s.endISO,
         missingDays: s.missingDays,
         trainees: 1,
+        traineeIds: [],
         traineeSet: set,
       });
     }
   }
-  return acc.map(({ traineeSet: _omit, ...m }) => m);
+  return acc.map(({ traineeSet, ...m }) => ({
+    ...m,
+    traineeIds: Array.from(traineeSet),
+  }));
 }
+
 
 export type SyncPriority = "coverage" | "recency" | "trainees";
 
@@ -201,6 +208,55 @@ export function countSyncMissingInSpan(
   return missing;
 }
 
+function countSyncMissingForTraineeInSpan(
+  snap: GapSnapshot,
+  traineeId: string,
+  fromISO: string,
+  toISO: string,
+): number {
+  const t = snap.trainees.find((x) => x.id === traineeId);
+  if (!t || fromISO > toISO) return 0;
+  const offSet = new Set<number>([0, 6, ...((t.ltft_days_off ?? []) as number[])]);
+  const rotStart = t.start_date ?? null;
+  const rotEnd = t.rotation_end_date ?? snap.today;
+  const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
+  const [fy, fm, fd] = fromISO.split("-").map(Number);
+  const [ty, tm, td] = toISO.split("-").map(Number);
+  const from = new Date(fy, fm - 1, fd);
+  const to = new Date(ty, tm - 1, td);
+  let missing = 0;
+  for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
+    const iso = isoFromDate(dt);
+    if (rotStart && iso < rotStart) continue;
+    if (iso > rotEnd) continue;
+    if (offSet.has(dt.getDay())) continue;
+    if (dates.has(iso)) continue;
+    missing += 1;
+  }
+  return missing;
+}
+
+type TraineeDiagnosticStatus =
+  | "fully_filled"
+  | "partially_filled"
+  | "no_upstream_coverage"
+  | "covered_no_new_dates"
+  | "no_gap_in_range";
+
+interface TraineeDiagnostic {
+  traineeId: string;
+  name: string;
+  gapsBefore: number;
+  gapsAfter: number;
+  gapsFilled: number;
+  upstreamDatesCovered: number;
+  upstreamInsertedDates: number;
+  upstreamExistingDates: number;
+  firstUpstreamDate: string | null;
+  lastUpstreamDate: string | null;
+  status: TraineeDiagnosticStatus;
+}
+
 interface SyncProgress {
   running: boolean;
   current: number;
@@ -223,9 +279,18 @@ interface SyncProgress {
     gapsAfter?: number;
     /** `gapsBefore − gapsAfter`; negative values are clamped to 0. */
     gapsFilled?: number;
+    /** Raw upstream rows the feed returned inside the request window. */
+    rowsInWindow?: number;
+    /** Trainees covered by upstream feed in this window. */
+    staffCovered?: number;
+    /** Top skip-reason histogram for the range (capped). */
+    topSkipReasons?: Array<{ reason: string; count: number }>;
+    /** Per-trainee outcome for each trainee with a gap in this range. */
+    traineeDiagnostics?: TraineeDiagnostic[];
   }>;
   error?: string;
 }
+
 
 function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
@@ -462,7 +527,7 @@ function RotaGapsPage() {
     setProgress({ running: true, current: 0, total: targets.length, perRange: [] });
     const perRange: SyncProgress["perRange"] = [];
     for (let i = 0; i < targets.length; i++) {
-      const { startISO, endISO } = targets[i];
+      const { startISO, endISO, traineeIds } = targets[i];
       setProgress({ running: true, current: i, total: targets.length, perRange: [...perRange] });
 
       // Snapshot the gap state inside this range BEFORE the sync runs, so
@@ -476,12 +541,52 @@ function RotaGapsPage() {
       const gapsBefore = beforeSnap
         ? countSyncMissingInSpan(beforeSnap, startISO, endISO)
         : undefined;
+      // Per-trainee gap counts BEFORE sync, for the per-range diagnostic
+      // table built once the post-sync refetch lands below.
+      const perTraineeBefore = new Map<string, number>();
+      if (beforeSnap) {
+        for (const tid of traineeIds) {
+          perTraineeBefore.set(
+            tid,
+            countSyncMissingForTraineeInSpan(beforeSnap, tid, startISO, endISO),
+          );
+        }
+      }
 
       let entry: SyncProgress["perRange"][number];
+      let coverageByStaff = new Map<string, {
+        datesCovered: number;
+        insertedDates: number;
+        existingDates: number;
+        firstDate: string;
+        lastDate: string;
+      }>();
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
         });
+        const cov = (res as SyncResult & { coverage?: {
+          rowsInWindow: number;
+          staffCoverage: Array<{ staffId: string; datesCovered: number; insertedDates: number; existingDates: number; firstDate: string; lastDate: string }>;
+          skippedReasonCounts: Record<string, number>;
+        } }).coverage;
+        if (cov) {
+          for (const sc of cov.staffCoverage) {
+            coverageByStaff.set(sc.staffId, {
+              datesCovered: sc.datesCovered,
+              insertedDates: sc.insertedDates,
+              existingDates: sc.existingDates,
+              firstDate: sc.firstDate,
+              lastDate: sc.lastDate,
+            });
+          }
+        }
+        const topSkipReasons = cov
+          ? Object.entries(cov.skippedReasonCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([reason, count]) => ({ reason, count }))
+          : [];
         entry = {
           from: startISO,
           to: endISO,
@@ -492,6 +597,9 @@ function RotaGapsPage() {
           updated: res.assignmentsUpdated,
           unmatchedStaffCount: res.unmatchedStaff?.length ?? 0,
           gapsBefore,
+          rowsInWindow: cov?.rowsInWindow,
+          staffCovered: cov?.staffCoverage.length,
+          topSkipReasons,
         };
       } catch (err) {
         entry = {
@@ -525,8 +633,59 @@ function RotaGapsPage() {
         entry.gapsFilled = Math.max(0, gapsBefore - gapsAfter);
       }
 
+      // Build per-trainee diagnostics: cross-reference gap deltas with
+      // upstream coverage so admins can see exactly why each trainee was
+      // (or wasn't) helped by this sync.
+      if (afterSnap && beforeSnap) {
+        const diag: TraineeDiagnostic[] = traineeIds.map((tid) => {
+          const trainee = beforeSnap.trainees.find((x) => x.id === tid);
+          const name = data?.trainees.find((x) => x.id === tid)?.full_name ?? tid;
+          const before = perTraineeBefore.get(tid) ?? 0;
+          const after = countSyncMissingForTraineeInSpan(afterSnap, tid, startISO, endISO);
+          const filled = Math.max(0, before - after);
+          const cov = coverageByStaff.get(tid);
+          const upstreamDatesCovered = cov?.datesCovered ?? 0;
+          const upstreamInsertedDates = cov?.insertedDates ?? 0;
+          const upstreamExistingDates = cov?.existingDates ?? 0;
+          let status: TraineeDiagnosticStatus;
+          if (before === 0) status = "no_gap_in_range";
+          else if (upstreamDatesCovered === 0) status = "no_upstream_coverage";
+          else if (filled === 0) status = "covered_no_new_dates";
+          else if (after === 0) status = "fully_filled";
+          else status = "partially_filled";
+          void trainee;
+          return {
+            traineeId: tid,
+            name,
+            gapsBefore: before,
+            gapsAfter: after,
+            gapsFilled: filled,
+            upstreamDatesCovered,
+            upstreamInsertedDates,
+            upstreamExistingDates,
+            firstUpstreamDate: cov?.firstDate ?? null,
+            lastUpstreamDate: cov?.lastDate ?? null,
+            status,
+          };
+        }).sort((a, b) => b.gapsBefore - a.gapsBefore);
+        entry.traineeDiagnostics = diag;
+
+        // Compact console summary so the troubleshooting trail is also
+        // visible in browser devtools when the user copy-pastes a bug
+        // report.
+        const summary = diag.reduce<Record<TraineeDiagnosticStatus, number>>(
+          (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
+          { fully_filled: 0, partially_filled: 0, no_upstream_coverage: 0, covered_no_new_dates: 0, no_gap_in_range: 0 },
+        );
+        console.info(
+          `[rota-gaps] ${startISO}..${endISO}: filled ${entry.gapsFilled ?? 0}/${entry.gapsBefore ?? 0} day(s); trainees:`,
+          summary,
+        );
+      }
+
       perRange.push(entry);
     }
+
     setProgress({ running: false, current: targets.length, total: targets.length, perRange });
     await queryClient.invalidateQueries({ queryKey: ["rota-gaps"] });
     await queryClient.refetchQueries({
@@ -786,8 +945,9 @@ function RotaGapsPage() {
                     return (
                       <li
                         key={`${t.startISO}-${t.endISO}`}
-                        className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${included ? "" : "opacity-60"}`}
+                        className={`flex flex-col gap-1 px-3 py-2 ${included ? "" : "opacity-60"}`}
                       >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="flex items-center gap-2">
                           <Badge variant="outline" className="px-1 py-0 text-[10px]">
                             #{i + 1}
@@ -828,6 +988,14 @@ function RotaGapsPage() {
                                     {done.inserted} new
                                   </Badge>
                                 )}
+                                {done.rowsInWindow != null && (
+                                  <Badge
+                                    variant="outline"
+                                    title={`Raw rows CLWRota returned for this date window. Compare with 'upserted' to see how many rows survived parsing/filtering. ${done.staffCovered ?? 0} distinct staff appeared in the feed.`}
+                                  >
+                                    {done.rowsInWindow} rows · {done.staffCovered ?? 0} staff
+                                  </Badge>
+                                )}
                                 {done.gapsFilled != null && done.gapsBefore != null ? (
                                   done.gapsFilled > 0 ? (
                                     <Badge
@@ -846,7 +1014,7 @@ function RotaGapsPage() {
                                   ) : (
                                     <Badge
                                       variant="destructive"
-                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing — CLWRota returned ${done.inserted ?? 0} new row(s) for this window, so the upstream feed likely has no data for the affected trainees on those days (they may have rotated off this service in CLWRota, or be on long-term leave).`}
+                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing. Expand for per-trainee reasons.`}
                                     >
                                       0 / {done.gapsBefore} gaps filled
                                     </Badge>
@@ -870,9 +1038,94 @@ function RotaGapsPage() {
                             <Badge variant="outline">Queued</Badge>
                           ) : null}
                         </span>
+                        </div>
+                        {done?.traineeDiagnostics && done.traineeDiagnostics.length > 0 && (
+                          <details className="mt-1 rounded-md border bg-muted/30 px-2 py-1 text-xs">
+                            <summary className="cursor-pointer select-none text-muted-foreground">
+                              Per-trainee diagnostics ({done.traineeDiagnostics.length})
+                              {(() => {
+                                const noCov = done.traineeDiagnostics!.filter((d) => d.status === "no_upstream_coverage").length;
+                                const stale = done.traineeDiagnostics!.filter((d) => d.status === "covered_no_new_dates").length;
+                                const partial = done.traineeDiagnostics!.filter((d) => d.status === "partially_filled").length;
+                                const full = done.traineeDiagnostics!.filter((d) => d.status === "fully_filled").length;
+                                const parts = [
+                                  full ? `${full} fully` : null,
+                                  partial ? `${partial} partial` : null,
+                                  stale ? `${stale} stale-only` : null,
+                                  noCov ? `${noCov} no-upstream` : null,
+                                ].filter(Boolean);
+                                return parts.length ? ` — ${parts.join(", ")}` : "";
+                              })()}
+                            </summary>
+                            <table className="mt-2 w-full text-left">
+                              <thead className="text-[10px] uppercase text-muted-foreground">
+                                <tr>
+                                  <th className="py-1 pr-2 font-normal">Trainee</th>
+                                  <th className="py-1 pr-2 font-normal">Before</th>
+                                  <th className="py-1 pr-2 font-normal">After</th>
+                                  <th className="py-1 pr-2 font-normal">Filled</th>
+                                  <th className="py-1 pr-2 font-normal" title="Distinct upstream session_dates returned for this trainee in the request window">Upstream dates</th>
+                                  <th className="py-1 pr-2 font-normal" title="Of those upstream dates, how many were new rows vs. already-known existing rows">New / Existing</th>
+                                  <th className="py-1 pr-2 font-normal">Upstream window</th>
+                                  <th className="py-1 pr-2 font-normal">Why</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {done.traineeDiagnostics.map((d) => {
+                                  const reason =
+                                    d.status === "fully_filled"
+                                      ? "All gaps closed."
+                                      : d.status === "partially_filled"
+                                      ? "Upstream covered some but not all gap dates in this range."
+                                      : d.status === "covered_no_new_dates"
+                                      ? "Upstream returned rows for this trainee, but every returned date was already on file — no new dates to add. Likely a duty-type / classification mismatch, or the gap dates fall outside what CLWRota holds for this trainee."
+                                      : d.status === "no_upstream_coverage"
+                                      ? "CLWRota returned NO rows for this trainee in this window — they may have rotated off the service, be on long-term leave, or their CLWRota record stops before this date range."
+                                      : "No sync-missing weekdays in range.";
+                                  const statusTone =
+                                    d.status === "fully_filled"
+                                      ? "text-emerald-700 dark:text-emerald-400"
+                                      : d.status === "partially_filled"
+                                      ? "text-amber-700 dark:text-amber-400"
+                                      : d.status === "covered_no_new_dates"
+                                      ? "text-amber-700 dark:text-amber-400"
+                                      : d.status === "no_upstream_coverage"
+                                      ? "text-red-700 dark:text-red-400"
+                                      : "text-muted-foreground";
+                                  return (
+                                    <tr key={d.traineeId} className="border-t border-border/40">
+                                      <td className="py-1 pr-2 font-medium">{d.name}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.gapsBefore}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.gapsAfter}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.gapsFilled}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.upstreamDatesCovered}</td>
+                                      <td className="py-1 pr-2 tabular-nums">{d.upstreamInsertedDates} / {d.upstreamExistingDates}</td>
+                                      <td className="py-1 pr-2 font-mono text-[10px]">
+                                        {d.firstUpstreamDate ? `${d.firstUpstreamDate} → ${d.lastUpstreamDate}` : "—"}
+                                      </td>
+                                      <td className={`py-1 pr-2 ${statusTone}`}>{reason}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                            {done.topSkipReasons && done.topSkipReasons.length > 0 && (
+                              <div className="mt-2 text-[10px] text-muted-foreground">
+                                Top skip reasons across all rows in this window:{" "}
+                                {done.topSkipReasons.map((r, idx) => (
+                                  <span key={r.reason}>
+                                    {idx > 0 ? " · " : ""}
+                                    <span className="font-mono">{r.reason}</span> ({r.count})
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </details>
+                        )}
                       </li>
                     );
                   })}
+
                 </ul>
               </CardContent>
             )}

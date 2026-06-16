@@ -1683,6 +1683,21 @@ export async function performRotaSync(
     const url = settings?.rota_report_url;
     const daysBack = opts.daysBack ?? settings?.sync_days_back ?? 30;
     const daysAhead = opts.daysAhead ?? settings?.sync_days_ahead ?? 120;
+    const emptyCoverage = {
+      windowFrom: opts.from ?? null,
+      windowTo: opts.to ?? null,
+      rowsInWindow: 0,
+      staffCoverage: [] as Array<{
+        staffId: string;
+        name: string;
+        datesCovered: number;
+        firstDate: string;
+        lastDate: string;
+        insertedDates: number;
+        existingDates: number;
+      }>,
+      skippedReasonCounts: {} as Record<string, number>,
+    };
     const emptyResult = {
       ok: false as boolean,
       message: "",
@@ -1698,7 +1713,9 @@ export async function performRotaSync(
       sampleKeys: [] as string[],
       unmatchedTheatres: [] as string[],
       unmatchedStaff: [] as string[],
+      coverage: emptyCoverage,
     };
+
 
     if (!url) {
       return { ...emptyResult, message: "No rota report URL configured." };
@@ -1799,12 +1816,15 @@ export async function performRotaSync(
     const profByExtId = new Map<string, string>();
     const profByName = new Map<string, string>();
     const profById = new Map<string, { grade: string | null; training_level: string | null }>();
+    const nameByStaffId = new Map<string, string>();
     for (const p of profiles ?? []) {
       if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
       if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
       if (p.full_name) profByName.set(p.full_name.toLowerCase().trim(), p.id);
       profById.set(p.id, { grade: p.grade ?? null, training_level: p.training_level ?? null });
+      nameByStaffId.set(p.id, p.full_name ?? p.email ?? p.id);
     }
+
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
     // Merge admin-configured aliases so the same lookup chain (exact match,
@@ -2589,6 +2609,59 @@ export async function performRotaSync(
       console.error("Trainee start-date prediction failed:", err);
     }
 
+
+    // --- Per-staff coverage diagnostics ----------------------------------
+    // For the rota-gaps tool: caller wants to know, for each trainee in
+    // the requested window, how many upstream rows came back and which
+    // were genuinely new vs. already on file. This lets the UI explain
+    // "no gaps filled" precisely (no upstream rows, only stale updates,
+    // or every returned date was already covered).
+    const datesByStaffCov = new Map<string, Set<string>>();
+    const insertedByStaff = new Map<string, Set<string>>();
+    const existingByStaff = new Map<string, Set<string>>();
+    for (const a of uniqueAssignments) {
+      let s = datesByStaffCov.get(a.staff_id);
+      if (!s) { s = new Set(); datesByStaffCov.set(a.staff_id, s); }
+      s.add(a.session_date);
+      const bucket = preExistingExtIds.has(a.clwrota_external_id)
+        ? existingByStaff
+        : insertedByStaff;
+      let b = bucket.get(a.staff_id);
+      if (!b) { b = new Set(); bucket.set(a.staff_id, b); }
+      b.add(a.session_date);
+    }
+    const staffCoverage = Array.from(datesByStaffCov.entries()).map(([staffId, dates]) => {
+      const sorted = Array.from(dates).sort();
+      return {
+        staffId,
+        name: nameByStaffId.get(staffId) ?? staffId,
+        datesCovered: dates.size,
+        firstDate: sorted[0],
+        lastDate: sorted[sorted.length - 1],
+        insertedDates: insertedByStaff.get(staffId)?.size ?? 0,
+        existingDates: existingByStaff.get(staffId)?.size ?? 0,
+      };
+    });
+    const skippedReasonCounts: Record<string, number> = {};
+    for (const s of skipped) {
+      // Bucket by the leading phrase before ":" / "(" so noisy per-row
+      // suffixes don't fragment the histogram.
+      const key = (s.reason.split(/[:(]/)[0] || s.reason).trim().slice(0, 80);
+      skippedReasonCounts[key] = (skippedReasonCounts[key] ?? 0) + 1;
+    }
+    const coverage = {
+      windowFrom: opts.from ?? null,
+      windowTo: opts.to ?? null,
+      rowsInWindow: rows.length,
+      staffCoverage,
+      skippedReasonCounts,
+    };
+    if (opts.from && opts.to) {
+      console.info(
+        `[clwrota] coverage ${opts.from}..${opts.to}: ${rows.length} rows, ${staffCoverage.length} staff covered, ${assignmentsInserted} insert / ${assignmentsUpdated} update`,
+      );
+    }
+
     return {
       ok: errors.length === 0,
       message: summary,
@@ -2605,7 +2678,9 @@ export async function performRotaSync(
       unmatchedTheatres: Array.from(unmatchedTheatres),
       unmatchedStaff: Array.from(unmatchedStaff),
       traineeStartPredictions,
+      coverage,
     };
+
 }
 
 /**
@@ -2672,7 +2747,15 @@ export async function performRotaSyncChunked(
     unmatchedTheatres: [],
     unmatchedStaff: [],
     traineeStartPredictions: null,
+    coverage: {
+      windowFrom: null,
+      windowTo: null,
+      rowsInWindow: 0,
+      staffCoverage: [],
+      skippedReasonCounts: {},
+    },
     slices: 0,
+
   };
 
   const unmatchedT = new Set<string>();
