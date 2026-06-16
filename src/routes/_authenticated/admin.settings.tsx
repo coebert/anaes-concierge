@@ -286,6 +286,11 @@ function SettingsPage() {
     // Skip the auto-validation that follows a retry's sync — the retry path
     // explicitly calls validateMut.mutate() once the rota write completes.
     if (retryInFlight.current) return;
+    // Sync All runs validation once at the end via its own onSuccess, so the
+    // intermediate per-step success handlers shouldn't kick off duplicate /
+    // racing validations (which previously triggered spurious rota retries
+    // while the leave step was still in flight).
+    if (syncAllInFlight.current) return;
     // Reset the retry counter at the start of a fresh user-initiated cycle so
     // a later audit can use its own 2 attempts.
     setRetryAttempt(0);
