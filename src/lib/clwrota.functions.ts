@@ -1689,6 +1689,8 @@ export async function performRotaSync(
       total: 0,
       sessionsUpserted: 0,
       assignmentsUpserted: 0,
+      assignmentsInserted: 0,
+      assignmentsUpdated: 0,
       skipped: [] as Array<{ label: string; reason: string }>,
       errors: [] as Array<{ label: string; error: string }>,
       warnings: [] as Array<{ label: string; reason: string }>,
