@@ -91,6 +91,30 @@ interface RunSqlOutput {
   error?: string;
 }
 
+interface ReportSection {
+  heading: string;
+  prose?: string;
+  bullets?: string[];
+  chart?: {
+    type: "bar" | "line" | "pie" | "doughnut";
+    title?: string;
+    labels: string[];
+    datasets: Array<{ label: string; data: number[] }>;
+  };
+  chartUrl?: string;
+}
+
+interface ReportOutput {
+  title: string;
+  executive_summary: string;
+  key_findings: string[];
+  sections: ReportSection[];
+  recommendations?: string[];
+  caveats?: string[];
+  generatedAt?: string;
+}
+
+
 const STORAGE_KEY_PREFIX = "audit-tool:messages:";
 
 function loadStoredMessages(userId: string | undefined): UIMessage[] {
