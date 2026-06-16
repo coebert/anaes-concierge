@@ -157,8 +157,9 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           ),
         );
         lines.push("X-WR-TIMEZONE:Europe/London");
-        lines.push("REFRESH-INTERVAL;VALUE=DURATION:PT1H");
-        lines.push("X-PUBLISHED-TTL:PT1H");
+        // 15-minute hint — Apple Calendar uses this to pick a poll cadence.
+        lines.push("REFRESH-INTERVAL;VALUE=DURATION:PT15M");
+        lines.push("X-PUBLISHED-TTL:PT15M");
 
         // Europe/London VTIMEZONE (sufficient for current DST rules)
         lines.push(
@@ -208,12 +209,17 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           if (a.notes) descLines.push(`Notes: ${a.notes}`);
 
           const uid = `rota-${a.id}@${host}`;
-          const updated = a.updated_at ? fmtUtc(new Date(a.updated_at)) : dtstamp;
+          const updatedDate = a.updated_at ? new Date(a.updated_at) : new Date();
+          const updated = fmtUtc(updatedDate);
+          // SEQUENCE forces clients to overwrite the cached event on next poll
+          // whenever the underlying row has been modified.
+          const sequence = Math.floor(updatedDate.getTime() / 1000);
 
           lines.push("BEGIN:VEVENT");
           lines.push(`UID:${uid}`);
           lines.push(`DTSTAMP:${dtstamp}`);
           lines.push(`LAST-MODIFIED:${updated}`);
+          lines.push(`SEQUENCE:${sequence}`);
 
           const isAm = a.session === "am";
           const isPm = a.session === "pm";
@@ -237,12 +243,15 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
 
         for (const l of leaveRes.data ?? []) {
           const uid = `leave-${l.id}@${host}`;
-          const updated = l.updated_at ? fmtUtc(new Date(l.updated_at)) : dtstamp;
+          const updatedDate = l.updated_at ? new Date(l.updated_at) : new Date();
+          const updated = fmtUtc(updatedDate);
+          const sequence = Math.floor(updatedDate.getTime() / 1000);
           const typeLabel = TITLE_CASE(String(l.type ?? "leave"));
           lines.push("BEGIN:VEVENT");
           lines.push(`UID:${uid}`);
           lines.push(`DTSTAMP:${dtstamp}`);
           lines.push(`LAST-MODIFIED:${updated}`);
+          lines.push(`SEQUENCE:${sequence}`);
           lines.push(`DTSTART;VALUE=DATE:${fmtDate(l.start_date)}`);
           lines.push(`DTEND;VALUE=DATE:${fmtDatePlus(l.end_date, 1)}`);
           lines.push(fold(`SUMMARY:${escapeText(typeLabel + " (approved)")}`));
@@ -258,7 +267,8 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           status: 200,
           headers: {
             "Content-Type": "text/calendar; charset=utf-8",
-            "Cache-Control": "public, max-age=600",
+            // Short edge cache so a save in the app is reflected within ~1 min.
+            "Cache-Control": "public, max-age=60, must-revalidate",
             "Content-Disposition": `inline; filename="rota.ics"`,
           },
         });
