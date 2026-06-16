@@ -58,7 +58,7 @@ import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
-import { Route as ApiPublicCalendarTokenDoticsRouteImport } from './routes/api/public/calendar/$token[.]ics'
+import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar/$token'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
 
@@ -336,12 +336,11 @@ const ApiPublicHooksClwrotaSyncRoute =
     path: '/api/public/hooks/clwrota-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicCalendarTokenDoticsRoute =
-  ApiPublicCalendarTokenDoticsRouteImport.update({
-    id: '/api/public/calendar/$token.ics',
-    path: '/api/public/calendar/$token.ics',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ApiPublicCalendarTokenRoute = ApiPublicCalendarTokenRouteImport.update({
+  id: '/api/public/calendar/$token',
+  path: '/api/public/calendar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRobustnessDayDateRoute =
   AuthenticatedRobustnessDayDateRouteImport.update({
     id: '/robustness/day/$date',
@@ -404,7 +403,7 @@ export interface FileRoutesByFullPath {
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
-  '/api/public/calendar/$token.ics': typeof ApiPublicCalendarTokenDoticsRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -456,7 +455,7 @@ export interface FileRoutesByTo {
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
-  '/api/public/calendar/$token.ics': typeof ApiPublicCalendarTokenDoticsRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -511,7 +510,7 @@ export interface FileRoutesById {
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
-  '/api/public/calendar/$token.ics': typeof ApiPublicCalendarTokenDoticsRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -566,7 +565,7 @@ export interface FileRouteTypes {
     | '/robustness/'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
-    | '/api/public/calendar/$token.ics'
+    | '/api/public/calendar/$token'
     | '/api/public/hooks/clwrota-sync'
     | '/api/public/hooks/seed-clwrota-vault'
   fileRoutesByTo: FileRoutesByTo
@@ -618,7 +617,7 @@ export interface FileRouteTypes {
     | '/robustness'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
-    | '/api/public/calendar/$token.ics'
+    | '/api/public/calendar/$token'
     | '/api/public/hooks/clwrota-sync'
     | '/api/public/hooks/seed-clwrota-vault'
   id:
@@ -672,7 +671,7 @@ export interface FileRouteTypes {
     | '/_authenticated/robustness/'
     | '/_authenticated/calendar/staff/$staffId'
     | '/_authenticated/robustness/day/$date'
-    | '/api/public/calendar/$token.ics'
+    | '/api/public/calendar/$token'
     | '/api/public/hooks/clwrota-sync'
     | '/api/public/hooks/seed-clwrota-vault'
   fileRoutesById: FileRoutesById
@@ -686,7 +685,7 @@ export interface RootRouteChildren {
   ApiAuditToolRoute: typeof ApiAuditToolRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
-  ApiPublicCalendarTokenDoticsRoute: typeof ApiPublicCalendarTokenDoticsRoute
+  ApiPublicCalendarTokenRoute: typeof ApiPublicCalendarTokenRoute
   ApiPublicHooksClwrotaSyncRoute: typeof ApiPublicHooksClwrotaSyncRoute
   ApiPublicHooksSeedClwrotaVaultRoute: typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -1036,11 +1035,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksClwrotaSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/calendar/$token.ics': {
-      id: '/api/public/calendar/$token.ics'
-      path: '/api/public/calendar/$token.ics'
-      fullPath: '/api/public/calendar/$token.ics'
-      preLoaderRoute: typeof ApiPublicCalendarTokenDoticsRouteImport
+    '/api/public/calendar/$token': {
+      id: '/api/public/calendar/$token'
+      path: '/api/public/calendar/$token'
+      fullPath: '/api/public/calendar/$token'
+      preLoaderRoute: typeof ApiPublicCalendarTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/robustness/day/$date': {
@@ -1198,7 +1197,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuditToolRoute: ApiAuditToolRoute,
   ApiChatRoute: ApiChatRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,
-  ApiPublicCalendarTokenDoticsRoute: ApiPublicCalendarTokenDoticsRoute,
+  ApiPublicCalendarTokenRoute: ApiPublicCalendarTokenRoute,
   ApiPublicHooksClwrotaSyncRoute: ApiPublicHooksClwrotaSyncRoute,
   ApiPublicHooksSeedClwrotaVaultRoute: ApiPublicHooksSeedClwrotaVaultRoute,
 }

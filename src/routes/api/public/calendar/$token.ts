@@ -60,12 +60,13 @@ function fold(line: string) {
 const TITLE_CASE = (s: string) =>
   s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-export const Route = createFileRoute("/api/public/calendar/$token.ics")({
+export const Route = createFileRoute("/api/public/calendar/$token")({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const token = (params as unknown as Record<string, string>).token
-          ?? (params as unknown as Record<string, string>)["token.ics"];
+        const raw = (params as unknown as Record<string, string>).token ?? "";
+        // Tolerate a trailing .ics suffix so old links keep working.
+        const token = raw.replace(/\.ics$/i, "");
         if (!token || token.length < 32) {
           return new Response("Not found", { status: 404 });
         }
