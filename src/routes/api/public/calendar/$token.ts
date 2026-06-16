@@ -209,12 +209,17 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           if (a.notes) descLines.push(`Notes: ${a.notes}`);
 
           const uid = `rota-${a.id}@${host}`;
-          const updated = a.updated_at ? fmtUtc(new Date(a.updated_at)) : dtstamp;
+          const updatedDate = a.updated_at ? new Date(a.updated_at) : new Date();
+          const updated = fmtUtc(updatedDate);
+          // SEQUENCE forces clients to overwrite the cached event on next poll
+          // whenever the underlying row has been modified.
+          const sequence = Math.floor(updatedDate.getTime() / 1000);
 
           lines.push("BEGIN:VEVENT");
           lines.push(`UID:${uid}`);
           lines.push(`DTSTAMP:${dtstamp}`);
           lines.push(`LAST-MODIFIED:${updated}`);
+          lines.push(`SEQUENCE:${sequence}`);
 
           const isAm = a.session === "am";
           const isPm = a.session === "pm";
