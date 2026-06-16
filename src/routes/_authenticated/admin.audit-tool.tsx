@@ -597,7 +597,8 @@ async function downloadReportPdf(report: ReportOutput) {
   const writeBullets = (items: string[], muted = false) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10.5);
-    doc.setTextColor(...(muted ? [100, 116, 139] : [30, 30, 30]));
+    const c2: [number, number, number] = muted ? [100, 116, 139] : [30, 30, 30];
+    doc.setTextColor(c2[0], c2[1], c2[2]);
     const lineHeight = 14;
     for (const item of items) {
       const lines = doc.splitTextToSize(item, contentWidth - 16);
