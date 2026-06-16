@@ -1683,6 +1683,21 @@ export async function performRotaSync(
     const url = settings?.rota_report_url;
     const daysBack = opts.daysBack ?? settings?.sync_days_back ?? 30;
     const daysAhead = opts.daysAhead ?? settings?.sync_days_ahead ?? 120;
+    const emptyCoverage = {
+      windowFrom: opts.from ?? null,
+      windowTo: opts.to ?? null,
+      rowsInWindow: 0,
+      staffCoverage: [] as Array<{
+        staffId: string;
+        name: string;
+        datesCovered: number;
+        firstDate: string;
+        lastDate: string;
+        insertedDates: number;
+        existingDates: number;
+      }>,
+      skippedReasonCounts: {} as Record<string, number>,
+    };
     const emptyResult = {
       ok: false as boolean,
       message: "",
@@ -1698,7 +1713,9 @@ export async function performRotaSync(
       sampleKeys: [] as string[],
       unmatchedTheatres: [] as string[],
       unmatchedStaff: [] as string[],
+      coverage: emptyCoverage,
     };
+
 
     if (!url) {
       return { ...emptyResult, message: "No rota report URL configured." };
