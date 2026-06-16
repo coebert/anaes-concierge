@@ -656,6 +656,7 @@ export type Database = {
       profiles: {
         Row: {
           active: boolean
+          calendar_feed_token: string | null
           clwrota_external_id: string | null
           created_at: string
           email: string
@@ -672,6 +673,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          calendar_feed_token?: string | null
           clwrota_external_id?: string | null
           created_at?: string
           email: string
@@ -688,6 +690,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          calendar_feed_token?: string | null
           clwrota_external_id?: string | null
           created_at?: string
           email?: string
