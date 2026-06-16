@@ -13,7 +13,8 @@
  * the rate-limiter decisions over time.
  */
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -40,9 +41,12 @@ import {
   Zap,
   Ban,
   CircleHelp,
+  Play,
 } from "lucide-react";
 import {
   getClwRotaStepStatus,
+  runClwRotaStepRateLimited,
+  type RunStepResult,
   type SyncStep,
 } from "@/lib/clwrota-step-status.functions";
 
@@ -106,10 +110,31 @@ function decisionBadge(d: "fired" | "skipped" | "unknown") {
 
 export function ClwRotaStepStatusPage() {
   const fetchStatus = useServerFn(getClwRotaStepStatus);
+  const runStep = useServerFn(runClwRotaStepRateLimited);
+  const queryClient = useQueryClient();
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["clwrota-step-status"],
     queryFn: () => fetchStatus(),
     refetchInterval: 60_000,
+  });
+
+  const runMutation = useMutation<RunStepResult, Error, SyncStep>({
+    mutationFn: (step) => runStep({ data: { step } }),
+    onSuccess: (result) => {
+      if (result.fired) {
+        toast.success(
+          `${result.step} sync dispatched (request #${result.requestId}).`,
+        );
+      } else {
+        toast.info(
+          `${result.step} sync skipped — rate-limiter says it ran too recently (or another run is in flight).`,
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["clwrota-step-status"] });
+    },
+    onError: (err) => {
+      toast.error(`Could not run sync: ${err.message}`);
+    },
   });
 
   if (isLoading) {
@@ -198,6 +223,30 @@ export function ClwRotaStepStatusPage() {
                     ? `Last ran ${relativeFrom(latest.run_at)}`
                     : "No sync has been recorded yet."}
                 </CardDescription>
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    variant={ready ? "default" : "outline"}
+                    onClick={() => runMutation.mutate(step)}
+                    disabled={
+                      runMutation.isPending && runMutation.variables === step
+                    }
+                    title={
+                      ready
+                        ? `Run ${step} sync now`
+                        : `Rate-limiter will likely skip this — next allowed ${
+                            next ? relativeFrom(next) : "soon"
+                          }`
+                    }
+                  >
+                    {runMutation.isPending && runMutation.variables === step ? (
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3 mr-2" />
+                    )}
+                    Run {step} sync
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <dl className="grid grid-cols-2 gap-3 text-sm">
