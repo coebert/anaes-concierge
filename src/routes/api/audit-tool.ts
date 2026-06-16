@@ -202,6 +202,199 @@ async function isAdmin(userId: string) {
   return !!data;
 }
 
+function isoDaysAgo(days: number) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Build a compact, current-data snapshot of the rota dataset to inject into
+ * the audit assistant's system prompt every turn. Complements the static
+ * department description (theatres, staff groups, duty types) with the
+ * actual values present in the database right now, so the model never has
+ * to guess a theatre name, a training level, or whether a duty_type is
+ * still in use.
+ *
+ * Kept compact: counts and small samples only. Detailed lookups still go
+ * via the focused tools (`list_theatres`, `list_staff_groups`,
+ * `list_duty_categories`, `find_staff`) or `run_sql` for ad-hoc needs.
+ */
+async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
+  const [theatresRes, profilesRes, dutyRes, specialtiesRes] = await Promise.all([
+    admin
+      .from("theatres")
+      .select("name, kind, active, sort_order")
+      .eq("active", true)
+      .order("sort_order", { ascending: true })
+      .limit(200),
+    admin
+      .from("profiles")
+      .select("grade, training_level, active")
+      .eq("active", true)
+      .limit(2000),
+    admin
+      .from("rota_assignments")
+      .select("duty_type")
+      .gte("session_date", isoDaysAgo(30))
+      .not("duty_type", "is", null)
+      .limit(20000),
+    admin
+      .from("specialties")
+      .select("name")
+      .order("name", { ascending: true })
+      .limit(100),
+  ]);
+
+  const lines: string[] = [];
+
+  if (!theatresRes.error && theatresRes.data?.length) {
+    const byKind = new Map<string, string[]>();
+    for (const t of theatresRes.data) {
+      const key = (t.kind ?? "other") as string;
+      const list = byKind.get(key) ?? [];
+      list.push(t.name);
+      byKind.set(key, list);
+    }
+    const kindOrder = ["main", "day_surgery", "private", "other"];
+    const parts: string[] = [];
+    for (const k of kindOrder) {
+      const list = byKind.get(k);
+      if (!list?.length) continue;
+      parts.push(`${k} (${list.length}): ${list.join(", ")}`);
+    }
+    lines.push(`ACTIVE THEATRES — ${parts.join(" | ")}`);
+  }
+
+  if (!profilesRes.error && profilesRes.data?.length) {
+    const byGrade = new Map<string, Map<string, number>>();
+    for (const p of profilesRes.data) {
+      const g = (p.grade ?? "unknown") as string;
+      const lvl = (p.training_level ?? "—") as string;
+      const inner = byGrade.get(g) ?? new Map<string, number>();
+      inner.set(lvl, (inner.get(lvl) ?? 0) + 1);
+      byGrade.set(g, inner);
+    }
+    const gradeLines: string[] = [];
+    for (const [g, inner] of byGrade.entries()) {
+      const total = Array.from(inner.values()).reduce((a, b) => a + b, 0);
+      const breakdown = Array.from(inner.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([lvl, n]) => `${lvl}=${n}`)
+        .join(", ");
+      gradeLines.push(`${g} (${total}): ${breakdown}`);
+    }
+    lines.push(`ACTIVE STAFF — ${gradeLines.join(" | ")}`);
+  }
+
+  if (!dutyRes.error && dutyRes.data?.length) {
+    const counts = new Map<string, number>();
+    for (const r of dutyRes.data) {
+      const k = r.duty_type as string;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const ranked = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    lines.push(
+      `DUTY TYPES IN USE (last 30d) — ${ranked
+        .map(([k, n]) => `${k}=${n}`)
+        .join(", ")}`,
+    );
+  }
+
+  if (!specialtiesRes.error && specialtiesRes.data?.length) {
+    lines.push(
+      `SPECIALTIES (${specialtiesRes.data.length}) — ${specialtiesRes.data
+        .map((s) => s.name)
+        .join(", ")}`,
+    );
+  }
+
+  if (lines.length === 0) return "";
+  return `\n\nLIVE DEPARTMENT SNAPSHOT (refreshed on every turn — use these exact names/values; if something here contradicts the static description above, trust the snapshot):\n${lines
+    .map((l) => `- ${l}`)
+    .join("\n")}`;
+}
+
+/**
+ * After each completed turn, ask a small model to inspect the last
+ * user message + assistant reply and decide whether anything durable
+ * (a correction, preference, lesson, or non-obvious fact) should be
+ * persisted to `audit_assistant_memories`. Cheap, best-effort, runs
+ * in the background of `onFinish` — failures are swallowed.
+ */
+async function autoExtractMemory(opts: {
+  admin: SupabaseClient;
+  apiKey: string;
+  userMessage: string;
+  assistantText: string;
+  existingMemoryContents: string[];
+  createdBy: string;
+}): Promise<void> {
+  const { admin, apiKey, userMessage, assistantText, existingMemoryContents, createdBy } = opts;
+  if (!userMessage.trim() || !assistantText.trim()) return;
+
+  const gateway = createLovableAiGatewayProvider(apiKey);
+  const recent = existingMemoryContents.slice(0, 60).join("\n- ");
+
+  let parsed: {
+    save: boolean;
+    kind?: "lesson" | "preference" | "fact" | "correction";
+    content?: string;
+    tags?: string[];
+    reason?: string;
+  };
+  try {
+    const result = await generateText({
+      model: gateway("google/gemini-2.5-flash-lite"),
+      system:
+        "You decide whether a single, durable memory should be saved for an admin audit assistant. " +
+        "Save ONLY when the exchange clearly contains: (1) a correction the user made to the assistant, " +
+        "(2) a stated preference for how reports should be done, (3) a non-obvious schema/domain fact " +
+        "the assistant discovered, or (4) a lesson the assistant should not repeat. " +
+        "Do NOT save: routine Q&A, transient one-offs, personal data about staff, anything already " +
+        "covered by an existing memory. Keep `content` to one focused sentence. If nothing qualifies, " +
+        "set save=false.",
+      prompt:
+        `EXISTING MEMORIES (do not duplicate):\n- ${recent || "(none)"}\n\n` +
+        `USER MESSAGE:\n${userMessage.slice(0, 4000)}\n\n` +
+        `ASSISTANT REPLY:\n${assistantText.slice(0, 6000)}`,
+      experimental_output: Output.object({
+        schema: z.object({
+          save: z.boolean(),
+          kind: z.enum(["lesson", "preference", "fact", "correction"]).optional(),
+          content: z.string().max(500).optional(),
+          tags: z.array(z.string().max(30)).max(6).optional(),
+          reason: z.string().max(200).optional(),
+        }),
+      }),
+    });
+    parsed = result.experimental_output;
+  } catch (e) {
+    console.warn("autoExtractMemory: model call failed", e);
+    return;
+  }
+
+  if (!parsed.save || !parsed.kind || !parsed.content) return;
+
+  // Belt-and-braces dedupe: skip if an existing memory has the same content.
+  const normalized = parsed.content.trim().toLowerCase();
+  if (existingMemoryContents.some((c) => c.trim().toLowerCase() === normalized)) return;
+
+  const { error } = await admin.from("audit_assistant_memories").insert({
+    kind: parsed.kind,
+    content: parsed.content.trim(),
+    tags: parsed.tags ?? ["auto"],
+    created_by: createdBy,
+  });
+  if (error) console.warn("autoExtractMemory: insert failed", error.message);
+}
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !!data;
+}
+
 export const Route = createFileRoute("/api/audit-tool")({
   server: {
     handlers: {
