@@ -398,12 +398,267 @@ function ChatBubble({ message }: { message: UIMessage }) {
               </div>
             );
           }
+          if (p.type === "tool-generate_report") {
+            const out = (p as { output?: unknown }).output as ReportOutput | undefined;
+            if (p.state && p.state !== "output-available") {
+              return (
+                <div key={i} className="my-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <FileText className="h-3 w-3" />
+                  <span>Drafting report…</span>
+                </div>
+              );
+            }
+            if (!out) return null;
+            return <ReportDocument key={i} report={out} />;
+          }
           return null;
         })}
       </MessageContent>
     </Message>
   );
 }
+
+function ReportDocument({ report }: { report: ReportOutput }) {
+  return (
+    <div className="my-2 overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="flex items-start justify-between gap-3 border-b bg-muted/40 px-5 py-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <FileText className="h-3 w-3" />
+            Audit report
+          </div>
+          <h2 className="mt-1 text-lg font-semibold leading-tight text-foreground">
+            {report.title}
+          </h2>
+          {report.generatedAt && (
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Generated {new Date(report.generatedAt).toLocaleString()}
+            </div>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void downloadReportPdf(report)}
+        >
+          <Download className="mr-1.5 h-3.5 w-3.5" />
+          PDF
+        </Button>
+      </div>
+
+      <div className="space-y-5 px-5 py-4 text-sm">
+        <section>
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Executive summary
+          </h3>
+          <div className="prose prose-sm max-w-none text-foreground dark:prose-invert">
+            <ReactMarkdown>{report.executive_summary}</ReactMarkdown>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Key findings
+          </h3>
+          <ul className="list-disc space-y-1 pl-5 text-foreground">
+            {report.key_findings.map((f, i) => (
+              <li key={i} className="leading-snug">
+                <span className="prose prose-sm inline max-w-none dark:prose-invert">
+                  <ReactMarkdown
+                    components={{ p: ({ children }) => <>{children}</> }}
+                  >
+                    {f}
+                  </ReactMarkdown>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {report.sections.map((s, i) => (
+          <section key={i}>
+            <h3 className="mb-1.5 text-sm font-semibold text-foreground">
+              {s.heading}
+            </h3>
+            {s.prose && (
+              <div className="prose prose-sm max-w-none text-foreground dark:prose-invert">
+                <ReactMarkdown>{s.prose}</ReactMarkdown>
+              </div>
+            )}
+            {s.bullets && s.bullets.length > 0 && (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-foreground">
+                {s.bullets.map((b, j) => (
+                  <li key={j} className="leading-snug">{b}</li>
+                ))}
+              </ul>
+            )}
+            {s.chartUrl && (
+              <div className="mt-3 overflow-hidden rounded-md border bg-white p-2">
+                <img
+                  src={s.chartUrl}
+                  alt={s.chart?.title ?? s.heading}
+                  className="mx-auto block h-auto max-w-full"
+                  loading="lazy"
+                />
+              </div>
+            )}
+          </section>
+        ))}
+
+        {report.recommendations && report.recommendations.length > 0 && (
+          <section>
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Recommendations
+            </h3>
+            <ul className="list-disc space-y-1 pl-5 text-foreground">
+              {report.recommendations.map((r, i) => (
+                <li key={i} className="leading-snug">{r}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {report.caveats && report.caveats.length > 0 && (
+          <section>
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Caveats &amp; assumptions
+            </h3>
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              {report.caveats.map((c, i) => (
+                <li key={i} className="leading-snug">{c}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function downloadReportPdf(report: ReportOutput) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 48;
+  const contentWidth = pageWidth - marginX * 2;
+  let y = 56;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - 48) {
+      doc.addPage();
+      y = 56;
+    }
+  };
+
+  const writeWrapped = (
+    text: string,
+    opts: { size?: number; bold?: boolean; color?: [number, number, number]; gap?: number } = {},
+  ) => {
+    const size = opts.size ?? 10.5;
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    doc.setTextColor(...(opts.color ?? [30, 30, 30]));
+    const lines = doc.splitTextToSize(text, contentWidth);
+    const lineHeight = size * 1.35;
+    ensureSpace(lines.length * lineHeight);
+    doc.text(lines, marginX, y);
+    y += lines.length * lineHeight + (opts.gap ?? 4);
+  };
+
+  const writeHeading = (text: string, level: 1 | 2 | 3) => {
+    const sizes = { 1: 20, 2: 13, 3: 11 } as const;
+    y += level === 1 ? 0 : 6;
+    writeWrapped(text, {
+      size: sizes[level],
+      bold: true,
+      color: level === 1 ? [15, 23, 42] : [51, 65, 85],
+      gap: level === 1 ? 10 : 6,
+    });
+  };
+
+  const writeBullets = (items: string[], muted = false) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(...(muted ? [100, 116, 139] : [30, 30, 30]));
+    const lineHeight = 14;
+    for (const item of items) {
+      const lines = doc.splitTextToSize(item, contentWidth - 16);
+      ensureSpace(lines.length * lineHeight);
+      doc.text("•", marginX, y);
+      doc.text(lines, marginX + 14, y);
+      y += lines.length * lineHeight + 2;
+    }
+    y += 4;
+  };
+
+  // Title block
+  writeHeading(report.title, 1);
+  if (report.generatedAt) {
+    writeWrapped(`Generated ${new Date(report.generatedAt).toLocaleString()}`, {
+      size: 9,
+      color: [120, 120, 120],
+      gap: 14,
+    });
+  }
+
+  writeHeading("Executive summary", 2);
+  writeWrapped(report.executive_summary);
+
+  writeHeading("Key findings", 2);
+  writeBullets(report.key_findings);
+
+  for (const s of report.sections) {
+    writeHeading(s.heading, 3);
+    if (s.prose) writeWrapped(s.prose);
+    if (s.bullets && s.bullets.length) writeBullets(s.bullets);
+    if (s.chartUrl) {
+      const dataUrl = await fetchImageAsDataUrl(s.chartUrl);
+      if (dataUrl) {
+        // QuickChart returns 720x380 by default; preserve aspect ratio.
+        const imgWidth = contentWidth;
+        const imgHeight = imgWidth * (380 / 720);
+        ensureSpace(imgHeight + 8);
+        try {
+          doc.addImage(dataUrl, "PNG", marginX, y, imgWidth, imgHeight);
+          y += imgHeight + 10;
+        } catch {
+          writeWrapped("[Chart could not be embedded]", { size: 9, color: [180, 0, 0] });
+        }
+      }
+    }
+  }
+
+  if (report.recommendations && report.recommendations.length) {
+    writeHeading("Recommendations", 2);
+    writeBullets(report.recommendations);
+  }
+
+  if (report.caveats && report.caveats.length) {
+    writeHeading("Caveats & assumptions", 2);
+    writeBullets(report.caveats, true);
+  }
+
+  const filename = report.title.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 80) || "audit-report";
+  doc.save(`${filename}.pdf`);
+}
+
 
 function ReportCard({ output }: { output: RunSqlOutput }) {
   if (output.error) {
