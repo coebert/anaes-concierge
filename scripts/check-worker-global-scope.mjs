@@ -38,7 +38,7 @@ const ROOT = process.cwd();
 const SRC = join(ROOT, "src");
 
 const EXCLUDE_DIR = new Set(["node_modules", "components/ui"]);
-const EXCLUDE_FILE_RE = /(\d\.ts|\.gen\.ts|\.test\.[tj]sx?|\.spec\.[tj]sx?|\.client\.tsx?)$/;
+const EXCLUDE_FILE_RE = /(\.d\.ts|\.gen\.ts|\.test\.[tj]sx?|\.spec\.[tj]sx?|\.client\.tsx?)$/;
 
 /** @returns {string[]} */
 function walk(dir) {
