@@ -654,9 +654,22 @@ function RotaGapsPage() {
                           {done ? (
                             done.ok ? (
                               <>
-                                <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                <Badge
+                                  className="bg-emerald-600 hover:bg-emerald-600"
+                                  title={`Total rows touched by this sync call (inserted + updated). ${
+                                    done.inserted != null ? `${done.inserted} new row(s), ${done.updated ?? 0} existing row(s) updated.` : ""
+                                  }`}
+                                >
                                   {done.upserted ?? 0} upserted
                                 </Badge>
+                                {done.inserted != null && (
+                                  <Badge
+                                    variant={done.inserted > 0 ? "default" : "outline"}
+                                    title="Truly new rota_assignment rows created by this sync — these are what actually fill gaps. The remaining 'upserted' rows are existing rows that were merely refreshed."
+                                  >
+                                    {done.inserted} new
+                                  </Badge>
+                                )}
                                 {done.gapsFilled != null && done.gapsBefore != null ? (
                                   done.gapsFilled > 0 ? (
                                     <Badge
@@ -675,12 +688,20 @@ function RotaGapsPage() {
                                   ) : (
                                     <Badge
                                       variant="destructive"
-                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing — CLWRota may not have returned rows for those days.`}
+                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing — CLWRota returned ${done.inserted ?? 0} new row(s) for this window, so the upstream feed likely has no data for the affected trainees on those days (they may have rotated off this service in CLWRota, or be on long-term leave).`}
                                     >
                                       0 / {done.gapsBefore} gaps filled
                                     </Badge>
                                   )
                                 ) : null}
+                                {done.unmatchedStaffCount != null && done.unmatchedStaffCount > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    title="CLWRota rows whose person.local_id / email / name didn't match any active profile. These rows are silently dropped. Fix by linking the missing profile's clwrota_external_id."
+                                  >
+                                    {done.unmatchedStaffCount} unmatched staff
+                                  </Badge>
+                                )}
                               </>
                             ) : (
                               <Badge variant="destructive" title={done.message}>Failed</Badge>
