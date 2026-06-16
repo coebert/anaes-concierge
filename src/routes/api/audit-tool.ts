@@ -229,6 +229,76 @@ function isoDaysAgo(days: number) {
 }
 
 /**
+ * Build a QuickChart.io URL for a chart spec produced by the
+ * `generate_report` tool. QuickChart renders Chart.js configs as PNG/SVG
+ * server-side so the same image embeds cleanly in both the inline UI and
+ * the downloadable PDF.
+ */
+function buildQuickChartUrl(chart: {
+  type: "bar" | "line" | "pie" | "doughnut";
+  title?: string;
+  labels: string[];
+  datasets: Array<{ label: string; data: number[] }>;
+}): string {
+  // Professional, accessible palette (chosen for print + screen contrast).
+  const palette = [
+    "#2563eb", "#16a34a", "#dc2626", "#d97706",
+    "#7c3aed", "#0891b2", "#db2777", "#65a30d",
+  ];
+
+  const isCategorical = chart.type === "pie" || chart.type === "doughnut";
+  const datasets = chart.datasets.map((ds, i) => {
+    if (isCategorical) {
+      return {
+        label: ds.label,
+        data: ds.data,
+        backgroundColor: chart.labels.map((_, j) => palette[j % palette.length]),
+        borderColor: "#ffffff",
+        borderWidth: 2,
+      };
+    }
+    const color = palette[i % palette.length];
+    return {
+      label: ds.label,
+      data: ds.data,
+      backgroundColor: chart.type === "line" ? color + "33" : color,
+      borderColor: color,
+      borderWidth: 2,
+      fill: chart.type === "line",
+      tension: chart.type === "line" ? 0.3 : 0,
+      pointRadius: chart.type === "line" ? 3 : 0,
+    };
+  });
+
+  const config = {
+    type: chart.type,
+    data: { labels: chart.labels, datasets },
+    options: {
+      plugins: {
+        title: chart.title
+          ? { display: true, text: chart.title, font: { size: 16, weight: "bold" } }
+          : { display: false },
+        legend: {
+          display: isCategorical || chart.datasets.length > 1,
+          position: isCategorical ? "right" : "top",
+          labels: { font: { size: 12 } },
+        },
+      },
+      scales: isCategorical
+        ? undefined
+        : {
+            y: { beginAtZero: true, grid: { color: "#e5e7eb" } },
+            x: { grid: { display: false } },
+          },
+    },
+  };
+
+  const encoded = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?w=720&h=380&bkg=white&format=png&c=${encoded}`;
+}
+
+
+/**
  * Build a compact, current-data snapshot of the rota dataset to inject into
  * the audit assistant's system prompt every turn. Complements the static
  * department description (theatres, staff groups, duty types) with the
