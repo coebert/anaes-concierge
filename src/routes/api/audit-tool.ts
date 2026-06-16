@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   convertToModelMessages,
+  generateText,
+  Output,
   stepCountIs,
   streamText,
   tool,
   type UIMessage,
 } from "ai";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { GLOSSARY } from "@/lib/glossary";
