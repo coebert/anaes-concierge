@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   convertToModelMessages,
+  generateText,
+  Output,
   stepCountIs,
   streamText,
   tool,
   type UIMessage,
 } from "ai";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { GLOSSARY } from "@/lib/glossary";
@@ -200,6 +202,193 @@ async function isAdmin(userId: string) {
   return !!data;
 }
 
+function isoDaysAgo(days: number) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Build a compact, current-data snapshot of the rota dataset to inject into
+ * the audit assistant's system prompt every turn. Complements the static
+ * department description (theatres, staff groups, duty types) with the
+ * actual values present in the database right now, so the model never has
+ * to guess a theatre name, a training level, or whether a duty_type is
+ * still in use.
+ *
+ * Kept compact: counts and small samples only. Detailed lookups still go
+ * via the focused tools (`list_theatres`, `list_staff_groups`,
+ * `list_duty_categories`, `find_staff`) or `run_sql` for ad-hoc needs.
+ */
+async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
+  const [theatresRes, profilesRes, dutyRes, specialtiesRes] = await Promise.all([
+    admin
+      .from("theatres")
+      .select("name, kind, active, sort_order")
+      .eq("active", true)
+      .order("sort_order", { ascending: true })
+      .limit(200),
+    admin
+      .from("profiles")
+      .select("grade, training_level, active")
+      .eq("active", true)
+      .limit(2000),
+    admin
+      .from("rota_assignments")
+      .select("duty_type")
+      .gte("session_date", isoDaysAgo(30))
+      .not("duty_type", "is", null)
+      .limit(20000),
+    admin
+      .from("specialties")
+      .select("name")
+      .order("name", { ascending: true })
+      .limit(100),
+  ]);
+
+  const lines: string[] = [];
+
+  if (!theatresRes.error && theatresRes.data?.length) {
+    const byKind = new Map<string, string[]>();
+    for (const t of theatresRes.data) {
+      const key = (t.kind ?? "other") as string;
+      const list = byKind.get(key) ?? [];
+      list.push(t.name);
+      byKind.set(key, list);
+    }
+    const kindOrder = ["main", "day_surgery", "private", "other"];
+    const parts: string[] = [];
+    for (const k of kindOrder) {
+      const list = byKind.get(k);
+      if (!list?.length) continue;
+      parts.push(`${k} (${list.length}): ${list.join(", ")}`);
+    }
+    lines.push(`ACTIVE THEATRES — ${parts.join(" | ")}`);
+  }
+
+  if (!profilesRes.error && profilesRes.data?.length) {
+    const byGrade = new Map<string, Map<string, number>>();
+    for (const p of profilesRes.data) {
+      const g = (p.grade ?? "unknown") as string;
+      const lvl = (p.training_level ?? "—") as string;
+      const inner = byGrade.get(g) ?? new Map<string, number>();
+      inner.set(lvl, (inner.get(lvl) ?? 0) + 1);
+      byGrade.set(g, inner);
+    }
+    const gradeLines: string[] = [];
+    for (const [g, inner] of byGrade.entries()) {
+      const total = Array.from(inner.values()).reduce((a, b) => a + b, 0);
+      const breakdown = Array.from(inner.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([lvl, n]) => `${lvl}=${n}`)
+        .join(", ");
+      gradeLines.push(`${g} (${total}): ${breakdown}`);
+    }
+    lines.push(`ACTIVE STAFF — ${gradeLines.join(" | ")}`);
+  }
+
+  if (!dutyRes.error && dutyRes.data?.length) {
+    const counts = new Map<string, number>();
+    for (const r of dutyRes.data) {
+      const k = r.duty_type as string;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const ranked = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    lines.push(
+      `DUTY TYPES IN USE (last 30d) — ${ranked
+        .map(([k, n]) => `${k}=${n}`)
+        .join(", ")}`,
+    );
+  }
+
+  if (!specialtiesRes.error && specialtiesRes.data?.length) {
+    lines.push(
+      `SPECIALTIES (${specialtiesRes.data.length}) — ${specialtiesRes.data
+        .map((s) => s.name)
+        .join(", ")}`,
+    );
+  }
+
+  if (lines.length === 0) return "";
+  return `\n\nLIVE DEPARTMENT SNAPSHOT (refreshed on every turn — use these exact names/values; if something here contradicts the static description above, trust the snapshot):\n${lines
+    .map((l) => `- ${l}`)
+    .join("\n")}`;
+}
+
+/**
+ * After each completed turn, ask a small model to inspect the last
+ * user message + assistant reply and decide whether anything durable
+ * (a correction, preference, lesson, or non-obvious fact) should be
+ * persisted to `audit_assistant_memories`. Cheap, best-effort, runs
+ * in the background of `onFinish` — failures are swallowed.
+ */
+async function autoExtractMemory(opts: {
+  admin: SupabaseClient;
+  apiKey: string;
+  userMessage: string;
+  assistantText: string;
+  existingMemoryContents: string[];
+  createdBy: string;
+}): Promise<void> {
+  const { admin, apiKey, userMessage, assistantText, existingMemoryContents, createdBy } = opts;
+  if (!userMessage.trim() || !assistantText.trim()) return;
+
+  const gateway = createLovableAiGatewayProvider(apiKey);
+  const recent = existingMemoryContents.slice(0, 60).join("\n- ");
+
+  let parsed: {
+    save: boolean;
+    kind?: "lesson" | "preference" | "fact" | "correction";
+    content?: string;
+    tags?: string[];
+    reason?: string;
+  };
+  try {
+    const result = await generateText({
+      model: gateway("google/gemini-2.5-flash-lite"),
+      system:
+        "You decide whether a single, durable memory should be saved for an admin audit assistant. " +
+        "Save ONLY when the exchange clearly contains: (1) a correction the user made to the assistant, " +
+        "(2) a stated preference for how reports should be done, (3) a non-obvious schema/domain fact " +
+        "the assistant discovered, or (4) a lesson the assistant should not repeat. " +
+        "Do NOT save: routine Q&A, transient one-offs, personal data about staff, anything already " +
+        "covered by an existing memory. Keep `content` to one focused sentence. If nothing qualifies, " +
+        "set save=false.",
+      prompt:
+        `EXISTING MEMORIES (do not duplicate):\n- ${recent || "(none)"}\n\n` +
+        `USER MESSAGE:\n${userMessage.slice(0, 4000)}\n\n` +
+        `ASSISTANT REPLY:\n${assistantText.slice(0, 6000)}`,
+      experimental_output: Output.object({
+        schema: z.object({
+          save: z.boolean(),
+          kind: z.enum(["lesson", "preference", "fact", "correction"]).optional(),
+          content: z.string().max(500).optional(),
+          tags: z.array(z.string().max(30)).max(6).optional(),
+          reason: z.string().max(200).optional(),
+        }),
+      }),
+    });
+    parsed = result.experimental_output;
+  } catch (e) {
+    console.warn("autoExtractMemory: model call failed", e);
+    return;
+  }
+
+  if (!parsed.save || !parsed.kind || !parsed.content) return;
+
+  // Belt-and-braces dedupe: skip if an existing memory has the same content.
+  const normalized = parsed.content.trim().toLowerCase();
+  if (existingMemoryContents.some((c) => c.trim().toLowerCase() === normalized)) return;
+
+  const { error } = await admin.from("audit_assistant_memories").insert({
+    kind: parsed.kind,
+    content: parsed.content.trim(),
+    tags: parsed.tags ?? ["auto"],
+    created_by: createdBy,
+  });
+  if (error) console.warn("autoExtractMemory: insert failed", error.message);
+}
+
 export const Route = createFileRoute("/api/audit-tool")({
   server: {
     handlers: {
@@ -241,7 +430,16 @@ export const Route = createFileRoute("/api/audit-tool")({
                 .join("\n")
             : "(no memories yet — save useful lessons as you learn them)";
 
-        const fullSystem = `${SYSTEM_PROMPT}\n\nSTORED MEMORIES (newest first):\n${memoryBlock}`;
+        // Live snapshot of theatres, staff groups, duty types, specialties.
+        // Best-effort: if it fails we still answer using the static prompt.
+        let snapshotBlock = "";
+        try {
+          snapshotBlock = await buildDepartmentSnapshot(adminClient);
+        } catch (e) {
+          console.warn("buildDepartmentSnapshot failed", e);
+        }
+
+        const fullSystem = `${SYSTEM_PROMPT}\n\nSTORED MEMORIES (newest first):\n${memoryBlock}${snapshotBlock}`;
 
         const tools = {
           describe_schema: tool({
@@ -375,6 +573,120 @@ export const Route = createFileRoute("/api/audit-tool")({
               return { memories: data ?? [] };
             },
           }),
+
+          // ---- Focused reference tools ------------------------------------
+          // Complement the live snapshot with on-demand drilldowns so the
+          // model doesn't need to fall back to `run_sql` for routine
+          // questions about theatres, staffing or duty mix.
+
+          list_theatres: tool({
+            description:
+              "Return the department's theatres (one row per theatre). Use to look up exact names, " +
+              "split by kind (main / day_surgery / private), and check active status. Defaults to active only.",
+            inputSchema: z.object({
+              kind: z.enum(["main", "day_surgery", "private"]).optional(),
+              include_inactive: z.boolean().optional(),
+            }),
+            execute: async ({ kind, include_inactive }) => {
+              let q = adminClient
+                .from("theatres")
+                .select("id, name, kind, active, sort_order")
+                .order("sort_order", { ascending: true });
+              if (!include_inactive) q = q.eq("active", true);
+              if (kind) q = q.eq("kind", kind);
+              const { data, error } = await q.limit(200);
+              if (error) return { error: error.message };
+              return { theatres: data ?? [] };
+            },
+          }),
+
+          list_staff_groups: tool({
+            description:
+              "Return active staff counts broken down by grade and training_level, so you can see " +
+              "how the department is composed (e.g. how many ST5 trainees, how many SAS doctors). " +
+              "Use this before answering any question about staffing mix.",
+            inputSchema: z.object({
+              grade: z.enum(["consultant", "sas", "trainee"]).optional(),
+            }),
+            execute: async ({ grade }) => {
+              let q = adminClient
+                .from("profiles")
+                .select("grade, training_level")
+                .eq("active", true)
+                .limit(2000);
+              if (grade) q = q.eq("grade", grade);
+              const { data, error } = await q;
+              if (error) return { error: error.message };
+              const counts = new Map<string, Map<string, number>>();
+              for (const p of data ?? []) {
+                const g = (p.grade ?? "unknown") as string;
+                const lvl = (p.training_level ?? "—") as string;
+                const inner = counts.get(g) ?? new Map<string, number>();
+                inner.set(lvl, (inner.get(lvl) ?? 0) + 1);
+                counts.set(g, inner);
+              }
+              const groups = Array.from(counts.entries()).map(([g, inner]) => ({
+                grade: g,
+                total: Array.from(inner.values()).reduce((a, b) => a + b, 0),
+                training_levels: Array.from(inner.entries())
+                  .map(([level, count]) => ({ level, count }))
+                  .sort((a, b) => b.count - a.count),
+              }));
+              return { groups };
+            },
+          }),
+
+          list_duty_categories: tool({
+            description:
+              "Return a histogram of rota_assignments.duty_type values used in a date window " +
+              "(default: last 30 days). Use this to confirm which duty_types are actually in use " +
+              "and how heavily each is staffed before writing reports about duty mix.",
+            inputSchema: z.object({
+              days_back: z.number().int().min(1).max(365).optional(),
+            }),
+            execute: async ({ days_back }) => {
+              const from = isoDaysAgo(days_back ?? 30);
+              const { data, error } = await adminClient
+                .from("rota_assignments")
+                .select("duty_type")
+                .gte("session_date", from)
+                .not("duty_type", "is", null)
+                .limit(50000);
+              if (error) return { error: error.message };
+              const counts = new Map<string, number>();
+              for (const r of data ?? []) {
+                const k = r.duty_type as string;
+                counts.set(k, (counts.get(k) ?? 0) + 1);
+              }
+              return {
+                window: { from, days: days_back ?? 30 },
+                duty_types: Array.from(counts.entries())
+                  .map(([duty_type, count]) => ({ duty_type, count }))
+                  .sort((a, b) => b.count - a.count),
+              };
+            },
+          }),
+
+          find_staff: tool({
+            description:
+              "Find staff by case-insensitive partial name or email match. Returns id, name, " +
+              "grade, training level and active flag — use to resolve a name before SQL filters " +
+              "on staff_id.",
+            inputSchema: z.object({
+              query: z.string().min(1).max(120),
+              limit: z.number().int().min(1).max(20).optional(),
+            }),
+            execute: async ({ query, limit }) => {
+              const q = `%${query.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+              const { data, error } = await adminClient
+                .from("profiles")
+                .select("id, full_name, email, grade, training_level, active")
+                .or(`full_name.ilike.${q},email.ilike.${q}`)
+                .limit(limit ?? 10);
+              if (error) return { error: error.message };
+              return { staff: data ?? [] };
+            },
+          }),
         };
 
         const gateway = createLovableAiGatewayProvider(key);
@@ -386,7 +698,41 @@ export const Route = createFileRoute("/api/audit-tool")({
           stopWhen: stepCountIs(50),
         });
 
-        return result.toUIMessageStreamResponse({ originalMessages: messages });
+        // Capture the last user message up-front so the auto-extract callback
+        // can see it without re-walking the UIMessage list later.
+        const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+        const lastUserText = ((lastUserMsg?.parts ?? []) as Array<Record<string, unknown>>)
+          .filter((p) => p?.type === "text")
+          .map((p) => String(p.text ?? ""))
+          .join("\n")
+          .trim();
+        const existingMemoryContents = (memoryRows ?? []).map((m) => m.content);
+
+        return result.toUIMessageStreamResponse({
+          originalMessages: messages,
+          onFinish: async ({ responseMessage }) => {
+            const assistantText = (responseMessage.parts ?? [])
+              .filter((p): p is { type: "text"; text: string } =>
+                (p as { type?: string })?.type === "text",
+              )
+              .map((p) => p.text)
+              .join("\n")
+              .trim();
+            if (!assistantText || !lastUserText) return;
+            try {
+              await autoExtractMemory({
+                admin: adminClient,
+                apiKey: key,
+                userMessage: lastUserText,
+                assistantText,
+                existingMemoryContents,
+                createdBy: auth.userId,
+              });
+            } catch (e) {
+              console.warn("autoExtractMemory failed", e);
+            }
+          },
+        });
 
       },
     },
