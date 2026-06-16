@@ -336,6 +336,19 @@ function SettingsPage() {
 
   const syncAllMut = useMutation({
     mutationFn: async () => {
+      // Mark the orchestrator as in-flight so per-step success handlers
+      // (`runValidationAfter`) skip their auto-validate — we run a single
+      // validation at the end below. Otherwise the rota step's validate
+      // could race the leave step and (with mismatches present) trigger
+      // a spurious rota re-sync that ends in "Mismatch set unchanged".
+      syncAllInFlight.current = true;
+      // Reset retry state for the fresh cycle.
+      retryInFlight.current = false;
+      lastMismatchSignature.current = null;
+      setRetryAttempt(0);
+      setRetriedTrainees([]);
+      setStalledCause(null);
+
       // Run each step independently so a single failure (e.g. a Cloudflare
       // CPU/timeout 502 on the heaviest dataset) doesn't abort the other
       // steps. Order is staff → rota → leave so rota assignments can match
@@ -398,10 +411,17 @@ function SettingsPage() {
         }
       };
 
-      const staff = await runStep("staff", staffUrl, () => staffMut.mutateAsync());
-      const rota = await runStep("rota", rotaUrl, () => rotaMut.mutateAsync());
-      const leave = await runStep("leave", leaveUrl, () => leaveMut.mutateAsync());
-      return [staff, rota, leave];
+      try {
+        const staff = await runStep("staff", staffUrl, () => staffMut.mutateAsync());
+        const rota = await runStep("rota", rotaUrl, () => rotaMut.mutateAsync());
+        const leave = await runStep("leave", leaveUrl, () => leaveMut.mutateAsync());
+        return [staff, rota, leave];
+      } finally {
+        // Clear the flag BEFORE the post-sync validation kicks off so the
+        // single end-of-run validate can use the normal retry path if it
+        // detects fixable (alias-missing) mismatches after a manual fix.
+        syncAllInFlight.current = false;
+      }
     },
     onSuccess: (results) => {
       const failed = results.filter((r) => !r.ok);
