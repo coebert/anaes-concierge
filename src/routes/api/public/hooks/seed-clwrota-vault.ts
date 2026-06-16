@@ -9,10 +9,20 @@ import { createFileRoute } from "@tanstack/react-router";
  * sync hook. This prevents unauthenticated internet users from triggering
  * Vault writes or probing whether the secret is configured.
  */
-const GENERIC_UNAUTH = new Response(
-  JSON.stringify({ ok: false, error: "Unauthorized" }),
-  { status: 401, headers: { "Content-Type": "application/json" } },
-);
+// IMPORTANT: never construct a `Response` (or any other object that touches
+// random-value / stream-id generation) at module top level. The Cloudflare
+// Workers runtime evaluates this file once per isolate before any request,
+// and disallows async I/O, timers, and crypto.getRandomValues() during that
+// global-scope evaluation. A top-level `new Response(...)` was throwing
+// "Disallowed operation called within global scope" and crashing the entire
+// Worker — including unrelated cron-triggered `/api/public/hooks/clwrota-sync`
+// calls. Build the response inside the handler instead.
+function genericUnauthorized(): Response {
+  return new Response(
+    JSON.stringify({ ok: false, error: "Unauthorized" }),
+    { status: 401, headers: { "Content-Type": "application/json" } },
+  );
+}
 
 function timingSafeEqualStr(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
