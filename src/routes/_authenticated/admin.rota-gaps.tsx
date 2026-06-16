@@ -204,6 +204,12 @@ interface SyncProgress {
     ok: boolean;
     message?: string;
     upserted?: number;
+    /** Truly new rota_assignment rows created by this sync call. */
+    inserted?: number;
+    /** Existing rows that were merely touched (no new dates added). */
+    updated?: number;
+    /** Distinct upstream staff identifiers we couldn't match to a profile. */
+    unmatchedStaffCount?: number;
     /** Sync-missing weekdays in this range before the sync ran. */
     gapsBefore?: number;
     /** Sync-missing weekdays in this range after the post-sync refetch. */
