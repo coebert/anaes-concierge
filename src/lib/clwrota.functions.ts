@@ -2690,6 +2690,8 @@ export async function performRotaSyncChunked(
       agg.total += r.total;
       agg.sessionsUpserted += r.sessionsUpserted;
       agg.assignmentsUpserted += r.assignmentsUpserted;
+      agg.assignmentsInserted += r.assignmentsInserted ?? 0;
+      agg.assignmentsUpdated += r.assignmentsUpdated ?? 0;
       agg.skipped.push(...r.skipped);
       agg.warnings.push(...r.warnings);
       agg.errors.push(...r.errors);
