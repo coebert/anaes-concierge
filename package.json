@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "NODE_OPTIONS=--max-old-space-size=8192 vite build",
-    "build:dev": "NODE_OPTIONS=--max-old-space-size=8192 vite build --mode development",
+    "build": "node scripts/check-worker-global-scope.mjs && NODE_OPTIONS=--max-old-space-size=8192 vite build",
+    "build:dev": "node scripts/check-worker-global-scope.mjs && NODE_OPTIONS=--max-old-space-size=8192 vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix-order": "node scripts/fix-use-before-define.mjs",
     "lint:fix-order:dry": "node scripts/fix-use-before-define.mjs --dry-run",
     "lint:fix-order:check": "node scripts/fix-use-before-define.mjs --check",
+    "check:worker-globals": "node scripts/check-worker-global-scope.mjs",
     "format": "prettier --write ."
   },
+
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.48",
     "@ai-sdk/react": "^3.0.193",
