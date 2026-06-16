@@ -68,6 +68,8 @@ export interface MergedSpan {
   missingDays: number;
   /** Distinct trainees with at least one gap inside this span. */
   trainees: number;
+  /** Distinct trainee IDs with at least one gap inside this span. */
+  traineeIds: string[];
 }
 
 /**
@@ -100,12 +102,17 @@ export function mergeRanges(spans: SpanInput[], bridgeDays = 7): MergedSpan[] {
         endISO: s.endISO,
         missingDays: s.missingDays,
         trainees: 1,
+        traineeIds: [],
         traineeSet: set,
       });
     }
   }
-  return acc.map(({ traineeSet: _omit, ...m }) => m);
+  return acc.map(({ traineeSet, ...m }) => ({
+    ...m,
+    traineeIds: Array.from(traineeSet),
+  }));
 }
+
 
 export type SyncPriority = "coverage" | "recency" | "trainees";
 
