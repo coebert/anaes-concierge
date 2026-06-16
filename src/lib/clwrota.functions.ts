@@ -1816,12 +1816,15 @@ export async function performRotaSync(
     const profByExtId = new Map<string, string>();
     const profByName = new Map<string, string>();
     const profById = new Map<string, { grade: string | null; training_level: string | null }>();
+    const nameByStaffId = new Map<string, string>();
     for (const p of profiles ?? []) {
       if (p.email) profByEmail.set(p.email.toLowerCase(), p.id);
       if (p.clwrota_external_id) profByExtId.set(String(p.clwrota_external_id), p.id);
       if (p.full_name) profByName.set(p.full_name.toLowerCase().trim(), p.id);
       profById.set(p.id, { grade: p.grade ?? null, training_level: p.training_level ?? null });
+      nameByStaffId.set(p.id, p.full_name ?? p.email ?? p.id);
     }
+
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
     // Merge admin-configured aliases so the same lookup chain (exact match,
