@@ -14,7 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, User } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  User,
+} from "lucide-react";
 import { cn, parseDateLocal, toISODateLocal } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 
