@@ -611,7 +611,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h2
             className={cn(
               "text-xl font-semibold",
@@ -626,13 +626,12 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
           <p className="text-sm text-muted-foreground">
             {profile?.grade ?? "—"}
             {profile?.grade === "trainee" ? ` · ${profile?.training_level || "Level unknown"}` : ""}
-            
           </p>
         </div>
         <WeekPicker weekStart={weekStart} onChange={setWeekStart} />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-7">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         {days.map((d) => {
           const dayIso = iso(d);
           const dayAssigns = assigns?.filter((a) => a.session_date === dayIso) ?? [];
@@ -642,10 +641,10 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
           const isToday = dayIso === iso(new Date());
           return (
             <Card key={dayIso} className={cn(isToday && "ring-2 ring-primary")}>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">{fmt(d)}</div>
-                  {isToday && <Badge variant="default" className="text-[9px]">Today</Badge>}
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 text-sm font-medium">{fmt(d)}</div>
+                  {isToday && <Badge variant="default" className="shrink-0 text-[9px]">Today</Badge>}
                 </div>
                 {dayLeave.map((l) => (
                   <div key={l.id} className="rounded bg-amber-500/10 p-2 text-xs">
@@ -653,40 +652,42 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                     <span className="text-muted-foreground">{l.status}</span>
                   </div>
                 ))}
-                {(["am", "pm"] as SessionHalf[]).map((sh) => {
-                  const a = dayAssigns.find((x) => x.session === sh);
-                  const session = a && ts?.find((s) => s.id === a.theatre_session_id);
-                  const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
-                  const spec = session && specs?.find((s) => s.id === session.specialty_id);
-                  return (
-                    <div key={sh} className="rounded border p-2 text-xs">
-                      <div className="text-[10px] uppercase text-muted-foreground">{sh}</div>
-                      {a ? (
-                        <div className="space-y-0.5">
-                          <div className="font-medium">{theatre?.name ?? "—"}</div>
-                          {session?.is_non_sag && (
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                              title="NHH list covered as part of NHS job plan (non-SAG)"
-                            >
-                              Non-SAG
+                <div className="grid grid-cols-1 gap-2">
+                  {(["am", "pm"] as SessionHalf[]).map((sh) => {
+                    const a = dayAssigns.find((x) => x.session === sh);
+                    const session = a && ts?.find((s) => s.id === a.theatre_session_id);
+                    const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
+                    const spec = session && specs?.find((s) => s.id === session.specialty_id);
+                    return (
+                      <div key={sh} className="rounded border p-3 text-xs">
+                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{sh}</div>
+                        {a ? (
+                          <div className="space-y-1">
+                            <div className="min-w-0 truncate font-medium">{theatre?.name ?? "—"}</div>
+                            {session?.is_non_sag && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                title="NHH list covered as part of NHS job plan (non-SAG)"
+                              >
+                                Non-SAG
+                              </Badge>
+                            )}
+                            {spec && <div className="min-w-0 truncate text-muted-foreground">{spec.name}</div>}
+                            {session?.surgical_consultant && (
+                              <div className="min-w-0 truncate text-muted-foreground">{session.surgical_consultant}</div>
+                            )}
+                            <Badge variant="outline" className="text-[9px]">
+                              {a.role_on_list}
                             </Badge>
-                          )}
-                          {spec && <div className="text-muted-foreground">{spec.name}</div>}
-                          {session?.surgical_consultant && (
-                            <div className="text-muted-foreground">{session.surgical_consultant}</div>
-                          )}
-                          <Badge variant="outline" className="text-[9px]">
-                            {a.role_on_list}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <div className="text-muted-foreground/60">—</div>
-                      )}
-                    </div>
-                  );
-                })}
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground/60">—</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
           );
