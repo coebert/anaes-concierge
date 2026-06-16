@@ -60,7 +60,7 @@ function fold(line: string) {
 const TITLE_CASE = (s: string) =>
   s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-export const Route = createFileRoute("/api/public/calendar/$token.ics")({
+export const Route = createFileRoute("/api/public/calendar/$token")({
   server: {
     handlers: {
       GET: async ({ params }) => {
