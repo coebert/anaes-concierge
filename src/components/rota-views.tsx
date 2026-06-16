@@ -543,6 +543,14 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
 export function StaffWeekView({ staffId }: { staffId: string }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const toggleDay = (dayIso: string) => {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayIso)) next.delete(dayIso);
+      else next.add(dayIso);
+      return next;
+    });
+  };
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
