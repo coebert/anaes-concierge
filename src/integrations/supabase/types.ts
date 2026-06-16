@@ -220,6 +220,30 @@ export type Database = {
         }
         Relationships: []
       }
+      clwrota_sync_rate_limit: {
+        Row: {
+          last_attempt_at: string | null
+          last_request_id: number | null
+          min_interval_seconds: number
+          step: string
+          updated_at: string
+        }
+        Insert: {
+          last_attempt_at?: string | null
+          last_request_id?: number | null
+          min_interval_seconds?: number
+          step: string
+          updated_at?: string
+        }
+        Update: {
+          last_attempt_at?: string | null
+          last_request_id?: number | null
+          min_interval_seconds?: number
+          step?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clwrota_sync_state: {
         Row: {
           auto_reclassify_trainee_solo: boolean
@@ -1169,6 +1193,11 @@ export type Database = {
         Returns: string
       }
       trigger_clwrota_sync: { Args: { p_step: string }; Returns: number }
+      trigger_clwrota_sync_all_rate_limited: { Args: never; Returns: Json }
+      trigger_clwrota_sync_rate_limited: {
+        Args: { p_step: string }
+        Returns: number
+      }
       trigger_clwrota_sync_with_query: {
         Args: { p_query?: string; p_step: string }
         Returns: number
