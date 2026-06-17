@@ -276,6 +276,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     "consultant_in_charge",
     "obstetrics", "obstetrics_2nd",
     "icu_consultant_oncall", "icu_ct2_plus", "icu_trainee",
+    "general_consultant_oncall", "registrar_oncall", "sho_oncall",
   ] as const;
   const { data: extraDuties } = useQuery({
     queryKey: ["extra-duties", startIso, endIso],
