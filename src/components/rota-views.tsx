@@ -533,6 +533,13 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                 tint: "bg-cyan-500/5",
                 duties: ["icu_consultant_oncall", "icu_ct2_plus", "icu_trainee"],
               },
+              {
+                key: "oncall",
+                label: "On-call",
+                sub: "General hospital cover",
+                tint: "bg-amber-500/5",
+                duties: ["general_consultant_oncall", "registrar_oncall", "sho_oncall"],
+              },
             ] as const).map((row) => (
               <tr key={row.key} className={cn("align-top", row.tint)}>
                 <td className="border-r border-t p-2 font-medium whitespace-nowrap">
