@@ -926,7 +926,23 @@ export function SpecialtyLegend() {
 
   if (!specs?.length) return null;
 
-  const sorted = [...specs].sort((a, b) => a.name.localeCompare(b.name));
+  // Group by colour key so "Ortho", "Orthopedics", "Trauma" etc. share one swatch
+  const groups = new Map<string, { key: string; names: string[]; tone: ReturnType<typeof specialtyTone> }>();
+  for (const sp of specs) {
+    const ck = specialtyColorKey(sp.name);
+    const key = ck ?? "neutral";
+    const existing = groups.get(key);
+    if (existing) {
+      existing.names.push(sp.name);
+    } else {
+      groups.set(key, { key, names: [sp.name], tone: specialtyTone(sp.name) });
+    }
+  }
+
+  // Sort groups alphabetically by their first (canonical) name
+  const sortedGroups = Array.from(groups.values()).sort((a, b) =>
+    a.names[0].localeCompare(b.names[0]),
+  );
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -936,12 +952,12 @@ export function SpecialtyLegend() {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-1.5">
-          {sorted.map((sp) => {
-            const tone = specialtyTone(sp.name);
+          {sortedGroups.map((g) => {
+            const label = g.names.sort((a, b) => a.localeCompare(b)).join(" / ");
             return (
-              <span key={sp.id} className="inline-flex items-center gap-1">
-                <span className={cn("h-2.5 w-2.5 rounded-sm", tone.swatch)} />
-                <span className={cn(tone.label)}>{sp.name}</span>
+              <span key={g.key} className="inline-flex items-center gap-1">
+                <span className={cn("h-2.5 w-2.5 rounded-sm", g.tone.swatch)} />
+                <span className={cn(g.tone.label)}>{label}</span>
               </span>
             );
           })}
