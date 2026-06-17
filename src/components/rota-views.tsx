@@ -507,8 +507,6 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
             ))}
             {/* Obstetrics and ICU */}
             {([
-            {([
-              {
               {
                 key: "obstetrics",
                 label: "Obstetrics / Labour ward",
