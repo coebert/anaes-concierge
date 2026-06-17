@@ -131,3 +131,15 @@ export function specialtyTone(name: string | null | undefined): SpecialtyTone {
   const key = FALLBACK_ORDER[hashString(name.toLowerCase()) % FALLBACK_ORDER.length];
   return PALETTE[key];
 }
+
+/**
+ * Return the palette key for a specialty name, or undefined if unrecognised
+ * (neutral). Useful for grouping specialties by colour in legends.
+ */
+export function specialtyColorKey(name: string | null | undefined): keyof typeof PALETTE | undefined {
+  if (!name) return undefined;
+  for (const [re, key] of KEYWORD_MAP) {
+    if (re.test(name)) return key;
+  }
+  return FALLBACK_ORDER[hashString(name.toLowerCase()) % FALLBACK_ORDER.length];
+}
