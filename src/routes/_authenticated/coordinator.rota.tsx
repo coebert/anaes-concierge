@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn, parseDateLocal, formatDateLongGB, toISODateLocal } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { useAuth } from "@/lib/auth-context";
+import { specialtyTone } from "@/lib/specialty-colors";
 import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
@@ -312,6 +313,8 @@ function RotaGridPage() {
                       const ts = cellSession(t.id, iso(d), s);
                       const assigns = cellAssignments(ts?.id);
                       const isPm = s === "pm";
+                      const spec = specialtyName(ts?.specialty_id ?? null);
+                      const tone = specialtyTone(spec);
                       return (
                         <td
                           key={t.id + iso(d) + s}
@@ -321,6 +324,7 @@ function RotaGridPage() {
                           className={cn(
                             "min-w-[110px] cursor-pointer border-b p-1.5 hover:bg-accent/40",
                             isPm ? "border-r" : "border-r border-r-border/30",
+                            ts && tone.cell,
                           )}
                         >
                           {ts ? (
@@ -334,8 +338,8 @@ function RotaGridPage() {
                                   Non-SAG
                                 </Badge>
                               )}
-                              {specialtyName(ts.specialty_id) && (
-                                <div className="font-medium truncate">{specialtyName(ts.specialty_id)}</div>
+                              {spec && (
+                                <div className={cn("font-medium truncate", tone.label)}>{spec}</div>
                               )}
                               {ts.surgical_consultant && (
                                 <div className="text-[10px] text-muted-foreground truncate">
