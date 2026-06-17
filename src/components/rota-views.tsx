@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { cn, parseDateLocal, toISODateLocal } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { specialtyTone } from "@/lib/specialty-colors";
+import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
 type SessionHalf = "am" | "pm";
 
