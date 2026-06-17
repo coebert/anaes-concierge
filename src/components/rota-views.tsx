@@ -283,7 +283,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
       const { data, error } = await supabase
         .from("rota_assignments")
         .select("id,staff_id,session,session_date,duty_type")
-        .in("duty_type", extraDutyTypes as unknown as string[])
+        .in("duty_type", [...extraDutyTypes])
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
