@@ -347,12 +347,14 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                     const assigns = cellAssigns(ts?.id);
                     const isPm = s === "pm";
                     const spec = specName(ts?.specialty_id ?? null);
+                    const tone = specialtyTone(spec);
                     return (
                       <td
                         key={t.id + iso(d) + s}
                         className={cn(
-                          "min-w-[110px] border-b p-1.5 align-top",
+                          "min-w-[110px] border-b p-1.5 align-top transition-colors",
                           isPm ? "border-r" : "border-r border-r-border/30",
+                          ts && tone.cell,
                         )}
                       >
                         {ts ? (
@@ -366,7 +368,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                 Non-SAG
                               </Badge>
                             )}
-                            {spec && <div className="font-bold truncate text-green-600 dark:text-green-400">{spec}</div>}
+                            {spec && <div className={cn("font-bold truncate", tone.label)}>{spec}</div>}
                             {ts.surgical_consultant && (
                               <div className="text-[10px] text-muted-foreground truncate">
                                 {ts.surgical_consultant}
