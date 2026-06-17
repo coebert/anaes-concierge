@@ -338,8 +338,8 @@ function RotaGridPage() {
                                   Non-SAG
                                 </Badge>
                               )}
-                              {specialtyName(ts.specialty_id) && (
-                                <div className="font-medium truncate">{specialtyName(ts.specialty_id)}</div>
+                              {spec && (
+                                <div className={cn("font-medium truncate", tone.label)}>{spec}</div>
                               )}
                               {ts.surgical_consultant && (
                                 <div className="text-[10px] text-muted-foreground truncate">
