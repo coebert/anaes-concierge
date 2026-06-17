@@ -689,8 +689,9 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                       const session = a && ts?.find((s) => s.id === a.theatre_session_id);
                       const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
                       const spec = session && specs?.find((s) => s.id === session.specialty_id);
+                      const tone = specialtyTone(spec?.name ?? null);
                       return (
-                        <div key={sh} className="rounded border p-3 text-xs">
+                        <div key={sh} className={cn("rounded border p-3 text-xs transition-colors", a && tone.cell)}>
                           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{sh}</div>
                           {a ? (
                             <div className="space-y-1">
@@ -704,7 +705,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                                   Non-SAG
                                 </Badge>
                               )}
-                              {spec && <div className="min-w-0 truncate text-muted-foreground">{spec.name}</div>}
+                              {spec && <div className={cn("min-w-0 truncate font-medium", tone.label)}>{spec.name}</div>}
                               {session?.surgical_consultant && (
                                 <div className="min-w-0 truncate text-muted-foreground">{session.surgical_consultant}</div>
                               )}
