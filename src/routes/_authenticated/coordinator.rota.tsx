@@ -313,6 +313,8 @@ function RotaGridPage() {
                       const ts = cellSession(t.id, iso(d), s);
                       const assigns = cellAssignments(ts?.id);
                       const isPm = s === "pm";
+                      const spec = specialtyName(ts?.specialty_id ?? null);
+                      const tone = specialtyTone(spec);
                       return (
                         <td
                           key={t.id + iso(d) + s}
@@ -322,6 +324,7 @@ function RotaGridPage() {
                           className={cn(
                             "min-w-[110px] cursor-pointer border-b p-1.5 hover:bg-accent/40",
                             isPm ? "border-r" : "border-r border-r-border/30",
+                            ts && tone.cell,
                           )}
                         >
                           {ts ? (
