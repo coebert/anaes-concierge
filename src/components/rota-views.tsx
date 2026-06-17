@@ -774,3 +774,35 @@ export function StaffPicker({
     </Select>
   );
 }
+
+/* --------------------- Specialty colour legend --------------------- */
+
+export function SpecialtyLegend() {
+  const { data: specs } = useQuery({
+    queryKey: ["specialties-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("specialties").select("id,name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (!specs?.length) return null;
+
+  const sorted = [...specs].sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <span className="font-medium text-foreground">Specialties:</span>
+      {sorted.map((sp) => {
+        const tone = specialtyTone(sp.name);
+        return (
+          <span key={sp.id} className="inline-flex items-center gap-1">
+            <span className={cn("h-2.5 w-2.5 rounded-sm", tone.swatch)} />
+            <span className={cn(tone.label)}>{sp.name}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
