@@ -272,6 +272,29 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
     },
   });
 
+  const extraDutyTypes = [
+    "consultant_in_charge",
+    "obstetrics", "obstetrics_2nd",
+    "icu_consultant_oncall", "icu_ct2_plus", "icu_trainee",
+  ] as const;
+  const { data: extraDuties } = useQuery({
+    queryKey: ["extra-duties", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,duty_type")
+        .in("duty_type", [...extraDutyTypes])
+        .in("session", ["am", "pm"])
+        .gte("session_date", startIso).lte("session_date", endIso);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; staff_id: string; session: SessionHalf; session_date: string;
+        duty_type: string;
+      }>;
+    },
+  });
+
+
   const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
     queryKey: ["staff-active-with-grade-safe"],
@@ -486,8 +509,106 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                 )}
               </tr>
             ))}
+            {/* Consultant in charge / Obstetrics / ICU — aggregated AM/PM rows. */}
+            {([
+              {
+                key: "consultant_in_charge",
+                label: "Consultant in charge",
+                sub: "Site lead for the session",
+                tint: "bg-rose-500/5",
+                duties: ["consultant_in_charge"],
+              },
+              {
+                key: "obstetrics",
+                label: "Obstetrics / Labour ward",
+                sub: "1st + 2nd on-call",
+                tint: "bg-pink-500/5",
+                duties: ["obstetrics", "obstetrics_2nd"],
+              },
+              {
+                key: "icu",
+                label: "ICU",
+                sub: "Consultant + trainee cover",
+                tint: "bg-cyan-500/5",
+                duties: ["icu_consultant_oncall", "icu_ct2_plus", "icu_trainee"],
+              },
+            ] as const).map((row) => (
+              <tr key={row.key} className={cn("align-top", row.tint)}>
+                <td className="border-r border-t p-2 font-medium whitespace-nowrap">
+                  {row.label}
+                  <div className="text-[10px] text-muted-foreground">{row.sub}</div>
+                </td>
+                {days.flatMap((d) =>
+                  (["am", "pm"] as SessionHalf[]).map((s) => {
+                    const dayIso = iso(d);
+                    const cell = (extraDuties ?? []).filter(
+                      (a) =>
+                        (row.duties as readonly string[]).includes(a.duty_type) &&
+                        a.session_date === dayIso &&
+                        a.session === s,
+                    );
+                    const sorted = [...cell].sort(
+                      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+                    );
+                    const isPm = s === "pm";
+                    return (
+                      <td
+                        key={row.key + dayIso + s}
+                        className={cn(
+                          "min-w-[110px] border-b border-t p-1.5 align-top",
+                          isPm ? "border-r" : "border-r border-r-border/30",
+                        )}
+                      >
+                        {sorted.length > 0 ? (
+                          <div className="space-y-1">
+                            {sorted.map((a) => {
+                              const sp = staffById(a.staff_id);
+                              const isConsultant = sp?.grade === "consultant";
+                              const isTrainee = sp?.grade === "trainee";
+                              const tag =
+                                a.duty_type === "obstetrics_2nd"
+                                  ? "2nd"
+                                  : a.duty_type === "icu_consultant_oncall"
+                                  ? "Cons"
+                                  : a.duty_type === "icu_ct2_plus"
+                                  ? "CT2+"
+                                  : a.duty_type === "icu_trainee"
+                                  ? "Trn"
+                                  : null;
+                              return (
+                                <Link
+                                  key={a.id}
+                                  to="/calendar/staff/$staffId"
+                                  params={{ staffId: a.staff_id }}
+                                  className={cn(
+                                    "block truncate text-[10px] hover:underline",
+                                    isConsultant && "font-bold",
+                                    isTrainee && "text-blue-600 dark:text-blue-400",
+                                  )}
+                                >
+                                  {tag && (
+                                    <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
+                                      {tag}
+                                    </Badge>
+                                  )}
+                                  {staffName(a.staff_id)}
+                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground/40 text-[10px]">—</div>
+                        )}
+                      </td>
+                    );
+                  }),
+                )}
+              </tr>
+            ))}
             {/* NHH 1st On-call — out-of-hours cover for New Hall Hospital.
                 Spans the whole day so we render one cell per date (colSpan=2). */}
+
             <tr className="align-top bg-purple-500/5">
               <td className="border-r border-t p-2 font-medium whitespace-nowrap">
                 NHH 1st On-call
