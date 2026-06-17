@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
@@ -913,6 +914,7 @@ export function StaffPicker({
 /* --------------------- Specialty colour legend --------------------- */
 
 export function SpecialtyLegend() {
+  const [open, setOpen] = useState(true);
   const { data: specs } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
@@ -927,17 +929,24 @@ export function SpecialtyLegend() {
   const sorted = [...specs].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-      <span className="font-medium text-foreground">Specialties:</span>
-      {sorted.map((sp) => {
-        const tone = specialtyTone(sp.name);
-        return (
-          <span key={sp.id} className="inline-flex items-center gap-1">
-            <span className={cn("h-2.5 w-2.5 rounded-sm", tone.swatch)} />
-            <span className={cn(tone.label)}>{sp.name}</span>
-          </span>
-        );
-      })}
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-foreground hover:opacity-80 transition-opacity cursor-pointer">
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        <span>Specialties</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-1.5">
+          {sorted.map((sp) => {
+            const tone = specialtyTone(sp.name);
+            return (
+              <span key={sp.id} className="inline-flex items-center gap-1">
+                <span className={cn("h-2.5 w-2.5 rounded-sm", tone.swatch)} />
+                <span className={cn(tone.label)}>{sp.name}</span>
+              </span>
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
