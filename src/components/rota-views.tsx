@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn, parseDateLocal, toISODateLocal } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+import { specialtyTone } from "@/lib/specialty-colors";
 
 type SessionHalf = "am" | "pm";
 
@@ -346,12 +347,14 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                     const assigns = cellAssigns(ts?.id);
                     const isPm = s === "pm";
                     const spec = specName(ts?.specialty_id ?? null);
+                    const tone = specialtyTone(spec);
                     return (
                       <td
                         key={t.id + iso(d) + s}
                         className={cn(
-                          "min-w-[110px] border-b p-1.5 align-top",
+                          "min-w-[110px] border-b p-1.5 align-top transition-colors",
                           isPm ? "border-r" : "border-r border-r-border/30",
+                          ts && tone.cell,
                         )}
                       >
                         {ts ? (
@@ -365,7 +368,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                 Non-SAG
                               </Badge>
                             )}
-                            {spec && <div className="font-bold truncate text-green-600 dark:text-green-400">{spec}</div>}
+                            {spec && <div className={cn("font-bold truncate", tone.label)}>{spec}</div>}
                             {ts.surgical_consultant && (
                               <div className="text-[10px] text-muted-foreground truncate">
                                 {ts.surgical_consultant}
@@ -686,8 +689,9 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                       const session = a && ts?.find((s) => s.id === a.theatre_session_id);
                       const theatre = session && theatres?.find((t) => t.id === session.theatre_id);
                       const spec = session && specs?.find((s) => s.id === session.specialty_id);
+                      const tone = specialtyTone(spec?.name ?? null);
                       return (
-                        <div key={sh} className="rounded border p-3 text-xs">
+                        <div key={sh} className={cn("rounded border p-3 text-xs transition-colors", a && tone.cell)}>
                           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{sh}</div>
                           {a ? (
                             <div className="space-y-1">
@@ -701,7 +705,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                                   Non-SAG
                                 </Badge>
                               )}
-                              {spec && <div className="min-w-0 truncate text-muted-foreground">{spec.name}</div>}
+                              {spec && <div className={cn("min-w-0 truncate font-medium", tone.label)}>{spec.name}</div>}
                               {session?.surgical_consultant && (
                                 <div className="min-w-0 truncate text-muted-foreground">{session.surgical_consultant}</div>
                               )}
