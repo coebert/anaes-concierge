@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, buildDays,
+  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, SpecialtyLegend, buildDays,
   type ViewMode,
 } from "@/components/rota-views";
 
