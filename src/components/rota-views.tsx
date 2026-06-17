@@ -582,6 +582,12 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                   ? "CT2+"
                                   : a.duty_type === "icu_trainee"
                                   ? "Trn"
+                                  : a.duty_type === "general_consultant_oncall"
+                                  ? "Cons"
+                                  : a.duty_type === "registrar_oncall"
+                                  ? "Reg"
+                                  : a.duty_type === "sho_oncall"
+                                  ? "SHO"
                                   : null;
                               return (
                                 <Link
