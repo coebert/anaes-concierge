@@ -352,6 +352,61 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
 
           </thead>
           <tbody>
+            {/* Consultant in charge */}
+            <tr key="consultant_in_charge" className="align-top bg-rose-500/5">
+              <td className="border-r p-2 font-medium whitespace-nowrap">
+                Consultant in charge
+                <div className="text-[10px] text-muted-foreground">Site lead for the session</div>
+              </td>
+              {days.flatMap((d) =>
+                (["am", "pm"] as SessionHalf[]).map((s) => {
+                  const dayIso = iso(d);
+                  const cell = (extraDuties ?? []).filter(
+                    (a) => a.duty_type === "consultant_in_charge" && a.session_date === dayIso && a.session === s,
+                  );
+                  const sorted = [...cell].sort(
+                    (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+                  );
+                  const isPm = s === "pm";
+                  return (
+                    <td
+                      key={"consultant_in_charge-" + dayIso + s}
+                      className={cn(
+                        "min-w-[110px] border-b p-1.5 align-top",
+                        isPm ? "border-r" : "border-r border-r-border/30",
+                      )}
+                    >
+                      {sorted.length > 0 ? (
+                        <div className="space-y-1">
+                          {sorted.map((a) => {
+                            const sp = staffById(a.staff_id);
+                            const isConsultant = sp?.grade === "consultant";
+                            const isTrainee = sp?.grade === "trainee";
+                            return (
+                              <Link
+                                key={a.id}
+                                to="/calendar/staff/$staffId"
+                                params={{ staffId: a.staff_id }}
+                                className={cn(
+                                  "block truncate text-[10px] hover:underline",
+                                  isConsultant && "font-bold",
+                                  isTrainee && "text-blue-600 dark:text-blue-400",
+                                )}
+                              >
+                                {staffName(a.staff_id)}
+                                {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-muted-foreground/40 text-[10px]">—</div>
+                      )}
+                    </td>
+                  );
+                }),
+              )}
+            </tr>
             {theatres?.map((t) => (
               <tr key={t.id} className="align-top">
                 <td className="border-r p-2 font-medium whitespace-nowrap">
@@ -450,74 +505,10 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                 )}
               </tr>
             ))}
-            {/* SPA and Admin sessions — non-clinical, broken down per AM/PM. */}
+            {/* Obstetrics and ICU */}
             {([
-              { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
-              { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
-            ] as const).map((row) => (
-              <tr key={row.key} className={cn("align-top", row.tint)}>
-                <td className="border-r border-t p-2 font-medium whitespace-nowrap">
-                  {row.label}
-                  <div className="text-[10px] text-muted-foreground">{row.sub}</div>
-                </td>
-                {days.flatMap((d) =>
-                  (["am", "pm"] as SessionHalf[]).map((s) => {
-                    const dayIso = iso(d);
-                    const cell = (spaAdmin ?? [])
-                      .filter((a) => a.duty_type === row.key && a.session_date === dayIso && a.session === s);
-                    const sorted = [...cell].sort(
-                      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
-                    );
-                    const isPm = s === "pm";
-                    return (
-                      <td
-                        key={row.key + dayIso + s}
-                        className={cn(
-                          "min-w-[110px] border-b border-t p-1.5 align-top",
-                          isPm ? "border-r" : "border-r border-r-border/30",
-                        )}
-                      >
-                        {sorted.length > 0 ? (
-                          <div className="space-y-1">
-                            {sorted.map((a) => {
-                              const sp = staffById(a.staff_id);
-                              const isConsultant = sp?.grade === "consultant";
-                              const isTrainee = sp?.grade === "trainee";
-                              return (
-                                <Link
-                                  key={a.id}
-                                  to="/calendar/staff/$staffId"
-                                  params={{ staffId: a.staff_id }}
-                                  className={cn(
-                                    "block truncate text-[10px] hover:underline",
-                                    isConsultant && "font-bold",
-                                    isTrainee && "text-blue-600 dark:text-blue-400",
-                                  )}
-                                >
-                                  {staffName(a.staff_id)}
-                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground/40 text-[10px]">—</div>
-                        )}
-                      </td>
-                    );
-                  }),
-                )}
-              </tr>
-            ))}
-            {/* Consultant in charge / Obstetrics / ICU — aggregated AM/PM rows. */}
             {([
               {
-                key: "consultant_in_charge",
-                label: "Consultant in charge",
-                sub: "Site lead for the session",
-                tint: "bg-rose-500/5",
-                duties: ["consultant_in_charge"],
-              },
               {
                 key: "obstetrics",
                 label: "Obstetrics / Labour ward",
@@ -539,7 +530,7 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                   <div className="text-[10px] text-muted-foreground">{row.sub}</div>
                 </td>
                 {days.flatMap((d) =>
-                  (["am", "pm"] as SessionHalf[]).map((s) => {
+            ] as const).map((row) => (
                     const dayIso = iso(d);
                     const cell = (extraDuties ?? []).filter(
                       (a) =>
@@ -591,6 +582,65 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                                       {tag}
                                     </Badge>
                                   )}
+                                  {staffName(a.staff_id)}
+                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground/40 text-[10px]">—</div>
+                        )}
+                      </td>
+                    );
+                  }),
+                )}
+              </tr>
+            ))}
+            {/* SPA and Admin sessions — non-clinical, broken down per AM/PM. */}
+            {([
+              { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
+              { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
+            ] as const).map((row) => (
+              <tr key={row.key} className={cn("align-top", row.tint)}>
+                <td className="border-r border-t p-2 font-medium whitespace-nowrap">
+                  {row.label}
+                  <div className="text-[10px] text-muted-foreground">{row.sub}</div>
+                </td>
+                {days.flatMap((d) =>
+                  (["am", "pm"] as SessionHalf[]).map((s) => {
+                    const dayIso = iso(d);
+                    const cell = (spaAdmin ?? [])
+                      .filter((a) => a.duty_type === row.key && a.session_date === dayIso && a.session === s);
+                    const sorted = [...cell].sort(
+                      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
+                    );
+                    const isPm = s === "pm";
+                    return (
+                      <td
+                        key={row.key + dayIso + s}
+                        className={cn(
+                          "min-w-[110px] border-b border-t p-1.5 align-top",
+                          isPm ? "border-r" : "border-r border-r-border/30",
+                        )}
+                      >
+                        {sorted.length > 0 ? (
+                          <div className="space-y-1">
+                            {sorted.map((a) => {
+                              const sp = staffById(a.staff_id);
+                              const isConsultant = sp?.grade === "consultant";
+                              const isTrainee = sp?.grade === "trainee";
+                              return (
+                                <Link
+                                  key={a.id}
+                                  to="/calendar/staff/$staffId"
+                                  params={{ staffId: a.staff_id }}
+                                  className={cn(
+                                    "block truncate text-[10px] hover:underline",
+                                    isConsultant && "font-bold",
+                                    isTrainee && "text-blue-600 dark:text-blue-400",
+                                  )}
+                                >
                                   {staffName(a.staff_id)}
                                   {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
                                 </Link>
