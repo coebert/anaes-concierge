@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn, parseDateLocal, formatDateLongGB, toISODateLocal } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { useAuth } from "@/lib/auth-context";
+import { specialtyTone } from "@/lib/specialty-colors";
 import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
