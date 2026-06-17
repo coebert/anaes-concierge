@@ -56,6 +56,7 @@ function CalendarPage() {
           <span>= Trainee grade</span>
         </span>
       </div>
+      <SpecialtyLegend />
       <GlobalWeekGrid weekStart={days[0]} days={days} />
     </div>
   );
