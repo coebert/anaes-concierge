@@ -61,7 +61,29 @@ function CalendarPage() {
         </span>
       </div>
       <SpecialtyLegend />
-      <GlobalWeekGrid weekStart={days[0]} days={days} />
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search specialty, consultant, or staff name…"
+          className="pl-8 pr-8"
+        />
+        {search && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={() => setSearch("")}
+            className="absolute right-0.5 top-1/2 h-7 w-7 -translate-y-1/2"
+            aria-label="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      <GlobalWeekGrid weekStart={days[0]} days={days} searchQuery={search} />
+
     </div>
   );
 }
