@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { buildSearchTokens, cellMatchesSearch } from "@/lib/calendar-search";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -195,6 +195,189 @@ export function WeekPicker({
 
 /* --------------------- Global read-only grid --------------------- */
 
+type StaffLite = {
+  id: string;
+  full_name: string;
+  grade: string | null;
+  training_level: string | null;
+};
+
+type TheatreAssignModel = {
+  id: string;
+  staffId: string;
+  fullName: string;
+  grade: string | null;
+  trainingLevel: string | null;
+  roleOnList: string;
+  isSoloTrainee: boolean;
+};
+
+type TheatreCellModel = {
+  key: string;
+  isPm: boolean;
+  hasSession: boolean;
+  isNonSag: boolean;
+  spec: string | undefined;
+  tone: ReturnType<typeof specialtyTone>;
+  surgicalConsultant: string | null;
+  assigns: TheatreAssignModel[];
+  parts: string[];
+};
+
+type StaffListAssignModel = {
+  id: string;
+  staffId: string;
+  fullName: string;
+  grade: string | null;
+  trainingLevel: string | null;
+  tag?: string | null;
+};
+
+type StaffListCellModel = {
+  key: string;
+  isPm: boolean;
+  assigns: StaffListAssignModel[];
+  parts: string[];
+};
+
+type NhhCellModel = {
+  key: string;
+  staff: Array<{ id: string; fullName: string }>;
+  parts: string[];
+};
+
+const TheatreCellContent = memo(function TheatreCellContent({
+  model,
+}: {
+  model: TheatreCellModel;
+}) {
+  if (!model.hasSession) {
+    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
+  }
+  const { spec, tone, surgicalConsultant, assigns, isNonSag } = model;
+  return (
+    <div className="space-y-1">
+      {isNonSag && (
+        <Badge
+          variant="outline"
+          className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+          title="NHH list covered as part of NHS job plan (non-SAG)"
+        >
+          Non-SAG
+        </Badge>
+      )}
+      {spec && <div className={cn("font-bold truncate", tone.label)}>{spec}</div>}
+      {surgicalConsultant && (
+        <div className="text-[10px] text-muted-foreground truncate">
+          {surgicalConsultant}
+        </div>
+      )}
+      {assigns.map((a) => {
+        const isConsultant = a.grade === "consultant";
+        const isTrainee = a.grade === "trainee";
+        const showRoleBadge = !(
+          a.roleOnList === "solo" && (isConsultant || !a.isSoloTrainee)
+        );
+        return (
+          <Link
+            key={a.id}
+            to="/calendar/staff/$staffId"
+            params={{ staffId: a.staffId }}
+            className={cn(
+              "block truncate text-[10px] hover:underline",
+              isConsultant && "font-bold",
+              isTrainee && "text-blue-600 dark:text-blue-400",
+            )}
+          >
+            {showRoleBadge && (
+              <Badge
+                variant={a.roleOnList === "supervising" ? "default" : "outline"}
+                className={cn(
+                  "mr-1 px-1 py-0 text-[9px]",
+                  a.roleOnList === "solo" &&
+                    "bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-400",
+                )}
+              >
+                {a.roleOnList}
+              </Badge>
+            )}
+            {a.fullName}
+            {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
+          </Link>
+        );
+      })}
+    </div>
+  );
+});
+
+const StaffListCellContent = memo(function StaffListCellContent({
+  model,
+}: {
+  model: StaffListCellModel;
+}) {
+  if (model.assigns.length === 0) {
+    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
+  }
+  return (
+    <div className="space-y-1">
+      {model.assigns.map((a) => {
+        const isConsultant = a.grade === "consultant";
+        const isTrainee = a.grade === "trainee";
+        return (
+          <Link
+            key={a.id}
+            to="/calendar/staff/$staffId"
+            params={{ staffId: a.staffId }}
+            className={cn(
+              "block truncate text-[10px] hover:underline",
+              isConsultant && "font-bold",
+              isTrainee && "text-blue-600 dark:text-blue-400",
+            )}
+          >
+            {a.tag && (
+              <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
+                {a.tag}
+              </Badge>
+            )}
+            {a.fullName}
+            {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
+          </Link>
+        );
+      })}
+    </div>
+  );
+});
+
+const NhhCellContent = memo(function NhhCellContent({
+  model,
+}: {
+  model: NhhCellModel;
+}) {
+  if (model.staff.length === 0) {
+    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
+  }
+  return (
+    <div className="space-y-1">
+      <Badge
+        variant="outline"
+        className="px-1 py-0 text-[9px] border-purple-500 text-purple-700 dark:text-purple-300"
+      >
+        OOH
+      </Badge>
+      {model.staff.map((s) => (
+        <Link
+          key={s.id}
+          to="/calendar/staff/$staffId"
+          params={{ staffId: s.id }}
+          className="block truncate text-[10px] font-bold hover:underline"
+        >
+          {s.fullName}
+        </Link>
+      ))}
+    </div>
+  );
+});
+
 export function GlobalWeekGrid({
   weekStart,
   days: daysProp,
@@ -212,10 +395,6 @@ export function GlobalWeekGrid({
   const endIso = iso(days[days.length - 1]);
 
   const searchTokens = useMemo(() => buildSearchTokens(searchQuery), [searchQuery]);
-  const matchesTokens = (parts: Array<string | null | undefined>) =>
-    cellMatchesSearch(searchTokens, parts);
-
-
 
   const { data: theatres } = useQuery({
     queryKey: ["theatres-active"],
@@ -289,12 +468,15 @@ export function GlobalWeekGrid({
     },
   });
 
-  const extraDutyTypes = [
-    "consultant_in_charge",
-    "obstetrics", "obstetrics_2nd",
-    "icu_consultant_oncall", "icu_ct2_plus", "icu_trainee",
-    "general_consultant_oncall", "registrar_oncall", "sho_oncall",
-  ] as const;
+  const extraDutyTypes = useMemo(
+    () => [
+      "consultant_in_charge",
+      "obstetrics", "obstetrics_2nd",
+      "icu_consultant_oncall", "icu_ct2_plus", "icu_trainee",
+      "general_consultant_oncall", "registrar_oncall", "sho_oncall",
+    ] as const,
+    [],
+  );
   const { data: extraDuties } = useQuery({
     queryKey: ["extra-duties", startIso, endIso],
     queryFn: async () => {
@@ -329,18 +511,246 @@ export function GlobalWeekGrid({
     },
   });
 
-  const staffById = (id: string | null) => staff?.find((s) => s.id === id);
-  const staffName = (id: string | null) => staffById(id)?.full_name ?? "—";
-  const specName = (id: string | null) => (id ? specs?.find((s) => s.id === id)?.name : undefined);
-  const cellSession = (theatreId: string, date: string, s: SessionHalf) =>
-    sessions?.find((x) => x.theatre_id === theatreId && x.session_date === date && x.session === s);
+  // Stable lookup map of staff by id. Recomputed only when the staff list changes.
+  const staffMap = useMemo(() => {
+    const m = new Map<string, StaffLite>();
+    for (const s of (staff ?? []) as StaffLite[]) m.set(s.id, s);
+    return m;
+  }, [staff]);
+  const specMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of specs ?? []) m.set(s.id, s.name);
+    return m;
+  }, [specs]);
+
   const gradeRank = (g: string | null | undefined) =>
     g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
-  const cellAssigns = (sessionId?: string) => {
-    const list = sessionId ? assignments?.filter((a) => a.theatre_session_id === sessionId) ?? [] : [];
-    return [...list].sort(
-      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
-    );
+
+  // Precompute per-theatre rows of cell models. Token changes do NOT invalidate
+  // this — only the underlying data does — so memoized cell content components
+  // can bail out and only the outer <td> reflows the dim class while typing.
+  const theatreRows = useMemo(() => {
+    type Theatre = NonNullable<typeof theatres>[number];
+    if (!theatres) return [] as Array<{ theatre: Theatre; cells: TheatreCellModel[] }>;
+    return theatres.map((t) => {
+      const cells: TheatreCellModel[] = [];
+      for (const d of days) {
+        const dayIso = iso(d);
+        for (const sh of ["am", "pm"] as SessionHalf[]) {
+          const ts = sessions?.find(
+            (x) => x.theatre_id === t.id && x.session_date === dayIso && x.session === sh,
+          );
+          const rawAssigns = ts
+            ? (assignments ?? []).filter((a) => a.theatre_session_id === ts.id)
+            : [];
+          const sortedAssigns = [...rawAssigns].sort(
+            (a, b) =>
+              gradeRank(staffMap.get(a.staff_id)?.grade) -
+              gradeRank(staffMap.get(b.staff_id)?.grade),
+          );
+          const hasConsultant = sortedAssigns.some(
+            (x) => staffMap.get(x.staff_id)?.grade === "consultant",
+          );
+          const assignModels: TheatreAssignModel[] = sortedAssigns.map((a) => {
+            const sp = staffMap.get(a.staff_id);
+            const isTrainee = sp?.grade === "trainee";
+            return {
+              id: a.id,
+              staffId: a.staff_id,
+              fullName: sp?.full_name ?? "—",
+              grade: sp?.grade ?? null,
+              trainingLevel: sp?.training_level ?? null,
+              roleOnList: a.role_on_list,
+              isSoloTrainee:
+                !!isTrainee && a.role_on_list === "solo" && !hasConsultant,
+            };
+          });
+          const spec = ts ? specMap.get(ts.specialty_id ?? "") : undefined;
+          const parts: string[] = [];
+          if (spec) parts.push(spec);
+          if (ts?.surgical_consultant) parts.push(ts.surgical_consultant);
+          for (const a of assignModels) parts.push(a.fullName);
+          cells.push({
+            key: t.id + dayIso + sh,
+            isPm: sh === "pm",
+            hasSession: !!ts,
+            isNonSag: !!ts?.is_non_sag,
+            spec,
+            tone: specialtyTone(spec ?? null),
+            surgicalConsultant: ts?.surgical_consultant ?? null,
+            assigns: assignModels,
+            parts,
+          });
+        }
+      }
+      return { theatre: t, cells };
+    });
+  }, [theatres, days, sessions, assignments, staffMap, specMap]);
+
+  const spaAdminRowConfigs = useMemo(
+    () =>
+      [
+        { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
+        { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
+      ] as const,
+    [],
+  );
+
+  const spaAdminRows = useMemo(() => {
+    return spaAdminRowConfigs.map((row) => {
+      const cells: StaffListCellModel[] = [];
+      for (const d of days) {
+        const dayIso = iso(d);
+        for (const sh of ["am", "pm"] as SessionHalf[]) {
+          const raw = (spaAdmin ?? []).filter(
+            (a) => a.duty_type === row.key && a.session_date === dayIso && a.session === sh,
+          );
+          const sorted = [...raw].sort(
+            (a, b) =>
+              gradeRank(staffMap.get(a.staff_id)?.grade) -
+              gradeRank(staffMap.get(b.staff_id)?.grade),
+          );
+          const assigns: StaffListAssignModel[] = sorted.map((a) => {
+            const sp = staffMap.get(a.staff_id);
+            return {
+              id: a.id,
+              staffId: a.staff_id,
+              fullName: sp?.full_name ?? "—",
+              grade: sp?.grade ?? null,
+              trainingLevel: sp?.training_level ?? null,
+            };
+          });
+          cells.push({
+            key: row.key + dayIso + sh,
+            isPm: sh === "pm",
+            assigns,
+            parts: assigns.map((a) => a.fullName),
+          });
+        }
+      }
+      return { row, cells };
+    });
+  }, [spaAdminRowConfigs, days, spaAdmin, staffMap]);
+
+  const extraRowConfigs = useMemo(
+    () =>
+      [
+        {
+          key: "consultant_in_charge",
+          label: "Consultant in charge",
+          sub: "Site lead for the session",
+          tint: "bg-rose-500/5",
+          duties: ["consultant_in_charge"],
+        },
+        {
+          key: "obstetrics",
+          label: "Obstetrics / Labour ward",
+          sub: "1st + 2nd on-call",
+          tint: "bg-pink-500/5",
+          duties: ["obstetrics", "obstetrics_2nd"],
+        },
+        {
+          key: "icu",
+          label: "ICU",
+          sub: "Consultant + trainee cover",
+          tint: "bg-cyan-500/5",
+          duties: ["icu_consultant_oncall", "icu_ct2_plus", "icu_trainee"],
+        },
+        {
+          key: "oncall",
+          label: "On-call",
+          sub: "General hospital cover",
+          tint: "bg-amber-500/5",
+          duties: ["general_consultant_oncall", "registrar_oncall", "sho_oncall"],
+        },
+      ] as const,
+    [],
+  );
+
+  const dutyTag = (duty: string): string | null => {
+    switch (duty) {
+      case "obstetrics_2nd": return "2nd";
+      case "icu_consultant_oncall": return "Cons";
+      case "icu_ct2_plus": return "CT2+";
+      case "icu_trainee": return "Trn";
+      case "general_consultant_oncall": return "Cons";
+      case "registrar_oncall": return "Reg";
+      case "sho_oncall": return "SHO";
+      default: return null;
+    }
+  };
+
+  const extraRows = useMemo(() => {
+    return extraRowConfigs.map((row) => {
+      const cells: StaffListCellModel[] = [];
+      for (const d of days) {
+        const dayIso = iso(d);
+        for (const sh of ["am", "pm"] as SessionHalf[]) {
+          const raw = (extraDuties ?? []).filter(
+            (a) =>
+              (row.duties as readonly string[]).includes(a.duty_type) &&
+              a.session_date === dayIso &&
+              a.session === sh,
+          );
+          const sorted = [...raw].sort(
+            (a, b) =>
+              gradeRank(staffMap.get(a.staff_id)?.grade) -
+              gradeRank(staffMap.get(b.staff_id)?.grade),
+          );
+          const assigns: StaffListAssignModel[] = sorted.map((a) => {
+            const sp = staffMap.get(a.staff_id);
+            return {
+              id: a.id,
+              staffId: a.staff_id,
+              fullName: sp?.full_name ?? "—",
+              grade: sp?.grade ?? null,
+              trainingLevel: sp?.training_level ?? null,
+              tag: dutyTag(a.duty_type),
+            };
+          });
+          cells.push({
+            key: row.key + dayIso + sh,
+            isPm: sh === "pm",
+            assigns,
+            parts: assigns.map((a) => a.fullName),
+          });
+        }
+      }
+      return { row, cells };
+    });
+  }, [extraRowConfigs, days, extraDuties, staffMap]);
+
+  const nhhRow = useMemo(() => {
+    const cells: NhhCellModel[] = [];
+    for (const d of days) {
+      const dayIso = iso(d);
+      const dayAssigns = (nhhOncall ?? []).filter((a) => a.session_date === dayIso);
+      const seen = new Set<string>();
+      const uniqueStaff: Array<{ id: string; fullName: string }> = [];
+      for (const a of dayAssigns) {
+        if (seen.has(a.staff_id)) continue;
+        seen.add(a.staff_id);
+        uniqueStaff.push({
+          id: a.staff_id,
+          fullName: staffMap.get(a.staff_id)?.full_name ?? "—",
+        });
+      }
+      cells.push({
+        key: "nhh-" + dayIso,
+        staff: uniqueStaff,
+        parts: uniqueStaff.map((s) => s.fullName),
+      });
+    }
+    return cells;
+  }, [days, nhhOncall, staffMap]);
+
+  // Dimming helper — cheap string scan, runs per-cell on each keystroke but
+  // only toggles a className on the outer <td>; memoized cell-content
+  // components below skip re-rendering entirely.
+  const dimClass = (hasContent: boolean, parts: string[]) => {
+    if (searchTokens.length === 0) return undefined;
+    if (!hasContent) return "opacity-20";
+    return cellMatchesSearch(searchTokens, parts) ? undefined : "opacity-20";
   };
 
   return (
@@ -370,7 +780,7 @@ export function GlobalWeekGrid({
 
           </thead>
           <tbody>
-            {theatres?.map((t) => (
+            {theatreRows.map(({ theatre: t, cells }) => (
               <tr key={t.id} className="align-top">
                 <td className="border-r p-2 font-medium whitespace-nowrap">
                   {t.name}
@@ -382,338 +792,82 @@ export function GlobalWeekGrid({
                       : "Private (NHH)"}
                   </div>
                 </td>
-                {days.flatMap((d) =>
-                  (["am", "pm"] as SessionHalf[]).map((s) => {
-                    const ts = cellSession(t.id, iso(d), s);
-                    const assigns = cellAssigns(ts?.id);
-                    const isPm = s === "pm";
-                    const spec = specName(ts?.specialty_id ?? null);
-                    const tone = specialtyTone(spec);
-                    const cellMatches = ts
-                      ? matchesTokens([
-                          spec,
-                          ts.surgical_consultant,
-                          ...assigns.map((a) => staffName(a.staff_id)),
-                        ])
-                      : searchTokens.length === 0;
-                    return (
-                      <td
-                        key={t.id + iso(d) + s}
-                        className={cn(
-                          "min-w-[110px] border-b p-1.5 align-top transition-colors",
-                          isPm ? "border-r" : "border-r border-r-border/30",
-                          ts && tone.cell,
-                          !cellMatches && "opacity-20",
-                        )}
-                      >
-
-                        {ts ? (
-                          <div className="space-y-1">
-                            {ts.is_non_sag && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                title="NHH list covered as part of NHS job plan (non-SAG)"
-                              >
-                                Non-SAG
-                              </Badge>
-                            )}
-                            {spec && <div className={cn("font-bold truncate", tone.label)}>{spec}</div>}
-                            {ts.surgical_consultant && (
-                              <div className="text-[10px] text-muted-foreground truncate">
-                                {ts.surgical_consultant}
-                              </div>
-                            )}
-                            {(() => {
-                              const hasConsultant = assigns.some(
-                                (x) => staffById(x.staff_id)?.grade === "consultant",
-                              );
-                              return assigns.map((a) => {
-                                const sp = staffById(a.staff_id);
-                                const isConsultant = sp?.grade === "consultant";
-                                const isTrainee = sp?.grade === "trainee";
-                                const isSoloTrainee = isTrainee && a.role_on_list === "solo" && !hasConsultant;
-                                // Hide the "solo" badge for consultants and for
-                                // trainees who are working alongside a consultant.
-                                const showRoleBadge = !(
-                                  a.role_on_list === "solo" && (isConsultant || !isSoloTrainee)
-                                );
-                                return (
-                                  <Link
-                                    key={a.id}
-                                    to="/calendar/staff/$staffId"
-                                    params={{ staffId: a.staff_id }}
-                                    className={cn(
-                                      "block truncate text-[10px] hover:underline",
-                                      isConsultant && "font-bold",
-                                      isTrainee && "text-blue-600 dark:text-blue-400",
-                                    )}
-                                  >
-                                    {showRoleBadge && (
-                                      <Badge
-                                        variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                        className={cn(
-                                          "mr-1 px-1 py-0 text-[9px]",
-                                          a.role_on_list === "solo" && "bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-400",
-                                        )}
-                                      >
-                                        {a.role_on_list}
-                                      </Badge>
-                                    )}
-                                    {staffName(a.staff_id)}
-                                    {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
-                                  </Link>
-                                );
-                              });
-                            })()}
-
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground/40 text-[10px]">—</div>
-                        )}
-                      </td>
-                    );
-                  }),
-                )}
+                {cells.map((c) => (
+                  <td
+                    key={c.key}
+                    className={cn(
+                      "min-w-[110px] border-b p-1.5 align-top transition-colors",
+                      c.isPm ? "border-r" : "border-r border-r-border/30",
+                      c.hasSession && c.tone.cell,
+                      dimClass(c.hasSession, c.parts),
+                    )}
+                  >
+                    <TheatreCellContent model={c} />
+                  </td>
+                ))}
               </tr>
             ))}
             {/* SPA and Admin sessions — non-clinical, broken down per AM/PM. */}
-            {([
-              { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
-              { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
-            ] as const).map((row) => (
+            {spaAdminRows.map(({ row, cells }) => (
               <tr key={row.key} className={cn("align-top", row.tint)}>
                 <td className="border-r border-t p-2 font-medium whitespace-nowrap">
                   {row.label}
                   <div className="text-[10px] text-muted-foreground">{row.sub}</div>
                 </td>
-                {days.flatMap((d) =>
-                  (["am", "pm"] as SessionHalf[]).map((s) => {
-                    const dayIso = iso(d);
-                    const cell = (spaAdmin ?? [])
-                      .filter((a) => a.duty_type === row.key && a.session_date === dayIso && a.session === s);
-                    const sorted = [...cell].sort(
-                      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
-                    );
-                    const isPm = s === "pm";
-                    const cellMatches =
-                      sorted.length > 0
-                        ? matchesTokens(sorted.map((a) => staffName(a.staff_id)))
-                        : searchTokens.length === 0;
-                    return (
-                      <td
-                        key={row.key + dayIso + s}
-                        className={cn(
-                          "min-w-[110px] border-b border-t p-1.5 align-top",
-                          isPm ? "border-r" : "border-r border-r-border/30",
-                          !cellMatches && "opacity-20",
-                        )}
-                      >
-
-                        {sorted.length > 0 ? (
-                          <div className="space-y-1">
-                            {sorted.map((a) => {
-                              const sp = staffById(a.staff_id);
-                              const isConsultant = sp?.grade === "consultant";
-                              const isTrainee = sp?.grade === "trainee";
-                              return (
-                                <Link
-                                  key={a.id}
-                                  to="/calendar/staff/$staffId"
-                                  params={{ staffId: a.staff_id }}
-                                  className={cn(
-                                    "block truncate text-[10px] hover:underline",
-                                    isConsultant && "font-bold",
-                                    isTrainee && "text-blue-600 dark:text-blue-400",
-                                  )}
-                                >
-                                  {staffName(a.staff_id)}
-                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground/40 text-[10px]">—</div>
-                        )}
-                      </td>
-                    );
-                  }),
-                )}
+                {cells.map((c) => (
+                  <td
+                    key={c.key}
+                    className={cn(
+                      "min-w-[110px] border-b border-t p-1.5 align-top",
+                      c.isPm ? "border-r" : "border-r border-r-border/30",
+                      dimClass(c.assigns.length > 0, c.parts),
+                    )}
+                  >
+                    <StaffListCellContent model={c} />
+                  </td>
+                ))}
               </tr>
             ))}
-            {/* Consultant in charge / Obstetrics / ICU — aggregated AM/PM rows. */}
-            {([
-              {
-                key: "consultant_in_charge",
-                label: "Consultant in charge",
-                sub: "Site lead for the session",
-                tint: "bg-rose-500/5",
-                duties: ["consultant_in_charge"],
-              },
-              {
-                key: "obstetrics",
-                label: "Obstetrics / Labour ward",
-                sub: "1st + 2nd on-call",
-                tint: "bg-pink-500/5",
-                duties: ["obstetrics", "obstetrics_2nd"],
-              },
-              {
-                key: "icu",
-                label: "ICU",
-                sub: "Consultant + trainee cover",
-                tint: "bg-cyan-500/5",
-                duties: ["icu_consultant_oncall", "icu_ct2_plus", "icu_trainee"],
-              },
-              {
-                key: "oncall",
-                label: "On-call",
-                sub: "General hospital cover",
-                tint: "bg-amber-500/5",
-                duties: ["general_consultant_oncall", "registrar_oncall", "sho_oncall"],
-              },
-            ] as const).map((row) => (
+            {/* Consultant in charge / Obstetrics / ICU / On-call rows. */}
+            {extraRows.map(({ row, cells }) => (
               <tr key={row.key} className={cn("align-top", row.tint)}>
                 <td className="border-r border-t p-2 font-medium whitespace-nowrap">
                   {row.label}
                   <div className="text-[10px] text-muted-foreground">{row.sub}</div>
                 </td>
-                {days.flatMap((d) =>
-                  (["am", "pm"] as SessionHalf[]).map((s) => {
-                    const dayIso = iso(d);
-                    const cell = (extraDuties ?? []).filter(
-                      (a) =>
-                        (row.duties as readonly string[]).includes(a.duty_type) &&
-                        a.session_date === dayIso &&
-                        a.session === s,
-                    );
-                    const sorted = [...cell].sort(
-                      (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
-                    );
-                    const isPm = s === "pm";
-                    const cellMatches =
-                      sorted.length > 0
-                        ? matchesTokens(sorted.map((a) => staffName(a.staff_id)))
-                        : searchTokens.length === 0;
-                    return (
-                      <td
-                        key={row.key + dayIso + s}
-                        className={cn(
-                          "min-w-[110px] border-b border-t p-1.5 align-top",
-                          isPm ? "border-r" : "border-r border-r-border/30",
-                          !cellMatches && "opacity-20",
-                        )}
-                      >
-
-                        {sorted.length > 0 ? (
-                          <div className="space-y-1">
-                            {sorted.map((a) => {
-                              const sp = staffById(a.staff_id);
-                              const isConsultant = sp?.grade === "consultant";
-                              const isTrainee = sp?.grade === "trainee";
-                              const tag =
-                                a.duty_type === "obstetrics_2nd"
-                                  ? "2nd"
-                                  : a.duty_type === "icu_consultant_oncall"
-                                  ? "Cons"
-                                  : a.duty_type === "icu_ct2_plus"
-                                  ? "CT2+"
-                                  : a.duty_type === "icu_trainee"
-                                  ? "Trn"
-                                  : a.duty_type === "general_consultant_oncall"
-                                  ? "Cons"
-                                  : a.duty_type === "registrar_oncall"
-                                  ? "Reg"
-                                  : a.duty_type === "sho_oncall"
-                                  ? "SHO"
-                                  : null;
-                              return (
-                                <Link
-                                  key={a.id}
-                                  to="/calendar/staff/$staffId"
-                                  params={{ staffId: a.staff_id }}
-                                  className={cn(
-                                    "block truncate text-[10px] hover:underline",
-                                    isConsultant && "font-bold",
-                                    isTrainee && "text-blue-600 dark:text-blue-400",
-                                  )}
-                                >
-                                  {tag && (
-                                    <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
-                                      {tag}
-                                    </Badge>
-                                  )}
-                                  {staffName(a.staff_id)}
-                                  {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground/40 text-[10px]">—</div>
-                        )}
-                      </td>
-                    );
-                  }),
-                )}
+                {cells.map((c) => (
+                  <td
+                    key={c.key}
+                    className={cn(
+                      "min-w-[110px] border-b border-t p-1.5 align-top",
+                      c.isPm ? "border-r" : "border-r border-r-border/30",
+                      dimClass(c.assigns.length > 0, c.parts),
+                    )}
+                  >
+                    <StaffListCellContent model={c} />
+                  </td>
+                ))}
               </tr>
             ))}
             {/* NHH 1st On-call — out-of-hours cover for New Hall Hospital.
                 Spans the whole day so we render one cell per date (colSpan=2). */}
-
             <tr className="align-top bg-purple-500/5">
               <td className="border-r border-t p-2 font-medium whitespace-nowrap">
                 NHH 1st On-call
                 <div className="text-[10px] text-muted-foreground">Out of hours</div>
               </td>
-              {days.map((d) => {
-                const dayIso = iso(d);
-                const dayAssigns = (nhhOncall ?? []).filter(
-                  (a) => a.session_date === dayIso,
-                );
-                // De-dupe by staff (a consultant may appear under eve+night).
-                const uniqueStaff = Array.from(
-                  new Set(dayAssigns.map((a) => a.staff_id)),
-                );
-                const cellMatches =
-                  uniqueStaff.length > 0
-                    ? matchesTokens(uniqueStaff.map((sid) => staffName(sid)))
-                    : searchTokens.length === 0;
-                return (
-                  <td
-                    key={"nhh-" + dayIso}
-                    colSpan={2}
-                    className={cn(
-                      "min-w-[110px] border-b border-t border-r p-1.5 align-top",
-                      !cellMatches && "opacity-20",
-                    )}
-                  >
-
-                    {uniqueStaff.length > 0 ? (
-                      <div className="space-y-1">
-                        <Badge
-                          variant="outline"
-                          className="px-1 py-0 text-[9px] border-purple-500 text-purple-700 dark:text-purple-300"
-                        >
-                          OOH
-                        </Badge>
-                        {uniqueStaff.map((sid) => (
-                          <Link
-                            key={sid}
-                            to="/calendar/staff/$staffId"
-                            params={{ staffId: sid }}
-                            className="block truncate text-[10px] font-bold hover:underline"
-                          >
-                            {staffName(sid)}
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground/40 text-[10px]">—</div>
-                    )}
-                  </td>
-                );
-              })}
+              {nhhRow.map((c) => (
+                <td
+                  key={c.key}
+                  colSpan={2}
+                  className={cn(
+                    "min-w-[110px] border-b border-t border-r p-1.5 align-top",
+                    dimClass(c.staff.length > 0, c.parts),
+                  )}
+                >
+                  <NhhCellContent model={c} />
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
@@ -721,6 +875,7 @@ export function GlobalWeekGrid({
     </Card>
   );
 }
+
 
 /* --------------------- Per-staff week view --------------------- */
 
