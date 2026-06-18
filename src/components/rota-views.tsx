@@ -397,6 +397,13 @@ export function GlobalWeekGrid({
                     const isPm = s === "pm";
                     const spec = specName(ts?.specialty_id ?? null);
                     const tone = specialtyTone(spec);
+                    const cellMatches = ts
+                      ? matchesTokens([
+                          spec,
+                          ts.surgical_consultant,
+                          ...assigns.map((a) => staffName(a.staff_id)),
+                        ])
+                      : searchTokens.length === 0;
                     return (
                       <td
                         key={t.id + iso(d) + s}
@@ -404,8 +411,10 @@ export function GlobalWeekGrid({
                           "min-w-[110px] border-b p-1.5 align-top transition-colors",
                           isPm ? "border-r" : "border-r border-r-border/30",
                           ts && tone.cell,
+                          !cellMatches && "opacity-20",
                         )}
                       >
+
                         {ts ? (
                           <div className="space-y-1">
                             {ts.is_non_sag && (
