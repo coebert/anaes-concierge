@@ -193,13 +193,37 @@ export function WeekPicker({
 
 /* --------------------- Global read-only grid --------------------- */
 
-export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date; days?: Date[] }) {
+export function GlobalWeekGrid({
+  weekStart,
+  days: daysProp,
+  searchQuery = "",
+}: {
+  weekStart: Date;
+  days?: Date[];
+  searchQuery?: string;
+}) {
   const days = useMemo(
     () => daysProp ?? Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)),
     [weekStart, daysProp],
   );
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
+
+  const searchTokens = useMemo(
+    () =>
+      searchQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+    [searchQuery],
+  );
+  const matchesTokens = (parts: Array<string | null | undefined>) => {
+    if (searchTokens.length === 0) return true;
+    const hay = parts.filter(Boolean).join(" ").toLowerCase();
+    return searchTokens.every((t) => hay.includes(t));
+  };
+
 
   const { data: theatres } = useQuery({
     queryKey: ["theatres-active"],
@@ -373,6 +397,13 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                     const isPm = s === "pm";
                     const spec = specName(ts?.specialty_id ?? null);
                     const tone = specialtyTone(spec);
+                    const cellMatches = ts
+                      ? matchesTokens([
+                          spec,
+                          ts.surgical_consultant,
+                          ...assigns.map((a) => staffName(a.staff_id)),
+                        ])
+                      : searchTokens.length === 0;
                     return (
                       <td
                         key={t.id + iso(d) + s}
@@ -380,8 +411,10 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                           "min-w-[110px] border-b p-1.5 align-top transition-colors",
                           isPm ? "border-r" : "border-r border-r-border/30",
                           ts && tone.cell,
+                          !cellMatches && "opacity-20",
                         )}
                       >
+
                         {ts ? (
                           <div className="space-y-1">
                             {ts.is_non_sag && (
@@ -471,14 +504,20 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                       (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
                     );
                     const isPm = s === "pm";
+                    const cellMatches =
+                      sorted.length > 0
+                        ? matchesTokens(sorted.map((a) => staffName(a.staff_id)))
+                        : searchTokens.length === 0;
                     return (
                       <td
                         key={row.key + dayIso + s}
                         className={cn(
                           "min-w-[110px] border-b border-t p-1.5 align-top",
                           isPm ? "border-r" : "border-r border-r-border/30",
+                          !cellMatches && "opacity-20",
                         )}
                       >
+
                         {sorted.length > 0 ? (
                           <div className="space-y-1">
                             {sorted.map((a) => {
@@ -560,14 +599,20 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                       (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
                     );
                     const isPm = s === "pm";
+                    const cellMatches =
+                      sorted.length > 0
+                        ? matchesTokens(sorted.map((a) => staffName(a.staff_id)))
+                        : searchTokens.length === 0;
                     return (
                       <td
                         key={row.key + dayIso + s}
                         className={cn(
                           "min-w-[110px] border-b border-t p-1.5 align-top",
                           isPm ? "border-r" : "border-r border-r-border/30",
+                          !cellMatches && "opacity-20",
                         )}
                       >
+
                         {sorted.length > 0 ? (
                           <div className="space-y-1">
                             {sorted.map((a) => {
@@ -638,12 +683,20 @@ export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date;
                 const uniqueStaff = Array.from(
                   new Set(dayAssigns.map((a) => a.staff_id)),
                 );
+                const cellMatches =
+                  uniqueStaff.length > 0
+                    ? matchesTokens(uniqueStaff.map((sid) => staffName(sid)))
+                    : searchTokens.length === 0;
                 return (
                   <td
                     key={"nhh-" + dayIso}
                     colSpan={2}
-                    className="min-w-[110px] border-b border-t border-r p-1.5 align-top"
+                    className={cn(
+                      "min-w-[110px] border-b border-t border-r p-1.5 align-top",
+                      !cellMatches && "opacity-20",
+                    )}
                   >
+
                     {uniqueStaff.length > 0 ? (
                       <div className="space-y-1">
                         <Badge
