@@ -209,20 +209,10 @@ export function GlobalWeekGrid({
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
-  const searchTokens = useMemo(
-    () =>
-      searchQuery
-        .toLowerCase()
-        .split(/\s+/)
-        .map((t) => t.trim())
-        .filter(Boolean),
-    [searchQuery],
-  );
-  const matchesTokens = (parts: Array<string | null | undefined>) => {
-    if (searchTokens.length === 0) return true;
-    const hay = parts.filter(Boolean).join(" ").toLowerCase();
-    return searchTokens.every((t) => hay.includes(t));
-  };
+  const searchTokens = useMemo(() => buildSearchTokens(searchQuery), [searchQuery]);
+  const matchesTokens = (parts: Array<string | null | undefined>) =>
+    cellMatchesSearch(searchTokens, parts);
+
 
 
   const { data: theatres } = useQuery({
