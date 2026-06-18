@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { buildSearchTokens, cellMatchesSearch } from "@/lib/calendar-search";
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
