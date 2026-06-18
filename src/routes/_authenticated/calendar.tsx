@@ -18,6 +18,10 @@ function CalendarPage() {
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const [mode, setMode] = useState<ViewMode>("week");
   const [search, setSearch] = useState("");
+  // Defer the value handed to the heavy grid so typing stays snappy even in
+  // month view — React renders the input update at high priority and the
+  // grid re-dims at low priority, coalescing bursts of keystrokes.
+  const deferredSearch = useDeferredValue(search);
   const navigate = useNavigate();
 
   const days = useMemo(() => buildDays(anchor, mode, false), [anchor, mode]);
