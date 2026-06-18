@@ -599,14 +599,20 @@ export function GlobalWeekGrid({
                       (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
                     );
                     const isPm = s === "pm";
+                    const cellMatches =
+                      sorted.length > 0
+                        ? matchesTokens(sorted.map((a) => staffName(a.staff_id)))
+                        : searchTokens.length === 0;
                     return (
                       <td
                         key={row.key + dayIso + s}
                         className={cn(
                           "min-w-[110px] border-b border-t p-1.5 align-top",
                           isPm ? "border-r" : "border-r border-r-border/30",
+                          !cellMatches && "opacity-20",
                         )}
                       >
+
                         {sorted.length > 0 ? (
                           <div className="space-y-1">
                             {sorted.map((a) => {
