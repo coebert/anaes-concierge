@@ -193,13 +193,37 @@ export function WeekPicker({
 
 /* --------------------- Global read-only grid --------------------- */
 
-export function GlobalWeekGrid({ weekStart, days: daysProp }: { weekStart: Date; days?: Date[] }) {
+export function GlobalWeekGrid({
+  weekStart,
+  days: daysProp,
+  searchQuery = "",
+}: {
+  weekStart: Date;
+  days?: Date[];
+  searchQuery?: string;
+}) {
   const days = useMemo(
     () => daysProp ?? Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)),
     [weekStart, daysProp],
   );
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
+
+  const searchTokens = useMemo(
+    () =>
+      searchQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+    [searchQuery],
+  );
+  const matchesTokens = (parts: Array<string | null | undefined>) => {
+    if (searchTokens.length === 0) return true;
+    const hay = parts.filter(Boolean).join(" ").toLowerCase();
+    return searchTokens.every((t) => hay.includes(t));
+  };
+
 
   const { data: theatres } = useQuery({
     queryKey: ["theatres-active"],
