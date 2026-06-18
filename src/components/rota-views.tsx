@@ -530,7 +530,8 @@ export function GlobalWeekGrid({
   // this — only the underlying data does — so memoized cell content components
   // can bail out and only the outer <td> reflows the dim class while typing.
   const theatreRows = useMemo(() => {
-    if (!theatres) return [] as Array<{ theatre: typeof theatres[number]; cells: TheatreCellModel[] }>;
+    type Theatre = NonNullable<typeof theatres>[number];
+    if (!theatres) return [] as Array<{ theatre: Theatre; cells: TheatreCellModel[] }>;
     return theatres.map((t) => {
       const cells: TheatreCellModel[] = [];
       for (const d of days) {
