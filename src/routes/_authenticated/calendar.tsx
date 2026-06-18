@@ -86,7 +86,7 @@ function CalendarPage() {
           </Button>
         )}
       </div>
-      <GlobalWeekGrid weekStart={days[0]} days={days} searchQuery={search} />
+      <GlobalWeekGrid weekStart={days[0]} days={days} searchQuery={deferredSearch} />
 
     </div>
   );
