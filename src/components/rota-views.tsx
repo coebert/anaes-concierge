@@ -683,12 +683,20 @@ export function GlobalWeekGrid({
                 const uniqueStaff = Array.from(
                   new Set(dayAssigns.map((a) => a.staff_id)),
                 );
+                const cellMatches =
+                  uniqueStaff.length > 0
+                    ? matchesTokens(uniqueStaff.map((sid) => staffName(sid)))
+                    : searchTokens.length === 0;
                 return (
                   <td
                     key={"nhh-" + dayIso}
                     colSpan={2}
-                    className="min-w-[110px] border-b border-t border-r p-1.5 align-top"
+                    className={cn(
+                      "min-w-[110px] border-b border-t border-r p-1.5 align-top",
+                      !cellMatches && "opacity-20",
+                    )}
                   >
+
                     {uniqueStaff.length > 0 ? (
                       <div className="space-y-1">
                         <Badge
