@@ -19,7 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  AlertTriangle, ArrowRight, CalendarIcon, CircleHelp, Clock, GraduationCap, Users, X,
+  AlertTriangle, ArrowRight, CalendarIcon, CircleHelp, Clock, GraduationCap, Info, Users, X,
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
