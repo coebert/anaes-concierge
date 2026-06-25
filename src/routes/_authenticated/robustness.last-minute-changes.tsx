@@ -280,13 +280,13 @@ function LastMinuteChangesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Session</TableHead>
-                    <TableHead>Scheduled start</TableHead>
+                    <TableHead>Scheduled start ({localTzAbbr()})</TableHead>
                     <TableHead>Who</TableHead>
                     <TableHead>Group</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>From → To list</TableHead>
                     <TableHead className="text-right">Hours before</TableHead>
-                    <TableHead>Changed at</TableHead>
+                    <TableHead>Changed at ({localTzAbbr()})</TableHead>
                     <TableHead>Changed by</TableHead>
                   </TableRow>
                 </TableHeader>
