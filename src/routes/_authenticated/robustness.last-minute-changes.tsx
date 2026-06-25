@@ -298,7 +298,7 @@ function LastMinuteChangesPage() {
                         <span className="uppercase text-xs text-muted-foreground">{r.session}</span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(r.sessionStartTs).toLocaleString("en-GB")}
+                        {formatLocal(r.sessionStartTs)}
                       </TableCell>
                       <TableCell>
                         {r.action === "update" && r.prevStaffName && r.prevStaffName !== r.staffName ? (
