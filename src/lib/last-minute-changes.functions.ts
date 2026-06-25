@@ -244,7 +244,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         .select("id, full_name, grade")
         .in("id", staffIds);
       if (pErr) throw new Error(pErr.message);
-      const profileRows: ProfileRow[] = (profs ?? []) as unknown as ProfileRow[];
+      const profileRows: ProfileRow[] = parseRows(ProfileRowSchema, profs, "profiles");
       for (const p of profileRows) profileMap.set(p.id, { full_name: p.full_name, grade: p.grade });
     }
 
