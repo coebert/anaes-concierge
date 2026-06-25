@@ -379,12 +379,13 @@ function LastMinuteChangesPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Source: <code>rota_change_log</code>. The database trigger logs every
-        insert, update or delete on a rota assignment whose session start is
-        within ±48 hours of the change. All times shown in your local
-        timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()}); &ldquo;hours
-        before&rdquo; is the elapsed duration between the change and the
-        scheduled session start.
+        Source: <code>rota_change_log</code>. The database trigger captures
+        every insert, update or delete on a rota assignment whose session
+        start is within ±48 hours of the change; the 24h view is a strict
+        subset of the 48h view (currently showing ±{windowHours}h). All times
+        shown in your local timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()});
+        &ldquo;hours before&rdquo; is the elapsed duration between the change
+        and the scheduled session start.
       </p>
     </div>
   );
