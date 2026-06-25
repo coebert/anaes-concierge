@@ -90,6 +90,43 @@ function emptyByGroup(): LastMinuteChangesAudit["byGroup"] {
   return out;
 }
 
+type RotaChangeLogRow = {
+  id: string;
+  action: string | null;
+  session_date: string;
+  session: string | null;
+  staff_id: string | null;
+  session_start_ts: string;
+  changed_at: string;
+  hours_before_session: number | string | null;
+  changed_by: string | null;
+  prev_theatre_session_id: string | null;
+  new_theatre_session_id: string | null;
+  prev_staff_id: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  grade: string | null;
+};
+
+type NamedRef = { name: string } | { name: string }[] | null;
+
+type TheatreSessionRow = {
+  id: string;
+  theatre_id: string | null;
+  specialty_id: string | null;
+  theatres: NamedRef;
+  specialties: NamedRef;
+};
+
+function firstName(ref: NamedRef): string | null {
+  if (!ref) return null;
+  if (Array.isArray(ref)) return ref[0]?.name ?? null;
+  return ref.name ?? null;
+}
+
 export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { rangeStart: string; rangeEnd: string }) => {
@@ -141,7 +178,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
     };
 
     try {
-    const { data: logs, error } = await withRetry("rota_change_log", async () => await supabase
+    const logsResult = await withRetry("rota_change_log", async () => await supabase
       .from("rota_change_log")
       .select("id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id")
       .gte("session_date", data.rangeStart)
@@ -150,13 +187,16 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       .gte("hours_before_session", -48)
       .order("changed_at", { ascending: false })
       .limit(5000));
-    if (error) throw new Error(error.message);
+    if (logsResult.error) throw new Error(logsResult.error.message);
+    const logs: RotaChangeLogRow[] = (logsResult.data ?? []) as unknown as RotaChangeLogRow[];
 
-    const staffIds = Array.from(new Set(
-      (logs ?? []).flatMap((r) => [r.staff_id, r.changed_by, r.prev_staff_id]).filter((x): x is string => !!x),
+    const staffIds: string[] = Array.from(new Set(
+      logs.flatMap((r): (string | null)[] => [r.staff_id, r.changed_by, r.prev_staff_id])
+          .filter((x): x is string => !!x),
     ));
-    const sessionIds = Array.from(new Set(
-      (logs ?? []).flatMap((r) => [r.prev_theatre_session_id, r.new_theatre_session_id]).filter((x): x is string => !!x),
+    const sessionIds: string[] = Array.from(new Set(
+      logs.flatMap((r): (string | null)[] => [r.prev_theatre_session_id, r.new_theatre_session_id])
+          .filter((x): x is string => !!x),
     ));
 
     const profileMap = new Map<string, { full_name: string | null; grade: string | null }>();
@@ -166,7 +206,8 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         .select("id, full_name, grade")
         .in("id", staffIds);
       if (pErr) throw new Error(pErr.message);
-      for (const p of profs ?? []) profileMap.set(p.id, { full_name: p.full_name, grade: p.grade });
+      const profileRows: ProfileRow[] = (profs ?? []) as unknown as ProfileRow[];
+      for (const p of profileRows) profileMap.set(p.id, { full_name: p.full_name, grade: p.grade });
     }
 
     const listMap = new Map<string, ListRef>();
@@ -176,9 +217,10 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         .select("id, theatre_id, specialty_id, theatres(name), specialties(name)")
         .in("id", sessionIds);
       if (sErr) throw new Error(sErr.message);
-      for (const s of sess ?? []) {
-        const theatre = (s.theatres as { name: string } | null)?.name ?? "Unknown theatre";
-        const specialty = (s.specialties as { name: string } | null)?.name ?? null;
+      const sessionRows: TheatreSessionRow[] = (sess ?? []) as unknown as TheatreSessionRow[];
+      for (const s of sessionRows) {
+        const theatre = firstName(s.theatres) ?? "Unknown theatre";
+        const specialty = firstName(s.specialties);
         listMap.set(s.id, {
           id: s.id,
           theatre,
@@ -188,17 +230,17 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       }
     }
 
-    const rows: LastMinuteChangeRow[] = (logs ?? []).map((r) => {
-      const prof = r.staff_id ? profileMap.get(r.staff_id) : null;
-      const prevProf = r.prev_staff_id ? profileMap.get(r.prev_staff_id) : null;
-      const changer = r.changed_by ? profileMap.get(r.changed_by) : null;
+    const rows: LastMinuteChangeRow[] = logs.map((r): LastMinuteChangeRow => {
+      const prof = r.staff_id ? profileMap.get(r.staff_id) ?? null : null;
+      const prevProf = r.prev_staff_id ? profileMap.get(r.prev_staff_id) ?? null : null;
+      const changer = r.changed_by ? profileMap.get(r.changed_by) ?? null : null;
       return {
         id: r.id,
         changedAt: r.changed_at,
         sessionDate: r.session_date,
         sessionStartTs: r.session_start_ts,
         session: r.session ?? "",
-        action: (r.action ?? "update") as LastMinuteChangeRow["action"],
+        action: r.action ?? "update",
         hoursBeforeSession: Number(r.hours_before_session ?? 0),
         staffId: r.staff_id,
         staffName: prof?.full_name ?? (r.staff_id ? "Unknown staff" : "—"),
