@@ -81,7 +81,41 @@ function applyFilter(rows: LastMinuteChangeRow[], f: DrillFilter): LastMinuteCha
   }
 }
 
-function LastMinuteChangesPage() {
+// Display every timestamp in the viewer's local timezone, with the zone
+// abbreviation appended so it is unambiguous. Hours-before is a duration
+// (timezone-agnostic) but we re-derive it from the two absolute instants
+// so the displayed value always matches the displayed times exactly.
+const LOCAL_TZ = typeof Intl !== "undefined"
+  ? Intl.DateTimeFormat().resolvedOptions().timeZone
+  : "UTC";
+
+const localDateTimeFmt = new Intl.DateTimeFormat("en-GB", {
+  timeZone: LOCAL_TZ,
+  year: "numeric", month: "short", day: "2-digit",
+  hour: "2-digit", minute: "2-digit",
+});
+const localTzAbbrFmt = new Intl.DateTimeFormat("en-GB", {
+  timeZone: LOCAL_TZ, timeZoneName: "short", hour: "2-digit",
+});
+
+function formatLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return localDateTimeFmt.format(d);
+}
+
+function localTzAbbr(): string {
+  const parts = localTzAbbrFmt.formatToParts(new Date());
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? LOCAL_TZ;
+}
+
+function hoursBetween(fromIso: string, toIso: string): number {
+  const a = new Date(fromIso).getTime();
+  const b = new Date(toIso).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0;
+  return (b - a) / 3_600_000;
+}
+
   const [rangeStart, setRangeStart] = useState(() => isoDaysAgo(90));
   const [rangeEnd, setRangeEnd] = useState(() => todayISO());
   const [filter, setFilter] = useState<DrillFilter>({ kind: "none" });
