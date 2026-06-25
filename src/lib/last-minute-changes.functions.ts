@@ -169,23 +169,33 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       };
     });
 
-    const byGroup = emptyByGroup();
-    let inserts = 0, updates = 0, deletes = 0, traineeListMoves = 0;
-    for (const r of rows) {
-      const g = byGroup[r.group];
-      g.total += 1;
-      if (r.action === "insert") { g.inserts += 1; inserts += 1; }
-      else if (r.action === "delete") { g.deletes += 1; deletes += 1; }
-      else { g.updates += 1; updates += 1; }
-      if (r.group === "trainee") traineeListMoves += 1;
+    const WINDOWS = [24, 48] as const;
+    const totalsByWindow: Record<string, WindowTotals> = {};
+    const byGroupByWindow: Record<string, WindowByGroup> = {};
+    for (const w of WINDOWS) {
+      const subset = rows.filter((r) => Math.abs(r.hoursBeforeSession) <= w);
+      const bg = emptyByGroup();
+      let inserts = 0, updates = 0, deletes = 0, traineeListMoves = 0;
+      for (const r of subset) {
+        const g = bg[r.group];
+        g.total += 1;
+        if (r.action === "insert") { g.inserts += 1; inserts += 1; }
+        else if (r.action === "delete") { g.deletes += 1; deletes += 1; }
+        else { g.updates += 1; updates += 1; }
+        if (r.group === "trainee") traineeListMoves += 1;
+      }
+      totalsByWindow[String(w)] = { all: subset.length, inserts, updates, deletes, traineeListMoves };
+      byGroupByWindow[String(w)] = bg;
     }
 
     return {
       rangeStart: data.rangeStart,
       rangeEnd: data.rangeEnd,
-      windowHours: 48,
-      totals: { all: rows.length, inserts, updates, deletes, traineeListMoves },
-      byGroup,
+      windowsHours: [...WINDOWS],
+      totals: totalsByWindow["48"],
+      byGroup: byGroupByWindow["48"],
+      totalsByWindow,
+      byGroupByWindow,
       rows,
     };
   });
