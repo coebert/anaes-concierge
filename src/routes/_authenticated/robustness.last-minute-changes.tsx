@@ -12,7 +12,15 @@ import {
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertTriangle, ArrowRight, CalendarIcon, Clock, GraduationCap, Users, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertTriangle, ArrowRight, CalendarIcon, CircleHelp, Clock, GraduationCap, Users, X,
+} from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { formatDateGB, cn } from "@/lib/utils";
@@ -160,234 +168,259 @@ function LastMinuteChangesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Last minute changes audit
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Counts every change to a rota assignment (insert, move or removal)
-          made within the selected window of the scheduled start of the
-          clinical activity. Toggle between <strong>24 hours</strong> and
-          <strong> 48 hours</strong> to compare. Click any total or row count
-          below to drill into the underlying events.
-        </p>
-      </header>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Last minute changes audit
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Counts every change to a rota assignment (insert, move or removal)
+            made within the selected window of the scheduled start of the
+            clinical activity. Toggle between <strong>24 hours</strong> and
+            <strong> 48 hours</strong> to compare. Click any total or row count
+            below to drill into the underlying events.
+          </p>
+        </header>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Date range &amp; window</CardTitle>
-          <CardDescription>
-            Filter by the <em>session date</em> of the affected clinical activity.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <DateRangeFilter
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-            onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); setFilter({ kind: "none" }); }}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Change window:</span>
-            {(["24", "48"] as const).map((w) => (
-              <Button
-                key={w}
-                size="sm"
-                variant={windowKey === w ? "default" : "outline"}
-                onClick={() => { setWindowKey(w); setFilter({ kind: "none" }); }}
-              >
-                Within {w}h
-              </Button>
-            ))}
-            {data && (
-              <Badge variant="secondary" className="ml-2">
-                24h: {data.totalsByWindow["24"]?.all ?? 0} · 48h: {data.totalsByWindow["48"]?.all ?? 0}
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {error && (
-        <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-          {(error as Error).message}
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label={`Total changes within ${windowHours}h`}
-              value={totals?.all ?? (isLoading ? "…" : 0)}
-              icon={Clock} tone="amber"
-              onClick={() => drill({ kind: "all" })} />
-        <Stat label="Reassignments / moves"
-              value={totals?.updates ?? (isLoading ? "…" : 0)}
-              icon={Users} tone="orange"
-              onClick={() => drill({ kind: "action", action: "update" })} />
-        <Stat label="Inserts + removals"
-              value={totals ? totals.inserts + totals.deletes : (isLoading ? "…" : 0)}
-              icon={AlertTriangle} tone="red"
-              onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })} />
-        <Stat label="Trainee changes (incl. list moves)"
-              value={totals?.traineeListMoves ?? (isLoading ? "…" : 0)}
-              icon={GraduationCap} tone="emerald"
-              onClick={() => drill({ kind: "group", group: "trainee" })} />
-      </div>
-
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">By staffing group</CardTitle>
-          <CardDescription>
-            Click any cell to drill into the matching events.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : groupRows.length === 0 ? (
-            <div className="text-sm text-muted-foreground">
-              No last-minute changes recorded in this range.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Staffing group</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Inserts</TableHead>
-                  <TableHead className="text-right">Moves / updates</TableHead>
-                  <TableHead className="text-right">Removals</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {groupRows.map((r) => (
-                  <TableRow key={r.group}>
-                    <TableCell className="font-medium">
-                      {GROUP_LABEL[r.group]}
-                      {r.group === "trainee" && (
-                        <Badge variant="outline" className="ml-2">tracks list moves</Badge>
-                      )}
-                    </TableCell>
-                    <DrillCell value={r.total}
-                      onClick={() => drill({ kind: "group", group: r.group })} />
-                    <DrillCell value={r.inserts}
-                      onClick={() => drill({ kind: "group-action", group: r.group, action: "insert" })} />
-                    <DrillCell value={r.updates}
-                      onClick={() => drill({ kind: "group-action", group: r.group, action: "update" })} />
-                    <DrillCell value={r.deletes}
-                      onClick={() => drill({ kind: "group-action", group: r.group, action: "delete" })} />
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card ref={drillRef}>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div>
-            <CardTitle className="text-base">
-              {filter.kind === "none" ? "Drill-down" : describeFilter(filter)}
-            </CardTitle>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Date range &amp; window</CardTitle>
             <CardDescription>
-              {filter.kind === "none"
-                ? "Click any total above to see the underlying change events here."
-                : `${drillRows.length} event(s). Negative hours mean the change happened after the session had already started.`}
+              Filter by the <em>session date</em> of the affected clinical activity.
             </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <DateRangeFilter
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); setFilter({ kind: "none" }); }}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">Change window:</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label="How are the change windows calculated?"
+                  >
+                    <CircleHelp className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="leading-relaxed">
+                    A change counts as a last-minute change if the time between
+                    the rota edit and the scheduled start of the session is
+                    <strong> within {windowHours} hours</strong>. This uses the
+                    exact timestamps of both events, so a change made at 09:00 on
+                    Monday for a session starting at 10:00 on Tuesday is counted in
+                    the 24-hour window. Changes made after the session has started
+                    appear as negative &ldquo;hours before&rdquo; and are also
+                    included if they fall within the window.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              {(["24", "48"] as const).map((w) => (
+                <Button
+                  key={w}
+                  size="sm"
+                  variant={windowKey === w ? "default" : "outline"}
+                  onClick={() => { setWindowKey(w); setFilter({ kind: "none" }); }}
+                >
+                  Within {w}h
+                </Button>
+              ))}
+              {data && (
+                <Badge variant="secondary" className="ml-2">
+                  24h: {data.totalsByWindow["24"]?.all ?? 0} · 48h: {data.totalsByWindow["48"]?.all ?? 0}
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {error && (
+          <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            {(error as Error).message}
           </div>
-          {filter.kind !== "none" && (
-            <Button variant="ghost" size="sm" onClick={() => setFilter({ kind: "none" })}>
-              <X className="mr-1 h-4 w-4" /> Clear
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {filter.kind === "none" ? (
-            <div className="text-sm text-muted-foreground">No filter selected.</div>
-          ) : drillRows.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No matching events.</div>
-          ) : (
-            <div className="overflow-x-auto">
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label={`Total changes within ${windowHours}h`}
+                value={totals?.all ?? (isLoading ? "…" : 0)}
+                icon={Clock} tone="amber"
+                onClick={() => drill({ kind: "all" })} />
+          <Stat label="Reassignments / moves"
+                value={totals?.updates ?? (isLoading ? "…" : 0)}
+                icon={Users} tone="orange"
+                onClick={() => drill({ kind: "action", action: "update" })} />
+          <Stat label="Inserts + removals"
+                value={totals ? totals.inserts + totals.deletes : (isLoading ? "…" : 0)}
+                icon={AlertTriangle} tone="red"
+                onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })} />
+          <Stat label="Trainee changes (incl. list moves)"
+                value={totals?.traineeListMoves ?? (isLoading ? "…" : 0)}
+                icon={GraduationCap} tone="emerald"
+                onClick={() => drill({ kind: "group", group: "trainee" })} />
+        </div>
+
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">By staffing group</CardTitle>
+            <CardDescription>
+              Click any cell to drill into the matching events.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-sm text-muted-foreground">Loading…</div>
+            ) : groupRows.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                No last-minute changes recorded in this range.
+              </div>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Session</TableHead>
-                    <TableHead>Scheduled start ({localTzAbbr()})</TableHead>
-                    <TableHead>Who</TableHead>
-                    <TableHead>Group</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>From → To list</TableHead>
-                    <TableHead className="text-right">Hours before</TableHead>
-                    <TableHead>Changed at ({localTzAbbr()})</TableHead>
-                    <TableHead>Changed by</TableHead>
+                    <TableHead>Staffing group</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Inserts</TableHead>
+                    <TableHead className="text-right">Moves / updates</TableHead>
+                    <TableHead className="text-right">Removals</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {drillRows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDateGB(r.sessionDate)}{" "}
-                        <span className="uppercase text-xs text-muted-foreground">{r.session}</span>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatLocal(r.sessionStartTs)}
-                      </TableCell>
-                      <TableCell>
-                        {r.action === "update" && r.prevStaffName && r.prevStaffName !== r.staffName ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="line-through text-muted-foreground">{r.prevStaffName}</span>
-                            <ArrowRight className="h-3 w-3" />
-                            <span>{r.staffName}</span>
-                          </span>
-                        ) : (
-                          r.staffName
+                  {groupRows.map((r) => (
+                    <TableRow key={r.group}>
+                      <TableCell className="font-medium">
+                        {GROUP_LABEL[r.group]}
+                        {r.group === "trainee" && (
+                          <Badge variant="outline" className="ml-2">tracks list moves</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={r.group === "trainee" ? "default" : "secondary"}>
-                          {GROUP_LABEL[r.group]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={cn(
-                          "rounded px-2 py-0.5 text-xs font-medium",
-                          r.action === "insert" && "bg-emerald-100 text-emerald-700",
-                          r.action === "update" && "bg-amber-100 text-amber-700",
-                          r.action === "delete" && "bg-red-100 text-red-700",
-                        )}>
-                          {r.action}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <ListMove from={r.fromList?.label ?? null} to={r.toList?.label ?? null} action={r.action} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {hoursBetween(r.changedAt, r.sessionStartTs).toFixed(1)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatLocal(r.changedAt)}
-                      </TableCell>
-                      <TableCell className="text-xs">{r.changedByName ?? "—"}</TableCell>
+                      <DrillCell value={r.total}
+                        onClick={() => drill({ kind: "group", group: r.group })} />
+                      <DrillCell value={r.inserts}
+                        onClick={() => drill({ kind: "group-action", group: r.group, action: "insert" })} />
+                      <DrillCell value={r.updates}
+                        onClick={() => drill({ kind: "group-action", group: r.group, action: "update" })} />
+                      <DrillCell value={r.deletes}
+                        onClick={() => drill({ kind: "group-action", group: r.group, action: "delete" })} />
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Source: <code>rota_change_log</code>. The database trigger captures
-        every insert, update or delete on a rota assignment whose session
-        start is within ±48 hours of the change; the 24h view is a strict
-        subset of the 48h view (currently showing ±{windowHours}h). All times
-        shown in your local timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()});
-        &ldquo;hours before&rdquo; is the elapsed duration between the change
-        and the scheduled session start.
-      </p>
-    </div>
+        <Card ref={drillRef}>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <div>
+              <CardTitle className="text-base">
+                {filter.kind === "none" ? "Drill-down" : describeFilter(filter)}
+              </CardTitle>
+              <CardDescription>
+                {filter.kind === "none"
+                  ? "Click any total above to see the underlying change events here."
+                  : `${drillRows.length} event(s). Negative hours mean the change happened after the session had already started.`}
+              </CardDescription>
+            </div>
+            {filter.kind !== "none" && (
+              <Button variant="ghost" size="sm" onClick={() => setFilter({ kind: "none" })}>
+                <X className="mr-1 h-4 w-4" /> Clear
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {filter.kind === "none" ? (
+              <div className="text-sm text-muted-foreground">No filter selected.</div>
+            ) : drillRows.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No matching events.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Session</TableHead>
+                      <TableHead>Scheduled start ({localTzAbbr()})</TableHead>
+                      <TableHead>Who</TableHead>
+                      <TableHead>Group</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>From → To list</TableHead>
+                      <TableHead className="text-right">Hours before</TableHead>
+                      <TableHead>Changed at ({localTzAbbr()})</TableHead>
+                      <TableHead>Changed by</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {drillRows.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {formatDateGB(r.sessionDate)}{" "}
+                          <span className="uppercase text-xs text-muted-foreground">{r.session}</span>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatLocal(r.sessionStartTs)}
+                        </TableCell>
+                        <TableCell>
+                          {r.action === "update" && r.prevStaffName && r.prevStaffName !== r.staffName ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span className="line-through text-muted-foreground">{r.prevStaffName}</span>
+                              <ArrowRight className="h-3 w-3" />
+                              <span>{r.staffName}</span>
+                            </span>
+                          ) : (
+                            r.staffName
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={r.group === "trainee" ? "default" : "secondary"}>
+                            {GROUP_LABEL[r.group]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            "rounded px-2 py-0.5 text-xs font-medium",
+                            r.action === "insert" && "bg-emerald-100 text-emerald-700",
+                            r.action === "update" && "bg-amber-100 text-amber-700",
+                            r.action === "delete" && "bg-red-100 text-red-700",
+                          )}>
+                            {r.action}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <ListMove from={r.fromList?.label ?? null} to={r.toList?.label ?? null} action={r.action} />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {hoursBetween(r.changedAt, r.sessionStartTs).toFixed(1)}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatLocal(r.changedAt)}
+                        </TableCell>
+                        <TableCell className="text-xs">{r.changedByName ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <p className="text-xs text-muted-foreground">
+          Source: <code>rota_change_log</code>. The database trigger captures
+          every insert, update or delete on a rota assignment whose session
+          start is within ±48 hours of the change; the 24h view is a strict
+          subset of the 48h view (currently showing ±{windowHours}h). All times
+          shown in your local timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()});
+          &ldquo;hours before&rdquo; is the elapsed duration between the change
+          and the scheduled session start.
+        </p>
+      </div>
+    </TooltipProvider>
   );
 }
 
