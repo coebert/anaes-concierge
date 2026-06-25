@@ -237,14 +237,26 @@ function LastMinuteChangesPage() {
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Note: until 25 Jun 2026 the audit trigger only captured rota
-              edits made within ±24 hours of a session. Edits in the 24–48 hour
-              band were not recorded historically, so the 24h and 48h totals
-              will appear identical for any range that predates that date.
-              Newly logged changes from 25 Jun 2026 onward use the full ±48h
-              window.
-            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-primary/60 bg-primary/[0.03]">
+          <CardContent className="flex items-start gap-4 p-4">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <Info className="h-4 w-4 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">Why 24 h and 48 h totals can look identical</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The database trigger that records last-minute rota changes was widened from
+                ±24 hours to ±48 hours on{" "}
+                <strong>25 June 2026 at 07:59:15 UTC</strong>. Historical rows captured
+                before that moment could only record edits within ±24 hours, so the
+                24–48 hour band has no data for any session range that predates that
+                migration. Both totals will appear the same for older ranges. New edits
+                made from that point onward are captured across the full ±48 hour window.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
