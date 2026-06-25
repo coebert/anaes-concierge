@@ -237,6 +237,14 @@ function LastMinuteChangesPage() {
                 </Badge>
               )}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Note: until 25 Jun 2026 the audit trigger only captured rota
+              edits made within ±24 hours of a session. Edits in the 24–48 hour
+              band were not recorded historically, so the 24h and 48h totals
+              will appear identical for any range that predates that date.
+              Newly logged changes from 25 Jun 2026 onward use the full ±48h
+              window.
+            </p>
           </CardContent>
         </Card>
 
