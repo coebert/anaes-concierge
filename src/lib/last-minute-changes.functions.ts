@@ -149,7 +149,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       .lte("hours_before_session", 48)
       .gte("hours_before_session", -48)
       .order("changed_at", { ascending: false })
-      .limit(5000);
+      .limit(5000));
     if (error) throw new Error(error.message);
 
     const staffIds = Array.from(new Set(
