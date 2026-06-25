@@ -9,11 +9,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * clinical activity it relates to. The DB trigger `log_late_rota_change`
  * writes one row to `rota_change_log` per such change (across all duty
  * types — theatre, on-call, ICU, obstetrics, etc.).
- *
- * This server function aggregates those rows over a date range and
- * breaks them down by staffing group (grade), with extra emphasis on
- * trainees being moved between lists (action='update') within the
- * 48 hour window.
  */
 
 export type StaffingGroup =
@@ -24,17 +19,28 @@ export type StaffingGroup =
   | "other"
   | "unknown";
 
+export type ListRef = {
+  id: string;
+  theatre: string;
+  specialty: string | null;
+  label: string;
+};
+
 export type LastMinuteChangeRow = {
   id: string;
   changedAt: string;
   sessionDate: string;
+  sessionStartTs: string;
   session: string;
   action: "insert" | "update" | "delete" | string;
   hoursBeforeSession: number;
   staffId: string | null;
   staffName: string;
+  prevStaffName: string | null;
   group: StaffingGroup;
   changedByName: string | null;
+  fromList: ListRef | null;
+  toList: ListRef | null;
 };
 
 export type LastMinuteChangesAudit = {
@@ -63,9 +69,7 @@ function gradeToGroup(grade: string | null | undefined): StaffingGroup {
     case "trainee":    return "trainee";
     case "sas":        return "sas";
     case "anp":        return "anp";
-    case "":
-    case null as unknown as string:
-      return "unknown";
+    case "":           return "unknown";
     default:           return "other";
   }
 }
@@ -87,10 +91,9 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<LastMinuteChangesAudit> => {
     const { supabase } = context;
 
-    // Pull every late-change row whose target session falls in range.
     const { data: logs, error } = await supabase
       .from("rota_change_log")
-      .select("id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by")
+      .select("id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id")
       .gte("session_date", data.rangeStart)
       .lte("session_date", data.rangeEnd)
       .lte("hours_before_session", 48)
@@ -100,7 +103,10 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const staffIds = Array.from(new Set(
-      (logs ?? []).flatMap((r) => [r.staff_id, r.changed_by]).filter((x): x is string => !!x),
+      (logs ?? []).flatMap((r) => [r.staff_id, r.changed_by, r.prev_staff_id]).filter((x): x is string => !!x),
+    ));
+    const sessionIds = Array.from(new Set(
+      (logs ?? []).flatMap((r) => [r.prev_theatre_session_id, r.new_theatre_session_id]).filter((x): x is string => !!x),
     ));
 
     const profileMap = new Map<string, { full_name: string | null; grade: string | null }>();
@@ -113,20 +119,44 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       for (const p of profs ?? []) profileMap.set(p.id, { full_name: p.full_name, grade: p.grade });
     }
 
+    const listMap = new Map<string, ListRef>();
+    if (sessionIds.length > 0) {
+      const { data: sess, error: sErr } = await supabase
+        .from("theatre_sessions")
+        .select("id, theatre_id, specialty_id, theatres(name), specialties(name)")
+        .in("id", sessionIds);
+      if (sErr) throw new Error(sErr.message);
+      for (const s of sess ?? []) {
+        const theatre = (s.theatres as { name: string } | null)?.name ?? "Unknown theatre";
+        const specialty = (s.specialties as { name: string } | null)?.name ?? null;
+        listMap.set(s.id, {
+          id: s.id,
+          theatre,
+          specialty,
+          label: specialty ? `${theatre} · ${specialty}` : theatre,
+        });
+      }
+    }
+
     const rows: LastMinuteChangeRow[] = (logs ?? []).map((r) => {
       const prof = r.staff_id ? profileMap.get(r.staff_id) : null;
+      const prevProf = r.prev_staff_id ? profileMap.get(r.prev_staff_id) : null;
       const changer = r.changed_by ? profileMap.get(r.changed_by) : null;
       return {
         id: r.id,
         changedAt: r.changed_at,
         sessionDate: r.session_date,
+        sessionStartTs: r.session_start_ts,
         session: r.session ?? "",
         action: (r.action ?? "update") as LastMinuteChangeRow["action"],
         hoursBeforeSession: Number(r.hours_before_session ?? 0),
         staffId: r.staff_id,
         staffName: prof?.full_name ?? (r.staff_id ? "Unknown staff" : "—"),
+        prevStaffName: prevProf?.full_name ?? (r.prev_staff_id ? "Unknown staff" : null),
         group: gradeToGroup(prof?.grade),
         changedByName: changer?.full_name ?? null,
+        fromList: r.prev_theatre_session_id ? listMap.get(r.prev_theatre_session_id) ?? null : null,
+        toList: r.new_theatre_session_id ? listMap.get(r.new_theatre_session_id) ?? null : null,
       };
     });
 
@@ -138,9 +168,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       if (r.action === "insert") { g.inserts += 1; inserts += 1; }
       else if (r.action === "delete") { g.deletes += 1; deletes += 1; }
       else { g.updates += 1; updates += 1; }
-      if (r.group === "trainee" && (r.action === "update" || r.action === "insert" || r.action === "delete")) {
-        traineeListMoves += 1;
-      }
+      if (r.group === "trainee") traineeListMoves += 1;
     }
 
     return {
