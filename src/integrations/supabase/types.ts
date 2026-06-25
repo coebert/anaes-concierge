@@ -791,6 +791,9 @@ export type Database = {
           changed_by: string | null
           hours_before_session: number
           id: string
+          new_theatre_session_id: string | null
+          prev_staff_id: string | null
+          prev_theatre_session_id: string | null
           session: Database["public"]["Enums"]["session_half"]
           session_date: string
           session_start_ts: string
@@ -803,6 +806,9 @@ export type Database = {
           changed_by?: string | null
           hours_before_session: number
           id?: string
+          new_theatre_session_id?: string | null
+          prev_staff_id?: string | null
+          prev_theatre_session_id?: string | null
           session: Database["public"]["Enums"]["session_half"]
           session_date: string
           session_start_ts: string
@@ -815,6 +821,9 @@ export type Database = {
           changed_by?: string | null
           hours_before_session?: number
           id?: string
+          new_theatre_session_id?: string | null
+          prev_staff_id?: string | null
+          prev_theatre_session_id?: string | null
           session?: Database["public"]["Enums"]["session_half"]
           session_date?: string
           session_start_ts?: string
