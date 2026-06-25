@@ -330,10 +330,10 @@ function LastMinuteChangesPage() {
                         <ListMove from={r.fromList?.label ?? null} to={r.toList?.label ?? null} action={r.action} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {r.hoursBeforeSession.toFixed(1)}
+                        {hoursBetween(r.changedAt, r.sessionStartTs).toFixed(1)}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(r.changedAt).toLocaleString("en-GB")}
+                        {formatLocal(r.changedAt)}
                       </TableCell>
                       <TableCell className="text-xs">{r.changedByName ?? "—"}</TableCell>
                     </TableRow>
