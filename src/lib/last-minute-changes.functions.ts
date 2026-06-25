@@ -43,23 +43,32 @@ export type LastMinuteChangeRow = {
   toList: ListRef | null;
 };
 
+export type WindowTotals = {
+  all: number;
+  inserts: number;
+  updates: number;
+  deletes: number;
+  traineeListMoves: number;
+};
+
+export type WindowByGroup = Record<StaffingGroup, {
+  total: number;
+  inserts: number;
+  updates: number;
+  deletes: number;
+}>;
+
 export type LastMinuteChangesAudit = {
   rangeStart: string;
   rangeEnd: string;
-  windowHours: 48;
-  totals: {
-    all: number;
-    inserts: number;
-    updates: number;
-    deletes: number;
-    traineeListMoves: number;
-  };
-  byGroup: Record<StaffingGroup, {
-    total: number;
-    inserts: number;
-    updates: number;
-    deletes: number;
-  }>;
+  /** Windows captured by the audit, in hours (e.g. [24, 48]). */
+  windowsHours: number[];
+  /** 48h-window totals (kept for back-compat — same as totalsByWindow["48"]). */
+  totals: WindowTotals;
+  byGroup: WindowByGroup;
+  totalsByWindow: Record<string, WindowTotals>;
+  byGroupByWindow: Record<string, WindowByGroup>;
+  /** All rows within the widest window (48h). Each row carries its hoursBeforeSession. */
   rows: LastMinuteChangeRow[];
 };
 
