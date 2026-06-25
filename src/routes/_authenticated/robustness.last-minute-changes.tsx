@@ -81,6 +81,41 @@ function applyFilter(rows: LastMinuteChangeRow[], f: DrillFilter): LastMinuteCha
   }
 }
 
+// Display every timestamp in the viewer's local timezone, with the zone
+// abbreviation appended so it is unambiguous. Hours-before is a duration
+// (timezone-agnostic) but we re-derive it from the two absolute instants
+// so the displayed value always matches the displayed times exactly.
+const LOCAL_TZ = typeof Intl !== "undefined"
+  ? Intl.DateTimeFormat().resolvedOptions().timeZone
+  : "UTC";
+
+const localDateTimeFmt = new Intl.DateTimeFormat("en-GB", {
+  timeZone: LOCAL_TZ,
+  year: "numeric", month: "short", day: "2-digit",
+  hour: "2-digit", minute: "2-digit",
+});
+const localTzAbbrFmt = new Intl.DateTimeFormat("en-GB", {
+  timeZone: LOCAL_TZ, timeZoneName: "short", hour: "2-digit",
+});
+
+function formatLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return localDateTimeFmt.format(d);
+}
+
+function localTzAbbr(): string {
+  const parts = localTzAbbrFmt.formatToParts(new Date());
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? LOCAL_TZ;
+}
+
+function hoursBetween(fromIso: string, toIso: string): number {
+  const a = new Date(fromIso).getTime();
+  const b = new Date(toIso).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0;
+  return (b - a) / 3_600_000;
+}
+
 function LastMinuteChangesPage() {
   const [rangeStart, setRangeStart] = useState(() => isoDaysAgo(90));
   const [rangeEnd, setRangeEnd] = useState(() => todayISO());
@@ -245,13 +280,13 @@ function LastMinuteChangesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Session</TableHead>
-                    <TableHead>Scheduled start</TableHead>
+                    <TableHead>Scheduled start ({localTzAbbr()})</TableHead>
                     <TableHead>Who</TableHead>
                     <TableHead>Group</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>From → To list</TableHead>
                     <TableHead className="text-right">Hours before</TableHead>
-                    <TableHead>Changed at</TableHead>
+                    <TableHead>Changed at ({localTzAbbr()})</TableHead>
                     <TableHead>Changed by</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -263,7 +298,7 @@ function LastMinuteChangesPage() {
                         <span className="uppercase text-xs text-muted-foreground">{r.session}</span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(r.sessionStartTs).toLocaleString("en-GB")}
+                        {formatLocal(r.sessionStartTs)}
                       </TableCell>
                       <TableCell>
                         {r.action === "update" && r.prevStaffName && r.prevStaffName !== r.staffName ? (
@@ -295,10 +330,10 @@ function LastMinuteChangesPage() {
                         <ListMove from={r.fromList?.label ?? null} to={r.toList?.label ?? null} action={r.action} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {r.hoursBeforeSession.toFixed(1)}
+                        {hoursBetween(r.changedAt, r.sessionStartTs).toFixed(1)}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(r.changedAt).toLocaleString("en-GB")}
+                        {formatLocal(r.changedAt)}
                       </TableCell>
                       <TableCell className="text-xs">{r.changedByName ?? "—"}</TableCell>
                     </TableRow>
@@ -313,8 +348,10 @@ function LastMinuteChangesPage() {
       <p className="text-xs text-muted-foreground">
         Source: <code>rota_change_log</code>. The database trigger logs every
         insert, update or delete on a rota assignment whose session start is
-        within ±48 hours of the change. Older entries may pre-date the
-        from/to capture and therefore show no list pair.
+        within ±48 hours of the change. All times shown in your local
+        timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()}); &ldquo;hours
+        before&rdquo; is the elapsed duration between the change and the
+        scheduled session start.
       </p>
     </div>
   );
