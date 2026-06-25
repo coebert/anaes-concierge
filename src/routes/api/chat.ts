@@ -526,8 +526,13 @@ const ChatMessage = z.object({
 }).passthrough();
 
 const ChatBody = z.object({
-  messages: z.array(ChatMessage).min(1).max(500),
-  conversationId: z.string().uuid(),
+  messages: z.array(ChatMessage)
+    .min(1, "Please type a message before sending.")
+    .max(500, "This conversation is too long — please start a new chat."),
+  conversationId: z.string({
+    required_error: "Missing conversation — please open or start a chat first.",
+    invalid_type_error: "Missing conversation — please open or start a chat first.",
+  }).uuid("The conversation reference is invalid — please start a new chat."),
 });
 
 export const Route = createFileRoute("/api/chat")({
@@ -549,10 +554,13 @@ export const Route = createFileRoute("/api/chat")({
           const raw = await request.json();
           body = ChatBody.parse(raw);
         } catch (e) {
-          const msg = e instanceof z.ZodError
-            ? e.errors.slice(0, 3).map((x) => `${x.path.join(".") || "(root)"}: ${x.message}`).join("; ")
-            : "Malformed JSON";
-          return new Response(`Invalid body: ${msg}`, { status: 400 });
+          const friendly = e instanceof z.ZodError
+            ? e.errors.slice(0, 3).map((x) => {
+                const field = x.path.join(".") || "request";
+                return `“${field}”: ${x.message}`;
+              }).join("; ")
+            : "The request body wasn't valid JSON.";
+          return new Response(`We couldn't send your message. ${friendly}`, { status: 400 });
         }
 
         const { messages, conversationId } = body;
