@@ -492,11 +492,33 @@ export const Route = createFileRoute("/api/audit-tool")({
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
 
-        const body = (await request.json()) as { messages?: UIMessage[] };
-        const messages = body.messages;
-        if (!Array.isArray(messages)) {
-          return new Response("Messages are required", { status: 400 });
+        const AuditMessage = z.object({
+          id: z.string().optional(),
+          role: z.enum(["system", "user", "assistant"]),
+          parts: z.array(z.record(z.any())).optional(),
+          content: z.string().optional(),
+        }).passthrough();
+        const AuditBody = z.object({
+          messages: z.array(AuditMessage)
+            .min(1, "Please send at least one message to start the audit.")
+            .max(500, "Conversation is too long — please start a new audit."),
+        });
+
+        let parsed: z.infer<typeof AuditBody>;
+        try {
+          const raw = await request.json();
+          parsed = AuditBody.parse(raw);
+        } catch (e) {
+          const friendly = e instanceof z.ZodError
+            ? e.errors.slice(0, 3).map((x) => {
+                const field = x.path.join(".") || "request";
+                return `“${field}”: ${x.message}`;
+              }).join("; ")
+            : "The request body wasn't valid JSON.";
+          return new Response(`We couldn't start the audit. ${friendly}`, { status: 400 });
         }
+        const messages = parsed.messages as unknown as UIMessage[];
+
 
         const userClient = getUserClient(auth.token);
         const adminClient = getAdminClient();
