@@ -7,12 +7,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, ArrowRight, Clock, GraduationCap, Users, X } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertTriangle, ArrowRight, CalendarIcon, Clock, GraduationCap, Users, X } from "lucide-react";
+import type { DateRange } from "react-day-picker";
+import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
   getLastMinuteChangesAudit,
