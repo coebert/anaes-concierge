@@ -116,6 +116,7 @@ function hoursBetween(fromIso: string, toIso: string): number {
   return (b - a) / 3_600_000;
 }
 
+function LastMinuteChangesPage() {
   const [rangeStart, setRangeStart] = useState(() => isoDaysAgo(90));
   const [rangeEnd, setRangeEnd] = useState(() => todayISO());
   const [filter, setFilter] = useState<DrillFilter>({ kind: "none" });
