@@ -12,7 +12,15 @@ import {
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertTriangle, ArrowRight, CalendarIcon, Clock, GraduationCap, Users, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertTriangle, ArrowRight, CalendarIcon, CircleHelp, Clock, GraduationCap, Users, X,
+} from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { formatDateGB, cn } from "@/lib/utils";
