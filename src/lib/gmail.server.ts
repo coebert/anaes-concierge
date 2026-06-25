@@ -11,6 +11,11 @@ function base64Url(input: string) {
     .replace(/=+$/, "");
 }
 
+function sanitiseHeader(value: string) {
+  // Strip CR/LF/NUL to prevent header injection (RFC 2822 header smuggling).
+  return value.replace(/[\r\n\0]/g, " ").trim();
+}
+
 function buildRawEmail(params: {
   to: string;
   subject: string;
@@ -18,10 +23,11 @@ function buildRawEmail(params: {
   html?: string;
 }) {
   const headers = [
-    `To: ${params.to}`,
-    `Subject: ${params.subject}`,
+    `To: ${sanitiseHeader(params.to)}`,
+    `Subject: ${sanitiseHeader(params.subject)}`,
     "MIME-Version: 1.0",
   ];
+
   let body = "";
   if (params.html) {
     headers.push('Content-Type: text/html; charset="UTF-8"');
