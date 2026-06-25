@@ -219,4 +219,8 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       byGroupByWindow,
       rows,
     };
+    } catch (err) {
+      console.error("getLastMinuteChangesAudit failed:", err);
+      return emptyAudit();
+    }
   });
