@@ -120,8 +120,28 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       };
     };
 
+    const isTransient = (e: unknown): boolean => {
+      const msg = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
+      return msg.includes("networkerror") || msg.includes("fetch failed") || msg.includes("network request failed") || msg.includes("econnreset") || msg.includes("etimedout") || msg.includes("timeout");
+    };
+    const withRetry = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
+      const delays = [150, 400, 1000];
+      let lastErr: unknown;
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+          return await fn();
+        } catch (e) {
+          lastErr = e;
+          if (attempt === delays.length || !isTransient(e)) throw e;
+          console.warn(`[last-minute-changes] transient ${label} failure (attempt ${attempt + 1}), retrying in ${delays[attempt]}ms:`, e);
+          await new Promise((r) => setTimeout(r, delays[attempt]));
+        }
+      }
+      throw lastErr;
+    };
+
     try {
-    const { data: logs, error } = await supabase
+    const { data: logs, error } = await withRetry("rota_change_log", async () => await supabase
       .from("rota_change_log")
       .select("id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id")
       .gte("session_date", data.rangeStart)
@@ -129,7 +149,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       .lte("hours_before_session", 48)
       .gte("hours_before_session", -48)
       .order("changed_at", { ascending: false })
-      .limit(5000);
+      .limit(5000));
     if (error) throw new Error(error.message);
 
     const staffIds = Array.from(new Set(
