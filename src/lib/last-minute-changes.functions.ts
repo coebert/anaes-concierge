@@ -100,6 +100,27 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<LastMinuteChangesAudit> => {
     const { supabase } = context;
 
+    const emptyAudit = (): LastMinuteChangesAudit => {
+      const WINDOWS = [24, 48] as const;
+      const totalsByWindow: Record<string, WindowTotals> = {};
+      const byGroupByWindow: Record<string, WindowByGroup> = {};
+      for (const w of WINDOWS) {
+        totalsByWindow[String(w)] = { all: 0, inserts: 0, updates: 0, deletes: 0, traineeListMoves: 0 };
+        byGroupByWindow[String(w)] = emptyByGroup();
+      }
+      return {
+        rangeStart: data.rangeStart,
+        rangeEnd: data.rangeEnd,
+        windowsHours: [...WINDOWS],
+        totals: totalsByWindow["48"],
+        byGroup: byGroupByWindow["48"],
+        totalsByWindow,
+        byGroupByWindow,
+        rows: [],
+      };
+    };
+
+    try {
     const { data: logs, error } = await supabase
       .from("rota_change_log")
       .select("id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id")
@@ -198,4 +219,8 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       byGroupByWindow,
       rows,
     };
+    } catch (err) {
+      console.error("getLastMinuteChangesAudit failed:", err);
+      return emptyAudit();
+    }
   });
