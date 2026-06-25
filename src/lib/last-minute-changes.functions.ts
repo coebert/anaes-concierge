@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
@@ -90,36 +91,73 @@ function emptyByGroup(): LastMinuteChangesAudit["byGroup"] {
   return out;
 }
 
-type RotaChangeLogRow = {
-  id: string;
-  action: string | null;
-  session_date: string;
-  session: string | null;
-  staff_id: string | null;
-  session_start_ts: string;
-  changed_at: string;
-  hours_before_session: number | string | null;
-  changed_by: string | null;
-  prev_theatre_session_id: string | null;
-  new_theatre_session_id: string | null;
-  prev_staff_id: string | null;
-};
+// ----- Zod schemas for runtime validation of Postgrest results -----
 
-type ProfileRow = {
-  id: string;
-  full_name: string | null;
-  grade: string | null;
-};
+const RotaChangeLogRowSchema = z.object({
+  id: z.string(),
+  action: z.string().nullable(),
+  session_date: z.string(),
+  session: z.string().nullable(),
+  staff_id: z.string().nullable(),
+  session_start_ts: z.string(),
+  changed_at: z.string(),
+  hours_before_session: z.union([z.number(), z.string()]).nullable(),
+  changed_by: z.string().nullable(),
+  prev_theatre_session_id: z.string().nullable(),
+  new_theatre_session_id: z.string().nullable(),
+  prev_staff_id: z.string().nullable(),
+});
+type RotaChangeLogRow = z.infer<typeof RotaChangeLogRowSchema>;
 
-type NamedRef = { name: string } | { name: string }[] | null;
+const ProfileRowSchema = z.object({
+  id: z.string(),
+  full_name: z.string().nullable(),
+  grade: z.string().nullable(),
+});
+type ProfileRow = z.infer<typeof ProfileRowSchema>;
 
-type TheatreSessionRow = {
-  id: string;
-  theatre_id: string | null;
-  specialty_id: string | null;
-  theatres: NamedRef;
-  specialties: NamedRef;
-};
+const NamedRefSchema = z.union([
+  z.object({ name: z.string() }),
+  z.array(z.object({ name: z.string() })),
+  z.null(),
+]);
+type NamedRef = z.infer<typeof NamedRefSchema>;
+
+const TheatreSessionRowSchema = z.object({
+  id: z.string(),
+  theatre_id: z.string().nullable(),
+  specialty_id: z.string().nullable(),
+  theatres: NamedRefSchema,
+  specialties: NamedRefSchema,
+});
+type TheatreSessionRow = z.infer<typeof TheatreSessionRowSchema>;
+
+/**
+ * Validate an array of rows row-by-row. Rows failing validation are dropped
+ * and logged; this guarantees a typed array out and avoids crashing the audit
+ * when one bad row arrives from Postgrest.
+ */
+function parseRows<T>(
+  schema: z.ZodType<T>,
+  raw: unknown,
+  label: string,
+): T[] {
+  if (!Array.isArray(raw)) {
+    if (raw != null) console.warn(`[last-minute-changes] ${label}: expected array, got`, typeof raw);
+    return [];
+  }
+  const out: T[] = [];
+  let dropped = 0;
+  for (const item of raw) {
+    const result = schema.safeParse(item);
+    if (result.success) out.push(result.data);
+    else dropped += 1;
+  }
+  if (dropped > 0) {
+    console.warn(`[last-minute-changes] ${label}: dropped ${dropped}/${raw.length} invalid rows`);
+  }
+  return out;
+}
 
 function firstName(ref: NamedRef): string | null {
   if (!ref) return null;
@@ -188,7 +226,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       .order("changed_at", { ascending: false })
       .limit(5000));
     if (logsResult.error) throw new Error(logsResult.error.message);
-    const logs: RotaChangeLogRow[] = (logsResult.data ?? []) as unknown as RotaChangeLogRow[];
+    const logs: RotaChangeLogRow[] = parseRows(RotaChangeLogRowSchema, logsResult.data, "rota_change_log");
 
     const staffIds: string[] = Array.from(new Set(
       logs.flatMap((r): (string | null)[] => [r.staff_id, r.changed_by, r.prev_staff_id])
@@ -206,7 +244,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         .select("id, full_name, grade")
         .in("id", staffIds);
       if (pErr) throw new Error(pErr.message);
-      const profileRows: ProfileRow[] = (profs ?? []) as unknown as ProfileRow[];
+      const profileRows: ProfileRow[] = parseRows(ProfileRowSchema, profs, "profiles");
       for (const p of profileRows) profileMap.set(p.id, { full_name: p.full_name, grade: p.grade });
     }
 
@@ -217,7 +255,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         .select("id, theatre_id, specialty_id, theatres(name), specialties(name)")
         .in("id", sessionIds);
       if (sErr) throw new Error(sErr.message);
-      const sessionRows: TheatreSessionRow[] = (sess ?? []) as unknown as TheatreSessionRow[];
+      const sessionRows: TheatreSessionRow[] = parseRows(TheatreSessionRowSchema, sess, "theatre_sessions");
       for (const s of sessionRows) {
         const theatre = firstName(s.theatres) ?? "Unknown theatre";
         const specialty = firstName(s.specialties);
