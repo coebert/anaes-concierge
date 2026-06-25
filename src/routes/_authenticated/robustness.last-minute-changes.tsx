@@ -116,9 +116,12 @@ function hoursBetween(fromIso: string, toIso: string): number {
   return (b - a) / 3_600_000;
 }
 
+type WindowKey = "24" | "48";
+
 function LastMinuteChangesPage() {
   const [rangeStart, setRangeStart] = useState(() => isoDaysAgo(90));
   const [rangeEnd, setRangeEnd] = useState(() => todayISO());
+  const [windowKey, setWindowKey] = useState<WindowKey>("48");
   const [filter, setFilter] = useState<DrillFilter>({ kind: "none" });
   const drillRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,18 +131,28 @@ function LastMinuteChangesPage() {
     queryFn: () => fetchAudit({ data: { rangeStart, rangeEnd } }),
   });
 
+  const windowHours = Number(windowKey);
+  const totals = data?.totalsByWindow[windowKey];
+  const byGroup = data?.byGroupByWindow[windowKey];
+
+  // Rows in the audit are captured to ±48h; narrow client-side when 24h is active.
+  const windowRows = useMemo(
+    () => (data ? data.rows.filter((r) => Math.abs(r.hoursBeforeSession) <= windowHours) : []),
+    [data, windowHours],
+  );
+
   const drillRows = useMemo(
-    () => (data ? applyFilter(data.rows, filter) : []),
-    [data, filter],
+    () => applyFilter(windowRows, filter),
+    [windowRows, filter],
   );
 
   const groupRows = useMemo(() => {
-    if (!data) return [];
+    if (!byGroup) return [];
     const order: StaffingGroup[] = ["consultant", "trainee", "sas", "anp", "other", "unknown"];
     return order
-      .map((g) => ({ group: g, ...data.byGroup[g] }))
+      .map((g) => ({ group: g, ...byGroup[g] }))
       .filter((r) => r.total > 0);
-  }, [data]);
+  }, [byGroup]);
 
   function drill(f: DrillFilter) {
     setFilter(f);
@@ -154,25 +167,44 @@ function LastMinuteChangesPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           Counts every change to a rota assignment (insert, move or removal)
-          made within <strong>48 hours</strong> of the scheduled start of the
-          clinical activity. Click any total or row count below to drill into
-          the underlying events.
+          made within the selected window of the scheduled start of the
+          clinical activity. Toggle between <strong>24 hours</strong> and
+          <strong> 48 hours</strong> to compare. Click any total or row count
+          below to drill into the underlying events.
         </p>
       </header>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Date range</CardTitle>
+          <CardTitle className="text-base">Date range &amp; window</CardTitle>
           <CardDescription>
             Filter by the <em>session date</em> of the affected clinical activity.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <DateRangeFilter
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
             onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); setFilter({ kind: "none" }); }}
           />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Change window:</span>
+            {(["24", "48"] as const).map((w) => (
+              <Button
+                key={w}
+                size="sm"
+                variant={windowKey === w ? "default" : "outline"}
+                onClick={() => { setWindowKey(w); setFilter({ kind: "none" }); }}
+              >
+                Within {w}h
+              </Button>
+            ))}
+            {data && (
+              <Badge variant="secondary" className="ml-2">
+                24h: {data.totalsByWindow["24"]?.all ?? 0} · 48h: {data.totalsByWindow["48"]?.all ?? 0}
+              </Badge>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -183,23 +215,24 @@ function LastMinuteChangesPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Total last-minute changes"
-              value={data?.totals.all ?? (isLoading ? "…" : 0)}
+        <Stat label={`Total changes within ${windowHours}h`}
+              value={totals?.all ?? (isLoading ? "…" : 0)}
               icon={Clock} tone="amber"
               onClick={() => drill({ kind: "all" })} />
         <Stat label="Reassignments / moves"
-              value={data?.totals.updates ?? (isLoading ? "…" : 0)}
+              value={totals?.updates ?? (isLoading ? "…" : 0)}
               icon={Users} tone="orange"
               onClick={() => drill({ kind: "action", action: "update" })} />
         <Stat label="Inserts + removals"
-              value={data ? data.totals.inserts + data.totals.deletes : (isLoading ? "…" : 0)}
+              value={totals ? totals.inserts + totals.deletes : (isLoading ? "…" : 0)}
               icon={AlertTriangle} tone="red"
               onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })} />
         <Stat label="Trainee changes (incl. list moves)"
-              value={data?.totals.traineeListMoves ?? (isLoading ? "…" : 0)}
+              value={totals?.traineeListMoves ?? (isLoading ? "…" : 0)}
               icon={GraduationCap} tone="emerald"
               onClick={() => drill({ kind: "group", group: "trainee" })} />
       </div>
+
 
       <Card>
         <CardHeader>
@@ -346,12 +379,13 @@ function LastMinuteChangesPage() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Source: <code>rota_change_log</code>. The database trigger logs every
-        insert, update or delete on a rota assignment whose session start is
-        within ±48 hours of the change. All times shown in your local
-        timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()}); &ldquo;hours
-        before&rdquo; is the elapsed duration between the change and the
-        scheduled session start.
+        Source: <code>rota_change_log</code>. The database trigger captures
+        every insert, update or delete on a rota assignment whose session
+        start is within ±48 hours of the change; the 24h view is a strict
+        subset of the 48h view (currently showing ±{windowHours}h). All times
+        shown in your local timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()});
+        &ldquo;hours before&rdquo; is the elapsed duration between the change
+        and the scheduled session start.
       </p>
     </div>
   );
