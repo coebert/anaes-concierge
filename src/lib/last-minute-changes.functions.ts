@@ -226,7 +226,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       .order("changed_at", { ascending: false })
       .limit(5000));
     if (logsResult.error) throw new Error(logsResult.error.message);
-    const logs: RotaChangeLogRow[] = (logsResult.data ?? []) as unknown as RotaChangeLogRow[];
+    const logs: RotaChangeLogRow[] = parseRows(RotaChangeLogRowSchema, logsResult.data, "rota_change_log");
 
     const staffIds: string[] = Array.from(new Set(
       logs.flatMap((r): (string | null)[] => [r.staff_id, r.changed_by, r.prev_staff_id])
