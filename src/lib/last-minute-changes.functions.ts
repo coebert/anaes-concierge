@@ -141,7 +141,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
     };
 
     try {
-    const { data: logs, error } = await withRetry("rota_change_log", () => supabase
+    const { data: logs, error } = await withRetry("rota_change_log", async () => await supabase
       .from("rota_change_log")
       .select("id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id")
       .gte("session_date", data.rangeStart)
