@@ -32,6 +32,7 @@ import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_auth
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedRobustnessPoacAuditRouteImport } from './routes/_authenticated/robustness.poac-audit'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
+import { Route as AuthenticatedRobustnessLastMinuteChangesRouteImport } from './routes/_authenticated/robustness.last-minute-changes'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
 import { Route as AuthenticatedRobustnessConsultantAuditsRouteImport } from './routes/_authenticated/robustness.consultant-audits'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
@@ -180,6 +181,12 @@ const AuthenticatedRobustnessListFeasibilityRoute =
   AuthenticatedRobustnessListFeasibilityRouteImport.update({
     id: '/robustness/list-feasibility',
     path: '/robustness/list-feasibility',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRobustnessLastMinuteChangesRoute =
+  AuthenticatedRobustnessLastMinuteChangesRouteImport.update({
+    id: '/robustness/last-minute-changes',
+    path: '/robustness/last-minute-changes',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedRobustnessConsultantFeasibilityRoute =
@@ -393,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  '/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -445,6 +453,7 @@ export interface FileRoutesByTo {
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  '/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -500,6 +509,7 @@ export interface FileRoutesById {
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  '/_authenticated/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
@@ -555,6 +565,7 @@ export interface FileRouteTypes {
     | '/leave/forecast'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
+    | '/robustness/last-minute-changes'
     | '/robustness/list-feasibility'
     | '/robustness/poac-audit'
     | '/robustness/simulate'
@@ -607,6 +618,7 @@ export interface FileRouteTypes {
     | '/leave/forecast'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
+    | '/robustness/last-minute-changes'
     | '/robustness/list-feasibility'
     | '/robustness/poac-audit'
     | '/robustness/simulate'
@@ -661,6 +673,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leave_/forecast'
     | '/_authenticated/robustness/consultant-audits'
     | '/_authenticated/robustness/consultant-feasibility'
+    | '/_authenticated/robustness/last-minute-changes'
     | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/poac-audit'
     | '/_authenticated/robustness/simulate'
@@ -851,6 +864,13 @@ declare module '@tanstack/react-router' {
       path: '/robustness/list-feasibility'
       fullPath: '/robustness/list-feasibility'
       preLoaderRoute: typeof AuthenticatedRobustnessListFeasibilityRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/robustness/last-minute-changes': {
+      id: '/_authenticated/robustness/last-minute-changes'
+      path: '/robustness/last-minute-changes'
+      fullPath: '/robustness/last-minute-changes'
+      preLoaderRoute: typeof AuthenticatedRobustnessLastMinuteChangesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/robustness/consultant-feasibility': {
@@ -1134,6 +1154,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
   AuthenticatedRobustnessConsultantAuditsRoute: typeof AuthenticatedRobustnessConsultantAuditsRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
+  AuthenticatedRobustnessLastMinuteChangesRoute: typeof AuthenticatedRobustnessLastMinuteChangesRoute
   AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
   AuthenticatedRobustnessPoacAuditRoute: typeof AuthenticatedRobustnessPoacAuditRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
@@ -1176,6 +1197,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
     AuthenticatedRobustnessConsultantAuditsRoute,
   AuthenticatedRobustnessConsultantFeasibilityRoute:
     AuthenticatedRobustnessConsultantFeasibilityRoute,
+  AuthenticatedRobustnessLastMinuteChangesRoute:
+    AuthenticatedRobustnessLastMinuteChangesRoute,
   AuthenticatedRobustnessListFeasibilityRoute:
     AuthenticatedRobustnessListFeasibilityRoute,
   AuthenticatedRobustnessPoacAuditRoute: AuthenticatedRobustnessPoacAuditRoute,
