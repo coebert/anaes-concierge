@@ -90,6 +90,43 @@ function emptyByGroup(): LastMinuteChangesAudit["byGroup"] {
   return out;
 }
 
+type RotaChangeLogRow = {
+  id: string;
+  action: string | null;
+  session_date: string;
+  session: string | null;
+  staff_id: string | null;
+  session_start_ts: string;
+  changed_at: string;
+  hours_before_session: number | string | null;
+  changed_by: string | null;
+  prev_theatre_session_id: string | null;
+  new_theatre_session_id: string | null;
+  prev_staff_id: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  grade: string | null;
+};
+
+type NamedRef = { name: string } | { name: string }[] | null;
+
+type TheatreSessionRow = {
+  id: string;
+  theatre_id: string | null;
+  specialty_id: string | null;
+  theatres: NamedRef;
+  specialties: NamedRef;
+};
+
+function firstName(ref: NamedRef): string | null {
+  if (!ref) return null;
+  if (Array.isArray(ref)) return ref[0]?.name ?? null;
+  return ref.name ?? null;
+}
+
 export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { rangeStart: string; rangeEnd: string }) => {
