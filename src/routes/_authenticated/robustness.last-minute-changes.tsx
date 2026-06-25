@@ -133,21 +133,11 @@ function LastMinuteChangesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="lmc-start">From</Label>
-              <Input id="lmc-start" type="date" value={rangeStart}
-                onChange={(e) => setRangeStart(e.target.value)} className="w-44" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="lmc-end">To</Label>
-              <Input id="lmc-end" type="date" value={rangeEnd}
-                onChange={(e) => setRangeEnd(e.target.value)} className="w-44" />
-            </div>
-            <Badge variant="secondary">
-              {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
-            </Badge>
-          </div>
+          <DateRangeFilter
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); setFilter({ kind: "none" }); }}
+          />
         </CardContent>
       </Card>
 
