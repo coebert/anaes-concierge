@@ -348,8 +348,10 @@ function LastMinuteChangesPage() {
       <p className="text-xs text-muted-foreground">
         Source: <code>rota_change_log</code>. The database trigger logs every
         insert, update or delete on a rota assignment whose session start is
-        within ±48 hours of the change. Older entries may pre-date the
-        from/to capture and therefore show no list pair.
+        within ±48 hours of the change. All times shown in your local
+        timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()}); &ldquo;hours
+        before&rdquo; is the elapsed duration between the change and the
+        scheduled session start.
       </p>
     </div>
   );
