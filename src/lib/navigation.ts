@@ -7,6 +7,7 @@ import {
   CalendarRange,
   CalendarX,
   ClipboardList,
+  Clock,
   GraduationCap,
   Grid3x3,
   Home,
