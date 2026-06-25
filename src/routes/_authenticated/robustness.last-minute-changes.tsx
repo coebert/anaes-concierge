@@ -1,20 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Clock, GraduationCap, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, GraduationCap, Users, X } from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
   getLastMinuteChangesAudit,
+  type LastMinuteChangeRow,
   type StaffingGroup,
 } from "@/lib/last-minute-changes.functions";
 
@@ -39,25 +41,60 @@ const GROUP_LABEL: Record<StaffingGroup, string> = {
   unknown:    "Unknown grade",
 };
 
+type DrillFilter =
+  | { kind: "none" }
+  | { kind: "all" }
+  | { kind: "action"; action: "insert" | "update" | "delete" }
+  | { kind: "action-pair"; actions: Array<"insert" | "delete"> }
+  | { kind: "group"; group: StaffingGroup }
+  | { kind: "group-action"; group: StaffingGroup; action: "insert" | "update" | "delete" };
+
 function isoDaysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
+  const d = new Date(); d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 }
+function todayISO(): string { return new Date().toISOString().slice(0, 10); }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+function describeFilter(f: DrillFilter): string {
+  switch (f.kind) {
+    case "none":        return "";
+    case "all":         return "All last-minute changes";
+    case "action":      return `All ${f.action === "update" ? "moves/updates" : f.action + "s"}`;
+    case "action-pair": return "All inserts + removals";
+    case "group":       return `${GROUP_LABEL[f.group]} — all changes`;
+    case "group-action":
+      return `${GROUP_LABEL[f.group]} — ${f.action === "update" ? "moves/updates" : f.action + "s"}`;
+  }
+}
+
+function applyFilter(rows: LastMinuteChangeRow[], f: DrillFilter): LastMinuteChangeRow[] {
+  switch (f.kind) {
+    case "none":        return [];
+    case "all":         return rows;
+    case "action":      return rows.filter((r) => r.action === f.action);
+    case "action-pair": return rows.filter((r) => f.actions.includes(r.action as "insert" | "delete"));
+    case "group":       return rows.filter((r) => r.group === f.group);
+    case "group-action":
+      return rows.filter((r) => r.group === f.group && r.action === f.action);
+  }
 }
 
 function LastMinuteChangesPage() {
   const [rangeStart, setRangeStart] = useState(() => isoDaysAgo(90));
   const [rangeEnd, setRangeEnd] = useState(() => todayISO());
+  const [filter, setFilter] = useState<DrillFilter>({ kind: "none" });
+  const drillRef = useRef<HTMLDivElement | null>(null);
 
   const fetchAudit = useServerFn(getLastMinuteChangesAudit);
   const { data, isLoading, error } = useQuery({
     queryKey: ["last-minute-changes", rangeStart, rangeEnd],
     queryFn: () => fetchAudit({ data: { rangeStart, rangeEnd } }),
   });
+
+  const drillRows = useMemo(
+    () => (data ? applyFilter(data.rows, filter) : []),
+    [data, filter],
+  );
 
   const groupRows = useMemo(() => {
     if (!data) return [];
@@ -66,6 +103,11 @@ function LastMinuteChangesPage() {
       .map((g) => ({ group: g, ...data.byGroup[g] }))
       .filter((r) => r.total > 0);
   }, [data]);
+
+  function drill(f: DrillFilter) {
+    setFilter(f);
+    requestAnimationFrame(() => drillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   return (
     <div className="space-y-6">
@@ -76,8 +118,8 @@ function LastMinuteChangesPage() {
         <p className="text-sm text-muted-foreground">
           Counts every change to a rota assignment (insert, move or removal)
           made within <strong>48 hours</strong> of the scheduled start of the
-          clinical activity. Trainees moved between lists inside the 48 hour
-          window are highlighted separately.
+          clinical activity. Click any total or row count below to drill into
+          the underlying events.
         </p>
       </header>
 
@@ -92,23 +134,13 @@ function LastMinuteChangesPage() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
               <Label htmlFor="lmc-start">From</Label>
-              <Input
-                id="lmc-start"
-                type="date"
-                value={rangeStart}
-                onChange={(e) => setRangeStart(e.target.value)}
-                className="w-44"
-              />
+              <Input id="lmc-start" type="date" value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)} className="w-44" />
             </div>
             <div className="space-y-1">
               <Label htmlFor="lmc-end">To</Label>
-              <Input
-                id="lmc-end"
-                type="date"
-                value={rangeEnd}
-                onChange={(e) => setRangeEnd(e.target.value)}
-                className="w-44"
-              />
+              <Input id="lmc-end" type="date" value={rangeEnd}
+                onChange={(e) => setRangeEnd(e.target.value)} className="w-44" />
             </div>
             <Badge variant="secondary">
               {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
@@ -124,40 +156,29 @@ function LastMinuteChangesPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label="Total last-minute changes"
-          value={data?.totals.all ?? (isLoading ? "…" : 0)}
-          icon={Clock}
-          tone="amber"
-        />
-        <Stat
-          label="Reassignments / moves"
-          value={data?.totals.updates ?? (isLoading ? "…" : 0)}
-          icon={Users}
-          tone="orange"
-        />
-        <Stat
-          label="Inserts + removals"
-          value={data
-            ? data.totals.inserts + data.totals.deletes
-            : (isLoading ? "…" : 0)}
-          icon={AlertTriangle}
-          tone="red"
-        />
-        <Stat
-          label="Trainee changes (incl. list moves)"
-          value={data?.totals.traineeListMoves ?? (isLoading ? "…" : 0)}
-          icon={GraduationCap}
-          tone="emerald"
-        />
+        <Stat label="Total last-minute changes"
+              value={data?.totals.all ?? (isLoading ? "…" : 0)}
+              icon={Clock} tone="amber"
+              onClick={() => drill({ kind: "all" })} />
+        <Stat label="Reassignments / moves"
+              value={data?.totals.updates ?? (isLoading ? "…" : 0)}
+              icon={Users} tone="orange"
+              onClick={() => drill({ kind: "action", action: "update" })} />
+        <Stat label="Inserts + removals"
+              value={data ? data.totals.inserts + data.totals.deletes : (isLoading ? "…" : 0)}
+              icon={AlertTriangle} tone="red"
+              onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })} />
+        <Stat label="Trainee changes (incl. list moves)"
+              value={data?.totals.traineeListMoves ?? (isLoading ? "…" : 0)}
+              icon={GraduationCap} tone="emerald"
+              onClick={() => drill({ kind: "group", group: "trainee" })} />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">By staffing group</CardTitle>
           <CardDescription>
-            Last-minute changes split by the grade of the staff member whose
-            assignment was changed.
+            Click any cell to drill into the matching events.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -184,15 +205,17 @@ function LastMinuteChangesPage() {
                     <TableCell className="font-medium">
                       {GROUP_LABEL[r.group]}
                       {r.group === "trainee" && (
-                        <Badge variant="outline" className="ml-2">
-                          tracks list moves
-                        </Badge>
+                        <Badge variant="outline" className="ml-2">tracks list moves</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{r.total}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.inserts}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.updates}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.deletes}</TableCell>
+                    <DrillCell value={r.total}
+                      onClick={() => drill({ kind: "group", group: r.group })} />
+                    <DrillCell value={r.inserts}
+                      onClick={() => drill({ kind: "group-action", group: r.group, action: "insert" })} />
+                    <DrillCell value={r.updates}
+                      onClick={() => drill({ kind: "group-action", group: r.group, action: "update" })} />
+                    <DrillCell value={r.deletes}
+                      onClick={() => drill({ kind: "group-action", group: r.group, action: "delete" })} />
                   </TableRow>
                 ))}
               </TableBody>
@@ -201,62 +224,88 @@ function LastMinuteChangesPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Change log</CardTitle>
-          <CardDescription>
-            Most recent {data?.rows.length ?? 0} change(s) logged within the
-            48 hour window. Negative hours mean the change happened after the
-            session had already started.
-          </CardDescription>
+      <Card ref={drillRef}>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="text-base">
+              {filter.kind === "none" ? "Drill-down" : describeFilter(filter)}
+            </CardTitle>
+            <CardDescription>
+              {filter.kind === "none"
+                ? "Click any total above to see the underlying change events here."
+                : `${drillRows.length} event(s). Negative hours mean the change happened after the session had already started.`}
+            </CardDescription>
+          </div>
+          {filter.kind !== "none" && (
+            <Button variant="ghost" size="sm" onClick={() => setFilter({ kind: "none" })}>
+              <X className="mr-1 h-4 w-4" /> Clear
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : (data?.rows.length ?? 0) === 0 ? (
-            <div className="text-sm text-muted-foreground">No rows.</div>
+          {filter.kind === "none" ? (
+            <div className="text-sm text-muted-foreground">No filter selected.</div>
+          ) : drillRows.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No matching events.</div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Session date</TableHead>
                     <TableHead>Session</TableHead>
-                    <TableHead>Staff</TableHead>
+                    <TableHead>Scheduled start</TableHead>
+                    <TableHead>Who</TableHead>
                     <TableHead>Group</TableHead>
                     <TableHead>Action</TableHead>
+                    <TableHead>From → To list</TableHead>
                     <TableHead className="text-right">Hours before</TableHead>
                     <TableHead>Changed at</TableHead>
                     <TableHead>Changed by</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data!.rows.map((r) => (
+                  {drillRows.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell>{formatDateGB(r.sessionDate)}</TableCell>
-                      <TableCell className="uppercase text-xs">{r.session}</TableCell>
-                      <TableCell>{r.staffName}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDateGB(r.sessionDate)}{" "}
+                        <span className="uppercase text-xs text-muted-foreground">{r.session}</span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(r.sessionStartTs).toLocaleString("en-GB")}
+                      </TableCell>
+                      <TableCell>
+                        {r.action === "update" && r.prevStaffName && r.prevStaffName !== r.staffName ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="line-through text-muted-foreground">{r.prevStaffName}</span>
+                            <ArrowRight className="h-3 w-3" />
+                            <span>{r.staffName}</span>
+                          </span>
+                        ) : (
+                          r.staffName
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={r.group === "trainee" ? "default" : "secondary"}>
                           {GROUP_LABEL[r.group]}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={cn(
-                            "rounded px-2 py-0.5 text-xs font-medium",
-                            r.action === "insert" && "bg-emerald-100 text-emerald-700",
-                            r.action === "update" && "bg-amber-100 text-amber-700",
-                            r.action === "delete" && "bg-red-100 text-red-700",
-                          )}
-                        >
+                        <span className={cn(
+                          "rounded px-2 py-0.5 text-xs font-medium",
+                          r.action === "insert" && "bg-emerald-100 text-emerald-700",
+                          r.action === "update" && "bg-amber-100 text-amber-700",
+                          r.action === "delete" && "bg-red-100 text-red-700",
+                        )}>
                           {r.action}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <ListMove from={r.fromList?.label ?? null} to={r.toList?.label ?? null} action={r.action} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {r.hoursBeforeSession.toFixed(1)}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(r.changedAt).toLocaleString("en-GB")}
                       </TableCell>
                       <TableCell className="text-xs">{r.changedByName ?? "—"}</TableCell>
@@ -272,11 +321,45 @@ function LastMinuteChangesPage() {
       <p className="text-xs text-muted-foreground">
         Source: <code>rota_change_log</code>. The database trigger logs every
         insert, update or delete on a rota assignment whose session start is
-        within ±48 hours of the change. Historic entries before the trigger was
-        widened may still reflect the previous ±24 hour window.
+        within ±48 hours of the change. Older entries may pre-date the
+        from/to capture and therefore show no list pair.
       </p>
     </div>
   );
+}
+
+function DrillCell({ value, onClick }: { value: number; onClick: () => void }) {
+  return (
+    <TableCell className="text-right tabular-nums">
+      {value === 0 ? (
+        <span className="text-muted-foreground">0</span>
+      ) : (
+        <button
+          type="button"
+          onClick={onClick}
+          className="rounded px-2 py-0.5 font-medium text-primary hover:bg-primary/10 hover:underline"
+        >
+          {value}
+        </button>
+      )}
+    </TableCell>
+  );
+}
+
+function ListMove({ from, to, action }: { from: string | null; to: string | null; action: string }) {
+  if (!from && !to) return <span className="text-muted-foreground">—</span>;
+  if (action === "insert") return <span><span className="text-muted-foreground">added to</span> {to ?? "—"}</span>;
+  if (action === "delete") return <span><span className="text-muted-foreground">removed from</span> {from ?? "—"}</span>;
+  if (from && to && from !== to) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className="line-through text-muted-foreground">{from}</span>
+        <ArrowRight className="h-3 w-3" />
+        <span>{to}</span>
+      </span>
+    );
+  }
+  return <span>{to ?? from}</span>;
 }
 
 type StatProps = {
@@ -284,16 +367,24 @@ type StatProps = {
   value: number | string;
   icon: typeof Clock;
   tone: "amber" | "red" | "emerald" | "orange";
+  onClick?: () => void;
 };
 
-function Stat({ label, value, icon: Icon, tone }: StatProps) {
+function Stat({ label, value, icon: Icon, tone, onClick }: StatProps) {
   const toneClass =
     tone === "red" ? "bg-red-500/10 text-red-600"
     : tone === "amber" ? "bg-amber-500/10 text-amber-600"
     : tone === "orange" ? "bg-orange-500/10 text-orange-600"
     : "bg-emerald-500/10 text-emerald-600";
+  const interactive = typeof value === "number" && value > 0 && !!onClick;
   return (
-    <Card>
+    <Card
+      onClick={interactive ? onClick : undefined}
+      className={cn(interactive && "cursor-pointer transition-colors hover:bg-accent/40")}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive ? (e) => { if (e.key === "Enter" || e.key === " ") onClick!(); } : undefined}
+    >
       <CardContent className="flex items-center gap-3 p-4">
         <div className={cn("flex h-10 w-10 items-center justify-center rounded-md", toneClass)}>
           <Icon className="h-5 w-5" />
