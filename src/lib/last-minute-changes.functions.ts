@@ -255,7 +255,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         .select("id, theatre_id, specialty_id, theatres(name), specialties(name)")
         .in("id", sessionIds);
       if (sErr) throw new Error(sErr.message);
-      const sessionRows: TheatreSessionRow[] = (sess ?? []) as unknown as TheatreSessionRow[];
+      const sessionRows: TheatreSessionRow[] = parseRows(TheatreSessionRowSchema, sess, "theatre_sessions");
       for (const s of sessionRows) {
         const theatre = firstName(s.theatres) ?? "Unknown theatre";
         const specialty = firstName(s.specialties);
