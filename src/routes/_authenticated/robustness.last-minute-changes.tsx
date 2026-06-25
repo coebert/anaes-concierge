@@ -7,12 +7,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, ArrowRight, Clock, GraduationCap, Users, X } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertTriangle, ArrowRight, CalendarIcon, Clock, GraduationCap, Users, X } from "lucide-react";
+import type { DateRange } from "react-day-picker";
+import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
   getLastMinuteChangesAudit,
@@ -131,21 +133,11 @@ function LastMinuteChangesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="lmc-start">From</Label>
-              <Input id="lmc-start" type="date" value={rangeStart}
-                onChange={(e) => setRangeStart(e.target.value)} className="w-44" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="lmc-end">To</Label>
-              <Input id="lmc-end" type="date" value={rangeEnd}
-                onChange={(e) => setRangeEnd(e.target.value)} className="w-44" />
-            </div>
-            <Badge variant="secondary">
-              {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
-            </Badge>
-          </div>
+          <DateRangeFilter
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); setFilter({ kind: "none" }); }}
+          />
         </CardContent>
       </Card>
 
@@ -395,5 +387,90 @@ function Stat({ label, value, icon: Icon, tone, onClick }: StatProps) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function parseISO(d: string): Date {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, day ?? 1);
+}
+function toISO(d: Date): string {
+  return format(d, "yyyy-MM-dd");
+}
+
+type Preset = { label: string; range: () => { start: Date; end: Date } };
+
+const PRESETS: Preset[] = [
+  { label: "Last 7 days",   range: () => ({ start: subDays(new Date(), 6),  end: new Date() }) },
+  { label: "Last 30 days",  range: () => ({ start: subDays(new Date(), 29), end: new Date() }) },
+  { label: "Last 90 days",  range: () => ({ start: subDays(new Date(), 89), end: new Date() }) },
+  { label: "This month",    range: () => ({ start: startOfMonth(new Date()), end: new Date() }) },
+  { label: "Last month",    range: () => {
+      const start = startOfMonth(subMonths(new Date(), 1));
+      const end = subDays(startOfMonth(new Date()), 1);
+      return { start, end };
+    } },
+  { label: "Year to date",  range: () => ({ start: startOfYear(new Date()), end: new Date() }) },
+];
+
+type DateRangeFilterProps = {
+  rangeStart: string;
+  rangeEnd: string;
+  onChange: (start: string, end: string) => void;
+};
+
+function DateRangeFilter({ rangeStart, rangeEnd, onChange }: DateRangeFilterProps) {
+  const range: DateRange = { from: parseISO(rangeStart), to: parseISO(rangeEnd) };
+  const days = Math.max(
+    1,
+    Math.round(
+      (parseISO(rangeEnd).getTime() - parseISO(rangeStart).getTime()) / 86_400_000,
+    ) + 1,
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            numberOfMonths={2}
+            defaultMonth={range.from}
+            selected={range}
+            onSelect={(next) => {
+              if (next?.from && next?.to) onChange(toISO(next.from), toISO(next.to));
+              else if (next?.from) onChange(toISO(next.from), toISO(next.from));
+            }}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+
+      <div className="flex flex-wrap gap-1">
+        {PRESETS.map((p) => {
+          const { start, end } = p.range();
+          const active = toISO(start) === rangeStart && toISO(end) === rangeEnd;
+          return (
+            <Button
+              key={p.label}
+              size="sm"
+              variant={active ? "default" : "outline"}
+              onClick={() => onChange(toISO(start), toISO(end))}
+            >
+              {p.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      <Badge variant="secondary" className="ml-auto">{days} day{days === 1 ? "" : "s"}</Badge>
+    </div>
   );
 }
