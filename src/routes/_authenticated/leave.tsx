@@ -870,9 +870,8 @@ function LeavePage() {
             <CardHeader>
               <CardTitle className="text-base">My leave</CardTitle>
               <CardDescription>
-                {isCoordinatorOrAdmin()
-                  ? "This tab shows only your own requests. As a coordinator/admin, you can also view other staff leave records in the Department calendar and All upcoming tabs."
-                  : "All your leave requests and their current status."}
+                <MyLeaveDescription isCoordinatorOrAdmin={isCoordinatorOrAdmin()} />
+              </CardDescription>
               </CardDescription>
             </CardHeader>
             <CardContent>
