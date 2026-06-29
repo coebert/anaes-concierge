@@ -437,10 +437,7 @@ function LeavePage() {
           <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
           <TabsTrigger value="mine" className="gap-2">
-            My leave
-            {isCoordinatorOrAdmin() && (
-              <Badge variant="outline" className="text-xs font-normal">Personal view</Badge>
-            )}
+            <MyLeaveTabLabel isCoordinatorOrAdmin={isCoordinatorOrAdmin()} />
           </TabsTrigger>
         </TabsList>
 
