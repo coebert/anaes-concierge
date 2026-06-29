@@ -85,6 +85,9 @@ function LeavePage() {
   // Year-scoped leave rows (separate from `rows` so the calendar / upcoming
   // tabs aren't ballooned by historical data they don't need).
   const [yearLeave, setYearLeave] = useState<LeaveRow[]>([]);
+  // Complete history of the signed-in user's own leave requests, so the
+  // "My leave" tab can show every request regardless of date/status.
+  const [myLeave, setMyLeave] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
