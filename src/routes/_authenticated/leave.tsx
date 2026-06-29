@@ -404,7 +404,12 @@ function LeavePage() {
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
           <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
-          <TabsTrigger value="mine">My leave</TabsTrigger>
+          <TabsTrigger value="mine" className="gap-2">
+            My leave
+            {isCoordinatorOrAdmin() && (
+              <Badge variant="outline" className="text-xs font-normal">Personal view</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ---------------- Day search + breakdown ---------------- */}
