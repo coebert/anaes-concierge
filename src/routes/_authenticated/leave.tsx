@@ -78,7 +78,7 @@ function gradeLabel(grade: string | null | undefined): string {
 }
 
 function LeavePage() {
-  const { user } = useAuth();
+  const { user, isCoordinatorOrAdmin } = useAuth();
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
