@@ -144,13 +144,13 @@ describe("My leave tab — coordinator/admin scope indicator", () => {
     const trigger = await openMyLeaveTab();
 
     // Badge IS inside the tab trigger.
-    expect(within(trigger).getByText(/personal view/i)).toBeInTheDocument();
+    expect(within(trigger).getByText(/personal view/i)).toBeTruthy();
 
     // Coordinator-aware description copy appears in the panel.
     await waitFor(() => {
       expect(
         screen.getByText(/as a coordinator\/admin, you can also view other staff leave records/i),
-      ).toBeInTheDocument();
+      ).toBeTruthy();
     });
     expect(
       screen.queryByText("All your leave requests and their current status."),
