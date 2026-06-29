@@ -137,10 +137,15 @@ async function openMyLeaveTab() {
 
 describe("My leave tab — coordinator/admin scope indicator", () => {
   it("regular staff: no 'Personal view' badge and shows neutral description", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation((...args) => {
+      // eslint-disable-next-line no-console
+      console.log("CONSOLE.ERROR:", String(args[0]).slice(0, 400));
+    });
     const { container } = render(<LeavePageHarness />);
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 200));
     // eslint-disable-next-line no-console
-    console.log("DEBUG container:", container.innerHTML.slice(0, 500));
+    console.log("DEBUG container:", container.innerHTML.slice(0, 800));
+    errSpy.mockRestore();
     const trigger = await openMyLeaveTab();
 
     // Badge is NOT inside the tab trigger.
