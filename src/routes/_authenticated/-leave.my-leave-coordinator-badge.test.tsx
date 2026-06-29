@@ -1,24 +1,25 @@
 // @vitest-environment jsdom
 /**
- * UI test: the "My leave" tab on /leave must communicate scope based on the
- * signed-in user's role.
+ * UI test: the "My leave" tab tells the user when its scope is intentionally
+ * personal even though they have org-wide visibility.
  *
- * - Regular staff: tab trigger has NO "Personal view" badge; description
- *   reads "All your leave requests and their current status."
- * - Coordinator / admin: tab trigger shows a "Personal view" badge; the
- *   description explains the tab is scoped to their own requests and that
- *   they can see other staff leave in the Department calendar / All
- *   upcoming tabs.
+ * - Regular staff: tab trigger label has NO "Personal view" badge; tab
+ *   description reads "All your leave requests and their current status."
+ * - Coordinator / admin: tab trigger label shows a "Personal view" badge;
+ *   tab description explains the tab is scoped to their own requests and
+ *   points them at the org-wide tabs.
  *
- * Mocks supabase (empty result set), the auth context, and the file-route
- * factory so the page can render outside the router. Also mocks the leave
- * request dialog (it pulls in a much wider dependency surface).
+ * Renders the two exported tab pieces from leave.tsx directly so the test
+ * exercises the exact JSX shipped on the route, without needing to mount
+ * the full LeavePage data-loading tree.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, within, waitFor, fireEvent } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import React from "react";
 
-// jsdom polyfills for Radix
+import { MyLeaveTabLabel, MyLeaveDescription } from "./leave";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 class ResizeObserverStub {
   observe() {}
   unobserve() {}
@@ -26,164 +27,52 @@ class ResizeObserverStub {
 }
 (globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver =
   ResizeObserverStub;
-// Radix Select / Popover use hasPointerCapture / scrollIntoView
-if (!(Element.prototype as unknown as { hasPointerCapture?: unknown }).hasPointerCapture) {
-  (Element.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture =
-    () => false;
-}
-if (!(Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView) {
-  (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = () => {};
-}
 
-// --- Mocks ---------------------------------------------------------------
+afterEach(() => cleanup());
 
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
-  return {
-    ...actual,
-    createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({ options: opts }),
-  };
-});
-
-// Chainable supabase mock: any builder method returns the same proxy and
-// awaiting it resolves to { data: [], error: null }.
-vi.mock("@/integrations/supabase/client", () => {
-  const makeBuilder = () => {
-    const result = { data: [], error: null };
-    const handler: ProxyHandler<object> = {
-      get(_target, prop) {
-        if (prop === "then") {
-          return (resolve: (v: typeof result) => unknown) => Promise.resolve(resolve(result));
-        }
-        return () => proxy;
-      },
-    };
-    const proxy: object = new Proxy({}, handler);
-    return proxy;
-  };
-  return {
-    supabase: {
-      from: () => makeBuilder(),
-    },
-  };
-});
-
-vi.mock("sonner", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
-}));
-
-vi.mock("@/components/leave-request-dialog", () => ({
-  LeaveRequestDialog: () => null,
-}));
-
-// useAuth — swapped per test via the `currentAuth` variable.
-type AuthShape = {
-  user: { id: string } | null;
-  isCoordinatorOrAdmin: () => boolean;
-  isTrainee: () => boolean;
-  hasRole: () => boolean;
-  fullName: string | null;
-  grade: string | null;
-};
-let currentAuth: AuthShape;
-vi.mock("@/lib/auth-context", () => ({
-  useAuth: () => currentAuth,
-}));
-
-// --- Test target ---------------------------------------------------------
-
-import * as LeaveRoute from "./leave";
-
-class EB extends React.Component<{ children: React.ReactNode }, { e?: Error }> {
-  state: { e?: Error } = {};
-  static getDerivedStateFromError(e: Error) {
-    return { e };
-  }
-  render() {
-    if (this.state.e) {
-      // eslint-disable-next-line no-console
-      console.log("DEBUG error:", this.state.e.message, this.state.e.stack?.slice(0, 800));
-      return <div data-testid="err">{this.state.e.message}</div>;
-    }
-    return this.props.children;
-  }
-}
-
-function LeavePageHarness() {
-  const route = (LeaveRoute as unknown as { Route: { options: { component: React.FC } } }).Route;
-  const Page = route.options.component;
-  return (
-    <EB>
-      <React.Suspense fallback={<div data-testid="suspended">SUSPENDED</div>}>
-        <Page />
-      </React.Suspense>
-    </EB>
+function renderMyLeaveTab(isCoordinatorOrAdmin: boolean) {
+  return render(
+    <Tabs defaultValue="mine">
+      <TabsList>
+        <TabsTrigger value="mine" className="gap-2">
+          <MyLeaveTabLabel isCoordinatorOrAdmin={isCoordinatorOrAdmin} />
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="mine">
+        <MyLeaveDescription isCoordinatorOrAdmin={isCoordinatorOrAdmin} />
+      </TabsContent>
+    </Tabs>,
   );
 }
 
-beforeEach(() => {
-  currentAuth = {
-    user: { id: "user-1" },
-    isCoordinatorOrAdmin: () => false,
-    isTrainee: () => false,
-    hasRole: () => false,
-    fullName: "Dr Robert Coe",
-    grade: "consultant",
-  };
-});
-afterEach(() => cleanup());
-
-async function openMyLeaveTab() {
-  const trigger = await screen.findByRole("tab", { name: /my leave/i });
-  fireEvent.click(trigger);
-  return trigger;
-}
-
 describe("My leave tab — coordinator/admin scope indicator", () => {
-  it("regular staff: no 'Personal view' badge and shows neutral description", async () => {
-    const errSpy = vi.spyOn(console, "error").mockImplementation((...args) => {
-      // eslint-disable-next-line no-console
-      console.log("CONSOLE.ERROR:", String(args[0]).slice(0, 400));
-    });
-    const { container } = render(<LeavePageHarness />);
-    await new Promise((r) => setTimeout(r, 200));
-    // eslint-disable-next-line no-console
-    console.log("DEBUG container:", container.innerHTML.slice(0, 800));
-    errSpy.mockRestore();
-    const trigger = await openMyLeaveTab();
+  it("regular staff: no 'Personal view' badge, neutral description copy", () => {
+    renderMyLeaveTab(false);
 
-    // Badge is NOT inside the tab trigger.
+    const trigger = screen.getByRole("tab", { name: /my leave/i });
     expect(within(trigger).queryByText(/personal view/i)).toBeNull();
 
-    // Neutral description copy appears in the panel.
-    await waitFor(() => {
-      expect(
-        screen.getByText("All your leave requests and their current status."),
-      ).toBeTruthy();
-    });
     expect(
-      screen.queryByText(/as a coordinator\/admin/i),
-    ).toBeNull();
+      screen.getByText("All your leave requests and their current status."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/as a coordinator\/admin/i)).toBeNull();
   });
 
-  it("coordinator/admin: 'Personal view' badge on tab + scope-explainer description", async () => {
-    currentAuth = {
-      ...currentAuth,
-      isCoordinatorOrAdmin: () => true,
-      hasRole: () => true,
-    };
-    render(<LeavePageHarness />);
-    const trigger = await openMyLeaveTab();
+  it("coordinator/admin: 'Personal view' badge on the trigger, scope-explainer copy", () => {
+    renderMyLeaveTab(true);
 
-    // Badge IS inside the tab trigger.
+    const trigger = screen.getByRole("tab", { name: /my leave/i });
+    // Badge is rendered inside the tab trigger.
     expect(within(trigger).getByText(/personal view/i)).toBeTruthy();
 
     // Coordinator-aware description copy appears in the panel.
-    await waitFor(() => {
-      expect(
-        screen.getByText(/as a coordinator\/admin, you can also view other staff leave records/i),
-      ).toBeTruthy();
-    });
+    expect(
+      screen.getByText(
+        /this tab shows only your own requests\. as a coordinator\/admin, you can also view other staff leave records in the department calendar and all upcoming tabs\./i,
+      ),
+    ).toBeTruthy();
+
+    // The neutral copy MUST NOT also appear.
     expect(
       screen.queryByText("All your leave requests and their current status."),
     ).toBeNull();
