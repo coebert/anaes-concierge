@@ -14,6 +14,7 @@
     "lint:fix-order:check": "node scripts/fix-use-before-define.mjs --check",
     "check:worker-globals": "node scripts/check-worker-global-scope.mjs",
     "check:deps": "node scripts/check-tanstack-versions.mjs",
+    "check:supply-chain": "node scripts/check-supply-chain.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
