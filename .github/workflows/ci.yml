@@ -20,5 +20,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
+      - run: bun run check:deps
       - run: bun run lint:fix-order:check
       - run: bun run lint
