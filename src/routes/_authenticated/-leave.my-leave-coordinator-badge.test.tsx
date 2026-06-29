@@ -121,7 +121,10 @@ async function openMyLeaveTab() {
 
 describe("My leave tab — coordinator/admin scope indicator", () => {
   it("regular staff: no 'Personal view' badge and shows neutral description", async () => {
-    render(<LeavePageHarness />);
+    const { container } = render(<LeavePageHarness />);
+    await new Promise((r) => setTimeout(r, 50));
+    // eslint-disable-next-line no-console
+    console.log("DEBUG container:", container.innerHTML.slice(0, 500));
     const trigger = await openMyLeaveTab();
 
     // Badge is NOT inside the tab trigger.
