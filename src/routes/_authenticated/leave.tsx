@@ -157,6 +157,19 @@ function LeavePage() {
     setRows((leaveRes.data ?? []) as LeaveRow[]);
     setProfiles((profRes.data ?? []) as ProfileRow[]);
     setAllowances((allowRes.data ?? []) as AllowanceRow[]);
+
+    // Fetch the full history of the signed-in user's own leave separately
+    // so the "My leave" tab includes requests outside the sliding window
+    // and any status (including rejected/cancelled).
+    const mineRes = await supabase
+      .from("leave_requests")
+      .select("*")
+      .eq("staff_id", user.id)
+      .order("start_date", { ascending: false })
+      .range(0, 4999);
+    if (mineRes.error) toast.error(mineRes.error.message);
+    setMyLeave((mineRes.data ?? []) as LeaveRow[]);
+
     setLoading(false);
   };
 
