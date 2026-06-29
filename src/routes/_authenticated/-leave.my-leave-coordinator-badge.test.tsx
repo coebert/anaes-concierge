@@ -37,9 +37,13 @@ if (!(Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoVi
 
 // --- Mocks ---------------------------------------------------------------
 
-vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({ options: opts }),
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({ options: opts }),
+  };
+});
 
 // Chainable supabase mock: any builder method returns the same proxy and
 // awaiting it resolves to { data: [], error: null }.
