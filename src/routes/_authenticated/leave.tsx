@@ -872,7 +872,6 @@ function LeavePage() {
               <CardDescription>
                 <MyLeaveDescription isCoordinatorOrAdmin={isCoordinatorOrAdmin()} />
               </CardDescription>
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
