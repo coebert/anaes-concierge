@@ -78,7 +78,7 @@ function gradeLabel(grade: string | null | undefined): string {
 }
 
 function LeavePage() {
-  const { user } = useAuth();
+  const { user, isCoordinatorOrAdmin } = useAuth();
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
@@ -404,7 +404,12 @@ function LeavePage() {
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
           <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
-          <TabsTrigger value="mine">My leave</TabsTrigger>
+          <TabsTrigger value="mine" className="gap-2">
+            My leave
+            {isCoordinatorOrAdmin() && (
+              <Badge variant="outline" className="text-xs font-normal">Personal view</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ---------------- Day search + breakdown ---------------- */}
@@ -835,6 +840,11 @@ function LeavePage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">My leave</CardTitle>
+              <CardDescription>
+                {isCoordinatorOrAdmin()
+                  ? "This tab shows only your own requests. As a coordinator/admin, you can also view other staff leave records in the Department calendar and All upcoming tabs."
+                  : "All your leave requests and their current status."}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
