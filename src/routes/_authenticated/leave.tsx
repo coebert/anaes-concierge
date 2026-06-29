@@ -85,6 +85,9 @@ function LeavePage() {
   // Year-scoped leave rows (separate from `rows` so the calendar / upcoming
   // tabs aren't ballooned by historical data they don't need).
   const [yearLeave, setYearLeave] = useState<LeaveRow[]>([]);
+  // Complete history of the signed-in user's own leave requests, so the
+  // "My leave" tab can show every request regardless of date/status.
+  const [myLeave, setMyLeave] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -154,6 +157,19 @@ function LeavePage() {
     setRows((leaveRes.data ?? []) as LeaveRow[]);
     setProfiles((profRes.data ?? []) as ProfileRow[]);
     setAllowances((allowRes.data ?? []) as AllowanceRow[]);
+
+    // Fetch the full history of the signed-in user's own leave separately
+    // so the "My leave" tab includes requests outside the sliding window
+    // and any status (including rejected/cancelled).
+    const mineRes = await supabase
+      .from("leave_requests")
+      .select("*")
+      .eq("staff_id", user.id)
+      .order("start_date", { ascending: false })
+      .range(0, 4999);
+    if (mineRes.error) toast.error(mineRes.error.message);
+    setMyLeave((mineRes.data ?? []) as LeaveRow[]);
+
     setLoading(false);
   };
 
@@ -249,8 +265,8 @@ function LeavePage() {
   }, [activeRows]);
 
   const myRows = useMemo(
-    () => (user ? rows.filter((r) => r.staff_id === user.id) : []),
-    [rows, user],
+    () => (user ? myLeave.filter((r) => r.staff_id === user.id) : []),
+    [myLeave, user],
   );
 
   // All-staff approved/pending listing (upcoming first, then recent past).
@@ -388,7 +404,7 @@ function LeavePage() {
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
           <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
-          <TabsTrigger value="mine">Leave overview</TabsTrigger>
+          <TabsTrigger value="mine">My leave</TabsTrigger>
         </TabsList>
 
         {/* ---------------- Day search + breakdown ---------------- */}
@@ -814,11 +830,11 @@ function LeavePage() {
           </Card>
         </TabsContent>
 
-        {/* ---------------- Leave overview ---------------- */}
+        {/* ---------------- My leave ---------------- */}
         <TabsContent value="mine">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Leave overview</CardTitle>
+              <CardTitle className="text-base">My leave</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
