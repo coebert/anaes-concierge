@@ -94,11 +94,25 @@ vi.mock("@/lib/auth-context", () => ({
 
 import * as LeaveRoute from "./leave";
 
+class EB extends React.Component<{ children: React.ReactNode }, { e?: Error }> {
+  state: { e?: Error } = {};
+  static getDerivedStateFromError(e: Error) {
+    return { e };
+  }
+  render() {
+    if (this.state.e) {
+      // eslint-disable-next-line no-console
+      console.log("DEBUG error:", this.state.e.message, this.state.e.stack?.slice(0, 800));
+      return <div data-testid="err">{this.state.e.message}</div>;
+    }
+    return this.props.children;
+  }
+}
+
 function LeavePageHarness() {
-  // Route export shape from createFileRoute mock: { options: { component } }
   const route = (LeaveRoute as unknown as { Route: { options: { component: React.FC } } }).Route;
   const Page = route.options.component;
-  return <Page />;
+  return <EB><Page /></EB>;
 }
 
 beforeEach(() => {
