@@ -23,3 +23,15 @@ jobs:
       - run: bun run check:deps
       - run: bun run lint:fix-order:check
       - run: bun run lint
+
+  supply-chain:
+    # Re-runs the supply-chain scan on every push / PR. Fails the build if
+    # high or moderate advisories appear (matches Lovable supply-chain
+    # findings vulnerable_dependencies_high / vulnerable_dependencies_medium).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node scripts/check-supply-chain.mjs
