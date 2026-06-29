@@ -111,7 +111,7 @@ afterEach(() => cleanup());
 
 async function openMyLeaveTab() {
   const trigger = await screen.findByRole("tab", { name: /my leave/i });
-  await userEvent.click(trigger);
+  fireEvent.click(trigger);
   return trigger;
 }
 
