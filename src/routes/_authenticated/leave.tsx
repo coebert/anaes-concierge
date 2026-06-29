@@ -265,8 +265,8 @@ function LeavePage() {
   }, [activeRows]);
 
   const myRows = useMemo(
-    () => (user ? rows.filter((r) => r.staff_id === user.id) : []),
-    [rows, user],
+    () => (user ? myLeave.filter((r) => r.staff_id === user.id) : []),
+    [myLeave, user],
   );
 
   // All-staff approved/pending listing (upcoming first, then recent past).
