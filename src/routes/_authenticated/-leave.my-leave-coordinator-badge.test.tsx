@@ -15,8 +15,7 @@
  * request dialog (it pulls in a much wider dependency surface).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, cleanup, within, waitFor, fireEvent } from "@testing-library/react";
 import React from "react";
 
 // jsdom polyfills for Radix
