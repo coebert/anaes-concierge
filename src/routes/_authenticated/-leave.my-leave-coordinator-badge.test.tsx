@@ -127,7 +127,7 @@ describe("My leave tab — coordinator/admin scope indicator", () => {
     await waitFor(() => {
       expect(
         screen.getByText("All your leave requests and their current status."),
-      ).toBeInTheDocument();
+      ).toBeTruthy();
     });
     expect(
       screen.queryByText(/as a coordinator\/admin/i),
