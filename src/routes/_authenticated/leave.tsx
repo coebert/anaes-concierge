@@ -77,6 +77,38 @@ function gradeLabel(grade: string | null | undefined): string {
   return grade;
 }
 
+/**
+ * Tab-trigger label for the "My leave" tab. Coordinators/admins see a
+ * "Personal view" badge after the label so it's obvious the tab is scoped
+ * to their own requests even though they have org-wide visibility.
+ * Exported so UI tests can render it in isolation.
+ */
+export function MyLeaveTabLabel({ isCoordinatorOrAdmin }: { isCoordinatorOrAdmin: boolean }) {
+  return (
+    <>
+      My leave
+      {isCoordinatorOrAdmin && (
+        <Badge variant="outline" className="text-xs font-normal">Personal view</Badge>
+      )}
+    </>
+  );
+}
+
+/**
+ * Description copy shown at the top of the "My leave" tab. Coordinators/
+ * admins get an explainer that the tab is intentionally scoped to their own
+ * requests and where to look for org-wide leave. Exported for UI tests.
+ */
+export function MyLeaveDescription({ isCoordinatorOrAdmin }: { isCoordinatorOrAdmin: boolean }) {
+  return (
+    <>
+      {isCoordinatorOrAdmin
+        ? "This tab shows only your own requests. As a coordinator/admin, you can also view other staff leave records in the Department calendar and All upcoming tabs."
+        : "All your leave requests and their current status."}
+    </>
+  );
+}
+
 function LeavePage() {
   const { user, isCoordinatorOrAdmin } = useAuth();
   const [rows, setRows] = useState<LeaveRow[]>([]);
