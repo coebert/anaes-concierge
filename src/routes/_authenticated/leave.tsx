@@ -404,7 +404,7 @@ function LeavePage() {
           <TabsTrigger value="upcoming">All upcoming</TabsTrigger>
           <TabsTrigger value="sick">Sick leave</TabsTrigger>
           <TabsTrigger value="allowances">Allowances</TabsTrigger>
-          <TabsTrigger value="mine">Leave overview</TabsTrigger>
+          <TabsTrigger value="mine">My leave</TabsTrigger>
         </TabsList>
 
         {/* ---------------- Day search + breakdown ---------------- */}
@@ -830,11 +830,11 @@ function LeavePage() {
           </Card>
         </TabsContent>
 
-        {/* ---------------- Leave overview ---------------- */}
+        {/* ---------------- My leave ---------------- */}
         <TabsContent value="mine">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Leave overview</CardTitle>
+              <CardTitle className="text-base">My leave</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
