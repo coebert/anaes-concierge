@@ -111,6 +111,8 @@ class EB extends React.Component<{ children: React.ReactNode }, { e?: Error }> {
 
 function LeavePageHarness() {
   const route = (LeaveRoute as unknown as { Route: { options: { component: React.FC } } }).Route;
+  // eslint-disable-next-line no-console
+  console.log("DEBUG Route:", typeof route, route && Object.keys(route), route && (route as any).options && Object.keys((route as any).options));
   const Page = route.options.component;
   return <EB><Page /></EB>;
 }
