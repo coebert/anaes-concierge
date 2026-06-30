@@ -89,11 +89,13 @@ afterEach(() => {
 describe("reset password journey", () => {
   it("stage 1: requests a reset link with the /reset-password redirect", async () => {
     const user = userEvent.setup();
-    render(<ResetPasswordPage />);
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
 
-    expect(
-      screen.getByText(/^reset password$/i),
-    ).toBeDefined();
+    await waitFor(() =>
+      expect(screen.getByText(/^reset password$/i)).toBeDefined(),
+    );
     expect(screen.getByLabelText(/email/i)).toBeDefined();
 
     await user.type(screen.getByLabelText(/email/i), "robert.coe1@nhs.net");
