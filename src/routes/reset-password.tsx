@@ -43,6 +43,7 @@ function describeLinkError(code: string | null, description: string | null): str
 }
 
 function ResetPasswordPage() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("request");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
