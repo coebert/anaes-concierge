@@ -27,6 +27,9 @@ const {
   resetPasswordForEmail,
   exchangeCodeForSession,
   updateUser,
+  setSession,
+  verifyOtp,
+  getSession,
   onAuthStateChange,
   signOut,
   navigateMock,
@@ -36,6 +39,9 @@ const {
   resetPasswordForEmail: vi.fn(),
   exchangeCodeForSession: vi.fn(),
   updateUser: vi.fn(),
+  setSession: vi.fn(),
+  verifyOtp: vi.fn(),
+  getSession: vi.fn(),
   onAuthStateChange: vi.fn(),
   signOut: vi.fn(),
   navigateMock: vi.fn(),
@@ -66,6 +72,9 @@ vi.mock("@/integrations/supabase/client", () => ({
       resetPasswordForEmail: (...args: unknown[]) => resetPasswordForEmail(...args),
       exchangeCodeForSession: (...args: unknown[]) => exchangeCodeForSession(...args),
       updateUser: (...args: unknown[]) => updateUser(...args),
+      setSession: (...args: unknown[]) => setSession(...args),
+      verifyOtp: (...args: unknown[]) => verifyOtp(...args),
+      getSession: (...args: unknown[]) => getSession(...args),
       onAuthStateChange: (...args: unknown[]) => onAuthStateChange(...args),
       signOut: (...args: unknown[]) => signOut(...args),
     },
@@ -90,6 +99,9 @@ beforeEach(() => {
   resetPasswordForEmail.mockReset().mockResolvedValue({ error: null });
   exchangeCodeForSession.mockReset().mockResolvedValue({ error: null });
   updateUser.mockReset().mockResolvedValue({ error: null });
+  setSession.mockReset().mockResolvedValue({ error: null });
+  verifyOtp.mockReset().mockResolvedValue({ error: null });
+  getSession.mockReset().mockResolvedValue({ data: { session: { user: { id: "user-1" } } }, error: null });
   signOut.mockReset().mockResolvedValue({ error: null });
   navigateMock.mockReset();
   toastSuccess.mockReset();
@@ -97,6 +109,7 @@ beforeEach(() => {
   onAuthStateChange.mockReset().mockReturnValue({
     data: { subscription: { unsubscribe: vi.fn() } },
   });
+  window.sessionStorage.clear();
   setLocation("/reset-password");
 });
 
@@ -163,6 +176,49 @@ describe("reset password journey", () => {
     expect(updateUser.mock.calls[0][0]).toEqual({
       password: strong,
     });
+  });
+
+  it("stage 2 alt: implicit recovery hash explicitly sets the session before showing the password form", async () => {
+    setLocation("/reset-password#access_token=access-123&refresh_token=refresh-123&type=recovery");
+
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
+
+    await waitFor(() =>
+      expect(setSession).toHaveBeenCalledWith({
+        access_token: "access-123",
+        refresh_token: "refresh-123",
+      }),
+    );
+    await waitFor(() => expect(window.location.hash).toBe(""));
+    expect(screen.getByText(/set a new password/i)).toBeDefined();
+  });
+
+  it("stage 2 alt: token_hash recovery links are verified before showing the password form", async () => {
+    setLocation("/reset-password?token_hash=hash-123&type=recovery");
+
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
+
+    await waitFor(() =>
+      expect(verifyOtp).toHaveBeenCalledWith({ token_hash: "hash-123", type: "recovery" }),
+    );
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(screen.getByText(/set a new password/i)).toBeDefined();
+  });
+
+  it("keeps the new-password form available if the user refreshes after link verification", async () => {
+    window.sessionStorage.setItem("auth.passwordResetSessionReady", "1");
+    setLocation("/reset-password");
+
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
+
+    await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/set a new password/i)).toBeDefined());
   });
 
   it("stage 2 alt: PASSWORD_RECOVERY event also flips the view to update mode", async () => {
@@ -364,6 +420,23 @@ describe("reset password journey", () => {
       expect(signOut).not.toHaveBeenCalled();
       expect(navigateMock).not.toHaveBeenCalled();
       expect(toastSuccess).not.toHaveBeenCalled();
+    });
+
+    it("on missing reset session: shows an inline error and does NOT call updateUser", async () => {
+      getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+      const user = userEvent.setup();
+      await renderUpdateMode();
+
+      const strong = "Correct-Horse-Battery-Staple-9";
+      await user.type(screen.getByLabelText(/^new password$/i), strong);
+      await user.type(screen.getByLabelText(/confirm new password/i), strong);
+      await user.click(screen.getByRole("button", { name: /update password/i }));
+
+      const alert = await screen.findByTestId("reset-link-error");
+      expect(alert.textContent ?? "").toMatch(/expired|new reset link/i);
+      expect(updateUser).not.toHaveBeenCalled();
+      expect(signOut).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
     });
   });
 });

@@ -23,6 +23,24 @@ export interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+function isPasswordRecoveryUrl(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.location.pathname !== "/reset-password") return false;
+
+  const url = new URL(window.location.href);
+  const hashParams = new URLSearchParams(
+    window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
+  );
+
+  return (
+    url.searchParams.has("code") ||
+    url.searchParams.get("type") === "recovery" ||
+    url.searchParams.has("token_hash") ||
+    hashParams.get("type") === "recovery" ||
+    hashParams.has("access_token")
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -59,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If the user previously unchecked "Keep me signed in" AND this is a fresh
     // browser session (no sessionStorage marker), drop the persisted session
     // before restoring it. Otherwise restore normally.
-    const dropSession = shouldDropSessionOnLoad();
+    const dropSession = !isPasswordRecoveryUrl() && shouldDropSessionOnLoad();
     const init = async () => {
       if (dropSession) {
         await supabase.auth.signOut();
