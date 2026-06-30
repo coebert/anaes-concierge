@@ -6,11 +6,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 /**
  * Coordinator/admin-elevated reads of the staff directory.
  *
- * Under the current RLS policy on `profiles`, plain authenticated staff can
- * only read their own row. These server functions use `supabaseAdmin` to
- * return a SAFE projection of colleague rows (no email, no GMC number) so
- * UI like the rota board and trainee list can still resolve names/grades
- * for everyone without exposing sensitive PII.
+ * Sensitive columns (email, GMC) live encrypted at rest. We read through the
+ * `get_profiles_decrypted` SECURITY DEFINER RPC so the returned rows are
+ * strictly typed (non-nullable) and decryption is centralised in SQL.
  */
 
 type SafeStaff = {
@@ -22,19 +20,35 @@ type SafeStaff = {
   start_date: string | null;
 };
 
-const SAFE_COLS = "id,full_name,grade,training_level,active,start_date" as const;
+function toSafe(p: {
+  id: string;
+  full_name: string;
+  grade: "consultant" | "sas" | "trainee";
+  training_level: string;
+  active: boolean;
+  start_date: string;
+}): SafeStaff {
+  return {
+    id: p.id,
+    full_name: p.full_name,
+    grade: p.grade,
+    training_level: p.training_level,
+    active: p.active,
+    start_date: p.start_date,
+  };
+}
 
 /** Active staff with safe columns — visible to any authenticated user. */
 export const listActiveStaffSafe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<SafeStaff[]> => {
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .select(SAFE_COLS)
-      .eq("active", true)
-      .order("full_name");
+    const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
-    return (data ?? []) as SafeStaff[];
+    const rows = (data ?? [])
+      .filter((p) => p.active === true)
+      .map(toSafe);
+    rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+    return rows;
   });
 
 /** Lookup safe staff rows by ids — visible to any authenticated user. */
@@ -45,12 +59,10 @@ export const listStaffByIdsSafe = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<SafeStaff[]> => {
     if (!data.ids.length) return [];
-    const { data: rows, error } = await supabaseAdmin
-      .from("profiles")
-      .select(SAFE_COLS)
-      .in("id", data.ids);
+    const { data: rows, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
-    return (rows ?? []) as SafeStaff[];
+    const wanted = new Set(data.ids);
+    return (rows ?? []).filter((p) => wanted.has(p.id)).map(toSafe);
   });
 
 async function getCallerAccess(
@@ -83,17 +95,25 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail = access.isAdmin || access.isCoordinator;
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade,left_at")
-      .eq("grade", "trainee")
-      // Include inactive trainees that the daily routine has flagged as
-      // departed so the UI can still surface them with a 'no longer at
-      // Salisbury' badge.
-      .or("active.eq.true,left_at.not.is.null")
-      .order("full_name");
+    const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({ ...row, email: canSeeEmail ? row.email : null }));
+    const rows = (data ?? [])
+      .filter(
+        (p) => p.grade === "trainee" && (p.active === true || p.left_at !== null),
+      )
+      .map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        email: canSeeEmail ? p.email : null,
+        training_level: p.training_level,
+        active: p.active,
+        start_date: p.start_date,
+        rotation_end_date: p.rotation_end_date,
+        grade: p.grade,
+        left_at: p.left_at,
+      }));
+    rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+    return rows;
   });
 
 /** Single trainee profile + supervisor name lookups. Email visible to admins/coordinators or the trainee themselves. */
@@ -111,19 +131,33 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail =
       access.isAdmin || access.isCoordinator || context.userId === data.staffId;
-    const [{ data: profile, error: e1 }, supRes] = await Promise.all([
-      supabaseAdmin
-        .from("profiles")
-        .select("id,full_name,email,training_level,grade,start_date,rotation_end_date")
-        .eq("id", data.staffId)
-        .maybeSingle(),
-      data.supervisorIds.length
-        ? supabaseAdmin.from("profiles").select("id,full_name").in("id", data.supervisorIds)
-        : Promise.resolve({ data: [] as Array<{ id: string; full_name: string | null }>, error: null }),
-    ]);
-    if (e1) throw new Error(e1.message);
-    if ("error" in supRes && supRes.error) throw new Error(supRes.error.message);
-    const safeProfile = profile ? { ...profile, email: canSeeEmail ? profile.email : null } : profile;
-    return { profile: safeProfile, supervisors: supRes.data ?? [] };
-  });
 
+    const [profileRes, allRes] = await Promise.all([
+      supabaseAdmin.rpc("get_profile_decrypted", { p_id: data.staffId }),
+      data.supervisorIds.length
+        ? supabaseAdmin.rpc("get_profiles_decrypted")
+        : Promise.resolve({ data: [] as Array<{ id: string; full_name: string }>, error: null }),
+    ]);
+    if (profileRes.error) throw new Error(profileRes.error.message);
+    if ("error" in allRes && allRes.error) throw new Error(allRes.error.message);
+
+    const p = (profileRes.data ?? [])[0];
+    const profile = p
+      ? {
+          id: p.id,
+          full_name: p.full_name,
+          email: canSeeEmail ? p.email : null,
+          training_level: p.training_level,
+          grade: p.grade,
+          start_date: p.start_date,
+          rotation_end_date: p.rotation_end_date,
+        }
+      : null;
+
+    const wanted = new Set(data.supervisorIds);
+    const supervisors = (allRes.data ?? [])
+      .filter((row) => wanted.has(row.id))
+      .map((row) => ({ id: row.id, full_name: row.full_name }));
+
+    return { profile, supervisors };
+  });
