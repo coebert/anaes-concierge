@@ -109,6 +109,7 @@ beforeEach(() => {
   onAuthStateChange.mockReset().mockReturnValue({
     data: { subscription: { unsubscribe: vi.fn() } },
   });
+  window.sessionStorage.clear();
   setLocation("/reset-password");
 });
 
@@ -206,6 +207,18 @@ describe("reset password journey", () => {
     );
     await waitFor(() => expect(window.location.search).toBe(""));
     expect(screen.getByText(/set a new password/i)).toBeDefined();
+  });
+
+  it("keeps the new-password form available if the user refreshes after link verification", async () => {
+    window.sessionStorage.setItem("auth.passwordResetSessionReady", "1");
+    setLocation("/reset-password");
+
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
+
+    await waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(/set a new password/i)).toBeDefined());
   });
 
   it("stage 2 alt: PASSWORD_RECOVERY event also flips the view to update mode", async () => {

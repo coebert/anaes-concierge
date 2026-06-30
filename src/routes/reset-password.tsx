@@ -35,6 +35,7 @@ type ResetLinkState =
   | { kind: "recovery_session" };
 
 const resetLinkExchangeCache = new Map<string, Promise<string | null>>();
+const RESET_SESSION_READY_KEY = "auth.passwordResetSessionReady";
 
 /**
  * Map Supabase / OAuth error codes & descriptions to a short, user-friendly
@@ -91,6 +92,25 @@ function cleanResetLinkUrl() {
   window.history.replaceState({}, "", window.location.pathname);
 }
 
+function setResetSessionReady(value: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    if (value) window.sessionStorage.setItem(RESET_SESSION_READY_KEY, "1");
+    else window.sessionStorage.removeItem(RESET_SESSION_READY_KEY);
+  } catch {
+    // Storage can be unavailable in hardened browsers; the link still works.
+  }
+}
+
+function hasResetSessionReadyFlag(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(RESET_SESSION_READY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 async function exchangeResetLinkOnce(
   cacheKey: string,
   exchange: () => Promise<string | null>,
@@ -132,7 +152,21 @@ function ResetPasswordPage() {
     }
 
     if (linkState.kind === "none") {
-      setMode("request");
+      if (!hasResetSessionReadyFlag()) {
+        setMode("request");
+        return;
+      }
+
+      setMode("checking");
+      void (async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error || !data.session) {
+          setResetSessionReady(false);
+          setMode("request");
+          return;
+        }
+        setMode("update");
+      })();
     } else {
       setMode("checking");
       void (async () => {
@@ -169,6 +203,7 @@ function ResetPasswordPage() {
         }
 
         cleanResetLinkUrl();
+        setResetSessionReady(true);
         setMode("update");
       })();
     }
@@ -229,6 +264,7 @@ function ResetPasswordPage() {
     }
     // Sign the recovery session out so the user must log in with the new password.
     await supabase.auth.signOut();
+    setResetSessionReady(false);
     setBusy(false);
     toast.success("Password updated. Please sign in with your new password.");
     void navigate({ to: "/login" });
@@ -238,6 +274,7 @@ function ResetPasswordPage() {
     setErrorMessage(null);
     setPassword("");
     setConfirmPassword("");
+    setResetSessionReady(false);
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/reset-password");
     }
