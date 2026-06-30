@@ -68,9 +68,10 @@ function StaffGroup({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((p) => (
+          {sorted.map((p) => {
+            const notYetStarted = !!p.start_date && p.start_date > todayISO();
+            return (
             <TableRow key={p.id}>
-              <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
               <TableCell className="text-muted-foreground">{p.email}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap items-center gap-1.5">
