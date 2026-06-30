@@ -72,6 +72,16 @@ function StaffGroup({
             const notYetStarted = !!p.start_date && p.start_date > todayISO();
             return (
             <TableRow key={p.id}>
+              <TableCell className="font-medium">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span>{p.full_name || "—"}</span>
+                  {notYetStarted ? (
+                    <Badge variant="secondary" title={`Starts ${p.start_date}`}>
+                      Not yet started
+                    </Badge>
+                  ) : null}
+                </div>
+              </TableCell>
               <TableCell className="text-muted-foreground">{p.email}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap items-center gap-1.5">
