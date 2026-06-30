@@ -123,7 +123,8 @@ function StaffGroup({
                 </Button>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>
