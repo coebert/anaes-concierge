@@ -138,9 +138,16 @@ function ResetPasswordPage() {
     }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
+    if (error) {
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
+    // Sign the recovery session out so the user must log in with the new password.
+    await supabase.auth.signOut();
     setBusy(false);
-    if (error) toast.error(error.message);
-    else toast.success("Password updated. You can sign in now.");
+    toast.success("Password updated. Please sign in with your new password.");
+    void navigate({ to: "/login" });
   };
 
   const startOver = () => {
