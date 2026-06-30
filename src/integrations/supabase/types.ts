@@ -482,6 +482,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fixed_sessions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixed_sessions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fixed_sessions_theatre_fk"
             columns: ["theatre_id"]
             isOneToOne: false
@@ -544,6 +558,20 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "job_plans_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_plans_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
         ]
       }
       leave_allowances: {
@@ -583,6 +611,20 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_allowances_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_allowances_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
             referencedColumns: ["id"]
           },
         ]
@@ -663,10 +705,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leave_requests_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
             referencedColumns: ["id"]
           },
         ]
@@ -795,10 +865,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rota_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rota_assignments_supervisor_id_fkey"
             columns: ["supervisor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_assignments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rota_assignments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
             referencedColumns: ["id"]
           },
           {
@@ -1191,11 +1289,480 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      access_requests_admin_v: {
+        Row: {
+          created_at: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          email: string | null
+          email_hash: string | null
+          full_name: string | null
+          id: string | null
+          message: string | null
+          status: Database["public"]["Enums"]["access_request_status"] | null
+        }
+        Insert: {
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          id?: string | null
+          message?: string | null
+          status?: Database["public"]["Enums"]["access_request_status"] | null
+        }
+        Update: {
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          id?: string | null
+          message?: string | null
+          status?: Database["public"]["Enums"]["access_request_status"] | null
+        }
+        Relationships: []
+      }
+      access_requests_v: {
+        Row: {
+          created_at: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          email: string | null
+          email_hash: string | null
+          full_name: string | null
+          id: string | null
+          message: string | null
+          status: Database["public"]["Enums"]["access_request_status"] | null
+        }
+        Insert: {
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          id?: string | null
+          message?: string | null
+          status?: Database["public"]["Enums"]["access_request_status"] | null
+        }
+        Update: {
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          id?: string | null
+          message?: string | null
+          status?: Database["public"]["Enums"]["access_request_status"] | null
+        }
+        Relationships: []
+      }
+      ai_messages_admin_v: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          id: string | null
+          parts: Json | null
+          role: Database["public"]["Enums"]["chat_role"] | null
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          parts?: never
+          role?: Database["public"]["Enums"]["chat_role"] | null
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          parts?: never
+          role?: Database["public"]["Enums"]["chat_role"] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_messages_v: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          id: string | null
+          parts: Json | null
+          role: Database["public"]["Enums"]["chat_role"] | null
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          parts?: never
+          role?: Database["public"]["Enums"]["chat_role"] | null
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          parts?: never
+          role?: Database["public"]["Enums"]["chat_role"] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests_admin_v: {
+        Row: {
+          clwrota_external_id: string | null
+          conflict_notes: string | null
+          created_at: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          end_date: string | null
+          half_day_end: Database["public"]["Enums"]["session_half"] | null
+          half_day_start: Database["public"]["Enums"]["session_half"] | null
+          id: string | null
+          reason: string | null
+          reserve_listed_at: string | null
+          staff_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["leave_status"] | null
+          type: Database["public"]["Enums"]["leave_type"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          clwrota_external_id?: string | null
+          conflict_notes?: never
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: never
+          end_date?: string | null
+          half_day_end?: Database["public"]["Enums"]["session_half"] | null
+          half_day_start?: Database["public"]["Enums"]["session_half"] | null
+          id?: string | null
+          reason?: never
+          reserve_listed_at?: string | null
+          staff_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["leave_status"] | null
+          type?: Database["public"]["Enums"]["leave_type"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          clwrota_external_id?: string | null
+          conflict_notes?: never
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: never
+          end_date?: string | null
+          half_day_end?: Database["public"]["Enums"]["session_half"] | null
+          half_day_start?: Database["public"]["Enums"]["session_half"] | null
+          id?: string | null
+          reason?: never
+          reserve_listed_at?: string | null
+          staff_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["leave_status"] | null
+          type?: Database["public"]["Enums"]["leave_type"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests_v: {
+        Row: {
+          clwrota_external_id: string | null
+          conflict_notes: string | null
+          created_at: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          end_date: string | null
+          half_day_end: Database["public"]["Enums"]["session_half"] | null
+          half_day_start: Database["public"]["Enums"]["session_half"] | null
+          id: string | null
+          reason: string | null
+          reserve_listed_at: string | null
+          staff_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["leave_status"] | null
+          type: Database["public"]["Enums"]["leave_type"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          clwrota_external_id?: string | null
+          conflict_notes?: never
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: never
+          end_date?: string | null
+          half_day_end?: Database["public"]["Enums"]["session_half"] | null
+          half_day_start?: Database["public"]["Enums"]["session_half"] | null
+          id?: string | null
+          reason?: never
+          reserve_listed_at?: string | null
+          staff_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["leave_status"] | null
+          type?: Database["public"]["Enums"]["leave_type"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          clwrota_external_id?: string | null
+          conflict_notes?: never
+          created_at?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: never
+          end_date?: string | null
+          half_day_end?: Database["public"]["Enums"]["session_half"] | null
+          half_day_start?: Database["public"]["Enums"]["session_half"] | null
+          id?: string | null
+          reason?: never
+          reserve_listed_at?: string | null
+          staff_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["leave_status"] | null
+          type?: Database["public"]["Enums"]["leave_type"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles_admin_v: {
+        Row: {
+          active: boolean | null
+          calendar_feed_token: string | null
+          clwrota_external_id: string | null
+          created_at: string | null
+          email: string | null
+          email_hash: string | null
+          full_name: string | null
+          gmc_number: string | null
+          grade: Database["public"]["Enums"]["staff_grade"] | null
+          id: string | null
+          left_at: string | null
+          ltft_days_off: number[] | null
+          rotation_end_date: string | null
+          start_date: string | null
+          training_level: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          calendar_feed_token?: string | null
+          clwrota_external_id?: string | null
+          created_at?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          gmc_number?: never
+          grade?: Database["public"]["Enums"]["staff_grade"] | null
+          id?: string | null
+          left_at?: string | null
+          ltft_days_off?: number[] | null
+          rotation_end_date?: string | null
+          start_date?: string | null
+          training_level?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          calendar_feed_token?: string | null
+          clwrota_external_id?: string | null
+          created_at?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          gmc_number?: never
+          grade?: Database["public"]["Enums"]["staff_grade"] | null
+          id?: string | null
+          left_at?: string | null
+          ltft_days_off?: number[] | null
+          rotation_end_date?: string | null
+          start_date?: string | null
+          training_level?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles_v: {
+        Row: {
+          active: boolean | null
+          calendar_feed_token: string | null
+          clwrota_external_id: string | null
+          created_at: string | null
+          email: string | null
+          email_hash: string | null
+          full_name: string | null
+          gmc_number: string | null
+          grade: Database["public"]["Enums"]["staff_grade"] | null
+          id: string | null
+          left_at: string | null
+          ltft_days_off: number[] | null
+          rotation_end_date: string | null
+          start_date: string | null
+          training_level: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          calendar_feed_token?: string | null
+          clwrota_external_id?: string | null
+          created_at?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          gmc_number?: never
+          grade?: Database["public"]["Enums"]["staff_grade"] | null
+          id?: string | null
+          left_at?: string | null
+          ltft_days_off?: number[] | null
+          rotation_end_date?: string | null
+          start_date?: string | null
+          training_level?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          calendar_feed_token?: string | null
+          clwrota_external_id?: string | null
+          created_at?: string | null
+          email?: never
+          email_hash?: string | null
+          full_name?: string | null
+          gmc_number?: never
+          grade?: Database["public"]["Enums"]["staff_grade"] | null
+          id?: string | null
+          left_at?: string | null
+          ltft_days_off?: number[] | null
+          rotation_end_date?: string | null
+          start_date?: string | null
+          training_level?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _enc_key: { Args: never; Returns: string }
       _hmac_key: { Args: never; Returns: string }
+      admin_decrypt_jsonb: { Args: { p_cipher: string }; Returns: Json }
+      admin_decrypt_text: { Args: { p_cipher: string }; Returns: string }
       admin_run_readonly_sql: { Args: { p_query: string }; Returns: Json }
       current_user_is_coordinator_or_admin: { Args: never; Returns: boolean }
       decrypt_ai_message_parts: {
@@ -1211,6 +1778,16 @@ export type Database = {
       decrypt_text: { Args: { p_cipher: string }; Returns: string }
       encrypt_jsonb: { Args: { p_plain: Json }; Returns: string }
       encrypt_text: { Args: { p_plain: string }; Returns: string }
+      find_access_request_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          created_at: string
+          full_name: string
+          id: string
+          status: string
+        }[]
+      }
+      find_profile_id_by_email: { Args: { p_email: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
