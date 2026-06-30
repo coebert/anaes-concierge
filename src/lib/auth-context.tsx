@@ -25,20 +25,12 @@ const AuthContext = createContext<AuthState | null>(null);
 
 function isPasswordRecoveryUrl(): boolean {
   if (typeof window === "undefined") return false;
-  if (window.location.pathname !== "/reset-password") return false;
-
-  const url = new URL(window.location.href);
-  const hashParams = new URLSearchParams(
-    window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
-  );
-
-  return (
-    url.searchParams.has("code") ||
-    url.searchParams.get("type") === "recovery" ||
-    url.searchParams.has("token_hash") ||
-    hashParams.get("type") === "recovery" ||
-    hashParams.has("access_token")
-  );
+  // The reset-password route is the only place a Supabase recovery session
+  // is ever legitimate. Never drop the session there — regardless of which
+  // flow variant (PKCE / implicit / token_hash) the link uses, and even if
+  // supabase-js has already consumed the URL fragment before we look. The
+  // request-link sub-state is harmless because there's no session to drop.
+  return window.location.pathname === "/reset-password";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
