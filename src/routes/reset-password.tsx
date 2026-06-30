@@ -1,13 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+
+type PasswordCheck = { id: string; label: string; ok: boolean };
+
+function evaluatePassword(pw: string): PasswordCheck[] {
+  return [
+    { id: "len", label: "At least 8 characters", ok: pw.length >= 8 && pw.length <= 128 },
+    { id: "upper", label: "An uppercase letter (A–Z)", ok: /[A-Z]/.test(pw) },
+    { id: "lower", label: "A lowercase letter (a–z)", ok: /[a-z]/.test(pw) },
+    { id: "digit", label: "A number (0–9)", ok: /[0-9]/.test(pw) },
+  ];
+}
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
