@@ -189,18 +189,72 @@ function ResetPasswordPage() {
               </p>
             </form>
           ) : mode === "update" ? (
-            <form onSubmit={handleUpdate} className="space-y-4">
+            <form onSubmit={handleUpdate} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="password">New password</Label>
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={password.length > 0 && !passwordStrongEnough}
+                  aria-describedby="password-requirements"
                   required
                 />
+                <ul
+                  id="password-requirements"
+                  data-testid="password-requirements"
+                  className="space-y-1 text-xs"
+                  aria-live="polite"
+                >
+                  {passwordChecks.map((c) => (
+                    <li
+                      key={c.id}
+                      data-testid={`pw-check-${c.id}`}
+                      data-ok={c.ok ? "true" : "false"}
+                      className={`flex items-center gap-1.5 ${
+                        c.ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      }`}
+                    >
+                      {c.ok ? (
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      <span>{c.label}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <Button type="submit" className="w-full" disabled={busy}>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm new password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
+                  aria-describedby="confirm-password-error"
+                  required
+                />
+                {confirmPassword.length > 0 && !passwordsMatch ? (
+                  <p
+                    id="confirm-password-error"
+                    data-testid="confirm-password-error"
+                    className="text-xs text-destructive"
+                  >
+                    Passwords do not match.
+                  </p>
+                ) : null}
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!canSubmitUpdate}
+                aria-disabled={!canSubmitUpdate}
+              >
                 {busy ? "Updating…" : "Update password"}
               </Button>
             </form>
