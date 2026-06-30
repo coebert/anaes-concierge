@@ -175,79 +175,116 @@ function ResetPasswordPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const linkState = getResetLinkState(window.location.href);
+    // Prefer the URL captured at module-load: supabase-js's
+    // `detectSessionInUrl` strips the recovery hash asynchronously, so a
+    // late `window.location.href` read can miss the indicators entirely.
+    const liveState = getResetLinkState(window.location.href);
+    const initialState =
+      liveState.kind === "none" ? getResetLinkState(INITIAL_RESET_URL) : liveState;
 
-    if (linkState.kind === "error") {
-      setErrorMessage(linkState.message);
+    let cancelled = false;
+
+    const enterUpdateMode = () => {
+      if (cancelled) return;
+      cleanResetLinkUrl();
+      setResetSessionReady(true);
+      setMode("update");
+    };
+
+    // Always listen for the PASSWORD_RECOVERY / SIGNED_IN events — even when
+    // we currently show the request form, the supabase client may parse a
+    // recovery link asynchronously and we should flip to the update form.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        enterUpdateMode();
+      }
+    });
+
+    const cleanup = () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+
+    if (initialState.kind === "error") {
+      setErrorMessage(initialState.message);
       setMode("error");
       cleanResetLinkUrl();
-      return;
+      return cleanup;
     }
 
-    if (linkState.kind === "none") {
+    if (initialState.kind === "none") {
       if (!hasResetSessionReadyFlag()) {
         setMode("request");
-      } else {
-        setMode("checking");
-        void (async () => {
-          const { data, error } = await supabase.auth.getSession();
-          if (error || !data.session) {
-            setResetSessionReady(false);
-            setMode("request");
-            return;
-          }
-          setMode("update");
-        })();
+        return cleanup;
       }
-    } else {
+      // Refresh after a previous successful verification — confirm the
+      // session is still there before showing the update form.
       setMode("checking");
       void (async () => {
-        let exchangeError: string | null = null;
+        const { data, error } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (error || !data.session) {
+          setResetSessionReady(false);
+          setMode("request");
+          return;
+        }
+        enterUpdateMode();
+      })();
+      return cleanup;
+    }
 
-        if (linkState.kind === "pkce") {
-          exchangeError = await exchangeResetLinkOnce(`pkce:${linkState.code}`, async () => {
-            const { error } = await supabase.auth.exchangeCodeForSession(linkState.code);
-            return error?.message ?? null;
-          });
-        } else if (linkState.kind === "token_hash") {
-          exchangeError = await exchangeResetLinkOnce(`token_hash:${linkState.tokenHash}`, async () => {
+    setMode("checking");
+    void (async () => {
+      let exchangeError: string | null = null;
+
+      if (initialState.kind === "pkce") {
+        exchangeError = await exchangeResetLinkOnce(`pkce:${initialState.code}`, async () => {
+          const { error } = await supabase.auth.exchangeCodeForSession(initialState.code);
+          return error?.message ?? null;
+        });
+      } else if (initialState.kind === "token_hash") {
+        exchangeError = await exchangeResetLinkOnce(
+          `token_hash:${initialState.tokenHash}`,
+          async () => {
             const { error } = await supabase.auth.verifyOtp({
-              token_hash: linkState.tokenHash,
+              token_hash: initialState.tokenHash,
               type: "recovery",
             });
             return error?.message ?? null;
-          });
-        } else if (linkState.kind === "implicit") {
-          const { error } = await supabase.auth.setSession({
-            access_token: linkState.accessToken,
-            refresh_token: linkState.refreshToken,
-          });
-          exchangeError = error?.message ?? null;
-        } else if (linkState.kind === "recovery_session") {
-          const { data, error } = await supabase.auth.getSession();
-          exchangeError = error?.message ?? (!data.session ? "No reset session was found." : null);
+          },
+        );
+      } else if (initialState.kind === "implicit") {
+        const { error } = await supabase.auth.setSession({
+          access_token: initialState.accessToken,
+          refresh_token: initialState.refreshToken,
+        });
+        exchangeError = error?.message ?? null;
+      } else if (initialState.kind === "recovery_session") {
+        // No tokens to exchange — the supabase client should establish the
+        // session asynchronously via detectSessionInUrl. Poll briefly.
+        let found = false;
+        for (let i = 0; i < 30; i++) {
+          if (cancelled) return;
+          const { data } = await supabase.auth.getSession();
+          if (data.session) { found = true; break; }
+          await new Promise((r) => setTimeout(r, 100));
         }
-
-        if (exchangeError) {
-          setErrorMessage(describeLinkError(null, exchangeError));
-          setMode("error");
-          return;
-        }
-
-        cleanResetLinkUrl();
-        setResetSessionReady(true);
-        setMode("update");
-      })();
-    }
-
-    // Also catch the recovery event fired after Supabase auto-parses tokens.
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setResetSessionReady(true);
-        setMode("update");
+        if (!found) exchangeError = "No reset session was found.";
       }
-    });
-    return () => sub.subscription.unsubscribe();
+
+      if (cancelled) return;
+
+      if (exchangeError) {
+        setErrorMessage(describeLinkError(null, exchangeError));
+        setMode("error");
+        return;
+      }
+
+      enterUpdateMode();
+    })();
+
+    return cleanup;
   }, []);
 
   const handleRequest = async (e: FormEvent) => {
