@@ -154,19 +154,18 @@ function ResetPasswordPage() {
     if (linkState.kind === "none") {
       if (!hasResetSessionReadyFlag()) {
         setMode("request");
-        return;
+      } else {
+        setMode("checking");
+        void (async () => {
+          const { data, error } = await supabase.auth.getSession();
+          if (error || !data.session) {
+            setResetSessionReady(false);
+            setMode("request");
+            return;
+          }
+          setMode("update");
+        })();
       }
-
-      setMode("checking");
-      void (async () => {
-        const { data, error } = await supabase.auth.getSession();
-        if (error || !data.session) {
-          setResetSessionReady(false);
-          setMode("request");
-          return;
-        }
-        setMode("update");
-      })();
     } else {
       setMode("checking");
       void (async () => {
