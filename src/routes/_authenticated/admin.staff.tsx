@@ -230,49 +230,56 @@ function AdminStaffPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All registered users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : !filtered?.length ? (
-            <p className="text-sm text-muted-foreground">No staff records.</p>
-          ) : (
-            <div className="space-y-6">
-              <StaffGroup
-                title="Consultants"
-                staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id))}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="Consultants - ICU"
-                staff={filtered.filter((p) => p.grade === "consultant" && icuIds.has(p.id))}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="SAS Doctors"
-                staff={filtered.filter((p) => p.grade === "sas")}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="Trainees"
-                staff={filtered.filter((p) => p.grade === "trainee")}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="Other"
-                staff={filtered.filter((p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade))}
-                onEdit={(id) => setEditingId(id)}
-              />
-            </div>
-          )}
-          <p className="mt-4 text-xs text-muted-foreground">
-            New users appear here automatically when they sign up.
-          </p>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="staff" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="staff">Staff</TabsTrigger>
+        </TabsList>
+        <TabsContent value="staff">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">All registered users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : !filtered?.length ? (
+                <p className="text-sm text-muted-foreground">No staff records.</p>
+              ) : (
+                <div className="space-y-6">
+                  <StaffGroup
+                    title="Consultants"
+                    staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="Consultants - ICU"
+                    staff={filtered.filter((p) => p.grade === "consultant" && icuIds.has(p.id))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="SAS Doctors"
+                    staff={filtered.filter((p) => p.grade === "sas")}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="Trainees"
+                    staff={filtered.filter((p) => p.grade === "trainee")}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="Other"
+                    staff={filtered.filter((p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                </div>
+              )}
+              <p className="mt-4 text-xs text-muted-foreground">
+                New users appear here automatically when they sign up. Future joiners are shown with a “Not yet started” badge until their start date.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <StaffEditDialog
         staffId={editingId}
