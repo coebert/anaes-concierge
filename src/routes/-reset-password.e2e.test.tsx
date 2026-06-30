@@ -23,13 +23,25 @@ import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-const { resetPasswordForEmail, exchangeCodeForSession, updateUser, onAuthStateChange } =
-  vi.hoisted(() => ({
-    resetPasswordForEmail: vi.fn(),
-    exchangeCodeForSession: vi.fn(),
-    updateUser: vi.fn(),
-    onAuthStateChange: vi.fn(),
-  }));
+const {
+  resetPasswordForEmail,
+  exchangeCodeForSession,
+  updateUser,
+  onAuthStateChange,
+  signOut,
+  navigateMock,
+  toastSuccess,
+  toastError,
+} = vi.hoisted(() => ({
+  resetPasswordForEmail: vi.fn(),
+  exchangeCodeForSession: vi.fn(),
+  updateUser: vi.fn(),
+  onAuthStateChange: vi.fn(),
+  signOut: vi.fn(),
+  navigateMock: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
@@ -38,6 +50,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({
       options: opts,
     }),
+    useNavigate: () => navigateMock,
     Link: ({
       children,
       to,
@@ -54,12 +67,13 @@ vi.mock("@/integrations/supabase/client", () => ({
       exchangeCodeForSession: (...args: unknown[]) => exchangeCodeForSession(...args),
       updateUser: (...args: unknown[]) => updateUser(...args),
       onAuthStateChange: (...args: unknown[]) => onAuthStateChange(...args),
+      signOut: (...args: unknown[]) => signOut(...args),
     },
   },
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: toastSuccess, error: toastError },
 }));
 
 import { Route } from "./reset-password";
@@ -76,6 +90,10 @@ beforeEach(() => {
   resetPasswordForEmail.mockReset().mockResolvedValue({ error: null });
   exchangeCodeForSession.mockReset().mockResolvedValue({ error: null });
   updateUser.mockReset().mockResolvedValue({ error: null });
+  signOut.mockReset().mockResolvedValue({ error: null });
+  navigateMock.mockReset();
+  toastSuccess.mockReset();
+  toastError.mockReset();
   onAuthStateChange.mockReset().mockReturnValue({
     data: { subscription: { unsubscribe: vi.fn() } },
   });
@@ -291,6 +309,61 @@ describe("reset password journey", () => {
       await user.type(pw, "weakpass{Enter}");
 
       expect(updateUser).not.toHaveBeenCalled();
+  });
+  });
+
+  describe("post-update redirect", () => {
+    async function renderUpdateMode() {
+      setLocation("/reset-password?code=pkce-ok");
+      await act(async () => {
+        render(<ResetPasswordPage />);
+      });
+      await waitFor(() =>
+        expect(screen.getByLabelText(/^new password$/i)).toBeDefined(),
+      );
+    }
+
+    it("on successful update: shows a success toast, signs out the recovery session, and redirects to /login", async () => {
+      const user = userEvent.setup();
+      await renderUpdateMode();
+
+      const strong = "Correct-Horse-Battery-Staple-9";
+      await user.type(screen.getByLabelText(/^new password$/i), strong);
+      await user.type(screen.getByLabelText(/confirm new password/i), strong);
+      await user.click(screen.getByRole("button", { name: /update password/i }));
+
+      await waitFor(() => expect(updateUser).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(navigateMock).toHaveBeenCalledTimes(1));
+
+      // Recovery session is torn down so the user must sign in with the new password.
+      expect(signOut).toHaveBeenCalledTimes(1);
+
+      // Success message references signing in with the new password.
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+      const successMsg = String(toastSuccess.mock.calls[0][0]);
+      expect(successMsg).toMatch(/sign in/i);
+      expect(successMsg).toMatch(/password/i);
+
+      // Redirect is to /login.
+      expect(navigateMock).toHaveBeenCalledWith({ to: "/login" });
+      expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it("on failed update: shows an error toast and does NOT redirect or sign out", async () => {
+      updateUser.mockResolvedValueOnce({ error: { message: "Network down" } });
+      const user = userEvent.setup();
+      await renderUpdateMode();
+
+      const strong = "Correct-Horse-Battery-Staple-9";
+      await user.type(screen.getByLabelText(/^new password$/i), strong);
+      await user.type(screen.getByLabelText(/confirm new password/i), strong);
+      await user.click(screen.getByRole("button", { name: /update password/i }));
+
+      await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+      expect(toastError.mock.calls[0][0]).toBe("Network down");
+      expect(signOut).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
+      expect(toastSuccess).not.toHaveBeenCalled();
     });
   });
 });

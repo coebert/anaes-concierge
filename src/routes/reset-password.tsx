@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { AlertCircle, Check, X } from "lucide-react";
@@ -43,6 +43,7 @@ function describeLinkError(code: string | null, description: string | null): str
 }
 
 function ResetPasswordPage() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("request");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -137,9 +138,16 @@ function ResetPasswordPage() {
     }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
+    if (error) {
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
+    // Sign the recovery session out so the user must log in with the new password.
+    await supabase.auth.signOut();
     setBusy(false);
-    if (error) toast.error(error.message);
-    else toast.success("Password updated. You can sign in now.");
+    toast.success("Password updated. Please sign in with your new password.");
+    void navigate({ to: "/login" });
   };
 
   const startOver = () => {
