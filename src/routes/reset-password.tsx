@@ -175,7 +175,7 @@ function ResetPasswordPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const linkState = getResetLinkState(INITIAL_RESET_URL);
+    const linkState = getResetLinkState(window.location.href);
 
     if (linkState.kind === "error") {
       setErrorMessage(linkState.message);
