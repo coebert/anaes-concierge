@@ -67,7 +67,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
     if (data.training_level !== undefined) profilePatch.training_level = data.training_level;
 
     const { error: profErr } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .upsert(profilePatch, { onConflict: "id" });
     if (profErr) return { error: `User created, but profile update failed: ${profErr.message}` };
 

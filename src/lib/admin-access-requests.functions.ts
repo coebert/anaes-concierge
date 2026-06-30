@@ -47,7 +47,7 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
     if (fetchErr || !req) return { error: "Request not found" };
 
     const { error: updErr } = await supabaseAdmin
-      .from("access_requests_v")
+      .from("access_requests")
       .update({
         status: data.decision,
         decided_at: new Date().toISOString(),
@@ -73,7 +73,7 @@ export const deleteAccessRequest = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const { error } = await supabaseAdmin.from("access_requests_v").delete().eq("id", data.id);
+    const { error } = await supabaseAdmin.from("access_requests").delete().eq("id", data.id);
     if (error) return { error: error.message };
     return { ok: true };
   });

@@ -1137,7 +1137,7 @@ export async function performStaffSync() {
         if (roleRaw) newRow.training_level = roleRaw;
 
         const { data: insData, error: insErr } = await supabaseAdmin
-          .from("profiles_v")
+          .from("profiles")
           .insert(newRow)
           .select("id")
           .single();
@@ -1190,7 +1190,7 @@ export async function performStaffSync() {
       }
 
       const { error: upErr } = await supabaseAdmin
-        .from("profiles_v")
+        .from("profiles")
         .update(patch)
         .eq("id", profileId);
       if (upErr) {
@@ -3188,7 +3188,7 @@ export async function performLeaveSync() {
       if (attempt > 1) metrics.upsert_retries_total += 1;
       try {
         const { error: upErr } = await supabaseAdmin
-          .from("leave_requests_v")
+          .from("leave_requests")
           .upsert(batch, { onConflict: "clwrota_external_id" });
         if (!upErr) return { error: null, attempts: attempt };
         lastErr = upErr.message;

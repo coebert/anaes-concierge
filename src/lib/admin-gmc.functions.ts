@@ -46,7 +46,7 @@ export const updateProfileGmcNumber = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const value = data.gmc_number && data.gmc_number.length ? data.gmc_number : null;
     const { error } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .update({ gmc_number: value })
       .eq("id", data.staffId);
     if (error) throw new Error(error.message);

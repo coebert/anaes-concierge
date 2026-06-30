@@ -252,7 +252,7 @@ function buildAdminTools() {
           Object.entries(patch).filter(([, v]) => v !== undefined),
         );
         if (!Object.keys(clean).length) return { error: "No fields to update" };
-        const { error } = await admin.from("profiles_v").update(clean).eq("id", staff_id);
+        const { error } = await admin.from("profiles").update(clean).eq("id", staff_id);
         if (error) return { error: error.message };
         return { ok: true };
       },
@@ -580,7 +580,7 @@ export const Route = createFileRoute("/api/chat")({
         // Persist the latest user message if it isn't saved yet
         const lastMsg = uiMessages[uiMessages.length - 1];
         if (lastMsg?.role === "user") {
-          await admin.from("ai_messages_v").insert({
+          await admin.from("ai_messages").insert({
             conversation_id: conversationId,
             user_id: userId,
             role: "user",
@@ -626,7 +626,7 @@ export const Route = createFileRoute("/api/chat")({
           originalMessages: uiMessages,
           onFinish: async ({ responseMessage }) => {
             try {
-              await admin.from("ai_messages_v").insert({
+              await admin.from("ai_messages").insert({
                 conversation_id: conversationId,
                 user_id: userId,
                 role: "assistant",

@@ -41,7 +41,7 @@ export const submitAccessRequest = createServerFn({ method: "POST" })
     }
 
     const { data: inserted, error } = await supabaseAdmin
-      .from("access_requests_v")
+      .from("access_requests")
       .insert({
         email,
         full_name: data.full_name,

@@ -128,7 +128,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
     if (cur === predicted) continue;
 
     const { error: uErr } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .update({ start_date: predicted })
       .eq("id", t.id);
     if (uErr) throw new Error(uErr.message);
