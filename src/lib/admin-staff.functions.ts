@@ -93,10 +93,18 @@ export const listStaffForAdmin = createServerFn({ method: "GET" })
     if (!roleRow) {
       throw new Error("Only admins can list staff with emails.");
     }
-    const { data, error } = await supabaseAdmin
-      .from("profiles")
-      .select("id,email,full_name,grade,training_level,active,start_date")
-      .order("full_name");
+    const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = (data ?? []).map((p) => ({
+      id: p.id,
+      email: p.email,
+      full_name: p.full_name,
+      grade: p.grade,
+      training_level: p.training_level,
+      active: p.active,
+      start_date: p.start_date,
+    }));
+    rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+    return rows;
   });
+
