@@ -46,8 +46,14 @@ function ResetPasswordPage() {
   const [mode, setMode] = useState<Mode>("request");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const passwordChecks = useMemo(() => evaluatePassword(password), [password]);
+  const passwordStrongEnough = passwordChecks.every((c) => c.ok);
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const canSubmitUpdate = passwordStrongEnough && passwordsMatch && !busy;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
