@@ -90,6 +90,10 @@ beforeEach(() => {
   resetPasswordForEmail.mockReset().mockResolvedValue({ error: null });
   exchangeCodeForSession.mockReset().mockResolvedValue({ error: null });
   updateUser.mockReset().mockResolvedValue({ error: null });
+  signOut.mockReset().mockResolvedValue({ error: null });
+  navigateMock.mockReset();
+  toastSuccess.mockReset();
+  toastError.mockReset();
   onAuthStateChange.mockReset().mockReturnValue({
     data: { subscription: { unsubscribe: vi.fn() } },
   });
