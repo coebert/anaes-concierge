@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO } from "@/lib/utils";
@@ -31,6 +32,7 @@ type StaffWithPlan = {
   grade: string | null;
   training_level: string | null;
   active: boolean | null;
+  start_date: string | null;
   job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
 };
 
@@ -66,9 +68,20 @@ function StaffGroup({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((p) => (
+          {sorted.map((p) => {
+            const notYetStarted = !!p.start_date && p.start_date > todayISO();
+            return (
             <TableRow key={p.id}>
-              <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span>{p.full_name || "—"}</span>
+                  {notYetStarted ? (
+                    <Badge variant="secondary" title={`Starts ${p.start_date}`}>
+                      Not yet started
+                    </Badge>
+                  ) : null}
+                </div>
+              </TableCell>
               <TableCell className="text-muted-foreground">{p.email}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -110,7 +123,8 @@ function StaffGroup({
                 </Button>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -216,49 +230,56 @@ function AdminStaffPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">All registered users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : !filtered?.length ? (
-            <p className="text-sm text-muted-foreground">No staff records.</p>
-          ) : (
-            <div className="space-y-6">
-              <StaffGroup
-                title="Consultants"
-                staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id))}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="Consultants - ICU"
-                staff={filtered.filter((p) => p.grade === "consultant" && icuIds.has(p.id))}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="SAS Doctors"
-                staff={filtered.filter((p) => p.grade === "sas")}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="Trainees"
-                staff={filtered.filter((p) => p.grade === "trainee")}
-                onEdit={(id) => setEditingId(id)}
-              />
-              <StaffGroup
-                title="Other"
-                staff={filtered.filter((p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade))}
-                onEdit={(id) => setEditingId(id)}
-              />
-            </div>
-          )}
-          <p className="mt-4 text-xs text-muted-foreground">
-            New users appear here automatically when they sign up.
-          </p>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="staff" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="staff">Staff</TabsTrigger>
+        </TabsList>
+        <TabsContent value="staff">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">All registered users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : !filtered?.length ? (
+                <p className="text-sm text-muted-foreground">No staff records.</p>
+              ) : (
+                <div className="space-y-6">
+                  <StaffGroup
+                    title="Consultants"
+                    staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="Consultants - ICU"
+                    staff={filtered.filter((p) => p.grade === "consultant" && icuIds.has(p.id))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="SAS Doctors"
+                    staff={filtered.filter((p) => p.grade === "sas")}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="Trainees"
+                    staff={filtered.filter((p) => p.grade === "trainee")}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
+                    title="Other"
+                    staff={filtered.filter((p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                </div>
+              )}
+              <p className="mt-4 text-xs text-muted-foreground">
+                New users appear here automatically when they sign up. Future joiners are shown with a “Not yet started” badge until their start date.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <StaffEditDialog
         staffId={editingId}
