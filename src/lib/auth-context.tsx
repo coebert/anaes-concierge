@@ -37,8 +37,7 @@ function isPasswordRecoveryUrl(): boolean {
     url.searchParams.get("type") === "recovery" ||
     url.searchParams.has("token_hash") ||
     hashParams.get("type") === "recovery" ||
-    hashParams.has("access_token") ||
-    hashParams.has("error")
+    hashParams.has("access_token")
   );
 }
 

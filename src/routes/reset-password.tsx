@@ -60,7 +60,10 @@ function getResetLinkState(href: string): ResetLinkState {
   );
 
   const errorCode =
-    url.searchParams.get("error") ?? hashParams.get("error") ?? hashParams.get("error_code");
+    url.searchParams.get("error") ??
+    url.searchParams.get("error_code") ??
+    hashParams.get("error") ??
+    hashParams.get("error_code");
   const errorDescription =
     url.searchParams.get("error_description") ?? hashParams.get("error_description");
   if (errorCode || errorDescription) {
