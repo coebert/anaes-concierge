@@ -1,13 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+
+type PasswordCheck = { id: string; label: string; ok: boolean };
+
+function evaluatePassword(pw: string): PasswordCheck[] {
+  return [
+    { id: "len", label: "At least 8 characters", ok: pw.length >= 8 && pw.length <= 128 },
+    { id: "upper", label: "An uppercase letter (A–Z)", ok: /[A-Z]/.test(pw) },
+    { id: "lower", label: "A lowercase letter (a–z)", ok: /[a-z]/.test(pw) },
+    { id: "digit", label: "A number (0–9)", ok: /[0-9]/.test(pw) },
+  ];
+}
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
@@ -35,8 +46,14 @@ function ResetPasswordPage() {
   const [mode, setMode] = useState<Mode>("request");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const passwordChecks = useMemo(() => evaluatePassword(password), [password]);
+  const passwordStrongEnough = passwordChecks.every((c) => c.ok);
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const canSubmitUpdate = passwordStrongEnough && passwordsMatch && !busy;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -105,9 +122,17 @@ function ResetPasswordPage() {
 
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
+    if (!passwordStrongEnough) {
+      toast.error("Please choose a stronger password");
+      return;
+    }
+    if (!passwordsMatch) {
+      toast.error("Passwords do not match");
+      return;
+    }
     const parsed = z.string().min(8).max(128).safeParse(password);
     if (!parsed.success) {
-      toast.error("Password must be at least 8 characters");
+      toast.error("Password must be 8–128 characters");
       return;
     }
     setBusy(true);
@@ -120,6 +145,7 @@ function ResetPasswordPage() {
   const startOver = () => {
     setErrorMessage(null);
     setPassword("");
+    setConfirmPassword("");
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/reset-password");
     }
@@ -163,18 +189,72 @@ function ResetPasswordPage() {
               </p>
             </form>
           ) : mode === "update" ? (
-            <form onSubmit={handleUpdate} className="space-y-4">
+            <form onSubmit={handleUpdate} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="password">New password</Label>
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={password.length > 0 && !passwordStrongEnough}
+                  aria-describedby="password-requirements"
                   required
                 />
+                <ul
+                  id="password-requirements"
+                  data-testid="password-requirements"
+                  className="space-y-1 text-xs"
+                  aria-live="polite"
+                >
+                  {passwordChecks.map((c) => (
+                    <li
+                      key={c.id}
+                      data-testid={`pw-check-${c.id}`}
+                      data-ok={c.ok ? "true" : "false"}
+                      className={`flex items-center gap-1.5 ${
+                        c.ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                      }`}
+                    >
+                      {c.ok ? (
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      <span>{c.label}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <Button type="submit" className="w-full" disabled={busy}>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm new password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
+                  aria-describedby="confirm-password-error"
+                  required
+                />
+                {confirmPassword.length > 0 && !passwordsMatch ? (
+                  <p
+                    id="confirm-password-error"
+                    data-testid="confirm-password-error"
+                    className="text-xs text-destructive"
+                  >
+                    Passwords do not match.
+                  </p>
+                ) : null}
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!canSubmitUpdate}
+                aria-disabled={!canSubmitUpdate}
+              >
                 {busy ? "Updating…" : "Update password"}
               </Button>
             </form>
