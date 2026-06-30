@@ -19,9 +19,41 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+    if (typeof window === "undefined") return;
+
+    // Legacy implicit flow: tokens arrive in the URL hash as #type=recovery.
+    // Supabase parses them automatically and fires PASSWORD_RECOVERY.
+    if (window.location.hash.includes("type=recovery")) {
       setMode("update");
     }
+
+    // Current PKCE flow: the email link returns ?code=<otp>. Exchange it
+    // for a session, then show the new-password form.
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const errorDescription = url.searchParams.get("error_description");
+    if (errorDescription) {
+      toast.error(errorDescription);
+    }
+    if (code) {
+      void (async () => {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        // Clean the code out of the URL so refresh doesn't re-exchange.
+        url.searchParams.delete("code");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+        setMode("update");
+      })();
+    }
+
+    // Also catch the recovery event fired after Supabase auto-parses tokens.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setMode("update");
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   const handleRequest = async (e: FormEvent) => {
