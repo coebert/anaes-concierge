@@ -24,7 +24,17 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
 });
 
-type Mode = "request" | "update" | "error";
+type Mode = "request" | "checking" | "update" | "error";
+
+type ResetLinkState =
+  | { kind: "none" }
+  | { kind: "error"; message: string }
+  | { kind: "pkce"; code: string }
+  | { kind: "token_hash"; tokenHash: string }
+  | { kind: "implicit"; accessToken: string; refreshToken: string }
+  | { kind: "recovery_session" };
+
+const resetLinkExchangeCache = new Map<string, Promise<string | null>>();
 
 /**
  * Map Supabase / OAuth error codes & descriptions to a short, user-friendly
@@ -40,6 +50,59 @@ function describeLinkError(code: string | null, description: string | null): str
   }
   if (description) return description;
   return "We couldn't verify this password reset link. Please request a new one.";
+}
+
+function getResetLinkState(href: string): ResetLinkState {
+  const url = new URL(href);
+  const hashParams = new URLSearchParams(
+    url.hash.startsWith("#") ? url.hash.slice(1) : "",
+  );
+
+  const errorCode =
+    url.searchParams.get("error") ?? hashParams.get("error") ?? hashParams.get("error_code");
+  const errorDescription =
+    url.searchParams.get("error_description") ?? hashParams.get("error_description");
+  if (errorCode || errorDescription) {
+    return { kind: "error", message: describeLinkError(errorCode, errorDescription) };
+  }
+
+  const code = url.searchParams.get("code");
+  if (code) return { kind: "pkce", code };
+
+  const tokenHash = url.searchParams.get("token_hash") ?? hashParams.get("token_hash");
+  const type = url.searchParams.get("type") ?? hashParams.get("type");
+  if (tokenHash && type === "recovery") return { kind: "token_hash", tokenHash };
+
+  const accessToken = hashParams.get("access_token");
+  const refreshToken = hashParams.get("refresh_token");
+  if ((type === "recovery" || url.hash.includes("type=recovery")) && accessToken && refreshToken) {
+    return { kind: "implicit", accessToken, refreshToken };
+  }
+
+  if (type === "recovery" || url.hash.includes("type=recovery")) {
+    return { kind: "recovery_session" };
+  }
+
+  return { kind: "none" };
+}
+
+function cleanResetLinkUrl() {
+  if (typeof window === "undefined") return;
+  window.history.replaceState({}, "", window.location.pathname);
+}
+
+async function exchangeResetLinkOnce(
+  cacheKey: string,
+  exchange: () => Promise<string | null>,
+): Promise<string | null> {
+  const cached = resetLinkExchangeCache.get(cacheKey);
+  if (cached) return cached;
+
+  const promise = exchange();
+  resetLinkExchangeCache.set(cacheKey, promise);
+  const result = await promise;
+  if (result) resetLinkExchangeCache.delete(cacheKey);
+  return result;
 }
 
 function ResetPasswordPage() {
@@ -59,41 +122,53 @@ function ResetPasswordPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Supabase may report a failed link via either query or hash fragment.
-    const url = new URL(window.location.href);
-    const hashParams = new URLSearchParams(
-      window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
-    );
-    const errorCode =
-      url.searchParams.get("error") ?? hashParams.get("error") ?? hashParams.get("error_code");
-    const errorDescription =
-      url.searchParams.get("error_description") ?? hashParams.get("error_description");
+    const linkState = getResetLinkState(window.location.href);
 
-    if (errorCode || errorDescription) {
-      setErrorMessage(describeLinkError(errorCode, errorDescription));
+    if (linkState.kind === "error") {
+      setErrorMessage(linkState.message);
       setMode("error");
+      cleanResetLinkUrl();
       return;
     }
 
-    // Legacy implicit flow: tokens arrive in the URL hash as #type=recovery.
-    if (window.location.hash.includes("type=recovery")) {
-      setMode("update");
-    }
-
-    // Current PKCE flow: the email link returns ?code=<otp>. Exchange it
-    // for a session, then show the new-password form.
-    const code = url.searchParams.get("code");
-    if (code) {
+    if (linkState.kind === "none") {
+      setMode("request");
+    } else {
+      setMode("checking");
       void (async () => {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          setErrorMessage(describeLinkError(null, error.message));
+        let exchangeError: string | null = null;
+
+        if (linkState.kind === "pkce") {
+          exchangeError = await exchangeResetLinkOnce(`pkce:${linkState.code}`, async () => {
+            const { error } = await supabase.auth.exchangeCodeForSession(linkState.code);
+            return error?.message ?? null;
+          });
+        } else if (linkState.kind === "token_hash") {
+          exchangeError = await exchangeResetLinkOnce(`token_hash:${linkState.tokenHash}`, async () => {
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash: linkState.tokenHash,
+              type: "recovery",
+            });
+            return error?.message ?? null;
+          });
+        } else if (linkState.kind === "implicit") {
+          const { error } = await supabase.auth.setSession({
+            access_token: linkState.accessToken,
+            refresh_token: linkState.refreshToken,
+          });
+          exchangeError = error?.message ?? null;
+        } else if (linkState.kind === "recovery_session") {
+          const { data, error } = await supabase.auth.getSession();
+          exchangeError = error?.message ?? (!data.session ? "No reset session was found." : null);
+        }
+
+        if (exchangeError) {
+          setErrorMessage(describeLinkError(null, exchangeError));
           setMode("error");
           return;
         }
-        // Clean the code out of the URL so refresh doesn't re-exchange.
-        url.searchParams.delete("code");
-        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+
+        cleanResetLinkUrl();
         setMode("update");
       })();
     }
@@ -137,6 +212,15 @@ function ResetPasswordPage() {
       return;
     }
     setBusy(true);
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      setBusy(false);
+      setErrorMessage(
+        "Your reset session has expired or could not be verified. Please request a new reset link.",
+      );
+      setMode("error");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
     if (error) {
       setBusy(false);
@@ -163,12 +247,16 @@ function ResetPasswordPage() {
   const title =
     mode === "request"
       ? "Reset password"
+      : mode === "checking"
+        ? "Verifying reset link"
       : mode === "update"
         ? "Set a new password"
         : "Reset link not valid";
   const description =
     mode === "request"
       ? "We'll email you a link to reset your password."
+      : mode === "checking"
+        ? "Please wait while we verify your password reset link."
       : mode === "update"
         ? "Choose a new password for your account."
         : "The link you followed can't be used to reset your password.";
@@ -196,6 +284,10 @@ function ResetPasswordPage() {
                 </Link>
               </p>
             </form>
+          ) : mode === "checking" ? (
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground" role="status">
+              Verifying your reset link…
+            </div>
           ) : mode === "update" ? (
             <form onSubmit={handleUpdate} className="space-y-4" noValidate>
               <div className="space-y-2">
