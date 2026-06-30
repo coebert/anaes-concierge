@@ -122,9 +122,17 @@ function ResetPasswordPage() {
 
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
+    if (!passwordStrongEnough) {
+      toast.error("Please choose a stronger password");
+      return;
+    }
+    if (!passwordsMatch) {
+      toast.error("Passwords do not match");
+      return;
+    }
     const parsed = z.string().min(8).max(128).safeParse(password);
     if (!parsed.success) {
-      toast.error("Password must be at least 8 characters");
+      toast.error("Password must be 8–128 characters");
       return;
     }
     setBusy(true);
@@ -137,6 +145,7 @@ function ResetPasswordPage() {
   const startOver = () => {
     setErrorMessage(null);
     setPassword("");
+    setConfirmPassword("");
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/reset-password");
     }
