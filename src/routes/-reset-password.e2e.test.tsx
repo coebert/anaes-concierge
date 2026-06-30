@@ -136,12 +136,14 @@ describe("reset password journey", () => {
       ).toBeDefined(),
     );
 
-    await user.type(screen.getByLabelText(/new password/i), "correct-horse-battery-staple");
+    const strong = "Correct-Horse-Battery-Staple-9";
+    await user.type(screen.getByLabelText(/^new password$/i), strong);
+    await user.type(screen.getByLabelText(/confirm new password/i), strong);
     await user.click(screen.getByRole("button", { name: /update password/i }));
 
     await waitFor(() => expect(updateUser).toHaveBeenCalledTimes(1));
     expect(updateUser.mock.calls[0][0]).toEqual({
-      password: "correct-horse-battery-staple",
+      password: strong,
     });
   });
 
