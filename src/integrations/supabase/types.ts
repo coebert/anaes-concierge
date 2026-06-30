@@ -21,6 +21,8 @@ export type Database = {
           decided_by: string | null
           decision_notes: string | null
           email: string
+          email_enc: string | null
+          email_hash: string | null
           full_name: string
           id: string
           message: string | null
@@ -32,6 +34,8 @@ export type Database = {
           decided_by?: string | null
           decision_notes?: string | null
           email: string
+          email_enc?: string | null
+          email_hash?: string | null
           full_name: string
           id?: string
           message?: string | null
@@ -43,6 +47,8 @@ export type Database = {
           decided_by?: string | null
           decision_notes?: string | null
           email?: string
+          email_enc?: string | null
+          email_hash?: string | null
           full_name?: string
           id?: string
           message?: string | null
@@ -80,6 +86,7 @@ export type Database = {
           created_at: string
           id: string
           parts: Json
+          parts_enc: string | null
           role: Database["public"]["Enums"]["chat_role"]
           user_id: string
         }
@@ -88,6 +95,7 @@ export type Database = {
           created_at?: string
           id?: string
           parts: Json
+          parts_enc?: string | null
           role: Database["public"]["Enums"]["chat_role"]
           user_id: string
         }
@@ -96,6 +104,7 @@ export type Database = {
           created_at?: string
           id?: string
           parts?: Json
+          parts_enc?: string | null
           role?: Database["public"]["Enums"]["chat_role"]
           user_id?: string
         }
@@ -582,15 +591,18 @@ export type Database = {
         Row: {
           clwrota_external_id: string | null
           conflict_notes: string | null
+          conflict_notes_enc: string | null
           created_at: string
           decided_at: string | null
           decided_by: string | null
           decision_notes: string | null
+          decision_notes_enc: string | null
           end_date: string
           half_day_end: Database["public"]["Enums"]["session_half"] | null
           half_day_start: Database["public"]["Enums"]["session_half"] | null
           id: string
           reason: string | null
+          reason_enc: string | null
           reserve_listed_at: string | null
           staff_id: string
           start_date: string
@@ -601,15 +613,18 @@ export type Database = {
         Insert: {
           clwrota_external_id?: string | null
           conflict_notes?: string | null
+          conflict_notes_enc?: string | null
           created_at?: string
           decided_at?: string | null
           decided_by?: string | null
           decision_notes?: string | null
+          decision_notes_enc?: string | null
           end_date: string
           half_day_end?: Database["public"]["Enums"]["session_half"] | null
           half_day_start?: Database["public"]["Enums"]["session_half"] | null
           id?: string
           reason?: string | null
+          reason_enc?: string | null
           reserve_listed_at?: string | null
           staff_id: string
           start_date: string
@@ -620,15 +635,18 @@ export type Database = {
         Update: {
           clwrota_external_id?: string | null
           conflict_notes?: string | null
+          conflict_notes_enc?: string | null
           created_at?: string
           decided_at?: string | null
           decided_by?: string | null
           decision_notes?: string | null
+          decision_notes_enc?: string | null
           end_date?: string
           half_day_end?: Database["public"]["Enums"]["session_half"] | null
           half_day_start?: Database["public"]["Enums"]["session_half"] | null
           id?: string
           reason?: string | null
+          reason_enc?: string | null
           reserve_listed_at?: string | null
           staff_id?: string
           start_date?: string
@@ -660,8 +678,11 @@ export type Database = {
           clwrota_external_id: string | null
           created_at: string
           email: string
+          email_enc: string | null
+          email_hash: string | null
           full_name: string
           gmc_number: string | null
+          gmc_number_enc: string | null
           grade: Database["public"]["Enums"]["staff_grade"] | null
           id: string
           left_at: string | null
@@ -677,8 +698,11 @@ export type Database = {
           clwrota_external_id?: string | null
           created_at?: string
           email: string
+          email_enc?: string | null
+          email_hash?: string | null
           full_name?: string
           gmc_number?: string | null
+          gmc_number_enc?: string | null
           grade?: Database["public"]["Enums"]["staff_grade"] | null
           id: string
           left_at?: string | null
@@ -694,8 +718,11 @@ export type Database = {
           clwrota_external_id?: string | null
           created_at?: string
           email?: string
+          email_enc?: string | null
+          email_hash?: string | null
           full_name?: string
           gmc_number?: string | null
+          gmc_number_enc?: string | null
           grade?: Database["public"]["Enums"]["staff_grade"] | null
           id?: string
           left_at?: string | null
@@ -1167,8 +1194,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _enc_key: { Args: never; Returns: string }
+      _hmac_key: { Args: never; Returns: string }
       admin_run_readonly_sql: { Args: { p_query: string }; Returns: Json }
       current_user_is_coordinator_or_admin: { Args: never; Returns: boolean }
+      decrypt_ai_message_parts: {
+        Args: { p_cipher: string; p_conversation_id: string }
+        Returns: Json
+      }
+      decrypt_coord_only: { Args: { p_cipher: string }; Returns: string }
+      decrypt_jsonb: { Args: { p_cipher: string }; Returns: Json }
+      decrypt_owner_or_coord: {
+        Args: { p_cipher: string; p_owner: string }
+        Returns: string
+      }
+      decrypt_text: { Args: { p_cipher: string }; Returns: string }
+      encrypt_jsonb: { Args: { p_plain: Json }; Returns: string }
+      encrypt_text: { Args: { p_plain: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1176,6 +1218,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      hmac_text: { Args: { p_plain: string }; Returns: string }
       list_clwrota_cron_runs: {
         Args: { p_limit?: number }
         Returns: {
