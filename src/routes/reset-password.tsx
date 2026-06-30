@@ -114,6 +114,36 @@ function hasResetSessionReadyFlag(): boolean {
   }
 }
 
+/**
+ * Captured synchronously at module load — BEFORE supabase-js's
+ * `detectSessionInUrl` runs on first client access. supabase-js consumes
+ * `#access_token=…&type=recovery` hashes asynchronously and rewrites the URL,
+ * so a child component effect that reads `window.location.href` can miss the
+ * recovery indicators. Reading once here guarantees we see the original link.
+ */
+const INITIAL_RESET_URL =
+  typeof window !== "undefined" ? window.location.href : "";
+
+/**
+ * If the initial URL looks like any kind of recovery link, mark the reset
+ * session as "ready" up-front. The effect below will then call
+ * `supabase.auth.getSession()` — by that time supabase-js will have parsed
+ * the hash into a real session and we land on the update form even if the
+ * PASSWORD_RECOVERY event fired before our listener attached.
+ */
+(function preflightRecoveryFlag() {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/reset-password") return;
+  const state = getResetLinkState(INITIAL_RESET_URL);
+  if (state.kind === "implicit" || state.kind === "recovery_session") {
+    try {
+      window.sessionStorage.setItem(RESET_SESSION_READY_KEY, "1");
+    } catch {
+      // sessionStorage may be unavailable; the explicit-flow paths still work.
+    }
+  }
+})();
+
 async function exchangeResetLinkOnce(
   cacheKey: string,
   exchange: () => Promise<string | null>,
