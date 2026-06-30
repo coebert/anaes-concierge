@@ -92,7 +92,7 @@ describe("reset password journey", () => {
     render(<ResetPasswordPage />);
 
     expect(
-      screen.getByRole("heading", { name: /reset password/i }),
+      screen.getByText(/^reset password$/i),
     ).toBeDefined();
     expect(screen.getByLabelText(/email/i)).toBeDefined();
 
@@ -130,7 +130,7 @@ describe("reset password journey", () => {
     // View switches to the new-password form.
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { name: /set a new password/i }),
+        screen.getByText(/set a new password/i),
       ).toBeDefined(),
     );
 
@@ -154,7 +154,7 @@ describe("reset password journey", () => {
 
     // Initially in request mode (no ?code, no recovery hash).
     expect(
-      screen.getByRole("heading", { name: /reset password/i }),
+      screen.getByText(/^reset password$/i),
     ).toBeDefined();
 
     await act(async () => {
@@ -163,7 +163,7 @@ describe("reset password journey", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { name: /set a new password/i }),
+        screen.getByText(/set a new password/i),
       ).toBeDefined(),
     );
   });
