@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO } from "@/lib/utils";
@@ -31,6 +32,7 @@ type StaffWithPlan = {
   grade: string | null;
   training_level: string | null;
   active: boolean | null;
+  start_date: string | null;
   job_plan: { total_pas: number; ltft: boolean; ltft_percentage: number | null } | null;
 };
 
