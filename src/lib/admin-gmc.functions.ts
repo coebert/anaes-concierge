@@ -19,7 +19,7 @@ export const getProfileGmcNumber = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { data: row, error } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .select("gmc_number")
       .eq("id", data.staffId)
       .maybeSingle();

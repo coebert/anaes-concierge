@@ -240,7 +240,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
     const profileMap = new Map<string, { full_name: string | null; grade: string | null }>();
     if (staffIds.length > 0) {
       const { data: profs, error: pErr } = await supabase
-        .from("profiles_v")
+        .from("profiles")
         .select("id, full_name, grade")
         .in("id", staffIds);
       if (pErr) throw new Error(pErr.message);

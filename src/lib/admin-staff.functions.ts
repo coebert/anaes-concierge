@@ -94,7 +94,7 @@ export const listStaffForAdmin = createServerFn({ method: "GET" })
       throw new Error("Only admins can list staff with emails.");
     }
     const { data, error } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .select("id,email,full_name,grade,training_level,active,start_date")
       .order("full_name");
     if (error) throw new Error(error.message);

@@ -18,7 +18,7 @@ export const listAccessRequests = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
-      .from("access_requests_v")
+      .from("access_requests")
       .select("id, email, full_name, message, status, created_at, decided_at, decision_notes")
       .order("created_at", { ascending: false })
       .limit(200);
@@ -40,7 +40,7 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
 
     const { data: req, error: fetchErr } = await supabaseAdmin
-      .from("access_requests_v")
+      .from("access_requests")
       .select("*")
       .eq("id", data.id)
       .maybeSingle();

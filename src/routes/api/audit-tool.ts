@@ -319,7 +319,7 @@ async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
       .order("sort_order", { ascending: true })
       .limit(200),
     admin
-      .from("profiles_v")
+      .from("profiles")
       .select("grade, training_level, active")
       .eq("active", true)
       .limit(2000),
@@ -722,7 +722,7 @@ export const Route = createFileRoute("/api/audit-tool")({
             }),
             execute: async ({ grade }) => {
               let q = adminClient
-                .from("profiles_v")
+                .from("profiles")
                 .select("grade, training_level")
                 .eq("active", true)
                 .limit(2000);
@@ -791,7 +791,7 @@ export const Route = createFileRoute("/api/audit-tool")({
             execute: async ({ query, limit }) => {
               const q = `%${query.replace(/[%_]/g, (m) => `\\${m}`)}%`;
               const { data, error } = await adminClient
-                .from("profiles_v")
+                .from("profiles")
                 .select("id, full_name, email, grade, training_level, active")
                 .or(`full_name.ilike.${q},email.ilike.${q}`)
                 .limit(limit ?? 10);

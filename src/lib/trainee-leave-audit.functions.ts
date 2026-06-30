@@ -144,7 +144,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     }
 
     const { data: trainees, error: tErr } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .select("id, full_name, email, start_date, clwrota_external_id, rotation_end_date")
       .eq("grade", "trainee")
       .eq("active", true);
@@ -184,7 +184,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     }
 
     const { data: leaveRows, error: lErr } = await supabaseAdmin
-      .from("leave_requests_v")
+      .from("leave_requests")
       .select("id, staff_id, start_date, end_date, status, type, reason")
       .in("staff_id", ids)
       .lte("start_date", windowEnd)

@@ -72,7 +72,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         }
         const sb = admin();
         const { data: profile, error: pErr } = await sb
-          .from("profiles_v")
+          .from("profiles")
           .select("id, full_name")
           .eq("calendar_feed_token", token)
           .maybeSingle();
@@ -100,7 +100,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
             .gte("session_date", fromStr)
             .lte("session_date", toStr),
           sb
-            .from("leave_requests_v")
+            .from("leave_requests")
             .select(
               "id, type, status, start_date, end_date, half_day_start, half_day_end, reason, updated_at",
             )
@@ -139,7 +139,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         let supMap = new Map<string, string>();
         if (supIds.length) {
           const { data: sups } = await sb
-            .from("profiles_v")
+            .from("profiles")
             .select("id, full_name")
             .in("id", supIds);
           (sups ?? []).forEach((p: any) => supMap.set(p.id, p.full_name));

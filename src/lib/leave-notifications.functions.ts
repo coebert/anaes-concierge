@@ -15,7 +15,7 @@ async function callerIsCoordOrAdmin(userId: string): Promise<boolean> {
 
 async function staffName(staffId: string): Promise<{ name: string; email: string | null }> {
   const { data } = await supabaseAdmin
-    .from("profiles_v")
+    .from("profiles")
     .select("full_name, email")
     .eq("id", staffId)
     .maybeSingle();
@@ -30,7 +30,7 @@ async function coordinatorEmails(): Promise<string[]> {
   const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
   if (!ids.length) return [];
   const { data: profs } = await supabaseAdmin
-    .from("profiles_v")
+    .from("profiles")
     .select("email")
     .in("id", ids);
   return [...new Set((profs ?? []).map((p) => p.email).filter((e): e is string => !!e))];
@@ -49,7 +49,7 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { data: req } = await supabaseAdmin
-      .from("leave_requests_v")
+      .from("leave_requests")
       .select("*")
       .eq("id", data.leaveId)
       .maybeSingle();
@@ -96,7 +96,7 @@ export const notifyLeaveDecided = createServerFn({ method: "POST" })
       throw new Error("Forbidden");
     }
     const { data: req } = await supabaseAdmin
-      .from("leave_requests_v")
+      .from("leave_requests")
       .select("*")
       .eq("id", data.leaveId)
       .maybeSingle();

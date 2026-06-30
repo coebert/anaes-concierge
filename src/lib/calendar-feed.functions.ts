@@ -14,7 +14,7 @@ export const getCalendarFeedToken = createServerFn({ method: "POST" })
     await ensureAdmin(supabase, userId);
 
     const { data: row, error } = await supabase
-      .from("profiles_v")
+      .from("profiles")
       .select("calendar_feed_token")
       .eq("id", userId)
       .maybeSingle();

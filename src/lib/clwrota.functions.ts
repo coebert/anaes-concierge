@@ -912,7 +912,7 @@ export async function performStaffSync() {
     // CLWRota external id so we can fall back when the email in CLWRota has
     // changed (otherwise the insert path trips profiles_clwrota_external_id_key).
     const { data: profiles, error: profErr } = await supabaseAdmin
-      .from("profiles_v")
+      .from("profiles")
       .select("id, email, clwrota_external_id");
     if (profErr) throw new Error(profErr.message);
     const byEmail = new Map<string, string>();
@@ -1804,7 +1804,7 @@ export async function performRotaSync(
       dutyMappings,
       theatreAliases,
     ] = await Promise.all([
-      supabaseAdmin.from("profiles_v").select("id, email, full_name, clwrota_external_id, grade, training_level"),
+      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id, grade, training_level"),
       supabaseAdmin.from("theatres").select("id, name"),
       supabaseAdmin.from("specialties").select("id, name"),
       loadDutyTypeMappings(),
@@ -2938,7 +2938,7 @@ export async function performLeaveSync() {
 
   // Pre-sync count for the historical-data safeguard.
   const { count: preCount, error: preCountErr } = await supabaseAdmin
-    .from("leave_requests_v")
+    .from("leave_requests")
     .select("id", { count: "exact", head: true })
     .not("clwrota_external_id", "is", null);
   if (preCountErr) throw new Error(preCountErr.message);
@@ -3014,7 +3014,7 @@ export async function performLeaveSync() {
 
   // Build staff lookup maps.
   const { data: profiles, error: profErr } = await supabaseAdmin
-    .from("profiles_v")
+    .from("profiles")
     .select("id, email, full_name, clwrota_external_id");
   if (profErr) throw new Error(profErr.message);
 
@@ -3252,7 +3252,7 @@ export async function performLeaveSync() {
 
   // Historical-data safeguard.
   const { count: postCount, error: postCountErr } = await supabaseAdmin
-    .from("leave_requests_v")
+    .from("leave_requests")
     .select("id", { count: "exact", head: true })
     .not("clwrota_external_id", "is", null);
   if (postCountErr) {

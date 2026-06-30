@@ -90,7 +90,7 @@ function buildAdminTools() {
       execute: async ({ query, limit }) => {
         const q = `%${query}%`;
         const { data, error } = await admin
-          .from("profiles_v")
+          .from("profiles")
           .select("id,full_name,email,grade,training_level,active")
           .or(`full_name.ilike.${q},email.ilike.${q}`)
           .limit(limit ?? 10);
@@ -357,7 +357,7 @@ async function buildAdminCustomRulesPreamble(): Promise<string> {
   const nameMap = new Map<string, string>();
   if (staffIds.length) {
     const { data: profs } = await admin
-      .from("profiles_v")
+      .from("profiles")
       .select("id,full_name")
       .in("id", staffIds);
     for (const p of profs ?? []) nameMap.set(p.id, p.full_name);
@@ -415,7 +415,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
                 .in("id", tsIds)
             : Promise.resolve({ data: [] as any[] }),
           supIds.length
-            ? admin.from("profiles_v").select("id,full_name").in("id", supIds)
+            ? admin.from("profiles").select("id,full_name").in("id", supIds)
             : Promise.resolve({ data: [] as any[] }),
         ]);
         const theatreIds = Array.from(
@@ -471,7 +471,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
             .eq("staff_id", userId)
             .maybeSingle(),
           admin
-            .from("leave_requests_v")
+            .from("leave_requests")
             .select("type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes")
             .eq("staff_id", userId)
             .order("start_date", { ascending: false })
@@ -497,7 +497,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         if (error) return { error: error.message };
         const ids = (data ?? []).map((r) => r.staff_id);
         const { data: profs } = ids.length
-          ? await admin.from("profiles_v").select("id,full_name,grade").in("id", ids)
+          ? await admin.from("profiles").select("id,full_name,grade").in("id", ids)
           : { data: [] as any[] };
         const pmap = new Map((profs ?? []).map((p: any) => [p.id, p]));
         return {
@@ -650,7 +650,7 @@ export const Route = createFileRoute("/api/chat")({
               if (!text) return;
 
               const { data: prof } = await admin
-                .from("profiles_v")
+                .from("profiles")
                 .select("email,full_name")
                 .eq("id", userId)
                 .maybeSingle();

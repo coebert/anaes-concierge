@@ -30,7 +30,7 @@ async function checkDatabase(): Promise<HealthCheck> {
   try {
     const admin = getAdminClient();
     const { error } = await admin
-      .from("profiles_v")
+      .from("profiles")
       .select("id", { count: "exact", head: true })
       .limit(1);
     if (error) {
