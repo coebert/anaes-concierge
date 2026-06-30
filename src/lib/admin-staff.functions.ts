@@ -95,7 +95,7 @@ export const listStaffForAdmin = createServerFn({ method: "GET" })
     }
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id,email,full_name,grade,training_level,active")
+      .select("id,email,full_name,grade,training_level,active,start_date")
       .order("full_name");
     if (error) throw new Error(error.message);
     return data ?? [];
