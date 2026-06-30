@@ -182,19 +182,6 @@ function ResetPasswordPage() {
     const initialState =
       liveState.kind === "none" ? getResetLinkState(INITIAL_RESET_URL) : liveState;
 
-    if (initialState.kind === "error") {
-      setErrorMessage(initialState.message);
-      setMode("error");
-      cleanResetLinkUrl();
-      return;
-    }
-
-    if (initialState.kind === "none" && !hasResetSessionReadyFlag()) {
-      setMode("request");
-      return;
-    }
-
-    setMode("checking");
     let cancelled = false;
 
     const enterUpdateMode = () => {
@@ -204,22 +191,50 @@ function ResetPasswordPage() {
       setMode("update");
     };
 
-    const sessionExists = async (): Promise<boolean> => {
-      const { data } = await supabase.auth.getSession();
-      return !!data.session;
-    };
-
-    // Poll briefly to catch supabase-js's async `detectSessionInUrl` writing
-    // the session into storage just after our explicit exchange.
-    const waitForSession = async (): Promise<boolean> => {
-      for (let i = 0; i < 30; i++) {
-        if (cancelled) return false;
-        if (await sessionExists()) return true;
-        await new Promise((r) => setTimeout(r, 100));
+    // Always listen for the PASSWORD_RECOVERY / SIGNED_IN events — even when
+    // we currently show the request form, the supabase client may parse a
+    // recovery link asynchronously and we should flip to the update form.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        enterUpdateMode();
       }
-      return false;
+    });
+
+    const cleanup = () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
     };
 
+    if (initialState.kind === "error") {
+      setErrorMessage(initialState.message);
+      setMode("error");
+      cleanResetLinkUrl();
+      return cleanup;
+    }
+
+    if (initialState.kind === "none") {
+      if (!hasResetSessionReadyFlag()) {
+        setMode("request");
+        return cleanup;
+      }
+      // Refresh after a previous successful verification — confirm the
+      // session is still there before showing the update form.
+      setMode("checking");
+      void (async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (error || !data.session) {
+          setResetSessionReady(false);
+          setMode("request");
+          return;
+        }
+        enterUpdateMode();
+      })();
+      return cleanup;
+    }
+
+    setMode("checking");
     void (async () => {
       let exchangeError: string | null = null;
 
@@ -245,6 +260,17 @@ function ResetPasswordPage() {
           refresh_token: initialState.refreshToken,
         });
         exchangeError = error?.message ?? null;
+      } else if (initialState.kind === "recovery_session") {
+        // No tokens to exchange — the supabase client should establish the
+        // session asynchronously via detectSessionInUrl. Poll briefly.
+        let found = false;
+        for (let i = 0; i < 30; i++) {
+          if (cancelled) return;
+          const { data } = await supabase.auth.getSession();
+          if (data.session) { found = true; break; }
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        if (!found) exchangeError = "No reset session was found.";
       }
 
       if (cancelled) return;
@@ -255,38 +281,10 @@ function ResetPasswordPage() {
         return;
       }
 
-      if (await sessionExists()) {
-        enterUpdateMode();
-        return;
-      }
-
-      // No session yet — wait for either the listener below or
-      // supabase-js's async URL parse to land one.
-      if (await waitForSession()) {
-        enterUpdateMode();
-        return;
-      }
-
-      if (cancelled) return;
-      setErrorMessage(
-        "We couldn't verify this password reset link. Please request a new one.",
-      );
-      setMode("error");
+      enterUpdateMode();
     })();
 
-    // Also catch the recovery event fired after Supabase auto-parses tokens,
-    // and treat any SIGNED_IN while on /reset-password as the recovery
-    // session landing.
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (cancelled) return;
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        enterUpdateMode();
-      }
-    });
-    return () => {
-      cancelled = true;
-      sub.subscription.unsubscribe();
-    };
+    return cleanup;
   }, []);
 
   const handleRequest = async (e: FormEvent) => {
