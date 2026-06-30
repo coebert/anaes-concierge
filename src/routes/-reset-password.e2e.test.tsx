@@ -23,13 +23,25 @@ import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-const { resetPasswordForEmail, exchangeCodeForSession, updateUser, onAuthStateChange } =
-  vi.hoisted(() => ({
-    resetPasswordForEmail: vi.fn(),
-    exchangeCodeForSession: vi.fn(),
-    updateUser: vi.fn(),
-    onAuthStateChange: vi.fn(),
-  }));
+const {
+  resetPasswordForEmail,
+  exchangeCodeForSession,
+  updateUser,
+  onAuthStateChange,
+  signOut,
+  navigateMock,
+  toastSuccess,
+  toastError,
+} = vi.hoisted(() => ({
+  resetPasswordForEmail: vi.fn(),
+  exchangeCodeForSession: vi.fn(),
+  updateUser: vi.fn(),
+  onAuthStateChange: vi.fn(),
+  signOut: vi.fn(),
+  navigateMock: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
@@ -38,6 +50,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({
       options: opts,
     }),
+    useNavigate: () => navigateMock,
     Link: ({
       children,
       to,
@@ -54,12 +67,13 @@ vi.mock("@/integrations/supabase/client", () => ({
       exchangeCodeForSession: (...args: unknown[]) => exchangeCodeForSession(...args),
       updateUser: (...args: unknown[]) => updateUser(...args),
       onAuthStateChange: (...args: unknown[]) => onAuthStateChange(...args),
+      signOut: (...args: unknown[]) => signOut(...args),
     },
   },
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: toastSuccess, error: toastError },
 }));
 
 import { Route } from "./reset-password";
