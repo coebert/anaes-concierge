@@ -209,7 +209,10 @@ function ResetPasswordPage() {
 
     // Also catch the recovery event fired after Supabase auto-parses tokens.
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setMode("update");
+      if (event === "PASSWORD_RECOVERY") {
+        setResetSessionReady(true);
+        setMode("update");
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
