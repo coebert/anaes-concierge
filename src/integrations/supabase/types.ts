@@ -1788,6 +1788,93 @@ export type Database = {
         }[]
       }
       find_profile_id_by_email: { Args: { p_email: string }; Returns: string }
+      get_access_requests_decrypted: {
+        Args: never
+        Returns: {
+          created_at: string
+          decided_at: string
+          decided_by: string
+          decision_notes: string
+          email: string
+          full_name: string
+          id: string
+          message: string
+          status: Database["public"]["Enums"]["access_request_status"]
+        }[]
+      }
+      get_ai_messages_decrypted: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          conversation_id: string
+          created_at: string
+          id: string
+          parts: Json
+          role: Database["public"]["Enums"]["chat_role"]
+          user_id: string
+        }[]
+      }
+      get_leave_requests_decrypted: {
+        Args: never
+        Returns: {
+          clwrota_external_id: string
+          conflict_notes: string
+          created_at: string
+          decided_at: string
+          decided_by: string
+          decision_notes: string
+          end_date: string
+          half_day_end: Database["public"]["Enums"]["session_half"]
+          half_day_start: Database["public"]["Enums"]["session_half"]
+          id: string
+          reason: string
+          reserve_listed_at: string
+          staff_id: string
+          start_date: string
+          status: Database["public"]["Enums"]["leave_status"]
+          type: Database["public"]["Enums"]["leave_type"]
+          updated_at: string
+        }[]
+      }
+      get_profile_decrypted: {
+        Args: { p_id: string }
+        Returns: {
+          active: boolean
+          calendar_feed_token: string
+          clwrota_external_id: string
+          created_at: string
+          email: string
+          full_name: string
+          gmc_number: string
+          grade: Database["public"]["Enums"]["staff_grade"]
+          id: string
+          left_at: string
+          ltft_days_off: string[]
+          rotation_end_date: string
+          start_date: string
+          training_level: string
+          updated_at: string
+        }[]
+      }
+      get_profiles_decrypted: {
+        Args: never
+        Returns: {
+          active: boolean
+          calendar_feed_token: string
+          clwrota_external_id: string
+          created_at: string
+          email: string
+          full_name: string
+          gmc_number: string
+          grade: Database["public"]["Enums"]["staff_grade"]
+          id: string
+          left_at: string
+          ltft_days_off: string[]
+          rotation_end_date: string
+          start_date: string
+          training_level: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
