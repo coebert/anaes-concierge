@@ -310,6 +310,7 @@ describe("reset password journey", () => {
 
       expect(updateUser).not.toHaveBeenCalled();
   });
+  });
 
   describe("post-update redirect", () => {
     async function renderUpdateMode() {
