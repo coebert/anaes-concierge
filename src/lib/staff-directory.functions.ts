@@ -29,7 +29,7 @@ export const listActiveStaffSafe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<SafeStaff[]> => {
     const { data, error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select(SAFE_COLS)
       .eq("active", true)
       .order("full_name");
@@ -46,7 +46,7 @@ export const listStaffByIdsSafe = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SafeStaff[]> => {
     if (!data.ids.length) return [];
     const { data: rows, error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select(SAFE_COLS)
       .in("id", data.ids);
     if (error) throw new Error(error.message);
@@ -59,7 +59,7 @@ async function getCallerAccess(
 ): Promise<{ isAdmin: boolean; isCoordinator: boolean; isTrainee: boolean }> {
   const [{ data: roles }, { data: profile }] = await Promise.all([
     supabase.from("user_roles").select("role").eq("user_id", userId),
-    supabase.from("profiles").select("grade").eq("id", userId).maybeSingle(),
+    supabase.from("profiles_v").select("grade").eq("id", userId).maybeSingle(),
   ]);
   const roleSet = new Set((roles ?? []).map((r: { role: string }) => r.role));
   return {
@@ -84,7 +84,7 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail = access.isAdmin || access.isCoordinator;
     const { data, error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select("id,full_name,email,training_level,active,start_date,rotation_end_date,grade,left_at")
       .eq("grade", "trainee")
       // Include inactive trainees that the daily routine has flagged as
@@ -113,12 +113,12 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
       access.isAdmin || access.isCoordinator || context.userId === data.staffId;
     const [{ data: profile, error: e1 }, supRes] = await Promise.all([
       supabaseAdmin
-        .from("profiles")
+        .from("profiles_v")
         .select("id,full_name,email,training_level,grade,start_date,rotation_end_date")
         .eq("id", data.staffId)
         .maybeSingle(),
       data.supervisorIds.length
-        ? supabaseAdmin.from("profiles").select("id,full_name").in("id", data.supervisorIds)
+        ? supabaseAdmin.from("profiles_v").select("id,full_name").in("id", data.supervisorIds)
         : Promise.resolve({ data: [] as Array<{ id: string; full_name: string | null }>, error: null }),
     ]);
     if (e1) throw new Error(e1.message);

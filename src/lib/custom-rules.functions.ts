@@ -46,7 +46,7 @@ export const checkCustomRuleViolations = createServerFn({ method: "POST" })
 
     // Resolve staff profile (grade)
     const { data: profile } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select("id, full_name, grade")
       .eq("id", data.staffId)
       .maybeSingle();

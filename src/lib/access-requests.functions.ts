@@ -17,7 +17,7 @@ async function adminEmails(): Promise<string[]> {
   const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
   if (!ids.length) return [];
   const { data: profs } = await supabaseAdmin
-    .from("profiles")
+    .from("profiles_v")
     .select("email")
     .in("id", ids);
   return [...new Set((profs ?? []).map((p) => p.email).filter((e): e is string => !!e))];
@@ -31,7 +31,7 @@ export const submitAccessRequest = createServerFn({ method: "POST" })
     // Rate-limit: reject if same email submitted in the last hour.
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabaseAdmin
-      .from("access_requests")
+      .from("access_requests_v")
       .select("id")
       .eq("email", email)
       .gte("created_at", oneHourAgo)
@@ -41,7 +41,7 @@ export const submitAccessRequest = createServerFn({ method: "POST" })
     }
 
     const { data: inserted, error } = await supabaseAdmin
-      .from("access_requests")
+      .from("access_requests_v")
       .insert({
         email,
         full_name: data.full_name,

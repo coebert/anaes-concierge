@@ -18,7 +18,7 @@ export const listAccessRequests = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
-      .from("access_requests")
+      .from("access_requests_v")
       .select("id, email, full_name, message, status, created_at, decided_at, decision_notes")
       .order("created_at", { ascending: false })
       .limit(200);
@@ -40,14 +40,14 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
 
     const { data: req, error: fetchErr } = await supabaseAdmin
-      .from("access_requests")
+      .from("access_requests_v")
       .select("*")
       .eq("id", data.id)
       .maybeSingle();
     if (fetchErr || !req) return { error: "Request not found" };
 
     const { error: updErr } = await supabaseAdmin
-      .from("access_requests")
+      .from("access_requests_v")
       .update({
         status: data.decision,
         decided_at: new Date().toISOString(),
@@ -73,7 +73,7 @@ export const deleteAccessRequest = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    const { error } = await supabaseAdmin.from("access_requests").delete().eq("id", data.id);
+    const { error } = await supabaseAdmin.from("access_requests_v").delete().eq("id", data.id);
     if (error) return { error: error.message };
     return { ok: true };
   });

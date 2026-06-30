@@ -67,7 +67,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
     if (data.training_level !== undefined) profilePatch.training_level = data.training_level;
 
     const { error: profErr } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .upsert(profilePatch, { onConflict: "id" });
     if (profErr) return { error: `User created, but profile update failed: ${profErr.message}` };
 
@@ -94,7 +94,7 @@ export const listStaffForAdmin = createServerFn({ method: "GET" })
       throw new Error("Only admins can list staff with emails.");
     }
     const { data, error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select("id,email,full_name,grade,training_level,active,start_date")
       .order("full_name");
     if (error) throw new Error(error.message);

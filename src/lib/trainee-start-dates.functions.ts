@@ -55,7 +55,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
   const windowEnd = isoDateOffset(LOOKAHEAD_DAYS);
 
   const { data: trainees, error: tErr } = await supabaseAdmin
-    .from("profiles")
+    .from("profiles_v")
     .select("id, full_name, start_date")
     .eq("grade", "trainee")
     .eq("active", true);
@@ -79,7 +79,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
 
   // Leave overlapping window (any non-cancelled/non-denied status counts).
   const { data: leaveRows, error: lErr } = await supabaseAdmin
-    .from("leave_requests")
+    .from("leave_requests_v")
     .select("staff_id, start_date, end_date, status")
     .in("staff_id", ids)
     .lte("start_date", windowEnd)
@@ -128,7 +128,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
     if (cur === predicted) continue;
 
     const { error: uErr } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .update({ start_date: predicted })
       .eq("id", t.id);
     if (uErr) throw new Error(uErr.message);

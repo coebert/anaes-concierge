@@ -912,7 +912,7 @@ export async function performStaffSync() {
     // CLWRota external id so we can fall back when the email in CLWRota has
     // changed (otherwise the insert path trips profiles_clwrota_external_id_key).
     const { data: profiles, error: profErr } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select("id, email, clwrota_external_id");
     if (profErr) throw new Error(profErr.message);
     const byEmail = new Map<string, string>();
@@ -1137,7 +1137,7 @@ export async function performStaffSync() {
         if (roleRaw) newRow.training_level = roleRaw;
 
         const { data: insData, error: insErr } = await supabaseAdmin
-          .from("profiles")
+          .from("profiles_v")
           .insert(newRow)
           .select("id")
           .single();
@@ -1190,7 +1190,7 @@ export async function performStaffSync() {
       }
 
       const { error: upErr } = await supabaseAdmin
-        .from("profiles")
+        .from("profiles_v")
         .update(patch)
         .eq("id", profileId);
       if (upErr) {
@@ -1804,7 +1804,7 @@ export async function performRotaSync(
       dutyMappings,
       theatreAliases,
     ] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, email, full_name, clwrota_external_id, grade, training_level"),
+      supabaseAdmin.from("profiles_v").select("id, email, full_name, clwrota_external_id, grade, training_level"),
       supabaseAdmin.from("theatres").select("id, name"),
       supabaseAdmin.from("specialties").select("id, name"),
       loadDutyTypeMappings(),
@@ -2938,7 +2938,7 @@ export async function performLeaveSync() {
 
   // Pre-sync count for the historical-data safeguard.
   const { count: preCount, error: preCountErr } = await supabaseAdmin
-    .from("leave_requests")
+    .from("leave_requests_v")
     .select("id", { count: "exact", head: true })
     .not("clwrota_external_id", "is", null);
   if (preCountErr) throw new Error(preCountErr.message);
@@ -3014,7 +3014,7 @@ export async function performLeaveSync() {
 
   // Build staff lookup maps.
   const { data: profiles, error: profErr } = await supabaseAdmin
-    .from("profiles")
+    .from("profiles_v")
     .select("id, email, full_name, clwrota_external_id");
   if (profErr) throw new Error(profErr.message);
 
@@ -3188,7 +3188,7 @@ export async function performLeaveSync() {
       if (attempt > 1) metrics.upsert_retries_total += 1;
       try {
         const { error: upErr } = await supabaseAdmin
-          .from("leave_requests")
+          .from("leave_requests_v")
           .upsert(batch, { onConflict: "clwrota_external_id" });
         if (!upErr) return { error: null, attempts: attempt };
         lastErr = upErr.message;
@@ -3252,7 +3252,7 @@ export async function performLeaveSync() {
 
   // Historical-data safeguard.
   const { count: postCount, error: postCountErr } = await supabaseAdmin
-    .from("leave_requests")
+    .from("leave_requests_v")
     .select("id", { count: "exact", head: true })
     .not("clwrota_external_id", "is", null);
   if (postCountErr) {

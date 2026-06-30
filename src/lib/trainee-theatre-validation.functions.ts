@@ -90,7 +90,7 @@ export async function performTraineeTheatreValidation(
   const to = opts.to ?? isoDateOffset(Math.abs(daysAhead));
 
   const { data: trainees, error: tErr } = await supabaseAdmin
-    .from("profiles")
+    .from("profiles_v")
     .select("id, full_name, rotation_end_date")
     .eq("grade", "trainee")
     .eq("active", true);

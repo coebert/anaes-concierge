@@ -19,7 +19,7 @@ export const getProfileGmcNumber = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { data: row, error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .select("gmc_number")
       .eq("id", data.staffId)
       .maybeSingle();
@@ -46,7 +46,7 @@ export const updateProfileGmcNumber = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const value = data.gmc_number && data.gmc_number.length ? data.gmc_number : null;
     const { error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .update({ gmc_number: value })
       .eq("id", data.staffId);
     if (error) throw new Error(error.message);

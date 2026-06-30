@@ -14,7 +14,7 @@ export const getCalendarFeedToken = createServerFn({ method: "POST" })
     await ensureAdmin(supabase, userId);
 
     const { data: row, error } = await supabase
-      .from("profiles")
+      .from("profiles_v")
       .select("calendar_feed_token")
       .eq("id", userId)
       .maybeSingle();
@@ -25,7 +25,7 @@ export const getCalendarFeedToken = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
       const { error: upErr } = await supabaseAdmin
-        .from("profiles")
+        .from("profiles_v")
         .update({ calendar_feed_token: token })
         .eq("id", userId);
       if (upErr) throw new Error(upErr.message);
@@ -42,7 +42,7 @@ export const regenerateCalendarFeedToken = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     const { error } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_v")
       .update({ calendar_feed_token: token })
       .eq("id", userId);
     if (error) throw new Error(error.message);
