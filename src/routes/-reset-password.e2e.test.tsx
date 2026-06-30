@@ -169,4 +169,46 @@ describe("reset password journey", () => {
       ).toBeDefined(),
     );
   });
+
+  it("shows an inline expired-link error and lets the user request a new link", async () => {
+    const user = userEvent.setup();
+    setLocation(
+      "/reset-password#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired",
+    );
+
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
+
+    const alert = await screen.findByTestId("reset-link-error");
+    expect(alert.textContent ?? "").toMatch(/expired/i);
+
+    await user.click(screen.getByRole("button", { name: /request a new reset link/i }));
+
+    // Returns to the request form and clears the error params from the URL.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /send reset link/i })).toBeDefined(),
+    );
+    expect(window.location.hash).toBe("");
+    expect(window.location.search).toBe("");
+  });
+
+  it("shows an inline error when the PKCE code exchange fails", async () => {
+    exchangeCodeForSession.mockResolvedValueOnce({
+      error: { message: "Invalid code: flow_state_not_found" },
+    });
+    setLocation("/reset-password?code=bad-code");
+
+    await act(async () => {
+      render(<ResetPasswordPage />);
+    });
+
+    const alert = await screen.findByTestId("reset-link-error");
+    expect(alert.textContent ?? "").toMatch(/no longer valid|invalid/i);
+    expect(
+      screen.getByRole("button", { name: /request a new reset link/i }),
+    ).toBeDefined();
+    // The new-password form must NOT appear when the exchange failed.
+    expect(screen.queryByLabelText(/new password/i)).toBeNull();
+  });
 });
