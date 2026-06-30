@@ -172,6 +172,9 @@ function ResetPasswordPage() {
   const passwordsMatch = password.length > 0 && password === confirmPassword;
   const canSubmitUpdate = passwordStrongEnough && passwordsMatch && !busy;
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const linkState = getResetLinkState(INITIAL_RESET_URL);
 
     if (linkState.kind === "error") {
