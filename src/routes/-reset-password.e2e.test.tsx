@@ -213,4 +213,84 @@ describe("reset password journey", () => {
     // The new-password form must NOT appear when the exchange failed.
     expect(screen.queryByLabelText(/new password/i)).toBeNull();
   });
+
+  describe("new password validation", () => {
+    async function renderUpdateMode() {
+      setLocation("/reset-password?code=pkce-ok");
+      await act(async () => {
+        render(<ResetPasswordPage />);
+      });
+      await waitFor(() =>
+        expect(screen.getByLabelText(/^new password$/i)).toBeDefined(),
+      );
+    }
+
+    it("disables submit until the password is strong AND confirmation matches", async () => {
+      const user = userEvent.setup();
+      await renderUpdateMode();
+
+      const submit = screen.getByRole("button", { name: /update password/i });
+      const pw = screen.getByLabelText(/^new password$/i);
+      const confirm = screen.getByLabelText(/confirm new password/i);
+
+      // Empty → disabled.
+      expect((submit as HTMLButtonElement).disabled).toBe(true);
+
+      // Weak password (no upper, no digit, too short) → still disabled.
+      await user.type(pw, "weakpass");
+      expect((submit as HTMLButtonElement).disabled).toBe(true);
+
+      // Strong password but no confirmation → still disabled.
+      await user.clear(pw);
+      await user.type(pw, "StrongPass1");
+      expect((submit as HTMLButtonElement).disabled).toBe(true);
+
+      // Mismatched confirmation → disabled + visible mismatch error.
+      await user.type(confirm, "StrongPass2");
+      expect((submit as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByTestId("confirm-password-error").textContent).toMatch(/do not match/i);
+
+      // Matching confirmation → enabled.
+      await user.clear(confirm);
+      await user.type(confirm, "StrongPass1");
+      expect((submit as HTMLButtonElement).disabled).toBe(false);
+      expect(screen.queryByTestId("confirm-password-error")).toBeNull();
+
+      await user.click(submit);
+      await waitFor(() => expect(updateUser).toHaveBeenCalledTimes(1));
+      expect(updateUser.mock.calls[0][0]).toEqual({ password: "StrongPass1" });
+    });
+
+    it("shows a checklist that reflects each rule's pass/fail state", async () => {
+      const user = userEvent.setup();
+      await renderUpdateMode();
+
+      const status = (id: string) =>
+        screen.getByTestId(`pw-check-${id}`).getAttribute("data-ok");
+
+      // Empty: every rule fails.
+      expect(status("len")).toBe("false");
+      expect(status("upper")).toBe("false");
+      expect(status("lower")).toBe("false");
+      expect(status("digit")).toBe("false");
+
+      await user.type(screen.getByLabelText(/^new password$/i), "Abcdefg1");
+      expect(status("len")).toBe("true");
+      expect(status("upper")).toBe("true");
+      expect(status("lower")).toBe("true");
+      expect(status("digit")).toBe("true");
+    });
+
+    it("does not call updateUser when submit is forced on an invalid password", async () => {
+      const user = userEvent.setup();
+      await renderUpdateMode();
+
+      // Bypass the disabled button by submitting the form directly via Enter
+      // inside the password field. Validation in handleUpdate must still block.
+      const pw = screen.getByLabelText(/^new password$/i);
+      await user.type(pw, "weakpass{Enter}");
+
+      expect(updateUser).not.toHaveBeenCalled();
+    });
+  });
 });
