@@ -358,7 +358,12 @@ function ResetPasswordPage() {
       return;
     }
     setBusy(true);
+    trace("reset-password.handleUpdate.begin");
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    trace("reset-password.handleUpdate.getSession", {
+      session: describeSession(sessionData.session),
+      error: sessionError?.message ?? null,
+    });
     if (sessionError || !sessionData.session) {
       setBusy(false);
       setErrorMessage(
@@ -368,13 +373,16 @@ function ResetPasswordPage() {
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
+    trace("reset-password.handleUpdate.updateUser", { error: error?.message ?? null });
     if (error) {
       setBusy(false);
       toast.error(error.message);
       return;
     }
     // Sign the recovery session out so the user must log in with the new password.
+    trace("reset-password.handleUpdate.signOut.begin", { reason: "post-password-update" });
     await supabase.auth.signOut();
+    trace("reset-password.handleUpdate.signOut.done");
     setResetSessionReady(false);
     setBusy(false);
     toast.success("Password updated. Please sign in with your new password.");
@@ -382,6 +390,9 @@ function ResetPasswordPage() {
   };
 
   const startOver = () => {
+    trace("reset-password.startOver", {
+      url: typeof window !== "undefined" ? describeRecoveryUrl(window.location.href) : null,
+    });
     setErrorMessage(null);
     setPassword("");
     setConfirmPassword("");
