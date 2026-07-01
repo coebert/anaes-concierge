@@ -68,11 +68,10 @@ describe.skipIf(!dbAvailable)("decryption RPC grants", () => {
     },
   );
 
-  it("also denies PUBLIC on every decryption RPC", () => {
+  it("has an explicit ACL (no default PUBLIC EXECUTE) on every RPC", () => {
     for (const fn of RPCS) {
-      // acl NULL means default privileges — Postgres grants EXECUTE to
-      // PUBLIC when the pg_proc.proacl column is NULL, so we must also
-      // verify the ACL has been explicitly set.
+      // A NULL proacl means Postgres defaults apply and PUBLIC has
+      // EXECUTE. After the security migration the ACL must be explicit.
       const acl = psql(
         `SELECT COALESCE(proacl::text, '') FROM pg_proc
            WHERE oid = '${fn}'::regprocedure`,
@@ -80,9 +79,11 @@ describe.skipIf(!dbAvailable)("decryption RPC grants", () => {
       expect(acl, `${fn} still has default (PUBLIC) EXECUTE grants`).not.toBe(
         "",
       );
+      // Explicit PUBLIC grants appear as an ACL entry with an empty
+      // grantee, e.g. "=X/owner". Reject those.
       expect(
-        acl.includes("=X/") || acl.includes("=/") ? true : false,
-        `${fn} ACL should not grant EXECUTE to PUBLIC: ${acl}`,
+        /(^|,)=X\//.test(acl),
+        `${fn} ACL grants EXECUTE to PUBLIC: ${acl}`,
       ).toBe(false);
     }
   });
