@@ -1,202 +1,103 @@
 /**
- * RLS tests for public.rpc_access_audit.
+ * Contract tests for public.rpc_access_audit.
  *
- * The audit log records every call to the decryption RPCs. Only admins
- * (via has_role()) may read rows through the Data API; nobody but
- * service_role may modify them. This suite locks that policy in.
+ * The audit log records every call to the four decryption RPCs. The
+ * intended access surface is:
+ *   - service_role  → full read/write (RLS-bypassing, admin server code)
+ *   - authenticated → SELECT only, and only rows where has_role(uid,'admin')
+ *   - anon          → no access
  *
- * Uses psql with SET LOCAL ROLE + request.jwt.claims to simulate anon,
- * authenticated, and admin callers. Skips when PGHOST is unavailable so
- * `bun test` still works without DB access.
+ * We assert this through Postgres catalogs (`has_table_privilege`,
+ * `pg_policies`, `pg_class.relrowsecurity`) rather than via SET ROLE,
+ * because the sandbox DB user is not a member of the Supabase roles.
+ * The predicates are the ground truth PostgREST enforces at request
+ * time, so a regression here is a regression in production behavior.
+ *
+ * Skips gracefully when PGHOST is unavailable.
  */
 import { spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect } from "vitest";
 
-function psql(sql: string): { stdout: string; stderr: string; status: number } {
-  const result = spawnSync(
+const TABLE = "public.rpc_access_audit";
+
+function psql(sql: string): string {
+  const r = spawnSync(
     "psql",
     ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql],
     { encoding: "utf8" },
   );
-  return {
-    stdout: (result.stdout ?? "").trim(),
-    stderr: (result.stderr ?? "").trim(),
-    status: result.status ?? 1,
-  };
-}
-
-function psqlOrThrow(sql: string): string {
-  const r = psql(sql);
   if (r.status !== 0) {
     throw new Error(`psql failed (${r.status}): ${r.stderr || r.stdout}`);
   }
-  return r.stdout;
+  return (r.stdout ?? "").trim();
 }
 
-// Wrap a query in a transaction that impersonates `role` with the given
-// JWT claims (a JSON string) so RLS + has_role() behave as they would
-// for a real signed-in request.
-function runAs(role: "anon" | "authenticated", claims: object, sql: string) {
-  const claimsSql = JSON.stringify(JSON.stringify(claims)).replace(/'/g, "''");
-  const escaped = sql.replace(/;+\s*$/, "");
-  return psql(
-    `BEGIN;
-       SELECT set_config('request.jwt.claims', ${JSON.stringify(claims)
-         .replace(/'/g, "''")
-         .replace(/^/, "'")
-         .replace(/$/, "'")}, true);
-       SET LOCAL ROLE ${role};
-       ${escaped};
-     ROLLBACK;`,
-  );
-  // (claimsSql retained for reference; using JSON.stringify inline above.)
-  void claimsSql;
+function hasPriv(role: string, priv: string): boolean {
+  return psql(`SELECT has_table_privilege('${role}', '${TABLE}', '${priv}')`) === "t";
 }
 
 const dbAvailable =
   !!process.env.PGHOST &&
   spawnSync("psql", ["-tA", "-c", "SELECT 1"], { encoding: "utf8" }).status === 0;
 
-const AUDIT_MARKER = `rls-audit-test-${randomUUID()}`;
-let adminUserId: string | null = null;
-
-describe.skipIf(!dbAvailable)("rpc_access_audit RLS", () => {
-  beforeAll(() => {
-    // Pick any user that has the 'admin' role today. Using an existing
-    // admin means we don't have to grant a role from tests.
-    const uid = psqlOrThrow(
-      `SELECT user_id::text FROM public.user_roles WHERE role = 'admin' LIMIT 1`,
+describe.skipIf(!dbAvailable)("rpc_access_audit access surface", () => {
+  it("has RLS enabled", () => {
+    const enabled = psql(
+      `SELECT relrowsecurity FROM pg_class WHERE oid = '${TABLE}'::regclass`,
     );
-    adminUserId = uid || null;
-
-    // Seed a marker row so admin/service_role can prove read access.
-    // We run as service_role explicitly so the INSERT is unambiguous.
-    psqlOrThrow(
-      `BEGIN;
-         SET LOCAL ROLE service_role;
-         INSERT INTO public.rpc_access_audit (rpc_name, called_by, row_count, args)
-         VALUES ('${AUDIT_MARKER}', NULL, 1, '{"marker":true}'::jsonb);
-       COMMIT;`,
-    );
+    expect(enabled).toBe("t");
   });
 
-  afterAll(() => {
-    if (!dbAvailable) return;
-    psql(
-      `BEGIN;
-         SET LOCAL ROLE service_role;
-         DELETE FROM public.rpc_access_audit WHERE rpc_name = '${AUDIT_MARKER}';
-       COMMIT;`,
-    );
-  });
-
-  it("denies SELECT to anon (no table grant + policy)", () => {
-    const r = runAs(
-      "anon",
-      { role: "anon" },
-      `SELECT count(*) FROM public.rpc_access_audit`,
-    );
-    // anon has no SELECT grant on the table → permission denied error.
-    expect(r.status).not.toBe(0);
-    expect(r.stderr).toMatch(/permission denied|policy/i);
-  });
-
-  it("returns zero rows to a non-admin authenticated user", () => {
-    const nonAdminUuid = randomUUID();
-    const r = runAs(
-      "authenticated",
-      {
-        role: "authenticated",
-        sub: nonAdminUuid,
-      },
-      `SELECT count(*) FROM public.rpc_access_audit`,
-    );
-    expect(r.status, r.stderr).toBe(0);
-    // Grant is present but the policy filter (has_role admin) evaluates
-    // to false → RLS silently filters everything out.
-    expect(r.stdout).toBe("0");
-  });
-
-  it("returns rows to an authenticated admin", () => {
-    if (!adminUserId) {
-      // No admin exists in this environment; the RLS predicate is still
-      // covered by the other cases.
-      return;
+  it("anon has no privileges (denied at grant level)", () => {
+    for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+      expect(hasPriv("anon", p), `anon must NOT have ${p}`).toBe(false);
     }
-    const r = runAs(
-      "authenticated",
-      {
-        role: "authenticated",
-        sub: adminUserId,
-      },
-      `SELECT count(*) FROM public.rpc_access_audit
-         WHERE rpc_name = '${AUDIT_MARKER}'`,
-    );
-    expect(r.status, r.stderr).toBe(0);
-    expect(Number(r.stdout)).toBeGreaterThanOrEqual(1);
   });
 
-  it("blocks INSERT / UPDATE / DELETE from authenticated (even admins)", () => {
-    const uid = adminUserId ?? randomUUID();
-
-    const ins = runAs(
-      "authenticated",
-      { role: "authenticated", sub: uid },
-      `INSERT INTO public.rpc_access_audit (rpc_name, row_count)
-         VALUES ('rls-test-should-fail', 0)`,
-    );
-    expect(ins.status).not.toBe(0);
-    expect(ins.stderr).toMatch(/permission denied|policy/i);
-
-    const upd = runAs(
-      "authenticated",
-      { role: "authenticated", sub: uid },
-      `UPDATE public.rpc_access_audit SET row_count = 0
-         WHERE rpc_name = '${AUDIT_MARKER}'`,
-    );
-    expect(upd.status).not.toBe(0);
-    expect(upd.stderr).toMatch(/permission denied|policy/i);
-
-    const del = runAs(
-      "authenticated",
-      { role: "authenticated", sub: uid },
-      `DELETE FROM public.rpc_access_audit
-         WHERE rpc_name = '${AUDIT_MARKER}'`,
-    );
-    expect(del.status).not.toBe(0);
-    expect(del.stderr).toMatch(/permission denied|policy/i);
+  it("authenticated has SELECT only (writes denied at grant level)", () => {
+    expect(hasPriv("authenticated", "SELECT")).toBe(true);
+    for (const p of ["INSERT", "UPDATE", "DELETE"]) {
+      expect(hasPriv("authenticated", p), `authenticated must NOT have ${p}`).toBe(
+        false,
+      );
+    }
   });
 
-  it("allows service_role to read every row", () => {
-    const out = psqlOrThrow(
-      `BEGIN;
-         SET LOCAL ROLE service_role;
-         SELECT count(*) FROM public.rpc_access_audit
-           WHERE rpc_name = '${AUDIT_MARKER}';
-       ROLLBACK;`,
-    );
-    // psql -tA on a multi-statement transaction returns the SELECT
-    // result on its own line; take the last non-empty line to be safe.
-    const lines = out.split("\n").filter((l) => l.trim() !== "");
-    const last = lines[lines.length - 1] ?? "";
-    expect(Number(last)).toBeGreaterThanOrEqual(1);
+  it("service_role has full privileges", () => {
+    for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+      expect(hasPriv("service_role", p), `service_role must have ${p}`).toBe(true);
+    }
   });
 
-  it("has the expected RLS configuration", () => {
-    const rlsEnabled = psqlOrThrow(
-      `SELECT relrowsecurity FROM pg_class
-         WHERE oid = 'public.rpc_access_audit'::regclass`,
-    );
-    expect(rlsEnabled).toBe("t");
+  it("PUBLIC has no privileges (no default grants leaked)", () => {
+    for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+      expect(hasPriv("PUBLIC", p), `PUBLIC must NOT have ${p}`).toBe(false);
+    }
+  });
 
-    const policies = psqlOrThrow(
-      `SELECT string_agg(policyname || ':' || cmd || ':' || roles::text, ',' ORDER BY policyname)
+  it("has exactly one policy, restricted to admin SELECT via has_role()", () => {
+    const rows = psql(
+      `SELECT policyname || '|' || cmd || '|' || array_to_string(roles, ',') || '|' || coalesce(qual, '')
          FROM pg_policies
-        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'`,
+        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'
+        ORDER BY policyname`,
     );
-    expect(policies).toMatch(/SELECT/);
-    // Only authenticated may be granted, and only for SELECT.
-    expect(policies).not.toMatch(/INSERT|UPDATE|DELETE/);
+    const policies = rows.split("\n").filter((l) => l.trim() !== "");
+    expect(policies.length, `expected exactly 1 policy, got: ${rows}`).toBe(1);
+
+    const [, cmd, roles, qual] = policies[0].split("|");
+    expect(cmd).toBe("SELECT");
+    expect(roles).toContain("authenticated");
+    // Predicate must gate on has_role(auth.uid(), 'admin').
+    expect(qual).toMatch(/has_role\s*\(\s*auth\.uid\(\)\s*,\s*'admin'/);
+  });
+
+  it("has no INSERT/UPDATE/DELETE policies for signed-in users", () => {
+    const nonSelect = psql(
+      `SELECT count(*) FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'
+          AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')`,
+    );
+    expect(nonSelect).toBe("0");
   });
 });
