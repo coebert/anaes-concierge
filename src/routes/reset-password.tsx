@@ -482,10 +482,11 @@ function ResetPasswordPage() {
     });
     if (sessionError || !sessionData.session) {
       setBusy(false);
-      setErrorMessage(
-        "Your reset session has expired or could not be verified. Please request a new reset link.",
-      );
-      setMode("error");
+      dispatch({
+        type: "EXCHANGE_FAILED",
+        message:
+          "Your reset session has expired or could not be verified. Please request a new reset link.",
+      });
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
@@ -509,32 +510,33 @@ function ResetPasswordPage() {
     trace("reset-password.startOver", {
       url: typeof window !== "undefined" ? describeRecoveryUrl(window.location.href) : null,
     });
-    setErrorMessage(null);
     setPassword("");
     setConfirmPassword("");
     setResetSessionReady(false);
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/reset-password");
     }
-    setMode("request");
+    dispatch({ type: "USER_START_OVER" });
   };
 
+  const isChecking =
+    mode === "initializing" || mode === "probing" || mode === "verifying";
   const title =
     mode === "request"
       ? "Reset password"
-      : mode === "checking"
+      : isChecking
         ? "Verifying reset link"
-      : mode === "update"
-        ? "Set a new password"
-        : "Reset link not valid";
+        : mode === "update"
+          ? "Set a new password"
+          : "Reset link not valid";
   const description =
     mode === "request"
       ? "We'll email you a link to reset your password."
-      : mode === "checking"
+      : isChecking
         ? "Please wait while we verify your password reset link."
-      : mode === "update"
-        ? "Choose a new password for your account."
-        : "The link you followed can't be used to reset your password.";
+        : mode === "update"
+          ? "Choose a new password for your account."
+          : "The link you followed can't be used to reset your password.";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
