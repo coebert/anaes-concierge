@@ -35,3 +35,39 @@ jobs:
         with:
           node-version: "20"
       - run: node scripts/check-supply-chain.mjs
+
+  security-scan:
+    # Static application security scan. Fails the build (and therefore
+    # blocks the PR merge check) on any high-severity finding.
+    # Uses Semgrep's curated `p/security-audit` + `p/secrets` rulesets;
+    # ERROR-severity rules map to "high" and are what we gate on.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: returntocorp/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep (fail on high severity)
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/typescript \
+            --config p/react \
+            --severity ERROR \
+            --error \
+            --metrics=off \
+            --exclude 'src/routeTree.gen.ts' \
+            --exclude 'src/integrations/supabase/types.ts' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude '.workspace' \
+            --sarif --output=semgrep.sarif .
+      - name: Upload SARIF report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
