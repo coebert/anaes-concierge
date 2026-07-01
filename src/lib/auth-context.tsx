@@ -131,6 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isCoordinatorOrAdmin: () => hasRole("admin") || hasRole("rota_coordinator"),
       isTrainee: () => grade === "trainee",
       signOut: async () => {
+        trace("auth-context.signOut", {
+          pathname: typeof window !== "undefined" ? window.location.pathname : null,
+          session: describeSession(session),
+        });
         await supabase.auth.signOut();
       },
       refreshRoles: async () => {
