@@ -25,7 +25,86 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
 });
 
-type Mode = "request" | "checking" | "update" | "error";
+/**
+ * Deterministic state machine for the reset-password page.
+ *
+ * Design goal: the page must never commit to `request` or `update` until it
+ * has PROVEN which one is correct. Two independent races are in play:
+ *
+ *   1. supabase-js's `detectSessionInUrl` parses `#access_token=…` async and
+ *      may materialize a session AFTER the component mounts.
+ *   2. The user may hard-refresh after a successful verification — the URL is
+ *      clean but a recovery session still lives in storage.
+ *
+ * States:
+ *   - `initializing`  → deciding from the URL / ready-flag (synchronous).
+ *   - `probing`       → no recovery indicators; probing `getSession()` before
+ *                       falling back to the request form.
+ *   - `verifying`     → a recovery indicator is present; running the correct
+ *                       exchange (pkce / token_hash / setSession / poll) and
+ *                       waiting for `SESSION_MATERIALIZED`.
+ *   - `request`       → terminal-until-submit. Committed only when we have
+ *                       proof there is no recovery flow in progress.
+ *   - `update`        → terminal-until-submit. Committed only when a Supabase
+ *                       session is confirmed present.
+ *   - `error`         → terminal-until-startOver. The link is unusable.
+ *
+ * Two independent signals dispatch `SESSION_MATERIALIZED`:
+ *   - `supabase.auth.onAuthStateChange` fires PASSWORD_RECOVERY / SIGNED_IN.
+ *   - An explicit `getSession()` from the verifying or probing branch.
+ * Whichever wins the race, the machine settles on `update` exactly once.
+ */
+type MachineState =
+  | { status: "initializing" }
+  | { status: "probing" }
+  | { status: "verifying"; kind: Exclude<ResetLinkState["kind"], "none" | "error"> }
+  | { status: "request" }
+  | { status: "update" }
+  | { status: "error"; message: string };
+
+type MachineEvent =
+  | { type: "DECIDED_NO_RECOVERY_PROBE" }
+  | { type: "DECIDED_NO_RECOVERY_COMMIT" }
+  | {
+      type: "DECIDED_RECOVERY";
+      kind: Exclude<ResetLinkState["kind"], "none" | "error">;
+    }
+  | { type: "LINK_ERROR"; message: string }
+  | { type: "SESSION_MATERIALIZED" }
+  | { type: "NO_SESSION" }
+  | { type: "EXCHANGE_FAILED"; message: string }
+  | { type: "USER_START_OVER" };
+
+function machineReducer(state: MachineState, event: MachineEvent): MachineState {
+  // `SESSION_MATERIALIZED` and `USER_START_OVER` are terminal transitions
+  // that can arrive from anywhere; handle them uniformly.
+  if (event.type === "SESSION_MATERIALIZED") {
+    if (state.status === "update" || state.status === "error") return state;
+    return { status: "update" };
+  }
+  if (event.type === "USER_START_OVER") {
+    return { status: "request" };
+  }
+
+  switch (state.status) {
+    case "initializing":
+      if (event.type === "DECIDED_RECOVERY") return { status: "verifying", kind: event.kind };
+      if (event.type === "DECIDED_NO_RECOVERY_PROBE") return { status: "probing" };
+      if (event.type === "DECIDED_NO_RECOVERY_COMMIT") return { status: "request" };
+      if (event.type === "LINK_ERROR") return { status: "error", message: event.message };
+      return state;
+    case "probing":
+      if (event.type === "NO_SESSION") return { status: "request" };
+      return state;
+    case "verifying":
+      if (event.type === "EXCHANGE_FAILED") return { status: "error", message: event.message };
+      return state;
+    default:
+      return state;
+  }
+}
+
+type Mode = MachineState["status"];
 
 type ResetLinkState =
   | { kind: "none" }
