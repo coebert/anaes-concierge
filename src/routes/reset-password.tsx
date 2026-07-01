@@ -76,14 +76,22 @@ type MachineEvent =
   | { type: "USER_START_OVER" };
 
 function machineReducer(state: MachineState, event: MachineEvent): MachineState {
-  // `SESSION_MATERIALIZED` and `USER_START_OVER` are terminal transitions
-  // that can arrive from anywhere; handle them uniformly.
+  // Terminal transitions that can arrive from anywhere.
   if (event.type === "SESSION_MATERIALIZED") {
     if (state.status === "update" || state.status === "error") return state;
     return { status: "update" };
   }
   if (event.type === "USER_START_OVER") {
     return { status: "request" };
+  }
+  if (event.type === "EXCHANGE_FAILED") {
+    // `verifying` fails during link exchange; `update` fails when the
+    // recovery session has evaporated between mount and submit. Both land
+    // in the same error state.
+    if (state.status === "verifying" || state.status === "update") {
+      return { status: "error", message: event.message };
+    }
+    return state;
   }
 
   switch (state.status) {
@@ -95,9 +103,6 @@ function machineReducer(state: MachineState, event: MachineEvent): MachineState 
       return state;
     case "probing":
       if (event.type === "NO_SESSION") return { status: "request" };
-      return state;
-    case "verifying":
-      if (event.type === "EXCHANGE_FAILED") return { status: "error", message: event.message };
       return state;
     default:
       return state;
