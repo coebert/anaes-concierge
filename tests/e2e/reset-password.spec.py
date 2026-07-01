@@ -47,8 +47,20 @@ FAKE_USER = {
     "updated_at": "2024-01-01T00:00:00Z",
 }
 
+# supabase-js validates access_token as a JWT (3 base64url parts) before
+# calling setSession — an obviously-fake string like "abc" is rejected
+# client-side without ever hitting our route interceptor. Use a
+# structurally-valid unsigned JWT so setSession accepts it.
+FAKE_JWT = (
+    # header: {"alg":"HS256","typ":"JWT"}
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    # payload: {"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated","aud":"authenticated","exp":9999999999}
+    "eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImF1ZCI6ImF1dGhlbnRpY2F0ZWQiLCJleHAiOjk5OTk5OTk5OTl9."
+    "fake-signature"
+)
+
 FAKE_SESSION = {
-    "access_token": "fake-access-token",
+    "access_token": FAKE_JWT,
     "refresh_token": "fake-refresh-token",
     "expires_in": 3600,
     "expires_at": 9999999999,
