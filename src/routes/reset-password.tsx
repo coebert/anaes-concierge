@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { describeRecoveryUrl, describeSession, trace, traceError } from "@/lib/auth-trace";
 
 type PasswordCheck = { id: string; label: string; ok: boolean };
 
@@ -124,6 +125,12 @@ function hasResetSessionReadyFlag(): boolean {
 const INITIAL_RESET_URL =
   typeof window !== "undefined" ? window.location.href : "";
 
+if (typeof window !== "undefined") {
+  trace("reset-password.module.init", {
+    initialUrl: describeRecoveryUrl(INITIAL_RESET_URL),
+  });
+}
+
 /**
  * If the initial URL looks like any kind of recovery link, mark the reset
  * session as "ready" up-front. The effect below will then call
@@ -135,11 +142,13 @@ const INITIAL_RESET_URL =
   if (typeof window === "undefined") return;
   if (window.location.pathname !== "/reset-password") return;
   const state = getResetLinkState(INITIAL_RESET_URL);
+  trace("reset-password.preflight", { stateKind: state.kind });
   if (state.kind === "implicit" || state.kind === "recovery_session") {
     try {
       window.sessionStorage.setItem(RESET_SESSION_READY_KEY, "1");
-    } catch {
-      // sessionStorage may be unavailable; the explicit-flow paths still work.
+      trace("reset-password.preflight.flagSet");
+    } catch (err) {
+      traceError("reset-password.preflight.flagSet.error", err);
     }
   }
 })();
@@ -182,10 +191,19 @@ function ResetPasswordPage() {
     const initialState =
       liveState.kind === "none" ? getResetLinkState(INITIAL_RESET_URL) : liveState;
 
+    trace("reset-password.effect.enter", {
+      liveUrl: describeRecoveryUrl(window.location.href),
+      initialUrl: describeRecoveryUrl(INITIAL_RESET_URL),
+      liveKind: liveState.kind,
+      chosenKind: initialState.kind,
+      hasReadyFlag: hasResetSessionReadyFlag(),
+    });
+
     let cancelled = false;
 
     const enterUpdateMode = () => {
       if (cancelled) return;
+      trace("reset-password.enterUpdateMode");
       cleanResetLinkUrl();
       setResetSessionReady(true);
       setMode("update");
@@ -195,6 +213,11 @@ function ResetPasswordPage() {
     // we currently show the request form, the supabase client may parse a
     // recovery link asynchronously and we should flip to the update form.
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      trace("reset-password.onAuthStateChange", {
+        event,
+        session: describeSession(session),
+        cancelled,
+      });
       if (cancelled) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         enterUpdateMode();
@@ -202,11 +225,13 @@ function ResetPasswordPage() {
     });
 
     const cleanup = () => {
+      trace("reset-password.effect.cleanup");
       cancelled = true;
       sub.subscription.unsubscribe();
     };
 
     if (initialState.kind === "error") {
+      trace("reset-password.branch.error", { message: initialState.message });
       setErrorMessage(initialState.message);
       setMode("error");
       cleanResetLinkUrl();
@@ -215,15 +240,21 @@ function ResetPasswordPage() {
 
     if (initialState.kind === "none") {
       if (!hasResetSessionReadyFlag()) {
+        trace("reset-password.branch.request", { reason: "no-recovery-indicators" });
         setMode("request");
         return cleanup;
       }
       // Refresh after a previous successful verification — confirm the
       // session is still there before showing the update form.
+      trace("reset-password.branch.recheckAfterRefresh");
       setMode("checking");
       void (async () => {
         const { data, error } = await supabase.auth.getSession();
         if (cancelled) return;
+        trace("reset-password.recheck.getSession", {
+          session: describeSession(data.session),
+          error: error?.message ?? null,
+        });
         if (error || !data.session) {
           setResetSessionReady(false);
           setMode("request");
@@ -234,6 +265,7 @@ function ResetPasswordPage() {
       return cleanup;
     }
 
+    trace("reset-password.branch.exchange", { kind: initialState.kind });
     setMode("checking");
     void (async () => {
       let exchangeError: string | null = null;
@@ -241,6 +273,7 @@ function ResetPasswordPage() {
       if (initialState.kind === "pkce") {
         exchangeError = await exchangeResetLinkOnce(`pkce:${initialState.code}`, async () => {
           const { error } = await supabase.auth.exchangeCodeForSession(initialState.code);
+          trace("reset-password.exchange.pkce.result", { error: error?.message ?? null });
           return error?.message ?? null;
         });
       } else if (initialState.kind === "token_hash") {
@@ -251,6 +284,7 @@ function ResetPasswordPage() {
               token_hash: initialState.tokenHash,
               type: "recovery",
             });
+            trace("reset-password.exchange.token_hash.result", { error: error?.message ?? null });
             return error?.message ?? null;
           },
         );
@@ -260,22 +294,27 @@ function ResetPasswordPage() {
           refresh_token: initialState.refreshToken,
         });
         exchangeError = error?.message ?? null;
+        trace("reset-password.exchange.implicit.result", { error: exchangeError });
       } else if (initialState.kind === "recovery_session") {
         // No tokens to exchange — the supabase client should establish the
         // session asynchronously via detectSessionInUrl. Poll briefly.
         let found = false;
+        let iterations = 0;
         for (let i = 0; i < 30; i++) {
           if (cancelled) return;
+          iterations = i + 1;
           const { data } = await supabase.auth.getSession();
           if (data.session) { found = true; break; }
           await new Promise((r) => setTimeout(r, 100));
         }
+        trace("reset-password.exchange.recovery_session.result", { found, iterations });
         if (!found) exchangeError = "No reset session was found.";
       }
 
       if (cancelled) return;
 
       if (exchangeError) {
+        trace("reset-password.exchange.failed", { message: exchangeError });
         setErrorMessage(describeLinkError(null, exchangeError));
         setMode("error");
         return;
@@ -319,7 +358,12 @@ function ResetPasswordPage() {
       return;
     }
     setBusy(true);
+    trace("reset-password.handleUpdate.begin");
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    trace("reset-password.handleUpdate.getSession", {
+      session: describeSession(sessionData.session),
+      error: sessionError?.message ?? null,
+    });
     if (sessionError || !sessionData.session) {
       setBusy(false);
       setErrorMessage(
@@ -329,13 +373,16 @@ function ResetPasswordPage() {
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
+    trace("reset-password.handleUpdate.updateUser", { error: error?.message ?? null });
     if (error) {
       setBusy(false);
       toast.error(error.message);
       return;
     }
     // Sign the recovery session out so the user must log in with the new password.
+    trace("reset-password.handleUpdate.signOut.begin", { reason: "post-password-update" });
     await supabase.auth.signOut();
+    trace("reset-password.handleUpdate.signOut.done");
     setResetSessionReady(false);
     setBusy(false);
     toast.success("Password updated. Please sign in with your new password.");
@@ -343,6 +390,9 @@ function ResetPasswordPage() {
   };
 
   const startOver = () => {
+    trace("reset-password.startOver", {
+      url: typeof window !== "undefined" ? describeRecoveryUrl(window.location.href) : null,
+    });
     setErrorMessage(null);
     setPassword("");
     setConfirmPassword("");
