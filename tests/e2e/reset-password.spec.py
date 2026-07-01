@@ -169,7 +169,7 @@ async def run() -> int:
         # --- Reload Tab B: the update form must persist thanks to the
         # sessionStorage "reset ready" flag written on verification.
         await tab_b.reload(wait_until="domcontentloaded")
-        await tab_b.get_by_role("heading", name="Set a new password").wait_for(
+        await tab_b.get_by_text("Set a new password", exact=True).wait_for(
             state="visible", timeout=10_000
         )
         await tab_b.screenshot(path=str(SCREENSHOTS / "3_tab_b_after_reload.png"))
