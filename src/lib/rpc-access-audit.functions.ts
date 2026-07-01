@@ -18,13 +18,21 @@ const querySchema = z.object({
   limit: z.number().int().min(1).max(500).default(100),
 });
 
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [k: string]: JsonValue }
+  | JsonValue[];
+
 export type RpcAccessAuditRow = {
   id: number;
   rpc_name: string;
   called_by: string | null;
   db_role: string;
   row_count: number | null;
-  args: Record<string, unknown> | null;
+  args: JsonValue;
   called_at: string;
 };
 
