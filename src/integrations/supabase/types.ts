@@ -1052,6 +1052,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rpc_access_audit: {
+        Row: {
+          args: Json | null
+          called_at: string
+          called_by: string | null
+          db_role: string
+          id: number
+          row_count: number | null
+          rpc_name: string
+        }
+        Insert: {
+          args?: Json | null
+          called_at?: string
+          called_by?: string | null
+          db_role?: string
+          id?: number
+          row_count?: number | null
+          rpc_name: string
+        }
+        Update: {
+          args?: Json | null
+          called_at?: string
+          called_by?: string | null
+          db_role?: string
+          id?: number
+          row_count?: number | null
+          rpc_name?: string
+        }
+        Relationships: []
+      }
       specialties: {
         Row: {
           created_at: string
@@ -1896,6 +1926,10 @@ export type Database = {
           start_time: string
           status: string
         }[]
+      }
+      log_rpc_access: {
+        Args: { p_args?: Json; p_row_count: number; p_rpc_name: string }
+        Returns: undefined
       }
       mark_departed_trainees: {
         Args: never
