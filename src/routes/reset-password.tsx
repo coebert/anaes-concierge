@@ -322,27 +322,12 @@ function ResetPasswordPage() {
 
     if (initialState.kind === "none") {
       if (!hasResetSessionReadyFlag()) {
-        // No indicators anywhere — but we still wait one microtask on
-        // `getSession()` in case supabase-js is finishing an async parse
-        // that stripped the URL before we read it. Only after that returns
-        // no session do we commit to "request".
-        safeDispatch({ type: "DECIDED_NO_RECOVERY_PROBE" });
-        void (async () => {
-          const { data, error } = await supabase.auth.getSession();
-          if (cancelled) return;
-          trace("reset-password.probe.getSession", {
-            session: describeSession(data.session),
-            error: error?.message ?? null,
-          });
-          if (!error && data.session) {
-            cleanResetLinkUrl();
-            setResetSessionReady(true);
-            safeDispatch({ type: "SESSION_MATERIALIZED" });
-            return;
-          }
-          setResetSessionReady(false);
-          safeDispatch({ type: "NO_SESSION" });
-        })();
+        // No URL indicators and no persisted "ready" flag → commit to the
+        // request form immediately. Determinism is preserved because the
+        // `onAuthStateChange` listener above stays subscribed and will
+        // still dispatch `SESSION_MATERIALIZED` if supabase-js parses a
+        // late-arriving recovery session, flipping us to `update`.
+        safeDispatch({ type: "DECIDED_NO_RECOVERY_COMMIT" });
         return cleanup;
       }
       // Refresh after a previous successful verification — confirm the
