@@ -561,7 +561,7 @@ function ResetPasswordPage() {
                 </Link>
               </p>
             </form>
-          ) : mode === "checking" ? (
+          ) : isChecking ? (
             <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground" role="status">
               Verifying your reset link…
             </div>
