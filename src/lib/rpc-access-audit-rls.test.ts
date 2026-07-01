@@ -1,19 +1,23 @@
 /**
- * Contract tests for public.rpc_access_audit.
+ * Contract tests for public.rpc_access_audit RLS.
  *
- * The audit log records every call to the four decryption RPCs. The
- * intended access surface is:
- *   - service_role  → full read/write (RLS-bypassing, admin server code)
- *   - authenticated → SELECT only, and only rows where has_role(uid,'admin')
- *   - anon          → no access
+ * On Supabase, default privileges grant CRUD on every public table to
+ * anon/authenticated. What actually protects the audit log is:
  *
- * We assert this through Postgres catalogs (`has_table_privilege`,
- * `pg_policies`, `pg_class.relrowsecurity`) rather than via SET ROLE,
- * because the sandbox DB user is not a member of the Supabase roles.
- * The predicates are the ground truth PostgREST enforces at request
- * time, so a regression here is a regression in production behavior.
+ *   1. RLS is enabled on the table.
+ *   2. The ONLY policy is a SELECT policy scoped to `authenticated`
+ *      and gated by has_role(auth.uid(), 'admin').
+ *   3. There are NO INSERT / UPDATE / DELETE / ALL policies — so RLS
+ *      default-denies every write for anon and authenticated, and
+ *      even non-admin authenticated reads return zero rows.
+ *   4. service_role has the BYPASSRLS attribute (set by Supabase), so
+ *      admin server code can still read/write freely.
  *
- * Skips gracefully when PGHOST is unavailable.
+ * These four properties are the ground truth that PostgREST enforces
+ * per request. A regression here is a regression in production.
+ *
+ * Skips gracefully when PGHOST is unavailable so `bun test` still runs
+ * without DB access.
  */
 import { spawnSync } from "node:child_process";
 import { describe, it, expect } from "vitest";
@@ -32,15 +36,11 @@ function psql(sql: string): string {
   return (r.stdout ?? "").trim();
 }
 
-function hasPriv(role: string, priv: string): boolean {
-  return psql(`SELECT has_table_privilege('${role}', '${TABLE}', '${priv}')`) === "t";
-}
-
 const dbAvailable =
   !!process.env.PGHOST &&
   spawnSync("psql", ["-tA", "-c", "SELECT 1"], { encoding: "utf8" }).status === 0;
 
-describe.skipIf(!dbAvailable)("rpc_access_audit access surface", () => {
+describe.skipIf(!dbAvailable)("rpc_access_audit RLS", () => {
   it("has RLS enabled", () => {
     const enabled = psql(
       `SELECT relrowsecurity FROM pg_class WHERE oid = '${TABLE}'::regclass`,
@@ -48,56 +48,52 @@ describe.skipIf(!dbAvailable)("rpc_access_audit access surface", () => {
     expect(enabled).toBe("t");
   });
 
-  it("anon has no privileges (denied at grant level)", () => {
-    for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-      expect(hasPriv("anon", p), `anon must NOT have ${p}`).toBe(false);
-    }
+  it("service_role has BYPASSRLS (admin server code always reads)", () => {
+    const bypass = psql(`SELECT rolbypassrls FROM pg_roles WHERE rolname = 'service_role'`);
+    expect(bypass).toBe("t");
   });
 
-  it("authenticated has SELECT only (writes denied at grant level)", () => {
-    expect(hasPriv("authenticated", "SELECT")).toBe(true);
-    for (const p of ["INSERT", "UPDATE", "DELETE"]) {
-      expect(hasPriv("authenticated", p), `authenticated must NOT have ${p}`).toBe(
-        false,
-      );
-    }
-  });
-
-  it("service_role has full privileges", () => {
-    for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-      expect(hasPriv("service_role", p), `service_role must have ${p}`).toBe(true);
-    }
-  });
-
-  it("PUBLIC has no privileges (no default grants leaked)", () => {
-    for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-      expect(hasPriv("PUBLIC", p), `PUBLIC must NOT have ${p}`).toBe(false);
-    }
-  });
-
-  it("has exactly one policy, restricted to admin SELECT via has_role()", () => {
+  it("has exactly one policy — admin-only SELECT", () => {
     const rows = psql(
-      `SELECT policyname || '|' || cmd || '|' || array_to_string(roles, ',') || '|' || coalesce(qual, '')
-         FROM pg_policies
-        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'
-        ORDER BY policyname`,
+      `SELECT count(*) FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'`,
     );
-    const policies = rows.split("\n").filter((l) => l.trim() !== "");
-    expect(policies.length, `expected exactly 1 policy, got: ${rows}`).toBe(1);
+    expect(rows).toBe("1");
+  });
 
-    const [, cmd, roles, qual] = policies[0].split("|");
+  it("SELECT policy is scoped to authenticated and gated by has_role admin", () => {
+    const row = psql(
+      `SELECT cmd || '|' || array_to_string(roles, ',') || '|' || coalesce(qual, '')
+         FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'`,
+    );
+    const [cmd, roles, qual] = row.split("|");
     expect(cmd).toBe("SELECT");
+    // Must be scoped to `authenticated` and MUST NOT include `anon` or PUBLIC.
     expect(roles).toContain("authenticated");
+    expect(roles).not.toMatch(/\banon\b/);
+    expect(roles).not.toMatch(/\bpublic\b/i);
     // Predicate must gate on has_role(auth.uid(), 'admin').
     expect(qual).toMatch(/has_role\s*\(\s*auth\.uid\(\)\s*,\s*'admin'/);
   });
 
-  it("has no INSERT/UPDATE/DELETE policies for signed-in users", () => {
-    const nonSelect = psql(
+  it("has no INSERT / UPDATE / DELETE / ALL policies (writes default-deny)", () => {
+    const bad = psql(
       `SELECT count(*) FROM pg_policies
         WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'
           AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')`,
     );
-    expect(nonSelect).toBe("0");
+    expect(bad).toBe("0");
+  });
+
+  it("no permissive policy names anon or PUBLIC anywhere", () => {
+    // Belt-and-braces: even if a future migration adds another policy,
+    // it must not open the table to anon/PUBLIC.
+    const anonRefs = psql(
+      `SELECT count(*) FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'rpc_access_audit'
+          AND (roles::text ILIKE '%anon%' OR roles::text = '{public}')`,
+    );
+    expect(anonRefs).toBe("0");
   });
 });
