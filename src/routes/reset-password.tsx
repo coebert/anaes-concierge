@@ -248,12 +248,15 @@ async function exchangeResetLinkOnce(
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("request");
+  const [state, dispatch] = useReducer(machineReducer, { status: "initializing" });
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const mode: Mode = state.status;
+  const errorMessage = state.status === "error" ? state.message : null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const passwordChecks = useMemo(() => evaluatePassword(password), [password]);
   const passwordStrongEnough = passwordChecks.every((c) => c.ok);
