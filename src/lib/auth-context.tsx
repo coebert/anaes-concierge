@@ -66,7 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    trace("auth-context.mount", {
+      url: typeof window !== "undefined" ? describeRecoveryUrl(window.location.href) : null,
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      trace("auth-context.onAuthStateChange", {
+        event,
+        session: describeSession(newSession),
+        pathname: typeof window !== "undefined" ? window.location.pathname : null,
+      });
       setSession(newSession);
       setTimeout(() => {
         void loadProfile(newSession?.user.id);
@@ -76,15 +84,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If the user previously unchecked "Keep me signed in" AND this is a fresh
     // browser session (no sessionStorage marker), drop the persisted session
     // before restoring it. Otherwise restore normally.
-    const dropSession = !isPasswordRecoveryUrl() && shouldDropSessionOnLoad();
+    const isRecovery = isPasswordRecoveryUrl();
+    const wantsDrop = shouldDropSessionOnLoad();
+    const dropSession = !isRecovery && wantsDrop;
+    trace("auth-context.dropSessionDecision", {
+      isRecovery,
+      shouldDropSessionOnLoad: wantsDrop,
+      dropSession,
+    });
     const init = async () => {
       if (dropSession) {
-        await supabase.auth.signOut();
+        trace("auth-context.init.signOut.begin", { reason: "remember-me-cleared" });
+        try {
+          await supabase.auth.signOut();
+          trace("auth-context.init.signOut.done");
+        } catch (err) {
+          traceError("auth-context.init.signOut.error", err);
+        }
         setSession(null);
         setLoading(false);
         return;
       }
-      const { data } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
+      if (error) traceError("auth-context.init.getSession.error", error);
+      trace("auth-context.init.getSession", { session: describeSession(data.session) });
       setSession(data.session);
       await loadProfile(data.session?.user.id);
       setLoading(false);
