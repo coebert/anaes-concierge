@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { AlertCircle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +25,91 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
 });
 
-type Mode = "request" | "checking" | "update" | "error";
+/**
+ * Deterministic state machine for the reset-password page.
+ *
+ * Design goal: the page must never commit to `request` or `update` until it
+ * has PROVEN which one is correct. Two independent races are in play:
+ *
+ *   1. supabase-js's `detectSessionInUrl` parses `#access_token=…` async and
+ *      may materialize a session AFTER the component mounts.
+ *   2. The user may hard-refresh after a successful verification — the URL is
+ *      clean but a recovery session still lives in storage.
+ *
+ * States:
+ *   - `initializing`  → deciding from the URL / ready-flag (synchronous).
+ *   - `probing`       → no recovery indicators; probing `getSession()` before
+ *                       falling back to the request form.
+ *   - `verifying`     → a recovery indicator is present; running the correct
+ *                       exchange (pkce / token_hash / setSession / poll) and
+ *                       waiting for `SESSION_MATERIALIZED`.
+ *   - `request`       → terminal-until-submit. Committed only when we have
+ *                       proof there is no recovery flow in progress.
+ *   - `update`        → terminal-until-submit. Committed only when a Supabase
+ *                       session is confirmed present.
+ *   - `error`         → terminal-until-startOver. The link is unusable.
+ *
+ * Two independent signals dispatch `SESSION_MATERIALIZED`:
+ *   - `supabase.auth.onAuthStateChange` fires PASSWORD_RECOVERY / SIGNED_IN.
+ *   - An explicit `getSession()` from the verifying or probing branch.
+ * Whichever wins the race, the machine settles on `update` exactly once.
+ */
+type MachineState =
+  | { status: "initializing" }
+  | { status: "probing" }
+  | { status: "verifying"; kind: Exclude<ResetLinkState["kind"], "none" | "error"> }
+  | { status: "request" }
+  | { status: "update" }
+  | { status: "error"; message: string };
+
+type MachineEvent =
+  | { type: "DECIDED_NO_RECOVERY_PROBE" }
+  | { type: "DECIDED_NO_RECOVERY_COMMIT" }
+  | {
+      type: "DECIDED_RECOVERY";
+      kind: Exclude<ResetLinkState["kind"], "none" | "error">;
+    }
+  | { type: "LINK_ERROR"; message: string }
+  | { type: "SESSION_MATERIALIZED" }
+  | { type: "NO_SESSION" }
+  | { type: "EXCHANGE_FAILED"; message: string }
+  | { type: "USER_START_OVER" };
+
+function machineReducer(state: MachineState, event: MachineEvent): MachineState {
+  // Terminal transitions that can arrive from anywhere.
+  if (event.type === "SESSION_MATERIALIZED") {
+    if (state.status === "update" || state.status === "error") return state;
+    return { status: "update" };
+  }
+  if (event.type === "USER_START_OVER") {
+    return { status: "request" };
+  }
+  if (event.type === "EXCHANGE_FAILED") {
+    // `verifying` fails during link exchange; `update` fails when the
+    // recovery session has evaporated between mount and submit. Both land
+    // in the same error state.
+    if (state.status === "verifying" || state.status === "update") {
+      return { status: "error", message: event.message };
+    }
+    return state;
+  }
+
+  switch (state.status) {
+    case "initializing":
+      if (event.type === "DECIDED_RECOVERY") return { status: "verifying", kind: event.kind };
+      if (event.type === "DECIDED_NO_RECOVERY_PROBE") return { status: "probing" };
+      if (event.type === "DECIDED_NO_RECOVERY_COMMIT") return { status: "request" };
+      if (event.type === "LINK_ERROR") return { status: "error", message: event.message };
+      return state;
+    case "probing":
+      if (event.type === "NO_SESSION") return { status: "request" };
+      return state;
+    default:
+      return state;
+  }
+}
+
+type Mode = MachineState["status"];
 
 type ResetLinkState =
   | { kind: "none" }
@@ -169,12 +253,15 @@ async function exchangeResetLinkOnce(
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("request");
+  const [state, dispatch] = useReducer(machineReducer, { status: "initializing" });
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const mode: Mode = state.status;
+  const errorMessage = state.status === "error" ? state.message : null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const passwordChecks = useMemo(() => evaluatePassword(password), [password]);
   const passwordStrongEnough = passwordChecks.every((c) => c.ok);
@@ -200,27 +287,28 @@ function ResetPasswordPage() {
     });
 
     let cancelled = false;
-
-    const enterUpdateMode = () => {
+    const safeDispatch = (event: MachineEvent) => {
       if (cancelled) return;
-      trace("reset-password.enterUpdateMode");
-      cleanResetLinkUrl();
-      setResetSessionReady(true);
-      setMode("update");
+      trace("reset-password.dispatch", { event: event.type, from: stateRef.current.status });
+      dispatch(event);
     };
 
-    // Always listen for the PASSWORD_RECOVERY / SIGNED_IN events — even when
-    // we currently show the request form, the supabase client may parse a
-    // recovery link asynchronously and we should flip to the update form.
+    // Two signals can materialize the session: the auth listener (fires
+    // PASSWORD_RECOVERY / SIGNED_IN once supabase-js finishes parsing the
+    // URL) OR the explicit exchange below. Either one settles the machine
+    // deterministically via SESSION_MATERIALIZED; the reducer ignores
+    // duplicates.
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       trace("reset-password.onAuthStateChange", {
         event,
         session: describeSession(session),
         cancelled,
+        status: stateRef.current.status,
       });
-      if (cancelled) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        enterUpdateMode();
+        cleanResetLinkUrl();
+        setResetSessionReady(true);
+        safeDispatch({ type: "SESSION_MATERIALIZED" });
       }
     });
 
@@ -230,24 +318,26 @@ function ResetPasswordPage() {
       sub.subscription.unsubscribe();
     };
 
+    // --- Synchronous decision from the URL --------------------------------
     if (initialState.kind === "error") {
-      trace("reset-password.branch.error", { message: initialState.message });
-      setErrorMessage(initialState.message);
-      setMode("error");
       cleanResetLinkUrl();
+      safeDispatch({ type: "LINK_ERROR", message: initialState.message });
       return cleanup;
     }
 
     if (initialState.kind === "none") {
       if (!hasResetSessionReadyFlag()) {
-        trace("reset-password.branch.request", { reason: "no-recovery-indicators" });
-        setMode("request");
+        // No URL indicators and no persisted "ready" flag → commit to the
+        // request form immediately. Determinism is preserved because the
+        // `onAuthStateChange` listener above stays subscribed and will
+        // still dispatch `SESSION_MATERIALIZED` if supabase-js parses a
+        // late-arriving recovery session, flipping us to `update`.
+        safeDispatch({ type: "DECIDED_NO_RECOVERY_COMMIT" });
         return cleanup;
       }
       // Refresh after a previous successful verification — confirm the
       // session is still there before showing the update form.
-      trace("reset-password.branch.recheckAfterRefresh");
-      setMode("checking");
+      safeDispatch({ type: "DECIDED_RECOVERY", kind: "recovery_session" });
       void (async () => {
         const { data, error } = await supabase.auth.getSession();
         if (cancelled) return;
@@ -257,16 +347,17 @@ function ResetPasswordPage() {
         });
         if (error || !data.session) {
           setResetSessionReady(false);
-          setMode("request");
+          safeDispatch({ type: "EXCHANGE_FAILED", message: "No reset session was found." });
           return;
         }
-        enterUpdateMode();
+        cleanResetLinkUrl();
+        safeDispatch({ type: "SESSION_MATERIALIZED" });
       })();
       return cleanup;
     }
 
-    trace("reset-password.branch.exchange", { kind: initialState.kind });
-    setMode("checking");
+    // --- A recovery indicator is present; run the appropriate exchange ---
+    safeDispatch({ type: "DECIDED_RECOVERY", kind: initialState.kind });
     void (async () => {
       let exchangeError: string | null = null;
 
@@ -296,8 +387,9 @@ function ResetPasswordPage() {
         exchangeError = error?.message ?? null;
         trace("reset-password.exchange.implicit.result", { error: exchangeError });
       } else if (initialState.kind === "recovery_session") {
-        // No tokens to exchange — the supabase client should establish the
-        // session asynchronously via detectSessionInUrl. Poll briefly.
+        // No tokens to exchange — poll briefly for supabase-js's async parse
+        // to land. The onAuthStateChange listener will also fire, and
+        // whichever wins the race dispatches SESSION_MATERIALIZED.
         let found = false;
         let iterations = 0;
         for (let i = 0; i < 30; i++) {
@@ -314,13 +406,21 @@ function ResetPasswordPage() {
       if (cancelled) return;
 
       if (exchangeError) {
-        trace("reset-password.exchange.failed", { message: exchangeError });
-        setErrorMessage(describeLinkError(null, exchangeError));
-        setMode("error");
+        safeDispatch({
+          type: "EXCHANGE_FAILED",
+          message: describeLinkError(null, exchangeError),
+        });
         return;
       }
 
-      enterUpdateMode();
+      // An exchange that resolved without an error establishes the session
+      // by construction (pkce/token_hash/implicit) or by the just-completed
+      // getSession poll (recovery_session). Commit deterministically — the
+      // listener may also fire SESSION_MATERIALIZED and the reducer will
+      // ignore the duplicate.
+      cleanResetLinkUrl();
+      setResetSessionReady(true);
+      safeDispatch({ type: "SESSION_MATERIALIZED" });
     })();
 
     return cleanup;
@@ -366,10 +466,11 @@ function ResetPasswordPage() {
     });
     if (sessionError || !sessionData.session) {
       setBusy(false);
-      setErrorMessage(
-        "Your reset session has expired or could not be verified. Please request a new reset link.",
-      );
-      setMode("error");
+      dispatch({
+        type: "EXCHANGE_FAILED",
+        message:
+          "Your reset session has expired or could not be verified. Please request a new reset link.",
+      });
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
@@ -393,32 +494,33 @@ function ResetPasswordPage() {
     trace("reset-password.startOver", {
       url: typeof window !== "undefined" ? describeRecoveryUrl(window.location.href) : null,
     });
-    setErrorMessage(null);
     setPassword("");
     setConfirmPassword("");
     setResetSessionReady(false);
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", "/reset-password");
     }
-    setMode("request");
+    dispatch({ type: "USER_START_OVER" });
   };
 
+  const isChecking =
+    mode === "initializing" || mode === "probing" || mode === "verifying";
   const title =
     mode === "request"
       ? "Reset password"
-      : mode === "checking"
+      : isChecking
         ? "Verifying reset link"
-      : mode === "update"
-        ? "Set a new password"
-        : "Reset link not valid";
+        : mode === "update"
+          ? "Set a new password"
+          : "Reset link not valid";
   const description =
     mode === "request"
       ? "We'll email you a link to reset your password."
-      : mode === "checking"
+      : isChecking
         ? "Please wait while we verify your password reset link."
-      : mode === "update"
-        ? "Choose a new password for your account."
-        : "The link you followed can't be used to reset your password.";
+        : mode === "update"
+          ? "Choose a new password for your account."
+          : "The link you followed can't be used to reset your password.";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
@@ -443,7 +545,7 @@ function ResetPasswordPage() {
                 </Link>
               </p>
             </form>
-          ) : mode === "checking" ? (
+          ) : isChecking ? (
             <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground" role="status">
               Verifying your reset link…
             </div>
