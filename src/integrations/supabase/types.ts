@@ -1052,6 +1052,51 @@ export type Database = {
         }
         Relationships: []
       }
+      rpc_access_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          call_count: number
+          created_at: string
+          details: Json
+          id: number
+          rpc_name: string
+          subject_user: string | null
+          threshold: number | null
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          call_count: number
+          created_at?: string
+          details?: Json
+          id?: number
+          rpc_name: string
+          subject_user?: string | null
+          threshold?: number | null
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          call_count?: number
+          created_at?: string
+          details?: Json
+          id?: number
+          rpc_name?: string
+          subject_user?: string | null
+          threshold?: number | null
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       rpc_access_audit: {
         Row: {
           args: Json | null
@@ -1806,6 +1851,10 @@ export type Database = {
         Returns: string
       }
       decrypt_text: { Args: { p_cipher: string }; Returns: string }
+      detect_rpc_access_anomalies: {
+        Args: { p_threshold?: number; p_window_minutes?: number }
+        Returns: number
+      }
       encrypt_jsonb: { Args: { p_plain: Json }; Returns: string }
       encrypt_text: { Args: { p_plain: string }; Returns: string }
       find_access_request_by_email: {
