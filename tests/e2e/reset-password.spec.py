@@ -94,7 +94,7 @@ async def run() -> int:
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)
         context = await browser.new_context(viewport={"width": 1280, "height": 1800})
-        await context.route(f"**/{SUPABASE_HOST}/auth/v1/**", mock_supabase_auth)
+        await context.route("**/auth/v1/**", mock_supabase_auth)
 
         # --- Tab A: user is on the reset-password page requesting a link.
         tab_a = await context.new_page()
@@ -114,16 +114,22 @@ async def run() -> int:
             "&type=recovery"
         )
         tab_b = await context.new_page()
+        tab_b.on("console", lambda msg: print(f"[tab B console] {msg.type}: {msg.text}"))
         await tab_b.goto(
             f"{BASE_URL}/reset-password{recovery_hash}",
             wait_until="domcontentloaded",
         )
 
-        # The page must land on the "Set a new password" form. Give it a
-        # generous timeout — supabase-js strips the hash asynchronously and
-        # the component polls briefly for the session in some branches.
-        heading = tab_b.get_by_role("heading", name="Set a new password")
-        await heading.wait_for(state="visible", timeout=15_000)
+        # The page must land on the "Set a new password" form. CardTitle is a
+        # <div>, not a heading, so match on visible text.
+        heading = tab_b.get_by_text("Set a new password", exact=True)
+        try:
+            await heading.wait_for(state="visible", timeout=15_000)
+        except Exception:
+            await tab_b.screenshot(path=str(SCREENSHOTS / "FAIL_tab_b.png"))
+            print("tab B failed, current URL:", tab_b.url)
+            print("tab B body text:", (await tab_b.locator("body").inner_text())[:500])
+            raise
 
         # Both password inputs must be present.
         await tab_b.get_by_label("New password", exact=True).wait_for(
