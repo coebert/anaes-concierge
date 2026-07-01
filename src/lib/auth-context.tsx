@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { shouldDropSessionOnLoad } from "@/lib/remember-me";
+import { describeRecoveryUrl, describeSession, trace, traceError } from "@/lib/auth-trace";
 
 export type AppRole = "admin" | "rota_coordinator" | "staff";
 export type StaffGrade = "consultant" | "sas" | "trainee";
