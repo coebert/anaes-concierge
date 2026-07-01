@@ -24,7 +24,7 @@ export type RpcAccessAuditRow = {
   called_by: string | null;
   db_role: string;
   row_count: number | null;
-  args: unknown | null;
+  args: Record<string, unknown> | null;
   called_at: string;
 };
 
