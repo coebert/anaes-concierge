@@ -408,17 +408,11 @@ function ResetPasswordPage() {
         return;
       }
 
-      // Explicit exchanges (pkce / token_hash / implicit) that returned no
-      // error MUST result in a session. Confirm before committing.
-      const { data } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (!data.session) {
-        // The onAuthStateChange listener may still fire in a moment; keep
-        // waiting. If it never fires, the user can request a new link from
-        // the persistent request-form fallback in the UI.
-        trace("reset-password.exchange.awaitingListener");
-        return;
-      }
+      // An exchange that resolved without an error establishes the session
+      // by construction (pkce/token_hash/implicit) or by the just-completed
+      // getSession poll (recovery_session). Commit deterministically — the
+      // listener may also fire SESSION_MATERIALIZED and the reducer will
+      // ignore the duplicate.
       cleanResetLinkUrl();
       setResetSessionReady(true);
       safeDispatch({ type: "SESSION_MATERIALIZED" });
