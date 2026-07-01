@@ -119,7 +119,7 @@ async def run() -> int:
         # Simulate the implicit-flow recovery hash Supabase attaches when the
         # user follows a password-reset email.
         recovery_hash = (
-            "#access_token=fake-access-token"
+            "#access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImF1ZCI6ImF1dGhlbnRpY2F0ZWQiLCJleHAiOjk5OTk5OTk5OTl9.fake-signature"
             "&refresh_token=fake-refresh-token"
             "&expires_in=3600"
             "&token_type=bearer"
