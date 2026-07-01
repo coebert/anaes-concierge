@@ -125,6 +125,12 @@ function hasResetSessionReadyFlag(): boolean {
 const INITIAL_RESET_URL =
   typeof window !== "undefined" ? window.location.href : "";
 
+if (typeof window !== "undefined") {
+  trace("reset-password.module.init", {
+    initialUrl: describeRecoveryUrl(INITIAL_RESET_URL),
+  });
+}
+
 /**
  * If the initial URL looks like any kind of recovery link, mark the reset
  * session as "ready" up-front. The effect below will then call
@@ -136,11 +142,13 @@ const INITIAL_RESET_URL =
   if (typeof window === "undefined") return;
   if (window.location.pathname !== "/reset-password") return;
   const state = getResetLinkState(INITIAL_RESET_URL);
+  trace("reset-password.preflight", { stateKind: state.kind });
   if (state.kind === "implicit" || state.kind === "recovery_session") {
     try {
       window.sessionStorage.setItem(RESET_SESSION_READY_KEY, "1");
-    } catch {
-      // sessionStorage may be unavailable; the explicit-flow paths still work.
+      trace("reset-password.preflight.flagSet");
+    } catch (err) {
+      traceError("reset-password.preflight.flagSet.error", err);
     }
   }
 })();
