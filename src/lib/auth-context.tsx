@@ -31,7 +31,13 @@ function isPasswordRecoveryUrl(): boolean {
   // flow variant (PKCE / implicit / token_hash) the link uses, and even if
   // supabase-js has already consumed the URL fragment before we look. The
   // request-link sub-state is harmless because there's no session to drop.
-  return window.location.pathname === "/reset-password";
+  const match = window.location.pathname === "/reset-password";
+  trace("auth-context.isPasswordRecoveryUrl", {
+    pathname: window.location.pathname,
+    matched: match,
+    url: describeRecoveryUrl(window.location.href),
+  });
+  return match;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
