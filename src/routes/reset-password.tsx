@@ -282,27 +282,28 @@ function ResetPasswordPage() {
     });
 
     let cancelled = false;
-
-    const enterUpdateMode = () => {
+    const safeDispatch = (event: MachineEvent) => {
       if (cancelled) return;
-      trace("reset-password.enterUpdateMode");
-      cleanResetLinkUrl();
-      setResetSessionReady(true);
-      setMode("update");
+      trace("reset-password.dispatch", { event: event.type, from: stateRef.current.status });
+      dispatch(event);
     };
 
-    // Always listen for the PASSWORD_RECOVERY / SIGNED_IN events — even when
-    // we currently show the request form, the supabase client may parse a
-    // recovery link asynchronously and we should flip to the update form.
+    // Two signals can materialize the session: the auth listener (fires
+    // PASSWORD_RECOVERY / SIGNED_IN once supabase-js finishes parsing the
+    // URL) OR the explicit exchange below. Either one settles the machine
+    // deterministically via SESSION_MATERIALIZED; the reducer ignores
+    // duplicates.
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       trace("reset-password.onAuthStateChange", {
         event,
         session: describeSession(session),
         cancelled,
+        status: stateRef.current.status,
       });
-      if (cancelled) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        enterUpdateMode();
+        cleanResetLinkUrl();
+        setResetSessionReady(true);
+        safeDispatch({ type: "SESSION_MATERIALIZED" });
       }
     });
 
@@ -312,24 +313,41 @@ function ResetPasswordPage() {
       sub.subscription.unsubscribe();
     };
 
+    // --- Synchronous decision from the URL --------------------------------
     if (initialState.kind === "error") {
-      trace("reset-password.branch.error", { message: initialState.message });
-      setErrorMessage(initialState.message);
-      setMode("error");
       cleanResetLinkUrl();
+      safeDispatch({ type: "LINK_ERROR", message: initialState.message });
       return cleanup;
     }
 
     if (initialState.kind === "none") {
       if (!hasResetSessionReadyFlag()) {
-        trace("reset-password.branch.request", { reason: "no-recovery-indicators" });
-        setMode("request");
+        // No indicators anywhere — but we still wait one microtask on
+        // `getSession()` in case supabase-js is finishing an async parse
+        // that stripped the URL before we read it. Only after that returns
+        // no session do we commit to "request".
+        safeDispatch({ type: "DECIDED_NO_RECOVERY_PROBE" });
+        void (async () => {
+          const { data, error } = await supabase.auth.getSession();
+          if (cancelled) return;
+          trace("reset-password.probe.getSession", {
+            session: describeSession(data.session),
+            error: error?.message ?? null,
+          });
+          if (!error && data.session) {
+            cleanResetLinkUrl();
+            setResetSessionReady(true);
+            safeDispatch({ type: "SESSION_MATERIALIZED" });
+            return;
+          }
+          setResetSessionReady(false);
+          safeDispatch({ type: "NO_SESSION" });
+        })();
         return cleanup;
       }
       // Refresh after a previous successful verification — confirm the
       // session is still there before showing the update form.
-      trace("reset-password.branch.recheckAfterRefresh");
-      setMode("checking");
+      safeDispatch({ type: "DECIDED_RECOVERY", kind: "recovery_session" });
       void (async () => {
         const { data, error } = await supabase.auth.getSession();
         if (cancelled) return;
@@ -339,16 +357,17 @@ function ResetPasswordPage() {
         });
         if (error || !data.session) {
           setResetSessionReady(false);
-          setMode("request");
+          safeDispatch({ type: "EXCHANGE_FAILED", message: "No reset session was found." });
           return;
         }
-        enterUpdateMode();
+        cleanResetLinkUrl();
+        safeDispatch({ type: "SESSION_MATERIALIZED" });
       })();
       return cleanup;
     }
 
-    trace("reset-password.branch.exchange", { kind: initialState.kind });
-    setMode("checking");
+    // --- A recovery indicator is present; run the appropriate exchange ---
+    safeDispatch({ type: "DECIDED_RECOVERY", kind: initialState.kind });
     void (async () => {
       let exchangeError: string | null = null;
 
@@ -378,8 +397,9 @@ function ResetPasswordPage() {
         exchangeError = error?.message ?? null;
         trace("reset-password.exchange.implicit.result", { error: exchangeError });
       } else if (initialState.kind === "recovery_session") {
-        // No tokens to exchange — the supabase client should establish the
-        // session asynchronously via detectSessionInUrl. Poll briefly.
+        // No tokens to exchange — poll briefly for supabase-js's async parse
+        // to land. The onAuthStateChange listener will also fire, and
+        // whichever wins the race dispatches SESSION_MATERIALIZED.
         let found = false;
         let iterations = 0;
         for (let i = 0; i < 30; i++) {
@@ -396,13 +416,27 @@ function ResetPasswordPage() {
       if (cancelled) return;
 
       if (exchangeError) {
-        trace("reset-password.exchange.failed", { message: exchangeError });
-        setErrorMessage(describeLinkError(null, exchangeError));
-        setMode("error");
+        safeDispatch({
+          type: "EXCHANGE_FAILED",
+          message: describeLinkError(null, exchangeError),
+        });
         return;
       }
 
-      enterUpdateMode();
+      // Explicit exchanges (pkce / token_hash / implicit) that returned no
+      // error MUST result in a session. Confirm before committing.
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (!data.session) {
+        // The onAuthStateChange listener may still fire in a moment; keep
+        // waiting. If it never fires, the user can request a new link from
+        // the persistent request-form fallback in the UI.
+        trace("reset-password.exchange.awaitingListener");
+        return;
+      }
+      cleanResetLinkUrl();
+      setResetSessionReady(true);
+      safeDispatch({ type: "SESSION_MATERIALIZED" });
     })();
 
     return cleanup;
