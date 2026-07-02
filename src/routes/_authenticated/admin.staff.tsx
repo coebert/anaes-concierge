@@ -156,7 +156,72 @@ function StaffGroup({
   );
 }
 
-function AdminStaffPage() {
+function AcutePainSettingsPopover({
+  value,
+  onChange,
+}: {
+  value: { lookbackDays: number; specialtyName: string };
+  onChange: (next: { lookbackDays: number; specialtyName: string }) => void;
+}) {
+  const [days, setDays] = useState(String(value.lookbackDays));
+  const [name, setName] = useState(value.specialtyName);
+  useEffect(() => {
+    setDays(String(value.lookbackDays));
+    setName(value.specialtyName);
+  }, [value.lookbackDays, value.specialtyName]);
+
+  const apply = () => {
+    const parsed = Math.floor(Number(days));
+    const lookbackDays = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_LOOKBACK_DAYS;
+    const specialtyName = name.trim() || DEFAULT_SPECIALTY_NAME;
+    onChange({ lookbackDays, specialtyName });
+  };
+
+  const reset = () => {
+    onChange({ lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME });
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="Acute Pain group settings">
+          <Settings className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold">Acute Pain grouping</h4>
+          <p className="text-xs text-muted-foreground">
+            Controls which consultants appear under “Consultants - Acute Pain”. Stored in this browser.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="ap-lookback" className="text-xs">Lookback window (days)</Label>
+          <Input
+            id="ap-lookback"
+            type="number"
+            min={1}
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="ap-specialty" className="text-xs">Specialty name (exact match)</Label>
+          <Input
+            id="ap-specialty"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={DEFAULT_SPECIALTY_NAME}
+          />
+        </div>
+        <div className="flex justify-between gap-2">
+          <Button variant="ghost" size="sm" onClick={reset}>Reset</Button>
+          <Button size="sm" onClick={apply}>Apply</Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const [editingId, setEditingId] = useState<string | null>(null);
