@@ -163,6 +163,11 @@ function AdminStaffPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [acutePainSettings, setAcutePainSettings] = useState(loadAcutePainSettings);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(ACUTE_PAIN_SETTINGS_KEY, JSON.stringify(acutePainSettings));
+  }, [acutePainSettings]);
 
   const listStaff = useServerFn(listStaffForAdmin);
   const { data, isLoading } = useQuery({
