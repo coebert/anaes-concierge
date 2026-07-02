@@ -282,7 +282,7 @@ function AdminStaffPage() {
                 <div className="space-y-6">
                   <StaffGroup
                     title="Consultants"
-                    staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id))}
+                    staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id) && !acutePainIds.has(p.id))}
                     onEdit={(id) => setEditingId(id)}
                   />
                   <StaffGroup
