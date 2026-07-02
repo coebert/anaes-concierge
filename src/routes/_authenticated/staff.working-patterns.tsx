@@ -456,14 +456,19 @@ function ConsultantPatternBlock({
 }
 
 // Shared column geometry so every row aligns under the same day columns.
+// Label has a fixed width; the 5 weekday cells share the remaining card
+// width equally so the grid always fits inside its card, on every
+// breakpoint. All rows use the same wrappers so cells line up.
+const ROW_CLASS = "flex items-center gap-2 text-xs";
 const ROW_LABEL_CLASS = "w-24 shrink-0 text-muted-foreground";
-const CELL_CLASS = "w-11 shrink-0";
+const STRIP_CLASS = "flex flex-1 min-w-0 gap-1";
+const CELL_CLASS = "flex-1 min-w-0";
 
 function WeekdayHeader() {
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className={ROW_CLASS}>
       <div className={ROW_LABEL_CLASS} />
-      <div className="flex gap-1">
+      <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => (
           <div
             key={d}
