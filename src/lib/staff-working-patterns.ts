@@ -157,6 +157,12 @@ export interface ConsultantPattern {
   onCallWeekdays: number[];
   /** Cover type of the consultant's on-call sessions. */
   onCallType: "none" | "theatre" | "icu" | "both";
+  /** Regular AM/PM working weekdays — used to identify full vs half days. */
+  amWorkingWeekdays: number[];
+  pmWorkingWeekdays: number[];
+  /** Regular SPA weekdays split by half-session. */
+  spaAmWeekdays: number[];
+  spaPmWeekdays: number[];
   /** Total working sessions counted, used as a coverage indicator. */
   totalWorkingSessions: number;
   /** Total on-call sessions counted, used as a coverage indicator. */
