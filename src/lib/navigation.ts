@@ -98,6 +98,12 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "leave-calendar", label: "Global calendar", to: "/calendar",
     icon: CalendarDays, group: "leave" },
 
+  // Staff
+  { id: "staff-working-patterns", label: "Working patterns",
+    to: "/staff/working-patterns", icon: Users, group: "staff",
+    roles: ["admin", "rota_coordinator"],
+    keywords: ["consultant", "pattern", "on-call", "SAG", "private", "SPA", "days worked"] },
+
   // Audits & robustness
   { id: "robustness", label: "Robustness overview", to: "/robustness",
     icon: ShieldCheck, group: "audits", roles: ["admin", "rota_coordinator"] },
