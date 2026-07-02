@@ -215,18 +215,22 @@ function AdminStaffPage() {
   const icuIds = icuConsultantIds ?? new Set<string>();
 
   // Identify consultants who cover the Acute Pain service — anyone with at
-  // least one rota assignment on a theatre session tagged with the
-  // "Acute Pain" specialty in the last 12 months.
+  // least one rota assignment on a theatre session tagged with the configured
+  // specialty name within the configured lookback window (admin-tunable).
   const { data: acutePainConsultantIds } = useQuery({
-    queryKey: ["acute-pain-consultant-ids", "12m"],
+    queryKey: [
+      "acute-pain-consultant-ids",
+      acutePainSettings.lookbackDays,
+      acutePainSettings.specialtyName,
+    ],
     queryFn: async () => {
       const since = new Date();
-      since.setDate(since.getDate() - 365);
+      since.setDate(since.getDate() - acutePainSettings.lookbackDays);
       const sinceISO = since.toISOString().slice(0, 10);
       const { data: spec, error: specErr } = await supabase
         .from("specialties")
         .select("id")
-        .eq("name", "Acute Pain")
+        .eq("name", acutePainSettings.specialtyName)
         .maybeSingle();
       if (specErr) throw specErr;
       if (!spec?.id) return new Set<string>();
