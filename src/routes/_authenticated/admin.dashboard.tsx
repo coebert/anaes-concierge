@@ -23,6 +23,7 @@ import { computeTraineeMetrics, isJuniorTraineeLevel } from "@/lib/trainee-metri
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
+import { CalendarCoverageCard } from "@/components/calendar-coverage-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
@@ -763,6 +764,15 @@ function AdminDashboardPage() {
             <Stat label="On leave" value={summary.totalOnLeave} icon={UserX} />
             <Stat label="Available" value={summary.totalAvailable} icon={CalendarDays} />
           </div>
+
+          {/* Calendar name-coverage check */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Calendar coverage
+            </h2>
+            <CalendarCoverageCard />
+          </section>
+
 
           {/* Activity metrics */}
           <section className="space-y-3">
