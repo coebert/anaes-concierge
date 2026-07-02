@@ -291,6 +291,11 @@ function AdminStaffPage() {
                     onEdit={(id) => setEditingId(id)}
                   />
                   <StaffGroup
+                    title="Consultants - Acute Pain"
+                    staff={filtered.filter((p) => p.grade === "consultant" && acutePainIds.has(p.id))}
+                    onEdit={(id) => setEditingId(id)}
+                  />
+                  <StaffGroup
                     title="SAS Doctors"
                     staff={filtered.filter((p) => p.grade === "sas")}
                     onEdit={(id) => setEditingId(id)}
