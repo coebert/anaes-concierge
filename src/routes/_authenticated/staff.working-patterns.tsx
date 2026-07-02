@@ -547,9 +547,9 @@ function SpaStrip({
   const am = new Set(amDays);
   const pm = new Set(pmDays);
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className={ROW_CLASS}>
       <div className={ROW_LABEL_CLASS}>SPA</div>
-      <div className="flex gap-1">
+      <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const a = am.has(d);
           const p = pm.has(d);
