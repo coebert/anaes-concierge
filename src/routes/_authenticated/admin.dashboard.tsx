@@ -23,6 +23,7 @@ import { computeTraineeMetrics, isJuniorTraineeLevel } from "@/lib/trainee-metri
 import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
+import { CalendarCoverageCard } from "@/components/calendar-coverage-card";
 import {
   Users, GraduationCap, Stethoscope, UserCheck, UserX,
   CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
