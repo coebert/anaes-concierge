@@ -62,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "home", label: "Home", defaultOpen: true },
   { id: "rota", label: "Rota", defaultOpen: true },
   { id: "leave", label: "Leave", defaultOpen: true },
+  { id: "staff", label: "Staff", defaultOpen: true },
   { id: "audits", label: "Audits & robustness", defaultOpen: true },
   { id: "assistant", label: "Assistant", defaultOpen: true },
   { id: "setup", label: "Setup", defaultOpen: false },
