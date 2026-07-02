@@ -99,6 +99,10 @@ export const NAV_ITEMS: NavItem[] = [
     icon: CalendarDays, group: "leave" },
 
   // Staff
+  { id: "setup-staff", label: "Staff", to: "/admin/staff",
+    icon: Users, group: "staff", roles: ["admin"] },
+  { id: "setup-jobplans", label: "Job plans", to: "/admin/job-plans",
+    icon: Briefcase, group: "staff", roles: ["admin"] },
   { id: "staff-working-patterns", label: "Working patterns",
     to: "/staff/working-patterns", icon: Users, group: "staff",
     roles: ["admin", "rota_coordinator"],
@@ -140,10 +144,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: MessageSquare, group: "assistant", roles: ["admin", "rota_coordinator"] },
 
   // Setup (admin)
-  { id: "setup-staff", label: "Staff", to: "/admin/staff",
-    icon: Users, group: "setup", roles: ["admin"] },
-  { id: "setup-jobplans", label: "Job plans", to: "/admin/job-plans",
-    icon: Briefcase, group: "setup", roles: ["admin"] },
   { id: "setup-theatres", label: "Theatres", to: "/admin/theatres",
     icon: Building2, group: "setup", roles: ["admin"] },
   { id: "setup-theatre-aliases", label: "Theatre name aliases", to: "/admin/theatre-aliases",
