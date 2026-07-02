@@ -184,6 +184,40 @@ function AdminStaffPage() {
   });
   const icuIds = icuConsultantIds ?? new Set<string>();
 
+  // Identify consultants who cover the Acute Pain service — anyone with at
+  // least one rota assignment on a theatre session tagged with the
+  // "Acute Pain" specialty in the last 12 months.
+  const { data: acutePainConsultantIds } = useQuery({
+    queryKey: ["acute-pain-consultant-ids", "12m"],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 365);
+      const sinceISO = since.toISOString().slice(0, 10);
+      const { data: spec, error: specErr } = await supabase
+        .from("specialties")
+        .select("id")
+        .eq("name", "Acute Pain")
+        .maybeSingle();
+      if (specErr) throw specErr;
+      if (!spec?.id) return new Set<string>();
+      const { data: sessions, error: sessErr } = await supabase
+        .from("theatre_sessions")
+        .select("id")
+        .eq("specialty_id", spec.id)
+        .gte("session_date", sinceISO);
+      if (sessErr) throw sessErr;
+      const sessionIds = (sessions ?? []).map((s) => s.id);
+      if (!sessionIds.length) return new Set<string>();
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("staff_id")
+        .in("theatre_session_id", sessionIds);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.staff_id));
+    },
+  });
+  const acutePainIds = acutePainConsultantIds ?? new Set<string>();
+
   const filtered = data?.filter((p) => {
     if (!showInactive && p.active === false) return false;
     if (!filter) return true;
