@@ -413,11 +413,12 @@ function ConsultantPatternBlock({
     pattern.spaAmWeekdays.length > 0 || pattern.spaPmWeekdays.length > 0;
 
   return (
-    <div className="border-t pt-3 space-y-2">
+    <div className="border-t pt-3 space-y-1.5">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <CalendarRange className="h-3.5 w-3.5" />
         <span>Normal working pattern</span>
       </div>
+      <WeekdayHeader />
       <AmPmStrip amSet={amSet} pmSet={pmSet} />
       <WeekdayStrip
         label="Private / SAG"
@@ -454,6 +455,31 @@ function ConsultantPatternBlock({
   );
 }
 
+// Shared column geometry so every row aligns under the same day columns.
+const ROW_LABEL_CLASS = "w-24 shrink-0 text-muted-foreground";
+const CELL_CLASS = "w-11 shrink-0";
+
+function WeekdayHeader() {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <div className={ROW_LABEL_CLASS} />
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((d) => (
+          <div
+            key={d}
+            className={
+              CELL_CLASS +
+              " text-center text-[10px] font-medium text-muted-foreground"
+            }
+          >
+            {WEEKDAY_LABELS[d].slice(0, 3)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AmPmStrip({
   amSet,
   pmSet,
@@ -461,23 +487,24 @@ function AmPmStrip({
   amSet: Set<number>;
   pmSet: Set<number>;
 }) {
-  const cellBase =
-    "flex h-3 w-7 items-center justify-center text-[9px] font-medium border";
+  const halfCell =
+    "flex h-4 items-center justify-center text-[9px] font-medium border";
   return (
     <div className="flex items-center gap-2 text-xs">
-      <div className="w-24 shrink-0 text-muted-foreground">Working</div>
+      <div className={ROW_LABEL_CLASS}>Working</div>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((d) => {
           const am = amSet.has(d);
           const pm = pmSet.has(d);
           return (
-            <div key={d} className="flex flex-col" title={WEEKDAY_LABELS[d]}>
-              <div className="text-[10px] text-center text-muted-foreground leading-none mb-0.5">
-                {WEEKDAY_LABELS[d].slice(0, 3)}
-              </div>
+            <div
+              key={d}
+              className={CELL_CLASS + " flex flex-col"}
+              title={WEEKDAY_LABELS[d]}
+            >
               <div
                 className={
-                  cellBase +
+                  halfCell +
                   " rounded-t " +
                   (am
                     ? "bg-foreground text-background border-foreground"
@@ -488,7 +515,7 @@ function AmPmStrip({
               </div>
               <div
                 className={
-                  cellBase +
+                  halfCell +
                   " rounded-b border-t-0 " +
                   (pm
                     ? "bg-foreground/80 text-background border-foreground"
@@ -516,25 +543,26 @@ function SpaStrip({
   const pm = new Set(pmDays);
   return (
     <div className="flex items-center gap-2 text-xs">
-      <div className="w-24 shrink-0 text-muted-foreground">SPA</div>
+      <div className={ROW_LABEL_CLASS}>SPA</div>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((d) => {
           const a = am.has(d);
           const p = pm.has(d);
           const active = a || p;
-          const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "";
+          const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
           return (
             <div
               key={d}
               className={
-                "flex h-6 w-9 items-center justify-center rounded border text-[10px] font-medium " +
+                CELL_CLASS +
+                " flex h-6 items-center justify-center rounded border text-[10px] font-medium " +
                 (active
                   ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
                   : "border-border bg-muted/40 text-muted-foreground")
               }
               title={`${WEEKDAY_LABELS[d]}${active ? ` · SPA ${label}` : ""}`}
             >
-              {active ? label : WEEKDAY_LABELS[d].slice(0, 3)}
+              {label}
             </div>
           );
         })}
@@ -561,7 +589,7 @@ function WeekdayStrip({
         : "bg-foreground text-background border-foreground";
   return (
     <div className="flex items-center gap-2 text-xs">
-      <div className="w-24 shrink-0 text-muted-foreground">{label}</div>
+      <div className={ROW_LABEL_CLASS}>{label}</div>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
@@ -569,15 +597,17 @@ function WeekdayStrip({
             <div
               key={d}
               className={
-                "flex h-6 w-7 items-center justify-center rounded border text-[11px] font-medium " +
+                CELL_CLASS +
+                " flex h-6 items-center justify-center rounded border text-[11px] font-medium " +
                 (active
                   ? highlightClass
                   : "border-border bg-muted/40 text-muted-foreground")
               }
               title={WEEKDAY_LABELS[d]}
             >
-              {WEEKDAY_LABELS[d].slice(0, 3)}
+              {active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}
             </div>
+
           );
         })}
       </div>
