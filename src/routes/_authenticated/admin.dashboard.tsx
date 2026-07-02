@@ -765,6 +765,15 @@ function AdminDashboardPage() {
             <Stat label="Available" value={summary.totalAvailable} icon={CalendarDays} />
           </div>
 
+          {/* Calendar name-coverage check */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+              Calendar coverage
+            </h2>
+            <CalendarCoverageCard />
+          </section>
+
+
           {/* Activity metrics */}
           <section className="space-y-3">
             <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
