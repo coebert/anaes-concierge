@@ -407,21 +407,32 @@ function ConsultantPatternBlock({
           ? "ICU only"
           : "No on-call recorded";
 
+  const amSet = new Set(pattern.amWorkingWeekdays);
+  const pmSet = new Set(pattern.pmWorkingWeekdays);
+  const hasAnySpa =
+    pattern.spaAmWeekdays.length > 0 || pattern.spaPmWeekdays.length > 0;
+
   return (
     <div className="border-t pt-3 space-y-2">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <CalendarRange className="h-3.5 w-3.5" />
         <span>Normal working pattern</span>
       </div>
-      <WeekdayStrip
-        label="Working"
-        highlighted={pattern.workingWeekdays}
-      />
+      <AmPmStrip amSet={amSet} pmSet={pmSet} />
       <WeekdayStrip
         label="Private / SAG"
         highlighted={pattern.privateWeekdays}
         tone="primary"
       />
+      <SpaStrip
+        amDays={pattern.spaAmWeekdays}
+        pmDays={pattern.spaPmWeekdays}
+      />
+      {!hasAnySpa && (
+        <p className="text-[11px] text-muted-foreground pl-[6.5rem] -mt-1">
+          No regular SPA slot identified in this window.
+        </p>
+      )}
       <WeekdayStrip
         label="On-call"
         highlighted={pattern.onCallWeekdays}
@@ -435,8 +446,99 @@ function ConsultantPatternBlock({
       </div>
       <p className="text-[11px] text-muted-foreground">
         Weekdays counted as regular when they appear on at least{" "}
-        {pattern.regularityThreshold} distinct dates in the window.
+        {pattern.regularityThreshold} distinct dates in the window. AM/PM
+        shading shows whether the consultant typically works the morning,
+        afternoon, or both.
       </p>
+    </div>
+  );
+}
+
+function AmPmStrip({
+  amSet,
+  pmSet,
+}: {
+  amSet: Set<number>;
+  pmSet: Set<number>;
+}) {
+  const cellBase =
+    "flex h-3 w-7 items-center justify-center text-[9px] font-medium border";
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <div className="w-24 shrink-0 text-muted-foreground">Working</div>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((d) => {
+          const am = amSet.has(d);
+          const pm = pmSet.has(d);
+          return (
+            <div key={d} className="flex flex-col" title={WEEKDAY_LABELS[d]}>
+              <div className="text-[10px] text-center text-muted-foreground leading-none mb-0.5">
+                {WEEKDAY_LABELS[d].slice(0, 3)}
+              </div>
+              <div
+                className={
+                  cellBase +
+                  " rounded-t " +
+                  (am
+                    ? "bg-foreground text-background border-foreground"
+                    : "border-border bg-muted/40 text-muted-foreground")
+                }
+              >
+                {am ? "AM" : ""}
+              </div>
+              <div
+                className={
+                  cellBase +
+                  " rounded-b border-t-0 " +
+                  (pm
+                    ? "bg-foreground/80 text-background border-foreground"
+                    : "border-border bg-muted/40 text-muted-foreground")
+                }
+              >
+                {pm ? "PM" : ""}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SpaStrip({
+  amDays,
+  pmDays,
+}: {
+  amDays: number[];
+  pmDays: number[];
+}) {
+  const am = new Set(amDays);
+  const pm = new Set(pmDays);
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <div className="w-24 shrink-0 text-muted-foreground">SPA</div>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((d) => {
+          const a = am.has(d);
+          const p = pm.has(d);
+          const active = a || p;
+          const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "";
+          return (
+            <div
+              key={d}
+              className={
+                "flex h-6 w-9 items-center justify-center rounded border text-[10px] font-medium " +
+                (active
+                  ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
+                  : "border-border bg-muted/40 text-muted-foreground")
+              }
+              title={`${WEEKDAY_LABELS[d]}${active ? ` · SPA ${label}` : ""}`}
+            >
+              {active ? label : WEEKDAY_LABELS[d].slice(0, 3)}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
