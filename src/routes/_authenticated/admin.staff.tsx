@@ -291,6 +291,12 @@ function AdminStaffPage() {
             className="max-w-xs"
           />
           {isAdmin && (
+            <AcutePainSettingsPopover
+              value={acutePainSettings}
+              onChange={setAcutePainSettings}
+            />
+          )}
+          {isAdmin && (
             <Button onClick={() => setAddOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" /> Add staff
             </Button>
