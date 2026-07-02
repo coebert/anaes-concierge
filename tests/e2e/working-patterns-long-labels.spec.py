@@ -241,7 +241,7 @@ MEASURE_JS = r"""
     const block = card.querySelector('div.border-t');
     const rows = [...block.querySelectorAll(':scope > div.flex.items-center.gap-2')];
     const rowData = rows.map(r => {
-      const labelEl = r.querySelector(':scope > div.w-24');
+      const labelEl = r.querySelector(':scope > div:first-child');
       const cells = [...r.querySelectorAll(':scope > div.flex.gap-1 > div')];
       const rect = r.getBoundingClientRect();
       return {
