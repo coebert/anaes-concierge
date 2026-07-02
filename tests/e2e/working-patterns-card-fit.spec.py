@@ -87,7 +87,7 @@ async def measure_overflows(page) -> list[dict]:
 
             const rows = [...block.querySelectorAll(':scope > div.flex.items-center.gap-2')];
             const rowData = rows.map(r => {
-              const labelEl = r.querySelector(':scope > div.w-24');
+              const labelEl = r.querySelector(':scope > div:first-child');
               const rect = r.getBoundingClientRect();
               return {
                 label: (labelEl && labelEl.textContent || '').trim() || '(header)',

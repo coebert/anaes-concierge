@@ -75,7 +75,7 @@ async def measure_cards(page) -> list[dict]:
             // A row's cells are the divs inside the inner .flex.gap-1 wrapper.
             const rows = [...block.querySelectorAll(':scope > div.flex.items-center.gap-2')];
             const rowData = rows.map(r => {
-              const labelEl = r.querySelector(':scope > div.w-24');
+              const labelEl = r.querySelector(':scope > div:first-child');
               const cells = [...r.querySelectorAll(':scope > div.flex.gap-1 > div')];
               return {
                 label: (labelEl?.textContent || '').trim(),
