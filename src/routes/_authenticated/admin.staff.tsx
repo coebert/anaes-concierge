@@ -222,6 +222,8 @@ function AcutePainSettingsPopover({
     </Popover>
   );
 }
+
+function AdminStaffPage() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const [editingId, setEditingId] = useState<string | null>(null);
