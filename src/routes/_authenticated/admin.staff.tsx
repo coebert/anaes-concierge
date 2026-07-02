@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { listStaffForAdmin } from "@/lib/admin-staff.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,13 +13,38 @@ import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, UserPlus } from "lucide-react";
+import { Pencil, Settings, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+
+const ACUTE_PAIN_SETTINGS_KEY = "admin-staff:acute-pain-settings:v1";
+const DEFAULT_LOOKBACK_DAYS = 365;
+const DEFAULT_SPECIALTY_NAME = "Acute Pain";
+
+function loadAcutePainSettings(): { lookbackDays: number; specialtyName: string } {
+  if (typeof window === "undefined") {
+    return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
+  }
+  try {
+    const raw = window.localStorage.getItem(ACUTE_PAIN_SETTINGS_KEY);
+    if (!raw) return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
+    const parsed = JSON.parse(raw) as { lookbackDays?: unknown; specialtyName?: unknown };
+    const lookbackDays = typeof parsed.lookbackDays === "number" && parsed.lookbackDays > 0
+      ? Math.floor(parsed.lookbackDays)
+      : DEFAULT_LOOKBACK_DAYS;
+    const specialtyName = typeof parsed.specialtyName === "string" && parsed.specialtyName.trim()
+      ? parsed.specialtyName.trim()
+      : DEFAULT_SPECIALTY_NAME;
+    return { lookbackDays, specialtyName };
+  } catch {
+    return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
+  }
+}
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
@@ -131,6 +156,73 @@ function StaffGroup({
   );
 }
 
+function AcutePainSettingsPopover({
+  value,
+  onChange,
+}: {
+  value: { lookbackDays: number; specialtyName: string };
+  onChange: (next: { lookbackDays: number; specialtyName: string }) => void;
+}) {
+  const [days, setDays] = useState(String(value.lookbackDays));
+  const [name, setName] = useState(value.specialtyName);
+  useEffect(() => {
+    setDays(String(value.lookbackDays));
+    setName(value.specialtyName);
+  }, [value.lookbackDays, value.specialtyName]);
+
+  const apply = () => {
+    const parsed = Math.floor(Number(days));
+    const lookbackDays = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_LOOKBACK_DAYS;
+    const specialtyName = name.trim() || DEFAULT_SPECIALTY_NAME;
+    onChange({ lookbackDays, specialtyName });
+  };
+
+  const reset = () => {
+    onChange({ lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME });
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="Acute Pain group settings">
+          <Settings className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold">Acute Pain grouping</h4>
+          <p className="text-xs text-muted-foreground">
+            Controls which consultants appear under “Consultants - Acute Pain”. Stored in this browser.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="ap-lookback" className="text-xs">Lookback window (days)</Label>
+          <Input
+            id="ap-lookback"
+            type="number"
+            min={1}
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="ap-specialty" className="text-xs">Specialty name (exact match)</Label>
+          <Input
+            id="ap-specialty"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={DEFAULT_SPECIALTY_NAME}
+          />
+        </div>
+        <div className="flex justify-between gap-2">
+          <Button variant="ghost" size="sm" onClick={reset}>Reset</Button>
+          <Button size="sm" onClick={apply}>Apply</Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function AdminStaffPage() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
@@ -138,6 +230,11 @@ function AdminStaffPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [acutePainSettings, setAcutePainSettings] = useState(loadAcutePainSettings);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(ACUTE_PAIN_SETTINGS_KEY, JSON.stringify(acutePainSettings));
+  }, [acutePainSettings]);
 
   const listStaff = useServerFn(listStaffForAdmin);
   const { data, isLoading } = useQuery({
@@ -185,18 +282,22 @@ function AdminStaffPage() {
   const icuIds = icuConsultantIds ?? new Set<string>();
 
   // Identify consultants who cover the Acute Pain service — anyone with at
-  // least one rota assignment on a theatre session tagged with the
-  // "Acute Pain" specialty in the last 12 months.
+  // least one rota assignment on a theatre session tagged with the configured
+  // specialty name within the configured lookback window (admin-tunable).
   const { data: acutePainConsultantIds } = useQuery({
-    queryKey: ["acute-pain-consultant-ids", "12m"],
+    queryKey: [
+      "acute-pain-consultant-ids",
+      acutePainSettings.lookbackDays,
+      acutePainSettings.specialtyName,
+    ],
     queryFn: async () => {
       const since = new Date();
-      since.setDate(since.getDate() - 365);
+      since.setDate(since.getDate() - acutePainSettings.lookbackDays);
       const sinceISO = since.toISOString().slice(0, 10);
       const { data: spec, error: specErr } = await supabase
         .from("specialties")
         .select("id")
-        .eq("name", "Acute Pain")
+        .eq("name", acutePainSettings.specialtyName)
         .maybeSingle();
       if (specErr) throw specErr;
       if (!spec?.id) return new Set<string>();
@@ -256,6 +357,12 @@ function AdminStaffPage() {
             onChange={(e) => setFilter(e.target.value)}
             className="max-w-xs"
           />
+          {isAdmin && (
+            <AcutePainSettingsPopover
+              value={acutePainSettings}
+              onChange={setAcutePainSettings}
+            />
+          )}
           {isAdmin && (
             <Button onClick={() => setAddOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" /> Add staff
