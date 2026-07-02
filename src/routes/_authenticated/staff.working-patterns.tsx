@@ -495,9 +495,9 @@ function AmPmStrip({
   const halfCell =
     "flex h-4 items-center justify-center text-[9px] font-medium border";
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className={ROW_CLASS}>
       <div className={ROW_LABEL_CLASS}>Working</div>
-      <div className="flex gap-1">
+      <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const am = amSet.has(d);
           const pm = pmSet.has(d);
