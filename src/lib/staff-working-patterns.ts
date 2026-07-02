@@ -157,6 +157,12 @@ export interface ConsultantPattern {
   onCallWeekdays: number[];
   /** Cover type of the consultant's on-call sessions. */
   onCallType: "none" | "theatre" | "icu" | "both";
+  /** Regular AM/PM working weekdays — used to identify full vs half days. */
+  amWorkingWeekdays: number[];
+  pmWorkingWeekdays: number[];
+  /** Regular SPA weekdays split by half-session. */
+  spaAmWeekdays: number[];
+  spaPmWeekdays: number[];
   /** Total working sessions counted, used as a coverage indicator. */
   totalWorkingSessions: number;
   /** Total on-call sessions counted, used as a coverage indicator. */
@@ -197,6 +203,10 @@ export function computeConsultantPattern(
   const workingDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
   const privateDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
   const onCallDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
+  const amWorkingDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
+  const pmWorkingDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
+  const spaAmDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
+  const spaPmDates: Array<Set<string>> = Array.from({ length: 7 }, () => new Set());
 
   let totalWorking = 0;
   let totalOnCall = 0;
@@ -207,6 +217,7 @@ export function computeConsultantPattern(
     const dow = isoDayOfWeek(a.session_date);
     if (dow == null) continue;
     const duty = a.duty_type ?? "";
+    const half = (a.session ?? "").toLowerCase();
 
     if (NON_WORKING_ONCALL.has(duty)) {
       onCallDates[dow].add(a.session_date);
@@ -221,6 +232,13 @@ export function computeConsultantPattern(
     // in the department (theatre, SPA, admin, teaching …).
     workingDates[dow].add(a.session_date);
     totalWorking += 1;
+    if (half === "am") amWorkingDates[dow].add(a.session_date);
+    else if (half === "pm") pmWorkingDates[dow].add(a.session_date);
+
+    if (duty === "spa") {
+      if (half === "am") spaAmDates[dow].add(a.session_date);
+      else if (half === "pm") spaPmDates[dow].add(a.session_date);
+    }
 
     if (duty === "theatre" && a.theatre_session_id) {
       const s = sessionsById.get(a.theatre_session_id);
@@ -235,6 +253,11 @@ export function computeConsultantPattern(
 
   const pickRegular = (dates: Array<Set<string>>) =>
     [1, 2, 3, 4, 5].filter((d) => dates[d].size >= threshold);
+  // SPA is often once-a-week or once-a-fortnight, so use a slightly
+  // gentler threshold so a weekly SPA slot isn't lost to noise.
+  const spaThreshold = Math.max(2, Math.floor(threshold / 2) + 1);
+  const pickRegularSpa = (dates: Array<Set<string>>) =>
+    [1, 2, 3, 4, 5].filter((d) => dates[d].size >= spaThreshold);
 
   const onCallType: ConsultantPattern["onCallType"] =
     anyTheatreOnCall && anyIcuOnCall
@@ -250,6 +273,10 @@ export function computeConsultantPattern(
     privateWeekdays: pickRegular(privateDates),
     onCallWeekdays: pickRegular(onCallDates),
     onCallType,
+    amWorkingWeekdays: pickRegular(amWorkingDates),
+    pmWorkingWeekdays: pickRegular(pmWorkingDates),
+    spaAmWeekdays: pickRegularSpa(spaAmDates),
+    spaPmWeekdays: pickRegularSpa(spaPmDates),
     totalWorkingSessions: totalWorking,
     totalOnCallSessions: totalOnCall,
     regularityThreshold: threshold,
