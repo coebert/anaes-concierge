@@ -32,6 +32,7 @@ export type NavGroupId =
   | "home"
   | "rota"
   | "leave"
+  | "staff"
   | "audits"
   | "assistant"
   | "setup"
