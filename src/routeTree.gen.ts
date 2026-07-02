@@ -29,6 +29,7 @@ import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authentica
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as AuthenticatedTraineesStartDateAuditRouteImport } from './routes/_authenticated/trainees.start-date-audit'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
+import { Route as AuthenticatedStaffWorkingPatternsRouteImport } from './routes/_authenticated/staff.working-patterns'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedRobustnessPoacAuditRouteImport } from './routes/_authenticated/robustness.poac-audit'
 import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './routes/_authenticated/robustness.list-feasibility'
@@ -165,6 +166,12 @@ const AuthenticatedTraineesStaffIdRoute =
     id: '/$staffId',
     path: '/$staffId',
     getParentRoute: () => AuthenticatedTraineesRoute,
+  } as any)
+const AuthenticatedStaffWorkingPatternsRoute =
+  AuthenticatedStaffWorkingPatternsRouteImport.update({
+    id: '/staff/working-patterns',
+    path: '/staff/working-patterns',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedRobustnessSimulateRoute =
   AuthenticatedRobustnessSimulateRouteImport.update({
@@ -411,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
+  '/staff/working-patterns': typeof AuthenticatedStaffWorkingPatternsRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
@@ -465,6 +473,7 @@ export interface FileRoutesByTo {
   '/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
+  '/staff/working-patterns': typeof AuthenticatedStaffWorkingPatternsRoute
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
@@ -522,6 +531,7 @@ export interface FileRoutesById {
   '/_authenticated/robustness/list-feasibility': typeof AuthenticatedRobustnessListFeasibilityRoute
   '/_authenticated/robustness/poac-audit': typeof AuthenticatedRobustnessPoacAuditRoute
   '/_authenticated/robustness/simulate': typeof AuthenticatedRobustnessSimulateRoute
+  '/_authenticated/staff/working-patterns': typeof AuthenticatedStaffWorkingPatternsRoute
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
@@ -579,6 +589,7 @@ export interface FileRouteTypes {
     | '/robustness/list-feasibility'
     | '/robustness/poac-audit'
     | '/robustness/simulate'
+    | '/staff/working-patterns'
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
     | '/api/public/health'
@@ -633,6 +644,7 @@ export interface FileRouteTypes {
     | '/robustness/list-feasibility'
     | '/robustness/poac-audit'
     | '/robustness/simulate'
+    | '/staff/working-patterns'
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
     | '/api/public/health'
@@ -689,6 +701,7 @@ export interface FileRouteTypes {
     | '/_authenticated/robustness/list-feasibility'
     | '/_authenticated/robustness/poac-audit'
     | '/_authenticated/robustness/simulate'
+    | '/_authenticated/staff/working-patterns'
     | '/_authenticated/trainees/$staffId'
     | '/_authenticated/trainees/start-date-audit'
     | '/api/public/health'
@@ -858,6 +871,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/trainees/$staffId'
       preLoaderRoute: typeof AuthenticatedTraineesStaffIdRouteImport
       parentRoute: typeof AuthenticatedTraineesRoute
+    }
+    '/_authenticated/staff/working-patterns': {
+      id: '/_authenticated/staff/working-patterns'
+      path: '/staff/working-patterns'
+      fullPath: '/staff/working-patterns'
+      preLoaderRoute: typeof AuthenticatedStaffWorkingPatternsRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/robustness/simulate': {
       id: '/_authenticated/robustness/simulate'
@@ -1179,6 +1199,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRobustnessListFeasibilityRoute: typeof AuthenticatedRobustnessListFeasibilityRoute
   AuthenticatedRobustnessPoacAuditRoute: typeof AuthenticatedRobustnessPoacAuditRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
+  AuthenticatedStaffWorkingPatternsRoute: typeof AuthenticatedStaffWorkingPatternsRoute
   AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
   AuthenticatedRobustnessDayDateRoute: typeof AuthenticatedRobustnessDayDateRoute
 }
@@ -1224,6 +1245,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
     AuthenticatedRobustnessListFeasibilityRoute,
   AuthenticatedRobustnessPoacAuditRoute: AuthenticatedRobustnessPoacAuditRoute,
   AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
+  AuthenticatedStaffWorkingPatternsRoute:
+    AuthenticatedStaffWorkingPatternsRoute,
   AuthenticatedRobustnessIndexRoute: AuthenticatedRobustnessIndexRoute,
   AuthenticatedRobustnessDayDateRoute: AuthenticatedRobustnessDayDateRoute,
 }

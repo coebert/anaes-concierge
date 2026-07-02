@@ -32,6 +32,7 @@ export type NavGroupId =
   | "home"
   | "rota"
   | "leave"
+  | "staff"
   | "audits"
   | "assistant"
   | "setup"
@@ -61,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "home", label: "Home", defaultOpen: true },
   { id: "rota", label: "Rota", defaultOpen: true },
   { id: "leave", label: "Leave", defaultOpen: true },
+  { id: "staff", label: "Staff", defaultOpen: true },
   { id: "audits", label: "Audits & robustness", defaultOpen: true },
   { id: "assistant", label: "Assistant", defaultOpen: true },
   { id: "setup", label: "Setup", defaultOpen: false },
@@ -95,6 +97,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Activity, group: "leave", roles: ["admin", "rota_coordinator"] },
   { id: "leave-calendar", label: "Global calendar", to: "/calendar",
     icon: CalendarDays, group: "leave" },
+
+  // Staff
+  { id: "staff-working-patterns", label: "Working patterns",
+    to: "/staff/working-patterns", icon: Users, group: "staff",
+    roles: ["admin", "rota_coordinator"],
+    keywords: ["consultant", "pattern", "on-call", "SAG", "private", "SPA", "days worked"] },
 
   // Audits & robustness
   { id: "robustness", label: "Robustness overview", to: "/robustness",
