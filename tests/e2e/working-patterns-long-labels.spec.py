@@ -220,7 +220,8 @@ async def restore_session(context, page) -> None:
 
 MEASURE_JS = r"""
 () => {
-  const cards = [...document.querySelectorAll('[class*="rounded-xl"]')]
+  // shadcn Card is uniquely identified by `.bg-card` on the outer element.
+  const cards = [...document.querySelectorAll('.bg-card')]
     .filter(c => c.querySelector('div.border-t') &&
                  c.textContent.includes('Normal working pattern'));
 
