@@ -1927,7 +1927,7 @@ export type Database = {
           grade: Database["public"]["Enums"]["staff_grade"]
           id: string
           left_at: string
-          ltft_days_off: string[]
+          ltft_days_off: number[]
           rotation_end_date: string
           start_date: string
           training_level: string
@@ -1947,7 +1947,7 @@ export type Database = {
           grade: Database["public"]["Enums"]["staff_grade"]
           id: string
           left_at: string
-          ltft_days_off: string[]
+          ltft_days_off: number[]
           rotation_end_date: string
           start_date: string
           training_level: string
