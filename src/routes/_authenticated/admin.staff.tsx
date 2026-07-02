@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { listStaffForAdmin } from "@/lib/admin-staff.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,13 +13,38 @@ import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, UserPlus } from "lucide-react";
+import { Pencil, Settings, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+
+const ACUTE_PAIN_SETTINGS_KEY = "admin-staff:acute-pain-settings:v1";
+const DEFAULT_LOOKBACK_DAYS = 365;
+const DEFAULT_SPECIALTY_NAME = "Acute Pain";
+
+function loadAcutePainSettings(): { lookbackDays: number; specialtyName: string } {
+  if (typeof window === "undefined") {
+    return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
+  }
+  try {
+    const raw = window.localStorage.getItem(ACUTE_PAIN_SETTINGS_KEY);
+    if (!raw) return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
+    const parsed = JSON.parse(raw) as { lookbackDays?: unknown; specialtyName?: unknown };
+    const lookbackDays = typeof parsed.lookbackDays === "number" && parsed.lookbackDays > 0
+      ? Math.floor(parsed.lookbackDays)
+      : DEFAULT_LOOKBACK_DAYS;
+    const specialtyName = typeof parsed.specialtyName === "string" && parsed.specialtyName.trim()
+      ? parsed.specialtyName.trim()
+      : DEFAULT_SPECIALTY_NAME;
+    return { lookbackDays, specialtyName };
+  } catch {
+    return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
+  }
+}
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
   component: AdminStaffPage,
