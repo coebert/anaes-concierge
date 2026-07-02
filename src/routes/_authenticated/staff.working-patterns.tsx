@@ -593,9 +593,9 @@ function WeekdayStrip({
         ? "bg-amber-500/90 text-white border-amber-500 dark:bg-amber-500 dark:border-amber-500"
         : "bg-foreground text-background border-foreground";
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className={ROW_CLASS}>
       <div className={ROW_LABEL_CLASS}>{label}</div>
-      <div className="flex gap-1">
+      <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
           return (
