@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
-import { startAuthentication } from "@simplewebauthn/browser";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -10,6 +10,9 @@ import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import {
   startPasskeyAuthentication,
   verifyPasskeyAuthentication,
+  startPasskeyRegistration,
+  verifyPasskeyRegistration,
+  listMyPasskeys,
 } from "@/lib/passkeys.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
