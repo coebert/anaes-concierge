@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { PasskeyManager } from "@/components/passkey-manager";
+
 
 export const Route = createFileRoute("/_authenticated/account")({
   component: AccountPage,
@@ -84,6 +86,8 @@ function AccountPage() {
           </form>
         </CardContent>
       </Card>
+      <PasskeyManager />
     </div>
   );
 }
+
