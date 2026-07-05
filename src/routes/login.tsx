@@ -76,6 +76,48 @@ function LoginPage() {
     void navigate({ to: "/" });
   };
 
+  const startPk = useServerFn(startPasskeyAuthentication);
+  const verifyPk = useServerFn(verifyPasskeyAuthentication);
+
+  const handlePasskey = async () => {
+    const parsed = z.string().trim().email().safeParse(email);
+    if (!parsed.success) {
+      toast.error("Enter your email first");
+      return;
+    }
+    if (typeof window === "undefined" || !window.PublicKeyCredential) {
+      toast.error("This device does not support passkeys.");
+      return;
+    }
+    setBusy(true);
+    setRememberMe(remember);
+    try {
+      const { options, hasPasskeys } = await startPk({ data: { email: parsed.data } });
+      if (!hasPasskeys) {
+        throw new Error("No passkey registered for this account.");
+      }
+      const assertion = await startAuthentication({ optionsJSON: options as any });
+      const { tokenHash } = await verifyPk({
+        data: { email: parsed.data, response: assertion },
+      });
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "magiclink",
+      });
+      if (error) throw error;
+      void navigate({ to: "/" });
+    } catch (e: any) {
+      if (e?.name === "NotAllowedError") {
+        toast.error("Cancelled");
+      } else {
+        toast.error(e?.message ?? "Passkey sign-in failed");
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
@@ -151,6 +193,18 @@ function LoginPage() {
           >
             Continue with Google
           </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handlePasskey}
+            disabled={busy}
+          >
+            <Fingerprint className="mr-2 h-4 w-4" />
+            Sign in with passkey
+          </Button>
+
 
           <p className="text-center text-sm text-muted-foreground">
             Need access?{" "}
