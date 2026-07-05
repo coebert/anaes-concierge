@@ -62,8 +62,9 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
       },
       excludeCredentials: (existing ?? []).map((c: any) => ({
         id: c.credential_id,
-        transports: c.transports ?? undefined,
+        transports: (c.transports ?? undefined) as any,
       })),
+
     });
 
     await cleanupExpiredChallenges(supabaseAdmin);
