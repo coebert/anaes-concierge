@@ -106,16 +106,52 @@ async def mock_supabase_auth(route: Route) -> None:
 #
 # TanStack Start POSTs `createServerFn` calls to `/_serverFn/<hash>` where the
 # hash is content-derived. We can't hard-code it, so we dispatch by inspecting
-# the request BODY for the fields each function sends. Without `x-tss-serialized`
-# on the response, plain application/json bodies are returned to the caller
-# as-is (see start-client-core/serverFnFetcher.js).
+# the request BODY for the fields each function sends. Responses use seroval's
+# `toCrossJSON` envelope (`{ result, error, context }`) with the
+# `x-tss-serialized` header — that's the format the real server produces and
+# the client's deserializer expects. Encoding runs in a small node subprocess
+# to keep parity with future seroval upgrades.
+
+
+_SEROVAL_ENCODER = """\
+import { toCrossJSON } from '/dev-server/node_modules/seroval/dist/esm/production/index.mjs';
+const value = JSON.parse(process.argv[2]);
+const refs = new Map();
+process.stdout.write(JSON.stringify(
+  toCrossJSON({ result: value, error: null, context: {} }, { refs }),
+));
+"""
+
+
+def _write_encoder_once() -> Path:
+    p = SCREENSHOTS / "_encoder.mjs"
+    if not p.exists():
+        p.write_text(_SEROVAL_ENCODER)
+    return p
+
+
+def seroval_encode(value: Any) -> str:
+    encoder = _write_encoder_once()
+    proc = subprocess.run(
+        ["node", str(encoder), json.dumps(value)],
+        capture_output=True, text=True, check=True,
+    )
+    return proc.stdout
+
+
+async def fulfill_serialized(route: Route, value: Any) -> None:
+    body = seroval_encode(value)
+    await route.fulfill(
+        status=200,
+        headers={"content-type": "application/json", "x-tss-serialized": "true"},
+        body=body,
+    )
 
 
 class PasskeyRpcRouter:
     """Dispatches TanStack `/_serverFn/*` calls by matching request bodies."""
 
     def __init__(self) -> None:
-        # Track hits per logical function so tests can assert wiring.
         self.hits: dict[str, int] = {
             "startRegistration": 0,
             "verifyRegistration": 0,
@@ -124,7 +160,6 @@ class PasskeyRpcRouter:
             "listPasskeys": 0,
             "deletePasskey": 0,
         }
-        # Fake list state — tests mutate this via register/delete.
         self.devices: list[dict[str, Any]] = []
         self._id_counter = 1
 
@@ -141,38 +176,28 @@ class PasskeyRpcRouter:
             payload = {}
         data = (payload.get("data") or {}) if isinstance(payload, dict) else {}
 
-        # ---- Authentication (public, no bearer) ----
-        # startPasskeyAuthentication: { email } → { options, hasPasskeys }
+        # startPasskeyAuthentication: { email }
         if method == "POST" and isinstance(data, dict) and set(data.keys()) == {"email"}:
             self._bump("startAuthentication")
-            await route.fulfill(
-                status=200,
-                content_type="application/json",
-                body=json.dumps({
-                    "options": {
-                        "challenge": "ZmFrZS1jaGFsbGVuZ2U",
-                        "rpId": "localhost",
-                        "timeout": 60000,
-                        "userVerification": "preferred",
-                        "allowCredentials": [],
-                    },
-                    "hasPasskeys": len(self.devices) > 0,
-                }),
-            )
+            await fulfill_serialized(route, {
+                "options": {
+                    "challenge": "ZmFrZS1jaGFsbGVuZ2U",
+                    "rpId": "localhost",
+                    "timeout": 60000,
+                    "userVerification": "preferred",
+                    "allowCredentials": [],
+                },
+                "hasPasskeys": len(self.devices) > 0,
+            })
             return
 
-        # verifyPasskeyAuthentication: { email, response } → { tokenHash }
+        # verifyPasskeyAuthentication: { email, response }
         if method == "POST" and isinstance(data, dict) and "email" in data and "response" in data:
             self._bump("verifyAuthentication")
-            await route.fulfill(
-                status=200,
-                content_type="application/json",
-                body=json.dumps({"tokenHash": "fake-magic-link-hash"}),
-            )
+            await fulfill_serialized(route, {"tokenHash": "fake-magic-link-hash"})
             return
 
-        # ---- Registration (authed, no data OR { response, deviceName }) ----
-        # verifyPasskeyRegistration: { response, deviceName? } → { ok: true }
+        # verifyPasskeyRegistration: { response, deviceName? }
         if method == "POST" and isinstance(data, dict) and "response" in data:
             self._bump("verifyRegistration")
             self._id_counter += 1
@@ -182,55 +207,48 @@ class PasskeyRpcRouter:
                 "created_at": "2026-07-05T12:00:00Z",
                 "last_used_at": None,
             })
-            await route.fulfill(status=200, content_type="application/json", body=json.dumps({"ok": True}))
+            await fulfill_serialized(route, {"ok": True})
             return
 
-        # deleteMyPasskey: { id: uuid } → { ok: true }
+        # deleteMyPasskey: { id }
         if method == "POST" and isinstance(data, dict) and set(data.keys()) == {"id"}:
             self._bump("deletePasskey")
             target = data["id"]
             self.devices = [d for d in self.devices if d["id"] != target]
-            await route.fulfill(status=200, content_type="application/json", body=json.dumps({"ok": True}))
+            await fulfill_serialized(route, {"ok": True})
             return
 
-        # listMyPasskeys: GET, no body. Return the current list.
+        # listMyPasskeys: GET, no body.
         if method == "GET":
             self._bump("listPasskeys")
-            await route.fulfill(
-                status=200,
-                content_type="application/json",
-                body=json.dumps(self.devices),
-            )
+            await fulfill_serialized(route, self.devices)
             return
 
-        # startPasskeyRegistration: POST, no data. Return CredentialCreationOptions.
+        # startPasskeyRegistration: POST, no data.
         if method == "POST":
             self._bump("startRegistration")
-            await route.fulfill(
-                status=200,
-                content_type="application/json",
-                body=json.dumps({
-                    "challenge": "ZmFrZS1yZWctY2hhbGxlbmdl",
-                    "rp": {"id": "localhost", "name": "Salisbury Anaesthetics Rota"},
-                    "user": {
-                        "id": "ZmFrZS11c2VyLWlk",
-                        "name": FAKE_EMAIL,
-                        "displayName": FAKE_EMAIL,
-                    },
-                    "pubKeyCredParams": [{"alg": -7, "type": "public-key"}],
-                    "timeout": 60000,
-                    "attestation": "none",
-                    "authenticatorSelection": {
-                        "residentKey": "preferred",
-                        "userVerification": "preferred",
-                    },
-                    "excludeCredentials": [],
-                }),
-            )
+            await fulfill_serialized(route, {
+                "challenge": "ZmFrZS1yZWctY2hhbGxlbmdl",
+                "rp": {"id": "localhost", "name": "Salisbury Anaesthetics Rota"},
+                "user": {
+                    "id": "ZmFrZS11c2VyLWlk",
+                    "name": FAKE_EMAIL,
+                    "displayName": FAKE_EMAIL,
+                },
+                "pubKeyCredParams": [{"alg": -7, "type": "public-key"}],
+                "timeout": 60000,
+                "attestation": "none",
+                "authenticatorSelection": {
+                    "residentKey": "preferred",
+                    "userVerification": "preferred",
+                },
+                "excludeCredentials": [],
+            })
             return
 
         # Unknown call — respond empty so we don't hang the test.
-        await route.fulfill(status=200, content_type="application/json", body="{}")
+        await fulfill_serialized(route, None)
+
 
 
 # ---------------------------------------------------------------------------
