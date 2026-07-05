@@ -503,16 +503,21 @@ async def run() -> int:
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)
         try:
-            context = await browser.new_context(viewport={"width": 1280, "height": 1800})
-            try:
-                print("\n--- full passkey journey ---")
-                await test_full_passkey_journey(context)
-            finally:
-                await context.close()
+            for name, fn in (
+                ("register-and-remove", test_full_passkey_journey),
+                ("login-with-passkey", test_login_passkey_wiring),
+            ):
+                context = await browser.new_context(viewport={"width": 1280, "height": 1800})
+                try:
+                    print(f"\n--- {name} ---")
+                    await fn(context)
+                finally:
+                    await context.close()
         finally:
             await browser.close()
     print("\nAll passkey e2e tests passed.")
     return 0
+
 
 
 if __name__ == "__main__":
