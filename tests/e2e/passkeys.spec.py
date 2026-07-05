@@ -420,22 +420,54 @@ async def test_full_passkey_journey(context) -> None:
     assert len(router.devices) == 1
     await page.screenshot(path=str(SCREENSHOTS / "1_registered.png"))
 
-    # -------------------- Phase 2: sign out + passkey login --------------------
-    # Sign the user out via supabase-js so onAuthStateChange fires and the
-    # auth context flips to unauthenticated. Wiping localStorage alone leaves
-    # the in-memory session in place, so the /login useEffect still bounces
-    # us back to "/" before the passkey click can fire.
-    await page.evaluate(
-        """async () => {
-            const mod = await import('/src/integrations/supabase/client.ts');
-            await mod.supabase.auth.signOut();
-        }"""
-    )
+    # -------------------- Phase 2: removal --------------------
+    trash = page.locator("li button").filter(has=page.locator("svg")).first
+    await trash.wait_for(state="visible", timeout=10_000)
+    await trash.click()
+
+    try:
+        await page.get_by_text("No passkeys registered yet.").wait_for(state="visible", timeout=10_000)
+    except Exception:
+        await page.screenshot(path=str(SCREENSHOTS / "FAIL_remove.png"))
+        raise
+
+    assert router.hits["deletePasskey"] >= 1, "deleteMyPasskey was never called"
+    assert len(router.devices) == 0
+    await page.screenshot(path=str(SCREENSHOTS / "2_removed.png"))
+
+    print("OK — passkey enrol + remove wired end to end")
+    await page.close()
+
+
+async def test_login_passkey_wiring(context) -> None:
+    """/login → clicking 'Sign in with passkey' after entering an email drives
+    the startPasskeyAuthentication → WebAuthn.get → verifyPasskeyAuthentication
+    → supabase.auth.verifyOtp pipeline, and leaves /login on success.
+
+    Runs in a fresh context so the /account signed-in guard doesn't
+    interfere with the sign-in landing.
+    """
+    router = PasskeyRpcRouter()
+    # A stored device makes hasPasskeys=true so the flow doesn't early-return.
+    router.devices.append({
+        "id": "11111111-1111-1111-1111-000000000001",
+        "device_name": "Prior device",
+        "created_at": "2026-07-01T00:00:00Z",
+        "last_used_at": None,
+    })
+
+    await install_fake_webauthn(context)
+    await context.route(f"https://{SUPABASE_HOST}/**", mock_supabase_auth)
+    await context.route("**/_serverFn/**", router.handle)
+
+    page = await context.new_page()
+    page.on("console", lambda m: print(f"[console.{m.type}]", m.text[:250]))
+    page.on("pageerror", lambda e: print("[pageerror]", str(e)[:300]))
 
     await page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded")
     email_input = page.get_by_label("Email")
+    await email_input.wait_for(state="visible", timeout=10_000)
     await email_input.fill(FAKE_EMAIL)
-    # Blur to make sure React state has caught up before we click.
     await email_input.press("Tab")
     await page.get_by_role("button", name="Sign in with passkey").click()
 
@@ -454,33 +486,12 @@ async def test_full_passkey_journey(context) -> None:
         print("url:", page.url)
         raise
 
-        print("body:", (await page.locator("body").inner_text())[:500])
-        raise
-
     assert router.hits["startAuthentication"] >= 1, "startPasskeyAuthentication was never called"
     assert router.hits["verifyAuthentication"] >= 1, "verifyPasskeyAuthentication was never called"
-    await page.screenshot(path=str(SCREENSHOTS / "2_signed_in.png"))
-
-    # -------------------- Phase 3: removal --------------------
-    await page.goto(f"{BASE_URL}/account", wait_until="domcontentloaded")
-    await page.get_by_text("Biometric sign-in (passkeys)").wait_for(state="visible", timeout=15_000)
-
-    trash = page.locator("li button").filter(has=page.locator("svg")).first
-    await trash.wait_for(state="visible", timeout=10_000)
-    await trash.click()
-
-    try:
-        await page.get_by_text("No passkeys registered yet.").wait_for(state="visible", timeout=10_000)
-    except Exception:
-        await page.screenshot(path=str(SCREENSHOTS / "FAIL_remove.png"))
-        raise
-
-    assert router.hits["deletePasskey"] >= 1, "deleteMyPasskey was never called"
-    assert len(router.devices) == 0
-    await page.screenshot(path=str(SCREENSHOTS / "3_removed.png"))
-
-    print("OK — full passkey journey (register → login → remove)")
+    await page.screenshot(path=str(SCREENSHOTS / "3_signed_in.png"))
+    print("OK — passkey sign-in wired end to end")
     await page.close()
+
 
 
 # ---------------------------------------------------------------------------
