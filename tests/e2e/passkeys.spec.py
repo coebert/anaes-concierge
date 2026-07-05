@@ -77,7 +77,7 @@ FAKE_SESSION = {
 
 
 async def mock_supabase_auth(route: Route) -> None:
-    """Fulfil supabase.auth.* calls with canned success responses."""
+    """Fulfil supabase.auth.* + REST/RPC calls with canned responses."""
     url = route.request.url
     method = route.request.method
     if "/auth/v1/user" in url and method in ("GET", "PUT"):
@@ -89,7 +89,13 @@ async def mock_supabase_auth(route: Route) -> None:
     if "/auth/v1/logout" in url:
         await route.fulfill(status=204, body="")
         return
+    # /rest/v1/* (PostgREST) and /rpc/* — return an empty array so the app's
+    # `(rows ?? []).map(...)` code paths don't blow up.
+    if "/rest/v1/" in url or "/rpc/" in url:
+        await route.fulfill(status=200, content_type="application/json", body="[]")
+        return
     await route.fulfill(status=200, content_type="application/json", body="{}")
+
 
 
 # ---------------------------------------------------------------------------
