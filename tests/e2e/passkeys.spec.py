@@ -421,18 +421,22 @@ async def test_full_passkey_journey(context) -> None:
     await page.screenshot(path=str(SCREENSHOTS / "1_registered.png"))
 
     # -------------------- Phase 2: sign out + passkey login --------------------
-    # Wipe the Supabase session so /login is reachable and the user is
-    # forced through the passkey flow.
+    # Sign the user out via supabase-js so onAuthStateChange fires and the
+    # auth context flips to unauthenticated. Wiping localStorage alone leaves
+    # the in-memory session in place, so the /login useEffect still bounces
+    # us back to "/" before the passkey click can fire.
     await page.evaluate(
-        """() => {
-            for (const k of Object.keys(window.localStorage)) {
-                if (k.startsWith('sb-')) window.localStorage.removeItem(k);
-            }
+        """async () => {
+            const mod = await import('/src/integrations/supabase/client.ts');
+            await mod.supabase.auth.signOut();
         }"""
     )
 
     await page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded")
-    await page.get_by_label("Email").fill(FAKE_EMAIL)
+    email_input = page.get_by_label("Email")
+    await email_input.fill(FAKE_EMAIL)
+    # Blur to make sure React state has caught up before we click.
+    await email_input.press("Tab")
     await page.get_by_role("button", name="Sign in with passkey").click()
 
     try:
@@ -442,7 +446,14 @@ async def test_full_passkey_journey(context) -> None:
         )
     except Exception:
         await page.screenshot(path=str(SCREENSHOTS / "FAIL_login.png"))
+        print("HITS:", router.hits)
+        toast = await page.evaluate(
+            "() => Array.from(document.querySelectorAll('[data-sonner-toast]')).map(t => t.textContent).join(' | ')"
+        )
+        print("TOAST:", toast)
         print("url:", page.url)
+        raise
+
         print("body:", (await page.locator("body").inner_text())[:500])
         raise
 
