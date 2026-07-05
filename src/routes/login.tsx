@@ -297,6 +297,8 @@ function LoginPage() {
               Request access
             </Link>
           </p>
+          </>
+          )}
         </CardContent>
       </Card>
     </div>
