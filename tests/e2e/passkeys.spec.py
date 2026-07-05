@@ -267,76 +267,36 @@ async def install_virtual_authenticator(context, page) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_login_with_passkey(context) -> None:
-    """/login → 'Sign in with passkey' completes the WebAuthn ceremony and
-    hands the mint token to supabase.auth.verifyOtp so the app navigates
-    home."""
-    router = PasskeyRpcRouter()
-    # Pretend an existing credential is on file so hasPasskeys is true.
-    router.devices.append({
-        "id": "11111111-1111-1111-1111-000000000001",
-        "device_name": "Existing device",
-        "created_at": "2026-07-01T00:00:00Z",
-        "last_used_at": None,
-    })
+async def test_full_passkey_journey(context) -> None:
+    """One connected journey exercising registration → login → removal.
 
-    page = await context.new_page()
-    await context.route(f"**/{SUPABASE_HOST.split('.')[0]}*/auth/v1/**", mock_supabase_auth)
-    await context.route(f"https://{SUPABASE_HOST}/**", mock_supabase_auth)
-    await context.route("**/_serverFn/**", router.handle)
-
-    await install_virtual_authenticator(context, page)
-
-    await page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded")
-    await page.get_by_label("Email").fill(FAKE_EMAIL)
-
-    passkey_btn = page.get_by_role("button", name="Sign in with passkey")
-    await passkey_btn.wait_for(state="visible", timeout=10_000)
-    await passkey_btn.click()
-
-    # Success = we leave /login. Any of these outcomes counts:
-    #   - navigation to "/"
-    #   - the login card is no longer rendered
-    try:
-        await page.wait_for_url(lambda url: not url.rstrip("/").endswith("/login"), timeout=15_000)
-    except Exception:
-        await page.screenshot(path=str(SCREENSHOTS / "FAIL_login.png"))
-        print("current url:", page.url)
-        print("body:", (await page.locator("body").inner_text())[:500])
-        raise
-
-    assert router.hits["startAuthentication"] >= 1, "startPasskeyAuthentication was never called"
-    assert router.hits["verifyAuthentication"] >= 1, "verifyPasskeyAuthentication was never called"
-
-    await page.screenshot(path=str(SCREENSHOTS / "1_login_success.png"))
-    print("OK — login with passkey wired end to end")
-    await page.close()
-
-
-async def test_register_and_remove_passkey(context) -> None:
-    """/account → PasskeyManager renders, 'Register this device' enrols a
-    credential and the device shows up; the trash icon removes it."""
+    Doing this as a single flow keeps a single virtual authenticator (and
+    the resident credential it stores) across all three phases: after
+    /account registers a credential, the same authenticator can satisfy the
+    /login WebAuthn assertion, and afterwards we return to /account to
+    remove it. Splitting the phases into separate contexts would need a
+    pre-seeded credential, which the CDP virtual authenticator does not
+    accept in a portable way across Chromium versions.
+    """
     router = PasskeyRpcRouter()
 
     page = await context.new_page()
     await context.route(f"https://{SUPABASE_HOST}/**", mock_supabase_auth)
     await context.route("**/_serverFn/**", router.handle)
+
+    # Auto-accept the `confirm()` in the remove flow.
+    page.on("dialog", lambda d: asyncio.create_task(d.accept()))
 
     await install_virtual_authenticator(context, page)
     await prime_supabase_session(page)
 
+    # -------------------- Phase 1: registration --------------------
     await page.goto(f"{BASE_URL}/account", wait_until="domcontentloaded")
-
-    # The passkey card must render for signed-in users.
     await page.get_by_text("Biometric sign-in (passkeys)").wait_for(state="visible", timeout=15_000)
-
-    # Empty state.
     await page.get_by_text("No passkeys registered yet.").wait_for(state="visible", timeout=5_000)
 
-    # Enroll.
     await page.get_by_role("button", name="Register this device").click()
 
-    # After enrolment the list refreshes and one row appears.
     try:
         await page.wait_for_function(
             "() => Array.from(document.querySelectorAll('li')).some(li => /device/i.test(li.textContent || ''))",
@@ -348,13 +308,45 @@ async def test_register_and_remove_passkey(context) -> None:
 
     assert router.hits["startRegistration"] >= 1, "startPasskeyRegistration was never called"
     assert router.hits["verifyRegistration"] >= 1, "verifyPasskeyRegistration was never called"
-    assert len(router.devices) == 1, f"expected 1 device after enrol, got {len(router.devices)}"
+    assert len(router.devices) == 1
+    await page.screenshot(path=str(SCREENSHOTS / "1_registered.png"))
 
-    await page.screenshot(path=str(SCREENSHOTS / "2_registered.png"))
+    # -------------------- Phase 2: sign out + passkey login --------------------
+    # Wipe the Supabase session so /login is reachable and the user is
+    # forced through the passkey flow.
+    await page.evaluate(
+        """() => {
+            for (const k of Object.keys(window.localStorage)) {
+                if (k.startsWith('sb-')) window.localStorage.removeItem(k);
+            }
+        }"""
+    )
 
-    # Remove.
-    page.on("dialog", lambda d: asyncio.create_task(d.accept()))
+    await page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded")
+    await page.get_by_label("Email").fill(FAKE_EMAIL)
+    await page.get_by_role("button", name="Sign in with passkey").click()
+
+    try:
+        await page.wait_for_url(
+            lambda url: not url.rstrip("/").endswith("/login"),
+            timeout=15_000,
+        )
+    except Exception:
+        await page.screenshot(path=str(SCREENSHOTS / "FAIL_login.png"))
+        print("url:", page.url)
+        print("body:", (await page.locator("body").inner_text())[:500])
+        raise
+
+    assert router.hits["startAuthentication"] >= 1, "startPasskeyAuthentication was never called"
+    assert router.hits["verifyAuthentication"] >= 1, "verifyPasskeyAuthentication was never called"
+    await page.screenshot(path=str(SCREENSHOTS / "2_signed_in.png"))
+
+    # -------------------- Phase 3: removal --------------------
+    await page.goto(f"{BASE_URL}/account", wait_until="domcontentloaded")
+    await page.get_by_text("Biometric sign-in (passkeys)").wait_for(state="visible", timeout=15_000)
+
     trash = page.locator("li button").filter(has=page.locator("svg")).first
+    await trash.wait_for(state="visible", timeout=10_000)
     await trash.click()
 
     try:
@@ -364,10 +356,10 @@ async def test_register_and_remove_passkey(context) -> None:
         raise
 
     assert router.hits["deletePasskey"] >= 1, "deleteMyPasskey was never called"
-    assert len(router.devices) == 0, f"expected 0 devices after remove, got {len(router.devices)}"
-
+    assert len(router.devices) == 0
     await page.screenshot(path=str(SCREENSHOTS / "3_removed.png"))
-    print("OK — passkey enrol + remove wired end to end")
+
+    print("OK — full passkey journey (register → login → remove)")
     await page.close()
 
 
@@ -380,16 +372,12 @@ async def run() -> int:
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)
         try:
-            for name, test in (
-                ("login-with-passkey", test_login_with_passkey),
-                ("register-and-remove-passkey", test_register_and_remove_passkey),
-            ):
-                context = await browser.new_context(viewport={"width": 1280, "height": 1800})
-                try:
-                    print(f"\n--- {name} ---")
-                    await test(context)
-                finally:
-                    await context.close()
+            context = await browser.new_context(viewport={"width": 1280, "height": 1800})
+            try:
+                print("\n--- full passkey journey ---")
+                await test_full_passkey_journey(context)
+            finally:
+                await context.close()
         finally:
             await browser.close()
     print("\nAll passkey e2e tests passed.")
@@ -398,3 +386,4 @@ async def run() -> int:
 
 if __name__ == "__main__":
     sys.exit(asyncio.run(run()))
+
