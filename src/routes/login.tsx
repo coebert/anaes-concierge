@@ -191,6 +191,29 @@ function LoginPage() {
           <CardDescription>Sign in to manage and view the department rota.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {offerPasskey ? (
+            <div className="space-y-4 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Fingerprint className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">Set up a passkey for faster sign-in?</p>
+                <p className="text-sm text-muted-foreground">
+                  Use Face ID, Touch ID, or Windows Hello to sign in without a password next time on this device.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button onClick={enrollPasskeyNow} disabled={enrolling}>
+                  {enrolling ? "Registering…" : "Register a passkey"}
+                </Button>
+                <Button variant="ghost" onClick={skipPasskey} disabled={enrolling}>
+                  Not now
+                </Button>
+              </div>
+            </div>
+          ) : (
+          <>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
