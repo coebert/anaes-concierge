@@ -147,7 +147,7 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
     const userId = (idRow as unknown as string) ?? null;
 
     // Always issue options (even for unknown user) to avoid email enumeration.
-    let allow: { id: string; transports?: string[] }[] = [];
+    let allow: { id: string; transports?: any }[] = [];
     if (userId) {
       const { data: creds } = await supabaseAdmin
         .from("passkey_credentials")
