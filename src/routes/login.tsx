@@ -43,10 +43,31 @@ function LoginPage() {
   const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && isAuthenticated && !offerPasskey) {
       void navigate({ to: "/" });
     }
-  }, [loading, isAuthenticated, navigate]);
+  }, [loading, isAuthenticated, navigate, offerPasskey]);
+
+  const listPk = useServerFn(listMyPasskeys);
+  const startReg = useServerFn(startPasskeyRegistration);
+  const verifyReg = useServerFn(verifyPasskeyRegistration);
+
+  const maybeOfferPasskey = async (): Promise<boolean> => {
+    if (typeof window === "undefined" || !window.PublicKeyCredential) return false;
+    try {
+      const available =
+        await (window.PublicKeyCredential as any).isUserVerifyingPlatformAuthenticatorAvailable?.();
+      if (!available) return false;
+      const existing = await listPk();
+      if (Array.isArray(existing) && existing.length === 0) {
+        setOfferPasskey(true);
+        return true;
+      }
+    } catch {
+      // ignore — fall through to normal navigation
+    }
+    return false;
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,6 +84,42 @@ function LoginPage() {
       toast.error(error.message);
       return;
     }
+    const offered = await maybeOfferPasskey();
+    if (!offered) void navigate({ to: "/" });
+  };
+
+  const enrollPasskeyNow = async () => {
+    setEnrolling(true);
+    try {
+      const options = await startReg();
+      const attResp = await startRegistration({ optionsJSON: options as any });
+      const ua = navigator.userAgent;
+      const deviceName = /iPhone|iPad|iPod/i.test(ua)
+        ? "iOS device"
+        : /Android/i.test(ua)
+          ? "Android device"
+          : /Mac/i.test(ua)
+            ? "Mac"
+            : /Windows/i.test(ua)
+              ? "Windows device"
+              : "This device";
+      await verifyReg({ data: { response: attResp, deviceName } });
+      toast.success("Passkey registered — you can use it next time");
+      setOfferPasskey(false);
+      void navigate({ to: "/" });
+    } catch (e: any) {
+      if (e?.name === "NotAllowedError") {
+        toast.error("Cancelled");
+      } else {
+        toast.error(e?.message ?? "Failed to register passkey");
+      }
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const skipPasskey = () => {
+    setOfferPasskey(false);
     void navigate({ to: "/" });
   };
 
