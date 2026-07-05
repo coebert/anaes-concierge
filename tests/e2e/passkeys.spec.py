@@ -373,18 +373,18 @@ async def test_full_passkey_journey(context) -> None:
     """
     router = PasskeyRpcRouter()
 
-    page = await context.new_page()
-    page.on("console", lambda m: print(f"[console.{m.type}]", m.text[:250]))
-    page.on("pageerror", lambda e: print("[pageerror]", str(e)[:300]))
+    await install_fake_webauthn(context)
     await context.route(f"https://{SUPABASE_HOST}/**", mock_supabase_auth)
     await context.route("**/_serverFn/**", router.handle)
 
-
+    page = await context.new_page()
+    page.on("console", lambda m: print(f"[console.{m.type}]", m.text[:250]))
+    page.on("pageerror", lambda e: print("[pageerror]", str(e)[:300]))
     # Auto-accept the `confirm()` in the remove flow.
     page.on("dialog", lambda d: asyncio.create_task(d.accept()))
 
-    await install_virtual_authenticator(context, page)
     await prime_supabase_session(page)
+
 
     # -------------------- Phase 1: registration --------------------
     await page.goto(f"{BASE_URL}/account", wait_until="domcontentloaded")
