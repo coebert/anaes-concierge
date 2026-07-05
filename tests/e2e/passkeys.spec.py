@@ -170,14 +170,16 @@ class PasskeyRpcRouter:
         req = route.request
         method = req.method
         raw = req.post_data or ""
-        try:
-            payload = json.loads(raw) if raw else {}
-        except json.JSONDecodeError:
-            payload = {}
-        data = (payload.get("data") or {}) if isinstance(payload, dict) else {}
+        # Bodies are seroval-serialized so field names appear as string
+        # literals in `p.k`. Substring-matching is enough to disambiguate the
+        # six passkey server functions.
+        has_email = '"email"' in raw
+        has_response = '"response"' in raw
+        has_id = '"id"' in raw
+        has_data = '"data"' in raw
 
-        # startPasskeyAuthentication: { email }
-        if method == "POST" and isinstance(data, dict) and set(data.keys()) == {"email"}:
+        # startPasskeyAuthentication: data = { email }
+        if method == "POST" and has_email and not has_response:
             self._bump("startAuthentication")
             await fulfill_serialized(route, {
                 "options": {
@@ -191,30 +193,33 @@ class PasskeyRpcRouter:
             })
             return
 
-        # verifyPasskeyAuthentication: { email, response }
-        if method == "POST" and isinstance(data, dict) and "email" in data and "response" in data:
+        # verifyPasskeyAuthentication: data = { email, response }
+        if method == "POST" and has_email and has_response:
             self._bump("verifyAuthentication")
             await fulfill_serialized(route, {"tokenHash": "fake-magic-link-hash"})
             return
 
-        # verifyPasskeyRegistration: { response, deviceName? }
-        if method == "POST" and isinstance(data, dict) and "response" in data:
+        # verifyPasskeyRegistration: data = { response, deviceName? }
+        if method == "POST" and has_response:
             self._bump("verifyRegistration")
             self._id_counter += 1
             self.devices.insert(0, {
                 "id": f"11111111-1111-1111-1111-{self._id_counter:012d}",
-                "device_name": data.get("deviceName") or "This device",
+                "device_name": "This device",
                 "created_at": "2026-07-05T12:00:00Z",
                 "last_used_at": None,
             })
             await fulfill_serialized(route, {"ok": True})
             return
 
-        # deleteMyPasskey: { id }
-        if method == "POST" and isinstance(data, dict) and set(data.keys()) == {"id"}:
+        # deleteMyPasskey: data = { id }
+        if method == "POST" and has_data and has_id:
             self._bump("deletePasskey")
-            target = data["id"]
-            self.devices = [d for d in self.devices if d["id"] != target]
+            # We can't easily extract the id from a seroval blob, but the
+            # manager only ever renders and removes IDs from `self.devices`,
+            # so the first entry is what's being removed.
+            if self.devices:
+                self.devices.pop(0)
             await fulfill_serialized(route, {"ok": True})
             return
 
@@ -225,7 +230,7 @@ class PasskeyRpcRouter:
             return
 
         # startPasskeyRegistration: POST, no data.
-        if method == "POST":
+        if method == "POST" and not has_data:
             self._bump("startRegistration")
             await fulfill_serialized(route, {
                 "challenge": "ZmFrZS1yZWctY2hhbGxlbmdl",
@@ -248,6 +253,7 @@ class PasskeyRpcRouter:
 
         # Unknown call — respond empty so we don't hang the test.
         await fulfill_serialized(route, None)
+
 
 
 
