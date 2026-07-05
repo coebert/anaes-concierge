@@ -333,7 +333,10 @@ async def test_full_passkey_journey(context) -> None:
         )
     except Exception:
         await page.screenshot(path=str(SCREENSHOTS / "FAIL_register.png"))
+        print("HITS:", router.hits)
+        print("BODY:", (await page.locator("body").inner_text())[:800])
         raise
+
 
     assert router.hits["startRegistration"] >= 1, "startPasskeyRegistration was never called"
     assert router.hits["verifyRegistration"] >= 1, "verifyPasskeyRegistration was never called"
