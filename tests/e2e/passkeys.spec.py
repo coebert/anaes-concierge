@@ -267,25 +267,92 @@ async def prime_supabase_session(page) -> None:
     )
 
 
-async def install_virtual_authenticator(context, page) -> None:
-    """Enable a CTAP2 virtual platform authenticator via CDP.
+async def install_fake_webauthn(context) -> None:
+    """Bypass real WebAuthn ceremonies entirely.
 
-    Without this, `navigator.credentials.create/get` throw and the flow
-    aborts before we can observe the wiring. With it, the browser accepts
-    the fake challenges we hand back from the mocked server functions.
+    A virtual authenticator would let us exercise the real navigator.credentials
+    APIs, but pairing that with our server-fn mocks is brittle (the server
+    verifies the assertion cryptographically). For UI-wiring regressions it's
+    enough to stub navigator.credentials so create/get resolve immediately
+    with a plausible PublicKeyCredential-shaped object. The mocked server
+    functions accept anything.
     """
-    cdp = await context.new_cdp_session(page)
-    await cdp.send("WebAuthn.enable", {"enableUI": False})
-    await cdp.send("WebAuthn.addVirtualAuthenticator", {
-        "options": {
-            "protocol": "ctap2",
-            "transport": "internal",
-            "hasResidentKey": True,
-            "hasUserVerification": True,
-            "isUserVerified": True,
-            "automaticPresenceSimulation": True,
-        },
-    })
+    await context.add_init_script(
+        """
+        (() => {
+          if (!('credentials' in navigator)) return;
+          const b64u = (s) => btoa(s).replace(/=+$/,'').replace(/\\+/g,'-').replace(/\\//g,'_');
+          const rawId = new Uint8Array([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]).buffer;
+          const idB64 = b64u('cred-id-fixed');
+          const fakeAttestationResponse = () => ({
+            id: idB64,
+            rawId,
+            type: 'public-key',
+            authenticatorAttachment: 'platform',
+            response: {
+              clientDataJSON: new Uint8Array([1,2,3]).buffer,
+              attestationObject: new Uint8Array([1,2,3]).buffer,
+              getTransports: () => ['internal'],
+              getAuthenticatorData: () => new Uint8Array([1,2,3]).buffer,
+              getPublicKey: () => new Uint8Array([1,2,3]).buffer,
+              getPublicKeyAlgorithm: () => -7,
+            },
+            getClientExtensionResults: () => ({}),
+            toJSON: () => ({
+              id: idB64,
+              rawId: idB64,
+              type: 'public-key',
+              authenticatorAttachment: 'platform',
+              response: {
+                clientDataJSON: 'AQID',
+                attestationObject: 'AQID',
+                transports: ['internal'],
+                authenticatorData: 'AQID',
+                publicKey: 'AQID',
+                publicKeyAlgorithm: -7,
+              },
+              clientExtensionResults: {},
+            }),
+          });
+          const fakeAssertionResponse = () => ({
+            id: idB64,
+            rawId,
+            type: 'public-key',
+            authenticatorAttachment: 'platform',
+            response: {
+              clientDataJSON: new Uint8Array([1,2,3]).buffer,
+              authenticatorData: new Uint8Array([1,2,3]).buffer,
+              signature: new Uint8Array([1,2,3]).buffer,
+              userHandle: new Uint8Array([1,2,3]).buffer,
+            },
+            getClientExtensionResults: () => ({}),
+            toJSON: () => ({
+              id: idB64,
+              rawId: idB64,
+              type: 'public-key',
+              authenticatorAttachment: 'platform',
+              response: {
+                clientDataJSON: 'AQID',
+                authenticatorData: 'AQID',
+                signature: 'AQID',
+                userHandle: 'AQID',
+              },
+              clientExtensionResults: {},
+            }),
+          });
+          navigator.credentials.create = async () => fakeAttestationResponse();
+          navigator.credentials.get = async () => fakeAssertionResponse();
+          if (window.PublicKeyCredential) {
+            window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = async () => true;
+            window.PublicKeyCredential.isConditionalMediationAvailable = async () => false;
+          } else {
+            window.PublicKeyCredential = function(){};
+            window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = async () => true;
+          }
+        })();
+        """
+    )
+
 
 
 # ---------------------------------------------------------------------------
