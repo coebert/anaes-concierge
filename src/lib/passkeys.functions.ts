@@ -154,9 +154,10 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
         .eq("user_id", userId);
       allow = (creds ?? []).map((c: any) => ({
         id: c.credential_id,
-        transports: c.transports ?? undefined,
+        transports: (c.transports ?? undefined) as any,
       }));
     }
+
 
     const options = await srv.generateAuthenticationOptions({
       rpID,
@@ -223,10 +224,11 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
         id: cred.credential_id,
         publicKey: new Uint8Array(Buffer.from(cred.public_key, "base64")),
         counter: Number(cred.counter),
-        transports: cred.transports ?? undefined,
+        transports: (cred.transports ?? undefined) as any,
       },
       requireUserVerification: false,
     });
+
 
     if (!verification.verified) throw new Error("Passkey verification failed.");
 
