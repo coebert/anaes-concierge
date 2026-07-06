@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StaffWeekView } from "@/components/rota-views";
+import { CurrentPatternCard } from "@/components/current-pattern-card";
 
 export const Route = createFileRoute("/_authenticated/calendar/staff/$staffId")({
   head: () => ({ meta: [{ title: "Staff calendar — Salisbury Anaesthetics Rota" }] }),
@@ -18,6 +19,7 @@ function StaffCalendarPage() {
           Back to global calendar
         </Link>
       </Button>
+      <CurrentPatternCard staffId={staffId} />
       <StaffWeekView staffId={staffId} />
     </div>
   );
