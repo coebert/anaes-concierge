@@ -109,8 +109,8 @@ import {
   classifyDutyType,
   type DutyTypeMappingRow,
   type ResolvedDutyType,
-} from "../../features/clwrota/clwrota.functions";
-import { isNonWorkingRotaLabel } from "../clwrota-labels";
+} from "@/features/clwrota/clwrota.functions";
+import { isNonWorkingRotaLabel } from "@/lib/clwrota-labels";
 import { computeRobustness } from "./robustness";
 
 /* --------------------------- CLWRota payload shape ------------------------ */
