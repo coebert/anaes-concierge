@@ -304,3 +304,82 @@ function addDaysIso(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Expand approved leave requests into synthetic `AssignmentLite` rows
+ * (duty_type = "leave") for every AM/PM half-session covered by the leave,
+ * clipped to the [from, to] window and respecting the request's
+ * `half_day_start` / `half_day_end` markers:
+ *
+ *   - `half_day_start = "pm"` on the first day → PM only on that day.
+ *   - `half_day_end = "am"` on the last day → AM only on that day.
+ *   - Any other combination (or `null`) is treated as a full day.
+ *   - Single-day requests honour both markers simultaneously.
+ *
+ * Only `status === "approved"` requests block the pattern grid; pending/
+ * rejected/cancelled are ignored here (they still surface via
+ * `mergeLeaveAvailability`).
+ *
+ * `eve` / `night` halves are not part of the AM/PM grid and are ignored.
+ */
+export function expandApprovedLeaveToAssignments(
+  staffId: string,
+  leaveRows: LeaveRowLite[],
+  windowFrom: string,
+  windowTo: string,
+): AssignmentLite[] {
+  const out: AssignmentLite[] = [];
+  for (const row of leaveRows) {
+    if (row.status !== "approved") continue;
+    const startClipped = row.start_date < windowFrom ? windowFrom : row.start_date;
+    const endClipped = row.end_date > windowTo ? windowTo : row.end_date;
+    if (startClipped > endClipped) continue;
+
+    for (
+      let iso = startClipped;
+      iso <= endClipped;
+      iso = addDaysIso(iso, 1)
+    ) {
+      const halves: Array<"am" | "pm"> = ["am", "pm"];
+      for (const half of halves) {
+        // Honour half-day markers on the first and last day of the request.
+        if (iso === row.start_date && row.half_day_start === "pm" && half === "am") continue;
+        if (iso === row.end_date && row.half_day_end === "am" && half === "pm") continue;
+        out.push({
+          staff_id: staffId,
+          duty_type: "leave",
+          session_date: iso,
+          session: half,
+          theatre_session_id: null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Overlay approved leave on top of rota assignments. Any assignment on a
+ * half-session covered by approved leave is removed (the staff member is
+ * not actually doing that duty), then the synthetic leave assignments are
+ * appended so the dominant-per-half-session computation can promote a
+ * "Leave" bucket on regularly-blocked cells.
+ */
+export function applyLeaveOverlay(
+  assignments: AssignmentLite[],
+  leaveAssignments: AssignmentLite[],
+): AssignmentLite[] {
+  if (leaveAssignments.length === 0) return assignments;
+  const blocked = new Set<string>();
+  for (const a of leaveAssignments) {
+    const half = (a.session ?? "").toLowerCase();
+    if (half !== "am" && half !== "pm") continue;
+    blocked.add(`${a.session_date}|${half}`);
+  }
+  const kept = assignments.filter((a) => {
+    const half = (a.session ?? "").toLowerCase();
+    if (half !== "am" && half !== "pm") return true;
+    return !blocked.has(`${a.session_date}|${half}`);
+  });
+  return [...kept, ...leaveAssignments];
+}
+
