@@ -32,6 +32,7 @@ Run with:
 from __future__ import annotations
 
 import asyncio
+import re
 import json
 import subprocess
 import sys
@@ -172,35 +173,28 @@ class PasskeyRpcRouter:
         raw = req.post_data or ""
         # Bodies are seroval-serialized so field names appear as string
         # literals in `p.k`. Substring-matching is enough to disambiguate the
-        # six passkey server functions.
+        # passkey server functions.
         has_email = '"email"' in raw
         has_response = '"response"' in raw
         has_id = '"id"' in raw
-        has_data = '"data"' in raw
+        # `deviceName` is unique to verifyPasskeyRegistration payloads.
+        has_device_name = '"deviceName"' in raw
+        # Referer tells us which page issued the call, which reliably
+        # disambiguates start-registration (from /account) from
+        # start-authentication (from /login).
+        referer = req.headers.get("referer", "")
+        from_login = "/login" in referer
 
-        # startPasskeyAuthentication: data = { email }
-        if method == "POST" and has_email and not has_response:
-            self._bump("startAuthentication")
-            await fulfill_serialized(route, {
-                "options": {
-                    "challenge": "ZmFrZS1jaGFsbGVuZ2U",
-                    "rpId": "localhost",
-                    "timeout": 60000,
-                    "userVerification": "preferred",
-                    "allowCredentials": [],
-                },
-                "hasPasskeys": len(self.devices) > 0,
-            })
-            return
-
-        # verifyPasskeyAuthentication: data = { email, response }
-        if method == "POST" and has_email and has_response:
+        # verifyPasskeyAuthentication: data = { email?, response }.
+        # Matched before verifyRegistration because the discoverable flow
+        # may omit email; deviceName is the reliable distinguisher.
+        if method == "POST" and has_response and not has_device_name:
             self._bump("verifyAuthentication")
             await fulfill_serialized(route, {"tokenHash": "fake-magic-link-hash"})
             return
 
-        # verifyPasskeyRegistration: data = { response, deviceName? }
-        if method == "POST" and has_response:
+        # verifyPasskeyRegistration: data = { response, deviceName }
+        if method == "POST" and has_response and has_device_name:
             self._bump("verifyRegistration")
             self._id_counter += 1
             self.devices.insert(0, {
@@ -213,7 +207,7 @@ class PasskeyRpcRouter:
             return
 
         # deleteMyPasskey: data = { id }
-        if method == "POST" and has_data and has_id:
+        if method == "POST" and has_id and not has_response:
             self._bump("deletePasskey")
             # We can't easily extract the id from a seroval blob, but the
             # manager only ever renders and removes IDs from `self.devices`,
@@ -229,8 +223,26 @@ class PasskeyRpcRouter:
             await fulfill_serialized(route, self.devices)
             return
 
-        # startPasskeyRegistration: POST, no data.
-        if method == "POST" and not has_data:
+        # startPasskeyAuthentication vs startPasskeyRegistration —
+        # neither has `response`. Disambiguate by:
+        #   * explicit email in body -> authentication
+        #   * referer contains /login -> authentication (conditional-UI or
+        #     click without email)
+        #   * otherwise -> registration
+        if method == "POST" and (has_email or from_login):
+            self._bump("startAuthentication")
+            await fulfill_serialized(route, {
+                "options": {
+                    "challenge": "ZmFrZS1jaGFsbGVuZ2U",
+                    "rpId": "localhost",
+                    "timeout": 60000,
+                    "userVerification": "required",
+                    "allowCredentials": [],
+                },
+            })
+            return
+
+        if method == "POST":
             self._bump("startRegistration")
             await fulfill_serialized(route, {
                 "challenge": "ZmFrZS1yZWctY2hhbGxlbmdl",
@@ -386,7 +398,9 @@ async def test_full_passkey_journey(context) -> None:
     page = await context.new_page()
     page.on("console", lambda m: print(f"[console.{m.type}]", m.text[:250]))
     page.on("pageerror", lambda e: print("[pageerror]", str(e)[:300]))
-    # Auto-accept the `confirm()` in the remove flow.
+    # Any leftover browser-native confirm() prompts (there shouldn't be any
+    # after the AlertDialog migration) auto-accept so a regression here is
+    # visible via missing router hits, not a hung test.
     page.on("dialog", lambda d: asyncio.create_task(d.accept()))
 
     await prime_supabase_session(page)
@@ -421,14 +435,24 @@ async def test_full_passkey_journey(context) -> None:
     await page.screenshot(path=str(SCREENSHOTS / "1_registered.png"))
 
     # -------------------- Phase 2: removal --------------------
-    trash = page.locator("li button").filter(has=page.locator("svg")).first
+    # Click the trash icon on the passkey row (identified by its aria-label,
+    # so we don't accidentally match a nav-level icon button) to open the
+    # confirmation AlertDialog, then confirm.
+    trash = page.get_by_role("button", name=re.compile(r"^Remove ")).first
     await trash.wait_for(state="visible", timeout=10_000)
     await trash.click()
+
+    # AlertDialog uses role="alertdialog" and the confirm action is a button
+    # named "Remove". Wait for the dialog to appear then click it.
+    dialog = page.get_by_role("alertdialog")
+    await dialog.wait_for(state="visible", timeout=5_000)
+    await dialog.get_by_role("button", name="Remove").click()
 
     try:
         await page.get_by_text("No passkeys registered yet.").wait_for(state="visible", timeout=10_000)
     except Exception:
         await page.screenshot(path=str(SCREENSHOTS / "FAIL_remove.png"))
+        print("HITS:", router.hits)
         raise
 
     assert router.hits["deletePasskey"] >= 1, "deleteMyPasskey was never called"
@@ -467,8 +491,22 @@ async def test_login_passkey_wiring(context) -> None:
     await page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded")
     email_input = page.get_by_label("Email")
     await email_input.wait_for(state="visible", timeout=10_000)
+    # /login is a public SSR route: the input and button exist in the
+    # server-rendered HTML *before* React attaches handlers. A DOM-level
+    # fill() will report the correct value even without hydration, so
+    # polling the input value is a false positive. Instead, wait until a
+    # React fiber is attached to the passkey button — that guarantees the
+    # onClick handler is live.
+    await page.wait_for_function(
+        """() => {
+          const btn = Array.from(document.querySelectorAll('button'))
+            .find(b => /Sign in with passkey/.test(b.textContent || ''));
+          if (!btn) return false;
+          return Object.keys(btn).some(k => k.startsWith('__reactProps') || k.startsWith('__reactFiber'));
+        }""",
+        timeout=15_000,
+    )
     await email_input.fill(FAKE_EMAIL)
-    await email_input.press("Tab")
     await page.get_by_role("button", name="Sign in with passkey").click()
 
     try:
