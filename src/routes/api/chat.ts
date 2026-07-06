@@ -389,8 +389,184 @@ async function buildAdminCustomRulesPreamble(): Promise<string> {
   return `\n\nCURRENT CUSTOM RULES (factor these into any rota suggestions or edits):\n${lines.join("\n")}`;
 }
 
+/**
+ * Fetch and compute the same "current pattern" summary shown in
+ * <CurrentPatternCard /> for a given staff member, using the admin
+ * Supabase client. Returns a compact, model-friendly object.
+ */
+async function computeCurrentPatternForStaff(
+  admin: ReturnType<typeof getAdminClient>,
+  staffId: string,
+  windowDays: number,
+) {
+  const to = todayISO();
+  const from = addDays(to, -windowDays);
 
-function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
+  const [profileRes, theatresRes, specialtiesRes] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, full_name, grade")
+      .eq("id", staffId)
+      .maybeSingle(),
+    admin.from("theatres").select("id, name, kind"),
+    admin.from("specialties").select("id, name"),
+  ]);
+  if (profileRes.error) throw new Error(profileRes.error.message);
+  if (!profileRes.data) return null;
+
+  const theatresById = new Map<string, TheatreLite>();
+  for (const t of theatresRes.data ?? []) {
+    theatresById.set(t.id, {
+      id: t.id,
+      name: t.name,
+      kind: (t.kind ?? null) as TheatreKind | null,
+    });
+  }
+  const specialtiesById = new Map<string, SpecialtyLite>();
+  for (const s of specialtiesRes.data ?? []) {
+    specialtiesById.set(s.id, { id: s.id, name: s.name });
+  }
+
+  const assignments: AssignmentLite[] = [];
+  const sessionIds = new Set<string>();
+  {
+    const PAGE = 1000;
+    let offset = 0;
+    while (true) {
+      const { data: page, error: err } = await admin
+        .from("rota_assignments")
+        .select("staff_id, duty_type, theatre_session_id, session_date, session")
+        .eq("staff_id", staffId)
+        .gte("session_date", from)
+        .lte("session_date", to)
+        .range(offset, offset + PAGE - 1);
+      if (err) throw new Error(err.message);
+      const rows = page ?? [];
+      for (const r of rows) {
+        assignments.push({
+          staff_id: r.staff_id,
+          duty_type: r.duty_type ?? null,
+          session_date: r.session_date,
+          session: r.session ?? null,
+          theatre_session_id: r.theatre_session_id ?? null,
+        });
+        if (r.theatre_session_id) sessionIds.add(r.theatre_session_id);
+      }
+      if (rows.length < PAGE) break;
+      offset += PAGE;
+    }
+  }
+
+  const sessionsById = new Map<string, SessionLite>();
+  if (sessionIds.size > 0) {
+    const ids = Array.from(sessionIds);
+    const CHUNK = 200;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { data: rows, error: err } = await admin
+        .from("theatre_sessions")
+        .select("id, theatre_id, specialty_id, is_non_sag")
+        .in("id", slice);
+      if (err) throw new Error(err.message);
+      for (const r of rows ?? []) {
+        sessionsById.set(r.id, {
+          id: r.id,
+          theatre_id: r.theatre_id ?? null,
+          specialty_id: r.specialty_id ?? null,
+          is_non_sag: r.is_non_sag ?? false,
+        });
+      }
+    }
+  }
+
+  const grade = (profileRes.data.grade ?? null) as StaffGrade | null;
+  const threshold = suggestedRegularityThreshold(windowDays);
+  const [summary] = summariseStaff(
+    [
+      {
+        id: profileRes.data.id,
+        full_name: profileRes.data.full_name ?? "",
+        grade,
+      },
+    ],
+    assignments,
+    sessionsById,
+    theatresById,
+    specialtiesById,
+    { regularityThreshold: threshold },
+  );
+
+  const consultantPattern =
+    grade === "consultant" || grade === "sas"
+      ? computeConsultantPattern(assignments, sessionsById, theatresById, {
+          regularityThreshold: threshold,
+        })
+      : null;
+
+  const dominant = dominantByHalfSession(
+    assignments,
+    sessionsById,
+    theatresById,
+    Math.max(2, Math.floor(threshold / 2) + 1),
+  );
+
+  // Flatten dominant grid into the shape the card renders (Mon–Fri).
+  const weeklyGrid = (["am", "pm"] as const).map((half) => ({
+    session: half,
+    days: [1, 2, 3, 4, 5].map((dow) => {
+      const cell = dominant[half][dow];
+      return {
+        weekday: WEEKDAY_LABELS[dow],
+        location: cell ? LOCATION_LABELS[cell.bucket] : null,
+        recurrence: cell ? `${cell.count}/${cell.total}` : null,
+      };
+    }),
+  }));
+
+  const locationBreakdown = (Object.entries(summary.byLocation) as [
+    LocationBucket,
+    number,
+  ][])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([bucket, count]) => ({
+      location: LOCATION_LABELS[bucket],
+      count,
+      percent:
+        summary.totalSessions > 0
+          ? Math.round((count / summary.totalSessions) * 100)
+          : 0,
+    }));
+
+  const toDays = (arr: number[]) => arr.map((d) => WEEKDAY_LABELS[d]);
+
+  return {
+    profile: {
+      id: profileRes.data.id,
+      full_name: profileRes.data.full_name ?? "",
+      grade,
+    },
+    windowDays,
+    range: { from, to },
+    totalSessions: summary.totalSessions,
+    totalOnCallSessions: consultantPattern?.totalOnCallSessions ?? 0,
+    weeklyGrid,
+    locationBreakdown,
+    topSpecialties: summary.bySpecialty.slice(0, 6),
+    consultantPattern: consultantPattern
+      ? {
+          onCallType: consultantPattern.onCallType,
+          onCallDays: toDays(consultantPattern.onCallWeekdays),
+          sagDays: toDays(consultantPattern.privateWeekdays),
+          spaAmDays: toDays(consultantPattern.spaAmWeekdays),
+          spaPmDays: toDays(consultantPattern.spaPmWeekdays),
+        }
+      : null,
+  };
+}
+
+
+
   const admin = getAdminClient();
   const baseTools = {
     get_my_upcoming_rota: tool({
