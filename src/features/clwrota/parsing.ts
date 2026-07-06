@@ -1,7 +1,9 @@
 // Auto-carved from clwrota.functions.ts (Phase 4a.ii split).
 // Pure helpers: URL/window rewriters, CLWRota payload fetch/parse, and
 // classifier/normaliser utilities. NO Supabase / secret dependencies.
-import { z } from "zod";
+import { RowsWrapperSchema } from "./schemas";
+export { RowsWrapperSchema, RotamapCentralApiSchema } from "./schemas";
+export type { ClwRotaGenericRow, ParsedRowsResult } from "./schemas";
 import { normaliseRotaLabelText } from "@/lib/clwrota-labels";
 
 export function withRollingFutureWindow(rawUrl: string, monthsAhead = 12): string {
