@@ -19,6 +19,7 @@ import {
 } from "./parsing";
 import { loadTheatreNameAliases } from "./parsing.server";
 import { getEnv } from "./settings.functions";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * List recent auto-reclassification sync runs (most recent first) with the
@@ -27,7 +28,6 @@ import { getEnv } from "./settings.functions";
 export const listReclassificationRuns = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("rota_reclassification_log")
       .select("sync_run_id, created_at, from_role, to_role")
@@ -69,7 +69,6 @@ export const undoReclassificationRun = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input) => z.object({ sync_run_id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: entries, error: loadErr } = await supabaseAdmin
       .from("rota_reclassification_log")
       .select("id, assignment_id, from_role, to_role")
@@ -135,7 +134,6 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { computeSoloCorrections } = await import("@/lib/solo-investigate");
 
     const today = new Date();
@@ -323,7 +321,6 @@ export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
     }).parse(input ?? {}),
   )
   .handler(async ({ context, data }): Promise<ListClwRotaSyncMetricsResponse> => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
     let q = supabaseAdmin
       .from("clwrota_sync_metrics")

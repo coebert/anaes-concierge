@@ -29,6 +29,7 @@ import {
   loadDutyTypeMappings,
 } from "./parsing.server";
 import { getEnv } from "./settings.functions";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
@@ -1655,7 +1656,6 @@ export async function performRotaSync(
 export async function performRotaSyncChunked(
   opts: { daysBack?: number; daysAhead?: number; sliceDays?: number } = {},
 ): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number }> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const sliceDays = Math.max(1, opts.sliceDays ?? 30);
 
   const { data: settings } = await supabaseAdmin

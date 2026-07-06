@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Coordinator/admin-elevated reads of the staff directory.
@@ -41,7 +42,6 @@ function toSafe(p: {
 export const listActiveStaffSafe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async (): Promise<SafeStaff[]> => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
     const rows = (data ?? [])
@@ -58,7 +58,6 @@ export const listStaffByIdsSafe = createServerFn({ method: "POST" })
     z.object({ ids: z.array(z.string().uuid()).max(500) }).parse(d),
   )
   .handler(async ({ data }): Promise<SafeStaff[]> => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (!data.ids.length) return [];
     const { data: rows, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
@@ -94,7 +93,6 @@ async function assertAdminOrTrainee(supabase: any, userId: string) {
 export const listTraineesForOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail = access.isAdmin || access.isCoordinator;
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
@@ -130,7 +128,6 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail =
       access.isAdmin || access.isCoordinator || context.userId === data.staffId;

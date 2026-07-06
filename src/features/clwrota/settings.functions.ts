@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /** Shared env accessor used by every CLWRota server function. */
 export function getEnv() {
@@ -56,7 +57,6 @@ export const testClwRotaConnection = createServerFn({ method: "POST" })
 export const getClwRotaSettings = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("clwrota_sync_state")
       .select("*")
@@ -88,7 +88,6 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input) => SettingsSchema.parse(input))
   .handler(async ({ context, data }) => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("clwrota_sync_state")
       .upsert({ id: 1, ...data });

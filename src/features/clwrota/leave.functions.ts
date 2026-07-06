@@ -14,6 +14,7 @@ import { getEnv } from "./settings.functions";
 // Pure classifiers are in their own module so they can be unit-tested and so
 // the professional-vs-study split survives every CLWRota upsert.
 import {
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
   classifyLeaveType,
   classifyLeaveStatus,
   type LeaveType,
