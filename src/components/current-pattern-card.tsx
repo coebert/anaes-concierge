@@ -129,6 +129,9 @@ function dominantByHalfSession(
         best.total = total;
         result[half][dow] = best;
       }
+    }
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,9 +187,6 @@ function writeCache(
   } catch {
     // Quota exceeded / disabled storage — non-fatal.
   }
-}
-  }
-  return result;
 }
 
 export interface CurrentPatternCardProps {
