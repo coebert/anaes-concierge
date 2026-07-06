@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { sendGmail } from "@/lib/gmail.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const inputSchema = z.object({
@@ -53,6 +52,7 @@ export const submitAccessRequest = createServerFn({ method: "POST" })
 
     // Notify admins (best-effort).
     try {
+      const { sendGmail } = await import("@/lib/gmail.server");
       const recipients = await adminEmails();
       if (recipients.length) {
         const subject = `Access request: ${data.full_name}`;
