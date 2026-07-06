@@ -18,7 +18,7 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
-import { buildCurrentPatternResponse } from "@/lib/staff-current-pattern";
+import { buildCurrentPatternResponse, mergeLeaveAvailability, type LeaveRowLite } from "@/lib/staff-current-pattern";
 
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
@@ -677,32 +677,20 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               .order("start_date"),
           ]);
 
-          // Strip free-text fields when the caller shouldn't see colleague PII.
-          const scrubbed = (leaveRows ?? []).map((r) => ({
-            type: r.type,
-            start_date: r.start_date,
-            end_date: r.end_date,
-            status: r.status,
-            half_day_start: r.half_day_start,
-            half_day_end: r.half_day_end,
-            reason: targetId === userId ? r.reason : null,
-            decision_notes: targetId === userId ? r.decision_notes : null,
-          }));
-
-          return {
-            ...pattern,
-            leave: {
-              lookahead: { from: today, to: until, days: lookahead },
-              allowance: allowance ?? null,
-              upcoming: scrubbed,
-              onLeaveToday: scrubbed.some(
-                (r) =>
-                  r.status === "approved" &&
-                  r.start_date <= today &&
-                  r.end_date >= today,
-              ),
+          // Strip free-text fields when the caller shouldn't see colleague PII,
+          // and surface every overlapping leave type (annual/study/compassionate/…)
+          // through the shared merger.
+          return mergeLeaveAvailability(
+            pattern,
+            allowance ?? null,
+            (leaveRows ?? []) as LeaveRowLite[],
+            {
+              today,
+              lookaheadDays: lookahead,
+              isSelf: targetId === userId,
             },
-          };
+          );
+
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to compute pattern.",
