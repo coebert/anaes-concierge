@@ -3,13 +3,13 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/require-admin";
-import { isNonSagRotaLabel, isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
-import { SUPABASE_IN_CHUNK } from "./supabase-chunked";
-import { evaluateHistoricalSafeguard } from "./clwrota-historical-safeguard";
+import { isNonSagRotaLabel, isNonWorkingRotaLabel, normaliseRotaLabelText } from "@/lib/clwrota-labels";
+import { SUPABASE_IN_CHUNK } from "@/lib/supabase-chunked";
+import { evaluateHistoricalSafeguard } from "@/lib/clwrota-historical-safeguard";
 import {
   parseListClwRotaSyncMetricsResponse,
   type ListClwRotaSyncMetricsResponse,
-} from "./clwrota-metrics-types";
+} from "@/lib/clwrota-metrics-types";
 
 /**
  * CLWRota (Rotamap Central API) integration — pull-only.
@@ -231,7 +231,7 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    const { computeSoloCorrections } = await import("./solo-investigate");
+    const { computeSoloCorrections } = await import("@/lib/solo-investigate");
 
     const today = new Date();
     const start = new Date(today);
@@ -2581,10 +2581,10 @@ export async function performRotaSync(
     // trainee predictions so newly-imported future rota rows turn into a
     // predicted start_date and the UI can badge them accordingly.
     let traineeStartPredictions: Awaited<
-      ReturnType<typeof import("./trainee-start-dates.functions").predictTraineeStartDatesImpl>
+      ReturnType<typeof import("@/lib/trainee-start-dates.functions").predictTraineeStartDatesImpl>
     > | null = null;
     try {
-      const mod = await import("./trainee-start-dates.functions");
+      const mod = await import("@/lib/trainee-start-dates.functions");
       traineeStartPredictions = await mod.predictTraineeStartDatesImpl();
     } catch (err) {
       // Non-fatal: log but don't abort the sync.
@@ -2860,7 +2860,7 @@ import {
   classifyLeaveStatus,
   type LeaveType,
   type LeaveStatus,
-} from "./clwrota-leave-classify";
+} from "@/lib/clwrota-leave-classify";
 
 
 
