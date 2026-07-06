@@ -162,7 +162,7 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
 
     const options = await srv.generateAuthenticationOptions({
       rpID,
-      userVerification: "preferred",
+      userVerification: "required",
       allowCredentials: allow,
     });
 
@@ -175,7 +175,9 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
       });
     }
 
-    return { options, hasPasskeys: allow.length > 0 };
+    // Do NOT return `hasPasskeys` — that leaks account enumeration. The
+    // client always attempts the ceremony; failure surfaces uniformly.
+    return { options };
   });
 
 export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
@@ -204,21 +206,20 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
     const cred = creds?.[0];
     if (!cred) throw new Error("Unknown passkey.");
 
-    const { data: chalRows } = await supabaseAdmin
-      .from("passkey_challenges")
-      .select("id, challenge, expires_at")
-      .eq("user_id", userId)
-      .eq("purpose", "authentication")
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const chal = chalRows?.[0];
-    if (!chal || new Date(chal.expires_at) < new Date()) {
+    // Atomically consume the challenge so a concurrent request cannot reuse it.
+    const { data: consumed, error: consumeErr } = await supabaseAdmin.rpc(
+      "consume_passkey_challenge" as never,
+      { p_user_id: userId as unknown as string, p_purpose: "authentication" } as never,
+    );
+    if (consumeErr) throw new Error(consumeErr.message);
+    const challenge = (consumed as unknown as { challenge: string }[] | null)?.[0]?.challenge;
+    if (!challenge) {
       throw new Error("Passkey challenge expired. Try again.");
     }
 
     const verification = await srv.verifyAuthenticationResponse({
       response: data.response,
-      expectedChallenge: chal.challenge,
+      expectedChallenge: challenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
       credential: {
@@ -227,7 +228,7 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
         counter: Number(cred.counter),
         transports: (cred.transports ?? undefined) as any,
       },
-      requireUserVerification: false,
+      requireUserVerification: true,
     });
 
 
@@ -240,7 +241,6 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
         last_used_at: new Date().toISOString(),
       })
       .eq("id", cred.id);
-    await supabaseAdmin.from("passkey_challenges").delete().eq("id", chal.id);
 
     // Mint a one-shot magic link token the client exchanges for a session.
     const { data: link, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
@@ -253,6 +253,7 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
 
     return { tokenHash: link.properties.hashed_token };
   });
+
 
 // ---------------------------------------------------------------------------
 // Manage stored passkeys
