@@ -43,7 +43,13 @@ TCS, double-booking or custom-rule implications you notice.
 CUSTOM RULES: When an admin states a working-pattern rule, call \`create_custom_rule\` to persist it.
 Always factor the CURRENT CUSTOM RULES (listed below if any) into any rota writing or amendments you
 suggest or make. If asked to break one, push back and ask the admin to confirm. If the user is not an
-admin and asks for a change, politely explain you cannot make changes for them.`;
+admin and asks for a change, politely explain you cannot make changes for them.
+
+CURRENT PATTERN & LEAVE: For questions about a staff member's usual working pattern, weekly grid,
+on-call / SAG / SPA days, location split, or leave availability, call \`get_staff_current_pattern\`.
+It returns the same computed summary shown in the app's Current Pattern card plus any approved or
+pending leave in the lookahead window. Resolve names to a staff_id with \`find_staff\` first when the
+caller is a coordinator or admin; otherwise it defaults to the signed-in user.`;
 
 
 function getAdminClient() {
