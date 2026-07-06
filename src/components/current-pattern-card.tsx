@@ -599,7 +599,9 @@ export function CurrentPatternCard({
               <code>suggestedRegularityThreshold({data.windowDays})</code>).
               One-off cover shifts therefore fall out; a dot (·) means "no
               regular pattern here".
+            </p>
             <p className="mb-2">
+
               <span className="font-medium text-foreground">
                 Leave overlay.
               </span>{" "}
