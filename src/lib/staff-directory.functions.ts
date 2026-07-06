@@ -2,8 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-  return _supabaseAdmin;
-}
 
 /**
  * Coordinator/admin-elevated reads of the staff directory.

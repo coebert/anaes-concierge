@@ -4,8 +4,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { HIGH_UNMATCHED_RATIO } from "./trainee-metrics";
 import { isIcuBlockOnly } from "./audit/trainee-audit";
-  return _supabaseAdmin;
-}
 
 /**
  * Post-sync audit validation

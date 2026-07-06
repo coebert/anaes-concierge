@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-  return _supabaseAdmin;
-}
 
 /**
  * Trainee "not yet started" prediction

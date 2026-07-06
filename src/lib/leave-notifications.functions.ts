@@ -3,8 +3,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendGmail } from "./gmail.server";
-  return _supabaseAdmin;
-}
 
 async function callerIsCoordOrAdmin(userId: string): Promise<boolean> {
   const { data } = await supabaseAdmin
