@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskLabel } from "@/features/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+import { PageLoading } from "@/components/loading";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -247,7 +248,7 @@ export function SummaryDashboard() {
             </CardHeader>
             <CardContent>
               {rLoading ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
+                <PageLoading />
               ) : days.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No weekdays in the next 7 days.</div>
               ) : (
@@ -335,7 +336,7 @@ export function SummaryDashboard() {
             </CardHeader>
             <CardContent className="space-y-2">
               {lLoading ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
+                <PageLoading />
               ) : leaveByGrade.consultants.total === 0 ? (
                 <div className="text-sm text-muted-foreground">No consultants on leave today.</div>
               ) : (
@@ -359,7 +360,7 @@ export function SummaryDashboard() {
             </CardHeader>
             <CardContent className="space-y-2">
               {lLoading ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
+                <PageLoading />
               ) : leaveByGrade.trainees.total === 0 ? (
                 <div className="text-sm text-muted-foreground">No trainees on leave today.</div>
               ) : (
@@ -383,7 +384,7 @@ export function SummaryDashboard() {
             </CardHeader>
             <CardContent className="space-y-2">
               {sLoading ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
+                <PageLoading />
               ) : (soloToday?.length ?? 0) === 0 ? (
                 <div className="text-sm text-muted-foreground">No solo trainees today.</div>
               ) : (
@@ -446,7 +447,7 @@ export function SummaryDashboard() {
           </CardHeader>
           <CardContent>
             {cLoading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <PageLoading />
             ) : (listCoverage?.length ?? 0) === 0 ? (
               <div className="text-sm text-muted-foreground">No data for the next 7 days.</div>
             ) : (
@@ -677,7 +678,7 @@ function NotScheduledCard({
       </CardHeader>
       <CardContent className="space-y-2">
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <PageLoading />
         ) : entries.length === 0 ? (
           <div className="text-sm text-muted-foreground">Everyone is scheduled today.</div>
         ) : (

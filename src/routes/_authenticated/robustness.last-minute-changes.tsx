@@ -25,6 +25,7 @@ import type { DateRange } from "react-day-picker";
 import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
+import { PageLoading } from "@/components/loading";
   getLastMinuteChangesAudit,
   type LastMinuteChangeRow,
   type StaffingGroup,
@@ -296,7 +297,7 @@ function LastMinuteChangesPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <PageLoading />
             ) : groupRows.length === 0 ? (
               <div className="text-sm text-muted-foreground">
                 No last-minute changes recorded in this range.

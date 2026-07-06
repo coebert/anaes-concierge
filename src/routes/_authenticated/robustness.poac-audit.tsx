@@ -17,6 +17,7 @@ import { chunkIds } from "@/lib/supabase-chunked";
 import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
 
 import {
+import { PageLoading } from "@/components/loading";
   computePoacWeeklyStats,
   validatePoacBaseline,
   type PoacBaselineViolation,
@@ -587,7 +588,7 @@ function PoacAuditPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !weeks.length ? (
             <p className="text-sm text-muted-foreground">
               No POAC sessions found in this range.
@@ -681,7 +682,7 @@ function PoacAuditPage() {
             (e.g. POAU, POAC, pre-op assessment).
           </p>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !drilldown.length ? (
             <p className="text-sm text-muted-foreground">
               No POAC sessions found in this range.

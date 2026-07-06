@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { ChevronLeft, FlaskConical } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import {
+import { PageLoading } from "@/components/loading";
   computeRobustness, riskColor, type ExtraAbsence, type Grade,
 } from "@/features/audit/robustness";
 
@@ -137,7 +138,7 @@ function SimulatePage() {
         </CardHeader>
         <CardContent>
           {sim.isLoading || baseline.isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
+            <PageLoading />
           ) : rows.length === 0 ? (
             <div className="text-sm text-muted-foreground">No weekdays in range.</div>
           ) : (

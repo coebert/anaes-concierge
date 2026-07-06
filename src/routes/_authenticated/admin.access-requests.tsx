@@ -14,6 +14,7 @@ import {
 } from "@/features/access-requests/admin-access-requests.functions";
 import { toast } from "sonner";
 import { Check, X, Trash2 } from "lucide-react";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/access-requests")({
   head: () => ({ meta: [{ title: "Access requests — Salisbury Anaesthetics Rota" }] }),
@@ -80,7 +81,7 @@ function AdminAccessRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : pending.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pending requests.</p>
           ) : (

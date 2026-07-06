@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Fingerprint, Trash2 } from "lucide-react";
+import { PageLoading } from "@/components/loading";
 
 type Passkey = {
   id: string;
@@ -109,7 +110,7 @@ export function PasskeyManager() {
         </Button>
         <div className="space-y-2">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !passkeys || passkeys.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No passkeys registered yet.

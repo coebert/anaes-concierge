@@ -33,6 +33,7 @@ import {
   type AllowanceLike as AllowanceRow,
 } from "@/features/leave/leave-allowances";
 import { gradeLabel, type LeaveRow, type ProfileRow } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 export function AllowancesTab({
   loading,
@@ -169,7 +170,7 @@ export function AllowancesTab({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : allowanceVisible.length === 0 ? (
           <p className="text-sm text-muted-foreground">No staff to show.</p>
         ) : (

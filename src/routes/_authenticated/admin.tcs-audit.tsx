@@ -18,6 +18,7 @@ import { formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck, ShieldAlert, ChevronDown, ChevronRight } from "lucide-react";
 import { StatCard } from "@/components/stat-card";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/tcs-audit")({
   head: () => ({ meta: [{ title: "TCS 2016 audit — Salisbury Anaesthetics Rota" }] }),
@@ -228,7 +229,7 @@ function TcsAuditPage() {
       });
   }, [data, filter]);
 
-  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
+  if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
   const compliantCount = rows.filter((r) => r.audit.overall === "compliant" && !r.reason).length;

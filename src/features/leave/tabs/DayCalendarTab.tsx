@@ -28,6 +28,7 @@ import { CalendarIcon } from "lucide-react";
 import { cn, formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import {
+import { PageLoading } from "@/components/loading";
   Stat,
   gradeLabel,
   statusVariant,
@@ -208,7 +209,7 @@ export function DayCalendarTab({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : onPickedDay.length === 0 ? (
             <p className="text-sm text-muted-foreground">No staff on leave.</p>
           ) : (

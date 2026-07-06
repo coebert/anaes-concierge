@@ -14,6 +14,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/theatres")({
   head: () => ({ meta: [{ title: "Theatres — Salisbury Anaesthetics Rota" }] }),
@@ -91,7 +92,7 @@ function TheatresCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : (
           <ul className="divide-y rounded-md border">
             {data?.map((t) => (
@@ -213,7 +214,7 @@ function SpecialtiesCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : !data?.length ? (
           <p className="text-sm text-muted-foreground">None yet.</p>
         ) : (

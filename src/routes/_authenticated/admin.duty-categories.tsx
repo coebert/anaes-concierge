@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/duty-categories")({
   head: () => ({ meta: [{ title: "Duty categories — Salisbury Anaesthetics Rota" }] }),
@@ -155,7 +156,7 @@ function DutyCategoriesPage() {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageLoading />;
   }
 
   return (

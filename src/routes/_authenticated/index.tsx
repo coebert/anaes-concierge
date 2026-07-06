@@ -16,6 +16,7 @@ import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
 import { TodayInHospital } from "@/components/today-in-hospital";
 import { StatCard } from "@/components/stat-card";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/")({
 function DashboardPage() {
   const { hasRole, grade, loading } = useAuth();
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
+    return <PageLoading />;
   }
   if (hasRole("admin") || hasRole("rota_coordinator")) return <AuditDashboard />;
   if (grade === "trainee") return <TraineeDashboard />;

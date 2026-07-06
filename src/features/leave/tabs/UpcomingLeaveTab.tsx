@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateGB } from "@/lib/utils";
 import {
+import { PageLoading } from "@/components/loading";
   gradeLabel,
   statusVariant,
   type LeaveRow,
@@ -41,7 +42,7 @@ export function UpcomingLeaveTab({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : allUpcoming.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing upcoming.</p>
         ) : (

@@ -18,6 +18,7 @@ import {
   type SagMark,
 } from "@/features/audit/consultant-non-sag-classify";
 import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
+import { PageLoading } from "@/components/loading";
 
 const REQUIRED_TABLES = [
   "profiles",
@@ -362,7 +363,7 @@ function ConsultantAuditsPage() {
           </CardContent>
         </Card>
       ) : isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <PageLoading />
       ) : error ? (
         <Card className="border-destructive/40">
           <CardContent className="pt-6 text-sm text-destructive">

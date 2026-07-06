@@ -18,6 +18,7 @@ import {
 import { Trash2 } from "lucide-react";
 import { formatDateGB } from "@/lib/utils";
 import { statusVariant, type LeaveRow } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 /**
  * Tab-trigger label for the "My leave" tab. Coordinators/admins see a
@@ -72,7 +73,7 @@ export function MyLeaveTab({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : myRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No requests yet.</p>
         ) : (

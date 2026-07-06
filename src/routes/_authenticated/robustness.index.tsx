@@ -12,6 +12,7 @@ import {
 import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight, Info, Coffee } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robustness";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/robustness/")({
   head: () => ({ meta: [{ title: "Robustness — Salisbury Anaesthetics Rota" }] }),
@@ -131,7 +132,7 @@ function RobustnessPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <PageLoading />
             ) : days.length === 0 ? (
               <div className="text-sm text-muted-foreground">No weekdays in range.</div>
             ) : (

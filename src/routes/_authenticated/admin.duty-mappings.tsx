@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/duty-mappings")({
   head: () => ({ meta: [{ title: "Duty mappings — Salisbury Anaesthetics Rota" }] }),
@@ -242,7 +243,7 @@ function DutyMappingsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : (
             <div className="overflow-x-auto">
               <Table>

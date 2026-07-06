@@ -13,6 +13,7 @@ import {
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { Pencil } from "lucide-react";
 import { formatDateGB, splitName } from "@/lib/utils";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/job-plans")({
   head: () => ({ meta: [{ title: "Job plans — Salisbury Anaesthetics Rota" }] }),
@@ -95,7 +96,7 @@ function JobPlansPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !filtered?.length ? (
             <p className="text-sm text-muted-foreground">No staff found.</p>
           ) : (

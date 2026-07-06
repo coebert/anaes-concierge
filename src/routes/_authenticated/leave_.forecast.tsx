@@ -10,6 +10,7 @@ import { ClipboardList, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { loadLeavePressure, pressureColor, type DayPressure } from "@/features/audit/leave-pressure";
 import { LeaveMonthlyCalendar } from "@/components/leave-monthly-calendar";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/leave_/forecast")({
   head: () => ({ meta: [{ title: "Leave forecast — Salisbury Anaesthetics Rota" }] }),
@@ -109,7 +110,7 @@ function LeaveForecastPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
+            <PageLoading />
           ) : (
             <div className="space-y-1.5">
               <div className="grid grid-cols-[110px_repeat(5,minmax(0,1fr))] gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">

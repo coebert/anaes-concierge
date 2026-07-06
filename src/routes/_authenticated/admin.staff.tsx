@@ -22,6 +22,7 @@ import { Pencil, Settings, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
+import { PageLoading } from "@/components/loading";
 
 const ACUTE_PAIN_SETTINGS_KEY = "admin-staff:acute-pain-settings:v1";
 const DEFAULT_LOOKBACK_DAYS = 365;
@@ -382,7 +383,7 @@ function AdminStaffPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <p className="text-sm text-muted-foreground">Loading…</p>
+                <PageLoading />
               ) : !filtered?.length ? (
                 <p className="text-sm text-muted-foreground">No staff records.</p>
               ) : (
