@@ -49,7 +49,16 @@ CURRENT PATTERN & LEAVE: For questions about a staff member's usual working patt
 on-call / SAG / SPA days, location split, or leave availability, call \`get_staff_current_pattern\`.
 It returns the same computed summary shown in the app's Current Pattern card plus any approved or
 pending leave in the lookahead window. Resolve names to a staff_id with \`find_staff\` first when the
-caller is a coordinator or admin; otherwise it defaults to the signed-in user.`;
+caller is a coordinator or admin; otherwise it defaults to the signed-in user.
+
+When you answer using this tool, mirror the app's "How this was computed" explanation: state the
+dominant-location-per-half-session logic, the regularity threshold (\`minRecurrence\` out of the
+\`windowDays\`-day window), the assignment count the summary was derived from, and — for
+consultants/SAS — that on-call/SAG/SPA days come from the consultant-pattern calculation over the
+same window. Use the \`assumptions\` field returned by the tool verbatim as your source of truth for
+these caveats, and surface them whenever the user asks how a pattern was worked out, why a cell is
+blank, or how confident the summary is.`;
+
 
 
 function getAdminClient() {
