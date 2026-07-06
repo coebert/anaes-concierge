@@ -36,48 +36,22 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend,
 } from "recharts";
 
-type TraineeBucket = "all" | "junior" | "senior";
-const BUCKET_LABEL: Record<TraineeBucket, string> = {
-  all: "All trainees",
-  junior: "CT2–ST4",
-  senior: "ST5–ST8+",
-};
-
-function traineeBucket(level: string | null | undefined): TraineeBucket | null {
-  if (!level) return null;
-  const m = level.trim().toUpperCase().match(/^(CT|ST)(\d+)/);
-  if (!m) return null;
-  const prefix = m[1];
-  const n = parseInt(m[2], 10);
-  if (prefix === "CT") return n >= 2 ? "junior" : null;
-  // ST
-  if (n >= 1 && n <= 4) return "junior";
-  if (n >= 5) return "senior";
-  return null;
-}
+import {
+  BUCKET_LABEL,
+  GRADES,
+  GRADE_LABEL,
+  LEAVE_LABEL,
+  LEAVE_TYPES,
+  traineeBucket,
+  type Grade,
+  type LeaveType,
+  type TraineeBucket,
+} from "@/features/admin/dashboard-helpers";
+import { DualStat, Stat } from "./-admin-dashboard-stats";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
 });
-
-type Grade = "consultant" | "sas" | "trainee";
-const GRADES: Grade[] = ["consultant", "sas", "trainee"];
-const GRADE_LABEL: Record<Grade, string> = {
-  consultant: "Consultants",
-  sas: "SAS doctors",
-  trainee: "Trainees",
-};
-
-const LEAVE_TYPES = ["annual", "sick", "parental", "study", "compassionate", "other"] as const;
-type LeaveType = typeof LEAVE_TYPES[number];
-const LEAVE_LABEL: Record<LeaveType, string> = {
-  annual: "Annual leave",
-  sick: "Sick leave",
-  parental: "Parental leave",
-  study: "Study leave",
-  compassionate: "Compassionate",
-  other: "Other",
-};
 
 
 function AdminDashboardPage() {
