@@ -108,7 +108,7 @@ import {
   classifyDutyType,
   type DutyTypeMappingRow,
   type ResolvedDutyType,
-} from "../clwrota.functions";
+} from "../../features/clwrota/clwrota.functions";
 import { computeRobustness } from "./robustness";
 
 /** Production-equivalent default mappings (mirrors the seed data). */

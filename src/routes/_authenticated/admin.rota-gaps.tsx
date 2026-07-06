@@ -23,7 +23,7 @@ import {
   getClwRotaSettings,
   saveClwRotaSettings,
   testClwRotaConnection,
-} from "@/lib/clwrota.functions";
+} from "@/features/clwrota/clwrota.functions";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw, Plug, ExternalLink } from "lucide-react";

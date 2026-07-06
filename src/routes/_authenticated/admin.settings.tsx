@@ -18,12 +18,12 @@ import {
   undoReclassificationRun,
   investigateAndFixTraineeSolo,
   backfillNonSagLabels,
-} from "@/lib/clwrota.functions";
+} from "@/features/clwrota/clwrota.functions";
 import {
   useSyncClwRotaStaff,
   useSyncClwRotaRota,
   useSyncClwRotaLeave,
-} from "@/lib/clwrota-sync-hooks";
+} from "@/features/clwrota/clwrota-sync-hooks";
 import { validateTraineeTheatreMatches } from "@/lib/trainee-theatre-validation.functions";
 
 
