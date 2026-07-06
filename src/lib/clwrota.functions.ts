@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/require-admin";
@@ -39,7 +40,6 @@ function getEnv() {
 export const testClwRotaConnection = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { apiKey, baseUrl } = getEnv();
 
     // Hit a real Central API endpoint — the bare base URL returns the login
@@ -80,7 +80,6 @@ export const testClwRotaConnection = createServerFn({ method: "POST" })
 export const getClwRotaSettings = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("clwrota_sync_state")
       .select("*")
@@ -112,7 +111,6 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input) => SettingsSchema.parse(input))
   .handler(async ({ context, data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("clwrota_sync_state")
       .upsert({ id: 1, ...data });
@@ -127,7 +125,6 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
 export const listReclassificationRuns = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("rota_reclassification_log")
       .select("sync_run_id, created_at, from_role, to_role")
@@ -169,7 +166,6 @@ export const undoReclassificationRun = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input) => z.object({ sync_run_id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: entries, error: loadErr } = await supabaseAdmin
       .from("rota_reclassification_log")
       .select("id, assignment_id, from_role, to_role")
@@ -235,7 +231,6 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { computeSoloCorrections } = await import("./solo-investigate");
 
     const today = new Date();
@@ -805,7 +800,6 @@ function pick(row: Record<string, unknown>, keys: string[]): string | null {
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return performStaffSync();
   });
 
@@ -1303,7 +1297,6 @@ async function fetchReport(url: string, apiKey: string) {
 export const runClwRotaSync = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin
@@ -1601,7 +1594,6 @@ export function resolveOffsiteTheatreAlias(
  * canonical theatre, without needing a code change.
  */
 async function loadTheatreNameAliases(): Promise<Map<string, string>> {
-  const supabaseAdmin = await getAdmin();
   const out = new Map<string, string>();
   const { data, error } = await supabaseAdmin
     .from("theatre_name_aliases")
@@ -1617,7 +1609,6 @@ async function loadTheatreNameAliases(): Promise<Map<string, string>> {
 }
 
 async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
-  const supabaseAdmin = await getAdmin();
   const { data, error } = await supabaseAdmin
     .from("duty_type_mappings")
     .select("duty_type, pattern, match_type, grade_filter, trainee_seniority_filter, priority, active")
@@ -1645,7 +1636,6 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
   .handler(async ({ context, data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return performRotaSync({ from: data?.from, to: data?.to });
   });
 
@@ -2885,7 +2875,6 @@ import {
 export const syncClwRotaLeave = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return performLeaveSync();
   });
 
@@ -3355,7 +3344,6 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
   .handler(async ({ context, data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { sendGmail } from "./gmail.server";
 
@@ -25,7 +26,6 @@ async function adminEmails(): Promise<string[]> {
 export const submitAccessRequest = createServerFn({ method: "POST" })
   .inputValidator((d) => inputSchema.parse(d))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const email = data.email.toLowerCase();
 
     // Rate-limit: reject if same email submitted in the last hour.

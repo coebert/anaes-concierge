@@ -1,22 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendGmail } from "./gmail.server";
-
-// Server-only admin client. Dynamic import keeps `client.server` out of the
-// client bundle graph — `.functions.ts` modules only strip handler bodies.
-let _supabaseAdmin: any;
-async function getAdmin(): Promise<any> {
-  const supabaseAdmin = await getAdmin();
-  if (!_supabaseAdmin) {
-    const m = await import("@/integrations/supabase/client.server");
-    _supabaseAdmin = m.supabaseAdmin;
-  }
   return _supabaseAdmin;
 }
 
 async function callerIsCoordOrAdmin(userId: string): Promise<boolean> {
-  const supabaseAdmin = await getAdmin();
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -35,7 +25,6 @@ async function staffName(staffId: string): Promise<{ name: string; email: string
 }
 
 async function coordinatorEmails(): Promise<string[]> {
-  const supabaseAdmin = await getAdmin();
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
     .select("user_id, role")
@@ -61,7 +50,6 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: req } = await supabaseAdmin
       .from("leave_requests")
       .select("*")
@@ -106,7 +94,6 @@ export const notifyLeaveDecided = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (!(await callerIsCoordOrAdmin(context.userId))) {
       throw new Error("Forbidden");
     }
