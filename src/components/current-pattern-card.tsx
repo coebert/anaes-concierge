@@ -290,7 +290,7 @@ export function CurrentPatternCard({
             grade,
           },
         ],
-        assignments,
+        effectiveAssignments,
         sessionsById,
         theatresById,
         specialtiesById,
@@ -300,7 +300,7 @@ export function CurrentPatternCard({
       const consultantPattern =
         grade === "consultant" || grade === "sas"
           ? computeConsultantPattern(
-              assignments,
+              effectiveAssignments,
               sessionsById,
               theatresById,
               { regularityThreshold: threshold },
@@ -309,7 +309,7 @@ export function CurrentPatternCard({
 
       const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
       const dominant = dominantByHalfSession(
-        assignments,
+        effectiveAssignments,
         sessionsById,
         theatresById,
         // Cell shows up if a half-session recurs in ~half the window's weeks.
@@ -324,8 +324,9 @@ export function CurrentPatternCard({
         windowDays,
         threshold,
         minCount,
-        assignmentCount: assignments.length,
+        assignmentCount: effectiveAssignments.length,
       };
+
     },
   });
 
