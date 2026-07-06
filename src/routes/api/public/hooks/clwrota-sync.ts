@@ -70,7 +70,7 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           performRotaSyncChunked,
           performRotaSyncIncremental,
           performLeaveSync,
-        } = await import("@/lib/clwrota.functions");
+        } = await import("@/features/clwrota/clwrota.functions");
 
         const sliceParam = params.get("sliceDays");
         const sliceDays = sliceParam ? Math.max(1, Number(sliceParam) || 30) : undefined;

@@ -44,7 +44,7 @@ vi.mock("@tanstack/react-start", () => ({
 const { listClwRotaSyncMetricsMock } = vi.hoisted(() => ({
   listClwRotaSyncMetricsMock: vi.fn(),
 }));
-vi.mock("@/lib/clwrota.functions", () => ({
+vi.mock("@/features/clwrota/clwrota.functions", () => ({
   listClwRotaSyncMetrics: listClwRotaSyncMetricsMock,
 }));
 

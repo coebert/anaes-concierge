@@ -75,7 +75,7 @@ const { investigateMock } = vi.hoisted(() => ({
   investigateMock: vi.fn(),
 }));
 
-vi.mock("@/lib/clwrota.functions", () => ({
+vi.mock("@/features/clwrota/clwrota.functions", () => ({
   investigateAndFixTraineeSolo: investigateMock,
   // ReclassificationUndoCard also imports these — provide inert stubs so
   // the page renders without trying to hit a real backend.

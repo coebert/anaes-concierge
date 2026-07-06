@@ -33,7 +33,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { listClwRotaSyncMetrics } from "@/lib/clwrota.functions";
+import { listClwRotaSyncMetrics } from "@/features/clwrota/clwrota.functions";
 import {
   isBackfillMetricRow,
   parseListClwRotaSyncMetricsResponse,

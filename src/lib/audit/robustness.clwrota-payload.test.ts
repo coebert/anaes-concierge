@@ -109,7 +109,7 @@ import {
   classifyDutyType,
   type DutyTypeMappingRow,
   type ResolvedDutyType,
-} from "../clwrota.functions";
+} from "../../features/clwrota/clwrota.functions";
 import { isNonWorkingRotaLabel } from "../clwrota-labels";
 import { computeRobustness } from "./robustness";
 
