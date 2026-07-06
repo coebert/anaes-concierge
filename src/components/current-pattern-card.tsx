@@ -87,6 +87,9 @@ type PatternResult = {
   consultantPattern: ReturnType<typeof computeConsultantPattern> | null;
   dominant: Record<"am" | "pm", Array<DominantCell | null>>;
   windowDays: number;
+  threshold: number;
+  minCount: number;
+  assignmentCount: number;
 };
 
 type CacheEntry = { savedAt: number; to: string; data: PatternResult };
