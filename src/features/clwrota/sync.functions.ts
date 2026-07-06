@@ -1543,10 +1543,10 @@ export async function performRotaSync(
     // trainee predictions so newly-imported future rota rows turn into a
     // predicted start_date and the UI can badge them accordingly.
     let traineeStartPredictions: Awaited<
-      ReturnType<typeof import("@/lib/trainee-start-dates.functions").predictTraineeStartDatesImpl>
+      ReturnType<typeof import("@/features/trainees/trainee-start-dates.functions").predictTraineeStartDatesImpl>
     > | null = null;
     try {
-      const mod = await import("@/lib/trainee-start-dates.functions");
+      const mod = await import("@/features/trainees/trainee-start-dates.functions");
       traineeStartPredictions = await mod.predictTraineeStartDatesImpl();
     } catch (err) {
       // Non-fatal: log but don't abort the sync.

@@ -5,7 +5,7 @@ import {
   DEFAULT_LEAVE_STATUS,
   looksLikeProfessionalReason,
 } from "./clwrota-leave-classify";
-import { summariseStaffLeave, remaining } from "./leave-allowances";
+import { summariseStaffLeave, remaining } from "@/features/leave/leave-allowances";
 
 /**
  * Regression tests proving the professional-leave backfill survives a CLWRota

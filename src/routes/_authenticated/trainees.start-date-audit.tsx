@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import {
   getTraineeStartDateAudit,
   type AuditTrainee,
-} from "@/lib/trainee-leave-audit.functions";
+} from "@/features/trainees/trainee-leave-audit.functions";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { useAuth } from "@/lib/auth-context";
 

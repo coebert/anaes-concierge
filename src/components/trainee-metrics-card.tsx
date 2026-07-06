@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
-import type { TraineeMetrics } from "@/lib/trainee-metrics";
+import type { TraineeMetrics } from "@/features/trainees/trainee-metrics";
 
 
 type Props = {

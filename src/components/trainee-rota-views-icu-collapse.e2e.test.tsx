@@ -30,7 +30,7 @@ import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   computeTraineeMetrics,
   type MetricAssignment,
-} from "@/lib/trainee-metrics";
+} from "@/features/trainees/trainee-metrics";
 
 // --- In-memory rota store (mocked CLWRota sync) -------------------------
 

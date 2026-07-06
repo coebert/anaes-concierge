@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { chunkIds } from "./supabase-chunked";
+import { chunkIds } from "@/lib/supabase-chunked";
 import { computeTraineeMetrics, type MetricAssignment } from "./trainee-metrics";
-import { isIcuBlockOnly } from "./audit/trainee-audit";
+import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
 
 /**
  * End-to-end regression check for the "Unknown specialty" truncation bug.

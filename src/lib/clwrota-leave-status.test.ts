@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { classifyLeaveType, classifyLeaveStatus } from "./clwrota-leave-classify";
-import { summariseStaffLeave, remaining } from "./leave-allowances";
+import { summariseStaffLeave, remaining } from "@/features/leave/leave-allowances";
 
 /**
  * Regression tests for the CLWRota status pipeline: only `approved` leave
