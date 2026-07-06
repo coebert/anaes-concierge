@@ -10,7 +10,7 @@ type Theatre = { id: string; name: string; kind: string | null; sort_order: numb
 type TheatreSession = {
   id: string;
   theatre_id: string;
-  session: SessionHalf;
+  session: string;
   session_date: string;
   surgical_consultant: string | null;
   specialty_id: string | null;
