@@ -332,9 +332,9 @@ describe("/api/chat e2e — get_staff_current_pattern with overlapping leave", (
     expect(payload.profile.grade).toBe("consultant");
     expect(payload.windowDays).toBe(90);
 
-    // 12 baseline theatre rows + 10 overlay leave rows = 22 effective assignments.
-    // (Two Mondays remain uncovered by leave.)
-    expect(payload.assignmentCount).toBe(22);
+    // Effective count = 2 uncovered theatre Mondays + full-day leave overlay
+    // expanded to AM+PM for each covered date (58 leave days × 2 halves = 116).
+    expect(payload.assignmentCount).toBe(118);
 
     // AM row, Monday cell = "On leave" with 10/12 recurrence.
     const amRow = payload.weeklyGrid.find((r) => r.session === "am");
