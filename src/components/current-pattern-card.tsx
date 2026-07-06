@@ -268,12 +268,13 @@ export function CurrentPatternCard({
             )
           : null;
 
+      const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
       const dominant = dominantByHalfSession(
         assignments,
         sessionsById,
         theatresById,
         // Cell shows up if a half-session recurs in ~half the window's weeks.
-        Math.max(2, Math.floor(threshold / 2) + 1),
+        minCount,
       );
 
       return {
@@ -282,6 +283,9 @@ export function CurrentPatternCard({
         consultantPattern,
         dominant,
         windowDays,
+        threshold,
+        minCount,
+        assignmentCount: assignments.length,
       };
     },
   });
