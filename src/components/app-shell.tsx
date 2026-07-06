@@ -34,15 +34,9 @@ import {
 import { CommandPalette } from "@/components/command-palette";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { signOut, user, roles, hasRole, grade } = useAuth();
-  const navigate = useNavigate();
+  const { user, roles, hasRole, grade, fullName } = useAuth();
   const location = useLocation();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  const handleSignOut = async () => {
-    await signOut();
-    void navigate({ to: "/login" });
-  };
 
   const isAdmin = hasRole("admin");
   const visibleItems = filterNavForUser({ hasRole, grade });
@@ -59,6 +53,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     : grade === "sas"
     ? "SAS"
     : "Staff";
+
+  const identityLine = fullName || user?.email || "Signed in";
 
   return (
     <SidebarProvider>
@@ -91,32 +87,25 @@ export function AppShell({ children }: { children: ReactNode }) {
         </SidebarContent>
 
         <SidebarFooter className="border-t">
-          <div className="px-2 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-medium">{user?.email}</div>
+          <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
+            <div className="truncate text-sm font-medium">{identityLine}</div>
             <div className="text-xs text-muted-foreground">{roleLabel}</div>
           </div>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Sign out" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4" />
-                <span>Sign out</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
         <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur">
           <SidebarTrigger />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
             <CommandPalette />
+            <UserMenu />
           </div>
         </header>
-        <div className="mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-8">
+        <main className="mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-8">
           <Breadcrumbs pathname={location.pathname} items={visibleItems} />
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
