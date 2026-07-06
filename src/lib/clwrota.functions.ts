@@ -2866,23 +2866,12 @@ export async function performRotaSyncIncremental(
 // Pure classifiers are in their own module so they can be unit-tested and so
 // the professional-vs-study split survives every CLWRota upsert.
 import {
-
-// Server-only admin client. Dynamic import keeps `client.server` out of the
-// client bundle graph — `.functions.ts` modules only strip handler bodies.
-let _supabaseAdmin: any;
-async function getAdmin(): Promise<any> {
-  const supabaseAdmin = await getAdmin();
-  if (!_supabaseAdmin) {
-    const m = await import("@/integrations/supabase/client.server");
-    _supabaseAdmin = m.supabaseAdmin;
-  }
-  return _supabaseAdmin;
-}
   classifyLeaveType,
   classifyLeaveStatus,
   type LeaveType,
   type LeaveStatus,
 } from "./clwrota-leave-classify";
+
 
 
 
