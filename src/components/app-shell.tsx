@@ -3,6 +3,7 @@ import { type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Stethoscope, ChevronRight } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
