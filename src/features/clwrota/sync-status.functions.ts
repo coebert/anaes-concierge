@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAdmin } from "@/lib/require-admin";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Admin-only read of CLWRota sync health:
@@ -10,10 +11,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  *   - `cron`: recent rows from `cron.job_run_details` for every
  *     `clwrota%` cron job, fetched through a SECURITY DEFINER helper
  *     because the cron schema is not reachable via PostgREST.
- *
- * Everything is loaded through the user-scoped Supabase client so RLS
- * gates the read to admins (table policies already require
- * `has_role(auth.uid(), 'admin')`).
  */
 export type ClwRotaStatusState = {
   last_sync_at: string | null;
@@ -60,24 +57,10 @@ export type ClwRotaStatusResponse = {
 };
 
 export const getClwRotaSyncStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ClwRotaStatusResponse> => {
-    const { supabase, userId } = context;
-
-    // Belt-and-braces admin check — RLS enforces this too, but a clean
-    // error message is friendlier than an empty result.
-    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (roleErr) throw new Error(roleErr.message);
-    if (!isAdmin) throw new Error("Admin role required");
-
-    // After the admin check, switch to the service-role client. The cron
-    // RPC is restricted to service_role (never callable by signed-in
-    // users) so it must be invoked here, not via the user-scoped client.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
+  .middleware([requireAdmin])
+  .handler(async (): Promise<ClwRotaStatusResponse> => {
+    // Service-role client: the cron RPC is restricted to service_role
+    // (never callable by signed-in users) so it must be invoked here.
     const [stateRes, metricsRes, cronRes] = await Promise.all([
       supabaseAdmin
         .from("clwrota_sync_state")
