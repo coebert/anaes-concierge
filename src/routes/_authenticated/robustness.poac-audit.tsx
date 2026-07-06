@@ -17,11 +17,11 @@ import { chunkIds } from "@/lib/supabase-chunked";
 import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
 
 import {
-import { PageLoading } from "@/components/loading";
   computePoacWeeklyStats,
   validatePoacBaseline,
   type PoacBaselineViolation,
 } from "@/features/audit/poac-baseline";
+import { PageLoading } from "@/components/loading";
 
 // PostgREST defaults to a 1000-row response cap. Walk the result set in
 // pages so audits over long date ranges (or as data grows) cannot silently

@@ -16,12 +16,12 @@ import {
 } from "@/components/ui/table";
 import { formatDateGB } from "@/lib/utils";
 import {
-import { PageLoading } from "@/components/loading";
   gradeLabel,
   statusVariant,
   type LeaveRow,
   type ProfileRow,
 } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 export function UpcomingLeaveTab({
   loading,

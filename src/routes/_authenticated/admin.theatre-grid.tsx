@@ -15,9 +15,9 @@ import { Trash2 } from "lucide-react";
 import { formatDateGB } from "@/lib/utils";
 import { isoDate, weekdayShort } from "@/lib/theatre-grid-dates";
 import {
-import { PageLoading } from "@/components/loading";
   ViewModeToggle, PeriodNav, buildDays, SessionChip, type ViewMode,
 } from "@/components/rota-views";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
   head: () => ({ meta: [{ title: "Theatre grid — Salisbury Anaesthetics Rota" }] }),

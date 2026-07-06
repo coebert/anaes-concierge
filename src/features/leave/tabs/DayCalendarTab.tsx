@@ -28,7 +28,6 @@ import { CalendarIcon } from "lucide-react";
 import { cn, formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import {
-import { PageLoading } from "@/components/loading";
   Stat,
   gradeLabel,
   statusVariant,
@@ -36,6 +35,7 @@ import { PageLoading } from "@/components/loading";
   type LeaveRow,
   type ProfileRow,
 } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 export function DayCalendarTab({
   loading,

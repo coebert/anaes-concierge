@@ -45,11 +45,11 @@ import {
   type GapSnapshot,
 } from "@/features/admin-rota-gaps/helpers";
 import {
-import { PageLoading } from "@/components/loading";
   GapRangeRow,
   Stat,
   ClassifiedSection,
 } from "@/features/admin-rota-gaps/components";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
   component: RotaGapsPage,

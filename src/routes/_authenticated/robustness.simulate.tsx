@@ -11,9 +11,9 @@ import { Label } from "@/components/ui/label";
 import { ChevronLeft, FlaskConical } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import {
-import { PageLoading } from "@/components/loading";
   computeRobustness, riskColor, type ExtraAbsence, type Grade,
 } from "@/features/audit/robustness";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/robustness/simulate")({
   head: () => ({ meta: [{ title: "Robustness simulator — Salisbury Anaesthetics Rota" }] }),
