@@ -52,6 +52,7 @@ export const submitAccessRequest = createServerFn({ method: "POST" })
 
     // Notify admins (best-effort).
     try {
+      const { sendGmail } = await import("@/lib/gmail.server");
       const recipients = await adminEmails();
       if (recipients.length) {
         const subject = `Access request: ${data.full_name}`;
