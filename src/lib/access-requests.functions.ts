@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { sendGmail } from "./gmail.server";
 
@@ -10,6 +9,7 @@ const inputSchema = z.object({
 });
 
 async function adminEmails(): Promise<string[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
     .select("user_id")

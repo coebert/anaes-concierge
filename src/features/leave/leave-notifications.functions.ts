@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendGmail } from "@/lib/gmail.server";
 
 async function callerIsCoordOrAdmin(userId: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -23,6 +23,7 @@ async function staffName(staffId: string): Promise<{ name: string; email: string
 }
 
 async function coordinatorEmails(): Promise<string[]> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
     .select("user_id, role")

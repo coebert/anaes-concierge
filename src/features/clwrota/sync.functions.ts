@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SUPABASE_IN_CHUNK } from "@/lib/supabase-chunked";
 import {
   isNonSagRotaLabel,

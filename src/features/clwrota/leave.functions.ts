@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin } from "@/lib/require-admin";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { evaluateHistoricalSafeguard } from "@/lib/clwrota-historical-safeguard";
 import {
   fetchReportRaw,

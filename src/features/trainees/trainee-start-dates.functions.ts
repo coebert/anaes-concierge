@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
@@ -51,6 +50,7 @@ function isoDateOffset(days: number): string {
  * the auth middleware.
  */
 export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const today = isoDateOffset(0);
   const windowEnd = isoDateOffset(LOOKAHEAD_DAYS);
 
