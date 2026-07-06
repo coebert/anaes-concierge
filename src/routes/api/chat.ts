@@ -11,20 +11,15 @@ import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { sendGmail } from "@/lib/gmail.server";
 import {
-  computeConsultantPattern,
-  dominantByHalfSession,
-  LOCATION_LABELS,
-  suggestedRegularityThreshold,
-  summariseStaff,
-  WEEKDAY_LABELS,
   type AssignmentLite,
-  type LocationBucket,
   type SessionLite,
   type SpecialtyLite,
   type StaffGrade,
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
+import { buildCurrentPatternResponse } from "@/lib/staff-current-pattern";
+
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
 You help staff understand their rota, leave entitlement, leave requests and trainee progress.
@@ -495,109 +490,22 @@ async function computeCurrentPatternForStaff(
   }
 
   const grade = (profileRes.data.grade ?? null) as StaffGrade | null;
-  const threshold = suggestedRegularityThreshold(windowDays);
-  const [summary] = summariseStaff(
-    [
-      {
-        id: profileRes.data.id,
-        full_name: profileRes.data.full_name ?? "",
-        grade,
-      },
-    ],
-    assignments,
-    sessionsById,
-    theatresById,
-    specialtiesById,
-    { regularityThreshold: threshold },
-  );
-
-  const consultantPattern =
-    grade === "consultant" || grade === "sas"
-      ? computeConsultantPattern(assignments, sessionsById, theatresById, {
-          regularityThreshold: threshold,
-        })
-      : null;
-
-  const minCountForDominant = Math.max(2, Math.floor(threshold / 2) + 1);
-  const dominant = dominantByHalfSession(
-    assignments,
-    sessionsById,
-    theatresById,
-    minCountForDominant,
-  );
-
-
-  // Flatten dominant grid into the shape the card renders (Mon–Fri).
-  const weeklyGrid = (["am", "pm"] as const).map((half) => ({
-    session: half,
-    days: [1, 2, 3, 4, 5].map((dow) => {
-      const cell = dominant[half][dow];
-      return {
-        weekday: WEEKDAY_LABELS[dow],
-        location: cell ? LOCATION_LABELS[cell.bucket] : null,
-        recurrence: cell ? `${cell.count}/${cell.total}` : null,
-      };
-    }),
-  }));
-
-  const locationBreakdown = (Object.entries(summary.byLocation) as [
-    LocationBucket,
-    number,
-  ][])
-    .filter(([, n]) => n > 0)
-    .sort((a, b) => b[1] - a[1])
-    .map(([bucket, count]) => ({
-      location: LOCATION_LABELS[bucket],
-      count,
-      percent:
-        summary.totalSessions > 0
-          ? Math.round((count / summary.totalSessions) * 100)
-          : 0,
-    }));
-
-  const toDays = (arr: number[]) => arr.map((d) => WEEKDAY_LABELS[d]);
-
-  const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
-
-  return {
+  return buildCurrentPatternResponse({
     profile: {
       id: profileRes.data.id,
       full_name: profileRes.data.full_name ?? "",
       grade,
     },
     windowDays,
-    range: { from, to },
-    assignmentCount: assignments.length,
-    regularityThreshold: threshold,
-    minRecurrence: minCount,
-    totalSessions: summary.totalSessions,
-    totalOnCallSessions: consultantPattern?.totalOnCallSessions ?? 0,
-    weeklyGrid,
-    locationBreakdown,
-    topSpecialties: summary.bySpecialty.slice(0, 6),
-    consultantPattern: consultantPattern
-      ? {
-          onCallType: consultantPattern.onCallType,
-          onCallDays: toDays(consultantPattern.onCallWeekdays),
-          sagDays: toDays(consultantPattern.privateWeekdays),
-          spaAmDays: toDays(consultantPattern.spaAmWeekdays),
-          spaPmDays: toDays(consultantPattern.spaPmWeekdays),
-        }
-      : null,
-    assumptions: {
-      method:
-        "Dominant location per half-session (AM/PM × Mon–Fri): for each cell we group the staff member's assignments in the window by location bucket (theatre list, on-call, SAG, SPA, teaching, admin, leave, other) and pick the bucket that recurs on the most distinct dates.",
-      regularity: `A cell is only shown as regular if the winning bucket recurs on at least ${minCount} distinct dates within the last ${windowDays} days (roughly half of the suggested regularity threshold of ${threshold}).`,
-      consultantExtras:
-        grade === "consultant" || grade === "sas"
-          ? "Consultant/SAS on-call, SAG and SPA days are derived from computeConsultantPattern over the same window."
-          : null,
-      locationShare:
-        "The location breakdown and top specialties count every assignment in the window (not just the dominant cell), with specialties inferred from theatre lists.",
-      dataSource: `Derived from ${assignments.length} rota assignments in the last ${windowDays} days.`,
-    },
-  };
+    from,
+    to,
+    assignments,
+    sessionsById,
+    theatresById,
+    specialtiesById,
+  });
 }
+
 
 
 function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
