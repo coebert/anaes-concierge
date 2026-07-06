@@ -14,9 +14,6 @@ import {
   getClwRotaSettings,
   saveClwRotaSettings,
   testClwRotaConnection,
-  listReclassificationRuns,
-  undoReclassificationRun,
-  investigateAndFixTraineeSolo,
   backfillNonSagLabels,
 } from "@/features/clwrota/clwrota.functions";
 import {
@@ -25,39 +22,17 @@ import {
   useSyncClwRotaLeave,
 } from "@/features/clwrota/clwrota-sync-hooks";
 import { validateTraineeTheatreMatches } from "@/features/trainees/trainee-theatre-validation.functions";
+import { Stat } from "./-admin-settings-stat";
+import { InvestigateSoloCard } from "./-admin-settings-investigate-solo-card";
+import { ReclassificationUndoCard } from "./-admin-settings-reclassification-undo-card";
+import { NameSortPreferenceCard } from "./-admin-settings-name-sort-card";
 
-
-import { formatDateGB } from "@/lib/utils";
-import { useNameSortDirection, setNameSortDirection } from "@/lib/name-sort";
+// Re-exported for the co-located investigate-solo test.
+export { InvestigateSoloCard };
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   component: SettingsPage,
 });
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "success" | "info" | "danger";
-}) {
-  const toneClass =
-    tone === "success"
-      ? "text-emerald-600"
-      : tone === "danger"
-        ? "text-destructive"
-        : tone === "info"
-          ? "text-blue-600"
-          : "text-foreground";
-  return (
-    <div className="rounded border border-border bg-muted/30 p-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={`text-lg font-semibold ${toneClass}`}>{value}</div>
-    </div>
-  );
-}
 
 function SettingsPage() {
   const qc = useQueryClient();
