@@ -87,21 +87,21 @@ export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
     const { rpID, origin } = getRpInfo();
     const userId = context.userId;
 
-    const { data: rows } = await supabaseAdmin
-      .from("passkey_challenges")
-      .select("id, challenge, expires_at")
-      .eq("user_id", userId)
-      .eq("purpose", "registration")
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const chal = rows?.[0];
-    if (!chal || new Date(chal.expires_at) < new Date()) {
+    // Atomically consume the latest non-expired registration challenge so a
+    // replay/concurrent request cannot reuse it.
+    const { data: consumed, error: consumeErr } = await supabaseAdmin.rpc(
+      "consume_passkey_challenge" as never,
+      { p_user_id: userId, p_purpose: "registration" } as never,
+    );
+    if (consumeErr) throw new Error(consumeErr.message);
+    const challenge = (consumed as unknown as { challenge: string }[] | null)?.[0]?.challenge;
+    if (!challenge) {
       throw new Error("Passkey challenge expired. Try again.");
     }
 
     const verification = await srv.verifyRegistrationResponse({
       response: data.response,
-      expectedChallenge: chal.challenge,
+      expectedChallenge: challenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
       requireUserVerification: false,
@@ -124,9 +124,9 @@ export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
     });
     if (insErr) throw new Error(insErr.message);
 
-    await supabaseAdmin.from("passkey_challenges").delete().eq("id", chal.id);
     return { ok: true };
   });
+
 
 // ---------------------------------------------------------------------------
 // Authentication (public — no session yet)
