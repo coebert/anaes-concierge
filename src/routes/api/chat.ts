@@ -546,6 +546,8 @@ async function computeCurrentPatternForStaff(
 
   const toDays = (arr: number[]) => arr.map((d) => WEEKDAY_LABELS[d]);
 
+  const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
+
   return {
     profile: {
       id: profileRes.data.id,
@@ -554,6 +556,9 @@ async function computeCurrentPatternForStaff(
     },
     windowDays,
     range: { from, to },
+    assignmentCount: assignments.length,
+    regularityThreshold: threshold,
+    minRecurrence: minCount,
     totalSessions: summary.totalSessions,
     totalOnCallSessions: consultantPattern?.totalOnCallSessions ?? 0,
     weeklyGrid,
@@ -568,8 +573,21 @@ async function computeCurrentPatternForStaff(
           spaPmDays: toDays(consultantPattern.spaPmWeekdays),
         }
       : null,
+    assumptions: {
+      method:
+        "Dominant location per half-session (AM/PM × Mon–Fri): for each cell we group the staff member's assignments in the window by location bucket (theatre list, on-call, SAG, SPA, teaching, admin, leave, other) and pick the bucket that recurs on the most distinct dates.",
+      regularity: `A cell is only shown as regular if the winning bucket recurs on at least ${minCount} distinct dates within the last ${windowDays} days (roughly half of the suggested regularity threshold of ${threshold}).`,
+      consultantExtras:
+        grade === "consultant" || grade === "sas"
+          ? "Consultant/SAS on-call, SAG and SPA days are derived from computeConsultantPattern over the same window."
+          : null,
+      locationShare:
+        "The location breakdown and top specialties count every assignment in the window (not just the dominant cell), with specialties inferred from theatre lists.",
+      dataSource: `Derived from ${assignments.length} rota assignments in the last ${windowDays} days.`,
+    },
   };
 }
+
 
 function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
   const admin = getAdminClient();
