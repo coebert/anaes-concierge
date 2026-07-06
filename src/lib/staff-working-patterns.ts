@@ -332,8 +332,10 @@ export function summariseStaff(
       private_non_sag: 0,
       obstetrics: 0,
       icu: 0,
+      leave: 0,
       other: 0,
     };
+
     const specialtyCounts = new Map<string, number>();
 
     for (const a of own) {
