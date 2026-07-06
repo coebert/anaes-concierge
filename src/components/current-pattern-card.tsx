@@ -46,6 +46,11 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
+import {
+  applyLeaveOverlay,
+  expandApprovedLeaveToAssignments,
+  type LeaveRowLite,
+} from "@/lib/staff-current-pattern";
 
 import { cn } from "@/lib/utils";
 
@@ -56,6 +61,7 @@ const LOCATION_ABBR: Record<LocationBucket, string> = {
   private_non_sag: "NHH",
   obstetrics: "Obs",
   icu: "ICU",
+  leave: "Leave",
   other: "—",
 };
 
@@ -66,8 +72,10 @@ const LOCATION_TONE: Record<LocationBucket, string> = {
   private_non_sag: "bg-warning-muted text-warning border-warning/30",
   obstetrics: "bg-destructive-muted text-destructive border-destructive/30",
   icu: "bg-warning-muted text-warning border-warning/40",
+  leave: "bg-muted text-muted-foreground border-dashed border-muted-foreground/40",
   other: "bg-muted text-muted-foreground border-border",
 };
+
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -246,6 +254,29 @@ export function CurrentPatternCard({
         }
       }
 
+      // Leave overlay: approved leave in the window blocks the covered AM/PM
+      // half-sessions and can itself become the dominant "location".
+      const { data: leaveRowsRaw, error: leaveErr } = await supabase
+        .from("leave_requests")
+        .select(
+          "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+        )
+        .eq("staff_id", staffId)
+        .eq("status", "approved")
+        .lte("start_date", to)
+        .gte("end_date", from);
+      if (leaveErr) throw leaveErr;
+      const leaveRows = (leaveRowsRaw ?? []) as LeaveRowLite[];
+      const leaveOverlay = expandApprovedLeaveToAssignments(
+        staffId,
+        leaveRows,
+        from,
+        to,
+      );
+      const effectiveAssignments = applyLeaveOverlay(assignments, leaveOverlay);
+
+
+
       const profile = profileRes.data;
       if (!profile) return null;
       const grade = (profile.grade ?? null) as StaffGrade | null;
@@ -259,7 +290,7 @@ export function CurrentPatternCard({
             grade,
           },
         ],
-        assignments,
+        effectiveAssignments,
         sessionsById,
         theatresById,
         specialtiesById,
@@ -269,7 +300,7 @@ export function CurrentPatternCard({
       const consultantPattern =
         grade === "consultant" || grade === "sas"
           ? computeConsultantPattern(
-              assignments,
+              effectiveAssignments,
               sessionsById,
               theatresById,
               { regularityThreshold: threshold },
@@ -278,7 +309,7 @@ export function CurrentPatternCard({
 
       const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
       const dominant = dominantByHalfSession(
-        assignments,
+        effectiveAssignments,
         sessionsById,
         theatresById,
         // Cell shows up if a half-session recurs in ~half the window's weeks.
@@ -293,8 +324,9 @@ export function CurrentPatternCard({
         windowDays,
         threshold,
         minCount,
-        assignmentCount: assignments.length,
+        assignmentCount: effectiveAssignments.length,
       };
+
     },
   });
 
@@ -568,6 +600,19 @@ export function CurrentPatternCard({
               One-off cover shifts therefore fall out; a dot (·) means "no
               regular pattern here".
             </p>
+            <p className="mb-2">
+
+              <span className="font-medium text-foreground">
+                Leave overlay.
+              </span>{" "}
+              Approved leave in the window blocks the covered AM/PM
+              half-sessions: any rota assignment on those halves is dropped
+              and replaced with a "Leave" entry, which then competes with
+              other buckets for the dominant cell. Half-day markers
+              (<code>half_day_start</code> / <code>half_day_end</code>) are
+              honoured, so a PM-only day only blocks PM.
+            </p>
+
             <p className="mb-2">
               <span className="font-medium text-foreground">
                 Consultant / SAS extras.
