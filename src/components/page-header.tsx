@@ -28,7 +28,7 @@ export function PageHeader({
     <div className={cn("mb-4 space-y-3 md:mb-6", className)}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <h1 className="truncate font-display text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-balance text-foreground md:text-3xl">
             {title}
           </h1>
           {description ? (

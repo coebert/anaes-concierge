@@ -96,15 +96,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur">
-          <SidebarTrigger />
+        <a href="#main-content" className="skip-to-content">Skip to content</a>
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+          <SidebarTrigger aria-label="Toggle navigation" />
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <CommandPalette />
             <ThemeToggle />
             <UserMenu />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-8 focus:outline-none"
+        >
           <Breadcrumbs pathname={location.pathname} items={visibleItems} />
           {children}
         </main>

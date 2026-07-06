@@ -64,7 +64,7 @@ function HealthPage() {
   });
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       {/* Header */}
       <header className="border-b bg-card px-4 py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
