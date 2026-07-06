@@ -76,44 +76,14 @@ const SUGGESTIONS = [
   "Top 10 days with the most unfilled rota gaps in the last 3 months",
 ];
 
-interface RunSqlOutput {
-  title?: string;
-  sql?: string;
-  chart?: {
-    type: "bar" | "line" | "pie";
-    xKey: string;
-    yKeys: string[];
-    title?: string;
-  } | null;
-  rowCount?: number;
-  columns?: string[];
-  rows?: Array<Record<string, unknown>>;
-  rowsPreview?: Array<Record<string, unknown>>;
-  error?: string;
-}
+import {
+  ChatBubble,
+  ReportCard,
+  downloadAllExcel,
+  downloadAllPdf,
+  type RunSqlOutput,
+} from "@/features/admin-audit-tool/panels";
 
-interface ReportSection {
-  heading: string;
-  prose?: string;
-  bullets?: string[];
-  chart?: {
-    type: "bar" | "line" | "pie" | "doughnut";
-    title?: string;
-    labels: string[];
-    datasets: Array<{ label: string; data: number[] }>;
-  };
-  chartUrl?: string;
-}
-
-interface ReportOutput {
-  title: string;
-  executive_summary: string;
-  key_findings: string[];
-  sections: ReportSection[];
-  recommendations?: string[];
-  caveats?: string[];
-  generatedAt?: string;
-}
 
 
 const STORAGE_KEY_PREFIX = "audit-tool:messages:";
