@@ -1,8 +1,8 @@
 // Auto-carved from clwrota.functions.ts (Phase 4a.ii split).
 // Pure helpers: URL/window rewriters, CLWRota payload fetch/parse, and
 // classifier/normaliser utilities. NO Supabase / secret dependencies.
-import { RowsWrapperSchema } from "./schemas";
-export { RowsWrapperSchema, RotamapCentralApiSchema } from "./schemas";
+import { RowsWrapperSchema, RotamapCentralApiSchema } from "./schemas";
+export { RotamapCentralApiSchema };
 export type { ClwRotaGenericRow, ParsedRowsResult } from "./schemas";
 import { normaliseRotaLabelText } from "@/lib/clwrota-labels";
 
