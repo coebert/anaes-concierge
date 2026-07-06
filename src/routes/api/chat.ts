@@ -489,6 +489,27 @@ async function computeCurrentPatternForStaff(
     }
   }
 
+  // Approved leave in the window overlays the rota grid: blocked half-sessions
+  // are removed from the assignments and replaced with synthetic "leave"
+  // rows, so the dominant-per-half-session calculation matches the card.
+  const { data: leaveRowsRaw, error: leaveErr } = await admin
+    .from("leave_requests")
+    .select(
+      "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+    )
+    .eq("staff_id", staffId)
+    .eq("status", "approved")
+    .lte("start_date", to)
+    .gte("end_date", from);
+  if (leaveErr) throw new Error(leaveErr.message);
+  const leaveOverlay = expandApprovedLeaveToAssignments(
+    staffId,
+    (leaveRowsRaw ?? []) as LeaveRowLite[],
+    from,
+    to,
+  );
+  const effectiveAssignments = applyLeaveOverlay(assignments, leaveOverlay);
+
   const grade = (profileRes.data.grade ?? null) as StaffGrade | null;
   return buildCurrentPatternResponse({
     profile: {
@@ -499,12 +520,13 @@ async function computeCurrentPatternForStaff(
     windowDays,
     from,
     to,
-    assignments,
+    assignments: effectiveAssignments,
     sessionsById,
     theatresById,
     specialtiesById,
   });
 }
+
 
 
 
