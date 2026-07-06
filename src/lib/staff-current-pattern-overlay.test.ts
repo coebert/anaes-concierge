@@ -266,6 +266,8 @@ describe("dominant location updates after leave overlay", () => {
     expect(am.days[0].recurrence).toBe("3/3");
     // Location breakdown reflects the leave overlay (no theatre assignments left).
     const leaveShare = res.locationBreakdown.find((b) => b.location === LOCATION_LABELS.leave);
-    expect(leaveShare?.count).toBe(3);
+    // 3 approved full days = 6 half-sessions of leave.
+    expect(leaveShare?.count).toBe(6);
+
   });
 });
