@@ -509,12 +509,14 @@ async function computeCurrentPatternForStaff(
         })
       : null;
 
+  const minCountForDominant = Math.max(2, Math.floor(threshold / 2) + 1);
   const dominant = dominantByHalfSession(
     assignments,
     sessionsById,
     theatresById,
-    Math.max(2, Math.floor(threshold / 2) + 1),
+    minCountForDominant,
   );
+
 
   // Flatten dominant grid into the shape the card renders (Mon–Fri).
   const weeklyGrid = (["am", "pm"] as const).map((half) => ({
