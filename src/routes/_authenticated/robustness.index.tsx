@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight, Info, Coffee } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
-import { computeRobustness, riskColor, riskLabel } from "@/lib/audit/robustness";
+import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/")({
   component: RobustnessPage,

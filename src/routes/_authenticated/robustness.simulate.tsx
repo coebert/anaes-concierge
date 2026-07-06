@@ -12,7 +12,7 @@ import { ChevronLeft, FlaskConical } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import {
   computeRobustness, riskColor, type ExtraAbsence, type Grade,
-} from "@/lib/audit/robustness";
+} from "@/features/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/simulate")({
   component: SimulatePage,

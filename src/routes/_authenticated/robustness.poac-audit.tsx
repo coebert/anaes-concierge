@@ -20,7 +20,7 @@ import {
   computePoacWeeklyStats,
   validatePoacBaseline,
   type PoacBaselineViolation,
-} from "@/lib/audit/poac-baseline";
+} from "@/features/audit/poac-baseline";
 
 // PostgREST defaults to a 1000-row response cap. Walk the result set in
 // pages so audits over long date ranges (or as data grows) cannot silently

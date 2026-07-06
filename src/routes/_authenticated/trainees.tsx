@@ -22,9 +22,9 @@ import { useAuth } from "@/lib/auth-context";
 import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { chunkIds } from "@/lib/supabase-chunked";
-import { fetchAllRowsPaged, idKey } from "@/lib/audit/paginate";
+import { fetchAllRowsPaged, idKey } from "@/features/audit/paginate";
 import { computeTraineeMetrics, isJuniorTraineeLevel, type MetricAssignment } from "@/features/trainees/trainee-metrics";
-import { isIcuBlockOnly } from "@/lib/audit/trainee-audit";
+import { isIcuBlockOnly } from "@/features/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
