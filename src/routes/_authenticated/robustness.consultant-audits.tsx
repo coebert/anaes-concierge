@@ -456,7 +456,7 @@ function Stat({
     tone === "primary"
       ? "text-primary"
       : tone === "amber"
-        ? "text-amber-600 dark:text-amber-400"
+        ? "text-warning"
         : "text-foreground";
   return (
     <div className="flex items-center justify-between gap-2">
