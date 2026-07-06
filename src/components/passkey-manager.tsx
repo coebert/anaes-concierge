@@ -8,7 +8,7 @@ import {
   verifyPasskeyRegistration,
   listMyPasskeys,
   deleteMyPasskey,
-} from "@/lib/passkeys.functions";
+} from "@/features/passkeys/passkeys.functions";
 import { detectDeviceName } from "@/lib/passkey-device-name";
 import { Button } from "@/components/ui/button";
 import {

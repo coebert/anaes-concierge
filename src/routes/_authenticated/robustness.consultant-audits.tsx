@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Stethoscope } from "lucide-react";
 import { splitName } from "@/lib/utils";
-import { checkTableGrants } from "@/lib/grants-healthcheck.functions";
+import { checkTableGrants } from "@/features/admin/grants-healthcheck.functions";
 import {
   classifyConsultantAssignment,
   type SagMark,

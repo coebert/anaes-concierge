@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { formatDateGB, todayISO } from "@/lib/utils";
-import { checkCalendarStaffCoverage } from "@/lib/calendar-coverage.functions";
+import { checkCalendarStaffCoverage } from "@/features/calendar/calendar-coverage.functions";
 
 function addDays(iso: string, days: number): string {
   const d = new Date(iso + "T00:00:00Z");

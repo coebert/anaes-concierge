@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   startPasskeyAuthentication,
   verifyPasskeyAuthentication,
-} from "@/lib/passkeys.functions";
+} from "@/features/passkeys/passkeys.functions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Fingerprint } from "lucide-react";

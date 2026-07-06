@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   listActiveStaffSafe,
   listStaffByIdsSafe,
-} from "@/lib/staff-directory.functions";
+} from "@/features/staff/staff-directory.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

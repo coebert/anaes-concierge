@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/lib/auth-context";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
-import { listMyPasskeys } from "@/lib/passkeys.functions";
+import { listMyPasskeys } from "@/features/passkeys/passkeys.functions";
 import {
   OfferPasskeyRegistration,
   shouldOfferPasskey,

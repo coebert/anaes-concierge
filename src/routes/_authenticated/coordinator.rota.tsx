@@ -23,7 +23,7 @@ import {
   validateAssignment, worstSeverity,
   type Issue, type Profile, type RotaRules,
 } from "@/lib/rota-validation";
-import { checkCustomRuleViolations } from "@/lib/custom-rules.functions";
+import { checkCustomRuleViolations } from "@/features/rules/custom-rules.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { SessionChip } from "@/components/rota-views";
 

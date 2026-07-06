@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
 import { todayISO, formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { listActiveStaffSafe } from "@/lib/staff-directory.functions";
+import { listActiveStaffSafe } from "@/features/staff/staff-directory.functions";
 
 /**
  * "Who's in today" — staff assigned to a clinical activity for today's AM/PM
