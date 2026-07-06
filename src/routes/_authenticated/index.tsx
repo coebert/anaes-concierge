@@ -15,6 +15,7 @@ import {
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
 import { TodayInHospital } from "@/components/today-in-hospital";
+import { StatCard } from "@/components/stat-card";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
