@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
-import { loadLeavePressure, pressureColor, type DayPressure } from "@/lib/audit/leave-pressure";
+import { loadLeavePressure, pressureColor, type DayPressure } from "@/features/audit/leave-pressure";
 import { LeaveMonthlyCalendar } from "@/components/leave-monthly-calendar";
 
 export const Route = createFileRoute("/_authenticated/leave_/forecast")({

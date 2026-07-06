@@ -33,11 +33,11 @@ import {
   type FeasibilityThresholds,
   type ListSlotFeasibility,
   type Verdict,
-} from "@/lib/audit/list-feasibility";
+} from "@/features/audit/list-feasibility";
 import {
   validateConsultantPatterns,
   type SampleClassification,
-} from "@/lib/audit/list-feasibility-validation";
+} from "@/features/audit/list-feasibility-validation";
 import {
   diagnoseValidationReport,
   type DiagnosedReport,
@@ -45,7 +45,7 @@ import {
   type DiagnosedCell,
   type Diagnosis,
   type Remediation,
-} from "@/lib/audit/list-feasibility-diagnosis";
+} from "@/features/audit/list-feasibility-diagnosis";
 
 
 

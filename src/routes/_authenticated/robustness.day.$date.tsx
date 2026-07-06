@@ -12,7 +12,7 @@ import { formatDateGB, cn } from "@/lib/utils";
 import {
   loadDayDetail, riskColor, riskLabel,
   type DayDetailSession, type HalfDayCapacity, type OtherDutyDetail,
-} from "@/lib/audit/robustness";
+} from "@/features/audit/robustness";
 import { BreakdownCard } from "@/components/robustness/BreakdownCard";
 import { SessionChip } from "@/components/rota-views";
 

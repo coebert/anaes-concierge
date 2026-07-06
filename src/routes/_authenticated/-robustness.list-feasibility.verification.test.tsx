@@ -15,8 +15,8 @@ class ResizeObserverStub {
 import type {
   ListFeasibilityResult,
   FeasibilityThresholds,
-} from "@/lib/audit/list-feasibility";
-import type { DiagnosedReport } from "@/lib/audit/list-feasibility-diagnosis";
+} from "@/features/audit/list-feasibility";
+import type { DiagnosedReport } from "@/features/audit/list-feasibility-diagnosis";
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -40,27 +40,27 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 const { computeListFeasibility } = vi.hoisted(() => ({
   computeListFeasibility: vi.fn(),
 }));
-vi.mock("@/lib/audit/list-feasibility", async () => {
+vi.mock("@/features/audit/list-feasibility", async () => {
   const actual = await vi.importActual<
-    typeof import("@/lib/audit/list-feasibility")
-  >("@/lib/audit/list-feasibility");
+    typeof import("@/features/audit/list-feasibility")
+  >("@/features/audit/list-feasibility");
   return { ...actual, computeListFeasibility };
 });
 
 const { validateConsultantPatterns } = vi.hoisted(() => ({
   validateConsultantPatterns: vi.fn(),
 }));
-vi.mock("@/lib/audit/list-feasibility-validation", () => ({
+vi.mock("@/features/audit/list-feasibility-validation", () => ({
   validateConsultantPatterns,
 }));
 
 const { diagnoseValidationReport } = vi.hoisted(() => ({
   diagnoseValidationReport: vi.fn(),
 }));
-vi.mock("@/lib/audit/list-feasibility-diagnosis", async () => {
+vi.mock("@/features/audit/list-feasibility-diagnosis", async () => {
   const actual = await vi.importActual<
-    typeof import("@/lib/audit/list-feasibility-diagnosis")
-  >("@/lib/audit/list-feasibility-diagnosis");
+    typeof import("@/features/audit/list-feasibility-diagnosis")
+  >("@/features/audit/list-feasibility-diagnosis");
   return { ...actual, diagnoseValidationReport };
 });
 

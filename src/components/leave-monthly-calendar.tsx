@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { cn, toISODateLocal } from "@/lib/utils";
-import { loadCalendarLeave, type CalendarLeaveEntry } from "@/lib/audit/leave-pressure";
+import { loadCalendarLeave, type CalendarLeaveEntry } from "@/features/audit/leave-pressure";
 
 /**
  * Map a (type, status) pair to a chip style.

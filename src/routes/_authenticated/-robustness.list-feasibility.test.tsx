@@ -16,7 +16,7 @@ class ResizeObserverStub {
 import type {
   ListFeasibilityResult,
   FeasibilityThresholds,
-} from "@/lib/audit/list-feasibility";
+} from "@/features/audit/list-feasibility";
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -44,15 +44,15 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 const { computeListFeasibility } = vi.hoisted(() => ({
   computeListFeasibility: vi.fn(),
 }));
-vi.mock("@/lib/audit/list-feasibility", async () => {
+vi.mock("@/features/audit/list-feasibility", async () => {
   const actual = await vi.importActual<
-    typeof import("@/lib/audit/list-feasibility")
-  >("@/lib/audit/list-feasibility");
+    typeof import("@/features/audit/list-feasibility")
+  >("@/features/audit/list-feasibility");
   return { ...actual, computeListFeasibility };
 });
 
 // Validation card kicks off its own Supabase queries on mount; stub it.
-vi.mock("@/lib/audit/list-feasibility-validation", () => ({
+vi.mock("@/features/audit/list-feasibility-validation", () => ({
   validateConsultantPatterns: vi.fn(),
 }));
 

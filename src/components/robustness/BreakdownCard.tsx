@@ -9,7 +9,7 @@ import { ClipboardList, UserMinus, Coffee, Info, CheckCircle2, XCircle, Ban, Gra
 import { cn } from "@/lib/utils";
 import type {
   HalfBreakdown, HalfDayCapacity, StaffStatusEntry, StaffStatusCategory,
-} from "@/lib/audit/robustness";
+} from "@/features/audit/robustness";
 
 type IconName = "check" | "coffee" | "info" | "list" | "ban" | "user-minus" | "x";
 
