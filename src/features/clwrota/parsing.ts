@@ -607,10 +607,3 @@ export function resolveOffsiteTheatreAlias(
   return undefined;
 }
 
-/**
- * Load admin-configured theatre name aliases. Returns a map of
- * lowercased/trimmed alias → theatre_id for the active rows only.
- *
- * Aliases let coordinators teach the sync that an imported rota label
- * (e.g. "Main Theatre 3", "T3 (NHH)", "Endoscopy Suite") maps to a known
- * canonical theatre, without needing a code change.

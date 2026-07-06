@@ -28,16 +28,3 @@ export async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
   return (data ?? []) as DutyTypeMappingRow[];
 }
 
-
-
-/**
- * Pull rota assignments from the configured CLWRota rota report URL and
- * write them to `theatre_sessions` + `rota_assignments`. Matches staff by
- * email/external id/name, theatres by name, specialties by name (created on
- * demand). Rows that can't be matched are reported as skipped so the field
- * mapping can be tuned.
- *
- * HISTORICAL-DATA SAFEGUARD: this function never deletes rows.
- * It only upserts theatre_sessions and rota_assignments keyed by natural
- * identifiers, so old/historical assignments outside the synced date window
- * are preserved for auditing.
