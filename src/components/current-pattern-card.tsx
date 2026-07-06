@@ -254,6 +254,29 @@ export function CurrentPatternCard({
         }
       }
 
+      // Leave overlay: approved leave in the window blocks the covered AM/PM
+      // half-sessions and can itself become the dominant "location".
+      const { data: leaveRowsRaw, error: leaveErr } = await supabase
+        .from("leave_requests")
+        .select(
+          "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+        )
+        .eq("staff_id", staffId)
+        .eq("status", "approved")
+        .lte("start_date", to)
+        .gte("end_date", from);
+      if (leaveErr) throw leaveErr;
+      const leaveRows = (leaveRowsRaw ?? []) as LeaveRowLite[];
+      const leaveOverlay = expandApprovedLeaveToAssignments(
+        staffId,
+        leaveRows,
+        from,
+        to,
+      );
+      const effectiveAssignments = applyLeaveOverlay(assignments, leaveOverlay);
+
+
+
       const profile = profileRes.data;
       if (!profile) return null;
       const grade = (profile.grade ?? null) as StaffGrade | null;
