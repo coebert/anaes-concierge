@@ -345,7 +345,7 @@ export function ClwRotaStepStatusPage() {
                         <dt className="text-muted-foreground">Next allowed</dt>
                         <dd
                           className={`font-medium ${
-                            ready ? "text-emerald-600" : ""
+                            ready ? "text-success" : ""
                           }`}
                         >
                           {ready

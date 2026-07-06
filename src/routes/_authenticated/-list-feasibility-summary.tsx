@@ -160,10 +160,10 @@ export function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
                             {c.workingPct}%
                           </span>
                           {c.isCurrentOwner && (
-                            <span className="ml-1 text-[10px] text-emerald-700">owner</span>
+                            <span className="ml-1 text-[10px] text-success">owner</span>
                           )}
                           {c.isCurrentDeputy && !c.isCurrentOwner && (
-                            <span className="ml-1 text-[10px] text-amber-700">deputy</span>
+                            <span className="ml-1 text-[10px] text-warning">deputy</span>
                           )}
                         </li>
                       ))}
@@ -177,7 +177,7 @@ export function SlotsTable({ slots }: { slots: ListSlotFeasibility[] }) {
                 </td>
                 <td className="px-2 py-1.5 text-muted-foreground max-w-[24rem]">
                   {s.reasons.length === 0 ? (
-                    <span className="text-emerald-700">All thresholds met.</span>
+                    <span className="text-success">All thresholds met.</span>
                   ) : (
                     <ul className="list-disc pl-4 space-y-0.5">
                       {s.reasons.map((r, i) => (
@@ -304,14 +304,14 @@ export function AssumptionsCard() {
 export function VerdictBadge({ verdict }: { verdict: Verdict }) {
   if (verdict === "feasible") {
     return (
-      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+      <Badge className="bg-emerald-100 text-success hover:bg-emerald-100">
         Feasible
       </Badge>
     );
   }
   if (verdict === "borderline") {
     return (
-      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+      <Badge className="bg-amber-100 text-warning hover:bg-amber-100">
         Borderline
       </Badge>
     );
@@ -340,8 +340,8 @@ export function Stat({
     tone === "red"
       ? "bg-red-500/10 text-red-600"
       : tone === "amber"
-      ? "bg-amber-500/10 text-amber-600"
-      : "bg-emerald-500/10 text-emerald-600";
+      ? "bg-amber-500/10 text-warning"
+      : "bg-emerald-500/10 text-success";
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">

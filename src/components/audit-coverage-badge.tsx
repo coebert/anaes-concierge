@@ -31,24 +31,24 @@ export function AuditCoverageBadge({ coverage }: { coverage: AuditCoverage | nul
     <Card
       className={
         allComplete
-          ? "border-emerald-500/40 bg-emerald-500/5"
-          : "border-amber-500/40 bg-amber-500/5"
+          ? "border-success/40 bg-success-muted/30"
+          : "border-warning/40 bg-warning-muted/30"
       }
     >
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           {allComplete ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 text-success" />
           ) : (
-            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
           )}
           Data coverage
           {allComplete ? (
-            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15">
+            <Badge className="bg-emerald-500/15 text-success hover:bg-emerald-500/15">
               COMPLETE
             </Badge>
           ) : (
-            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15">
+            <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15">
               POSSIBLE TRUNCATION
             </Badge>
           )}

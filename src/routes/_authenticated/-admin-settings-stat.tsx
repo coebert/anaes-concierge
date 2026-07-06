@@ -9,7 +9,7 @@ export function Stat({
 }) {
   const toneClass =
     tone === "success"
-      ? "text-emerald-600"
+      ? "text-success"
       : tone === "danger"
         ? "text-destructive"
         : tone === "info"

@@ -22,7 +22,7 @@ type MetricKey =
 const METRIC_META: Record<MetricKey, { label: string; chipClass: string; explainer: string }> = {
   headroom: {
     label: "→ headroom",
-    chipClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
+    chipClass: "bg-emerald-500/15 text-success border-emerald-500/40",
     explainer: "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8). SPA is NOT included here.",
   },
   spa: {
@@ -46,8 +46,8 @@ const CATEGORY_META: Record<
   StaffStatusCategory,
   { label: string; tone: string; iconName: IconName; order: number; metric: MetricKey }
 > = {
-  free_consultant: { label: "Free consultants (solo-capable)", tone: "border-emerald-500/40 bg-emerald-500/5", iconName: "check", order: 1, metric: "headroom" },
-  free_senior_trainee: { label: "Free senior trainees ST6–8 (solo-capable)", tone: "border-emerald-500/40 bg-emerald-500/5", iconName: "check", order: 2, metric: "headroom" },
+  free_consultant: { label: "Free consultants (solo-capable)", tone: "border-success/40 bg-success-muted/30", iconName: "check", order: 1, metric: "headroom" },
+  free_senior_trainee: { label: "Free senior trainees ST6–8 (solo-capable)", tone: "border-success/40 bg-success-muted/30", iconName: "check", order: 2, metric: "headroom" },
   on_spa: { label: "Consultants on SPA (separate metric)", tone: "border-orange-500/40 bg-orange-500/5", iconName: "coffee", order: 3, metric: "spa" },
   free_junior_trainee: { label: "Free junior trainees (need supervision)", tone: "border-sky-500/30 bg-sky-500/5", iconName: "info", order: 4, metric: "supervisedOnly" },
   free_sas: { label: "Free SAS (pair with consultant)", tone: "border-sky-500/30 bg-sky-500/5", iconName: "info", order: 5, metric: "supervisedOnly" },
@@ -59,7 +59,7 @@ const CATEGORY_META: Record<
 
 function renderIcon(name: IconName) {
   switch (name) {
-    case "check": return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+    case "check": return <CheckCircle2 className="h-4 w-4 text-success" />;
     case "coffee": return <Coffee className="h-4 w-4 text-orange-600" />;
     case "info": return <Info className="h-4 w-4 text-sky-600" />;
     case "list": return <ClipboardList className="h-4 w-4 text-slate-500" />;
@@ -211,9 +211,9 @@ function TrainingNoteBadge({
 }) {
   const toneClass =
     note.tone === "good"
-      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+      ? "bg-emerald-500/15 text-success border-emerald-500/40"
       : note.tone === "miss"
-        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40"
+        ? "bg-amber-500/15 text-warning border-amber-500/40"
         : "bg-muted text-muted-foreground border-border";
   return (
     <Tooltip>

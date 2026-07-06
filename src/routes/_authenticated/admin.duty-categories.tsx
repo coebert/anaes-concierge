@@ -49,7 +49,7 @@ const CATEGORIES = [
     description:
       "Person is already covering a list this session (theatre, POAC, pain clinic, future activities). Removed from the headroom pool for that half-day.",
     badgeClass:
-      "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
+      "bg-emerald-500/15 text-success border-emerald-500/40",
   },
   {
     value: "excluded",

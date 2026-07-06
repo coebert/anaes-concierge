@@ -297,7 +297,7 @@ function ThresholdControls({
           </Tooltip>
           <div className="ml-auto flex items-center gap-2">
             {dirty && (
-              <span className="text-[11px] text-amber-600">
+              <span className="text-[11px] text-warning">
                 Unapplied changes
               </span>
             )}

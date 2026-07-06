@@ -199,7 +199,7 @@ function SimulatePage() {
                           "px-2 py-1.5 font-medium",
                           verdict === "New shortfall" && "text-red-600",
                           verdict === "Already at risk" && "text-red-500/80",
-                          verdict === "Tight" && "text-amber-600",
+                          verdict === "Tight" && "text-warning",
                         )}>
                           {verdict}
                         </td>

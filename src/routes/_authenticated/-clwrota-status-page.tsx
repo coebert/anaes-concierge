@@ -275,7 +275,7 @@ export function ClwRotaStatusPage() {
                           </TableCell>
                           <TableCell>
                             {r.ok ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-label="ok" />
+                              <CheckCircle2 className="h-4 w-4 text-success" aria-label="ok" />
                             ) : (
                               <XCircle className="h-4 w-4 text-destructive" aria-label="failed" />
                             )}

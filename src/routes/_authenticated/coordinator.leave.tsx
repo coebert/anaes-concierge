@@ -194,7 +194,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
                     </AlertDescription>
                   </Alert>
                 ) : (
-                  <p className="text-xs text-emerald-600">No rota assignments affected.</p>
+                  <p className="text-xs text-success">No rota assignments affected.</p>
                 )}
 
                 {otherConflicts.length > 0 && (

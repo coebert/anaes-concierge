@@ -377,7 +377,7 @@ export function ClwRotaMetricsPage() {
                         <td className="py-1.5 pr-3 whitespace-nowrap">
                           {new Date(r.run_at).toLocaleString("en-GB")}
                           {isBackfill && (
-                            <Badge variant="outline" className="ml-2 text-amber-700 border-amber-300 bg-amber-100">
+                            <Badge variant="outline" className="ml-2 text-warning border-amber-300 bg-amber-100">
                               Backfill
                             </Badge>
                           )}
@@ -389,7 +389,7 @@ export function ClwRotaMetricsPage() {
                           </Badge>
                         </td>
                         <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
-                        <td className="py-1.5 pr-3 text-right text-emerald-600">{r.rows_upserted}</td>
+                        <td className="py-1.5 pr-3 text-right text-success">{r.rows_upserted}</td>
                         <td className="py-1.5 pr-3 text-right text-blue-600">{r.rows_skipped_validation}</td>
                         <td className="py-1.5 pr-3 text-right text-purple-600">{r.rows_deleted}</td>
                         <td className="py-1.5 pr-3 text-right text-sky-600">{r.non_working_cleaned}</td>
@@ -423,7 +423,7 @@ function Stat({
 }) {
   const toneClass =
     tone === "success"
-      ? "text-emerald-600"
+      ? "text-success"
       : tone === "danger"
         ? "text-destructive"
         : tone === "info"

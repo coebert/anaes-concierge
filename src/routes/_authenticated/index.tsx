@@ -15,6 +15,7 @@ import {
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
 import { TodayInHospital } from "@/components/today-in-hospital";
+import { StatCard } from "@/components/stat-card";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
@@ -90,10 +91,10 @@ function AuditDashboard() {
       <Header subtitle="Audit workspace — synced from CLWRota" />
 
       {/* Sync freshness banner */}
-      <Card className={syncWarning ? "border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20" : ""}>
+      <Card className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-emerald-500/10 text-success"}`}>
               {syncWarning ? <AlertTriangle className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
             </div>
             <div>
@@ -298,23 +299,7 @@ function TraineeDashboard() {
 }
 
 /* ---------- Building blocks ---------- */
-function Stat({
-  label, value, icon: Icon,
-}: { label: React.ReactNode; value: number | string; icon: typeof Users }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const Stat = StatCard;
 
 function ActionCard({
   to, icon: Icon, title, body,

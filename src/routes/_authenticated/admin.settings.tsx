@@ -483,7 +483,7 @@ function SettingsPage() {
                 Import rota, leave, and staff data from CLWRota into this app.
                 Credentials are stored as backend secrets.
               </CardDescription>
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-success dark:bg-emerald-950/40 dark:text-emerald-400">
                 <CheckCircle2 className="h-3 w-3" />
                 Historical data is preserved across syncs — only adds or updates
               </div>
@@ -689,7 +689,7 @@ function SettingsPage() {
             <div className="rounded-md border border-border p-3 text-sm">
               <div className="mb-1 flex items-center gap-2">
                 {settings.last_status === "success" ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 text-success" />
                 ) : (
                   <XCircle className="h-4 w-4 text-destructive" />
                 )}
