@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { sendGmail } from "./gmail.server";
+import { sendGmail } from "@/lib/gmail.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const inputSchema = z.object({
