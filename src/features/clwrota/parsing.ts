@@ -2,6 +2,7 @@
 // Pure helpers: URL/window rewriters, CLWRota payload fetch/parse, and
 // classifier/normaliser utilities. NO Supabase / secret dependencies.
 import { z } from "zod";
+import { normaliseRotaLabelText } from "@/lib/clwrota-labels";
 
 export function withRollingFutureWindow(rawUrl: string, monthsAhead = 12): string {
   try {
