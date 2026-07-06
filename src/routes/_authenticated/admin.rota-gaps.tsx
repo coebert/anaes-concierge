@@ -38,6 +38,7 @@ import {
   type WindowChoice,
   type SpanInput,
   type SyncPriority,
+  type SyncResult,
   type SyncProgress,
   type TraineeDiagnostic,
   type TraineeDiagnosticStatus,
