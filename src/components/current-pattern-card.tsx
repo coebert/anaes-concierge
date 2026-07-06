@@ -27,7 +27,7 @@ import { PageLoading } from "@/components/loading";
 import { EmptyState } from "@/components/empty-state";
 import {
   LOCATION_LABELS,
-  classifyLocation,
+  computeConsultantPattern,
   computeConsultantPattern,
   dominantByHalfSession,
   suggestedRegularityThreshold,
