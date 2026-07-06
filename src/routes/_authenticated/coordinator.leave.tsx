@@ -33,6 +33,7 @@ interface LeaveRow {
 }
 
 export const Route = createFileRoute("/_authenticated/coordinator/leave")({
+  head: () => ({ meta: [{ title: "Coordinator — Leave — Salisbury Anaesthetics Rota" }] }),
   component: ApproveLeavePage,
 });
 

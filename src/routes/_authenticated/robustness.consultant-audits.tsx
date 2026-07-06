@@ -29,6 +29,7 @@ const REQUIRED_TABLES = [
 export const Route = createFileRoute(
   "/_authenticated/robustness/consultant-audits",
 )({
+  head: () => ({ meta: [{ title: "Consultant audits — Salisbury Anaesthetics Rota" }] }),
   component: ConsultantAuditsPage,
 });
 

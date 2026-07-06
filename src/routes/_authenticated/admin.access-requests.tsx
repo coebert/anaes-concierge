@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Check, X, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/access-requests")({
+  head: () => ({ meta: [{ title: "Access requests — Salisbury Anaesthetics Rota" }] }),
   component: AdminAccessRequestsPage,
 });
 

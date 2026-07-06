@@ -16,6 +16,7 @@ import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { ArrowLeft, AlertTriangle, Sparkles, Users } from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
+  head: () => ({ meta: [{ title: "Trainee — Salisbury Anaesthetics Rota" }] }),
   component: TraineeDetailPage,
 });
 

@@ -33,6 +33,7 @@ import { useAuth } from "@/lib/auth-context";
 export const Route = createFileRoute(
   "/_authenticated/trainees/start-date-audit",
 )({
+  head: () => ({ meta: [{ title: "Trainee start-date audit — Salisbury Anaesthetics Rota" }] }),
   component: AuditGuard,
 });
 

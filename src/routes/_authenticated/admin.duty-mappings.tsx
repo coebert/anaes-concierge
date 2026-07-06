@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/duty-mappings")({
+  head: () => ({ meta: [{ title: "Duty mappings — Salisbury Anaesthetics Rota" }] }),
   component: DutyMappingsPage,
 });
 

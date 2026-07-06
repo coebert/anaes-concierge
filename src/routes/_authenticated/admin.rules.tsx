@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/rules")({
+  head: () => ({ meta: [{ title: "Custom rules — Salisbury Anaesthetics Rota" }] }),
   component: RulesPage,
 });
 

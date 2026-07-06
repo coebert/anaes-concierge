@@ -18,6 +18,7 @@ import { compareBySurname } from "@/lib/name-sort";
 import { CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck, ShieldAlert, ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/tcs-audit")({
+  head: () => ({ meta: [{ title: "TCS 2016 audit — Salisbury Anaesthetics Rota" }] }),
   component: TcsAuditPage,
 });
 

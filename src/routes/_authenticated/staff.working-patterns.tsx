@@ -29,6 +29,7 @@ import {
 } from "@/lib/staff-working-patterns";
 
 export const Route = createFileRoute("/_authenticated/staff/working-patterns")({
+  head: () => ({ meta: [{ title: "Staff working patterns — Salisbury Anaesthetics Rota" }] }),
   component: WorkingPatternsPage,
 });
 

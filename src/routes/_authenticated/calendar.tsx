@@ -11,6 +11,7 @@ import {
 } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
+  head: () => ({ meta: [{ title: "Calendar — Salisbury Anaesthetics Rota" }] }),
   component: CalendarPage,
 });
 

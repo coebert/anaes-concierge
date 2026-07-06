@@ -33,6 +33,7 @@ import {
 export const Route = createFileRoute(
   "/_authenticated/robustness/last-minute-changes",
 )({
+  head: () => ({ meta: [{ title: "Last-minute changes — Salisbury Anaesthetics Rota" }] }),
   component: LastMinuteChangesPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-4 text-sm text-destructive">

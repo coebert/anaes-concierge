@@ -14,6 +14,7 @@ import { Pencil } from "lucide-react";
 import { formatDateGB, splitName } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/job-plans")({
+  head: () => ({ meta: [{ title: "Job plans — Salisbury Anaesthetics Rota" }] }),
   component: JobPlansPage,
 });
 

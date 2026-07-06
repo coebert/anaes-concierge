@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-aliases")({
+  head: () => ({ meta: [{ title: "Theatre aliases — Salisbury Anaesthetics Rota" }] }),
   component: TheatreAliasesPage,
 });
 
