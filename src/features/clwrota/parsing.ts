@@ -152,7 +152,7 @@ function isTransientUpstreamError(status: number, body: string, err?: unknown): 
   );
 }
 
-async function fetchReportRaw(
+export async function fetchReportRaw(
   url: string,
   apiKey: string,
   { maxAttempts = 4, baseDelayMs = 1000 }: { maxAttempts?: number; baseDelayMs?: number } = {},
@@ -223,7 +223,7 @@ const RowsWrapperSchema = z.union([
  * traced back to either "upstream returned nothing" (`parseError: null`)
  * or "upstream returned malformed data" (`parseError: "..."`).
  */
-function parseRows(text: string): { rows: Record<string, unknown>[]; parseError: string | null } {
+export function parseRows(text: string): { rows: Record<string, unknown>[]; parseError: string | null } {
   // Try JSON first.
   let parsed: unknown;
   try {
@@ -359,7 +359,7 @@ function parseRows(text: string): { rows: Record<string, unknown>[]; parseError:
 
 
 
-function pick(row: Record<string, unknown>, keys: string[]): string | null {
+export function pick(row: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {
     // Support dotted paths like "person.email" → row.person.email
     const v = k.includes(".")
@@ -461,7 +461,7 @@ export type ResolvedDutyType =
   | "teaching"
   | "non_clinical";
 
-const NON_PATIENT_FACING_DUTY_TYPES: ReadonlySet<ResolvedDutyType> = new Set([
+export const NON_PATIENT_FACING_DUTY_TYPES: ReadonlySet<ResolvedDutyType> = new Set([
   "spa",
   "admin",
   "teaching",
