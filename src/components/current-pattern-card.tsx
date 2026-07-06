@@ -4,8 +4,12 @@
  *
  * Data source is the already-synced `rota_assignments` / `theatre_sessions`
  * tables, so this card stays consistent with the rest of the app.
+ *
+ * Results are also mirrored to localStorage (per staff + window) so the
+ * card paints instantly on repeat visits while React Query refreshes in
+ * the background.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -130,6 +134,61 @@ function dominantByHalfSession(
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// localStorage cache
+// ---------------------------------------------------------------------------
+
+const CACHE_PREFIX = "clwrota:current-pattern:v1:";
+// Serve cached data instantly, but treat entries older than this as stale
+// (React Query still refetches in the background so the UI updates).
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+type PatternResult = {
+  profile: { id: string; full_name: string; grade: StaffGrade | null };
+  summary: ReturnType<typeof summariseStaff>[number];
+  consultantPattern: ReturnType<typeof computeConsultantPattern> | null;
+  dominant: Record<"am" | "pm", Array<DominantCell | null>>;
+  windowDays: number;
+};
+
+type CacheEntry = { savedAt: number; to: string; data: PatternResult };
+
+function cacheKey(staffId: string, windowDays: number): string {
+  return `${CACHE_PREFIX}${staffId}:${windowDays}`;
+}
+
+function readCache(
+  staffId: string,
+  windowDays: number,
+): CacheEntry | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(cacheKey(staffId, windowDays));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEntry;
+    if (!parsed || typeof parsed.savedAt !== "number" || !parsed.data) return null;
+    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(
+  staffId: string,
+  windowDays: number,
+  to: string,
+  data: PatternResult,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const entry: CacheEntry = { savedAt: Date.now(), to, data };
+    window.localStorage.setItem(cacheKey(staffId, windowDays), JSON.stringify(entry));
+  } catch {
+    // Quota exceeded / disabled storage — non-fatal.
+  }
+}
+
 export interface CurrentPatternCardProps {
   staffId: string;
   /** Days of history to consider. Defaults to 90. */
@@ -146,8 +205,20 @@ export function CurrentPatternCard({
   const from = useMemo(() => isoDaysAgo(windowDays), [windowDays]);
   const to = todayIso();
 
-  const { data, isLoading, error } = useQuery({
+  // Seed React Query from localStorage so repeat visits paint instantly.
+  const cached = useMemo(
+    () => readCache(staffId, windowDays),
+    [staffId, windowDays],
+  );
+
+  const { data, isLoading, error } = useQuery<PatternResult | null>({
     queryKey: ["current-pattern", staffId, from, to],
+    initialData: cached?.data,
+    initialDataUpdatedAt: cached?.savedAt,
+    // Cached entry from an earlier day should refresh in the background but
+    // still render immediately. Same-day cache is treated as fresh.
+    staleTime: cached && cached.to === to ? 5 * 60_000 : 0,
+    gcTime: 30 * 60_000,
     queryFn: async () => {
       const [profileRes, theatresRes, specialtiesRes] = await Promise.all([
         supabase
@@ -275,8 +346,12 @@ export function CurrentPatternCard({
         windowDays,
       };
     },
-    staleTime: 60_000,
   });
+
+  // Mirror successful fetches back to localStorage.
+  useEffect(() => {
+    if (data) writeCache(staffId, windowDays, to, data);
+  }, [data, staffId, windowDays, to]);
 
   if (isLoading) return <PageLoading />;
   if (error) {
