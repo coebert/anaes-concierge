@@ -671,6 +671,104 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
       },
     }),
 
+    get_staff_current_pattern: tool({
+      description:
+        "Summarise a staff member's CURRENT WORKING PATTERN (dominant weekly grid, on-call/SAG/SPA days, location share, top specialties) AND their leave availability (annual/study allowance and any approved or pending leave that overlaps the next `leaveLookaheadDays`). This is the same computed summary shown in the app's Current Pattern card. Defaults to the signed-in user; coordinators/admins may pass another `staff_id` (resolve names with `find_staff` first). Non-coordinators can only query themselves.",
+      inputSchema: z.object({
+        staff_id: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("Target staff. Omit to summarise the signed-in user."),
+        windowDays: z
+          .number()
+          .int()
+          .min(28)
+          .max(365)
+          .optional()
+          .describe("Days of history used to derive the pattern. Default 90."),
+        leaveLookaheadDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(365)
+          .optional()
+          .describe("How far ahead to check for leave. Default 60."),
+      }),
+      execute: async ({ staff_id, windowDays, leaveLookaheadDays }) => {
+        const targetId = staff_id ?? userId;
+        if (targetId !== userId && !canSeeColleagueNames) {
+          return {
+            error:
+              "You can only view your own pattern. Ask a rota coordinator for colleague information.",
+          };
+        }
+
+        try {
+          const pattern = await computeCurrentPatternForStaff(
+            admin,
+            targetId,
+            windowDays ?? 90,
+          );
+          if (!pattern) return { error: "Staff member not found." };
+
+          // Leave availability: allowance + relevant leave requests in the
+          // lookahead window (any overlap counts).
+          const lookahead = leaveLookaheadDays ?? 60;
+          const today = todayISO();
+          const until = addDays(today, lookahead);
+          const [{ data: allowance }, { data: leaveRows }] = await Promise.all([
+            admin
+              .from("leave_allowances")
+              .select("annual_days,study_days,leave_year_start")
+              .eq("staff_id", targetId)
+              .maybeSingle(),
+            admin
+              .from("leave_requests")
+              .select(
+                "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+              )
+              .eq("staff_id", targetId)
+              .lte("start_date", until)
+              .gte("end_date", today)
+              .order("start_date"),
+          ]);
+
+          // Strip free-text fields when the caller shouldn't see colleague PII.
+          const scrubbed = (leaveRows ?? []).map((r) => ({
+            type: r.type,
+            start_date: r.start_date,
+            end_date: r.end_date,
+            status: r.status,
+            half_day_start: r.half_day_start,
+            half_day_end: r.half_day_end,
+            reason: targetId === userId ? r.reason : null,
+            decision_notes: targetId === userId ? r.decision_notes : null,
+          }));
+
+          return {
+            ...pattern,
+            leave: {
+              lookahead: { from: today, to: until, days: lookahead },
+              allowance: allowance ?? null,
+              upcoming: scrubbed,
+              onLeaveToday: scrubbed.some(
+                (r) =>
+                  r.status === "approved" &&
+                  r.start_date <= today &&
+                  r.end_date >= today,
+              ),
+            },
+          };
+        } catch (e) {
+          return {
+            error: e instanceof Error ? e.message : "Failed to compute pattern.",
+          };
+        }
+      },
+    }),
+
+
     get_team_on_call_today: tool({
       description:
         canSeeColleagueNames
