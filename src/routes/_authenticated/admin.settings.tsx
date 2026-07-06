@@ -28,6 +28,13 @@ import { Stat } from "./-admin-settings-stat";
 import { InvestigateSoloCard } from "./-admin-settings-investigate-solo-card";
 import { ReclassificationUndoCard } from "./-admin-settings-reclassification-undo-card";
 import { NameSortPreferenceCard } from "./-admin-settings-name-sort-card";
+import {
+  ValidateResultPanel,
+  BackfillNonSagResultPanel,
+  LeaveSyncResultPanel,
+  RotaSyncResultPanel,
+  StaffSyncResultPanel,
+} from "@/features/admin-settings/result-panels";
 
 // Re-exported for the co-located investigate-solo test.
 export { InvestigateSoloCard };
