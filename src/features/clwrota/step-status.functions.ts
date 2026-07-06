@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-
+import { requireAdmin } from "@/lib/require-admin";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Admin-only read of per-step CLWRota sync health: combines the latest
@@ -77,19 +76,8 @@ function parseDecisions(message: string | null): Record<SyncStep, "fired" | "ski
 }
 
 export const getClwRotaStepStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ClwRotaStepStatusResponse> => {
-    const { supabase, userId } = context;
-
-    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (roleErr) throw new Error(roleErr.message);
-    if (!isAdmin) throw new Error("Admin role required");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
+  .middleware([requireAdmin])
+  .handler(async (): Promise<ClwRotaStepStatusResponse> => {
     const [rateRes, cronRes] = await Promise.all([
       supabaseAdmin
         .from("clwrota_sync_rate_limit")
@@ -178,28 +166,17 @@ export type RunStepResult =
   | { fired: false; step: SyncStep; reason: "rate-limited-or-locked" };
 
 export const runClwRotaStepRateLimited = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((data: { step: SyncStep }) => {
     if (!STEPS.includes(data?.step)) {
       throw new Error(`step must be one of: ${STEPS.join(", ")}`);
     }
     return data;
   })
-  .handler(async ({ data, context }): Promise<RunStepResult> => {
-    const { supabase, userId } = context;
-
-    const { data: isAdmin, error: roleErr } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (roleErr) throw new Error(roleErr.message);
-    if (!isAdmin) throw new Error("Admin role required");
-
+  .handler(async ({ data }): Promise<RunStepResult> => {
     // The rate-limited trigger is SECURITY DEFINER but EXECUTE has been
     // revoked from `authenticated` — call it via the service-role client
     // so it runs with the elevated privileges it was designed for.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
     const { data: requestId, error } = await supabaseAdmin.rpc(
       "trigger_clwrota_sync_rate_limited",
       { p_step: data.step },
@@ -211,4 +188,3 @@ export const runClwRotaStepRateLimited = createServerFn({ method: "POST" })
     }
     return { fired: true, step: data.step, requestId: Number(requestId) };
   });
-
