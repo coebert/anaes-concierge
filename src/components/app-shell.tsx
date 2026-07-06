@@ -3,6 +3,7 @@ import { type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Stethoscope, ChevronRight } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -97,8 +98,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SidebarInset>
         <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur">
           <SidebarTrigger />
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <CommandPalette />
+            <ThemeToggle />
             <UserMenu />
           </div>
         </header>
