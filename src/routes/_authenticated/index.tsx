@@ -95,7 +95,7 @@ function AuditDashboard() {
       <Card className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-emerald-500/10 text-success"}`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-success-muted text-success"}`}>
               {syncWarning ? <AlertTriangle className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
             </div>
             <div>

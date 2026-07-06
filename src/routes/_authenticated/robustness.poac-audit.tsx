@@ -551,7 +551,7 @@ function PoacAuditPage() {
             </p>
           ) : baselineViolations.length === 0 ? (
             <p>
-              <Badge className="bg-emerald-500/15 text-success hover:bg-emerald-500/15">
+              <Badge className="bg-success-muted text-success hover:bg-success-muted">
                 PASS
               </Badge>{" "}
               All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the
@@ -560,7 +560,7 @@ function PoacAuditPage() {
           ) : (
             <div className="space-y-2">
               <p>
-                <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15">
+                <Badge className="bg-warning-muted text-warning hover:bg-warning-muted">
                   {baselineViolations.length} violation
                   {baselineViolations.length === 1 ? "" : "s"}
                 </Badge>{" "}
@@ -641,7 +641,7 @@ function PoacAuditPage() {
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {w.additional > 0 ? (
-                          <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15 dark:text-amber-300">
+                          <Badge className="bg-warning-muted text-warning hover:bg-warning-muted dark:text-amber-300">
                             +{w.additional}
                           </Badge>
                         ) : (

@@ -310,10 +310,10 @@ function Stat(props: StatProps) {
   const toneClass = tone === "red"
     ? "bg-red-500/10 text-red-600"
     : tone === "amber"
-    ? "bg-amber-500/10 text-warning"
+    ? "bg-warning-muted text-warning"
     : tone === "orange"
     ? "bg-orange-500/10 text-orange-600"
-    : "bg-emerald-500/10 text-success";
+    : "bg-success-muted text-success";
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">

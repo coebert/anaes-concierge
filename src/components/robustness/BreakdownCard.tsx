@@ -22,7 +22,7 @@ type MetricKey =
 const METRIC_META: Record<MetricKey, { label: string; chipClass: string; explainer: string }> = {
   headroom: {
     label: "→ headroom",
-    chipClass: "bg-emerald-500/15 text-success border-emerald-500/40",
+    chipClass: "bg-success-muted text-success border-success/40",
     explainer: "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8). SPA is NOT included here.",
   },
   spa: {
@@ -211,9 +211,9 @@ function TrainingNoteBadge({
 }) {
   const toneClass =
     note.tone === "good"
-      ? "bg-emerald-500/15 text-success border-emerald-500/40"
+      ? "bg-success-muted text-success border-success/40"
       : note.tone === "miss"
-        ? "bg-amber-500/15 text-warning border-amber-500/40"
+        ? "bg-warning-muted text-warning border-warning/40"
         : "bg-muted text-muted-foreground border-border";
   return (
     <Tooltip>
