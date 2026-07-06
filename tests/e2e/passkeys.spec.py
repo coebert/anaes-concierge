@@ -491,26 +491,22 @@ async def test_login_passkey_wiring(context) -> None:
     await page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded")
     email_input = page.get_by_label("Email")
     await email_input.wait_for(state="visible", timeout=10_000)
-    # /login is a public SSR route: the input exists in the server-rendered
-    # HTML before React has attached handlers. Fills before hydration are
-    # discarded when React takes ownership. Poll fill+value until the
-    # controlled input actually accepts and retains the value.
-    async def _hydrated_and_filled() -> bool:
-        await email_input.fill(FAKE_EMAIL)
-        return await page.evaluate(
-            "() => document.querySelector('input#email')?.value === "
-            f"{json.dumps(FAKE_EMAIL)}"
-        )
-    deadline = 10_000
-    step = 250
-    waited = 0
-    while waited < deadline:
-        if await _hydrated_and_filled():
-            break
-        await page.wait_for_timeout(step)
-        waited += step
-    else:
-        raise AssertionError("Login route never hydrated the email input")
+    # /login is a public SSR route: the input and button exist in the
+    # server-rendered HTML *before* React attaches handlers. A DOM-level
+    # fill() will report the correct value even without hydration, so
+    # polling the input value is a false positive. Instead, wait until a
+    # React fiber is attached to the passkey button — that guarantees the
+    # onClick handler is live.
+    await page.wait_for_function(
+        """() => {
+          const btn = Array.from(document.querySelectorAll('button'))
+            .find(b => /Sign in with passkey/.test(b.textContent || ''));
+          if (!btn) return false;
+          return Object.keys(btn).some(k => k.startsWith('__reactProps') || k.startsWith('__reactFiber'));
+        }""",
+        timeout=15_000,
+    )
+    await email_input.fill(FAKE_EMAIL)
     await page.get_by_role("button", name="Sign in with passkey").click()
 
     try:
