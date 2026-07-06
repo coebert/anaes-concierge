@@ -2,6 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Server-only admin client. Dynamic import keeps `client.server` out of the
+// client bundle graph — `.functions.ts` modules only strip handler bodies.
+let _supabaseAdmin: any;
+async function getAdmin(): Promise<any> {
+  const supabaseAdmin = await getAdmin();
+  if (!_supabaseAdmin) {
+    const m = await import("@/integrations/supabase/client.server");
+    _supabaseAdmin = m.supabaseAdmin;
+  }
+  return _supabaseAdmin;
+}
+
 /**
  * Coordinator/admin-elevated reads of the staff directory.
  *

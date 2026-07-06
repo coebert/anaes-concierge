@@ -1601,6 +1601,7 @@ export function resolveOffsiteTheatreAlias(
  * canonical theatre, without needing a code change.
  */
 async function loadTheatreNameAliases(): Promise<Map<string, string>> {
+  const supabaseAdmin = await getAdmin();
   const out = new Map<string, string>();
   const { data, error } = await supabaseAdmin
     .from("theatre_name_aliases")
@@ -1616,6 +1617,7 @@ async function loadTheatreNameAliases(): Promise<Map<string, string>> {
 }
 
 async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
+  const supabaseAdmin = await getAdmin();
   const { data, error } = await supabaseAdmin
     .from("duty_type_mappings")
     .select("duty_type, pattern, match_type, grade_filter, trainee_seniority_filter, priority, active")
@@ -2864,6 +2866,18 @@ export async function performRotaSyncIncremental(
 // Pure classifiers are in their own module so they can be unit-tested and so
 // the professional-vs-study split survives every CLWRota upsert.
 import {
+
+// Server-only admin client. Dynamic import keeps `client.server` out of the
+// client bundle graph — `.functions.ts` modules only strip handler bodies.
+let _supabaseAdmin: any;
+async function getAdmin(): Promise<any> {
+  const supabaseAdmin = await getAdmin();
+  if (!_supabaseAdmin) {
+    const m = await import("@/integrations/supabase/client.server");
+    _supabaseAdmin = m.supabaseAdmin;
+  }
+  return _supabaseAdmin;
+}
   classifyLeaveType,
   classifyLeaveStatus,
   type LeaveType,
