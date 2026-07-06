@@ -447,3 +447,4 @@ export async function performLeaveSync() {
     unmatchedStaff: Array.from(unmatchedStaff),
     metrics,
   };
+}
