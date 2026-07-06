@@ -18,6 +18,7 @@ import { calculateFeasibility } from "@/lib/consultant-feasibility";
 export const Route = createFileRoute(
   "/_authenticated/robustness/consultant-feasibility",
 )({
+  head: () => ({ meta: [{ title: "Consultant feasibility — Salisbury Anaesthetics Rota" }] }),
   component: ConsultantFeasibilityPage,
 });
 
