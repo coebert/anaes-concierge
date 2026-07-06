@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -236,34 +237,31 @@ function TcsAuditPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">TCS 2016 compliance audit</h1>
-          <p className="text-sm text-muted-foreground">
-            Checks each trainee's rota against the 2016 Junior Doctor Terms &amp; Conditions of Service.
-            Session times are approximated from AM/PM/eve/night blocks where actual start/end times are not stored.
-          </p>
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="w-44">
-            <label className="mb-1 block text-xs text-muted-foreground">Reference period</label>
-            <Select value={lookback} onValueChange={(v) => setLookback(v as Lookback)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(LOOKBACK_LABEL) as Lookback[]).map((k) => (
-                  <SelectItem key={k} value={k}>{LOOKBACK_LABEL[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Input
-            placeholder="Filter…"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="max-w-xs"
-          />
-        </div>
-      </header>
+      <PageHeader
+        title="TCS 2016 compliance audit"
+        description="Checks each trainee's rota against the 2016 Junior Doctor Terms & Conditions of Service. Session times are approximated from AM/PM/eve/night blocks where actual start/end times are not stored."
+        actions={
+          <>
+            <div className="w-44">
+              <label className="mb-1 block text-xs text-muted-foreground">Reference period</label>
+              <Select value={lookback} onValueChange={(v) => setLookback(v as Lookback)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(LOOKBACK_LABEL) as Lookback[]).map((k) => (
+                    <SelectItem key={k} value={k}>{LOOKBACK_LABEL[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Input
+              placeholder="Filter…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-xs"
+            />
+          </>
+        }
+      />
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Running audit…</div>

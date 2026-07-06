@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -159,6 +160,10 @@ function DutyCategoriesPage() {
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title="Duty categories"
+        description="Decide how each duty type affects the robustness/availability pool."
+      />
       <Card>
         <CardHeader>
           <CardTitle>Duty categories — headroom pool rules</CardTitle>

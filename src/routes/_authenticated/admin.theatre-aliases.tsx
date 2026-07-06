@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -132,19 +133,21 @@ function TheatreAliasesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Theatre name aliases</h1>
-        <p className="text-sm text-muted-foreground">
-          Map imported rota theatre labels (e.g. from CLWRota) to the canonical AM/PM
-          theatre list they belong to. The exact theatre name is always matched first;
-          aliases are only consulted when an imported label does not match any real
-          theatre name. Changes take effect on the next sync. See{" "}
-          <Link to="/admin/settings" className="underline">
-            admin settings
-          </Link>{" "}
-          for unmatched-theatre diagnostics from recent syncs.
-        </p>
-      </div>
+      <PageHeader
+        title="Theatre name aliases"
+        description={
+          <>
+            Map imported rota theatre labels (e.g. from CLWRota) to the canonical AM/PM theatre
+            list they belong to. The exact theatre name is always matched first; aliases are only
+            consulted when an imported label does not match any real theatre name. Changes take
+            effect on the next sync. See{" "}
+            <Link to="/admin/settings" className="underline">
+              admin settings
+            </Link>{" "}
+            for unmatched-theatre diagnostics from recent syncs.
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>

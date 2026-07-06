@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
@@ -704,28 +705,26 @@ function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rota audit data</h1>
-          <p className="text-sm text-muted-foreground">
-            Daily overview of assignments, leave and availability — {formatDateGB(date)}
-          </p>
-        </div>
-        <div className="flex items-end gap-2">
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Date</label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-44"
-            />
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setDate(todayISO())}>
-            Today
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Rota audit data"
+        description={`Daily overview of assignments, leave and availability — ${formatDateGB(date)}`}
+        actions={
+          <>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Date</label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-44"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setDate(todayISO())}>
+              Today
+            </Button>
+          </>
+        }
+      />
 
       {isLoading || !summary ? (
         <div className="text-sm text-muted-foreground">Loading overview…</div>

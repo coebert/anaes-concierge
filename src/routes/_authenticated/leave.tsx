@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
@@ -418,18 +419,15 @@ function LeavePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Leave</h1>
-          <p className="text-sm text-muted-foreground">
-            Department-wide leave calendar. Search any date to see who is off and the
-            grade breakdown.
-          </p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> New request
-        </Button>
-      </div>
+      <PageHeader
+        title="Leave"
+        description="Department-wide leave calendar. Search any date to see who is off and the grade breakdown."
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> New request
+          </Button>
+        }
+      />
 
       <Tabs defaultValue="calendar" className="space-y-4">
         <TabsList>

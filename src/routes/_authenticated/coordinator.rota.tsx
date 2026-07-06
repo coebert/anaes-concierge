@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -247,33 +248,31 @@ function RotaGridPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rota editor</h1>
-          <p className="text-sm text-muted-foreground">
-            Week of {fmt(days[0])} — click any cell to set the surgical list and assign anaesthetists.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Input
-            type="date" value={iso(weekStart)}
-            onChange={(e) => {
-              const d = parseDateLocal(e.target.value);
-              if (d) setWeekStart(startOfWeek(d));
-            }}
-            className="h-8 w-40"
-          />
-          <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
-            This week
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Rota editor"
+        description={`Week of ${fmt(days[0])} — click any cell to set the surgical list and assign anaesthetists.`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Input
+              type="date" value={iso(weekStart)}
+              onChange={(e) => {
+                const d = parseDateLocal(e.target.value);
+                if (d) setWeekStart(startOfWeek(d));
+              }}
+              className="h-8 w-40"
+            />
+            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
+              This week
+            </Button>
+          </>
+        }
+      />
 
       <Card>
         <CardContent className="p-0 overflow-x-auto">

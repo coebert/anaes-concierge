@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -145,25 +146,23 @@ function TheatreGridPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Theatre session grid</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure AM/PM sessions for every theatre. Pick a specialty and operating consultant per slot.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ViewModeToggle mode={mode} onChange={setMode} />
-          <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIncludeWeekend((v) => !v)}
-          >
-            {includeWeekend ? "Hide weekend" : "Include weekend"}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Theatre session grid"
+        description="Configure AM/PM sessions for every theatre. Pick a specialty and operating consultant per slot."
+        actions={
+          <>
+            <ViewModeToggle mode={mode} onChange={setMode} />
+            <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIncludeWeekend((v) => !v)}
+            >
+              {includeWeekend ? "Hide weekend" : "Include weekend"}
+            </Button>
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>

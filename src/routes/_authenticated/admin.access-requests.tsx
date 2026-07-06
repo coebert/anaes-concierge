@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -68,12 +69,10 @@ function AdminAccessRequestsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Access requests</h1>
-        <p className="text-sm text-muted-foreground">
-          Approve people who have requested access. Approving sends them an invitation email.
-        </p>
-      </div>
+      <PageHeader
+        title="Access requests"
+        description="Approve people who have requested access. Approving sends them an invitation email."
+      />
 
       <Card>
         <CardHeader>

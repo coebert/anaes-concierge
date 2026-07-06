@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -24,12 +25,10 @@ type Kind = "main" | "day_surgery" | "private";
 function AdminTheatresPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Theatres & specialties</h1>
-        <p className="text-sm text-muted-foreground">
-          Configure the operating rooms and surgical specialties used across the rota.
-        </p>
-      </div>
+      <PageHeader
+        title="Theatres & specialties"
+        description="Configure the operating rooms and surgical specialties used across the rota."
+      />
       <div className="grid gap-4 lg:grid-cols-2">
         <TheatresCard />
         <SpecialtiesCard />

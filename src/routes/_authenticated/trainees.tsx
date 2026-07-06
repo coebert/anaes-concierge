@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -390,20 +391,18 @@ function TraineesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Trainees</h1>
-          <p className="text-sm text-muted-foreground">
-            Per-subspecialty progress against curriculum targets.
-          </p>
-        </div>
-        <Input
-          placeholder="Filter…"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="max-w-xs"
-        />
-      </div>
+      <PageHeader
+        title="Trainees"
+        description="Per-subspecialty progress against curriculum targets."
+        actions={
+          <Input
+            placeholder="Filter…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="max-w-xs"
+          />
+        }
+      />
       {data ? (
         <Card>
           <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
