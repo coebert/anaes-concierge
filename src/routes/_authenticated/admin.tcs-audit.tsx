@@ -396,26 +396,10 @@ function Stat({
   label: string;
   value: number;
 }) {
-  const toneClass =
-    tone === "ok"
-      ? "bg-emerald-600/10 text-emerald-700 dark:text-emerald-400"
-      : tone === "bad"
-        ? "bg-destructive/10 text-destructive"
-        : "bg-muted text-muted-foreground";
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-md ${toneClass}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const t = tone === "ok" ? "success" : tone === "bad" ? "destructive" : "default";
+  return <StatCard icon={Icon} tone={t} label={label} value={value} />;
 }
+
 
 const SESSION_LABEL: Record<ShiftSummary["session"], string> = {
   am: "AM (08:00–13:00)",
