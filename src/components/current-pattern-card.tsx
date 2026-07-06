@@ -129,7 +129,62 @@ function dominantByHalfSession(
         best.total = total;
         result[half][dow] = best;
       }
-    }
+}
+
+// ---------------------------------------------------------------------------
+// localStorage cache
+// ---------------------------------------------------------------------------
+
+const CACHE_PREFIX = "clwrota:current-pattern:v1:";
+// Serve cached data instantly, but treat entries older than this as stale
+// (React Query still refetches in the background so the UI updates).
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+type PatternResult = {
+  profile: { id: string; full_name: string; grade: StaffGrade | null };
+  summary: ReturnType<typeof summariseStaff>[number];
+  consultantPattern: ReturnType<typeof computeConsultantPattern> | null;
+  dominant: Record<"am" | "pm", Array<DominantCell | null>>;
+  windowDays: number;
+};
+
+type CacheEntry = { savedAt: number; to: string; data: PatternResult };
+
+function cacheKey(staffId: string, windowDays: number): string {
+  return `${CACHE_PREFIX}${staffId}:${windowDays}`;
+}
+
+function readCache(
+  staffId: string,
+  windowDays: number,
+): CacheEntry | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(cacheKey(staffId, windowDays));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEntry;
+    if (!parsed || typeof parsed.savedAt !== "number" || !parsed.data) return null;
+    if (Date.now() - parsed.savedAt > CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(
+  staffId: string,
+  windowDays: number,
+  to: string,
+  data: PatternResult,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const entry: CacheEntry = { savedAt: Date.now(), to, data };
+    window.localStorage.setItem(cacheKey(staffId, windowDays), JSON.stringify(entry));
+  } catch {
+    // Quota exceeded / disabled storage — non-fatal.
+  }
+}
   }
   return result;
 }
