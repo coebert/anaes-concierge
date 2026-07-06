@@ -1,63 +1,38 @@
-## Files (top-3 giants)
+## Phase 5 — Loading, empty, and residual token polish
 
-1. `-list-feasibility-page.tsx` — 1575 lines, 15 top-level components
-2. `admin.settings.tsx` — 1440 lines, 4 major cards + `SettingsPage` (~1140 lines)
-3. `admin.dashboard.tsx` — 1388 lines, `AdminDashboardPage` (~1262 lines) + 2 stat components
+Prior phases built primitives (`StatCard`, `EmptyState`, `StatusBadge`, `ThemeToggle`) and a semantic token palette. Phase 5 finishes the rollout so no page still shows bare "Loading…" text, hand-rolled empty panels, or leftover emerald/amber utility classes.
 
-The `SettingsPage` and `AdminDashboardPage` inner functions are enormous single-component blobs (~1140 and ~1262 lines respectively) — most of the win is breaking those up, not just extracting the co-located components that already sit at module scope.
+### Scope
 
-## Approach
+**1. Loading primitives**
+- Add `src/components/loading.tsx` exporting:
+  - `PageLoading` — centered `Loader2` spinner + label, replaces the bare `<div>Loading…</div>` at 44 call-sites.
+  - `StatGridSkeleton` — 4-tile skeleton matching `StatCard` layout, for dashboard first paint.
+  - `RowsSkeleton` — 3–8 shimmering rows for table/list pages.
+- Sweep `src/routes/**` + `src/features/**` to swap bare "Loading…" strings for `<PageLoading />`.
 
-Follow the same pattern already used for CLWRota pages (`-clwrota-*-page.tsx` files alongside the route entry). For each of the three files:
+**2. Empty state adoption**
+- Replace the ~11 hand-rolled `border-dashed` "no data" cards with `<EmptyState>` (icon, title, description, optional action) across `admin.audit-tool.tsx`, `admin-audit-tool/panels.tsx`, and the handful of remaining offenders.
 
-- Keep the route file (`admin.settings.tsx`, `admin.dashboard.tsx`) tiny: `head()`, `errorComponent`, `notFoundComponent`, and `component: XxxPage` re-exported from a sibling `-xxx-page.tsx`.
-- Extract self-contained UI blocks into sibling `-xxx-<block>.tsx` files (prefixed with `-` so the router treats them as private, non-route modules).
-- Extract pure helpers (bucket/grade/type helpers, formatters, small hooks) into `src/features/<domain>/*.ts` files.
-- Preserve behaviour exactly — no logic changes, only file boundaries.
+**3. Residual token sweep**
+- 76 occurrences of `bg-emerald-*` / `bg-amber-*` / `text-emerald-*` / `text-amber-*` remain (bespoke banners, mixed classes like `bg-amber-500/15 text-warning`). Map them onto the Phase 2 semantic tokens (`bg-success-muted text-success`, `bg-warning-muted text-warning`, `border-warning/40`, etc.) using a targeted Python sed pass followed by a visual spot-check of the dashboard sync banner and rota-gap components.
 
-## Concrete split
+**4. Verify**
+- `bunx tsgo --noEmit`
+- Playwright screenshot of `/` (admin dashboard) at 1280 desktop + 440 mobile to confirm skeleton flash and banner colors under both light and dark themes.
 
-### 1. `-list-feasibility-page.tsx` (1575 → ~180)
+### Out of scope
 
-New files, all under `src/routes/_authenticated/`:
+- Sidebar/mobile nav restructure (Phase 6 candidate).
+- Command palette redesign.
+- Any business-logic or data-fetching changes.
 
-- `-list-feasibility/page.tsx` — the outer `ListFeasibilityPage` + wiring
-- `-list-feasibility/threshold-controls.tsx` — `ThresholdControls`
-- `-list-feasibility/summary.tsx` — `DepartmentSummaryCard`, `SummaryPill`, `Stat`, `VerdictBadge`
-- `-list-feasibility/slots-table.tsx` — `SlotsTable`
-- `-list-feasibility/working-patterns-card.tsx` — `WorkingPatternsCard`
-- `-list-feasibility/validation-card.tsx` — `ValidationCard`, `ValidationResults`, `ValidationConsultantRow`, `ValidationCellTable`, `RemediationActions` interface
-- `-list-feasibility/diagnosis.tsx` — `DiagnosisList`, `ClassificationBadge`
-- `-list-feasibility/assumptions-card.tsx` — `AssumptionsCard`
+### Files created
 
-Re-export `ListFeasibilityPage` from `-list-feasibility-page.tsx` for one turn (backwards-compat) then repoint the route consumer.
+- `src/components/loading.tsx`
 
-### 2. `admin.settings.tsx` (1440 → ~120)
+### Files edited (estimated)
 
-- `-admin-settings-page.tsx` — thin: assembles the cards
-- `-admin-settings/clwrota-settings-card.tsx` — the huge CLWRota settings form (bulk of `SettingsPage`)
-- `-admin-settings/investigate-solo-card.tsx` — `InvestigateSoloCard` (already exported; import site preserved)
-- `-admin-settings/reclassification-undo-card.tsx` — `ReclassificationUndoCard`
-- `-admin-settings/name-sort-preference-card.tsx` — `NameSortPreferenceCard`
-- Route file becomes ~50 lines: `head`, `component: AdminSettingsPage` from sibling.
-- The existing test `-admin.settings.investigate-solo.test.tsx` keeps working (imports the mocked server-fn module, not the page).
-
-### 3. `admin.dashboard.tsx` (1388 → ~120)
-
-`AdminDashboardPage` is one 1262-line function. Split it by tab / section (I'll confirm sections from a quick read before extracting):
-
-- `-admin-dashboard-page.tsx` — orchestrator: layout, loaders, tab selection
-- `-admin-dashboard/staff-section.tsx`, `-leave-section.tsx`, `-rota-section.tsx`, etc. (exact set determined from the section markers inside the function)
-- `src/features/admin/dashboard-helpers.ts` — `traineeBucket`, `TraineeBucket`, `Grade`, `LEAVE_TYPES`, `LeaveType`, `DualStat`, `Stat`
-
-The route file itself stays ~40 lines.
-
-## Non-goals
-
-- No behaviour changes; no styling changes; no tests added or removed.
-- No changes to server functions or data-fetching hooks.
-- Consumers/imports elsewhere are updated only where a symbol they import moves.
-
-## Rollout
-
-Do the three files sequentially in that order (biggest first), typechecking after each. This is roughly 15–20 new small files and edits to ~5 consumer imports. I'll stop after each of the three splits so you can eyeball the result before I move to the next.
+- ~15 route/feature files for "Loading…" → `<PageLoading />`
+- ~5 files for `border-dashed` → `<EmptyState>`
+- ~30 files touched by the token sweep (mechanical)

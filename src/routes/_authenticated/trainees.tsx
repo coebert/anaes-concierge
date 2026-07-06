@@ -28,6 +28,7 @@ import { computeTraineeMetrics, isJuniorTraineeLevel, type MetricAssignment } fr
 import { isIcuBlockOnly } from "@/features/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
   head: () => ({ meta: [{ title: "Trainees — Salisbury Anaesthetics Rota" }] }),
@@ -583,7 +584,7 @@ function TraineesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !rows.length ? (
             <p className="text-sm text-muted-foreground">No trainees on record.</p>
           ) : (

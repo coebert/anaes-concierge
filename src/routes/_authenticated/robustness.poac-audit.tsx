@@ -21,6 +21,7 @@ import {
   validatePoacBaseline,
   type PoacBaselineViolation,
 } from "@/features/audit/poac-baseline";
+import { PageLoading } from "@/components/loading";
 
 // PostgREST defaults to a 1000-row response cap. Walk the result set in
 // pages so audits over long date ranges (or as data grows) cannot silently
@@ -550,7 +551,7 @@ function PoacAuditPage() {
             </p>
           ) : baselineViolations.length === 0 ? (
             <p>
-              <Badge className="bg-emerald-500/15 text-success hover:bg-emerald-500/15">
+              <Badge className="bg-success-muted text-success hover:bg-success-muted">
                 PASS
               </Badge>{" "}
               All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the
@@ -559,7 +560,7 @@ function PoacAuditPage() {
           ) : (
             <div className="space-y-2">
               <p>
-                <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15">
+                <Badge className="bg-warning-muted text-warning hover:bg-warning-muted">
                   {baselineViolations.length} violation
                   {baselineViolations.length === 1 ? "" : "s"}
                 </Badge>{" "}
@@ -587,7 +588,7 @@ function PoacAuditPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !weeks.length ? (
             <p className="text-sm text-muted-foreground">
               No POAC sessions found in this range.
@@ -640,7 +641,7 @@ function PoacAuditPage() {
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {w.additional > 0 ? (
-                          <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15 dark:text-amber-300">
+                          <Badge className="bg-warning-muted text-warning hover:bg-warning-muted dark:text-amber-300">
                             +{w.additional}
                           </Badge>
                         ) : (
@@ -681,7 +682,7 @@ function PoacAuditPage() {
             (e.g. POAU, POAC, pre-op assessment).
           </p>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !drilldown.length ? (
             <p className="text-sm text-muted-foreground">
               No POAC sessions found in this range.

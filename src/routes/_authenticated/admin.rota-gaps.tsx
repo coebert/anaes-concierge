@@ -49,6 +49,7 @@ import {
   Stat,
   ClassifiedSection,
 } from "@/features/admin-rota-gaps/components";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
   component: RotaGapsPage,
@@ -219,7 +220,7 @@ function RotaGapsPage() {
       });
   }, [data, filter, hideClean]);
 
-  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
+  if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
   const traineesWithGaps = rows.filter((r) => r.report.totalMissingDays > 0).length;

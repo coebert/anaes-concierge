@@ -7,6 +7,7 @@ import { Users } from "lucide-react";
 import { todayISO, formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { listActiveStaffSafe } from "@/features/staff/staff-directory.functions";
+import { PageLoading } from "@/components/loading";
 
 /**
  * "Who's in today" — staff assigned to a clinical activity for today's AM/PM
@@ -158,7 +159,7 @@ export function TodayInHospital() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : !data || (data.am.size === 0 && data.pm.size === 0) ? (
           <p className="text-sm text-muted-foreground">
             No clinical assignments recorded for today.

@@ -17,6 +17,7 @@ import { isoDate, weekdayShort } from "@/lib/theatre-grid-dates";
 import {
   ViewModeToggle, PeriodNav, buildDays, SessionChip, type ViewMode,
 } from "@/components/rota-views";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
   head: () => ({ meta: [{ title: "Theatre grid — Salisbury Anaesthetics Rota" }] }),
@@ -173,7 +174,7 @@ function TheatreGridPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : !theatres?.length ? (
             <p className="text-sm text-muted-foreground">
               No active theatres. Add some in Theatres first.

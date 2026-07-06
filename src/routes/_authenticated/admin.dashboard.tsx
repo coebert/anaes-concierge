@@ -50,6 +50,7 @@ import {
 } from "@/features/admin/dashboard-helpers";
 import { DualStat, Stat } from "./-admin-dashboard-stats";
 import { DashboardBody } from "@/features/admin-dashboard/DashboardBody";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
@@ -701,7 +702,7 @@ function AdminDashboardPage() {
     };
   }, [data, date]);
 
-  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
+  if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
   return (

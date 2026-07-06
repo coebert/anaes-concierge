@@ -304,14 +304,14 @@ export function AssumptionsCard() {
 export function VerdictBadge({ verdict }: { verdict: Verdict }) {
   if (verdict === "feasible") {
     return (
-      <Badge className="bg-emerald-100 text-success hover:bg-emerald-100">
+      <Badge className="bg-success-muted text-success hover:bg-success-muted">
         Feasible
       </Badge>
     );
   }
   if (verdict === "borderline") {
     return (
-      <Badge className="bg-amber-100 text-warning hover:bg-amber-100">
+      <Badge className="bg-warning-muted text-warning hover:bg-warning-muted">
         Borderline
       </Badge>
     );
@@ -340,8 +340,8 @@ export function Stat({
     tone === "red"
       ? "bg-red-500/10 text-red-600"
       : tone === "amber"
-      ? "bg-amber-500/10 text-warning"
-      : "bg-emerald-500/10 text-success";
+      ? "bg-warning-muted text-warning"
+      : "bg-success-muted text-success";
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">

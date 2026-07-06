@@ -15,6 +15,7 @@ import { computeFullAudit, isIcuBlockOnly, type AuditAssignment, type AuditTheat
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { ArrowLeft, AlertTriangle, Sparkles, Users } from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
+import { PageLoading } from "@/components/loading";
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   head: () => ({ meta: [{ title: "Trainee — Salisbury Anaesthetics Rota" }] }),
   component: TraineeDetailPage,
@@ -177,7 +178,7 @@ function TraineeDetailPage() {
     });
   }, [data]);
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <PageLoading />;
   if (!data?.profile) return <p>Not found.</p>;
 
   const clinicalAssignments = data.assignments.filter((a) =>

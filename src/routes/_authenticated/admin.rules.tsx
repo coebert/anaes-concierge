@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/rules")({
   head: () => ({ meta: [{ title: "Custom rules — Salisbury Anaesthetics Rota" }] }),
@@ -109,7 +110,7 @@ function RulesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <PageLoading />;
 
   const num = (k: keyof Rules, step = "0.5") => (
     <Input

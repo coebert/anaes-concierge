@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/duty-categories")({
   head: () => ({ meta: [{ title: "Duty categories — Salisbury Anaesthetics Rota" }] }),
@@ -49,7 +50,7 @@ const CATEGORIES = [
     description:
       "Person is already covering a list this session (theatre, POAC, pain clinic, future activities). Removed from the headroom pool for that half-day.",
     badgeClass:
-      "bg-emerald-500/15 text-success border-emerald-500/40",
+      "bg-success-muted text-success border-success/40",
   },
   {
     value: "excluded",
@@ -155,7 +156,7 @@ function DutyCategoriesPage() {
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <PageLoading />;
   }
 
   return (

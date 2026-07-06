@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveDecided } from "@/features/leave/leave-notifications.functions";
 import { formatDateGB } from "@/lib/utils";
+import { PageLoading } from "@/components/loading";
 
 interface LeaveRow {
   id: string;
@@ -85,7 +86,7 @@ function ApproveLeavePage() {
         </TabsList>
         <TabsContent value={tab} className="space-y-4 mt-4">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing here.</p>
           ) : (

@@ -21,6 +21,7 @@ import {
   type LeaveRow,
   type ProfileRow,
 } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 export type SickRow = LeaveRow & { _isRetrospective: boolean; _daysLate: number };
 
@@ -51,7 +52,7 @@ export function SickLeaveTab({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : sickRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No sick-leave records in the loaded window.</p>
         ) : (

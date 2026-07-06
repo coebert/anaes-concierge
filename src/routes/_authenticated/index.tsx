@@ -16,6 +16,7 @@ import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
 import { TodayInHospital } from "@/components/today-in-hospital";
 import { StatCard } from "@/components/stat-card";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardPage,
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/")({
 function DashboardPage() {
   const { hasRole, grade, loading } = useAuth();
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
+    return <PageLoading />;
   }
   if (hasRole("admin") || hasRole("rota_coordinator")) return <AuditDashboard />;
   if (grade === "trainee") return <TraineeDashboard />;
@@ -94,7 +95,7 @@ function AuditDashboard() {
       <Card className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-emerald-500/10 text-success"}`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-success-muted text-success"}`}>
               {syncWarning ? <AlertTriangle className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
             </div>
             <div>

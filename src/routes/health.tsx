@@ -148,8 +148,8 @@ function HealthPage() {
 
 function OverallBadge({ status }: { status: HealthResponse["status"] }) {
   const variants: Record<string, { label: string; className: string }> = {
-    healthy: { label: "Healthy", className: "bg-emerald-100 text-success hover:bg-emerald-100" },
-    degraded: { label: "Degraded", className: "bg-amber-100 text-warning hover:bg-amber-100" },
+    healthy: { label: "Healthy", className: "bg-success-muted text-success hover:bg-success-muted" },
+    degraded: { label: "Degraded", className: "bg-warning-muted text-warning hover:bg-warning-muted" },
     unhealthy: { label: "Unhealthy", className: "bg-red-100 text-red-700 hover:bg-red-100" },
   };
   const v = variants[status] ?? variants.unhealthy;

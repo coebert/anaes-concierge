@@ -35,6 +35,7 @@ import {
   type LeaveRow,
   type ProfileRow,
 } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 export function DayCalendarTab({
   loading,
@@ -208,7 +209,7 @@ export function DayCalendarTab({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : onPickedDay.length === 0 ? (
             <p className="text-sm text-muted-foreground">No staff on leave.</p>
           ) : (

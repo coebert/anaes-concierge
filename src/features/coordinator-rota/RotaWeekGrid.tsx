@@ -123,7 +123,7 @@ export function RotaWeekGrid({
                             {ts.is_non_sag && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] border-amber-500/60 bg-amber-500/10 text-warning"
+                                className="text-[9px] border-amber-500/60 bg-warning-muted text-warning"
                                 title="NHH list covered as part of NHS job plan (non-SAG)"
                               >
                                 Non-SAG

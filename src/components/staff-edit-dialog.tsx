@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
 import type { AppRole } from "@/lib/auth-context";
+import { PageLoading } from "@/components/loading";
 
 type Grade = "consultant" | "sas" | "trainee";
 type SessionHalf = "am" | "pm";
@@ -164,7 +165,7 @@ function ProfileTab({ staffId }: { staffId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <PageLoading />;
 
   return (
     <div className="space-y-4">
@@ -316,7 +317,7 @@ function RolesTab({ staffId }: { staffId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <PageLoading />;
 
   const all: { role: AppRole; label: string; desc: string }[] = [
     { role: "admin", label: "Admin", desc: "Full system access incl. user management." },
@@ -430,7 +431,7 @@ function JobPlanTab({ staffId }: { staffId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <PageLoading />;
 
   return (
     <div className="space-y-4">
@@ -570,7 +571,7 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isLoading) return <PageLoading />;
 
   return (
     <div className="space-y-4">

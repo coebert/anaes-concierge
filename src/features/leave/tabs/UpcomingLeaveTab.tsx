@@ -21,6 +21,7 @@ import {
   type LeaveRow,
   type ProfileRow,
 } from "./shared";
+import { PageLoading } from "@/components/loading";
 
 export function UpcomingLeaveTab({
   loading,
@@ -41,7 +42,7 @@ export function UpcomingLeaveTab({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PageLoading />
         ) : allUpcoming.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing upcoming.</p>
         ) : (

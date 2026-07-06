@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-aliases")({
   head: () => ({ meta: [{ title: "Theatre aliases — Salisbury Anaesthetics Rota" }] }),
@@ -216,7 +217,7 @@ function TheatreAliasesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <PageLoading />
           ) : (
             <div className="overflow-x-auto">
               <Table>

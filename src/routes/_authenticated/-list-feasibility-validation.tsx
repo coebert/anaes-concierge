@@ -549,7 +549,7 @@ function ValidationConsultantRow({
               {consultant.mismatchCount === 1 ? "" : "es"}
             </Badge>
           ) : (
-            <Badge className="bg-emerald-100 text-success hover:bg-emerald-100">
+            <Badge className="bg-success-muted text-success hover:bg-success-muted">
               Agrees with model
             </Badge>
           )}
