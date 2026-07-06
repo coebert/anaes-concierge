@@ -28,7 +28,6 @@ import { EmptyState } from "@/components/empty-state";
 import {
   LOCATION_LABELS,
   computeConsultantPattern,
-  computeConsultantPattern,
   dominantByHalfSession,
   suggestedRegularityThreshold,
   summariseStaff,
