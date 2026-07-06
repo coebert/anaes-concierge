@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SUPABASE_IN_CHUNK } from "@/lib/supabase-chunked";
 import { isNonSagRotaLabel } from "@/lib/clwrota-labels";
 import {
@@ -20,6 +19,7 @@ import {
 } from "./parsing";
 import { loadTheatreNameAliases } from "./parsing.server";
 import { getEnv } from "./settings.functions";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * List recent auto-reclassification sync runs (most recent first) with the

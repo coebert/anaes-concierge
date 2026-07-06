@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SUPABASE_IN_CHUNK } from "@/lib/supabase-chunked";
 import {
   isNonSagRotaLabel,
@@ -30,6 +29,7 @@ import {
   loadDutyTypeMappings,
 } from "./parsing.server";
 import { getEnv } from "./settings.functions";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
