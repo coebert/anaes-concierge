@@ -1,7 +1,9 @@
 // Auto-carved from clwrota.functions.ts (Phase 4a.ii split).
 // Pure helpers: URL/window rewriters, CLWRota payload fetch/parse, and
 // classifier/normaliser utilities. NO Supabase / secret dependencies.
-import { z } from "zod";
+import { RowsWrapperSchema, RotamapCentralApiSchema } from "./schemas";
+export { RotamapCentralApiSchema };
+export type { ClwRotaGenericRow, ParsedRowsResult } from "./schemas";
 import { normaliseRotaLabelText } from "@/lib/clwrota-labels";
 
 export function withRollingFutureWindow(rawUrl: string, monthsAhead = 12): string {
@@ -198,16 +200,8 @@ export async function fetchReportRaw(
 // object that contains rows under a known wrapper key (Rotamap central_api,
 // generic { data: [...] }, etc.). Validated permissively — individual row
 // fields are picked downstream via pick() with fallbacks.
-const RotamapCentralApiSchema = z.object({
-  columns: z.array(z.object({ field_name: z.unknown() }).passthrough()).min(1),
-  rows: z.array(z.unknown()),
-}).passthrough();
-
-const RowsWrapperSchema = z.union([
-  z.array(z.record(z.unknown())),
-  RotamapCentralApiSchema,
-  z.record(z.unknown()), // generic wrapper — we'll probe known keys below
-]);
+// Row-level and wrapper schemas live in `./schemas` — see there for the
+// definitions of RotamapCentralApiSchema and RowsWrapperSchema.
 
 /**
  * Defensively parse a CLWRota report body (JSON or CSV) into a row array.
