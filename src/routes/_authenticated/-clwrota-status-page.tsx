@@ -41,7 +41,7 @@ import {
   getClwRotaSyncStatus,
   type ClwRotaCronRow,
   type ClwRotaMetricRow,
-} from "@/lib/clwrota-status.functions";
+} from "@/features/clwrota/clwrota.functions";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
