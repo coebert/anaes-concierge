@@ -18,7 +18,7 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
-import { buildCurrentPatternResponse } from "@/lib/staff-current-pattern";
+import { buildCurrentPatternResponse, mergeLeaveAvailability, type LeaveRowLite } from "@/lib/staff-current-pattern";
 
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
