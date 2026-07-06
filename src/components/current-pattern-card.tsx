@@ -513,6 +513,81 @@ export function CurrentPatternCard({
             ))}
           </div>
         )}
+
+        {/* How this was computed */}
+        <Collapsible>
+          <CollapsibleTrigger
+            className={cn(
+              "group flex w-full items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-left text-xs font-medium text-muted-foreground",
+              "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            )}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5" />
+              How this was computed
+            </span>
+            <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="px-1 pt-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="mb-2">
+              Derived from{" "}
+              <span className="font-medium text-foreground">
+                {data.assignmentCount}
+              </span>{" "}
+              rota assignments in the last{" "}
+              <span className="font-medium text-foreground">
+                {data.windowDays} days
+              </span>{" "}
+              synced from CLWRota. Weekends are hidden — only Mon–Fri AM/PM
+              half-sessions are shown.
+            </p>
+            <p className="mb-2">
+              <span className="font-medium text-foreground">
+                Dominant location per half-session.
+              </span>{" "}
+              For each weekday × AM/PM pair, assignments are grouped by
+              location bucket ({Object.values(LOCATION_LABELS)
+                .filter((l) => l !== "—")
+                .join(", ")}). The bucket with the most{" "}
+              <em>distinct dates</em> in that slot wins the cell — so working
+              two AM lists on the same Tuesday still only counts once. The
+              cell shows the winning bucket's abbreviation and hovers to
+              reveal "<em>N of M</em> recent {WEEKDAY_LABELS[1]} AM sessions".
+            </p>
+            <p className="mb-2">
+              <span className="font-medium text-foreground">
+                Regularity threshold.
+              </span>{" "}
+              A cell only appears if the winning bucket recurs on at least{" "}
+              <span className="font-medium text-foreground">
+                {data.minCount} distinct dates
+              </span>{" "}
+              in the window (roughly half the ~
+              {data.threshold}-week regularity target from{" "}
+              <code>suggestedRegularityThreshold({data.windowDays})</code>).
+              One-off cover shifts therefore fall out; a dot (·) means "no
+              regular pattern here".
+            </p>
+            <p className="mb-2">
+              <span className="font-medium text-foreground">
+                Consultant / SAS extras.
+              </span>{" "}
+              On-call, SAG (private SAG list), and SPA badges use the same
+              regularity threshold via <code>computeConsultantPattern</code>.
+              On-call type ("weekday", "weekend", "mixed") is inferred from
+              which weekdays are covered.
+            </p>
+            <p className="mb-0">
+              <span className="font-medium text-foreground">
+                Location share &amp; specialties.
+              </span>{" "}
+              The bar chart counts every assignment (not distinct dates), so
+              an AM+PM day contributes twice. Top specialties are the most
+              common surgical specialties on theatre lists this staff member
+              covered.
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   );
