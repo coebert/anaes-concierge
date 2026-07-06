@@ -1,7 +1,8 @@
-import { Link, useLocation, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useLocation, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { LogOut, Stethoscope, ChevronRight } from "lucide-react";
+import { Stethoscope, ChevronRight } from "lucide-react";
+import { UserMenu } from "@/components/user-menu";
 import {
   Sidebar,
   SidebarContent,
