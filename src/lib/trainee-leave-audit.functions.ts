@@ -92,6 +92,7 @@ const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
 export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AuditResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await context.supabase
       .from("user_roles")
       .select("role")

@@ -32,6 +32,7 @@ export const checkCustomRuleViolations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CheckInput.parse(input))
   .handler(async ({ data, context }): Promise<{ violations: CustomRuleViolation[] }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { userId } = context;
 
     // Admin gate
