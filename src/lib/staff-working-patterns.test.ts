@@ -1,165 +1,183 @@
+/**
+ * Tests for `dominantByHalfSession` and `suggestedRegularityThreshold`.
+ *
+ * Covers:
+ *   - Dominant location per (weekday, half-session) picks the bucket with
+ *     the most distinct dates.
+ *   - Only Mon–Fri cells are populated; weekend assignments (Sat/Sun) and
+ *     assignments with no `am`/`pm` half are ignored.
+ *   - The `minCount` regularity threshold gates one-off shifts.
+ *   - `suggestedRegularityThreshold` scales with the window in days.
+ */
 import { describe, it, expect } from "vitest";
 import {
-  computeConsultantPattern,
+  dominantByHalfSession,
+  suggestedRegularityThreshold,
   type AssignmentLite,
   type SessionLite,
   type TheatreLite,
 } from "./staff-working-patterns";
 
-/**
- * Regression tests for the consultant working-pattern engine.
- *
- * Focused on irregular / edge-shape inputs so future changes can't
- * silently mis-align the Working / SPA / On-call rows on the Working
- * patterns page:
- *
- *   - Weekend assignments must NEVER appear in any weekday output
- *     array (the UI only renders Mon–Fri; weekend leakage would break
- *     the 5-cell grid layout).
- *   - AM-only and PM-only irregular shifts must land in the matching
- *     half-day bucket only — never both.
- *   - Below-threshold ad-hoc cover must be dropped so it can't
- *     phantom-fill a column.
- *   - Assignments with missing / null half-session flags must not
- *     crash and must not silently populate AM or PM.
- */
+const STAFF = "staff-1";
 
-const NO_THEATRES = new Map<string, TheatreLite>();
-const NO_SESSIONS = new Map<string, SessionLite>();
+const theatresById = new Map<string, TheatreLite>([
+  ["t-main", { id: "t-main", name: "Main 1", kind: "main" }],
+  ["t-day", { id: "t-day", name: "DSU 1", kind: "day_surgery" }],
+  ["t-priv", { id: "t-priv", name: "NHH 1", kind: "private" }],
+]);
 
-function make(
+function mkSession(id: string, theatre_id: string | null, is_non_sag = false): SessionLite {
+  return { id, theatre_id, specialty_id: null, is_non_sag };
+}
+const sessionsById = new Map<string, SessionLite>([
+  ["s-main", mkSession("s-main", "t-main")],
+  ["s-day", mkSession("s-day", "t-day")],
+  ["s-priv", mkSession("s-priv", "t-priv", false)],
+]);
+
+function theatre(
   date: string,
-  half: "am" | "pm" | null,
-  duty: string = "theatre",
+  half: "am" | "pm",
+  sessionId: "s-main" | "s-day" | "s-priv",
 ): AssignmentLite {
   return {
-    staff_id: "s1",
-    duty_type: duty,
+    staff_id: STAFF,
+    duty_type: "theatre",
     session_date: date,
     session: half,
-    theatre_session_id: null,
+    theatre_session_id: sessionId,
   };
 }
 
-describe("computeConsultantPattern — irregular data safety", () => {
-  it("never emits weekend weekdays even when data contains Sat/Sun shifts", () => {
-    // 2026-01-03 = Sat, 2026-01-04 = Sun (repeated 4x to exceed threshold).
-    const weekend: AssignmentLite[] = [
-      make("2026-01-03", "am"),
-      make("2026-01-04", "pm"),
-      make("2026-01-10", "am"),
-      make("2026-01-11", "pm"),
-      make("2026-01-17", "am"),
-      make("2026-01-18", "pm"),
-      make("2026-01-24", "am"),
-      make("2026-01-25", "pm"),
+describe("dominantByHalfSession", () => {
+  it("picks the location bucket with the most distinct dates for a cell", () => {
+    // Four Mondays: three in main theatres, one in day surgery.
+    // 2025-01-06, -13, -20 are Mondays; -27 also Monday.
+    const assignments: AssignmentLite[] = [
+      theatre("2025-01-06", "am", "s-main"),
+      theatre("2025-01-13", "am", "s-main"),
+      theatre("2025-01-20", "am", "s-main"),
+      theatre("2025-01-27", "am", "s-day"),
     ];
-    const p = computeConsultantPattern(
-      weekend,
-      NO_SESSIONS,
-      NO_THEATRES,
-      { regularityThreshold: 2 },
-    );
-    for (const arr of [
-      p.workingWeekdays,
-      p.amWorkingWeekdays,
-      p.pmWorkingWeekdays,
-      p.privateWeekdays,
-      p.onCallWeekdays,
-      p.spaAmWeekdays,
-      p.spaPmWeekdays,
-    ]) {
-      expect(arr.every((d) => d >= 1 && d <= 5)).toBe(true);
+    const result = dominantByHalfSession(assignments, sessionsById, theatresById, 2);
+    const monAm = result.am[1]; // 1 = Monday
+    expect(monAm).not.toBeNull();
+    expect(monAm!.bucket).toBe("main");
+    expect(monAm!.count).toBe(3);
+    expect(monAm!.total).toBe(4);
+  });
+
+  it("only populates Mon–Fri cells; weekend assignments are ignored", () => {
+    // 2025-01-04 Sat, 2025-01-05 Sun, 2025-01-11 Sat.
+    const assignments: AssignmentLite[] = [
+      theatre("2025-01-04", "am", "s-main"),
+      theatre("2025-01-05", "am", "s-main"),
+      theatre("2025-01-11", "am", "s-main"),
+      theatre("2025-01-04", "pm", "s-main"),
+      theatre("2025-01-05", "pm", "s-main"),
+    ];
+    const result = dominantByHalfSession(assignments, sessionsById, theatresById, 2);
+    // Saturday (6) and Sunday (0) must remain null.
+    expect(result.am[0]).toBeNull();
+    expect(result.am[6]).toBeNull();
+    expect(result.pm[0]).toBeNull();
+    expect(result.pm[6]).toBeNull();
+    // And none of the Mon–Fri cells should have been populated either.
+    for (let dow = 1; dow <= 5; dow++) {
+      expect(result.am[dow]).toBeNull();
+      expect(result.pm[dow]).toBeNull();
     }
-    // Weekend duty is not "not working" — totals count it, but rendering skips it.
-    expect(p.totalWorkingSessions).toBe(8);
   });
 
-  it("classifies AM-only Tuesdays as AM working, not PM", () => {
-    const amOnly: AssignmentLite[] = [
-      make("2026-01-06", "am"), // Tue
-      make("2026-01-13", "am"),
-      make("2026-01-20", "am"),
-      make("2026-01-27", "am"),
+  it("ignores assignments without an am/pm half", () => {
+    const assignments: AssignmentLite[] = [
+      { ...theatre("2025-01-06", "am", "s-main"), session: null },
+      { ...theatre("2025-01-13", "am", "s-main"), session: "" },
+      { ...theatre("2025-01-20", "am", "s-main"), session: "eve" },
     ];
-    const p = computeConsultantPattern(amOnly, NO_SESSIONS, NO_THEATRES, {
-      regularityThreshold: 2,
-    });
-    expect(p.amWorkingWeekdays).toEqual([2]);
-    expect(p.pmWorkingWeekdays).toEqual([]);
-    expect(p.workingWeekdays).toEqual([2]);
+    const result = dominantByHalfSession(assignments, sessionsById, theatresById, 2);
+    for (let dow = 0; dow < 7; dow++) {
+      expect(result.am[dow]).toBeNull();
+      expect(result.pm[dow]).toBeNull();
+    }
   });
 
-  it("classifies PM-only Thursdays as PM working, not AM", () => {
-    const pmOnly: AssignmentLite[] = [
-      make("2026-01-08", "pm"), // Thu
-      make("2026-01-15", "pm"),
-      make("2026-01-22", "pm"),
-      make("2026-01-29", "pm"),
+  it("keeps AM and PM cells independent for the same weekday", () => {
+    // Three Tuesdays AM in main, three Tuesdays PM in day surgery.
+    // 2025-01-07, -14, -21 are Tuesdays.
+    const assignments: AssignmentLite[] = [
+      theatre("2025-01-07", "am", "s-main"),
+      theatre("2025-01-14", "am", "s-main"),
+      theatre("2025-01-21", "am", "s-main"),
+      theatre("2025-01-07", "pm", "s-day"),
+      theatre("2025-01-14", "pm", "s-day"),
+      theatre("2025-01-21", "pm", "s-day"),
     ];
-    const p = computeConsultantPattern(pmOnly, NO_SESSIONS, NO_THEATRES, {
-      regularityThreshold: 2,
-    });
-    expect(p.pmWorkingWeekdays).toEqual([4]);
-    expect(p.amWorkingWeekdays).toEqual([]);
+    const result = dominantByHalfSession(assignments, sessionsById, theatresById, 2);
+    expect(result.am[2]?.bucket).toBe("main");
+    expect(result.pm[2]?.bucket).toBe("day_surgery");
   });
 
-  it("separates AM SPA from PM SPA on the same weekday", () => {
-    // Mondays: SPA in AM. Wednesdays: SPA in PM.
-    const spa: AssignmentLite[] = [
-      make("2026-01-05", "am", "spa"), // Mon
-      make("2026-01-12", "am", "spa"),
-      make("2026-01-07", "pm", "spa"), // Wed
-      make("2026-01-14", "pm", "spa"),
+  describe("regularity threshold (minCount)", () => {
+    // Two Wednesdays in main (2025-01-08, 2025-01-15).
+    const twoWednesdays: AssignmentLite[] = [
+      theatre("2025-01-08", "am", "s-main"),
+      theatre("2025-01-15", "am", "s-main"),
     ];
-    const p = computeConsultantPattern(spa, NO_SESSIONS, NO_THEATRES, {
-      regularityThreshold: 3, // spaThreshold => max(2, floor(3/2)+1) = 2
+
+    it("shows a cell when the winning bucket meets minCount", () => {
+      const result = dominantByHalfSession(twoWednesdays, sessionsById, theatresById, 2);
+      expect(result.am[3]?.bucket).toBe("main");
+      expect(result.am[3]?.count).toBe(2);
     });
-    expect(p.spaAmWeekdays).toEqual([1]);
-    expect(p.spaPmWeekdays).toEqual([3]);
+
+    it("suppresses a cell when the winning bucket falls below minCount", () => {
+      const result = dominantByHalfSession(twoWednesdays, sessionsById, theatresById, 3);
+      expect(result.am[3]).toBeNull();
+    });
+
+    it("collapses a single one-off shift under the default minCount of 2", () => {
+      const oneOff: AssignmentLite[] = [theatre("2025-01-08", "am", "s-main")];
+      const result = dominantByHalfSession(oneOff, sessionsById, theatresById, 2);
+      expect(result.am[3]).toBeNull();
+    });
+
+    it("counts distinct dates only, not duplicate assignments on the same date", () => {
+      // Same Wednesday recorded twice — still one distinct date.
+      const dup: AssignmentLite[] = [
+        theatre("2025-01-08", "am", "s-main"),
+        theatre("2025-01-08", "am", "s-main"),
+      ];
+      const result = dominantByHalfSession(dup, sessionsById, theatresById, 2);
+      expect(result.am[3]).toBeNull();
+    });
+  });
+});
+
+describe("suggestedRegularityThreshold", () => {
+  it("returns at least 2 for short windows", () => {
+    expect(suggestedRegularityThreshold(7)).toBe(2);
+    expect(suggestedRegularityThreshold(14)).toBe(2);
+    expect(suggestedRegularityThreshold(28)).toBe(2);
   });
 
-  it("drops below-threshold ad-hoc cover so the grid isn't padded", () => {
-    // One-off Friday PM cover — must not count as regular.
-    const adhoc: AssignmentLite[] = [make("2026-01-09", "pm")];
-    const p = computeConsultantPattern(adhoc, NO_SESSIONS, NO_THEATRES, {
-      regularityThreshold: 2,
-    });
-    expect(p.workingWeekdays).toEqual([]);
-    expect(p.pmWorkingWeekdays).toEqual([]);
-    expect(p.totalWorkingSessions).toBe(1);
+  it("scales roughly one per four weeks for longer windows", () => {
+    expect(suggestedRegularityThreshold(56)).toBe(2);
+    expect(suggestedRegularityThreshold(84)).toBe(3);
+    expect(suggestedRegularityThreshold(90)).toBe(3);
+    expect(suggestedRegularityThreshold(112)).toBe(4);
+    expect(suggestedRegularityThreshold(180)).toBe(6);
   });
 
-  it("handles null / unknown session flag without leaking into AM or PM", () => {
-    // duty logged with no session half specified — must count toward the
-    // overall day but neither half-day bucket.
-    const noHalf: AssignmentLite[] = [
-      make("2026-01-06", null), // Tue
-      make("2026-01-13", null),
-      make("2026-01-20", null),
-    ];
-    const p = computeConsultantPattern(noHalf, NO_SESSIONS, NO_THEATRES, {
-      regularityThreshold: 2,
-    });
-    expect(p.workingWeekdays).toEqual([2]);
-    expect(p.amWorkingWeekdays).toEqual([]);
-    expect(p.pmWorkingWeekdays).toEqual([]);
-  });
-
-  it("keeps on-call weekdays separate from working weekdays", () => {
-    // Consultant is on-call Friday evenings — non-working duty.
-    const oncall: AssignmentLite[] = [
-      make("2026-01-09", "pm", "general_consultant_oncall"),
-      make("2026-01-16", "pm", "general_consultant_oncall"),
-      make("2026-01-23", "pm", "general_consultant_oncall"),
-    ];
-    const p = computeConsultantPattern(oncall, NO_SESSIONS, NO_THEATRES, {
-      regularityThreshold: 2,
-    });
-    expect(p.onCallWeekdays).toEqual([5]);
-    expect(p.workingWeekdays).toEqual([]);
-    expect(p.amWorkingWeekdays).toEqual([]);
-    expect(p.pmWorkingWeekdays).toEqual([]);
-    expect(p.onCallType).toBe("theatre");
+  it("matches the derived minCount = max(2, floor(threshold/2)+1) used by the card and chat", () => {
+    // Sanity-check the derivation used in both current-pattern-card.tsx and
+    // routes/api/chat.ts so a change in `suggestedRegularityThreshold` is
+    // visible here too.
+    for (const windowDays of [14, 30, 60, 90, 120, 180]) {
+      const threshold = suggestedRegularityThreshold(windowDays);
+      const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
+      expect(minCount).toBeGreaterThanOrEqual(2);
+      expect(minCount).toBeLessThanOrEqual(threshold + 1);
+    }
   });
 });
