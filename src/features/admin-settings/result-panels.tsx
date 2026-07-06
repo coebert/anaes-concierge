@@ -78,7 +78,7 @@ export function ValidateResultPanel({
         />
       </div>
       {data.mismatches.length === 0 ? (
-        <div className="flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+        <div className="flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-success dark:bg-emerald-950/40 dark:text-emerald-400">
           <CheckCircle2 className="h-3 w-3" />
           All trainees with theatre rows have at least one matched list
           and an unmatched ratio below 50%.
@@ -449,7 +449,7 @@ export function StaffSyncResultPanel({ data }: { data: StaffSyncData }) {
       )}
       {data.insertedList.length > 0 && (
         <details open className="rounded border border-border p-2">
-          <summary className="cursor-pointer font-medium text-emerald-600">
+          <summary className="cursor-pointer font-medium text-success">
             Added profiles ({data.insertedList.length})
           </summary>
           <ul className="mt-2 max-h-48 list-disc overflow-auto pl-5 text-muted-foreground">

@@ -91,10 +91,10 @@ function AuditDashboard() {
       <Header subtitle="Audit workspace — synced from CLWRota" />
 
       {/* Sync freshness banner */}
-      <Card className={syncWarning ? "border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20" : ""}>
+      <Card className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-emerald-500/10 text-success"}`}>
               {syncWarning ? <AlertTriangle className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
             </div>
             <div>

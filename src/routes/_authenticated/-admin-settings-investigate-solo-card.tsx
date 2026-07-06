@@ -106,7 +106,7 @@ export function InvestigateSoloCard() {
               />
             </div>
             {result.applied > 0 ? (
-              <p className="text-xs text-emerald-600">
+              <p className="text-xs text-success">
                 {result.applied} list(s) reclassified solo → supervised in run{" "}
                 {result.sync_run_id?.slice(0, 8)}.
               </p>

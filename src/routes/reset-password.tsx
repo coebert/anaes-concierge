@@ -578,7 +578,7 @@ function ResetPasswordPage() {
                       data-testid={`pw-check-${c.id}`}
                       data-ok={c.ok ? "true" : "false"}
                       className={`flex items-center gap-1.5 ${
-                        c.ok ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                        c.ok ? "text-success" : "text-muted-foreground"
                       }`}
                     >
                       {c.ok ? (

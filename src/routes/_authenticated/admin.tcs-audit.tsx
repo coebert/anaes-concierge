@@ -382,9 +382,9 @@ function ReasonBanner({
 }
 
 function RuleIcon({ status }: { status: RuleStatus }) {
-  if (status === "pass") return <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />;
+  if (status === "pass") return <CheckCircle2 className="mt-0.5 h-4 w-4 text-success" />;
   if (status === "fail") return <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />;
-  if (status === "warn") return <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />;
+  if (status === "warn") return <AlertTriangle className="mt-0.5 h-4 w-4 text-warning" />;
   return <HelpCircle className="mt-0.5 h-4 w-4 text-muted-foreground" />;
 }
 

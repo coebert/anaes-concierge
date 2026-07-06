@@ -77,8 +77,8 @@ function DayDetailPage() {
 
 
         {totalUnfilled > 0 && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
-            <AlertTriangle className="mr-1 inline h-4 w-4 text-amber-600" />
+          <div className="rounded-md border border-warning/40 bg-warning-muted/40 p-3 text-sm dark:bg-amber-950/20">
+            <AlertTriangle className="mr-1 inline h-4 w-4 text-warning" />
             {totalUnfilled} theatre session(s) have no staff assigned yet.
           </div>
         )}

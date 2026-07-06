@@ -416,7 +416,7 @@ function Cell({
             }
           />
 
-          <span className={cell?.is_non_sag ? "font-medium text-amber-600 dark:text-amber-400" : ""}>
+          <span className={cell?.is_non_sag ? "font-medium text-warning" : ""}>
             Non-SAG
           </span>
         </label>

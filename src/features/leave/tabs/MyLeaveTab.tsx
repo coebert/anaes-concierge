@@ -103,7 +103,7 @@ export function MyLeaveTab({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground max-w-sm">
-                    {r.conflict_notes && <div className="text-amber-700">⚠ {r.conflict_notes}</div>}
+                    {r.conflict_notes && <div className="text-warning">⚠ {r.conflict_notes}</div>}
                     {r.decision_notes && <div>{r.decision_notes}</div>}
                     {r.reason && <div className="italic">{r.reason}</div>}
                   </TableCell>

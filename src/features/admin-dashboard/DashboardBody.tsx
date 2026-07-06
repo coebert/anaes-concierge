@@ -280,7 +280,7 @@ export function DashboardBody(props: DashboardBodyProps) {
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertTriangle className="h-4 w-4 text-warning" />
                   <span className="font-medium">{summary.traineeSolo.length} trainee(s) solo today</span>
                 </div>
                 <ul className="divide-y rounded-md border">
@@ -438,7 +438,7 @@ export function DashboardBody(props: DashboardBodyProps) {
                                       </Badge>
                                     )}
                                     {behind && !atRisk && (
-                                      <Badge variant="outline" className="ml-2 text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400">
+                                      <Badge variant="outline" className="ml-2 text-[10px] gap-1 border-amber-500 text-warning dark:text-amber-400">
                                         <AlertTriangle className="h-3 w-3" />Behind · {prog!.overall}%
                                       </Badge>
                                     )}

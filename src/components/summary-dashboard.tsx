@@ -39,7 +39,7 @@ function dayChipSurface(risk: "ok" | "tight" | "shortfall" | "spa_required") {
     return "border-orange-400/50 bg-orange-400/10 hover:bg-orange-400/15 hover:border-orange-500/70";
   if (risk === "tight")
     return "border-amber-400/60 bg-amber-400/10 hover:bg-amber-400/15 hover:border-amber-500/70";
-  return "border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/60";
+  return "border-success/40 bg-success-muted/30 hover:bg-emerald-500/10 hover:border-emerald-500/60";
 }
 
 function dayChipAccent(risk: "ok" | "tight" | "shortfall" | "spa_required") {
@@ -375,7 +375,7 @@ export function SummaryDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-amber-600" />
+                <GraduationCap className="h-4 w-4 text-warning" />
                 Solo trainees today
                 <Badge variant="secondary" className="ml-auto">{soloToday?.length ?? 0}</Badge>
               </CardTitle>
@@ -389,8 +389,8 @@ export function SummaryDashboard() {
               ) : (
                 <ul className="space-y-1.5 text-sm">
                   {soloToday!.map((s) => (
-                    <li key={s.id} className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-1.5">
-                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                    <li key={s.id} className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-muted/30 px-2 py-1.5">
+                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
                       <div className="flex-1">
                         <div className="font-medium">{s.theatre}</div>
                         <div className="text-xs text-muted-foreground">
@@ -409,7 +409,7 @@ export function SummaryDashboard() {
               SPA/admin counts as scheduled, so those people don't appear. */}
           <NotScheduledCard
             title="Consultants not scheduled today"
-            tone="text-emerald-600"
+            tone="text-success"
             loading={nwLoading}
             entries={notWorking?.consultants ?? []}
             today={today}
@@ -501,7 +501,7 @@ export function SummaryDashboard() {
                           <td className="py-2 pr-4 text-right">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className={cn("cursor-help", totalSolo < totalLists - totalUnfilled && "text-amber-600 font-medium")}>
+                                <span className={cn("cursor-help", totalSolo < totalLists - totalUnfilled && "text-warning font-medium")}>
                                   {totalSolo}
                                 </span>
                               </TooltipTrigger>

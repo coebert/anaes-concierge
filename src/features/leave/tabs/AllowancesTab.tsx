@@ -208,7 +208,7 @@ export function AllowancesTab({
                   const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
                   const remTone = (rem: number) =>
                     rem < 0 ? "text-destructive font-semibold"
-                    : rem <= 2 ? "text-amber-600 font-medium"
+                    : rem <= 2 ? "text-warning font-medium"
                     : "";
                   return (
                     <TableRow key={s.profile.id}>

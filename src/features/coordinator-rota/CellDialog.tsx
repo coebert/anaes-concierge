@@ -396,7 +396,7 @@ export function CellDialog({
                                 {iss.map((i, idx) => (
                                   <li key={idx} className={cn(
                                     i.severity === "error" && "text-destructive",
-                                    i.severity === "warning" && "text-amber-600 dark:text-amber-400",
+                                    i.severity === "warning" && "text-warning",
                                   )}>
                                     • {i.message}
                                   </li>
@@ -458,7 +458,7 @@ export function CellDialog({
                         <li key={idx} className={cn(
                           "flex items-start gap-1.5",
                           i.severity === "error" && "text-destructive",
-                          i.severity === "warning" && "text-amber-600 dark:text-amber-400",
+                          i.severity === "warning" && "text-warning",
                           i.severity === "info" && "text-muted-foreground",
                         )}>
                           <span>•</span><span>{i.message}</span>

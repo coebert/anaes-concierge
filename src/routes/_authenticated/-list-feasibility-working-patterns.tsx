@@ -84,7 +84,7 @@ export function WorkingPatternsCard({
                         : c.regular
                           ? "bg-emerald-100 text-emerald-800"
                           : c.workingPct >= regularMinPct - 15
-                            ? "bg-amber-50 text-amber-700"
+                            ? "bg-amber-50 text-warning"
                             : "text-muted-foreground",
                     )}
                     title={

@@ -187,7 +187,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               {checking ? "Checking…" : "Check conflicts"}
             </Button>
             {conflicts && conflicts.length === 0 && (
-              <span className="text-sm text-emerald-600">No conflicts detected</span>
+              <span className="text-sm text-success">No conflicts detected</span>
             )}
           </div>
 

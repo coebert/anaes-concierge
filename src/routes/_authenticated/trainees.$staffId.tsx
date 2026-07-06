@@ -361,7 +361,7 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Solo: <strong className="text-foreground">{soloMix.solo}</strong></span>
             <span>Supervised: <strong className="text-foreground">{soloMix.supervised}</strong></span>
-            <span className={soloMix.gap < -0.1 ? "text-amber-600" : soloMix.gap > 0.15 ? "text-amber-600" : ""}>
+            <span className={soloMix.gap < -0.1 ? "text-warning" : soloMix.gap > 0.15 ? "text-warning" : ""}>
               Gap: {(soloMix.gap * 100).toFixed(0)}%
             </span>
           </div>
@@ -376,7 +376,7 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
           <CardDescription className="text-xs">
             {supervisorExposure.distinctSupervisors} distinct · {supervisorExposure.totalSupervisedSessions} supervised sessions
             {supervisorExposure.narrowExposure && (
-              <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+              <span className="ml-2 inline-flex items-center gap-1 text-warning">
                 <AlertTriangle className="h-3 w-3" /> narrow exposure
               </span>
             )}
@@ -401,7 +401,7 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <AlertTriangle className="h-4 w-4 text-amber-600" /> Training-list displacement
+            <AlertTriangle className="h-4 w-4 text-warning" /> Training-list displacement
           </CardTitle>
           <CardDescription className="text-xs">
             {displacement.displacedSessions} displaced · ~{displacement.approxHoursLost}h of training lost

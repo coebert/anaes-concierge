@@ -676,7 +676,7 @@ function RotaGapsPage() {
                         ? "text-muted-foreground"
                         : filled === 0
                           ? "text-destructive"
-                          : "text-emerald-700 dark:text-emerald-400";
+                          : "text-success dark:text-emerald-400";
                       return (
                         <span title="Sum of sync-missing weekdays closed across every completed range — measured by re-querying rota_assignments after each sync.">
                           Verified fill: <span className={`font-medium ${tone}`}>{filled} / {before} gaps</span>
@@ -843,11 +843,11 @@ function RotaGapsPage() {
                                       : "No sync-missing weekdays in range.";
                                   const statusTone =
                                     d.status === "fully_filled"
-                                      ? "text-emerald-700 dark:text-emerald-400"
+                                      ? "text-success dark:text-emerald-400"
                                       : d.status === "partially_filled"
-                                      ? "text-amber-700 dark:text-amber-400"
+                                      ? "text-warning dark:text-amber-400"
                                       : d.status === "covered_no_new_dates"
-                                      ? "text-amber-700 dark:text-amber-400"
+                                      ? "text-warning dark:text-amber-400"
                                       : d.status === "no_upstream_coverage"
                                       ? "text-red-700 dark:text-red-400"
                                       : "text-muted-foreground";
@@ -895,7 +895,7 @@ function RotaGapsPage() {
           {rows.length === 0 ? (
             <Card>
               <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 {hideClean
                   ? "No staff with missing days in this window."
                   : "No staff match the current filter."}

@@ -83,12 +83,12 @@ export function CalendarCoverageCard() {
           <>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {ok ? (
-                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <span className="inline-flex items-center gap-1 text-success">
                   <CheckCircle2 className="h-4 w-4" />
                   All {data.days.length} day(s) resolved names for every assignment.
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1 text-warning">
                   <AlertTriangle className="h-4 w-4" />
                   {data.datesWithMissingNames.length} day(s) with missing names
                   {data.unresolvedTotal > 0 && ` · ${data.unresolvedTotal} unresolved staff id(s)`}

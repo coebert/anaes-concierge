@@ -405,8 +405,8 @@ function LastMinuteChangesPage() {
                         <TableCell>
                           <span className={cn(
                             "rounded px-2 py-0.5 text-xs font-medium",
-                            r.action === "insert" && "bg-emerald-100 text-emerald-700",
-                            r.action === "update" && "bg-amber-100 text-amber-700",
+                            r.action === "insert" && "bg-emerald-100 text-success",
+                            r.action === "update" && "bg-amber-100 text-warning",
                             r.action === "delete" && "bg-red-100 text-red-700",
                           )}>
                             {r.action}
@@ -490,9 +490,9 @@ type StatProps = {
 function Stat({ label, value, icon: Icon, tone, onClick }: StatProps) {
   const toneClass =
     tone === "red" ? "bg-red-500/10 text-red-600"
-    : tone === "amber" ? "bg-amber-500/10 text-amber-600"
+    : tone === "amber" ? "bg-amber-500/10 text-warning"
     : tone === "orange" ? "bg-orange-500/10 text-orange-600"
-    : "bg-emerald-500/10 text-emerald-600";
+    : "bg-emerald-500/10 text-success";
   const interactive = typeof value === "number" && value > 0 && !!onClick;
   return (
     <Card

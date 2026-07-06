@@ -499,7 +499,7 @@ function ValidationResults({
       )}
 
       {consultants.length === 0 ? (
-        <p className="text-xs text-emerald-700">
+        <p className="text-xs text-success">
           No mismatches detected at the current threshold (±{report.mismatchThresholdPct}{" "}
           percentage points). All sampled cells agree with the model.
         </p>
@@ -549,7 +549,7 @@ function ValidationConsultantRow({
               {consultant.mismatchCount === 1 ? "" : "es"}
             </Badge>
           ) : (
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+            <Badge className="bg-emerald-100 text-success hover:bg-emerald-100">
               Agrees with model
             </Badge>
           )}

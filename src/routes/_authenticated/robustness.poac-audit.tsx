@@ -534,8 +534,8 @@ function PoacAuditPage() {
       <Card
         className={
           baselineViolations.length
-            ? "border-amber-500/40 bg-amber-500/5"
-            : "border-emerald-500/40 bg-emerald-500/5"
+            ? "border-warning/40 bg-warning-muted/30"
+            : "border-success/40 bg-success-muted/30"
         }
       >
         <CardHeader>
@@ -550,7 +550,7 @@ function PoacAuditPage() {
             </p>
           ) : baselineViolations.length === 0 ? (
             <p>
-              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15">
+              <Badge className="bg-emerald-500/15 text-success hover:bg-emerald-500/15">
                 PASS
               </Badge>{" "}
               All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the
@@ -559,7 +559,7 @@ function PoacAuditPage() {
           ) : (
             <div className="space-y-2">
               <p>
-                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15">
+                <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15">
                   {baselineViolations.length} violation
                   {baselineViolations.length === 1 ? "" : "s"}
                 </Badge>{" "}
@@ -640,7 +640,7 @@ function PoacAuditPage() {
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {w.additional > 0 ? (
-                          <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300">
+                          <Badge className="bg-amber-500/15 text-warning hover:bg-amber-500/15 dark:text-amber-300">
                             +{w.additional}
                           </Badge>
                         ) : (
@@ -791,7 +791,7 @@ function SummaryCard({
     tone === "primary"
       ? "text-primary"
       : tone === "amber"
-        ? "text-amber-600 dark:text-amber-400"
+        ? "text-warning"
         : "text-foreground";
   return (
     <Card>

@@ -108,14 +108,14 @@ function HealthPage() {
                 icon={CheckCircle2}
                 label="Healthy"
                 value={health.checks.filter((c) => c.status === "ok").length}
-                color="text-emerald-600"
+                color="text-success"
                 bg="bg-emerald-50"
               />
               <SummaryCard
                 icon={AlertCircle}
                 label="Warnings"
                 value={health.checks.filter((c) => c.status === "warning").length}
-                color="text-amber-600"
+                color="text-warning"
                 bg="bg-amber-50"
               />
               <SummaryCard
@@ -148,8 +148,8 @@ function HealthPage() {
 
 function OverallBadge({ status }: { status: HealthResponse["status"] }) {
   const variants: Record<string, { label: string; className: string }> = {
-    healthy: { label: "Healthy", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
-    degraded: { label: "Degraded", className: "bg-amber-100 text-amber-700 hover:bg-amber-100" },
+    healthy: { label: "Healthy", className: "bg-emerald-100 text-success hover:bg-emerald-100" },
+    degraded: { label: "Degraded", className: "bg-amber-100 text-warning hover:bg-amber-100" },
     unhealthy: { label: "Unhealthy", className: "bg-red-100 text-red-700 hover:bg-red-100" },
   };
   const v = variants[status] ?? variants.unhealthy;
@@ -192,8 +192,8 @@ function CheckCard({ check }: { check: HealthCheck }) {
   };
   const Icon = iconMap[check.status];
   const colorMap = {
-    ok: "text-emerald-600",
-    warning: "text-amber-600",
+    ok: "text-success",
+    warning: "text-warning",
     error: "text-red-600",
   };
   const borderMap = {
