@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAdmin } from "@/lib/require-admin";
 
 async function assertAdmin(userId: string) {
   const { data } = await supabaseAdmin
@@ -13,10 +14,9 @@ async function assertAdmin(userId: string) {
 }
 
 export const listAccessRequests = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
       .from("access_requests")
       .select("id, email, full_name, message, status, created_at, decided_at, decision_notes")
@@ -34,11 +34,10 @@ const DecideSchema = z.object({
 });
 
 export const decideAccessRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((d) => DecideSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context.userId);
 
     const { data: req, error: fetchErr } = await supabaseAdmin
       .from("access_requests")
@@ -70,11 +69,10 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
   });
 
 export const deleteAccessRequest = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context.userId);
     const { error } = await supabaseAdmin.from("access_requests").delete().eq("id", data.id);
     if (error) return { error: error.message };
     return { ok: true };

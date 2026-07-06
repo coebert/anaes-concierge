@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAdmin } from "@/lib/require-admin";
 
 async function assertAdmin(userId: string) {
   const { data } = await supabaseAdmin
@@ -13,11 +14,10 @@ async function assertAdmin(userId: string) {
 }
 
 export const getProfileGmcNumber = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((d) => z.object({ staffId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context.userId);
     const { data: row, error } = await supabaseAdmin
       .from("profiles")
       .select("gmc_number")
@@ -28,7 +28,7 @@ export const getProfileGmcNumber = createServerFn({ method: "POST" })
   });
 
 export const updateProfileGmcNumber = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((d) =>
     z
       .object({
@@ -44,7 +44,6 @@ export const updateProfileGmcNumber = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await assertAdmin(context.userId);
     const value = data.gmc_number && data.gmc_number.length ? data.gmc_number : null;
     const { error } = await supabaseAdmin
       .from("profiles")
