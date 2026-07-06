@@ -200,16 +200,8 @@ export async function fetchReportRaw(
 // object that contains rows under a known wrapper key (Rotamap central_api,
 // generic { data: [...] }, etc.). Validated permissively — individual row
 // fields are picked downstream via pick() with fallbacks.
-const RotamapCentralApiSchema = z.object({
-  columns: z.array(z.object({ field_name: z.unknown() }).passthrough()).min(1),
-  rows: z.array(z.unknown()),
-}).passthrough();
-
-const RowsWrapperSchema = z.union([
-  z.array(z.record(z.unknown())),
-  RotamapCentralApiSchema,
-  z.record(z.unknown()), // generic wrapper — we'll probe known keys below
-]);
+// Row-level and wrapper schemas live in `./schemas` — see there for the
+// definitions of RotamapCentralApiSchema and RowsWrapperSchema.
 
 /**
  * Defensively parse a CLWRota report body (JSON or CSV) into a row array.
