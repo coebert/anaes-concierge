@@ -105,6 +105,7 @@ export function classifyLocation(
   theatresById: Map<string, TheatreLite>,
 ): LocationBucket {
   const duty = assignment.duty_type ?? "";
+  if (duty === "leave") return "leave";
   if (ICU_DUTIES.has(duty)) return "icu";
   if (OBSTETRICS_DUTIES.has(duty)) return "obstetrics";
 
@@ -127,6 +128,7 @@ export const LOCATION_LABELS: Record<LocationBucket, string> = {
   private_non_sag: "NHH (non-SAG cover)",
   obstetrics: "Obstetrics",
   icu: "ICU",
+  leave: "On leave",
   other: "Other / non-clinical",
 };
 
@@ -137,8 +139,10 @@ export const LOCATION_ORDER: LocationBucket[] = [
   "private_non_sag",
   "obstetrics",
   "icu",
+  "leave",
   "other",
 ];
+
 
 export interface StaffSummary {
   staff_id: string;
