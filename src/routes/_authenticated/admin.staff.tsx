@@ -335,43 +335,41 @@ function AdminStaffPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Staff</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage profiles, roles, job plans and fixed weekly sessions.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="show-inactive"
-              checked={showInactive}
-              onCheckedChange={setShowInactive}
+      <PageHeader
+        title="Staff"
+        description="Manage profiles, roles, job plans and fixed weekly sessions."
+        actions={
+          <>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+              />
+              <Label htmlFor="show-inactive" className="cursor-pointer text-sm">
+                Show inactive
+              </Label>
+            </div>
+            <Input
+              placeholder="Filter…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-xs"
             />
-            <Label htmlFor="show-inactive" className="cursor-pointer text-sm">
-              Show inactive
-            </Label>
-          </div>
-          <Input
-            placeholder="Filter…"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="max-w-xs"
-          />
-          {isAdmin && (
-            <AcutePainSettingsPopover
-              value={acutePainSettings}
-              onChange={setAcutePainSettings}
-            />
-          )}
-          {isAdmin && (
-            <Button onClick={() => setAddOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" /> Add staff
-            </Button>
-          )}
-        </div>
-      </div>
+            {isAdmin && (
+              <AcutePainSettingsPopover
+                value={acutePainSettings}
+                onChange={setAcutePainSettings}
+              />
+            )}
+            {isAdmin && (
+              <Button onClick={() => setAddOpen(true)}>
+                <UserPlus className="mr-2 h-4 w-4" /> Add staff
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <Tabs defaultValue="staff" className="space-y-4">
         <TabsList>

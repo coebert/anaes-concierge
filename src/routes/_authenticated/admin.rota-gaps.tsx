@@ -697,42 +697,39 @@ function RotaGapsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rota gaps</h1>
-          <p className="text-sm text-muted-foreground">
-            Working weekdays for every active staff member where no rota assignment was synced.
-            Contiguous gaps — including spans bridged by weekends or LTFT off days — are grouped into ranges.
-          </p>
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="w-44">
-            <label className="mb-1 block text-xs text-muted-foreground">Window</label>
-            <Select value={windowChoice} onValueChange={(v) => setWindowChoice(v as WindowChoice)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(WINDOW_LABEL) as WindowChoice[]).map((k) => (
-                  <SelectItem key={k} value={k}>{WINDOW_LABEL[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Input
-            placeholder="Filter…"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="max-w-xs"
-          />
-          <label className="flex items-center gap-1 pb-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={hideClean}
-              onChange={(e) => setHideClean(e.target.checked)}
+      <PageHeader
+        title="Rota gaps"
+        description="Working weekdays for every active staff member where no rota assignment was synced. Contiguous gaps — including spans bridged by weekends or LTFT off days — are grouped into ranges."
+        actions={
+          <>
+            <div className="w-44">
+              <label className="mb-1 block text-xs text-muted-foreground">Window</label>
+              <Select value={windowChoice} onValueChange={(v) => setWindowChoice(v as WindowChoice)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(WINDOW_LABEL) as WindowChoice[]).map((k) => (
+                    <SelectItem key={k} value={k}>{WINDOW_LABEL[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Input
+              placeholder="Filter…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-xs"
             />
-            Hide staff with no gaps
-          </label>
-        </div>
-      </header>
+            <label className="flex items-center gap-1 pb-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={hideClean}
+                onChange={(e) => setHideClean(e.target.checked)}
+              />
+              Hide staff with no gaps
+            </label>
+          </>
+        }
+      />
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Scanning rotas…</div>

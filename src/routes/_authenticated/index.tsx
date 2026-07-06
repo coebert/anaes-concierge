@@ -46,17 +46,11 @@ function Header({ subtitle }: { subtitle: string }) {
     : "Staff";
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome back{fullName ? `, ${fullName.split(" ")[0]}` : ""}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {user?.email} · {subtitle}
-        </p>
-      </div>
-      <Badge variant="secondary">{roleLabel} · Salisbury DGH</Badge>
-    </header>
+    <PageHeader
+      title={`Welcome back${fullName ? `, ${fullName.split(" ")[0]}` : ""}`}
+      description={`${user?.email ?? ""} · ${subtitle}`}
+      actions={<Badge variant="secondary">{roleLabel} · Salisbury DGH</Badge>}
+    />
   );
 }
 

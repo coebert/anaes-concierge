@@ -129,14 +129,16 @@ function DutyMappingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Duty type mappings</h1>
-        <p className="text-sm text-muted-foreground">
-          Configure how CLWRota labels are classified into duty types. Mappings are evaluated in
-          priority order (lower runs first); the first match wins, and unmatched rows default to{" "}
-          <Badge variant="outline">theatre</Badge>. Changes take effect on the next sync.
-        </p>
-      </div>
+      <PageHeader
+        title="Duty type mappings"
+        description={
+          <>
+            Configure how CLWRota labels are classified into duty types. Mappings are evaluated in
+            priority order (lower runs first); the first match wins, and unmatched rows default to{" "}
+            <Badge variant="outline">theatre</Badge>. Changes take effect on the next sync.
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>

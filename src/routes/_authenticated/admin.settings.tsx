@@ -460,12 +460,10 @@ function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          CLWRota integration, curriculum targets, and email setup.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="CLWRota integration, curriculum targets, and email setup."
+      />
 
       <Card>
         <CardHeader>

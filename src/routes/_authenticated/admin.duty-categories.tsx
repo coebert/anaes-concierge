@@ -160,6 +160,10 @@ function DutyCategoriesPage() {
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title="Duty categories"
+        description="Decide how each duty type affects the robustness/availability pool."
+      />
       <Card>
         <CardHeader>
           <CardTitle>Duty categories — headroom pool rules</CardTitle>

@@ -229,36 +229,34 @@ function AuditToolPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" />
-            AI Audit & Data Analysis
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Describe what you want to know in plain English. The assistant will ask any
-            clarifying questions, run read-only queries on the rota database, and present a
-            report below.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => void sendMessage({
-              text: "Please produce a professional audit report on this analysis using the generate_report tool. Run any additional queries you need first, then call generate_report with a clear title, executive summary, key findings as bullet points, sections with prose and charts where useful, and recommendations or caveats as appropriate.",
-            })}
-            disabled={isBusy || messages.length === 0}
-          >
-            <FileText className="mr-1.5 h-4 w-4" />
-            Generate report
-          </Button>
-          <Button variant="outline" size="sm" onClick={onReset} disabled={messages.length === 0}>
-            <RotateCcw className="mr-1.5 h-4 w-4" />
-            New audit
-          </Button>
-        </div>
-      </div>
+            AI Audit &amp; Data Analysis
+          </span>
+        }
+        description="Describe what you want to know in plain English. The assistant will ask any clarifying questions, run read-only queries on the rota database, and present a report below."
+        actions={
+          <>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => void sendMessage({
+                text: "Please produce a professional audit report on this analysis using the generate_report tool. Run any additional queries you need first, then call generate_report with a clear title, executive summary, key findings as bullet points, sections with prose and charts where useful, and recommendations or caveats as appropriate.",
+              })}
+              disabled={isBusy || messages.length === 0}
+            >
+              <FileText className="mr-1.5 h-4 w-4" />
+              Generate report
+            </Button>
+            <Button variant="outline" size="sm" onClick={onReset} disabled={messages.length === 0}>
+              <RotateCcw className="mr-1.5 h-4 w-4" />
+              New audit
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         {/* Chat panel */}

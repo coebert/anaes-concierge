@@ -122,12 +122,10 @@ function RulesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Working-pattern rules</h1>
-        <p className="text-sm text-muted-foreground">
-          Global defaults and constraints used by rota calculations and job-plan validation.
-        </p>
-      </div>
+      <PageHeader
+        title="Working-pattern rules"
+        description="Global defaults and constraints used by rota calculations and job-plan validation."
+      />
 
       <Card>
         <CardHeader>
