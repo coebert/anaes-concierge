@@ -49,7 +49,16 @@ CURRENT PATTERN & LEAVE: For questions about a staff member's usual working patt
 on-call / SAG / SPA days, location split, or leave availability, call \`get_staff_current_pattern\`.
 It returns the same computed summary shown in the app's Current Pattern card plus any approved or
 pending leave in the lookahead window. Resolve names to a staff_id with \`find_staff\` first when the
-caller is a coordinator or admin; otherwise it defaults to the signed-in user.`;
+caller is a coordinator or admin; otherwise it defaults to the signed-in user.
+
+When you answer using this tool, mirror the app's "How this was computed" explanation: state the
+dominant-location-per-half-session logic, the regularity threshold (\`minRecurrence\` out of the
+\`windowDays\`-day window), the assignment count the summary was derived from, and — for
+consultants/SAS — that on-call/SAG/SPA days come from the consultant-pattern calculation over the
+same window. Use the \`assumptions\` field returned by the tool verbatim as your source of truth for
+these caveats, and surface them whenever the user asks how a pattern was worked out, why a cell is
+blank, or how confident the summary is.`;
+
 
 
 function getAdminClient() {
@@ -509,12 +518,14 @@ async function computeCurrentPatternForStaff(
         })
       : null;
 
+  const minCountForDominant = Math.max(2, Math.floor(threshold / 2) + 1);
   const dominant = dominantByHalfSession(
     assignments,
     sessionsById,
     theatresById,
-    Math.max(2, Math.floor(threshold / 2) + 1),
+    minCountForDominant,
   );
+
 
   // Flatten dominant grid into the shape the card renders (Mon–Fri).
   const weeklyGrid = (["am", "pm"] as const).map((half) => ({
@@ -546,6 +557,8 @@ async function computeCurrentPatternForStaff(
 
   const toDays = (arr: number[]) => arr.map((d) => WEEKDAY_LABELS[d]);
 
+  const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
+
   return {
     profile: {
       id: profileRes.data.id,
@@ -554,6 +567,9 @@ async function computeCurrentPatternForStaff(
     },
     windowDays,
     range: { from, to },
+    assignmentCount: assignments.length,
+    regularityThreshold: threshold,
+    minRecurrence: minCount,
     totalSessions: summary.totalSessions,
     totalOnCallSessions: consultantPattern?.totalOnCallSessions ?? 0,
     weeklyGrid,
@@ -568,8 +584,21 @@ async function computeCurrentPatternForStaff(
           spaPmDays: toDays(consultantPattern.spaPmWeekdays),
         }
       : null,
+    assumptions: {
+      method:
+        "Dominant location per half-session (AM/PM × Mon–Fri): for each cell we group the staff member's assignments in the window by location bucket (theatre list, on-call, SAG, SPA, teaching, admin, leave, other) and pick the bucket that recurs on the most distinct dates.",
+      regularity: `A cell is only shown as regular if the winning bucket recurs on at least ${minCount} distinct dates within the last ${windowDays} days (roughly half of the suggested regularity threshold of ${threshold}).`,
+      consultantExtras:
+        grade === "consultant" || grade === "sas"
+          ? "Consultant/SAS on-call, SAG and SPA days are derived from computeConsultantPattern over the same window."
+          : null,
+      locationShare:
+        "The location breakdown and top specialties count every assignment in the window (not just the dominant cell), with specialties inferred from theatre lists.",
+      dataSource: `Derived from ${assignments.length} rota assignments in the last ${windowDays} days.`,
+    },
   };
 }
+
 
 function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
   const admin = getAdminClient();
