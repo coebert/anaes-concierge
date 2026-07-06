@@ -27,6 +27,9 @@ import { toast } from "sonner";
 import { Stethoscope } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
+  head: () => ({
+    meta: [{ title: "Sign in — Salisbury Anaesthetics Rota" }],
+  }),
   component: LoginPage,
 });
 
