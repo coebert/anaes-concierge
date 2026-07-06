@@ -78,7 +78,7 @@ export interface ReportOutput {
   generatedAt?: string;
 }
 
-function ChatBubble({ message }: { message: UIMessage }) {
+export function ChatBubble({ message }: { message: UIMessage }) {
   return (
     <Message from={message.role}>
       <MessageContent>
@@ -133,7 +133,7 @@ function ChatBubble({ message }: { message: UIMessage }) {
   );
 }
 
-function ReportDocument({ report }: { report: ReportOutput }) {
+export function ReportDocument({ report }: { report: ReportOutput }) {
   return (
     <div className="my-2 overflow-hidden rounded-lg border bg-card shadow-sm">
       <div className="flex items-start justify-between gap-3 border-b bg-muted/40 px-5 py-4">
@@ -377,7 +377,7 @@ async function downloadReportPdf(report: ReportOutput) {
 }
 
 
-function ReportCard({ output }: { output: RunSqlOutput }) {
+export function ReportCard({ output }: { output: RunSqlOutput }) {
   if (output.error) {
     return (
       <Card className="border-destructive/50">
@@ -744,7 +744,7 @@ async function downloadExcel(
   XLSX.writeFile(wb, `${safeName(filename)}.xlsx`);
 }
 
-async function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
+export async function downloadAllExcel(reports: Array<{ id: string; output: RunSqlOutput }>) {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const used = new Set<string>();
@@ -818,7 +818,7 @@ async function downloadPdf(
   doc.save(`${safeName(filename)}.pdf`);
 }
 
-async function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
+export async function downloadAllPdf(reports: Array<{ id: string; output: RunSqlOutput }>) {
   const { jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
