@@ -34,16 +34,6 @@ function getEnv() {
   return { apiKey, baseUrl: baseUrl.replace(/\/+$/, "") };
 }
 
-async function assertAdmin(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin role required");
-}
 
 /** Verify the API key + base URL work by hitting a real Central API endpoint. */
 export const testClwRotaConnection = createServerFn({ method: "POST" })

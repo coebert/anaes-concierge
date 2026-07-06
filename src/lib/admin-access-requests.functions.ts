@@ -3,15 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/require-admin";
 
-async function assertAdmin(userId: string) {
-  const { data } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (!data) throw new Error("Admins only");
-}
 
 export const listAccessRequests = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
