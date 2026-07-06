@@ -49,6 +49,7 @@ import {
   type TraineeBucket,
 } from "@/features/admin/dashboard-helpers";
 import { DualStat, Stat } from "./-admin-dashboard-stats";
+import { DashboardBody } from "@/features/admin-dashboard/DashboardBody";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
