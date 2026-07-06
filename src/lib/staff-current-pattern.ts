@@ -181,3 +181,126 @@ export function buildCurrentPatternResponse(
     },
   };
 }
+
+export type LeaveType =
+  | "annual"
+  | "study"
+  | "compassionate"
+  | "sick"
+  | "parental"
+  | "other"
+  | "professional";
+
+export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type SessionHalf = "am" | "pm" | "eve" | "night";
+
+export interface LeaveRowLite {
+  type: LeaveType;
+  start_date: string;
+  end_date: string;
+  status: LeaveStatus;
+  half_day_start: SessionHalf | null;
+  half_day_end: SessionHalf | null;
+  reason: string | null;
+  decision_notes: string | null;
+}
+
+export interface LeaveAllowanceLite {
+  annual_days: number | null;
+  study_days: number | null;
+  leave_year_start: string | null;
+}
+
+export interface LeaveScrubbedRow {
+  type: LeaveType;
+  start_date: string;
+  end_date: string;
+  status: LeaveStatus;
+  half_day_start: SessionHalf | null;
+  half_day_end: SessionHalf | null;
+  reason: string | null;
+  decision_notes: string | null;
+}
+
+export interface LeaveAvailability {
+  lookahead: { from: string; to: string; days: number };
+  allowance: LeaveAllowanceLite | null;
+  upcoming: LeaveScrubbedRow[];
+  onLeaveToday: boolean;
+  overlapsByType: Record<LeaveType, number>;
+}
+
+export interface MergeLeaveOptions {
+  today: string;
+  lookaheadDays: number;
+  isSelf: boolean;
+}
+
+/**
+ * Merge a leave allowance and the leave requests overlapping the lookahead
+ * window onto the computed pattern. Mirrors the chat tool's post-fetch
+ * shaping so unit tests can exercise it without a Supabase client.
+ *
+ * - `onLeaveToday` is true iff at least one **approved** request covers today.
+ * - Free-text `reason` / `decision_notes` are stripped when `isSelf` is false.
+ * - `overlapsByType` counts every non-cancelled/rejected request in the
+ *   lookahead by leave type (including pending), so overlapping annual /
+ *   study / compassionate leave are all surfaced to the model, not just
+ *   the first one.
+ */
+export function mergeLeaveAvailability<T>(
+  pattern: T,
+  allowance: LeaveAllowanceLite | null,
+  leaveRows: LeaveRowLite[],
+  opts: MergeLeaveOptions,
+): T & { leave: LeaveAvailability } {
+  const { today, lookaheadDays, isSelf } = opts;
+  const until = addDaysIso(today, lookaheadDays);
+
+  const upcoming: LeaveScrubbedRow[] = leaveRows.map((r) => ({
+    type: r.type,
+    start_date: r.start_date,
+    end_date: r.end_date,
+    status: r.status,
+    half_day_start: r.half_day_start,
+    half_day_end: r.half_day_end,
+    reason: isSelf ? r.reason : null,
+    decision_notes: isSelf ? r.decision_notes : null,
+  }));
+
+  const overlapsByType: Record<LeaveType, number> = {
+    annual: 0,
+    study: 0,
+    compassionate: 0,
+    sick: 0,
+    parental: 0,
+    other: 0,
+    professional: 0,
+  };
+  for (const r of upcoming) {
+    if (r.status === "cancelled" || r.status === "rejected") continue;
+    overlapsByType[r.type] += 1;
+  }
+
+  const onLeaveToday = upcoming.some(
+    (r) => r.status === "approved" && r.start_date <= today && r.end_date >= today,
+  );
+
+  return {
+    ...pattern,
+    leave: {
+      lookahead: { from: today, to: until, days: lookaheadDays },
+      allowance,
+      upcoming,
+      onLeaveToday,
+      overlapsByType,
+    },
+  };
+}
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
