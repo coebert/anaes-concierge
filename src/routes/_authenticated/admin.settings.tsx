@@ -22,6 +22,7 @@ import {
   useSyncClwRotaLeave,
 } from "@/features/clwrota/clwrota-sync-hooks";
 import { validateTraineeTheatreMatches } from "@/features/trainees/trainee-theatre-validation.functions";
+import { formatDateGB } from "@/lib/utils";
 import { Stat } from "./-admin-settings-stat";
 import { InvestigateSoloCard } from "./-admin-settings-investigate-solo-card";
 import { ReclassificationUndoCard } from "./-admin-settings-reclassification-undo-card";
