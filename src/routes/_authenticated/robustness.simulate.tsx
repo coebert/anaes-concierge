@@ -15,6 +15,7 @@ import {
 } from "@/features/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/simulate")({
+  head: () => ({ meta: [{ title: "Robustness simulator — Salisbury Anaesthetics Rota" }] }),
   component: SimulatePage,
 });
 

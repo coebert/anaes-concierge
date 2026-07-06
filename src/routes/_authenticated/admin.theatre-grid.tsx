@@ -18,6 +18,7 @@ import {
 } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/admin/theatre-grid")({
+  head: () => ({ meta: [{ title: "Theatre grid — Salisbury Anaesthetics Rota" }] }),
   component: TheatreGridPage,
 });
 

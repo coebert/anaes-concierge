@@ -22,6 +22,7 @@ import { Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/chat/$conversationId")({
+  head: () => ({ meta: [{ title: "Conversation — Salisbury Anaesthetics Rota" }] }),
   component: ConversationPage,
 });
 

@@ -17,6 +17,7 @@ import { BreakdownCard } from "@/components/robustness/BreakdownCard";
 import { SessionChip } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
+  head: () => ({ meta: [{ title: "Day detail — Salisbury Anaesthetics Rota" }] }),
   component: DayDetailPage,
 });
 

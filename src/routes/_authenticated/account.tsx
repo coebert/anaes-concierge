@@ -11,6 +11,7 @@ import { PasskeyManager } from "@/components/passkey-manager";
 
 
 export const Route = createFileRoute("/_authenticated/account")({
+  head: () => ({ meta: [{ title: "Account — Salisbury Anaesthetics Rota" }] }),
   component: AccountPage,
 });
 

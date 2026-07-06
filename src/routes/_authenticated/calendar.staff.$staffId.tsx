@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { StaffWeekView } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/calendar/staff/$staffId")({
+  head: () => ({ meta: [{ title: "Staff calendar — Salisbury Anaesthetics Rota" }] }),
   component: StaffCalendarPage,
 });
 

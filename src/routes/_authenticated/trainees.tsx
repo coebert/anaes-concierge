@@ -29,6 +29,7 @@ import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 
 export const Route = createFileRoute("/_authenticated/trainees")({
+  head: () => ({ meta: [{ title: "Trainees — Salisbury Anaesthetics Rota" }] }),
   component: TraineesGuard,
 });
 

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/chat")({
+  head: () => ({ meta: [{ title: "Chat — Salisbury Anaesthetics Rota" }] }),
   component: ChatLayout,
 });
 

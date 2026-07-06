@@ -12,6 +12,7 @@ import { loadLeavePressure, pressureColor, type DayPressure } from "@/features/a
 import { LeaveMonthlyCalendar } from "@/components/leave-monthly-calendar";
 
 export const Route = createFileRoute("/_authenticated/leave_/forecast")({
+  head: () => ({ meta: [{ title: "Leave forecast — Salisbury Anaesthetics Rota" }] }),
   component: LeaveForecastPage,
 });
 

@@ -53,6 +53,7 @@ import {
 } from "@/features/leave/leave-allowances";
 
 export const Route = createFileRoute("/_authenticated/leave")({
+  head: () => ({ meta: [{ title: "Leave — Salisbury Anaesthetics Rota" }] }),
   component: LeavePage,
 });
 

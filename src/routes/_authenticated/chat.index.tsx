@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MessageSquare } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/chat/")({
+  head: () => ({ meta: [{ title: "Chat — Salisbury Anaesthetics Rota" }] }),
   component: ChatIndex,
 });
 

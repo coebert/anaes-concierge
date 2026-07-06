@@ -72,6 +72,7 @@ type DrilldownRow = {
 
 
 export const Route = createFileRoute("/_authenticated/robustness/poac-audit")({
+  head: () => ({ meta: [{ title: "POAC audit — Salisbury Anaesthetics Rota" }] }),
   component: PoacAuditPage,
 });
 

@@ -15,6 +15,7 @@ import { compareBySurname } from "@/lib/name-sort";
 import { GlossaryTerm } from "@/components/glossary-tooltip";
 
 export const Route = createFileRoute("/_authenticated/coordinator/duties")({
+  head: () => ({ meta: [{ title: "Coordinator — Duties — Salisbury Anaesthetics Rota" }] }),
   component: DutiesPage,
 });
 

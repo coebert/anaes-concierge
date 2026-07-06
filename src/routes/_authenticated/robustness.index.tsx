@@ -14,6 +14,7 @@ import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robustness";
 
 export const Route = createFileRoute("/_authenticated/robustness/")({
+  head: () => ({ meta: [{ title: "Robustness — Salisbury Anaesthetics Rota" }] }),
   component: RobustnessPage,
 });
 

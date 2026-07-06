@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/duty-categories")({
+  head: () => ({ meta: [{ title: "Duty categories — Salisbury Anaesthetics Rota" }] }),
   component: DutyCategoriesPage,
 });
 

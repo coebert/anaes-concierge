@@ -41,6 +41,7 @@ type RotaRole =
   | "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session";
 
 export const Route = createFileRoute("/_authenticated/coordinator/rota")({
+  head: () => ({ meta: [{ title: "Coordinator — Rota — Salisbury Anaesthetics Rota" }] }),
   // Auth gate is provided by the parent `_authenticated` layout. Server-side
   // privileged operations are enforced inside each server function via an
   // explicit role check; UI gating below is presentational only.

@@ -47,6 +47,7 @@ function loadAcutePainSettings(): { lookbackDays: number; specialtyName: string 
 }
 
 export const Route = createFileRoute("/_authenticated/admin/staff")({
+  head: () => ({ meta: [{ title: "Staff admin — Salisbury Anaesthetics Rota" }] }),
   component: AdminStaffPage,
 });
 
