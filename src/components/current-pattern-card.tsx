@@ -346,8 +346,12 @@ export function CurrentPatternCard({
         windowDays,
       };
     },
-    staleTime: 60_000,
   });
+
+  // Mirror successful fetches back to localStorage.
+  useEffect(() => {
+    if (data) writeCache(staffId, windowDays, to, data);
+  }, [data, staffId, windowDays, to]);
 
   if (isLoading) return <PageLoading />;
   if (error) {
