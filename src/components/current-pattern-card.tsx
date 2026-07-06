@@ -23,6 +23,7 @@ import { PageLoading } from "@/components/loading";
 import { EmptyState } from "@/components/empty-state";
 import {
   LOCATION_LABELS,
+  classifyLocation,
   computeConsultantPattern,
   suggestedRegularityThreshold,
   summariseStaff,
@@ -35,6 +36,7 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
+
 import { cn } from "@/lib/utils";
 
 const LOCATION_ABBR: Record<LocationBucket, string> = {
