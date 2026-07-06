@@ -46,6 +46,11 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
+import {
+  applyLeaveOverlay,
+  expandApprovedLeaveToAssignments,
+  type LeaveRowLite,
+} from "@/lib/staff-current-pattern";
 
 import { cn } from "@/lib/utils";
 
