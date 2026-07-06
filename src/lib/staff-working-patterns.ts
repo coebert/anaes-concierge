@@ -65,7 +65,9 @@ export type LocationBucket =
   | "private_non_sag"
   | "obstetrics"
   | "icu"
+  | "leave"
   | "other";
+
 
 const ICU_DUTIES = new Set<string>([
   "icu_ct2_plus",
