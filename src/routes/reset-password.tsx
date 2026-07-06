@@ -22,6 +22,9 @@ function evaluatePassword(pw: string): PasswordCheck[] {
 }
 
 export const Route = createFileRoute("/reset-password")({
+  head: () => ({
+    meta: [{ title: "Reset password — Salisbury Anaesthetics Rota" }],
+  }),
   component: ResetPasswordPage,
 });
 
