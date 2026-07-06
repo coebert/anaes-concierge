@@ -72,69 +72,6 @@ function isoDaysAgo(days: number): string {
 }
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-interface DominantCell {
-  bucket: LocationBucket;
-  count: number;
-  total: number;
-}
-
-/**
- * For each (weekday, half-session) pair, find the location bucket the
- * staff member is most often assigned to. Only pairs with at least
- * `minCount` distinct dates make the cut so a single one-off shift
- * doesn't dominate an otherwise-empty half.
- */
-function dominantByHalfSession(
-  assignments: AssignmentLite[],
-  sessionsById: Map<string, SessionLite>,
-  theatresById: Map<string, TheatreLite>,
-  minCount: number,
-): Record<"am" | "pm", Array<DominantCell | null>> {
-  const halves: Array<"am" | "pm"> = ["am", "pm"];
-  const buckets: Record<"am" | "pm", Array<Map<LocationBucket, Set<string>>>> = {
-    am: Array.from({ length: 7 }, () => new Map()),
-    pm: Array.from({ length: 7 }, () => new Map()),
-  };
-
-  for (const a of assignments) {
-    const d = new Date(`${a.session_date}T00:00:00Z`);
-    if (Number.isNaN(d.getTime())) continue;
-    const dow = d.getUTCDay();
-    const half = (a.session ?? "").toLowerCase() as "am" | "pm" | "";
-    if (half !== "am" && half !== "pm") continue;
-    const session = a.theatre_session_id
-      ? (sessionsById.get(a.theatre_session_id) ?? null)
-      : null;
-    const bucket = classifyLocation(a, session, theatresById);
-
-    const map = buckets[half][dow];
-    if (!map.has(bucket)) map.set(bucket, new Set());
-    map.get(bucket)!.add(a.session_date);
-  }
-
-  const result: Record<"am" | "pm", Array<DominantCell | null>> = {
-    am: Array.from({ length: 7 }, () => null),
-    pm: Array.from({ length: 7 }, () => null),
-  };
-  for (const half of halves) {
-    for (let dow = 1; dow <= 5; dow++) {
-      const map = buckets[half][dow];
-      let best: DominantCell | null = null;
-      let total = 0;
-      for (const [bucket, dates] of map.entries()) {
-        total += dates.size;
-        if (!best || dates.size > best.count) {
-          best = { bucket, count: dates.size, total: 0 };
-        }
-      }
-      if (best && best.count >= minCount) {
-        best.total = total;
-        result[half][dow] = best;
-      }
-    }
-  }
-  return result;
-}
 
 // ---------------------------------------------------------------------------
 // localStorage cache
