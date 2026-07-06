@@ -205,8 +205,20 @@ export function CurrentPatternCard({
   const from = useMemo(() => isoDaysAgo(windowDays), [windowDays]);
   const to = todayIso();
 
-  const { data, isLoading, error } = useQuery({
+  // Seed React Query from localStorage so repeat visits paint instantly.
+  const cached = useMemo(
+    () => readCache(staffId, windowDays),
+    [staffId, windowDays],
+  );
+
+  const { data, isLoading, error } = useQuery<PatternResult | null>({
     queryKey: ["current-pattern", staffId, from, to],
+    initialData: cached?.data,
+    initialDataUpdatedAt: cached?.savedAt,
+    // Cached entry from an earlier day should refresh in the background but
+    // still render immediately. Same-day cache is treated as fresh.
+    staleTime: cached && cached.to === to ? 5 * 60_000 : 0,
+    gcTime: 30 * 60_000,
     queryFn: async () => {
       const [profileRes, theatresRes, specialtiesRes] = await Promise.all([
         supabase
