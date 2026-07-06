@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requireAdmin } from "@/lib/require-admin";
 import { isNonSagRotaLabel, isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
 import { SUPABASE_IN_CHUNK } from "./supabase-chunked";
 import { evaluateHistoricalSafeguard } from "./clwrota-historical-safeguard";
@@ -34,22 +35,11 @@ function getEnv() {
   return { apiKey, baseUrl: baseUrl.replace(/\/+$/, "") };
 }
 
-async function assertAdmin(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin role required");
-}
 
 /** Verify the API key + base URL work by hitting a real Central API endpoint. */
 export const testClwRotaConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
     const { apiKey, baseUrl } = getEnv();
 
     // Hit a real Central API endpoint — the bare base URL returns the login
@@ -88,9 +78,8 @@ export const testClwRotaConnection = createServerFn({ method: "POST" })
 
 /** Load the current sync state row (settings + last run). */
 export const getClwRotaSettings = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
       .from("clwrota_sync_state")
       .select("*")
@@ -119,10 +108,9 @@ const SettingsSchema = z.object({
 });
 
 export const saveClwRotaSettings = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((input) => SettingsSchema.parse(input))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
     const { error } = await supabaseAdmin
       .from("clwrota_sync_state")
       .upsert({ id: 1, ...data });
@@ -135,9 +123,8 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
  * number of rows changed. Used by the admin UI to offer per-run undo.
  */
 export const listReclassificationRuns = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
       .from("rota_reclassification_log")
       .select("sync_run_id, created_at, from_role, to_role")
@@ -176,10 +163,9 @@ export const listReclassificationRuns = createServerFn({ method: "GET" })
  * success so the run no longer appears as undoable.
  */
 export const undoReclassificationRun = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((input) => z.object({ sync_run_id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
     const { data: entries, error: loadErr } = await supabaseAdmin
       .from("rota_reclassification_log")
       .select("id, assignment_id, from_role, to_role")
@@ -234,7 +220,7 @@ export const undoReclassificationRun = createServerFn({ method: "POST" })
  * them manually. Locally-modified rows are never touched.
  */
 export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((input) =>
     z
       .object({
@@ -245,7 +231,6 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
     const { computeSoloCorrections } = await import("./solo-investigate");
 
     const today = new Date();
@@ -813,9 +798,8 @@ function pick(row: Record<string, unknown>, keys: string[]): string | null {
  * separately to get an auth login before they can be linked.
  */
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
     return performStaffSync();
   });
 
@@ -1311,9 +1295,8 @@ async function fetchReport(url: string, apiKey: string) {
  * intentionally deferred until we have a sample payload to map fields.
  */
 export const runClwRotaSync = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin
@@ -1650,10 +1633,9 @@ async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
  * are preserved for auditing.
  */
 export const syncClwRotaRota = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
     return performRotaSync({ from: data?.from, to: data?.to });
   });
 
@@ -2882,6 +2864,7 @@ import {
 
 
 
+
 /**
  * Pull leave from the configured CLWRota leave report URL and upsert into
  * `leave_requests`, keyed by `clwrota_external_id`.
@@ -2890,9 +2873,8 @@ import {
  * outside the synced window is preserved for auditing.
  */
 export const syncClwRotaLeave = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
     return performLeaveSync();
   });
 
@@ -2901,7 +2883,7 @@ export const syncClwRotaLeave = createServerFn({ method: "POST" })
  * Default window 30 days; capped at 365.
  */
 export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((input) =>
     z.object({
       days: z.coerce.number().int().min(1).max(365).default(30),
@@ -2909,7 +2891,6 @@ export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
     }).parse(input ?? {}),
   )
   .handler(async ({ context, data }): Promise<ListClwRotaSyncMetricsResponse> => {
-    await assertAdmin(context.userId);
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
     let q = supabaseAdmin
       .from("clwrota_sync_metrics")
@@ -3360,10 +3341,9 @@ export async function performLeaveSync() {
  *   any other session field — strictly an is_non_sag = true write.
  */
 export const backfillNonSagLabels = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
     const { apiKey } = getEnv();
 
     const { data: settings, error: loadErr } = await supabaseAdmin

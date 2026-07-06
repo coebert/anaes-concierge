@@ -1,23 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAdmin } from "@/lib/require-admin";
 
-async function assertAdmin(userId: string) {
-  const { data } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (!data) throw new Error("Admins only");
-}
 
 export const getProfileGmcNumber = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((d) => z.object({ staffId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("profiles")
       .select("gmc_number")
@@ -28,7 +19,7 @@ export const getProfileGmcNumber = createServerFn({ method: "POST" })
   });
 
 export const updateProfileGmcNumber = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((d) =>
     z
       .object({
@@ -43,7 +34,7 @@ export const updateProfileGmcNumber = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const value = data.gmc_number && data.gmc_number.length ? data.gmc_number : null;
     const { error } = await supabaseAdmin
       .from("profiles")

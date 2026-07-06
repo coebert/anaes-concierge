@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
@@ -66,6 +65,7 @@ export const checkCalendarStaffCoverage = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<CalendarCoverageResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Admin guard — the check enumerates staff_ids across the whole range,
     // so we keep it to the same audience as the admin dashboard.
     const { data: isAdmin, error: roleErr } = await context.supabase.rpc(

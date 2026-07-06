@@ -16,12 +16,17 @@ export const Route = createFileRoute("/_authenticated/account")({
 
 function AccountPage() {
   const { user } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPassword) {
+      toast.error("Enter your current password");
+      return;
+    }
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters");
       return;
@@ -30,13 +35,36 @@ function AccountPage() {
       toast.error("Passwords do not match");
       return;
     }
+    if (password === currentPassword) {
+      toast.error("New password must differ from current password");
+      return;
+    }
+    if (!user?.email) {
+      toast.error("Session missing email; sign in again");
+      return;
+    }
+
     setLoading(true);
+    // Re-authenticate with the current password before allowing a change.
+    // Prevents session-hijack scenarios where an attacker with a live session
+    // silently rotates the password and locks out the legitimate user.
+    const { error: reauthErr } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    if (reauthErr) {
+      setLoading(false);
+      toast.error("Current password is incorrect");
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) {
       toast.error(error.message);
       return;
     }
+    setCurrentPassword("");
     setPassword("");
     setConfirm("");
     toast.success("Password updated");
@@ -54,10 +82,23 @@ function AccountPage() {
       <Card>
         <CardHeader>
           <CardTitle>Change password</CardTitle>
-          <CardDescription>Choose a strong password (min 8 characters).</CardDescription>
+          <CardDescription>
+            Enter your current password, then choose a new one (min 8 characters).
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="new-password">New password</Label>
               <Input
@@ -90,4 +131,3 @@ function AccountPage() {
     </div>
   );
 }
-

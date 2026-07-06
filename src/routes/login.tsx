@@ -154,10 +154,10 @@ function LoginPage() {
     setBusy(true);
     setRememberMe(remember);
     try {
-      const { options, hasPasskeys } = await startPk({ data: { email: parsed.data } });
-      if (!hasPasskeys) {
-        throw new Error("No passkey registered for this account.");
-      }
+      const { options } = await startPk({ data: { email: parsed.data } });
+      // No enumeration signal — always attempt the ceremony. If the account
+      // has no passkey, verifyPasskeyAuthentication rejects uniformly.
+
       const assertion = await startAuthentication({ optionsJSON: options as any });
       const { tokenHash } = await verifyPk({
         data: { email: parsed.data, response: assertion },
