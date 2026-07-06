@@ -1905,6 +1905,12 @@ export type Database = {
       admin_decrypt_jsonb: { Args: { p_cipher: string }; Returns: Json }
       admin_decrypt_text: { Args: { p_cipher: string }; Returns: string }
       admin_run_readonly_sql: { Args: { p_query: string }; Returns: Json }
+      consume_passkey_challenge: {
+        Args: { p_purpose: string; p_user_id: string }
+        Returns: {
+          challenge: string
+        }[]
+      }
       current_user_is_coordinator_or_admin: { Args: never; Returns: boolean }
       decrypt_ai_message_parts: {
         Args: { p_cipher: string; p_conversation_id: string }
