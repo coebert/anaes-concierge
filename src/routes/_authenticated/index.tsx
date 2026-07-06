@@ -299,23 +299,7 @@ function TraineeDashboard() {
 }
 
 /* ---------- Building blocks ---------- */
-function Stat({
-  label, value, icon: Icon,
-}: { label: React.ReactNode; value: number | string; icon: typeof Users }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const Stat = StatCard;
 
 function ActionCard({
   to, icon: Icon, title, body,
