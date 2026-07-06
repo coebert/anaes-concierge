@@ -599,7 +599,18 @@ export function CurrentPatternCard({
               <code>suggestedRegularityThreshold({data.windowDays})</code>).
               One-off cover shifts therefore fall out; a dot (·) means "no
               regular pattern here".
+            <p className="mb-2">
+              <span className="font-medium text-foreground">
+                Leave overlay.
+              </span>{" "}
+              Approved leave in the window blocks the covered AM/PM
+              half-sessions: any rota assignment on those halves is dropped
+              and replaced with a "Leave" entry, which then competes with
+              other buckets for the dominant cell. Half-day markers
+              (<code>half_day_start</code> / <code>half_day_end</code>) are
+              honoured, so a PM-only day only blocks PM.
             </p>
+
             <p className="mb-2">
               <span className="font-medium text-foreground">
                 Consultant / SAS extras.
