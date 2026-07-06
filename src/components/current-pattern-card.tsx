@@ -4,8 +4,12 @@
  *
  * Data source is the already-synced `rota_assignments` / `theatre_sessions`
  * tables, so this card stays consistent with the rest of the app.
+ *
+ * Results are also mirrored to localStorage (per staff + window) so the
+ * card paints instantly on repeat visits while React Query refreshes in
+ * the background.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
