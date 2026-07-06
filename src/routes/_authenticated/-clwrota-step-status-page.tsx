@@ -48,7 +48,7 @@ import {
   runClwRotaStepRateLimited,
   type RunStepResult,
   type SyncStep,
-} from "@/lib/clwrota-step-status.functions";
+} from "@/features/clwrota/clwrota.functions";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";

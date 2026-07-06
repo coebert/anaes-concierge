@@ -42,6 +42,26 @@ export {
 } from "./leave.functions";
 
 export {
+  getClwRotaSyncStatus,
+  type ClwRotaStatusState,
+  type ClwRotaMetricRow,
+  type ClwRotaCronRow,
+  type ClwRotaStatusResponse,
+} from "./sync-status.functions";
+
+export {
+  getClwRotaStepStatus,
+  runClwRotaStepRateLimited,
+  type SyncStep,
+  type StepMetric,
+  type StepRateLimit,
+  type StepStatus,
+  type RateLimiterRun,
+  type ClwRotaStepStatusResponse,
+  type RunStepResult,
+} from "./step-status.functions";
+
+export {
   withRollingFutureWindow,
   ensureLeaveReportFields,
   clampDateWindow,
