@@ -99,14 +99,8 @@ function dominantByHalfSession(
     const session = a.theatre_session_id
       ? (sessionsById.get(a.theatre_session_id) ?? null)
       : null;
-    // Reuse the working-patterns classifier by importing lazily to keep the
-    // module surface small.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const bucket = require("@/lib/staff-working-patterns").classifyLocation(
-      a,
-      session,
-      theatresById,
-    ) as LocationBucket;
+    const bucket = classifyLocation(a, session, theatresById);
+
     const map = buckets[half][dow];
     if (!map.has(bucket)) map.set(bucket, new Set());
     map.get(bucket)!.add(a.session_date);
