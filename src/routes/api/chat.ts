@@ -10,6 +10,21 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { sendGmail } from "@/lib/gmail.server";
+import {
+  computeConsultantPattern,
+  dominantByHalfSession,
+  LOCATION_LABELS,
+  suggestedRegularityThreshold,
+  summariseStaff,
+  WEEKDAY_LABELS,
+  type AssignmentLite,
+  type LocationBucket,
+  type SessionLite,
+  type SpecialtyLite,
+  type StaffGrade,
+  type TheatreKind,
+  type TheatreLite,
+} from "@/lib/staff-working-patterns";
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
 You help staff understand their rota, leave entitlement, leave requests and trainee progress.
@@ -28,7 +43,13 @@ TCS, double-booking or custom-rule implications you notice.
 CUSTOM RULES: When an admin states a working-pattern rule, call \`create_custom_rule\` to persist it.
 Always factor the CURRENT CUSTOM RULES (listed below if any) into any rota writing or amendments you
 suggest or make. If asked to break one, push back and ask the admin to confirm. If the user is not an
-admin and asks for a change, politely explain you cannot make changes for them.`;
+admin and asks for a change, politely explain you cannot make changes for them.
+
+CURRENT PATTERN & LEAVE: For questions about a staff member's usual working pattern, weekly grid,
+on-call / SAG / SPA days, location split, or leave availability, call \`get_staff_current_pattern\`.
+It returns the same computed summary shown in the app's Current Pattern card plus any approved or
+pending leave in the lookahead window. Resolve names to a staff_id with \`find_staff\` first when the
+caller is a coordinator or admin; otherwise it defaults to the signed-in user.`;
 
 
 function getAdminClient() {
@@ -374,6 +395,181 @@ async function buildAdminCustomRulesPreamble(): Promise<string> {
   return `\n\nCURRENT CUSTOM RULES (factor these into any rota suggestions or edits):\n${lines.join("\n")}`;
 }
 
+/**
+ * Fetch and compute the same "current pattern" summary shown in
+ * <CurrentPatternCard /> for a given staff member, using the admin
+ * Supabase client. Returns a compact, model-friendly object.
+ */
+async function computeCurrentPatternForStaff(
+  admin: ReturnType<typeof getAdminClient>,
+  staffId: string,
+  windowDays: number,
+) {
+  const to = todayISO();
+  const from = addDays(to, -windowDays);
+
+  const [profileRes, theatresRes, specialtiesRes] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, full_name, grade")
+      .eq("id", staffId)
+      .maybeSingle(),
+    admin.from("theatres").select("id, name, kind"),
+    admin.from("specialties").select("id, name"),
+  ]);
+  if (profileRes.error) throw new Error(profileRes.error.message);
+  if (!profileRes.data) return null;
+
+  const theatresById = new Map<string, TheatreLite>();
+  for (const t of theatresRes.data ?? []) {
+    theatresById.set(t.id, {
+      id: t.id,
+      name: t.name,
+      kind: (t.kind ?? null) as TheatreKind | null,
+    });
+  }
+  const specialtiesById = new Map<string, SpecialtyLite>();
+  for (const s of specialtiesRes.data ?? []) {
+    specialtiesById.set(s.id, { id: s.id, name: s.name });
+  }
+
+  const assignments: AssignmentLite[] = [];
+  const sessionIds = new Set<string>();
+  {
+    const PAGE = 1000;
+    let offset = 0;
+    while (true) {
+      const { data: page, error: err } = await admin
+        .from("rota_assignments")
+        .select("staff_id, duty_type, theatre_session_id, session_date, session")
+        .eq("staff_id", staffId)
+        .gte("session_date", from)
+        .lte("session_date", to)
+        .range(offset, offset + PAGE - 1);
+      if (err) throw new Error(err.message);
+      const rows = page ?? [];
+      for (const r of rows) {
+        assignments.push({
+          staff_id: r.staff_id,
+          duty_type: r.duty_type ?? null,
+          session_date: r.session_date,
+          session: r.session ?? null,
+          theatre_session_id: r.theatre_session_id ?? null,
+        });
+        if (r.theatre_session_id) sessionIds.add(r.theatre_session_id);
+      }
+      if (rows.length < PAGE) break;
+      offset += PAGE;
+    }
+  }
+
+  const sessionsById = new Map<string, SessionLite>();
+  if (sessionIds.size > 0) {
+    const ids = Array.from(sessionIds);
+    const CHUNK = 200;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { data: rows, error: err } = await admin
+        .from("theatre_sessions")
+        .select("id, theatre_id, specialty_id, is_non_sag")
+        .in("id", slice);
+      if (err) throw new Error(err.message);
+      for (const r of rows ?? []) {
+        sessionsById.set(r.id, {
+          id: r.id,
+          theatre_id: r.theatre_id ?? null,
+          specialty_id: r.specialty_id ?? null,
+          is_non_sag: r.is_non_sag ?? false,
+        });
+      }
+    }
+  }
+
+  const grade = (profileRes.data.grade ?? null) as StaffGrade | null;
+  const threshold = suggestedRegularityThreshold(windowDays);
+  const [summary] = summariseStaff(
+    [
+      {
+        id: profileRes.data.id,
+        full_name: profileRes.data.full_name ?? "",
+        grade,
+      },
+    ],
+    assignments,
+    sessionsById,
+    theatresById,
+    specialtiesById,
+    { regularityThreshold: threshold },
+  );
+
+  const consultantPattern =
+    grade === "consultant" || grade === "sas"
+      ? computeConsultantPattern(assignments, sessionsById, theatresById, {
+          regularityThreshold: threshold,
+        })
+      : null;
+
+  const dominant = dominantByHalfSession(
+    assignments,
+    sessionsById,
+    theatresById,
+    Math.max(2, Math.floor(threshold / 2) + 1),
+  );
+
+  // Flatten dominant grid into the shape the card renders (Mon–Fri).
+  const weeklyGrid = (["am", "pm"] as const).map((half) => ({
+    session: half,
+    days: [1, 2, 3, 4, 5].map((dow) => {
+      const cell = dominant[half][dow];
+      return {
+        weekday: WEEKDAY_LABELS[dow],
+        location: cell ? LOCATION_LABELS[cell.bucket] : null,
+        recurrence: cell ? `${cell.count}/${cell.total}` : null,
+      };
+    }),
+  }));
+
+  const locationBreakdown = (Object.entries(summary.byLocation) as [
+    LocationBucket,
+    number,
+  ][])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([bucket, count]) => ({
+      location: LOCATION_LABELS[bucket],
+      count,
+      percent:
+        summary.totalSessions > 0
+          ? Math.round((count / summary.totalSessions) * 100)
+          : 0,
+    }));
+
+  const toDays = (arr: number[]) => arr.map((d) => WEEKDAY_LABELS[d]);
+
+  return {
+    profile: {
+      id: profileRes.data.id,
+      full_name: profileRes.data.full_name ?? "",
+      grade,
+    },
+    windowDays,
+    range: { from, to },
+    totalSessions: summary.totalSessions,
+    totalOnCallSessions: consultantPattern?.totalOnCallSessions ?? 0,
+    weeklyGrid,
+    locationBreakdown,
+    topSpecialties: summary.bySpecialty.slice(0, 6),
+    consultantPattern: consultantPattern
+      ? {
+          onCallType: consultantPattern.onCallType,
+          onCallDays: toDays(consultantPattern.onCallWeekdays),
+          sagDays: toDays(consultantPattern.privateWeekdays),
+          spaAmDays: toDays(consultantPattern.spaAmWeekdays),
+          spaPmDays: toDays(consultantPattern.spaPmWeekdays),
+        }
+      : null,
+  };
+}
 
 function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
   const admin = getAdminClient();
@@ -480,6 +676,104 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         return { allowance, requests };
       },
     }),
+
+    get_staff_current_pattern: tool({
+      description:
+        "Summarise a staff member's CURRENT WORKING PATTERN (dominant weekly grid, on-call/SAG/SPA days, location share, top specialties) AND their leave availability (annual/study allowance and any approved or pending leave that overlaps the next `leaveLookaheadDays`). This is the same computed summary shown in the app's Current Pattern card. Defaults to the signed-in user; coordinators/admins may pass another `staff_id` (resolve names with `find_staff` first). Non-coordinators can only query themselves.",
+      inputSchema: z.object({
+        staff_id: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("Target staff. Omit to summarise the signed-in user."),
+        windowDays: z
+          .number()
+          .int()
+          .min(28)
+          .max(365)
+          .optional()
+          .describe("Days of history used to derive the pattern. Default 90."),
+        leaveLookaheadDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(365)
+          .optional()
+          .describe("How far ahead to check for leave. Default 60."),
+      }),
+      execute: async ({ staff_id, windowDays, leaveLookaheadDays }) => {
+        const targetId = staff_id ?? userId;
+        if (targetId !== userId && !canSeeColleagueNames) {
+          return {
+            error:
+              "You can only view your own pattern. Ask a rota coordinator for colleague information.",
+          };
+        }
+
+        try {
+          const pattern = await computeCurrentPatternForStaff(
+            admin,
+            targetId,
+            windowDays ?? 90,
+          );
+          if (!pattern) return { error: "Staff member not found." };
+
+          // Leave availability: allowance + relevant leave requests in the
+          // lookahead window (any overlap counts).
+          const lookahead = leaveLookaheadDays ?? 60;
+          const today = todayISO();
+          const until = addDays(today, lookahead);
+          const [{ data: allowance }, { data: leaveRows }] = await Promise.all([
+            admin
+              .from("leave_allowances")
+              .select("annual_days,study_days,leave_year_start")
+              .eq("staff_id", targetId)
+              .maybeSingle(),
+            admin
+              .from("leave_requests")
+              .select(
+                "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+              )
+              .eq("staff_id", targetId)
+              .lte("start_date", until)
+              .gte("end_date", today)
+              .order("start_date"),
+          ]);
+
+          // Strip free-text fields when the caller shouldn't see colleague PII.
+          const scrubbed = (leaveRows ?? []).map((r) => ({
+            type: r.type,
+            start_date: r.start_date,
+            end_date: r.end_date,
+            status: r.status,
+            half_day_start: r.half_day_start,
+            half_day_end: r.half_day_end,
+            reason: targetId === userId ? r.reason : null,
+            decision_notes: targetId === userId ? r.decision_notes : null,
+          }));
+
+          return {
+            ...pattern,
+            leave: {
+              lookahead: { from: today, to: until, days: lookahead },
+              allowance: allowance ?? null,
+              upcoming: scrubbed,
+              onLeaveToday: scrubbed.some(
+                (r) =>
+                  r.status === "approved" &&
+                  r.start_date <= today &&
+                  r.end_date >= today,
+              ),
+            },
+          };
+        } catch (e) {
+          return {
+            error: e instanceof Error ? e.message : "Failed to compute pattern.",
+          };
+        }
+      },
+    }),
+
 
     get_team_on_call_today: tool({
       description:
