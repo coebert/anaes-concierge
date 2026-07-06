@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const CreateStaffSchema = z.object({
@@ -20,6 +19,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => CreateStaffSchema.parse(d))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Verify caller is admin
     const { data: roleRow } = await context.supabase
       .from("user_roles")
@@ -84,6 +84,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
 export const listStaffForAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: roleRow } = await context.supabase
       .from("user_roles")
       .select("role")

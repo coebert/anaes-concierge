@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Trainee "not yet started" prediction
@@ -170,6 +169,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
 export const predictTraineeStartDates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await context.supabase
       .from("user_roles")
       .select("role")

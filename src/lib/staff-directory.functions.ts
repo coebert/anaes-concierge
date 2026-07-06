@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
@@ -93,6 +92,7 @@ async function assertAdminOrTrainee(supabase: any, userId: string) {
 export const listTraineesForOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail = access.isAdmin || access.isCoordinator;
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
@@ -128,6 +128,7 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail =
       access.isAdmin || access.isCoordinator || context.userId === data.staffId;

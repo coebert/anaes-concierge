@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isNonSagRotaLabel, isNonWorkingRotaLabel, normaliseRotaLabelText } from "./clwrota-labels";
 import { SUPABASE_IN_CHUNK } from "./supabase-chunked";
 import { evaluateHistoricalSafeguard } from "./clwrota-historical-safeguard";
@@ -49,6 +48,7 @@ async function assertAdmin(userId: string) {
 export const testClwRotaConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { apiKey, baseUrl } = getEnv();
 
@@ -90,6 +90,7 @@ export const testClwRotaConnection = createServerFn({ method: "POST" })
 export const getClwRotaSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
       .from("clwrota_sync_state")
@@ -122,6 +123,7 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => SettingsSchema.parse(input))
   .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { error } = await supabaseAdmin
       .from("clwrota_sync_state")
@@ -137,6 +139,7 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
 export const listReclassificationRuns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { data, error } = await supabaseAdmin
       .from("rota_reclassification_log")
@@ -179,6 +182,7 @@ export const undoReclassificationRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ sync_run_id: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { data: entries, error: loadErr } = await supabaseAdmin
       .from("rota_reclassification_log")
@@ -245,6 +249,7 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { computeSoloCorrections } = await import("./solo-investigate");
 
@@ -815,6 +820,7 @@ function pick(row: Record<string, unknown>, keys: string[]): string | null {
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     return performStaffSync();
   });
@@ -1313,6 +1319,7 @@ async function fetchReport(url: string, apiKey: string) {
 export const runClwRotaSync = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { apiKey } = getEnv();
 
@@ -1653,6 +1660,7 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
   .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     return performRotaSync({ from: data?.from, to: data?.to });
   });
@@ -2892,6 +2900,7 @@ import {
 export const syncClwRotaLeave = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     return performLeaveSync();
   });
@@ -3363,6 +3372,7 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { from?: string; to?: string } | undefined) => input ?? {})
   .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await assertAdmin(context.userId);
     const { apiKey } = getEnv();
 

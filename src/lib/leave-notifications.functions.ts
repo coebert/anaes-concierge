@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendGmail } from "./gmail.server";
 
@@ -48,6 +47,7 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: req } = await supabaseAdmin
       .from("leave_requests")
       .select("*")
@@ -92,6 +92,7 @@ export const notifyLeaveDecided = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (!(await callerIsCoordOrAdmin(context.userId))) {
       throw new Error("Forbidden");
     }

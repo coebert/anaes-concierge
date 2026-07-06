@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { HIGH_UNMATCHED_RATIO } from "./trainee-metrics";
 import { isIcuBlockOnly } from "./audit/trainee-audit";
 
@@ -320,6 +319,7 @@ export const validateTraineeTheatreMatches = createServerFn({ method: "POST" })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Diagnostic output exposes trainee names + rota mismatches; restrict to
     // admins and rota coordinators (consistent with other admin-only fns).
     const { data: roles, error: rErr } = await context.supabase
