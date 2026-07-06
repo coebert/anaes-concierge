@@ -15,8 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  computeRotaGaps, classifyRotaGaps, GAP_KIND_LABEL,
-  type GapRange, type ClassifiedGapRange, type GapKind,
+  computeRotaGaps, classifyRotaGaps,
 } from "@/lib/rota-gaps";
 import { fetchAllRowsPaged, rotaAssignmentKey } from "@/features/audit/paginate";
 import {
@@ -28,270 +27,31 @@ import {
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw, Plug, ExternalLink } from "lucide-react";
+import {
+  WINDOW_LABEL,
+  PRIORITY_LABEL,
+  addDaysISO,
+  mergeRanges,
+  prioritiseSpans,
+  countSyncMissingInSpan,
+  countSyncMissingForTraineeInSpan,
+  type WindowChoice,
+  type SpanInput,
+  type SyncPriority,
+  type SyncProgress,
+  type TraineeDiagnostic,
+  type TraineeDiagnosticStatus,
+  type GapSnapshot,
+} from "@/features/admin-rota-gaps/helpers";
+import {
+  GapRangeRow,
+  Stat,
+  ClassifiedSection,
+} from "@/features/admin-rota-gaps/components";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
   component: RotaGapsPage,
 });
-
-type WindowChoice = "30" | "90" | "180" | "rotation";
-const WINDOW_LABEL: Record<WindowChoice, string> = {
-  "30": "Last 30 days",
-  "90": "Last 90 days",
-  "180": "Last 6 months",
-  rotation: "Full rotation",
-};
-
-function addDaysISO(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  const yy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
-}
-
-/**
- * A single trainee's sync_missing span, tagged with the metrics needed to
- * prioritise it: how many working days are missing and which trainee it
- * belongs to (so merged spans can count distinct trainees covered).
- */
-interface SpanInput {
-  startISO: string;
-  endISO: string;
-  missingDays: number;
-  traineeId: string;
-}
-
-export interface MergedSpan {
-  startISO: string;
-  endISO: string;
-  /** Sum of missing weekdays across every trainee gap inside this span. */
-  missingDays: number;
-  /** Distinct trainees with at least one gap inside this span. */
-  trainees: number;
-  /** Distinct trainee IDs with at least one gap inside this span. */
-  traineeIds: string[];
-}
-
-/**
- * Merge overlapping or near-adjacent date ranges so a single targeted sync
- * can cover several trainees' sync_missing gaps in one request. We pad the
- * join distance by `bridgeDays` (default 7) because the upstream CLWRota
- * report is windowed and one slightly wider request is cheaper than many
- * narrow ones. Aggregated `missingDays` / `trainees` metrics drive the
- * prioritisation selector — the caller decides which merged span to sync
- * first when time or API limits apply.
- */
-export function mergeRanges(spans: SpanInput[], bridgeDays = 7): MergedSpan[] {
-  if (spans.length === 0) return [];
-  const sorted = [...spans].sort((a, b) =>
-    a.startISO < b.startISO ? -1 : a.startISO > b.startISO ? 1 : 0,
-  );
-  type Acc = MergedSpan & { traineeSet: Set<string> };
-  const acc: Acc[] = [];
-  for (const s of sorted) {
-    const last = acc[acc.length - 1];
-    if (last && s.startISO <= addDaysISO(last.endISO, bridgeDays)) {
-      if (s.endISO > last.endISO) last.endISO = s.endISO;
-      last.missingDays += s.missingDays;
-      last.traineeSet.add(s.traineeId);
-      last.trainees = last.traineeSet.size;
-    } else {
-      const set = new Set<string>([s.traineeId]);
-      acc.push({
-        startISO: s.startISO,
-        endISO: s.endISO,
-        missingDays: s.missingDays,
-        trainees: 1,
-        traineeIds: [],
-        traineeSet: set,
-      });
-    }
-  }
-  return acc.map(({ traineeSet, ...m }) => ({
-    ...m,
-    traineeIds: Array.from(traineeSet),
-  }));
-}
-
-
-export type SyncPriority = "coverage" | "recency" | "trainees";
-
-const PRIORITY_LABEL: Record<SyncPriority, string> = {
-  coverage: "Most missing days first",
-  recency: "Most recent gaps first",
-  trainees: "Most trainees affected first",
-};
-
-export function prioritiseSpans(spans: MergedSpan[], priority: SyncPriority): MergedSpan[] {
-  const sorted = [...spans];
-  switch (priority) {
-    case "coverage":
-      sorted.sort((a, b) =>
-        b.missingDays - a.missingDays ||
-        (a.startISO < b.startISO ? 1 : a.startISO > b.startISO ? -1 : 0),
-      );
-      break;
-    case "recency":
-      sorted.sort((a, b) =>
-        (a.endISO < b.endISO ? 1 : a.endISO > b.endISO ? -1 : 0) ||
-        b.missingDays - a.missingDays,
-      );
-      break;
-    case "trainees":
-      sorted.sort((a, b) =>
-        b.trainees - a.trainees ||
-        b.missingDays - a.missingDays,
-      );
-      break;
-  }
-  return sorted;
-}
-
-type SyncResult = Awaited<ReturnType<typeof syncClwRotaRota>>;
-
-/**
- * Snapshot of the rota-gaps query result used by the post-sync verification
- * step to count how many sync-missing weekdays exist inside a date span,
- * across every trainee whose rotation overlaps it.
- */
-type GapSnapshot = {
-  trainees: Array<{
-    id: string;
-    start_date: string | null;
-    rotation_end_date: string | null;
-    ltft_days_off: number[] | null;
-  }>;
-  datesByStaff: Map<string, Set<string>>;
-  today: string;
-};
-
-const MS_DAY_LOCAL = 86_400_000;
-
-function isoFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/**
- * Count working weekdays (excluding weekends and the trainee's LTFT off
- * days) in `[fromISO, toISO]` that lie inside the trainee's rotation
- * window and have no rota assignment. Used by the post-sync verification
- * step to compute `filled = before - after` per synced range.
- */
-export function countSyncMissingInSpan(
-  snap: GapSnapshot,
-  fromISO: string,
-  toISO: string,
-): number {
-  if (fromISO > toISO) return 0;
-  const [fy, fm, fd] = fromISO.split("-").map(Number);
-  const [ty, tm, td] = toISO.split("-").map(Number);
-  const from = new Date(fy, fm - 1, fd);
-  const to = new Date(ty, tm - 1, td);
-  let missing = 0;
-  for (const t of snap.trainees) {
-    const offSet = new Set<number>([0, 6, ...((t.ltft_days_off ?? []) as number[])]);
-    const rotStart = t.start_date ?? null;
-    const rotEnd = t.rotation_end_date ?? snap.today;
-    const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
-    for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
-      const iso = isoFromDate(dt);
-      if (rotStart && iso < rotStart) continue;
-      if (iso > rotEnd) continue;
-      if (offSet.has(dt.getDay())) continue;
-      if (dates.has(iso)) continue;
-      missing += 1;
-    }
-  }
-  return missing;
-}
-
-function countSyncMissingForTraineeInSpan(
-  snap: GapSnapshot,
-  traineeId: string,
-  fromISO: string,
-  toISO: string,
-): number {
-  const t = snap.trainees.find((x) => x.id === traineeId);
-  if (!t || fromISO > toISO) return 0;
-  const offSet = new Set<number>([0, 6, ...((t.ltft_days_off ?? []) as number[])]);
-  const rotStart = t.start_date ?? null;
-  const rotEnd = t.rotation_end_date ?? snap.today;
-  const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
-  const [fy, fm, fd] = fromISO.split("-").map(Number);
-  const [ty, tm, td] = toISO.split("-").map(Number);
-  const from = new Date(fy, fm - 1, fd);
-  const to = new Date(ty, tm - 1, td);
-  let missing = 0;
-  for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
-    const iso = isoFromDate(dt);
-    if (rotStart && iso < rotStart) continue;
-    if (iso > rotEnd) continue;
-    if (offSet.has(dt.getDay())) continue;
-    if (dates.has(iso)) continue;
-    missing += 1;
-  }
-  return missing;
-}
-
-type TraineeDiagnosticStatus =
-  | "fully_filled"
-  | "partially_filled"
-  | "no_upstream_coverage"
-  | "covered_no_new_dates"
-  | "no_gap_in_range";
-
-interface TraineeDiagnostic {
-  traineeId: string;
-  name: string;
-  gapsBefore: number;
-  gapsAfter: number;
-  gapsFilled: number;
-  upstreamDatesCovered: number;
-  upstreamInsertedDates: number;
-  upstreamExistingDates: number;
-  firstUpstreamDate: string | null;
-  lastUpstreamDate: string | null;
-  status: TraineeDiagnosticStatus;
-}
-
-interface SyncProgress {
-  running: boolean;
-  current: number;
-  total: number;
-  perRange: Array<{
-    from: string;
-    to: string;
-    ok: boolean;
-    message?: string;
-    upserted?: number;
-    /** Truly new rota_assignment rows created by this sync call. */
-    inserted?: number;
-    /** Existing rows that were merely touched (no new dates added). */
-    updated?: number;
-    /** Distinct upstream staff identifiers we couldn't match to a profile. */
-    unmatchedStaffCount?: number;
-    /** Sync-missing weekdays in this range before the sync ran. */
-    gapsBefore?: number;
-    /** Sync-missing weekdays in this range after the post-sync refetch. */
-    gapsAfter?: number;
-    /** `gapsBefore − gapsAfter`; negative values are clamped to 0. */
-    gapsFilled?: number;
-    /** Raw upstream rows the feed returned inside the request window. */
-    rowsInWindow?: number;
-    /** Trainees covered by upstream feed in this window. */
-    staffCovered?: number;
-    /** Top skip-reason histogram for the range (capped). */
-    topSkipReasons?: Array<{ reason: string; count: number }>;
-    /** Per-trainee outcome for each trainee with a gap in this range. */
-    traineeDiagnostics?: TraineeDiagnostic[];
-  }>;
-  error?: string;
-}
-
 
 function RotaGapsPage() {
   const { hasRole, loading } = useAuth();
@@ -1196,117 +956,5 @@ function RotaGapsPage() {
         </>
       )}
     </div>
-  );
-}
-
-function GapRangeRow({ range }: { range: GapRange }) {
-  const single = range.startISO === range.endISO;
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-      <span className="font-mono">
-        {single
-          ? formatDateGB(range.startISO)
-          : `${formatDateGB(range.startISO)} → ${formatDateGB(range.endISO)}`}
-      </span>
-      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>
-          {range.missingDays} working day{range.missingDays === 1 ? "" : "s"}
-        </span>
-        {!single && (
-          <Badge variant="outline" className="px-1 py-0 text-[10px]">
-            {range.spanDays}-day span
-          </Badge>
-        )}
-      </span>
-    </li>
-  );
-}
-
-function Stat({
-  icon: Icon, tone, label, value,
-}: {
-  icon: typeof CheckCircle2;
-  tone: "ok" | "bad" | "muted";
-  label: string;
-  value: number;
-}) {
-  const toneClass =
-    tone === "ok"
-      ? "bg-emerald-600/10 text-emerald-700 dark:text-emerald-400"
-      : tone === "bad"
-        ? "bg-destructive/10 text-destructive"
-        : "bg-muted text-muted-foreground";
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-md ${toneClass}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-const KIND_TONE: Record<GapKind, string> = {
-  pre_rotation: "bg-muted text-muted-foreground",
-  rotation_ended: "bg-muted text-muted-foreground",
-  ltft_off: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  sync_missing: "bg-destructive/10 text-destructive",
-};
-
-function ClassifiedSection({
-  report,
-}: {
-  report: ReturnType<typeof classifyRotaGaps>;
-}) {
-  const total =
-    report.counts.pre_rotation +
-    report.counts.rotation_ended +
-    report.counts.ltft_off +
-    report.counts.sync_missing;
-  if (total === 0) return null;
-  return (
-    <CardContent className="border-t pt-3">
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-medium text-muted-foreground">Classification:</span>
-        {(Object.keys(GAP_KIND_LABEL) as GapKind[]).map((k) => (
-          <Badge key={k} variant="outline" className={`gap-1 ${KIND_TONE[k]}`}>
-            {GAP_KIND_LABEL[k]}: {report.counts[k]}
-          </Badge>
-        ))}
-      </div>
-      {report.ranges.length > 0 && (
-        <ul className="divide-y rounded-md border">
-          {report.ranges.map((r) => (
-            <ClassifiedRangeRow key={`${r.kind}-${r.startISO}-${r.endISO}`} range={r} />
-          ))}
-        </ul>
-      )}
-    </CardContent>
-  );
-}
-
-function ClassifiedRangeRow({ range }: { range: ClassifiedGapRange }) {
-  const single = range.startISO === range.endISO;
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-      <span className="flex items-center gap-2">
-        <Badge variant="outline" className={`px-1 py-0 text-[10px] ${KIND_TONE[range.kind]}`}>
-          {GAP_KIND_LABEL[range.kind]}
-        </Badge>
-        <span className="font-mono">
-          {single
-            ? formatDateGB(range.startISO)
-            : `${formatDateGB(range.startISO)} → ${formatDateGB(range.endISO)}`}
-        </span>
-      </span>
-      <span className="text-xs text-muted-foreground">
-        {range.days} day{range.days === 1 ? "" : "s"}
-      </span>
-    </li>
   );
 }
