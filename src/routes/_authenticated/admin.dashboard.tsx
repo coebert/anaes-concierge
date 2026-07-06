@@ -36,48 +36,22 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend,
 } from "recharts";
 
-type TraineeBucket = "all" | "junior" | "senior";
-const BUCKET_LABEL: Record<TraineeBucket, string> = {
-  all: "All trainees",
-  junior: "CT2–ST4",
-  senior: "ST5–ST8+",
-};
-
-function traineeBucket(level: string | null | undefined): TraineeBucket | null {
-  if (!level) return null;
-  const m = level.trim().toUpperCase().match(/^(CT|ST)(\d+)/);
-  if (!m) return null;
-  const prefix = m[1];
-  const n = parseInt(m[2], 10);
-  if (prefix === "CT") return n >= 2 ? "junior" : null;
-  // ST
-  if (n >= 1 && n <= 4) return "junior";
-  if (n >= 5) return "senior";
-  return null;
-}
+import {
+  BUCKET_LABEL,
+  GRADES,
+  GRADE_LABEL,
+  LEAVE_LABEL,
+  LEAVE_TYPES,
+  traineeBucket,
+  type Grade,
+  type LeaveType,
+  type TraineeBucket,
+} from "@/features/admin/dashboard-helpers";
+import { DualStat, Stat } from "./-admin-dashboard-stats";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
 });
-
-type Grade = "consultant" | "sas" | "trainee";
-const GRADES: Grade[] = ["consultant", "sas", "trainee"];
-const GRADE_LABEL: Record<Grade, string> = {
-  consultant: "Consultants",
-  sas: "SAS doctors",
-  trainee: "Trainees",
-};
-
-const LEAVE_TYPES = ["annual", "sick", "parental", "study", "compassionate", "other"] as const;
-type LeaveType = typeof LEAVE_TYPES[number];
-const LEAVE_LABEL: Record<LeaveType, string> = {
-  annual: "Annual leave",
-  sick: "Sick leave",
-  parental: "Parental leave",
-  study: "Study leave",
-  compassionate: "Compassionate",
-  other: "Other",
-};
 
 
 function AdminDashboardPage() {
@@ -1339,50 +1313,5 @@ function AdminDashboardPage() {
         </>
       )}
     </div>
-  );
-}
-
-function DualStat({
-  label, icon: Icon, d7, d30,
-}: { label: string; icon: typeof Users; d7?: number; d30?: number }) {
-  return (
-    <Card>
-      <CardContent className="flex items-start gap-3 p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="flex-1">
-          <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="mt-1 flex items-baseline gap-4">
-            <div>
-              <div className="text-xl font-semibold">{d7 ?? "—"}</div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Last 7d</div>
-            </div>
-            <div>
-              <div className="text-xl font-semibold">{d30 ?? "—"}</div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Last 30d</div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Stat({
-  label, value, icon: Icon,
-}: { label: string; value: number | string; icon: typeof Users }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
