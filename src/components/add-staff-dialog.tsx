@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { composeName } from "@/lib/utils";
 import { toast } from "sonner";
-import { createStaffMember } from "@/lib/admin-staff.functions";
+import { createStaffMember } from "@/features/staff/admin-staff.functions";
 
 type Grade = "consultant" | "sas" | "trainee" | "";
 type AppRole = "staff" | "rota_coordinator" | "admin";

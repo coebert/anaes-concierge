@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { listTraineesForOverview } from "@/lib/staff-directory.functions";
+import { listTraineesForOverview } from "@/features/staff/staff-directory.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

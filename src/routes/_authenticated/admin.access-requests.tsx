@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import {
   listAccessRequests, decideAccessRequest, deleteAccessRequest,
-} from "@/lib/admin-access-requests.functions";
+} from "@/features/access-requests/admin-access-requests.functions";
 import { toast } from "sonner";
 import { Check, X, Trash2 } from "lucide-react";
 

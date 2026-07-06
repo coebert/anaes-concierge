@@ -28,7 +28,7 @@ import {
   getLastMinuteChangesAudit,
   type LastMinuteChangeRow,
   type StaffingGroup,
-} from "@/lib/last-minute-changes.functions";
+} from "@/features/audit/last-minute-changes.functions";
 
 export const Route = createFileRoute(
   "/_authenticated/robustness/last-minute-changes",
