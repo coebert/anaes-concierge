@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
 import { formatDateGB } from "@/lib/utils";
+import { StatCard } from "@/components/stat-card";
 import {
   GAP_KIND_LABEL,
   classifyRotaGaps,
