@@ -9,10 +9,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { computeLeaveConflicts, type LeaveConflict } from "@/lib/leave-utils";
+import { computeLeaveConflicts, type LeaveConflict } from "@/features/leave/leave-utils";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { notifyLeaveDecided } from "@/lib/leave-notifications.functions";
+import { notifyLeaveDecided } from "@/features/leave/leave-notifications.functions";
 import { formatDateGB } from "@/lib/utils";
 
 interface LeaveRow {

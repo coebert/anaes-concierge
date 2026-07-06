@@ -50,7 +50,7 @@ import {
   DEFAULT_STUDY,
   DEFAULT_PROFESSIONAL,
   type AllowanceLike as AllowanceRow,
-} from "@/lib/leave-allowances";
+} from "@/features/leave/leave-allowances";
 
 export const Route = createFileRoute("/_authenticated/leave")({
   component: LeavePage,

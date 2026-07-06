@@ -15,7 +15,7 @@ import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import {
   computeTraineeMetrics,
   type MetricAssignment,
-} from "@/lib/trainee-metrics";
+} from "@/features/trainees/trainee-metrics";
 
 const ASOF = new Date("2026-06-30").getTime();
 const WINDOW_START = "2026-02-01";
