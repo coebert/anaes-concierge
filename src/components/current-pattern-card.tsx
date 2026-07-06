@@ -56,6 +56,7 @@ const LOCATION_ABBR: Record<LocationBucket, string> = {
   private_non_sag: "NHH",
   obstetrics: "Obs",
   icu: "ICU",
+  leave: "Leave",
   other: "—",
 };
 
@@ -66,8 +67,10 @@ const LOCATION_TONE: Record<LocationBucket, string> = {
   private_non_sag: "bg-warning-muted text-warning border-warning/30",
   obstetrics: "bg-destructive-muted text-destructive border-destructive/30",
   icu: "bg-warning-muted text-warning border-warning/40",
+  leave: "bg-muted text-muted-foreground border-dashed border-muted-foreground/40",
   other: "bg-muted text-muted-foreground border-border",
 };
+
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
