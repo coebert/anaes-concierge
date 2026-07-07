@@ -912,6 +912,27 @@ export type Database = {
           },
         ]
       }
+      inbox_dismissals: {
+        Row: {
+          dismissed_at: string
+          dismissed_by: string
+          item_id: string
+          kind: string
+        }
+        Insert: {
+          dismissed_at?: string
+          dismissed_by: string
+          item_id: string
+          kind: string
+        }
+        Update: {
+          dismissed_at?: string
+          dismissed_by?: string
+          item_id?: string
+          kind?: string
+        }
+        Relationships: []
+      }
       job_plans: {
         Row: {
           created_at: string
