@@ -438,8 +438,10 @@ function SpecialtyList({
 
 function ConsultantPatternBlock({
   pattern,
+  displayMode,
 }: {
   pattern: NonNullable<StaffSummary["consultantPattern"]>;
+  displayMode: StripDisplayMode;
 }) {
   const onCallLabel =
     pattern.onCallType === "both"
@@ -473,6 +475,7 @@ function ConsultantPatternBlock({
         pmDays={pattern.spaPmWeekdays}
         countsByWeekday={pattern.spaCountsByWeekday}
         totalSessions={pattern.totalSpaSessions}
+        displayMode={displayMode}
       />
       {!hasAnySpa && (
         <p className="text-[11px] text-muted-foreground pl-[5.5rem] sm:pl-[6.5rem] -mt-1">
@@ -485,6 +488,7 @@ function ConsultantPatternBlock({
         tone="amber"
         countsByWeekday={pattern.onCallCountsByWeekday}
         totalSessions={pattern.totalOnCallSessions}
+        displayMode={displayMode}
       />
       <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
         <span>On-call cover</span>
