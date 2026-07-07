@@ -17,6 +17,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { formatDateTimeGB } from "@/lib/utils";
 
 interface HealthCheck {
   name: string;
