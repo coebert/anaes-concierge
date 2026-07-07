@@ -291,7 +291,7 @@ function CoordinatorInboxPage() {
         <StatCard icon={ShieldCheck} label="Expiring competencies" value={counts.competency} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
           All ({items.length})
         </FilterChip>
@@ -304,6 +304,18 @@ function CoordinatorInboxPage() {
             {KIND_META[k].label} ({counts[k]})
           </FilterChip>
         ))}
+        <div className="ml-auto">
+          <Button
+            type="button"
+            size="sm"
+            variant={showAddressed ? "default" : "outline"}
+            onClick={() => setShowAddressed((v) => !v)}
+          >
+            {showAddressed
+              ? `Back to pending (${pendingItems.length})`
+              : `Addressed (${addressedItems.length})`}
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -312,19 +324,39 @@ function CoordinatorInboxPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
             <Inbox className="h-8 w-8 opacity-60" aria-hidden="true" />
-            <div>Inbox zero. Nothing needs a decision right now.</div>
+            <div>
+              {showAddressed
+                ? "No items have been marked addressed yet."
+                : "Inbox zero. Nothing needs a decision right now."}
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
           {filtered.map((item) => (
-            <InboxRow key={item.id} item={item} />
+            <InboxRow
+              key={item.id}
+              item={item}
+              addressed={showAddressed}
+              onDismiss={() => {
+                dismissMutation.mutate(item, {
+                  onSuccess: () => toast.success("Marked as addressed"),
+                });
+              }}
+              onRestore={() => {
+                restoreMutation.mutate(item.id, {
+                  onSuccess: () => toast.success("Restored to pending"),
+                });
+              }}
+              busy={dismissMutation.isPending || restoreMutation.isPending}
+            />
           ))}
         </div>
       )}
     </div>
   );
 }
+
 
 function FilterChip({
   active,
