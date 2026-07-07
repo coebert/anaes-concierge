@@ -332,12 +332,48 @@ function LeaveCard({
               </>
             )}
 
+            {isStudy && baseBudget && previewBudget && (
+              <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="space-y-1">
+                    <Label htmlFor={`cost-${row.id}`} className="text-xs">
+                      Estimated cost (£)
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        course fees, travel, accommodation
+                      </span>
+                    </Label>
+                    <Input
+                      id={`cost-${row.id}`}
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="10"
+                      placeholder="0"
+                      value={costInput}
+                      onChange={(e) => setCostInput(e.target.value)}
+                      className="max-w-[10rem]"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground sm:text-right">
+                    {requestDays.toFixed(requestDays % 1 === 0 ? 0 : 1)} working day{requestDays === 1 ? "" : "s"} requested
+                  </div>
+                </div>
+                <StudyLeaveBudgetCard
+                  base={baseBudget}
+                  preview={previewBudget}
+                  requestDays={requestDays}
+                  requestCostGbp={requestCostGbp}
+                />
+              </div>
+            )}
+
             <Textarea
               placeholder="Decision notes (optional)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
             />
+
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => decide("approved")} disabled={acting}>
