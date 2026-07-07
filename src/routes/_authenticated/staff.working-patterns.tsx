@@ -605,7 +605,7 @@ function WeekdayHeader() {
             key={d}
             className={
               CELL_CLASS +
-              " text-center text-[10px] font-medium text-muted-foreground"
+              " text-center font-medium text-muted-foreground text-[10px] leading-tight sm:text-[11px] md:text-[12px]"
             }
           >
             {WEEKDAY_LABELS[d].slice(0, 3)}
@@ -624,7 +624,7 @@ function AmPmStrip({
   pmSet: Set<number>;
 }) {
   const halfCell =
-    "flex h-4 items-center justify-center text-[9px] font-medium border";
+    "flex h-4 sm:h-5 items-center justify-center text-[9px] leading-none sm:text-[10px] md:text-[11px] font-medium border";
   return (
     <div className={ROW_CLASS}>
       <div className={ROW_LABEL_CLASS}>Working</div>
