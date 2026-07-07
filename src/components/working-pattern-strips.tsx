@@ -191,8 +191,10 @@ export function WeekdayStrip({
         ? "bg-amber-500/90 text-white border-amber-500 dark:bg-amber-500 dark:border-amber-500"
         : "bg-foreground text-background border-foreground";
   return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>{label}</div>
+    <div className={ROW_CLASS} role="row">
+      <div className={ROW_LABEL_CLASS} role="rowheader">
+        {label}
+      </div>
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
@@ -213,14 +215,27 @@ export function WeekdayStrip({
               : pct !== null
                 ? `${pct}%`
                 : null;
+          const lowerLabel = label.toLowerCase();
+          const description = hasShare
+            ? `${count} of ${totalSessions} ${lowerLabel} sessions, ${pct} percent` +
+              (active ? "" : ", below regularity threshold")
+            : active
+              ? `regular ${lowerLabel} day`
+              : `no ${lowerLabel} activity`;
+          const focusable = active || hasShare;
           return (
             <div
               key={d}
               data-testid={`weekday-cell-${d}`}
+              role="gridcell"
+              tabIndex={focusable ? 0 : -1}
+              aria-label={`${WEEKDAY_LABELS[d]}: ${description}`}
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border font-medium px-0.5 " +
                 CELL_LABEL_TEXT +
+                " " +
+                CELL_FOCUS_CLASS +
                 " " +
                 (shareText !== null ? "py-0.5 sm:py-1" : "h-6 sm:h-7") +
                 " " +
@@ -231,16 +246,19 @@ export function WeekdayStrip({
               title={
                 WEEKDAY_LABELS[d] +
                 (hasShare
-                  ? ` · ${count} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)` +
+                  ? ` · ${count} of ${totalSessions} ${lowerLabel} sessions (${pct}%)` +
                     (active ? "" : " — below regularity threshold")
                   : "")
               }
             >
-              <span>{active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}</span>
+              <span aria-hidden="true">
+                {active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}
+              </span>
               {shareText !== null && (
                 <span
                   data-testid={`weekday-pct-${d}`}
                   className={CELL_SHARE_TEXT}
+                  aria-hidden="true"
                 >
                   {shareText}
                 </span>
