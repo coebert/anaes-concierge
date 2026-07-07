@@ -556,12 +556,15 @@ export function GlobalWeekGrid({
               gradeRank(staffMap.get(a.staff_id)?.grade) -
               gradeRank(staffMap.get(b.staff_id)?.grade),
           );
-          const hasConsultant = sortedAssigns.some(
-            (x) => staffMap.get(x.staff_id)?.grade === "consultant",
-          );
+          const hasSupervisor = sortedAssigns.some((x) => {
+            const g = staffMap.get(x.staff_id)?.grade;
+            return g === "consultant" || g === "sas";
+          });
           const assignModels: TheatreAssignModel[] = sortedAssigns.map((a) => {
             const sp = staffMap.get(a.staff_id);
             const isTrainee = sp?.grade === "trainee";
+            const level = (sp?.training_level ?? "").trim().toUpperCase().replace(/\s+/g, "");
+            const isJunior = JUNIOR_TRAINEE_LEVELS.has(level);
             return {
               id: a.id,
               staffId: a.staff_id,
@@ -570,7 +573,11 @@ export function GlobalWeekGrid({
               trainingLevel: sp?.training_level ?? null,
               roleOnList: a.role_on_list,
               isSoloTrainee:
-                !!isTrainee && a.role_on_list === "solo" && !hasConsultant,
+                !!isTrainee &&
+                a.role_on_list === "solo" &&
+                !a.supervisor_id &&
+                !hasSupervisor &&
+                !isJunior,
             };
           });
           const spec = ts ? specMap.get(ts.specialty_id ?? "") : undefined;
