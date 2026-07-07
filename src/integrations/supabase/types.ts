@@ -786,6 +786,7 @@ export type Database = {
           professional_days: number
           sla_target_days: number
           staff_id: string
+          study_budget_gbp: number
           study_days: number
           updated_at: string
         }
@@ -802,6 +803,7 @@ export type Database = {
           professional_days?: number
           sla_target_days?: number
           staff_id: string
+          study_budget_gbp?: number
           study_days?: number
           updated_at?: string
         }
@@ -818,6 +820,7 @@ export type Database = {
           professional_days?: number
           sla_target_days?: number
           staff_id?: string
+          study_budget_gbp?: number
           study_days?: number
           updated_at?: string
         }
@@ -1022,6 +1025,7 @@ export type Database = {
           staff_id: string
           start_date: string
           status: Database["public"]["Enums"]["leave_status"]
+          study_cost_gbp: number | null
           type: Database["public"]["Enums"]["leave_type"]
           updated_at: string
         }
@@ -1044,6 +1048,7 @@ export type Database = {
           staff_id: string
           start_date: string
           status?: Database["public"]["Enums"]["leave_status"]
+          study_cost_gbp?: number | null
           type: Database["public"]["Enums"]["leave_type"]
           updated_at?: string
         }
@@ -1066,6 +1071,7 @@ export type Database = {
           staff_id?: string
           start_date?: string
           status?: Database["public"]["Enums"]["leave_status"]
+          study_cost_gbp?: number | null
           type?: Database["public"]["Enums"]["leave_type"]
           updated_at?: string
         }
