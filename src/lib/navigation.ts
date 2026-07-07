@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   BookOpen,
   Briefcase,
   Building2,
@@ -15,6 +16,7 @@ import {
   LineChart,
   MessageSquare,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
