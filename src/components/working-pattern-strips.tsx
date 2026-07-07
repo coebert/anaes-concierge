@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { WEEKDAY_LABELS } from "@/lib/staff-working-patterns";
 
 /**
