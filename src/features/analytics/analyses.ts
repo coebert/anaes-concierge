@@ -19,8 +19,10 @@ export function monthsAgo(now: Date, months: number): Date {
   return d;
 }
 
-export function ltftFraction(daysOff: string[] | null | undefined): number {
-  // profiles.ltft_days_off is an array of weekday names (typically 0..5 items).
+export function ltftFraction(
+  daysOff: readonly (string | number)[] | null | undefined,
+): number {
+  // profiles.ltft_days_off is an array of weekday indices (0..5 items).
   // 10 half-day sessions/week is 1.0 WTE. Each recorded day off = 0.2 WTE.
   const n = daysOff?.length ?? 0;
   return Math.max(0.1, Math.min(1, 1 - n * 0.2));

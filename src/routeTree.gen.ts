@@ -66,6 +66,7 @@ import { Route as AuthenticatedAdminClwrotaStepStatusRouteImport } from './route
 import { Route as AuthenticatedAdminClwrotaStatusRouteImport } from './routes/_authenticated/admin.clwrota-status'
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
+import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as AuthenticatedAdminAbsenceRouteImport } from './routes/_authenticated/admin.absence'
 import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
@@ -75,6 +76,14 @@ import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/publ
 import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar/$token'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
+import { Route as AuthenticatedAdminAnalyticsTraineeExposureRouteImport } from './routes/_authenticated/admin.analytics.trainee-exposure'
+import { Route as AuthenticatedAdminAnalyticsSicknessSeasonalityRouteImport } from './routes/_authenticated/admin.analytics.sickness-seasonality'
+import { Route as AuthenticatedAdminAnalyticsShortNoticeRouteImport } from './routes/_authenticated/admin.analytics.short-notice'
+import { Route as AuthenticatedAdminAnalyticsOncallInequalityRouteImport } from './routes/_authenticated/admin.analytics.oncall-inequality'
+import { Route as AuthenticatedAdminAnalyticsNewStartersRouteImport } from './routes/_authenticated/admin.analytics.new-starters'
+import { Route as AuthenticatedAdminAnalyticsLeaveDenialsRouteImport } from './routes/_authenticated/admin.analytics.leave-denials'
+import { Route as AuthenticatedAdminAnalyticsHandoverRiskRouteImport } from './routes/_authenticated/admin.analytics.handover-risk'
+import { Route as AuthenticatedAdminAnalyticsAllocationFairnessRouteImport } from './routes/_authenticated/admin.analytics.allocation-fairness'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -394,6 +403,12 @@ const AuthenticatedAdminAuditToolRoute =
     path: '/admin/audit-tool',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAnalyticsRoute =
+  AuthenticatedAdminAnalyticsRouteImport.update({
+    id: '/admin/analytics',
+    path: '/admin/analytics',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminAccessRequestsRoute =
   AuthenticatedAdminAccessRequestsRouteImport.update({
     id: '/admin/access-requests',
@@ -447,6 +462,54 @@ const AuthenticatedCalendarStaffStaffIdRoute =
     path: '/staff/$staffId',
     getParentRoute: () => AuthenticatedCalendarRoute,
   } as any)
+const AuthenticatedAdminAnalyticsTraineeExposureRoute =
+  AuthenticatedAdminAnalyticsTraineeExposureRouteImport.update({
+    id: '/trainee-exposure',
+    path: '/trainee-exposure',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsSicknessSeasonalityRoute =
+  AuthenticatedAdminAnalyticsSicknessSeasonalityRouteImport.update({
+    id: '/sickness-seasonality',
+    path: '/sickness-seasonality',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsShortNoticeRoute =
+  AuthenticatedAdminAnalyticsShortNoticeRouteImport.update({
+    id: '/short-notice',
+    path: '/short-notice',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsOncallInequalityRoute =
+  AuthenticatedAdminAnalyticsOncallInequalityRouteImport.update({
+    id: '/oncall-inequality',
+    path: '/oncall-inequality',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsNewStartersRoute =
+  AuthenticatedAdminAnalyticsNewStartersRouteImport.update({
+    id: '/new-starters',
+    path: '/new-starters',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsLeaveDenialsRoute =
+  AuthenticatedAdminAnalyticsLeaveDenialsRouteImport.update({
+    id: '/leave-denials',
+    path: '/leave-denials',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsHandoverRiskRoute =
+  AuthenticatedAdminAnalyticsHandoverRiskRouteImport.update({
+    id: '/handover-risk',
+    path: '/handover-risk',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
+const AuthenticatedAdminAnalyticsAllocationFairnessRoute =
+  AuthenticatedAdminAnalyticsAllocationFairnessRouteImport.update({
+    id: '/allocation-fairness',
+    path: '/allocation-fairness',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -469,6 +532,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRouteWithChildren
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
@@ -507,6 +571,14 @@ export interface FileRoutesByFullPath {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
+  '/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
+  '/admin/analytics/handover-risk': typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
+  '/admin/analytics/leave-denials': typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
+  '/admin/analytics/new-starters': typeof AuthenticatedAdminAnalyticsNewStartersRoute
+  '/admin/analytics/oncall-inequality': typeof AuthenticatedAdminAnalyticsOncallInequalityRoute
+  '/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
+  '/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
+  '/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -535,6 +607,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRouteWithChildren
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
@@ -573,6 +646,14 @@ export interface FileRoutesByTo {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/chat': typeof AuthenticatedChatIndexRoute
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
+  '/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
+  '/admin/analytics/handover-risk': typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
+  '/admin/analytics/leave-denials': typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
+  '/admin/analytics/new-starters': typeof AuthenticatedAdminAnalyticsNewStartersRoute
+  '/admin/analytics/oncall-inequality': typeof AuthenticatedAdminAnalyticsOncallInequalityRoute
+  '/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
+  '/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
+  '/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -604,6 +685,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
+  '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRouteWithChildren
   '/_authenticated/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
@@ -642,6 +724,14 @@ export interface FileRoutesById {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
+  '/_authenticated/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
+  '/_authenticated/admin/analytics/handover-risk': typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
+  '/_authenticated/admin/analytics/leave-denials': typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
+  '/_authenticated/admin/analytics/new-starters': typeof AuthenticatedAdminAnalyticsNewStartersRoute
+  '/_authenticated/admin/analytics/oncall-inequality': typeof AuthenticatedAdminAnalyticsOncallInequalityRoute
+  '/_authenticated/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
+  '/_authenticated/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
+  '/_authenticated/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -673,6 +763,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/admin/absence'
     | '/admin/access-requests'
+    | '/admin/analytics'
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
@@ -711,6 +802,14 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/chat/'
     | '/robustness/'
+    | '/admin/analytics/allocation-fairness'
+    | '/admin/analytics/handover-risk'
+    | '/admin/analytics/leave-denials'
+    | '/admin/analytics/new-starters'
+    | '/admin/analytics/oncall-inequality'
+    | '/admin/analytics/short-notice'
+    | '/admin/analytics/sickness-seasonality'
+    | '/admin/analytics/trainee-exposure'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -739,6 +838,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/absence'
     | '/admin/access-requests'
+    | '/admin/analytics'
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
@@ -777,6 +877,14 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/chat'
     | '/robustness'
+    | '/admin/analytics/allocation-fairness'
+    | '/admin/analytics/handover-risk'
+    | '/admin/analytics/leave-denials'
+    | '/admin/analytics/new-starters'
+    | '/admin/analytics/oncall-inequality'
+    | '/admin/analytics/short-notice'
+    | '/admin/analytics/sickness-seasonality'
+    | '/admin/analytics/trainee-exposure'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -807,6 +915,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/admin/absence'
     | '/_authenticated/admin/access-requests'
+    | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/audit-tool'
     | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/clwrota-status'
@@ -845,6 +954,14 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/_authenticated/chat/'
     | '/_authenticated/robustness/'
+    | '/_authenticated/admin/analytics/allocation-fairness'
+    | '/_authenticated/admin/analytics/handover-risk'
+    | '/_authenticated/admin/analytics/leave-denials'
+    | '/_authenticated/admin/analytics/new-starters'
+    | '/_authenticated/admin/analytics/oncall-inequality'
+    | '/_authenticated/admin/analytics/short-notice'
+    | '/_authenticated/admin/analytics/sickness-seasonality'
+    | '/_authenticated/admin/analytics/trainee-exposure'
     | '/_authenticated/calendar/staff/$staffId'
     | '/_authenticated/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -1271,6 +1388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAuditToolRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/analytics': {
+      id: '/_authenticated/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/access-requests': {
       id: '/_authenticated/admin/access-requests'
       path: '/admin/access-requests'
@@ -1334,6 +1458,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarStaffStaffIdRouteImport
       parentRoute: typeof AuthenticatedCalendarRoute
     }
+    '/_authenticated/admin/analytics/trainee-exposure': {
+      id: '/_authenticated/admin/analytics/trainee-exposure'
+      path: '/trainee-exposure'
+      fullPath: '/admin/analytics/trainee-exposure'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsTraineeExposureRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/sickness-seasonality': {
+      id: '/_authenticated/admin/analytics/sickness-seasonality'
+      path: '/sickness-seasonality'
+      fullPath: '/admin/analytics/sickness-seasonality'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/short-notice': {
+      id: '/_authenticated/admin/analytics/short-notice'
+      path: '/short-notice'
+      fullPath: '/admin/analytics/short-notice'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsShortNoticeRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/oncall-inequality': {
+      id: '/_authenticated/admin/analytics/oncall-inequality'
+      path: '/oncall-inequality'
+      fullPath: '/admin/analytics/oncall-inequality'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsOncallInequalityRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/new-starters': {
+      id: '/_authenticated/admin/analytics/new-starters'
+      path: '/new-starters'
+      fullPath: '/admin/analytics/new-starters'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsNewStartersRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/leave-denials': {
+      id: '/_authenticated/admin/analytics/leave-denials'
+      path: '/leave-denials'
+      fullPath: '/admin/analytics/leave-denials'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsLeaveDenialsRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/handover-risk': {
+      id: '/_authenticated/admin/analytics/handover-risk'
+      path: '/handover-risk'
+      fullPath: '/admin/analytics/handover-risk'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsHandoverRiskRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
+    '/_authenticated/admin/analytics/allocation-fairness': {
+      id: '/_authenticated/admin/analytics/allocation-fairness'
+      path: '/allocation-fairness'
+      fullPath: '/admin/analytics/allocation-fairness'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsAllocationFairnessRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
   }
 }
 
@@ -1391,6 +1571,42 @@ const AuthenticatedTraineesRouteWithChildren =
     AuthenticatedTraineesRouteChildren,
   )
 
+interface AuthenticatedAdminAnalyticsRouteChildren {
+  AuthenticatedAdminAnalyticsAllocationFairnessRoute: typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
+  AuthenticatedAdminAnalyticsHandoverRiskRoute: typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
+  AuthenticatedAdminAnalyticsLeaveDenialsRoute: typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
+  AuthenticatedAdminAnalyticsNewStartersRoute: typeof AuthenticatedAdminAnalyticsNewStartersRoute
+  AuthenticatedAdminAnalyticsOncallInequalityRoute: typeof AuthenticatedAdminAnalyticsOncallInequalityRoute
+  AuthenticatedAdminAnalyticsShortNoticeRoute: typeof AuthenticatedAdminAnalyticsShortNoticeRoute
+  AuthenticatedAdminAnalyticsSicknessSeasonalityRoute: typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
+  AuthenticatedAdminAnalyticsTraineeExposureRoute: typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
+}
+
+const AuthenticatedAdminAnalyticsRouteChildren: AuthenticatedAdminAnalyticsRouteChildren =
+  {
+    AuthenticatedAdminAnalyticsAllocationFairnessRoute:
+      AuthenticatedAdminAnalyticsAllocationFairnessRoute,
+    AuthenticatedAdminAnalyticsHandoverRiskRoute:
+      AuthenticatedAdminAnalyticsHandoverRiskRoute,
+    AuthenticatedAdminAnalyticsLeaveDenialsRoute:
+      AuthenticatedAdminAnalyticsLeaveDenialsRoute,
+    AuthenticatedAdminAnalyticsNewStartersRoute:
+      AuthenticatedAdminAnalyticsNewStartersRoute,
+    AuthenticatedAdminAnalyticsOncallInequalityRoute:
+      AuthenticatedAdminAnalyticsOncallInequalityRoute,
+    AuthenticatedAdminAnalyticsShortNoticeRoute:
+      AuthenticatedAdminAnalyticsShortNoticeRoute,
+    AuthenticatedAdminAnalyticsSicknessSeasonalityRoute:
+      AuthenticatedAdminAnalyticsSicknessSeasonalityRoute,
+    AuthenticatedAdminAnalyticsTraineeExposureRoute:
+      AuthenticatedAdminAnalyticsTraineeExposureRoute,
+  }
+
+const AuthenticatedAdminAnalyticsRouteWithChildren =
+  AuthenticatedAdminAnalyticsRoute._addFileChildren(
+    AuthenticatedAdminAnalyticsRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
@@ -1406,6 +1622,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAbsenceRoute: typeof AuthenticatedAdminAbsenceRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
+  AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRouteWithChildren
   AuthenticatedAdminAuditToolRoute: typeof AuthenticatedAdminAuditToolRoute
   AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminClwrotaStatusRoute: typeof AuthenticatedAdminClwrotaStatusRoute
@@ -1456,6 +1673,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAbsenceRoute: AuthenticatedAdminAbsenceRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
+  AuthenticatedAdminAnalyticsRoute:
+    AuthenticatedAdminAnalyticsRouteWithChildren,
   AuthenticatedAdminAuditToolRoute: AuthenticatedAdminAuditToolRoute,
   AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,
   AuthenticatedAdminClwrotaStatusRoute: AuthenticatedAdminClwrotaStatusRoute,
