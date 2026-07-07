@@ -786,7 +786,7 @@ async function downloadPdf(
   doc.setFontSize(9);
   doc.setTextColor(120);
   doc.text(
-    `Generated ${new Date().toLocaleString()} — ${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
+    `Generated ${formatDateTimeGB(new Date())} — ${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
     40,
     56,
   );
