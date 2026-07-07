@@ -37,11 +37,25 @@ const CELL_SHARE_TEXT =
  */
 export function PatternStripsScroll({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto sm:overflow-visible -mx-3 px-3 sm:mx-0 sm:px-0">
-      <div className="min-w-[20rem] sm:min-w-0 space-y-1.5">{children}</div>
+    <div
+      className="overflow-x-auto sm:overflow-visible -mx-3 px-3 sm:mx-0 sm:px-0"
+      role="table"
+      aria-label="Weekday working pattern breakdown"
+    >
+      <div
+        role="rowgroup"
+        className="min-w-[20rem] sm:min-w-0 space-y-1.5"
+      >
+        {children}
+      </div>
     </div>
   );
 }
+
+// Focus ring applied to every keyboard-focusable strip cell. Uses the
+// design-system `ring` token so the ring adapts to light/dark mode.
+const CELL_FOCUS_CLASS =
+  "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
 
 /**
  * Render a single "SPA" row for the working-patterns card. Each cell shows
