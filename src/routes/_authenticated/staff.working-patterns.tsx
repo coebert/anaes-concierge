@@ -27,6 +27,14 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
+import {
+  SpaStrip,
+  WeekdayStrip,
+  ROW_CLASS,
+  ROW_LABEL_CLASS,
+  STRIP_CLASS,
+  CELL_CLASS,
+} from "@/components/working-pattern-strips";
 
 export const Route = createFileRoute("/_authenticated/staff/working-patterns")({
   head: () => ({ meta: [{ title: "Staff working patterns — Salisbury Anaesthetics Rota" }] }),
