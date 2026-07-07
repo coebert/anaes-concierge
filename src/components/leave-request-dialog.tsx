@@ -24,6 +24,78 @@ interface Props {
 
 const TYPES = ["annual", "study", "professional", "compassionate", "sick", "parental", "other"] as const;
 
+interface ImpactCell {
+  before: string;
+  after: string;
+  changed: boolean;
+}
+interface ImpactRow {
+  date: string;
+  weekend: boolean;
+  am: ImpactCell;
+  pm: ImpactCell;
+}
+
+function buildImpactPreview(
+  startDate: string,
+  endDate: string,
+  halfDayStart: "am" | "pm" | null,
+  halfDayEnd: "am" | "pm" | null,
+  ownConflicts: LeaveConflict[],
+  ready: boolean,
+): ImpactRow[] {
+  if (!ready || !startDate || !endDate || endDate < startDate) return [];
+
+  const byKey = new Map<string, LeaveConflict>();
+  for (const c of ownConflicts) {
+    if (c.session === "am" || c.session === "pm") {
+      byKey.set(`${c.date}|${c.session}`, c);
+    }
+  }
+
+  const rows: ImpactRow[] = [];
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const iso = d.toISOString().slice(0, 10);
+    const dow = d.getUTCDay(); // 0 Sun, 6 Sat
+    const weekend = dow === 0 || dow === 6;
+
+    // Honour half-day markers: skip halves not covered by the leave.
+    const skipAm = iso === startDate && halfDayStart === "pm";
+    const skipPm = iso === endDate && halfDayEnd === "am";
+
+    const build = (half: "am" | "pm", skipped: boolean): ImpactCell => {
+      if (skipped || weekend) {
+        return { before: "—", after: "—", changed: false };
+      }
+      const c = byKey.get(`${iso}|${half}`);
+      const before = c ? c.theatre?.trim() || c.role || "Rota session" : "Free";
+      return { before, after: "On leave", changed: true };
+    };
+
+    rows.push({
+      date: iso,
+      weekend,
+      am: build("am", skipAm),
+      pm: build("pm", skipPm),
+    });
+  }
+  return rows;
+}
+
+function ImpactCellView({ cell }: { cell: ImpactCell }) {
+  if (!cell.changed) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span>
+      <span className="text-muted-foreground">{cell.before}</span>
+      <span className="mx-1 text-muted-foreground">→</span>
+      <span className="font-medium text-destructive">{cell.after}</span>
+    </span>
+  );
+}
+
+
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const notify = useServerFn(notifyLeaveSubmitted);
   const { user } = useAuth();
@@ -132,6 +204,15 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
   const otherConflicts = (conflicts ?? []).filter((c) => c.type === "other_leave");
 
+  const impactRows = buildImpactPreview(
+    startDate,
+    endDate,
+    halfDayStart === "none" ? null : halfDayStart,
+    halfDayEnd === "none" ? null : halfDayEnd,
+    ownConflicts,
+    conflicts !== null,
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -231,7 +312,51 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               </AlertDescription>
             </Alert>
           )}
+
+          {impactRows.length > 0 && (
+            <div className="rounded-md border">
+              <div className="border-b px-3 py-2 text-sm font-medium">
+                Impact preview — how your weekly grid will change
+              </div>
+              <div className="max-h-56 overflow-y-auto">
+                <table
+                  className="w-full text-xs"
+                  aria-label="Leave impact preview"
+                >
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-1.5 text-left font-medium">Date</th>
+                      <th className="px-3 py-1.5 text-left font-medium">AM</th>
+                      <th className="px-3 py-1.5 text-left font-medium">PM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {impactRows.map((row) => (
+                      <tr key={row.date} className="border-t">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          {formatDateGB(row.date)}
+                          {row.weekend && (
+                            <span className="ml-1 text-muted-foreground">(weekend)</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <ImpactCellView cell={row.am} />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <ImpactCellView cell={row.pm} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+                "—" means the half-session is not covered by this request.
+              </div>
+            </div>
+          )}
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
