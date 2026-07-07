@@ -13,11 +13,13 @@ import { StatCard } from "@/components/stat-card";
 import {
   AlertTriangle,
   CalendarClock,
+  Check,
   ClipboardList,
   HeartPulse,
   Inbox,
   ShieldAlert,
   ShieldCheck,
+  Undo2,
 } from "lucide-react";
 import {
   buildInbox,
