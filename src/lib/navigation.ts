@@ -77,6 +77,15 @@ export const NAV_ITEMS: NavItem[] = [
   // Home
   { id: "home", label: "Home", to: "/", icon: Home, group: "home",
     keywords: ["dashboard", "overview", "start"] },
+  { id: "wellbeing-mine", label: "My wellbeing", to: "/wellbeing",
+    icon: HeartPulse, group: "home",
+    keywords: ["burnout", "score", "retention", "attrition"] },
+  { id: "pulse", label: "Wellbeing pulse", to: "/pulse",
+    icon: MessageSquare, group: "home",
+    keywords: ["survey", "check-in", "wellbeing"] },
+  { id: "recognition", label: "Recognition", to: "/recognition",
+    icon: Sparkles, group: "home",
+    keywords: ["kudos", "thanks", "peer"] },
 
   // Rota
   { id: "rota-theatre", label: "Theatre rota", to: "/coordinator/rota",
@@ -152,6 +161,12 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "leave-fairness", label: "Leave fairness", to: "/admin/leave-fairness",
     icon: Scale, group: "audits", roles: ["admin"],
     keywords: ["denial", "SLA", "prime dates", "TOIL", "entitlement", "gini"] },
+  { id: "wellbeing-admin", label: "Wellbeing & attrition", to: "/admin/wellbeing",
+    icon: HeartPulse, group: "audits", roles: ["admin"],
+    keywords: ["wellbeing", "attrition", "retention", "burnout"] },
+  { id: "pulse-admin", label: "Pulse surveys", to: "/admin/pulse",
+    icon: MessageSquare, group: "audits", roles: ["admin"],
+    keywords: ["pulse", "survey", "wellbeing", "cycle"] },
   { id: "audit-data", label: "Rota source data", to: "/admin/dashboard",
     icon: LayoutDashboard, group: "audits", roles: ["admin"],
     keywords: ["raw", "ingest", "clwrota"] },

@@ -1204,6 +1204,135 @@ export type Database = {
         }
         Relationships: []
       }
+      pulse_survey_cycles: {
+        Row: {
+          active: boolean
+          closes_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          opens_at: string
+          question_1: string
+          question_2: string
+          question_3: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          closes_at: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opens_at: string
+          question_1: string
+          question_2: string
+          question_3: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          closes_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opens_at?: string
+          question_1?: string
+          question_2?: string
+          question_3?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pulse_survey_cycles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulse_survey_cycles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulse_survey_cycles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pulse_survey_responses: {
+        Row: {
+          comment: string | null
+          comment_enc: string | null
+          created_at: string
+          cycle_id: string
+          id: string
+          score_1: number
+          score_2: number
+          score_3: number
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          comment_enc?: string | null
+          created_at?: string
+          cycle_id: string
+          id?: string
+          score_1: number
+          score_2: number
+          score_3: number
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          comment_enc?: string | null
+          created_at?: string
+          cycle_id?: string
+          id?: string
+          score_1?: number
+          score_2?: number
+          score_3?: number
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pulse_survey_responses_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "pulse_survey_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulse_survey_responses_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulse_survey_responses_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulse_survey_responses_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_notification_log: {
         Row: {
           change_log_id: string | null
@@ -1291,6 +1420,85 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      recognition_entries: {
+        Row: {
+          category: string
+          created_at: string
+          from_user_id: string
+          id: string
+          is_public: boolean
+          message: string | null
+          message_enc: string | null
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          from_user_id: string
+          id?: string
+          is_public?: boolean
+          message?: string | null
+          message_enc?: string | null
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          is_public?: boolean
+          message?: string | null
+          message_enc?: string | null
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recognition_entries_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_entries_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_entries_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       return_to_work_interviews: {
         Row: {
@@ -2534,6 +2742,43 @@ export type Database = {
           start_date: string
           training_level: string
           updated_at: string
+        }[]
+      }
+      get_pulse_aggregate: {
+        Args: { p_cycle_id?: string }
+        Returns: {
+          avg_score_1: number
+          avg_score_2: number
+          avg_score_3: number
+          closes_at: string
+          cycle_id: string
+          opens_at: string
+          response_count: number
+        }[]
+      }
+      get_pulse_responses_decrypted: {
+        Args: { p_cycle_id?: string }
+        Returns: {
+          comment: string
+          created_at: string
+          cycle_id: string
+          id: string
+          score_1: number
+          score_2: number
+          score_3: number
+          staff_id: string
+        }[]
+      }
+      get_recognition_decrypted: {
+        Args: { p_limit?: number; p_staff_id?: string }
+        Returns: {
+          category: string
+          created_at: string
+          from_user_id: string
+          id: string
+          is_public: boolean
+          message: string
+          staff_id: string
         }[]
       }
       get_rtw_interviews_decrypted: {

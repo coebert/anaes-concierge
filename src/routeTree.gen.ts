@@ -17,7 +17,10 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
+import { Route as AuthenticatedWellbeingRouteImport } from './routes/_authenticated/wellbeing'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
+import { Route as AuthenticatedRecognitionRouteImport } from './routes/_authenticated/recognition'
+import { Route as AuthenticatedPulseRouteImport } from './routes/_authenticated/pulse'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedGlossaryRouteImport } from './routes/_authenticated/glossary'
@@ -43,6 +46,7 @@ import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_auth
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
+import { Route as AuthenticatedAdminWellbeingRouteImport } from './routes/_authenticated/admin.wellbeing'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
 import { Route as AuthenticatedAdminTheatreAliasesRouteImport } from './routes/_authenticated/admin.theatre-aliases'
@@ -51,6 +55,7 @@ import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
+import { Route as AuthenticatedAdminPulseRouteImport } from './routes/_authenticated/admin.pulse'
 import { Route as AuthenticatedAdminLeaveFairnessRouteImport } from './routes/_authenticated/admin.leave-fairness'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_authenticated/admin.exceptions'
@@ -110,9 +115,25 @@ const ApiAuditToolRoute = ApiAuditToolRouteImport.update({
   path: '/api/audit-tool',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWellbeingRoute = AuthenticatedWellbeingRouteImport.update({
+  id: '/wellbeing',
+  path: '/wellbeing',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedTraineesRoute = AuthenticatedTraineesRouteImport.update({
   id: '/trainees',
   path: '/trainees',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRecognitionRoute =
+  AuthenticatedRecognitionRouteImport.update({
+    id: '/recognition',
+    path: '/recognition',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPulseRoute = AuthenticatedPulseRouteImport.update({
+  id: '/pulse',
+  path: '/pulse',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
@@ -256,6 +277,12 @@ const AuthenticatedChatConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => AuthenticatedChatRoute,
   } as any)
+const AuthenticatedAdminWellbeingRoute =
+  AuthenticatedAdminWellbeingRouteImport.update({
+    id: '/admin/wellbeing',
+    path: '/admin/wellbeing',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminTheatresRoute =
   AuthenticatedAdminTheatresRouteImport.update({
     id: '/admin/theatres',
@@ -302,6 +329,11 @@ const AuthenticatedAdminRotaGapsRoute =
     path: '/admin/rota-gaps',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminPulseRoute = AuthenticatedAdminPulseRouteImport.update({
+  id: '/admin/pulse',
+  path: '/admin/pulse',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAdminLeaveFairnessRoute =
   AuthenticatedAdminLeaveFairnessRouteImport.update({
     id: '/admin/leave-fairness',
@@ -429,7 +461,10 @@ export interface FileRoutesByFullPath {
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
+  '/pulse': typeof AuthenticatedPulseRoute
+  '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
@@ -444,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -452,6 +488,7 @@ export interface FileRoutesByFullPath {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -489,7 +526,10 @@ export interface FileRoutesByTo {
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
+  '/pulse': typeof AuthenticatedPulseRoute
+  '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
@@ -505,6 +545,7 @@ export interface FileRoutesByTo {
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -513,6 +554,7 @@ export interface FileRoutesByTo {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -553,7 +595,10 @@ export interface FileRoutesById {
   '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/pulse': typeof AuthenticatedPulseRoute
+  '/_authenticated/recognition': typeof AuthenticatedRecognitionRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/_authenticated/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -569,6 +614,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/_authenticated/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/_authenticated/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -577,6 +623,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/_authenticated/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -618,7 +665,10 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/leave'
     | '/me'
+    | '/pulse'
+    | '/recognition'
     | '/trainees'
+    | '/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
     | '/admin/absence'
@@ -633,6 +683,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
+    | '/admin/pulse'
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
@@ -641,6 +692,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/wellbeing'
     | '/chat/$conversationId'
     | '/coordinator/duties'
     | '/coordinator/leave'
@@ -678,7 +730,10 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/leave'
     | '/me'
+    | '/pulse'
+    | '/recognition'
     | '/trainees'
+    | '/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
     | '/'
@@ -694,6 +749,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
+    | '/admin/pulse'
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
@@ -702,6 +758,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/wellbeing'
     | '/chat/$conversationId'
     | '/coordinator/duties'
     | '/coordinator/leave'
@@ -741,7 +798,10 @@ export interface FileRouteTypes {
     | '/_authenticated/glossary'
     | '/_authenticated/leave'
     | '/_authenticated/me'
+    | '/_authenticated/pulse'
+    | '/_authenticated/recognition'
     | '/_authenticated/trainees'
+    | '/_authenticated/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
     | '/_authenticated/'
@@ -757,6 +817,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/exceptions'
     | '/_authenticated/admin/job-plans'
     | '/_authenticated/admin/leave-fairness'
+    | '/_authenticated/admin/pulse'
     | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
@@ -765,6 +826,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatre-aliases'
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
+    | '/_authenticated/admin/wellbeing'
     | '/_authenticated/chat/$conversationId'
     | '/_authenticated/coordinator/duties'
     | '/_authenticated/coordinator/leave'
@@ -866,11 +928,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuditToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/wellbeing': {
+      id: '/_authenticated/wellbeing'
+      path: '/wellbeing'
+      fullPath: '/wellbeing'
+      preLoaderRoute: typeof AuthenticatedWellbeingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/trainees': {
       id: '/_authenticated/trainees'
       path: '/trainees'
       fullPath: '/trainees'
       preLoaderRoute: typeof AuthenticatedTraineesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/recognition': {
+      id: '/_authenticated/recognition'
+      path: '/recognition'
+      fullPath: '/recognition'
+      preLoaderRoute: typeof AuthenticatedRecognitionRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/pulse': {
+      id: '/_authenticated/pulse'
+      path: '/pulse'
+      fullPath: '/pulse'
+      preLoaderRoute: typeof AuthenticatedPulseRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/me': {
@@ -1048,6 +1131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedChatRoute
     }
+    '/_authenticated/admin/wellbeing': {
+      id: '/_authenticated/admin/wellbeing'
+      path: '/admin/wellbeing'
+      fullPath: '/admin/wellbeing'
+      preLoaderRoute: typeof AuthenticatedAdminWellbeingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/theatres': {
       id: '/_authenticated/admin/theatres'
       path: '/admin/theatres'
@@ -1102,6 +1192,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/rota-gaps'
       fullPath: '/admin/rota-gaps'
       preLoaderRoute: typeof AuthenticatedAdminRotaGapsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/pulse': {
+      id: '/_authenticated/admin/pulse'
+      path: '/admin/pulse'
+      fullPath: '/admin/pulse'
+      preLoaderRoute: typeof AuthenticatedAdminPulseRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/leave-fairness': {
@@ -1302,7 +1399,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedPulseRoute: typeof AuthenticatedPulseRoute
+  AuthenticatedRecognitionRoute: typeof AuthenticatedRecognitionRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
+  AuthenticatedWellbeingRoute: typeof AuthenticatedWellbeingRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAbsenceRoute: typeof AuthenticatedAdminAbsenceRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
@@ -1316,6 +1416,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminExceptionsRoute: typeof AuthenticatedAdminExceptionsRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
   AuthenticatedAdminLeaveFairnessRoute: typeof AuthenticatedAdminLeaveFairnessRoute
+  AuthenticatedAdminPulseRoute: typeof AuthenticatedAdminPulseRoute
   AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -1324,6 +1425,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminTheatreAliasesRoute: typeof AuthenticatedAdminTheatreAliasesRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
+  AuthenticatedAdminWellbeingRoute: typeof AuthenticatedAdminWellbeingRoute
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
@@ -1347,7 +1449,10 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedPulseRoute: AuthenticatedPulseRoute,
+  AuthenticatedRecognitionRoute: AuthenticatedRecognitionRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
+  AuthenticatedWellbeingRoute: AuthenticatedWellbeingRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAbsenceRoute: AuthenticatedAdminAbsenceRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
@@ -1362,6 +1467,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminExceptionsRoute: AuthenticatedAdminExceptionsRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
   AuthenticatedAdminLeaveFairnessRoute: AuthenticatedAdminLeaveFairnessRoute,
+  AuthenticatedAdminPulseRoute: AuthenticatedAdminPulseRoute,
   AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
@@ -1370,6 +1476,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminTheatreAliasesRoute: AuthenticatedAdminTheatreAliasesRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
+  AuthenticatedAdminWellbeingRoute: AuthenticatedAdminWellbeingRoute,
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
