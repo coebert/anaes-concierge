@@ -141,6 +141,8 @@ function AdminDashboardPage() {
         const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
         months.push({
           key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+          // Month-only chart-axis label (e.g. "Jul 26") — not a full date.
+          // eslint-disable-next-line no-restricted-syntax
           label: d.toLocaleString("en-GB", { month: "short", year: "2-digit" }),
           year: d.getFullYear(),
           month: d.getMonth(),
