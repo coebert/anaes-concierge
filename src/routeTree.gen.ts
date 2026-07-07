@@ -20,6 +20,7 @@ import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
 import { Route as AuthenticatedWellbeingRouteImport } from './routes/_authenticated/wellbeing'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
 import { Route as AuthenticatedRecognitionRouteImport } from './routes/_authenticated/recognition'
+import { Route as AuthenticatedPulseRouteImport } from './routes/_authenticated/pulse'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedGlossaryRouteImport } from './routes/_authenticated/glossary'
@@ -129,6 +130,11 @@ const AuthenticatedRecognitionRoute =
     path: '/recognition',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedPulseRoute = AuthenticatedPulseRouteImport.update({
+  id: '/pulse',
+  path: '/pulse',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
   id: '/me',
   path: '/me',
@@ -449,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
+  '/pulse': typeof AuthenticatedPulseRoute
   '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/wellbeing': typeof AuthenticatedWellbeingRoute
@@ -512,6 +519,7 @@ export interface FileRoutesByTo {
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
+  '/pulse': typeof AuthenticatedPulseRoute
   '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/wellbeing': typeof AuthenticatedWellbeingRoute
@@ -579,6 +587,7 @@ export interface FileRoutesById {
   '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/pulse': typeof AuthenticatedPulseRoute
   '/_authenticated/recognition': typeof AuthenticatedRecognitionRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/_authenticated/wellbeing': typeof AuthenticatedWellbeingRoute
@@ -647,6 +656,7 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/leave'
     | '/me'
+    | '/pulse'
     | '/recognition'
     | '/trainees'
     | '/wellbeing'
@@ -710,6 +720,7 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/leave'
     | '/me'
+    | '/pulse'
     | '/recognition'
     | '/trainees'
     | '/wellbeing'
@@ -776,6 +787,7 @@ export interface FileRouteTypes {
     | '/_authenticated/glossary'
     | '/_authenticated/leave'
     | '/_authenticated/me'
+    | '/_authenticated/pulse'
     | '/_authenticated/recognition'
     | '/_authenticated/trainees'
     | '/_authenticated/wellbeing'
@@ -923,6 +935,13 @@ declare module '@tanstack/react-router' {
       path: '/recognition'
       fullPath: '/recognition'
       preLoaderRoute: typeof AuthenticatedRecognitionRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/pulse': {
+      id: '/_authenticated/pulse'
+      path: '/pulse'
+      fullPath: '/pulse'
+      preLoaderRoute: typeof AuthenticatedPulseRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/me': {
@@ -1361,6 +1380,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedPulseRoute: typeof AuthenticatedPulseRoute
   AuthenticatedRecognitionRoute: typeof AuthenticatedRecognitionRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedWellbeingRoute: typeof AuthenticatedWellbeingRoute
@@ -1409,6 +1429,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedPulseRoute: AuthenticatedPulseRoute,
   AuthenticatedRecognitionRoute: AuthenticatedRecognitionRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedWellbeingRoute: AuthenticatedWellbeingRoute,
