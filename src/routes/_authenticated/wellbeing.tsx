@@ -61,8 +61,8 @@ function WellbeingPage() {
             .range(0, 4999),
           supabase
             .from("exception_reports")
-            .select("staff_id,event_date")
-            .eq("staff_id", user!.id)
+            .select("trainee_id,event_date")
+            .eq("trainee_id", user!.id)
             .range(0, 999),
           supabase
             .from("pulse_survey_cycles")
