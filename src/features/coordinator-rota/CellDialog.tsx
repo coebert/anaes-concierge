@@ -27,6 +27,7 @@ import {
   type StaffCompetency,
 } from "@/features/competencies/competencies";
 import { useServerFn } from "@tanstack/react-start";
+import { CompetencyMismatchTooltip } from "./CompetencyMismatchTooltip";
 import {
   SeverityIcon,
   type SessionHalf,
@@ -464,12 +465,29 @@ export function CellDialog({
                               <ul className="space-y-0.5 text-[11px] text-muted-foreground">
                                 {iss.map((i, idx) => (
                                   <li key={idx} className={cn(
+                                    "flex items-center gap-1",
                                     i.severity === "error" && "text-destructive",
                                     i.severity === "warning" && "text-warning",
                                   )}>
-                                    • {i.message}
+                                    <span>• {i.message}</span>
                                   </li>
                                 ))}
+                                {specialtyId && (
+                                  <li className="flex items-center gap-1 text-muted-foreground">
+                                    <CompetencyMismatchTooltip
+                                      staffId={a.staff_id}
+                                      staffName={staffByIdLocal(a.staff_id)?.full_name}
+                                      specialtyId={specialtyId}
+                                      specialtyName={specialties?.find((s) => s.id === specialtyId)?.name}
+                                      role={a.role_on_list}
+                                      onDate={date}
+                                      competencies={competencyRows ?? []}
+                                      requirements={competencyRequirements ?? []}
+                                      staffCompetencies={staffHoldings ?? []}
+                                    />
+                                    <span className="text-[10px]">Competency details</span>
+                                  </li>
+                                )}
                               </ul>
                             )}
                           </div>
@@ -521,6 +539,19 @@ export function CellDialog({
                     <div className="text-xs font-medium flex items-center gap-1.5">
                       <SeverityIcon severity={worstSeverity(allCandidateIssues) ?? "info"} />
                       Validation
+                      {specialtyId && newStaff && (
+                        <CompetencyMismatchTooltip
+                          staffId={newStaff}
+                          staffName={staff.find((s) => s.id === newStaff)?.full_name}
+                          specialtyId={specialtyId}
+                          specialtyName={specialties?.find((s) => s.id === specialtyId)?.name}
+                          role={newRole}
+                          onDate={date}
+                          competencies={competencyRows ?? []}
+                          requirements={competencyRequirements ?? []}
+                          staffCompetencies={staffHoldings ?? []}
+                        />
+                      )}
                     </div>
                     <ul className="space-y-0.5 text-[11px]">
                       {allCandidateIssues.map((i, idx) => (
