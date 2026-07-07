@@ -432,3 +432,111 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
   );
 }
 
+function ExceptionReportsCard({ staffId }: { staffId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["trainee-exception-reports", staffId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("exception_reports")
+        .select("id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at")
+        .eq("trainee_id", staffId)
+        .order("created_at", { ascending: false })
+        .range(0, 999);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        status: ExceptionStatus;
+        category: string;
+        event_date: string;
+        immediate_safety_concern: boolean;
+        due_by: string;
+        resolved_at: string | null;
+        created_at: string;
+      }>;
+    },
+  });
+
+  const rows = data ?? [];
+  const byStatus = rows.reduce<Record<string, number>>((acc, r) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const now = Date.now();
+  const openStatuses: ExceptionStatus[] = ["submitted", "acknowledged", "under_review", "escalated"];
+  const open = rows.filter((r) => openStatuses.includes(r.status));
+  const overdue = open.filter((r) => new Date(r.due_by).getTime() < now).length;
+  const safety = rows.filter((r) => r.immediate_safety_concern).length;
+  const recent = rows.slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FileWarning className="h-4 w-4 text-primary" /> Exception reports
+        </CardTitle>
+        <CardDescription className="text-xs">
+          {isLoading
+            ? "Loading…"
+            : `${rows.length} total · ${open.length} open${
+                overdue > 0 ? ` · ${overdue} past SLA` : ""
+              }${safety > 0 ? ` · ${safety} safety-flagged` : ""}`}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No exception reports submitted by this trainee.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(STATUS_LABEL) as ExceptionStatus[])
+                .filter((s) => (byStatus[s] ?? 0) > 0)
+                .map((s) => (
+                  <Badge
+                    key={s}
+                    variant={
+                      s === "resolved"
+                        ? "default"
+                        : s === "escalated"
+                          ? "destructive"
+                          : "secondary"
+                    }
+                  >
+                    {STATUS_LABEL[s]}: {byStatus[s]}
+                  </Badge>
+                ))}
+            </div>
+            <ul className="space-y-1 text-xs">
+              {recent.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 truncate">
+                    {r.immediate_safety_concern ? (
+                      <AlertTriangle className="h-3 w-3 shrink-0 text-destructive" />
+                    ) : null}
+                    <span className="truncate">
+                      {formatDateWithWeekdayGB(r.event_date)} · {r.category.replace(/_/g, " ")}
+                    </span>
+                  </span>
+                  <Badge
+                    variant={r.status === "resolved" ? "default" : "outline"}
+                    className="shrink-0"
+                  >
+                    {STATUS_LABEL[r.status]}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+            {rows.length > recent.length ? (
+              <p className="text-xs text-muted-foreground">
+                Showing 5 of {rows.length}. Guardian/Supervisor view has the full history.
+              </p>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
