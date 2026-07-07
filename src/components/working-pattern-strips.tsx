@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { WEEKDAY_LABELS } from "@/lib/staff-working-patterns";
 
 /**
@@ -10,13 +11,31 @@ export type StripDisplayMode = "percent" | "count";
 
 // Shared column geometry — kept in sync with the sibling rows rendered by
 // the staff working-patterns route (WeekdayHeader / AmPmStrip live there).
-// On narrow screens we shrink the label column and the inter-cell gap so
-// the five weekday cells retain enough width for "AM+PM" + share text.
+// Cells hold a min-width floor so on very narrow viewports the parent
+// container (see PatternStripsScroll) can overflow horizontally instead
+// of squeezing "AM+PM" + "67%" into an unreadable sliver.
 export const ROW_CLASS = "flex items-center gap-1.5 sm:gap-2 text-xs";
 export const ROW_LABEL_CLASS =
   "w-14 sm:w-24 shrink-0 truncate text-[11px] sm:text-xs text-muted-foreground";
 export const STRIP_CLASS = "flex flex-1 min-w-0 gap-0.5 sm:gap-1";
-export const CELL_CLASS = "flex-1 min-w-0 overflow-hidden whitespace-nowrap";
+export const CELL_CLASS =
+  "flex-1 min-w-[2.75rem] sm:min-w-0 overflow-hidden whitespace-nowrap";
+
+/**
+ * Wrapper that lets the whole stack of weekday strips (WeekdayHeader,
+ * AmPmStrip, Private/SAG, SPA, On-call) scroll horizontally as one unit
+ * when the card is narrower than the strips' natural minimum width. All
+ * rows share the same scroll offset so their weekday columns stay
+ * aligned. On sm+ the strips fit and scrolling is disabled so the layout
+ * matches the card edges exactly.
+ */
+export function PatternStripsScroll({ children }: { children: ReactNode }) {
+  return (
+    <div className="overflow-x-auto sm:overflow-visible -mx-3 px-3 sm:mx-0 sm:px-0">
+      <div className="min-w-[20rem] sm:min-w-0 space-y-1.5">{children}</div>
+    </div>
+  );
+}
 
 /**
  * Render a single "SPA" row for the working-patterns card. Each cell shows
