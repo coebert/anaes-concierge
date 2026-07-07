@@ -30,6 +30,13 @@ import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
 type SessionHalf = "am" | "pm";
 
+// Trainee levels too junior to ever genuinely run a list solo. Kept in sync
+// with JUNIOR_LEVELS in src/lib/solo-stats.ts — an unmatched entry means the
+// calendar and the solo-stats aggregator would disagree.
+const JUNIOR_TRAINEE_LEVELS = new Set([
+  "FY2", "ACCS", "CT1", "CT2", "ST1", "ST2",
+]);
+
 export function startOfWeek(d: Date) {
   const x = new Date(d);
   const day = x.getDay();
