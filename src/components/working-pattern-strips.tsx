@@ -28,11 +28,13 @@ export function SpaStrip({
   pmDays,
   countsByWeekday,
   totalSessions,
+  displayMode = "percent",
 }: {
   amDays: number[];
   pmDays: number[];
   countsByWeekday: number[];
   totalSessions: number;
+  displayMode?: StripDisplayMode;
 }) {
   const am = new Set(amDays);
   const pm = new Set(pmDays);
@@ -46,10 +48,18 @@ export function SpaStrip({
           const active = a || p;
           const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
           const count = countsByWeekday[d] ?? 0;
-          const pct =
-            totalSessions > 0 && count > 0
-              ? Math.round((count / totalSessions) * 100)
-              : null;
+          const hasShare = totalSessions > 0 && count > 0;
+          const pct = hasShare
+            ? Math.round((count / totalSessions) * 100)
+            : null;
+          const shareText =
+            displayMode === "count"
+              ? hasShare
+                ? String(count)
+                : null
+              : pct !== null
+                ? `${pct}%`
+                : null;
           return (
             <div
               key={d}
@@ -57,7 +67,7 @@ export function SpaStrip({
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border text-[10px] font-medium leading-none px-0.5 " +
-                (pct !== null ? "py-0.5" : "h-6") +
+                (shareText !== null ? "py-0.5" : "h-6") +
                 " " +
                 (active
                   ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
@@ -67,21 +77,21 @@ export function SpaStrip({
                 `${WEEKDAY_LABELS[d]}` +
                 (active
                   ? ` · SPA ${label}` +
-                    (pct !== null
+                    (hasShare
                       ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%)`
                       : "")
-                  : pct !== null
+                  : hasShare
                     ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%) — below regularity threshold`
                     : "")
               }
             >
               <span>{label}</span>
-              {pct !== null && (
+              {shareText !== null && (
                 <span
                   data-testid={`spa-pct-${d}`}
                   className="text-[9px] font-normal opacity-90 tabular-nums"
                 >
-                  {pct}%
+                  {shareText}
                 </span>
               )}
             </div>
