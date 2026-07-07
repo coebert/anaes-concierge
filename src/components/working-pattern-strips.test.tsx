@@ -41,9 +41,11 @@ describe("SpaStrip percentage rendering", () => {
     expect(screen.getByTestId("spa-cell-3").textContent).toBe("AM");
   });
 
-  it("renders count / total percentages on active SPA cells when totalSpaSessions > 0", () => {
+  it("renders count / total percentages on every SPA weekday that has sessions", () => {
     // 8 SPA sessions total: 4 on Wed AM, 2 on Fri PM, and 2 stray on Mon
-    // AM that don't hit the regularity threshold (so not in amDays).
+    // AM that don't hit the regularity threshold (so not in amDays). The
+    // strip now surfaces the Monday share too, so consultants can see
+    // where their non-regular SPA time falls.
     render(
       <SpaStrip
         amDays={[3]}
@@ -52,11 +54,11 @@ describe("SpaStrip percentage rendering", () => {
         totalSessions={8}
       />,
     );
+    expect(screen.getByTestId("spa-pct-1").textContent).toBe("25%");
     expect(screen.getByTestId("spa-pct-3").textContent).toBe("50%");
     expect(screen.getByTestId("spa-pct-5").textContent).toBe("25%");
-    // Inactive cells (Mon/Tue/Thu) must not render a % even though the
-    // count array has a non-zero entry on Monday.
-    for (const d of [1, 2, 4]) {
+    // Weekdays with zero SPA sessions still render no %.
+    for (const d of [2, 4]) {
       expect(screen.queryByTestId(`spa-pct-${d}`)).toBeNull();
     }
   });
