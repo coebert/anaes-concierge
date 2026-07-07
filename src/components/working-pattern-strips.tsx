@@ -114,12 +114,14 @@ export function WeekdayStrip({
   tone = "default",
   countsByWeekday,
   totalSessions,
+  displayMode = "percent",
 }: {
   label: string;
   highlighted: number[];
   tone?: "default" | "primary" | "amber";
   countsByWeekday?: number[];
   totalSessions?: number;
+  displayMode?: StripDisplayMode;
 }) {
   const set = new Set(highlighted);
   const highlightClass =
@@ -135,10 +137,22 @@ export function WeekdayStrip({
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
           const count = countsByWeekday?.[d] ?? 0;
-          const pct =
-            countsByWeekday && totalSessions && totalSessions > 0 && count > 0
-              ? Math.round((count / totalSessions) * 100)
-              : null;
+          const hasShare =
+            !!countsByWeekday &&
+            !!totalSessions &&
+            totalSessions > 0 &&
+            count > 0;
+          const pct = hasShare
+            ? Math.round((count / totalSessions!) * 100)
+            : null;
+          const shareText =
+            displayMode === "count"
+              ? hasShare
+                ? String(count)
+                : null
+              : pct !== null
+                ? `${pct}%`
+                : null;
           return (
             <div
               key={d}
@@ -146,7 +160,7 @@ export function WeekdayStrip({
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border text-[11px] font-medium leading-none px-0.5 " +
-                (pct !== null ? "py-0.5" : "h-6") +
+                (shareText !== null ? "py-0.5" : "h-6") +
                 " " +
                 (active
                   ? highlightClass
@@ -154,19 +168,19 @@ export function WeekdayStrip({
               }
               title={
                 WEEKDAY_LABELS[d] +
-                (pct !== null
+                (hasShare
                   ? ` · ${count} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)` +
                     (active ? "" : " — below regularity threshold")
                   : "")
               }
             >
               <span>{active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}</span>
-              {pct !== null && (
+              {shareText !== null && (
                 <span
                   data-testid={`weekday-pct-${d}`}
                   className="text-[9px] font-normal opacity-90 tabular-nums"
                 >
-                  {pct}%
+                  {shareText}
                 </span>
               )}
             </div>
