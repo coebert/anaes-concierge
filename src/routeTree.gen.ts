@@ -51,6 +51,7 @@ import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
 import { Route as AuthenticatedAdminTheatreAliasesRouteImport } from './routes/_authenticated/admin.theatre-aliases'
 import { Route as AuthenticatedAdminTcsAuditRouteImport } from './routes/_authenticated/admin.tcs-audit'
+import { Route as AuthenticatedAdminSupervisionRouteImport } from './routes/_authenticated/admin.supervision'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
@@ -318,6 +319,12 @@ const AuthenticatedAdminTcsAuditRoute =
     path: '/admin/tcs-audit',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminSupervisionRoute =
+  AuthenticatedAdminSupervisionRouteImport.update({
+    id: '/admin/supervision',
+    path: '/admin/supervision',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminStaffRoute = AuthenticatedAdminStaffRouteImport.update({
   id: '/admin/staff',
   path: '/admin/staff',
@@ -563,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/supervision': typeof AuthenticatedAdminSupervisionRoute
   '/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
@@ -640,6 +648,7 @@ export interface FileRoutesByTo {
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/admin/supervision': typeof AuthenticatedAdminSupervisionRoute
   '/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
@@ -720,6 +729,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
+  '/_authenticated/admin/supervision': typeof AuthenticatedAdminSupervisionRoute
   '/_authenticated/admin/tcs-audit': typeof AuthenticatedAdminTcsAuditRoute
   '/_authenticated/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
@@ -800,6 +810,7 @@ export interface FileRouteTypes {
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/supervision'
     | '/admin/tcs-audit'
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
@@ -877,6 +888,7 @@ export interface FileRouteTypes {
     | '/admin/rules'
     | '/admin/settings'
     | '/admin/staff'
+    | '/admin/supervision'
     | '/admin/tcs-audit'
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
@@ -956,6 +968,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/staff'
+    | '/_authenticated/admin/supervision'
     | '/_authenticated/admin/tcs-audit'
     | '/_authenticated/admin/theatre-aliases'
     | '/_authenticated/admin/theatre-grid'
@@ -1306,6 +1319,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/tcs-audit'
       fullPath: '/admin/tcs-audit'
       preLoaderRoute: typeof AuthenticatedAdminTcsAuditRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/supervision': {
+      id: '/_authenticated/admin/supervision'
+      path: '/admin/supervision'
+      fullPath: '/admin/supervision'
+      preLoaderRoute: typeof AuthenticatedAdminSupervisionRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/staff': {
@@ -1679,6 +1699,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
+  AuthenticatedAdminSupervisionRoute: typeof AuthenticatedAdminSupervisionRoute
   AuthenticatedAdminTcsAuditRoute: typeof AuthenticatedAdminTcsAuditRoute
   AuthenticatedAdminTheatreAliasesRoute: typeof AuthenticatedAdminTheatreAliasesRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
@@ -1734,6 +1755,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
+  AuthenticatedAdminSupervisionRoute: AuthenticatedAdminSupervisionRoute,
   AuthenticatedAdminTcsAuditRoute: AuthenticatedAdminTcsAuditRoute,
   AuthenticatedAdminTheatreAliasesRoute: AuthenticatedAdminTheatreAliasesRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,

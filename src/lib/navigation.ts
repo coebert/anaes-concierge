@@ -129,6 +129,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "competencies", label: "Competency register", to: "/admin/competencies",
     icon: ShieldCheck, group: "staff", roles: ["admin"],
     keywords: ["competency", "credential", "sign-off", "cardiac", "paeds", "airway", "MTP", "HALO"] },
+  { id: "supervision", label: "Educational supervision", to: "/admin/supervision",
+    icon: GraduationCap, group: "staff", roles: ["admin", "rota_coordinator"],
+    keywords: ["ARCP", "trainee", "supervisor", "educational", "readiness", "logbook"] },
 
   // Audits & robustness
   { id: "robustness", label: "Robustness overview", to: "/robustness",
