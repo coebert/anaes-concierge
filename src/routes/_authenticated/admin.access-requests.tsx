@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Check, X, Trash2 } from "lucide-react";
 import { PageLoading } from "@/components/loading";
+import { formatDateTimeGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/access-requests")({
   head: () => ({ meta: [{ title: "Access requests — Salisbury Anaesthetics Rota" }] }),
