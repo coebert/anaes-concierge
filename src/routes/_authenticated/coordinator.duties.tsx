@@ -255,6 +255,8 @@ function DutiesPage() {
                   <th className="w-24 p-2 text-left font-medium text-muted-foreground">Slot</th>
                   {days.map((d, i) => (
                     <th key={i} className="border-l p-2 text-left font-medium">
+                      {/* Weekday-only label ("Mon") — full date is rendered on the next line. */}
+                      {/* eslint-disable-next-line no-restricted-syntax */}
                       <div>{d.toLocaleDateString("en-GB", { weekday: "short" })}</div>
                       <div className="text-muted-foreground">{formatDateGB(isoLocal(d)).slice(0, 5)}</div>
                     </th>
