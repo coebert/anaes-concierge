@@ -1,18 +1,25 @@
 /**
- * End-to-end test for the /api/chat POST handler with a SINGLE half-day
- * leave that spans a weekend boundary (Fri PM → Mon AM), focused on
- * verifying that the SKIPPED halves (Fri AM and Mon PM) keep their
- * original weeklyGrid labels — the leave must not bleed into them.
+ * End-to-end test for the /api/chat POST handler with a half-day leave
+ * that spans a LONG weekend boundary (Fri PM → next-Tue AM, covering
+ * Sat/Sun and the full intervening Monday), focused on verifying that
+ * the SKIPPED halves (Fri AM and Tue PM) keep their original weeklyGrid
+ * labels — the leave must not bleed into them.
  *
- * Baseline: one week of Mon–Fri AM+PM theatre. One approved leave:
- *   Fri 2026-06-26 (half_day_start='pm') → Mon 2026-06-29 (half_day_end='am').
+ * Baseline: 4 consecutive work-weeks each with Mon–Fri AM+PM theatre.
+ * Three approved leaves, each Fri-PM → next-Tue-AM, wrapping the
+ * intervening Monday as fully on leave:
+ *   A: Fri 2026-06-05 → Tue 2026-06-09
+ *   B: Fri 2026-06-12 → Tue 2026-06-16
+ *   C: Fri 2026-06-19 → Tue 2026-06-23
  *
- * Expected weeklyGrid (1-week window, so counts are 1/1):
- *   - Fri AM  → "Main theatres" 1/1  (skipped half — preserved)
- *   - Fri PM  → "On leave"      1/1
- *   - Mon AM  → "On leave"      1/1
- *   - Mon PM  → "Main theatres" 1/1  (skipped half — preserved)
- *   - Tue/Wed/Thu AM & PM → "Main theatres" 1/1 (untouched)
+ * Expected (dominant per weekday-half over 4 weeks):
+ *   - Fri AM (skipped) → "Main theatres" 4/4
+ *   - Fri PM           → "On leave"      3/4
+ *   - Mon AM           → "On leave"      3/4  (Monday sits inside the leave)
+ *   - Mon PM           → "On leave"      3/4
+ *   - Tue AM           → "On leave"      3/4
+ *   - Tue PM (skipped) → "Main theatres" 4/4
+ *   - Wed/Thu AM & PM  → "Main theatres" 4/4
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
@@ -23,25 +30,19 @@ const THEATRE_ID = "33333333-3333-3333-3333-333333333333";
 const SPECIALTY_ID = "44444444-4444-4444-4444-444444444444";
 const SESSION_ID = "55555555-5555-5555-5555-555555555555";
 
-const WEEK = {
-  mon: "2026-06-22",
-  tue: "2026-06-23",
-  wed: "2026-06-24",
-  thu: "2026-06-25",
-  fri: "2026-06-26",
-};
-const NEXT_MON = "2026-06-29";
+const WEEKS = [
+  { mon: "2026-06-01", tue: "2026-06-02", wed: "2026-06-03", thu: "2026-06-04", fri: "2026-06-05" },
+  { mon: "2026-06-08", tue: "2026-06-09", wed: "2026-06-10", thu: "2026-06-11", fri: "2026-06-12" },
+  { mon: "2026-06-15", tue: "2026-06-16", wed: "2026-06-17", thu: "2026-06-18", fri: "2026-06-19" },
+  { mon: "2026-06-22", tue: "2026-06-23", wed: "2026-06-24", thu: "2026-06-25", fri: "2026-06-26" },
+];
 
-const rotaAssignments = [
-  ...[WEEK.mon, WEEK.tue, WEEK.wed, WEEK.thu, WEEK.fri].flatMap((d) => [
+const rotaAssignments = WEEKS.flatMap((w) =>
+  [w.mon, w.tue, w.wed, w.thu, w.fri].flatMap((d) => [
     { staff_id: USER_ID, duty_type: "theatre", session_date: d, session: "am", theatre_session_id: SESSION_ID },
     { staff_id: USER_ID, duty_type: "theatre", session_date: d, session: "pm", theatre_session_id: SESSION_ID },
   ]),
-  // Also the following Monday, so Mon PM (the SKIPPED half) is present
-  // and can be verified as preserved.
-  { staff_id: USER_ID, duty_type: "theatre", session_date: NEXT_MON, session: "am", theatre_session_id: SESSION_ID },
-  { staff_id: USER_ID, duty_type: "theatre", session_date: NEXT_MON, session: "pm", theatre_session_id: SESSION_ID },
-];
+);
 
 const theatreSessions = [
   { id: SESSION_ID, theatre_id: THEATRE_ID, specialty_id: SPECIALTY_ID, is_non_sag: false },
@@ -49,18 +50,22 @@ const theatreSessions = [
 const theatres = [{ id: THEATRE_ID, name: "Theatre 1", kind: "main" }];
 const specialties = [{ id: SPECIALTY_ID, name: "Orthopaedics" }];
 
-const pastApprovedLeave = [
-  {
-    type: "annual" as const,
-    start_date: WEEK.fri,
-    end_date: NEXT_MON,
-    status: "approved" as const,
-    half_day_start: "pm" as const,
-    half_day_end: "am" as const,
-    reason: null,
-    decision_notes: null,
-  },
+const BOUNDARIES = [
+  { fri: WEEKS[0].fri, tue: WEEKS[1].tue }, // A
+  { fri: WEEKS[1].fri, tue: WEEKS[2].tue }, // B
+  { fri: WEEKS[2].fri, tue: WEEKS[3].tue }, // C
 ];
+
+const pastApprovedLeave = BOUNDARIES.map(({ fri, tue }) => ({
+  type: "annual" as const,
+  start_date: fri,
+  end_date: tue,
+  status: "approved" as const,
+  half_day_start: "pm" as const,
+  half_day_end: "am" as const,
+  reason: null,
+  decision_notes: null,
+}));
 
 // --------------------- Supabase mock ---------------------
 
@@ -232,8 +237,8 @@ async function invokePost(body: unknown): Promise<Response> {
   return handler({ request: req });
 }
 
-describe("/api/chat e2e — weekend-boundary half-day leave preserves skipped halves", () => {
-  it("keeps Fri AM and Mon PM as 'Main theatres' while Fri PM and Mon AM flip to 'On leave'", async () => {
+describe("/api/chat e2e — long-weekend half-day leave preserves skipped halves", () => {
+  it("Fri AM and Tue PM stay 'Main theatres' while Fri PM/Mon/Tue AM flip to 'On leave'", async () => {
     const res = await invokePost({
       conversationId: CONVERSATION_ID,
       messages: [
@@ -256,7 +261,6 @@ describe("/api/chat e2e — weekend-boundary half-day leave preserves skipped ha
 
     const amRow = payload.weeklyGrid.find((r) => r.session === "am")!;
     const pmRow = payload.weeklyGrid.find((r) => r.session === "pm")!;
-
     const cell = (session: "am" | "pm", weekday: string) => {
       const row = session === "am" ? amRow : pmRow;
       const c = row.days.find((d) => d.weekday === weekday);
@@ -264,30 +268,32 @@ describe("/api/chat e2e — weekend-boundary half-day leave preserves skipped ha
       return c;
     };
 
-    // Boundary halves flip to leave.
-    const friPm = cell("pm", "Fri");
-    expect(friPm.location).toBe("On leave");
-    expect(friPm.recurrence).toBe("1/1");
-    const monAm = cell("am", "Mon");
-    expect(monAm.location).toBe("On leave");
-    // Mon AM appears in one week (WEEK.mon = theatre) plus NEXT_MON (leave) —
-    // dominant is 'leave' 1/2.
-    expect(monAm.recurrence).toBe("1/2");
-
-    // Skipped halves — MUST stay Main theatres, untouched by the leave.
+    // Skipped halves — MUST stay Main theatres.
     const friAm = cell("am", "Fri");
     expect(friAm.location).toBe("Main theatres");
-    expect(friAm.recurrence).toBe("1/1");
-    const monPm = cell("pm", "Mon");
-    expect(monPm.location).toBe("Main theatres");
-    expect(monPm.recurrence).toBe("2/2");
+    expect(friAm.recurrence).toBe("4/4");
+    const tuePm = cell("pm", "Tue");
+    expect(tuePm.location).toBe("Main theatres");
+    expect(tuePm.recurrence).toBe("4/4");
+
+    // Flipped halves — dominant leave 3/4.
+    for (const [day, sess] of [
+      ["Fri", "pm"],
+      ["Mon", "am"],
+      ["Mon", "pm"],
+      ["Tue", "am"],
+    ] as const) {
+      const c = cell(sess, day);
+      expect(c.location, `${day} ${sess}`).toBe("On leave");
+      expect(c.recurrence, `${day} ${sess} recurrence`).toBe("3/4");
+    }
 
     // Interior weekdays untouched.
-    for (const day of ["Tue", "Wed", "Thu"] as const) {
+    for (const day of ["Wed", "Thu"] as const) {
       for (const sess of ["am", "pm"] as const) {
         const c = cell(sess, day);
         expect(c.location, `${day} ${sess}`).toBe("Main theatres");
-        expect(c.recurrence, `${day} ${sess} recurrence`).toBe("1/1");
+        expect(c.recurrence, `${day} ${sess} recurrence`).toBe("4/4");
       }
     }
   });
