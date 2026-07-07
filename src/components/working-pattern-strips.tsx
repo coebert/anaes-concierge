@@ -29,7 +29,7 @@ export const CELL_CLASS =
  * aligned. On sm+ the strips fit and scrolling is disabled so the layout
  * matches the card edges exactly.
  */
-export function PatternStripsScroll({ children }: { children: React.ReactNode }) {
+export function PatternStripsScroll({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-x-auto sm:overflow-visible -mx-3 px-3 sm:mx-0 sm:px-0">
       <div className="min-w-[20rem] sm:min-w-0 space-y-1.5">{children}</div>
