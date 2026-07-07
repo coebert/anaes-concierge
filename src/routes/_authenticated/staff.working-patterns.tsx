@@ -58,6 +58,7 @@ function WorkingPatternsPage() {
   const [windowDays, setWindowDays] = useState<number>(180);
   const [gradeFilter, setGradeFilter] = useState<GradeFilter>("all");
   const [filter, setFilter] = useState("");
+  const [displayMode, setDisplayMode] = useState<StripDisplayMode>("percent");
 
   const from = useMemo(() => isoDaysAgo(windowDays), [windowDays]);
   const to = todayIso();
