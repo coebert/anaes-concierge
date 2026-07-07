@@ -51,6 +51,48 @@ export default tseslint.config(
           ignoreTypeReferences: true,
         },
       ],
+      // Enforce British DD/MM/YYYY date formatting across the app.
+      //
+      // Locale-default `toLocaleDateString()` / `new Date(...).toLocaleString()`
+      // render in the *user's browser locale* — a US visitor sees "5/26/2026"
+      // instead of "26/05/2026". `new Intl.DateTimeFormat("en-GB", { month:
+      // "short" })` also drifts to non-numeric ("26 May 2026") formats.
+      //
+      // Use the helpers in `@/lib/utils` instead:
+      //   - formatDateGB(value)         → "DD/MM/YYYY"
+      //   - formatDateTimeGB(value)     → "DD/MM/YYYY, HH:mm"
+      //   - formatDateWithWeekdayGB(v)  → "Mon DD/MM/YYYY"
+      //   - formatDateLongGB(value)     → "Monday, DD/MM/YYYY"
+      //
+      // For genuinely non-date uses (extracting just the weekday name, or
+      // rendering a month-only chart-axis label) add a targeted
+      // `eslint-disable-next-line` with a one-line reason.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.property.name='toLocaleDateString']",
+          message:
+            "Do not use `.toLocaleDateString()` — it renders in the user's locale (US visitors see MM/DD/YYYY). Use formatDateGB / formatDateWithWeekdayGB / formatDateLongGB from @/lib/utils.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='toLocaleString'][callee.object.type='NewExpression'][callee.object.callee.name='Date']",
+          message:
+            "Do not use `new Date(...).toLocaleString()` for date rendering. Use formatDateTimeGB from @/lib/utils so the date always renders as DD/MM/YYYY.",
+        },
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.property.name='toLocaleString'][arguments.0.type='Literal']",
+          message:
+            "Do not call `.toLocaleString(\"...\")` with a locale string for date rendering — use formatDateTimeGB from @/lib/utils. (If this is a number, prefer `.toLocaleString(\"en-GB\")` with an inline eslint-disable-next-line and a reason.)",
+        },
+        {
+          selector:
+            "NewExpression[callee.type='MemberExpression'][callee.object.name='Intl'][callee.property.name='DateTimeFormat']",
+          message:
+            "Do not construct `new Intl.DateTimeFormat(...)` for date rendering — use formatDateGB / formatDateTimeGB from @/lib/utils to keep DD/MM/YYYY consistent.",
+        },
+      ],
     },
   },
   {
