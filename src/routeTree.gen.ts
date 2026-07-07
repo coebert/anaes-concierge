@@ -60,6 +60,7 @@ import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
 import { Route as ApiPublicHooksRpcAccessAlertsRouteImport } from './routes/api/public/hooks/rpc-access-alerts'
+import { Route as ApiPublicHooksPushDispatchRouteImport } from './routes/api/public/hooks/push-dispatch'
 import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/public/hooks/clwrota-sync'
 import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar/$token'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
@@ -351,6 +352,12 @@ const ApiPublicHooksRpcAccessAlertsRoute =
     path: '/api/public/hooks/rpc-access-alerts',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksPushDispatchRoute =
+  ApiPublicHooksPushDispatchRouteImport.update({
+    id: '/api/public/hooks/push-dispatch',
+    path: '/api/public/hooks/push-dispatch',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksClwrotaSyncRoute =
   ApiPublicHooksClwrotaSyncRouteImport.update({
     id: '/api/public/hooks/clwrota-sync',
@@ -428,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
+  '/api/public/hooks/push-dispatch': typeof ApiPublicHooksPushDispatchRoute
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -483,6 +491,7 @@ export interface FileRoutesByTo {
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
+  '/api/public/hooks/push-dispatch': typeof ApiPublicHooksPushDispatchRoute
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -541,6 +550,7 @@ export interface FileRoutesById {
   '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/clwrota-sync': typeof ApiPublicHooksClwrotaSyncRoute
+  '/api/public/hooks/push-dispatch': typeof ApiPublicHooksPushDispatchRoute
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -599,6 +609,7 @@ export interface FileRouteTypes {
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
     | '/api/public/hooks/clwrota-sync'
+    | '/api/public/hooks/push-dispatch'
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
   fileRoutesByTo: FileRoutesByTo
@@ -654,6 +665,7 @@ export interface FileRouteTypes {
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
     | '/api/public/hooks/clwrota-sync'
+    | '/api/public/hooks/push-dispatch'
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
   id:
@@ -711,6 +723,7 @@ export interface FileRouteTypes {
     | '/_authenticated/robustness/day/$date'
     | '/api/public/calendar/$token'
     | '/api/public/hooks/clwrota-sync'
+    | '/api/public/hooks/push-dispatch'
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
   fileRoutesById: FileRoutesById
@@ -726,6 +739,7 @@ export interface RootRouteChildren {
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   ApiPublicCalendarTokenRoute: typeof ApiPublicCalendarTokenRoute
   ApiPublicHooksClwrotaSyncRoute: typeof ApiPublicHooksClwrotaSyncRoute
+  ApiPublicHooksPushDispatchRoute: typeof ApiPublicHooksPushDispatchRoute
   ApiPublicHooksRpcAccessAlertsRoute: typeof ApiPublicHooksRpcAccessAlertsRoute
   ApiPublicHooksSeedClwrotaVaultRoute: typeof ApiPublicHooksSeedClwrotaVaultRoute
 }
@@ -1089,6 +1103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRpcAccessAlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/push-dispatch': {
+      id: '/api/public/hooks/push-dispatch'
+      path: '/api/public/hooks/push-dispatch'
+      fullPath: '/api/public/hooks/push-dispatch'
+      preLoaderRoute: typeof ApiPublicHooksPushDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/clwrota-sync': {
       id: '/api/public/hooks/clwrota-sync'
       path: '/api/public/hooks/clwrota-sync'
@@ -1266,6 +1287,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   ApiPublicCalendarTokenRoute: ApiPublicCalendarTokenRoute,
   ApiPublicHooksClwrotaSyncRoute: ApiPublicHooksClwrotaSyncRoute,
+  ApiPublicHooksPushDispatchRoute: ApiPublicHooksPushDispatchRoute,
   ApiPublicHooksRpcAccessAlertsRoute: ApiPublicHooksRpcAccessAlertsRoute,
   ApiPublicHooksSeedClwrotaVaultRoute: ApiPublicHooksSeedClwrotaVaultRoute,
 }
