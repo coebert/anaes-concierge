@@ -389,6 +389,18 @@ function LeaveCard({
           </>
         )}
 
+        {row.status !== "pending" && isStudy && baseBudget && row.study_cost_gbp != null && (
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium">Study cost:</span>{" "}
+            {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })
+              .format(Number(row.study_cost_gbp))}
+            {" · "}
+            <span className="font-medium">Budget left this year:</span>{" "}
+            {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })
+              .format(baseBudget.remainingGbp - (row.status === "approved" ? Number(row.study_cost_gbp) : 0))}
+          </div>
+        )}
+
         {row.status !== "pending" && row.decision_notes && (
           <div className="text-xs text-muted-foreground">
             <span className="font-medium">Decision notes:</span> {row.decision_notes}
