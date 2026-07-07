@@ -38,6 +38,7 @@ import { Route as AuthenticatedRobustnessLastMinuteChangesRouteImport } from './
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
 import { Route as AuthenticatedRobustnessConsultantAuditsRouteImport } from './routes/_authenticated/robustness.consultant-audits'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
+import { Route as AuthenticatedLeaveEntitlementsRouteImport } from './routes/_authenticated/leave.entitlements'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
@@ -50,6 +51,7 @@ import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
+import { Route as AuthenticatedAdminLeaveFairnessRouteImport } from './routes/_authenticated/admin.leave-fairness'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_authenticated/admin.exceptions'
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
@@ -224,6 +226,12 @@ const AuthenticatedLeaveForecastRoute =
     path: '/leave/forecast',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedLeaveEntitlementsRoute =
+  AuthenticatedLeaveEntitlementsRouteImport.update({
+    id: '/entitlements',
+    path: '/entitlements',
+    getParentRoute: () => AuthenticatedLeaveRoute,
+  } as any)
 const AuthenticatedCoordinatorRotaRoute =
   AuthenticatedCoordinatorRotaRouteImport.update({
     id: '/coordinator/rota',
@@ -292,6 +300,12 @@ const AuthenticatedAdminRotaGapsRoute =
   AuthenticatedAdminRotaGapsRouteImport.update({
     id: '/admin/rota-gaps',
     path: '/admin/rota-gaps',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminLeaveFairnessRoute =
+  AuthenticatedAdminLeaveFairnessRouteImport.update({
+    id: '/admin/leave-fairness',
+    path: '/admin/leave-fairness',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminJobPlansRoute =
@@ -413,7 +427,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRouteWithChildren
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
-  '/leave': typeof AuthenticatedLeaveRoute
+  '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/audit-tool': typeof ApiAuditToolRoute
@@ -429,6 +443,7 @@ export interface FileRoutesByFullPath {
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -441,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
@@ -471,7 +487,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
-  '/leave': typeof AuthenticatedLeaveRoute
+  '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/audit-tool': typeof ApiAuditToolRoute
@@ -488,6 +504,7 @@ export interface FileRoutesByTo {
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -500,6 +517,7 @@ export interface FileRoutesByTo {
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
@@ -533,7 +551,7 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/exceptions': typeof AuthenticatedExceptionsRoute
   '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
-  '/_authenticated/leave': typeof AuthenticatedLeaveRoute
+  '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/audit-tool': typeof ApiAuditToolRoute
@@ -550,6 +568,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/_authenticated/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
+  '/_authenticated/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
   '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -562,6 +581,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/_authenticated/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
@@ -612,6 +632,7 @@ export interface FileRouteTypes {
     | '/admin/duty-mappings'
     | '/admin/exceptions'
     | '/admin/job-plans'
+    | '/admin/leave-fairness'
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
@@ -624,6 +645,7 @@ export interface FileRouteTypes {
     | '/coordinator/duties'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/leave/entitlements'
     | '/leave/forecast'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
@@ -671,6 +693,7 @@ export interface FileRouteTypes {
     | '/admin/duty-mappings'
     | '/admin/exceptions'
     | '/admin/job-plans'
+    | '/admin/leave-fairness'
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
@@ -683,6 +706,7 @@ export interface FileRouteTypes {
     | '/coordinator/duties'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/leave/entitlements'
     | '/leave/forecast'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
@@ -732,6 +756,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/duty-mappings'
     | '/_authenticated/admin/exceptions'
     | '/_authenticated/admin/job-plans'
+    | '/_authenticated/admin/leave-fairness'
     | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
@@ -744,6 +769,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/duties'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
+    | '/_authenticated/leave/entitlements'
     | '/_authenticated/leave_/forecast'
     | '/_authenticated/robustness/consultant-audits'
     | '/_authenticated/robustness/consultant-feasibility'
@@ -987,6 +1013,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeaveForecastRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/leave/entitlements': {
+      id: '/_authenticated/leave/entitlements'
+      path: '/entitlements'
+      fullPath: '/leave/entitlements'
+      preLoaderRoute: typeof AuthenticatedLeaveEntitlementsRouteImport
+      parentRoute: typeof AuthenticatedLeaveRoute
+    }
     '/_authenticated/coordinator/rota': {
       id: '/_authenticated/coordinator/rota'
       path: '/coordinator/rota'
@@ -1069,6 +1102,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/rota-gaps'
       fullPath: '/admin/rota-gaps'
       preLoaderRoute: typeof AuthenticatedAdminRotaGapsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/leave-fairness': {
+      id: '/_authenticated/admin/leave-fairness'
+      path: '/admin/leave-fairness'
+      fullPath: '/admin/leave-fairness'
+      preLoaderRoute: typeof AuthenticatedAdminLeaveFairnessRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/job-plans': {
@@ -1227,6 +1267,17 @@ const AuthenticatedChatRouteChildren: AuthenticatedChatRouteChildren = {
 const AuthenticatedChatRouteWithChildren =
   AuthenticatedChatRoute._addFileChildren(AuthenticatedChatRouteChildren)
 
+interface AuthenticatedLeaveRouteChildren {
+  AuthenticatedLeaveEntitlementsRoute: typeof AuthenticatedLeaveEntitlementsRoute
+}
+
+const AuthenticatedLeaveRouteChildren: AuthenticatedLeaveRouteChildren = {
+  AuthenticatedLeaveEntitlementsRoute: AuthenticatedLeaveEntitlementsRoute,
+}
+
+const AuthenticatedLeaveRouteWithChildren =
+  AuthenticatedLeaveRoute._addFileChildren(AuthenticatedLeaveRouteChildren)
+
 interface AuthenticatedTraineesRouteChildren {
   AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
   AuthenticatedTraineesStartDateAuditRoute: typeof AuthenticatedTraineesStartDateAuditRoute
@@ -1249,7 +1300,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
   AuthenticatedExceptionsRoute: typeof AuthenticatedExceptionsRoute
   AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
-  AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
+  AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -1264,6 +1315,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
   AuthenticatedAdminExceptionsRoute: typeof AuthenticatedAdminExceptionsRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
+  AuthenticatedAdminLeaveFairnessRoute: typeof AuthenticatedAdminLeaveFairnessRoute
   AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -1293,7 +1345,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
   AuthenticatedExceptionsRoute: AuthenticatedExceptionsRoute,
   AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
-  AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
+  AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
@@ -1309,6 +1361,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
   AuthenticatedAdminExceptionsRoute: AuthenticatedAdminExceptionsRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
+  AuthenticatedAdminLeaveFairnessRoute: AuthenticatedAdminLeaveFairnessRoute,
   AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
