@@ -329,7 +329,7 @@ async function downloadReportPdf(report: ReportOutput) {
   // Title block
   writeHeading(report.title, 1);
   if (report.generatedAt) {
-    writeWrapped(`Generated ${new Date(report.generatedAt).toLocaleString()}`, {
+    writeWrapped(`Generated ${formatDateTimeGB(report.generatedAt)}`, {
       size: 9,
       color: [120, 120, 120],
       gap: 14,
