@@ -24,19 +24,19 @@ interface Props {
 
 const TYPES = ["annual", "study", "professional", "compassionate", "sick", "parental", "other"] as const;
 
-interface ImpactCell {
+export interface ImpactCell {
   before: string;
   after: string;
   changed: boolean;
 }
-interface ImpactRow {
+export interface ImpactRow {
   date: string;
   weekend: boolean;
   am: ImpactCell;
   pm: ImpactCell;
 }
 
-function buildImpactPreview(
+export function buildImpactPreview(
   startDate: string,
   endDate: string,
   halfDayStart: "am" | "pm" | null,
