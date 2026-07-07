@@ -42,14 +42,14 @@ const PAST_MONDAYS = [
 const rotaAssignments = PAST_MONDAYS.flatMap((d) => [
   {
     staff_id: USER_ID,
-    duty_type: null,
+    duty_type: "theatre",
     session_date: d,
     session: "am",
     theatre_session_id: SESSION_ID,
   },
   {
     staff_id: USER_ID,
-    duty_type: null,
+    duty_type: "theatre",
     session_date: d,
     session: "pm",
     theatre_session_id: SESSION_ID,
