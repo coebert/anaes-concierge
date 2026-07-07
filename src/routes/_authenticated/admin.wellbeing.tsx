@@ -128,9 +128,9 @@ function AdminWellbeingPage() {
 
         // Attrition inputs
         const totalDecisions = staffLeave.filter(
-          (l) => l.status === "approved" || l.status === "denied",
+          (l) => l.status === "approved" || l.status === "rejected",
         ).length;
-        const denials = staffLeave.filter((l) => l.status === "denied").length;
+        const denials = staffLeave.filter((l) => l.status === "rejected").length;
         const denialRate = totalDecisions > 0 ? denials / totalDecisions : 0;
         const shortNotice12m = data.changes.filter(
           (c) =>
