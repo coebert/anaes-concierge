@@ -314,7 +314,7 @@ export interface OnCallInequalityRow {
 }
 
 export function computeOnCallInequality(input: {
-  consultants: Array<{ id: string; ltft_days_off: string[] | null }>;
+  consultants: Array<{ id: string; ltft_days_off: readonly (string | number)[] | null }>;
   onCallRows: Array<{ staff_id: string }>;
 }): { rows: OnCallInequalityRow[]; giniOverall: number; byBand: Record<string, { median: number; count: number }> } {
   const counts = new Map<string, number>();
