@@ -26,25 +26,36 @@ export type SickSpellSummary = {
   days: number;
   rtwStatus: "not_started" | "completed" | "overdue";
   rtwFollowUp: string | null;
-  postWeekend: boolean; // spell begins on Monday
+  postWeekend: boolean;
   daysSinceLast: number | null;
 };
 
 export type AbsenceSummary = {
   bradford: BradfordResult;
-  spells: SickSpellSummary[];
+  spells: SickSpellSummary[]; // newest first
   openRtwCount: number;
   overdueRtwCount: number;
-  frequentShortSpells: boolean; // ≥3 spells ≤2 days each in last 6 months
+  frequentShortSpells: boolean;
   lastSpellDaysAgo: number | null;
 };
 
-/** Business days between end-of-spell and today; a rough "days late" figure. */
+function isoToUTC(iso: string): number {
+  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
+  return Date.UTC(y, m - 1, d);
+}
+
+function dayCount(spell: SickSpellRow): number {
+  const s = isoToUTC(spell.start_date);
+  const e = isoToUTC(spell.end_date);
+  let days = Math.round((e - s) / 86_400_000) + 1;
+  if (spell.half_day_start) days -= 0.5;
+  if (spell.half_day_end && s !== e) days -= 0.5;
+  return Math.max(0, days);
+}
+
 function workingDaysSince(dateIso: string, today: Date): number {
-  const [y, m, d] = dateIso.split("-").map((n) => parseInt(n, 10));
-  const from = new Date(Date.UTC(y, m - 1, d));
   let count = 0;
-  const cursor = new Date(from);
+  const cursor = new Date(isoToUTC(dateIso));
   cursor.setUTCDate(cursor.getUTCDate() + 1);
   while (cursor <= today) {
     const dow = cursor.getUTCDay();
@@ -54,21 +65,6 @@ function workingDaysSince(dateIso: string, today: Date): number {
   return count;
 }
 
-function dayCount(spell: SickSpellRow): number {
-  const [ay, am, ad] = spell.start_date.split("-").map((n) => parseInt(n, 10));
-  const [by, bm, bd] = spell.end_date.split("-").map((n) => parseInt(n, 10));
-  const s = Date.UTC(ay, am - 1, ad);
-  const e = Date.UTC(by, bm - 1, bd);
-  let days = Math.round((e - s) / 86_400_000) + 1;
-  if (spell.half_day_start) days -= 0.5;
-  if (spell.half_day_end && s !== e) days -= 0.5;
-  return Math.max(0, days);
-}
-
-/**
- * A Return-to-Work interview is overdue if the sickness has ended AND
- * more than 3 working days have passed with no interview logged.
- */
 const RTW_OVERDUE_WORKING_DAYS = 3;
 
 export function summariseAbsence(
@@ -98,7 +94,7 @@ export function summariseAbsence(
   }));
   const bradford = computeBradfordFactor(bradfordInput, today);
 
-  let lastEnd: string | null = null;
+  let prevEnd: string | null = null;
   const spellSummaries: SickSpellSummary[] = approved.map((s) => {
     const rtw = rtwByLeave.get(s.id);
     const endsInPast = s.end_date < todayIso;
@@ -107,23 +103,11 @@ export function summariseAbsence(
     else if (endsInPast && workingDaysSince(s.end_date, today) > RTW_OVERDUE_WORKING_DAYS)
       rtwStatus = "overdue";
 
-    const start = new Date(Date.UTC(
-      ...(s.start_date.split("-").map((n) => parseInt(n, 10)) as [number, number, number]),
-    ) as unknown as number);
     const dow = new Date(s.start_date + "T00:00:00Z").getUTCDay();
-
-    const daysSinceLast = lastEnd
-      ? Math.round(
-          (Date.UTC(
-            ...(s.start_date.split("-").map((n) => parseInt(n, 10)) as [number, number, number]),
-          ) -
-            Date.UTC(
-              ...(lastEnd.split("-").map((n) => parseInt(n, 10)) as [number, number, number]),
-            )) /
-            86_400_000,
-        )
+    const daysSinceLast = prevEnd
+      ? Math.round((isoToUTC(s.start_date) - isoToUTC(prevEnd)) / 86_400_000)
       : null;
-    lastEnd = s.end_date;
+    prevEnd = s.end_date;
 
     return {
       id: s.id,
@@ -134,8 +118,7 @@ export function summariseAbsence(
       rtwFollowUp: rtw?.follow_up_required ? rtw.follow_up_date : null,
       postWeekend: dow === 1,
       daysSinceLast,
-      _dummy: start,
-    } as SickSpellSummary;
+    };
   });
 
   const openRtwCount = spellSummaries.filter((s) => s.rtwStatus !== "completed").length;
@@ -143,20 +126,17 @@ export function summariseAbsence(
 
   const sixMonthsAgo = new Date(today);
   sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6);
-  const recentShort = spellSummaries.filter(
-    (s) => s.start_date >= sixMonthsAgo.toISOString().slice(0, 10) && s.days <= 2,
-  );
-  const frequentShortSpells = recentShort.length >= 3;
+  const sixCutoff = sixMonthsAgo.toISOString().slice(0, 10);
+  const frequentShortSpells =
+    spellSummaries.filter((s) => s.start_date >= sixCutoff && s.days <= 2).length >= 3;
 
-  const lastSpellDaysAgo = lastEnd
-    ? Math.round((today.getTime() - Date.UTC(
-        ...(lastEnd as string).split("-").map((n) => parseInt(n, 10)) as unknown as [number, number, number],
-      )) / 86_400_000)
+  const lastSpellDaysAgo = prevEnd
+    ? Math.round((today.getTime() - isoToUTC(prevEnd)) / 86_400_000)
     : null;
 
   return {
     bradford,
-    spells: spellSummaries.reverse(), // newest first for display
+    spells: spellSummaries.reverse(),
     openRtwCount,
     overdueRtwCount,
     frequentShortSpells,
