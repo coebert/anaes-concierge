@@ -31,6 +31,7 @@ import {
   AreaChart,
 } from "recharts";
 import { Download, Database, AlertCircle, FileText } from "lucide-react";
+import { formatDateTimeGB } from "@/lib/utils";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   DropdownMenu,
