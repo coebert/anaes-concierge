@@ -118,7 +118,7 @@ export function SpaStrip({
               {shareText !== null && (
                 <span
                   data-testid={`spa-pct-${d}`}
-                  className="text-[9px] font-normal opacity-90 tabular-nums"
+                  className={CELL_SHARE_TEXT}
                 >
                   {shareText}
                 </span>
