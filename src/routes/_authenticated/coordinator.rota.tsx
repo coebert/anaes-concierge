@@ -57,7 +57,8 @@ function addDays(d: Date, n: number) {
 }
 function iso(d: Date) { return toISODateLocal(d); }
 function fmt(d: Date) {
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  // British DD/MM/YYYY with weekday context, e.g. "Mon 26/05/2026".
+  return formatDateWithWeekdayGB(d);
 }
 
 function RotaGridPage() {
