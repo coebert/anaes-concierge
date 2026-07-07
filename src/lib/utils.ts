@@ -74,15 +74,15 @@ export function formatDateGB(value: Date | string | null | undefined): string {
 }
 
 /**
- * Format a date as a long British label, e.g. "Monday, 26 May".
- * Returns `"—"` for invalid input. Timezone-safe.
+ * Format a date as a long British label with the numeric date always in
+ * DD/MM/YYYY, e.g. "Monday, 26/05/2026". Returns `"—"` for invalid input.
+ * Timezone-safe.
  */
 export function formatDateLongGB(value: Date | string | null | undefined): string {
   const d = parseDateLocal(value);
   if (!d) return "—";
-  return d.toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  const wd = d.toLocaleDateString("en-GB", { weekday: "long" });
+  return `${wd}, ${formatDateGB(d)}`;
 }
 
 /**
