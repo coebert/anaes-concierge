@@ -2,6 +2,7 @@
 // Loaded lazily from the route handler (never at module scope in route files).
 import webpush from "web-push";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { formatDateWithWeekdayGB } from "@/lib/utils";
 
 type ChangeLogRow = {
   id: string;
