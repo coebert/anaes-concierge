@@ -1,5 +1,13 @@
 import { WEEKDAY_LABELS } from "@/lib/staff-working-patterns";
 
+/**
+ * How each populated cell displays its share of total sessions:
+ *   - "percent": rounded percentage of total (default, matches historical behaviour).
+ *   - "count":   raw session count for that weekday.
+ * Empty cells (count === 0 or totalSessions === 0) are suppressed in both modes.
+ */
+export type StripDisplayMode = "percent" | "count";
+
 // Shared column geometry — kept in sync with the sibling rows rendered by
 // the staff working-patterns route (WeekdayHeader / AmPmStrip live there).
 export const ROW_CLASS = "flex items-center gap-2 text-xs";
