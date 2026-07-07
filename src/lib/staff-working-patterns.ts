@@ -293,6 +293,13 @@ export function computeConsultantPattern(
     spaPmWeekdays: pickRegularSpa(spaPmDates),
     totalWorkingSessions: totalWorking,
     totalOnCallSessions: totalOnCall,
+    totalSpaSessions:
+      spaAmDates.reduce((n, s) => n + s.size, 0) +
+      spaPmDates.reduce((n, s) => n + s.size, 0),
+    spaCountsByWeekday: Array.from({ length: 7 }, (_, d) =>
+      spaAmDates[d].size + spaPmDates[d].size,
+    ),
+    onCallCountsByWeekday: Array.from({ length: 7 }, (_, d) => onCallDates[d].size),
     regularityThreshold: threshold,
   };
 }
