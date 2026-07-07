@@ -34,7 +34,9 @@ import {
   ROW_LABEL_CLASS,
   STRIP_CLASS,
   CELL_CLASS,
+  type StripDisplayMode,
 } from "@/components/working-pattern-strips";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/_authenticated/staff/working-patterns")({
   head: () => ({ meta: [{ title: "Staff working patterns — Salisbury Anaesthetics Rota" }] }),
