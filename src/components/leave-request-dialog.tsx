@@ -161,24 +161,22 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setConflicts(null); }} />
             </div>
             <div>
-              <Label>Half day (start)</Label>
+              <Label>Start day</Label>
               <Select value={halfDayStart} onValueChange={(v) => { setHalfDayStart(v as typeof halfDayStart); setConflicts(null); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Full day</SelectItem>
-                  <SelectItem value="am">PM only (skip AM)</SelectItem>
-                  <SelectItem value="pm">AM only (skip PM)</SelectItem>
+                  <SelectItem value="pm">Afternoon only (skip AM)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Half day (end)</Label>
+              <Label>End day</Label>
               <Select value={halfDayEnd} onValueChange={(v) => { setHalfDayEnd(v as typeof halfDayEnd); setConflicts(null); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Full day</SelectItem>
-                  <SelectItem value="am">AM only</SelectItem>
-                  <SelectItem value="pm">PM only</SelectItem>
+                  <SelectItem value="am">Morning only (skip PM)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
