@@ -132,6 +132,15 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
   const otherConflicts = (conflicts ?? []).filter((c) => c.type === "other_leave");
 
+  const impactRows = buildImpactPreview(
+    startDate,
+    endDate,
+    halfDayStart === "none" ? null : halfDayStart,
+    halfDayEnd === "none" ? null : halfDayEnd,
+    ownConflicts,
+    conflicts !== null,
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
