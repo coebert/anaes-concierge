@@ -122,23 +122,23 @@ describe("evaluateCompetency", () => {
     expect(issues[0].message).toMatch(/expires in 14 days/);
   });
 
-  it("supervised-only sign-off for solo role → warning", () => {
+  it("supervised-only sign-off for solo role → error on required", () => {
     const issues = evaluateCompetency({
       staffId: "s1", specialtyId: "spec-paeds", role: "solo", onDate: "2025-06-01",
       requirements: [req("spec-paeds", "paeds")],
       staffCompetencies: [hold("s1", "paeds", { level: "supervised" })],
       competencies,
     });
-    expect(issues.some((i) => i.severity === "warning" && /supervised/.test(i.message))).toBe(true);
+    expect(issues.some((i) => i.severity === "error" && /supervised/.test(i.message))).toBe(true);
   });
 
-  it("revoked holding is treated as missing", () => {
+  it("revoked holding is treated as missing (error)", () => {
     const issues = evaluateCompetency({
       staffId: "s1", specialtyId: "spec-paeds", role: "solo", onDate: "2025-06-01",
       requirements: [req("spec-paeds", "paeds")],
       staffCompetencies: [hold("s1", "paeds", { revoked_at: "2025-01-01" })],
       competencies,
     });
-    expect(issues[0].severity).toBe("warning");
+    expect(issues[0].severity).toBe("error");
   });
 });
