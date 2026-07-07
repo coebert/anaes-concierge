@@ -170,20 +170,12 @@ export function CellDialog({
       return (data ?? []) as CompetencyRequirement[];
     },
   });
-  const relevantStaffIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const a of rawAssigns ?? []) ids.add(a.staff_id);
-    if (newStaffRef.current) ids.add(newStaffRef.current);
-    return Array.from(ids);
-  }, [rawAssigns]);
   const { data: staffHoldings } = useQuery({
-    queryKey: ["staff-competencies-for-cell", relevantStaffIds.sort().join(",")],
-    enabled: relevantStaffIds.length > 0,
+    queryKey: ["staff-competencies-all-active"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_competencies")
-        .select("id,staff_id,competency_id,level,granted_at,expires_at,revoked_at,notes")
-        .in("staff_id", relevantStaffIds);
+        .select("id,staff_id,competency_id,level,granted_at,expires_at,revoked_at,notes");
       if (error) throw error;
       return (data ?? []) as StaffCompetency[];
     },
