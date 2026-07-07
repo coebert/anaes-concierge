@@ -260,6 +260,27 @@ function WorkingPatternsPage() {
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="strip-display">Cell values</Label>
+              <ToggleGroup
+                id="strip-display"
+                type="single"
+                value={displayMode}
+                onValueChange={(v) => {
+                  if (v === "percent" || v === "count") setDisplayMode(v);
+                }}
+                variant="outline"
+                size="sm"
+                aria-label="Show SPA and on-call cells as percentages or raw counts"
+              >
+                <ToggleGroupItem value="percent" aria-label="Show percentages">
+                  %
+                </ToggleGroupItem>
+                <ToggleGroupItem value="count" aria-label="Show raw counts">
+                  #
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
         </CardContent>
       </Card>
