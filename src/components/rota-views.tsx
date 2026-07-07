@@ -24,7 +24,7 @@ import {
   ChevronUp,
   User,
 } from "lucide-react";
-import { cn, parseDateLocal, toISODateLocal } from "@/lib/utils";
+import { cn, parseDateLocal, toISODateLocal, formatDateGB, formatDateWithWeekdayGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
