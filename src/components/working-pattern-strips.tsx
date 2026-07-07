@@ -16,10 +16,16 @@ export type StripDisplayMode = "percent" | "count";
 // of squeezing "AM+PM" + "67%" into an unreadable sliver.
 export const ROW_CLASS = "flex items-center gap-1.5 sm:gap-2 text-xs";
 export const ROW_LABEL_CLASS =
-  "w-14 sm:w-24 shrink-0 truncate text-[11px] sm:text-xs text-muted-foreground";
+  "w-14 sm:w-24 shrink-0 truncate text-[11px] leading-tight sm:text-[13px] sm:leading-snug md:text-sm text-muted-foreground";
 export const STRIP_CLASS = "flex flex-1 min-w-0 gap-0.5 sm:gap-1";
 export const CELL_CLASS =
   "flex-1 min-w-[2.75rem] sm:min-w-0 overflow-hidden whitespace-nowrap";
+// Reusable per-breakpoint text tokens so every strip renders labels and
+// share-values at the same size step across mobile → sm → md.
+const CELL_LABEL_TEXT =
+  "text-[10px] leading-none sm:text-[11px] sm:leading-tight md:text-[12px]";
+const CELL_SHARE_TEXT =
+  "text-[9px] leading-none sm:text-[10px] md:text-[11px] font-normal opacity-90 tabular-nums";
 
 /**
  * Wrapper that lets the whole stack of weekday strips (WeekdayHeader,
