@@ -105,7 +105,7 @@ function AdminAccessRequestsPage() {
                       {r.message || "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(r.created_at).toLocaleString()}
+                      {formatDateTimeGB(r.created_at)}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
