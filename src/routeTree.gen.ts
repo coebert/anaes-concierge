@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
+import { Route as AuthenticatedWellbeingRouteImport } from './routes/_authenticated/wellbeing'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
@@ -109,6 +110,11 @@ const ApiAuditToolRoute = ApiAuditToolRouteImport.update({
   id: '/api/audit-tool',
   path: '/api/audit-tool',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWellbeingRoute = AuthenticatedWellbeingRouteImport.update({
+  id: '/wellbeing',
+  path: '/wellbeing',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedTraineesRoute = AuthenticatedTraineesRouteImport.update({
   id: '/trainees',
@@ -430,6 +436,7 @@ export interface FileRoutesByFullPath {
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
@@ -490,6 +497,7 @@ export interface FileRoutesByTo {
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
@@ -554,6 +562,7 @@ export interface FileRoutesById {
   '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/_authenticated/me': typeof AuthenticatedMeRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
+  '/_authenticated/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -619,6 +628,7 @@ export interface FileRouteTypes {
     | '/leave'
     | '/me'
     | '/trainees'
+    | '/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
     | '/admin/absence'
@@ -679,6 +689,7 @@ export interface FileRouteTypes {
     | '/leave'
     | '/me'
     | '/trainees'
+    | '/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
     | '/'
@@ -742,6 +753,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leave'
     | '/_authenticated/me'
     | '/_authenticated/trainees'
+    | '/_authenticated/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
     | '/_authenticated/'
@@ -865,6 +877,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/audit-tool'
       preLoaderRoute: typeof ApiAuditToolRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/wellbeing': {
+      id: '/_authenticated/wellbeing'
+      path: '/wellbeing'
+      fullPath: '/wellbeing'
+      preLoaderRoute: typeof AuthenticatedWellbeingRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/trainees': {
       id: '/_authenticated/trainees'
@@ -1303,6 +1322,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
+  AuthenticatedWellbeingRoute: typeof AuthenticatedWellbeingRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAbsenceRoute: typeof AuthenticatedAdminAbsenceRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
@@ -1348,6 +1368,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
+  AuthenticatedWellbeingRoute: AuthenticatedWellbeingRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAbsenceRoute: AuthenticatedAdminAbsenceRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
