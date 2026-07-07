@@ -93,21 +93,23 @@ describe("WeekdayStrip percentage rendering (on-call)", () => {
     }
   });
 
-  it("renders count / total percentages on highlighted on-call cells", () => {
-    // 10 on-call sessions total: 6 on Tuesday, 4 on Friday.
+  it("renders count / total percentages on every on-call weekday that has sessions", () => {
+    // 10 on-call sessions total: 6 on Tue (regular), 3 on Fri (regular),
+    // and 1 stray Wed shift that didn't hit the regularity threshold.
     render(
       <WeekdayStrip
         label="On-call"
         highlighted={[2, 5]}
         tone="amber"
-        countsByWeekday={[0, 0, 6, 0, 0, 4, 0]}
+        countsByWeekday={[0, 0, 6, 1, 0, 3, 0]}
         totalSessions={10}
       />,
     );
     expect(screen.getByTestId("weekday-pct-2").textContent).toBe("60%");
-    expect(screen.getByTestId("weekday-pct-5").textContent).toBe("40%");
-    // Non-highlighted weekdays render no %
-    for (const d of [1, 3, 4]) {
+    expect(screen.getByTestId("weekday-pct-3").textContent).toBe("10%");
+    expect(screen.getByTestId("weekday-pct-5").textContent).toBe("30%");
+    // Weekdays with zero on-call sessions still render no %.
+    for (const d of [1, 4]) {
       expect(screen.queryByTestId(`weekday-pct-${d}`)).toBeNull();
     }
   });
