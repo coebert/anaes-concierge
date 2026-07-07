@@ -188,8 +188,10 @@ export function WeekdayStrip({
               data-testid={`weekday-cell-${d}`}
               className={
                 CELL_CLASS +
-                " flex flex-col items-center justify-center rounded border text-[11px] font-medium leading-none px-0.5 " +
-                (shareText !== null ? "py-0.5" : "h-6") +
+                " flex flex-col items-center justify-center rounded border font-medium px-0.5 " +
+                CELL_LABEL_TEXT +
+                " " +
+                (shareText !== null ? "py-0.5 sm:py-1" : "h-6 sm:h-7") +
                 " " +
                 (active
                   ? highlightClass
@@ -207,7 +209,7 @@ export function WeekdayStrip({
               {shareText !== null && (
                 <span
                   data-testid={`weekday-pct-${d}`}
-                  className="text-[9px] font-normal opacity-90 tabular-nums"
+                  className={CELL_SHARE_TEXT}
                 >
                   {shareText}
                 </span>
