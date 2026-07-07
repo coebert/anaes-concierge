@@ -27,6 +27,7 @@ import {
   type StaffCompetency,
 } from "@/features/competencies/competencies";
 import { useServerFn } from "@tanstack/react-start";
+import { CompetencyMismatchTooltip } from "./CompetencyMismatchTooltip";
 import {
   SeverityIcon,
   type SessionHalf,
