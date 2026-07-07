@@ -171,13 +171,51 @@ function ApproveLeavePage() {
 }
 
 
-function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: string; onChanged: () => void }) {
+function LeaveCard({
+  row,
+  profile,
+  allowance,
+  studyRows,
+  yearStart,
+  onChanged,
+}: {
+  row: LeaveRow;
+  profile: StaffProfile;
+  allowance: AllowanceRow | undefined;
+  studyRows: StudyLeaveRow[];
+  yearStart: string;
+  onChanged: () => void;
+}) {
   const { user } = useAuth();
+  const staffName = profile.name;
   const notifyDecided = useServerFn(notifyLeaveDecided);
   const [conflicts, setConflicts] = useState<LeaveConflict[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [acting, setActing] = useState(false);
+  const [costInput, setCostInput] = useState<string>(
+    row.study_cost_gbp != null ? String(row.study_cost_gbp) : "",
+  );
+
+  const isStudy = row.type === "study";
+  const requestDays = useMemo(() => leaveWorkingDays(row), [row]);
+  const requestCostGbp = useMemo(() => {
+    const n = Number.parseFloat(costInput);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [costInput]);
+
+  const baseBudget = useMemo(
+    () => (isStudy
+      ? computeStudyBudget(row.staff_id, studyRows, allowance, yearStart, row.id)
+      : null),
+    [isStudy, row.staff_id, row.id, studyRows, allowance, yearStart],
+  );
+  const previewBudget = useMemo(
+    () => (baseBudget
+      ? previewAfterDecision(baseBudget, { days: requestDays, costGbp: requestCostGbp }, "approved")
+      : null),
+    [baseBudget, requestDays, requestCostGbp],
+  );
 
   useEffect(() => {
     if (row.status !== "pending") return;
@@ -192,9 +230,24 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     ).then((c) => { setConflicts(c); setLoading(false); });
   }, [row.id]);
 
+  const persistCost = async (): Promise<boolean> => {
+    if (!isStudy) return true;
+    if (costInput === "" && row.study_cost_gbp == null) return true;
+    const next = costInput === "" ? null : requestCostGbp;
+    if (next === row.study_cost_gbp) return true;
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({ study_cost_gbp: next })
+      .eq("id", row.id);
+    if (error) { toast.error(error.message); return false; }
+    return true;
+  };
+
   const decide = async (status: "approved" | "rejected", reserveList = false) => {
     if (!user) return;
     setActing(true);
+    const costOk = await persistCost();
+    if (!costOk) { setActing(false); return; }
     const { error } = await supabase
       .from("leave_requests")
       .update({
@@ -211,6 +264,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
+
 
   const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
   const otherConflicts = (conflicts ?? []).filter((c) => c.type === "other_leave");
