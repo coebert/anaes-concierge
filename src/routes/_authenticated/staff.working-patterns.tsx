@@ -353,7 +353,10 @@ function StaffCard({
         <LocationBreakdown byLocation={summary.byLocation} total={totalByLoc} />
         <SpecialtyList bySpecialty={summary.bySpecialty} />
         {summary.consultantPattern && (
-          <ConsultantPatternBlock pattern={summary.consultantPattern} />
+          <ConsultantPatternBlock
+            pattern={summary.consultantPattern}
+            displayMode={displayMode}
+          />
         )}
       </CardContent>
     </Card>
