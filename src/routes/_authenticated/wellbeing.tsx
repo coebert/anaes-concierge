@@ -110,8 +110,8 @@ function WellbeingPage() {
       sickSpells.map((s) => ({
         start_date: s.start_date,
         end_date: s.end_date,
-        half_day_start: s.half_day_start,
-        half_day_end: s.half_day_end,
+        half_day_start: !!s.half_day_start,
+        half_day_end: !!s.half_day_end,
       })),
     );
     return computeWellbeing({
@@ -119,7 +119,10 @@ function WellbeingPage() {
       assignments: data.assignments,
       changes: data.changes,
       leave: data.leave,
-      exceptions: data.exceptions,
+      exceptions: data.exceptions.map((e) => ({
+        staff_id: (e as { trainee_id: string }).trainee_id,
+        event_date: e.event_date,
+      })),
       bradfordScore: bradford.score,
     });
   }, [data, user]);
