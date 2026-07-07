@@ -227,6 +227,13 @@ function TraineeDetailPage() {
 
       <ExceptionReportsCard staffId={staffId} />
 
+      <AbsenceCard
+        staffId={staffId}
+        staffName={data.profile.full_name || data.profile.email || null}
+      />
+
+
+
 
 
 
