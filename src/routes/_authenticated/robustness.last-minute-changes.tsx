@@ -99,11 +99,16 @@ const LOCAL_TZ = typeof Intl !== "undefined"
   ? Intl.DateTimeFormat().resolvedOptions().timeZone
   : "UTC";
 
+// DD/MM/YYYY, HH:mm pinned to the user's local IANA timezone so the "hours
+// before" duration always matches the two absolute instants shown alongside.
+// eslint-disable-next-line no-restricted-syntax -- explicit en-GB DD/MM/YYYY with pinned timeZone.
 const localDateTimeFmt = new Intl.DateTimeFormat("en-GB", {
   timeZone: LOCAL_TZ,
   year: "numeric", month: "2-digit", day: "2-digit",
   hour: "2-digit", minute: "2-digit",
 });
+// Timezone abbreviation only ("BST", "GMT") — no date/time content.
+// eslint-disable-next-line no-restricted-syntax
 const localTzAbbrFmt = new Intl.DateTimeFormat("en-GB", {
   timeZone: LOCAL_TZ, timeZoneName: "short", hour: "2-digit",
 });

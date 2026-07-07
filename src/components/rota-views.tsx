@@ -144,9 +144,12 @@ export function PeriodNav({
   const label = (() => {
     if (mode === "day") {
       // British DD/MM/YYYY with full weekday, e.g. "Monday, 26/05/2026".
+      // eslint-disable-next-line no-restricted-syntax -- weekday name only; numeric date comes from formatDateGB.
       const wd = anchor.toLocaleDateString("en-GB", { weekday: "long" });
       return `${wd}, ${formatDateGB(anchor)}`;
     }
+    // Month-only navigation label (e.g. "May 2026") — not a full date.
+    // eslint-disable-next-line no-restricted-syntax
     if (mode === "month") return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     const ws = startOfWeek(anchor);
     return `Week of ${fmt(ws)}`;

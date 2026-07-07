@@ -141,6 +141,8 @@ function AdminDashboardPage() {
         const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
         months.push({
           key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+          // Month-only chart-axis label (e.g. "Jul 26") — not a full date.
+          // eslint-disable-next-line no-restricted-syntax
           label: d.toLocaleString("en-GB", { month: "short", year: "2-digit" }),
           year: d.getFullYear(),
           month: d.getMonth(),
@@ -564,6 +566,8 @@ function AdminDashboardPage() {
       }
       const avgPct = n > 0 ? pctSum / n : 0;
       const [yyyy, mm] = m.split("-");
+      // Month-only chart-axis label (e.g. "Jul 26") — not a full date.
+      // eslint-disable-next-line no-restricted-syntax
       const label = new Date(parseInt(yyyy), parseInt(mm) - 1, 1).toLocaleString("en-GB", { month: "short", year: "2-digit" });
       return {
         month: m,
