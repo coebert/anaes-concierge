@@ -60,6 +60,7 @@ import { Route as AuthenticatedAdminClwrotaStatusRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
+import { Route as AuthenticatedAdminAbsenceRouteImport } from './routes/_authenticated/admin.absence'
 import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
 import { Route as ApiPublicHooksRpcAccessAlertsRouteImport } from './routes/api/public/hooks/rpc-access-alerts'
 import { Route as ApiPublicHooksPushDispatchRouteImport } from './routes/api/public/hooks/push-dispatch'
@@ -353,6 +354,12 @@ const AuthenticatedAdminAccessRequestsRoute =
     path: '/admin/access-requests',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAbsenceRoute =
+  AuthenticatedAdminAbsenceRouteImport.update({
+    id: '/admin/absence',
+    path: '/admin/absence',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const ApiPublicHooksSeedClwrotaVaultRoute =
   ApiPublicHooksSeedClwrotaVaultRouteImport.update({
     id: '/api/public/hooks/seed-clwrota-vault',
@@ -411,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
+  '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
@@ -469,6 +477,7 @@ export interface FileRoutesByTo {
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
@@ -530,6 +539,7 @@ export interface FileRoutesById {
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/_authenticated/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
@@ -591,6 +601,7 @@ export interface FileRouteTypes {
     | '/trainees'
     | '/api/audit-tool'
     | '/api/chat'
+    | '/admin/absence'
     | '/admin/access-requests'
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
@@ -649,6 +660,7 @@ export interface FileRouteTypes {
     | '/api/audit-tool'
     | '/api/chat'
     | '/'
+    | '/admin/absence'
     | '/admin/access-requests'
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
@@ -709,6 +721,7 @@ export interface FileRouteTypes {
     | '/api/audit-tool'
     | '/api/chat'
     | '/_authenticated/'
+    | '/_authenticated/admin/absence'
     | '/_authenticated/admin/access-requests'
     | '/_authenticated/admin/audit-tool'
     | '/_authenticated/admin/clwrota-metrics'
@@ -1128,6 +1141,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAccessRequestsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/absence': {
+      id: '/_authenticated/admin/absence'
+      path: '/admin/absence'
+      fullPath: '/admin/absence'
+      preLoaderRoute: typeof AuthenticatedAdminAbsenceRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/api/public/hooks/seed-clwrota-vault': {
       id: '/api/public/hooks/seed-clwrota-vault'
       path: '/api/public/hooks/seed-clwrota-vault'
@@ -1233,6 +1253,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminAbsenceRoute: typeof AuthenticatedAdminAbsenceRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
   AuthenticatedAdminAuditToolRoute: typeof AuthenticatedAdminAuditToolRoute
   AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
@@ -1276,6 +1297,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMeRoute: AuthenticatedMeRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminAbsenceRoute: AuthenticatedAdminAbsenceRoute,
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
   AuthenticatedAdminAuditToolRoute: AuthenticatedAdminAuditToolRoute,
   AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,

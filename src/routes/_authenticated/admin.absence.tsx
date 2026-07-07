@@ -26,7 +26,6 @@ import {
 import { PageLoading } from "@/components/loading";
 import { StatCard } from "@/components/stat-card";
 import { HeartPulse, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
-import { compareBySurname } from "@/lib/name-sort";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 import { RTWInterviewDialog } from "@/components/absence/RTWInterviewDialog";
 import {
