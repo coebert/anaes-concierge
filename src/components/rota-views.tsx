@@ -142,7 +142,11 @@ export function PeriodNav({
   anchor, mode, onChange,
 }: { anchor: Date; mode: ViewMode; onChange: (d: Date) => void }) {
   const label = (() => {
-    if (mode === "day") return anchor.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    if (mode === "day") {
+      // British DD/MM/YYYY with full weekday, e.g. "Monday, 26/05/2026".
+      const wd = anchor.toLocaleDateString("en-GB", { weekday: "long" });
+      return `${wd}, ${formatDateGB(anchor)}`;
+    }
     if (mode === "month") return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     const ws = startOfWeek(anchor);
     return `Week of ${fmt(ws)}`;
