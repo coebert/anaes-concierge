@@ -45,6 +45,7 @@ import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_auth
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
+import { Route as AuthenticatedAdminWellbeingRouteImport } from './routes/_authenticated/admin.wellbeing'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
 import { Route as AuthenticatedAdminTheatreAliasesRouteImport } from './routes/_authenticated/admin.theatre-aliases'
@@ -269,6 +270,12 @@ const AuthenticatedChatConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => AuthenticatedChatRoute,
   } as any)
+const AuthenticatedAdminWellbeingRoute =
+  AuthenticatedAdminWellbeingRouteImport.update({
+    id: '/admin/wellbeing',
+    path: '/admin/wellbeing',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminTheatresRoute =
   AuthenticatedAdminTheatresRouteImport.update({
     id: '/admin/theatres',
@@ -467,6 +474,7 @@ export interface FileRoutesByFullPath {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -530,6 +538,7 @@ export interface FileRoutesByTo {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -596,6 +605,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/_authenticated/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
@@ -662,6 +672,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/wellbeing'
     | '/chat/$conversationId'
     | '/coordinator/duties'
     | '/coordinator/leave'
@@ -725,6 +736,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/wellbeing'
     | '/chat/$conversationId'
     | '/coordinator/duties'
     | '/coordinator/leave'
@@ -790,6 +802,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatre-aliases'
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
+    | '/_authenticated/admin/wellbeing'
     | '/_authenticated/chat/$conversationId'
     | '/_authenticated/coordinator/duties'
     | '/_authenticated/coordinator/leave'
@@ -1087,6 +1100,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedChatRoute
     }
+    '/_authenticated/admin/wellbeing': {
+      id: '/_authenticated/admin/wellbeing'
+      path: '/admin/wellbeing'
+      fullPath: '/admin/wellbeing'
+      preLoaderRoute: typeof AuthenticatedAdminWellbeingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/theatres': {
       id: '/_authenticated/admin/theatres'
       path: '/admin/theatres'
@@ -1365,6 +1385,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminTheatreAliasesRoute: typeof AuthenticatedAdminTheatreAliasesRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
+  AuthenticatedAdminWellbeingRoute: typeof AuthenticatedAdminWellbeingRoute
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
@@ -1413,6 +1434,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminTheatreAliasesRoute: AuthenticatedAdminTheatreAliasesRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
+  AuthenticatedAdminWellbeingRoute: AuthenticatedAdminWellbeingRoute,
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
