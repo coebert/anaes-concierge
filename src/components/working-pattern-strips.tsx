@@ -80,8 +80,10 @@ export function SpaStrip({
   const am = new Set(amDays);
   const pm = new Set(pmDays);
   return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>SPA</div>
+    <div className={ROW_CLASS} role="row">
+      <div className={ROW_LABEL_CLASS} role="rowheader">
+        SPA
+      </div>
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const a = am.has(d);
@@ -101,14 +103,28 @@ export function SpaStrip({
               : pct !== null
                 ? `${pct}%`
                 : null;
+          const description = active
+            ? `SPA ${a && p ? "morning and afternoon" : a ? "morning" : "afternoon"}` +
+              (hasShare
+                ? `, ${count} of ${totalSessions} SPA sessions, ${pct} percent`
+                : "")
+            : hasShare
+              ? `${count} of ${totalSessions} SPA sessions, ${pct} percent, below regularity threshold`
+              : "no regular SPA session";
+          const focusable = active || hasShare;
           return (
             <div
               key={d}
               data-testid={`spa-cell-${d}`}
+              role="gridcell"
+              tabIndex={focusable ? 0 : -1}
+              aria-label={`${WEEKDAY_LABELS[d]}: ${description}`}
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border font-medium px-0.5 " +
                 CELL_LABEL_TEXT +
+                " " +
+                CELL_FOCUS_CLASS +
                 " " +
                 (shareText !== null ? "py-0.5 sm:py-1" : "h-6 sm:h-7") +
                 " " +
@@ -128,11 +144,12 @@ export function SpaStrip({
                     : "")
               }
             >
-              <span>{label}</span>
+              <span aria-hidden="true">{label}</span>
               {shareText !== null && (
                 <span
                   data-testid={`spa-pct-${d}`}
                   className={CELL_SHARE_TEXT}
+                  aria-hidden="true"
                 >
                   {shareText}
                 </span>
