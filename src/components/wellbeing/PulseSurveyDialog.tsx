@@ -19,6 +19,8 @@ export interface PulseCycle {
   question_1: string;
   question_2: string;
   question_3: string;
+  opens_at?: string;
+  closes_at?: string;
 }
 
 const OPTIONS = [1, 2, 3, 4, 5];
