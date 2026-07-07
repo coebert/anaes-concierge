@@ -56,7 +56,7 @@ describe("classifyRequirement", () => {
   it("on_track early in the year with matching pace", () => {
     // 3 months in of 12 → expect ~25%. Actual 30% → on_track.
     const r = classifyRequirement({
-      requirement: req("cases", 300), progress: prog("cases", 90, "2027-04-01"),
+      requirement: req("cases", 300), progress: prog("cases", 90, "2027-07-01"),
       today: "2026-10-01",
     });
     expect(r.status).toBe("on_track");
