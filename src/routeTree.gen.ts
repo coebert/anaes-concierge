@@ -19,6 +19,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
 import { Route as AuthenticatedWellbeingRouteImport } from './routes/_authenticated/wellbeing'
 import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
+import { Route as AuthenticatedRecognitionRouteImport } from './routes/_authenticated/recognition'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedGlossaryRouteImport } from './routes/_authenticated/glossary'
@@ -121,6 +122,12 @@ const AuthenticatedTraineesRoute = AuthenticatedTraineesRouteImport.update({
   path: '/trainees',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedRecognitionRoute =
+  AuthenticatedRecognitionRouteImport.update({
+    id: '/recognition',
+    path: '/recognition',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
   id: '/me',
   path: '/me',
@@ -435,6 +442,7 @@ export interface FileRoutesByFullPath {
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
+  '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
@@ -496,6 +504,7 @@ export interface FileRoutesByTo {
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/me': typeof AuthenticatedMeRoute
+  '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
@@ -561,6 +570,7 @@ export interface FileRoutesById {
   '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
   '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/recognition': typeof AuthenticatedRecognitionRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/_authenticated/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
@@ -627,6 +637,7 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/leave'
     | '/me'
+    | '/recognition'
     | '/trainees'
     | '/wellbeing'
     | '/api/audit-tool'
@@ -688,6 +699,7 @@ export interface FileRouteTypes {
     | '/glossary'
     | '/leave'
     | '/me'
+    | '/recognition'
     | '/trainees'
     | '/wellbeing'
     | '/api/audit-tool'
@@ -752,6 +764,7 @@ export interface FileRouteTypes {
     | '/_authenticated/glossary'
     | '/_authenticated/leave'
     | '/_authenticated/me'
+    | '/_authenticated/recognition'
     | '/_authenticated/trainees'
     | '/_authenticated/wellbeing'
     | '/api/audit-tool'
@@ -890,6 +903,13 @@ declare module '@tanstack/react-router' {
       path: '/trainees'
       fullPath: '/trainees'
       preLoaderRoute: typeof AuthenticatedTraineesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/recognition': {
+      id: '/_authenticated/recognition'
+      path: '/recognition'
+      fullPath: '/recognition'
+      preLoaderRoute: typeof AuthenticatedRecognitionRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/me': {
@@ -1321,6 +1341,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedRecognitionRoute: typeof AuthenticatedRecognitionRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedWellbeingRoute: typeof AuthenticatedWellbeingRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -1367,6 +1388,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedRecognitionRoute: AuthenticatedRecognitionRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedWellbeingRoute: AuthenticatedWellbeingRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
