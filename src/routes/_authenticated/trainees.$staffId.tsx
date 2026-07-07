@@ -554,4 +554,147 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
   );
 }
 
+function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: string | null }) {
+  const [rtwSpell, setRtwSpell] = useState<{ id: string; start_date: string; end_date: string } | null>(null);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["trainee-absence", staffId],
+    queryFn: async () => {
+      const [leaveRes, rtwRes] = await Promise.all([
+        supabase
+          .from("leave_requests")
+          .select("id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
+          .eq("staff_id", staffId)
+          .eq("type", "sick")
+          .eq("status", "approved")
+          .range(0, 999),
+        supabase
+          .from("return_to_work_interviews")
+          .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
+          .eq("staff_id", staffId)
+          .range(0, 999),
+      ]);
+      if (leaveRes.error) throw leaveRes.error;
+      if (rtwRes.error) throw rtwRes.error;
+      return summariseAbsence(
+        (leaveRes.data ?? []) as SickSpellRow[],
+        (rtwRes.data ?? []) as RtwRow[],
+      );
+    },
+  });
+
+  if (isLoading || !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Absence & wellbeing</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">Loading…</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const b = data.bradford;
+  const bandInfo = BAND_THRESHOLDS[b.band];
+  const recent = data.spells.slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <HeartPulse className="h-4 w-4 text-primary" /> Absence & wellbeing
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Bradford Factor {b.score} ({bandInfo.label}) · {b.spellCount} spell
+          {b.spellCount === 1 ? "" : "s"} · {b.totalDays}d over 12 months
+          {data.overdueRtwCount > 0 ? ` · ${data.overdueRtwCount} overdue RTW` : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {b.spellCount === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No sickness spells in the last 12 months.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              <Badge
+                variant={
+                  b.band === "critical" || b.band === "red"
+                    ? "destructive"
+                    : b.band === "amber"
+                      ? "secondary"
+                      : "default"
+                }
+              >
+                {bandInfo.label}: {bandInfo.action}
+              </Badge>
+              {data.frequentShortSpells ? (
+                <Badge variant="outline">Frequent short spells</Badge>
+              ) : null}
+            </div>
+            <ul className="space-y-1 text-xs">
+              {recent.map((s) => (
+                <li key={s.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate">
+                    {formatDateWithWeekdayGB(s.start_date)} → {formatDateWithWeekdayGB(s.end_date)} ·{" "}
+                    {s.days}d
+                    {s.postWeekend ? (
+                      <Badge variant="outline" className="ml-1.5 text-[10px]">
+                        Post-weekend
+                      </Badge>
+                    ) : null}
+                  </span>
+                  {s.rtwStatus === "completed" ? (
+                    <Badge variant="default" className="shrink-0 gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> RTW done
+                    </Badge>
+                  ) : s.rtwStatus === "overdue" ? (
+                    <button
+                      className="shrink-0"
+                      onClick={() =>
+                        setRtwSpell({ id: s.id, start_date: s.start_date, end_date: s.end_date })
+                      }
+                    >
+                      <Badge variant="destructive">RTW overdue</Badge>
+                    </button>
+                  ) : (
+                    <button
+                      className="shrink-0"
+                      onClick={() =>
+                        setRtwSpell({ id: s.id, start_date: s.start_date, end_date: s.end_date })
+                      }
+                    >
+                      <Badge variant="secondary">RTW pending</Badge>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+      {rtwSpell ? (
+        <RTWInterviewDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setRtwSpell(null);
+          }}
+          onSaved={() => {
+            setRtwSpell(null);
+            void refetch();
+          }}
+          staffId={staffId}
+          staffName={staffName}
+          leaveRequestId={rtwSpell.id}
+          spellStart={rtwSpell.start_date}
+          spellEnd={rtwSpell.end_date}
+        />
+      ) : null}
+    </Card>
+  );
+}
+
+
 
