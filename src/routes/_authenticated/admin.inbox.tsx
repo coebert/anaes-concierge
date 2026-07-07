@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
@@ -12,11 +13,13 @@ import { StatCard } from "@/components/stat-card";
 import {
   AlertTriangle,
   CalendarClock,
+  Check,
   ClipboardList,
   HeartPulse,
   Inbox,
   ShieldAlert,
   ShieldCheck,
+  Undo2,
 } from "lucide-react";
 import {
   buildInbox,
@@ -86,8 +89,63 @@ function workingDaysSince(dateIso: string, today: Date): number {
 }
 
 function CoordinatorInboxPage() {
-  const { hasRole, loading } = useAuth();
+  const { hasRole, loading, user } = useAuth();
   const [filter, setFilter] = useState<KindFilter>("all");
+  const [showAddressed, setShowAddressed] = useState(false);
+  const queryClient = useQueryClient();
+
+  const dismissalsQuery = useQuery({
+    queryKey: ["coordinator-inbox-dismissals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inbox_dismissals")
+        .select("item_id,kind,dismissed_at,dismissed_by");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const dismissedIds = useMemo(
+    () => new Set((dismissalsQuery.data ?? []).map((d) => d.item_id)),
+    [dismissalsQuery.data],
+  );
+
+  const dismissMutation = useMutation({
+    mutationFn: async (item: InboxItem) => {
+      if (!user) throw new Error("Not signed in");
+      const { error } = await supabase.from("inbox_dismissals").upsert({
+        item_id: item.id,
+        kind: item.kind,
+        dismissed_by: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coordinator-inbox-dismissals"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to mark addressed";
+      toast.error(msg);
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase
+        .from("inbox_dismissals")
+        .delete()
+        .eq("item_id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coordinator-inbox-dismissals"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to restore item";
+      toast.error(msg);
+    },
+  });
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["coordinator-inbox"],
@@ -186,7 +244,16 @@ function CoordinatorInboxPage() {
     },
   });
 
-  const items = useMemo(() => (data ? buildInbox(data) : []), [data]);
+  const allItems = useMemo(() => (data ? buildInbox(data) : []), [data]);
+  const pendingItems = useMemo(
+    () => allItems.filter((i) => !dismissedIds.has(i.id)),
+    [allItems, dismissedIds],
+  );
+  const addressedItems = useMemo(
+    () => allItems.filter((i) => dismissedIds.has(i.id)),
+    [allItems, dismissedIds],
+  );
+  const items = showAddressed ? addressedItems : pendingItems;
   const filtered = useMemo(
     () => (filter === "all" ? items : items.filter((i) => i.kind === filter)),
     [items, filter],
@@ -201,7 +268,8 @@ function CoordinatorInboxPage() {
     rtw: items.filter((i) => i.kind === "rtw").length,
     competency: items.filter((i) => i.kind === "competency").length,
   };
-  const criticalCount = items.filter((i) => i.severity === "critical").length;
+  const criticalCount = pendingItems.filter((i) => i.severity === "critical").length;
+
 
   return (
     <div className="space-y-6">
@@ -223,7 +291,7 @@ function CoordinatorInboxPage() {
         <StatCard icon={ShieldCheck} label="Expiring competencies" value={counts.competency} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
           All ({items.length})
         </FilterChip>
@@ -236,6 +304,18 @@ function CoordinatorInboxPage() {
             {KIND_META[k].label} ({counts[k]})
           </FilterChip>
         ))}
+        <div className="ml-auto">
+          <Button
+            type="button"
+            size="sm"
+            variant={showAddressed ? "default" : "outline"}
+            onClick={() => setShowAddressed((v) => !v)}
+          >
+            {showAddressed
+              ? `Back to pending (${pendingItems.length})`
+              : `Addressed (${addressedItems.length})`}
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -244,19 +324,39 @@ function CoordinatorInboxPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
             <Inbox className="h-8 w-8 opacity-60" aria-hidden="true" />
-            <div>Inbox zero. Nothing needs a decision right now.</div>
+            <div>
+              {showAddressed
+                ? "No items have been marked addressed yet."
+                : "Inbox zero. Nothing needs a decision right now."}
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
           {filtered.map((item) => (
-            <InboxRow key={item.id} item={item} />
+            <InboxRow
+              key={item.id}
+              item={item}
+              addressed={showAddressed}
+              onDismiss={() => {
+                dismissMutation.mutate(item, {
+                  onSuccess: () => toast.success("Marked as addressed"),
+                });
+              }}
+              onRestore={() => {
+                restoreMutation.mutate(item.id, {
+                  onSuccess: () => toast.success("Restored to pending"),
+                });
+              }}
+              busy={dismissMutation.isPending || restoreMutation.isPending}
+            />
           ))}
         </div>
       )}
     </div>
   );
 }
+
 
 function FilterChip({
   active,
@@ -279,7 +379,19 @@ function FilterChip({
   );
 }
 
-function InboxRow({ item }: { item: InboxItem }) {
+function InboxRow({
+  item,
+  addressed,
+  onDismiss,
+  onRestore,
+  busy,
+}: {
+  item: InboxItem;
+  addressed: boolean;
+  onDismiss: () => void;
+  onRestore: () => void;
+  busy: boolean;
+}) {
   const meta = KIND_META[item.kind];
   const Icon = meta.icon;
   return (
@@ -296,14 +408,45 @@ function InboxRow({ item }: { item: InboxItem }) {
                 {item.severity === "critical" ? "Urgent" : item.severity === "warning" ? "Soon" : "Upcoming"}
               </Badge>
               <Badge variant="outline">{meta.label}</Badge>
+              {addressed ? (
+                <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+                  Addressed
+                </Badge>
+              ) : null}
             </div>
             <div className="text-sm text-muted-foreground">{item.detail}</div>
           </div>
         </div>
-        <Button asChild size="sm" variant="outline" className="self-start sm:self-center">
-          <Link to={item.href}>Open</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+          <Button asChild size="sm" variant="outline">
+            <Link to={item.href}>Open</Link>
+          </Button>
+          {addressed ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={onRestore}
+              disabled={busy}
+            >
+              <Undo2 className="mr-1 h-4 w-4" />
+              Restore
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={onDismiss}
+              disabled={busy}
+            >
+              <Check className="mr-1 h-4 w-4" />
+              Mark addressed
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
+
