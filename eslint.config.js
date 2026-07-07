@@ -102,7 +102,18 @@ export default tseslint.config(
     files: ["src/components/ui/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-use-before-define": "off",
+      // shadcn primitives use `toLocaleDateString` / `toLocaleString`
+      // internally for locale-aware calendar dropdowns and `data-day`
+      // attributes — not user-visible date fields.
+      "no-restricted-syntax": "off",
     },
+  },
+  {
+    // `src/lib/utils.ts` is where the DD/MM/YYYY helpers themselves live —
+    // they legitimately call `toLocaleDateString`/`toLocaleString` under
+    // the hood to build the canonical format.
+    files: ["src/lib/utils.ts"],
+    rules: { "no-restricted-syntax": "off" },
   },
   eslintPluginPrettier,
 );
