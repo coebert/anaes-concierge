@@ -15,9 +15,13 @@ export const Route = createFileRoute("/api/public/hooks/push-dispatch")({
           return new Response("Unauthorized", { status: 401 });
         }
         try {
-          const { dispatchPendingPushNotifications } = await import("@/lib/push-dispatch.server");
-          const summary = await dispatchPendingPushNotifications();
-          return Response.json({ ok: true, ...summary });
+          const { dispatchPendingPushNotifications, dispatchPendingLeavePushNotifications } =
+            await import("@/lib/push-dispatch.server");
+          const [rota, leave] = await Promise.all([
+            dispatchPendingPushNotifications(),
+            dispatchPendingLeavePushNotifications(),
+          ]);
+          return Response.json({ ok: true, rota, leave });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           console.error("push-dispatch failed:", message);

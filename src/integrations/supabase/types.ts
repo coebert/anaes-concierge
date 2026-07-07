@@ -629,6 +629,57 @@ export type Database = {
           },
         ]
       }
+      leave_change_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          leave_request_id: string
+          new_end_date: string | null
+          new_start_date: string | null
+          new_status: string | null
+          new_type: string | null
+          prev_end_date: string | null
+          prev_start_date: string | null
+          prev_status: string | null
+          prev_type: string | null
+          staff_id: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          leave_request_id: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          new_status?: string | null
+          new_type?: string | null
+          prev_end_date?: string | null
+          prev_start_date?: string | null
+          prev_status?: string | null
+          prev_type?: string | null
+          staff_id: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          leave_request_id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          new_status?: string | null
+          new_type?: string | null
+          prev_end_date?: string | null
+          prev_start_date?: string | null
+          prev_status?: string | null
+          prev_type?: string | null
+          staff_id?: string
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           clwrota_external_id: string | null
@@ -872,27 +923,30 @@ export type Database = {
       }
       push_notification_log: {
         Row: {
-          change_log_id: string
+          change_log_id: string | null
           error: string | null
           id: string
+          leave_change_log_id: string | null
           sent_at: string
           staff_id: string
           status: string
           subscription_id: string | null
         }
         Insert: {
-          change_log_id: string
+          change_log_id?: string | null
           error?: string | null
           id?: string
+          leave_change_log_id?: string | null
           sent_at?: string
           staff_id: string
           status: string
           subscription_id?: string | null
         }
         Update: {
-          change_log_id?: string
+          change_log_id?: string | null
           error?: string | null
           id?: string
+          leave_change_log_id?: string | null
           sent_at?: string
           staff_id?: string
           status?: string
@@ -904,6 +958,13 @@ export type Database = {
             columns: ["change_log_id"]
             isOneToOne: false
             referencedRelation: "rota_change_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_notification_log_leave_change_log_id_fkey"
+            columns: ["leave_change_log_id"]
+            isOneToOne: false
+            referencedRelation: "leave_change_log"
             referencedColumns: ["id"]
           },
           {
