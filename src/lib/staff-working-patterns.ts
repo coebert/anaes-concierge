@@ -173,6 +173,14 @@ export interface ConsultantPattern {
   totalWorkingSessions: number;
   /** Total on-call sessions counted, used as a coverage indicator. */
   totalOnCallSessions: number;
+  /** Total SPA sessions counted (AM + PM), used for per-day percentages. */
+  totalSpaSessions: number;
+  /**
+   * Per-weekday session counts (0=Sun … 6=Sat) — used to show the share
+   * of total SPA / on-call sessions that fall on each regular day.
+   */
+  spaCountsByWeekday: number[];
+  onCallCountsByWeekday: number[];
   /** Threshold applied when picking "regular" weekdays. */
   regularityThreshold: number;
 }
@@ -285,6 +293,13 @@ export function computeConsultantPattern(
     spaPmWeekdays: pickRegularSpa(spaPmDates),
     totalWorkingSessions: totalWorking,
     totalOnCallSessions: totalOnCall,
+    totalSpaSessions:
+      spaAmDates.reduce((n, s) => n + s.size, 0) +
+      spaPmDates.reduce((n, s) => n + s.size, 0),
+    spaCountsByWeekday: Array.from({ length: 7 }, (_, d) =>
+      spaAmDates[d].size + spaPmDates[d].size,
+    ),
+    onCallCountsByWeekday: Array.from({ length: 7 }, (_, d) => onCallDates[d].size),
     regularityThreshold: threshold,
   };
 }

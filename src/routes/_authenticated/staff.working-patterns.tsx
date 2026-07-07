@@ -429,6 +429,8 @@ function ConsultantPatternBlock({
       <SpaStrip
         amDays={pattern.spaAmWeekdays}
         pmDays={pattern.spaPmWeekdays}
+        countsByWeekday={pattern.spaCountsByWeekday}
+        totalSessions={pattern.totalSpaSessions}
       />
       {!hasAnySpa && (
         <p className="text-[11px] text-muted-foreground pl-[5.5rem] sm:pl-[6.5rem] -mt-1">
@@ -439,6 +441,8 @@ function ConsultantPatternBlock({
         label="On-call"
         highlighted={pattern.onCallWeekdays}
         tone="amber"
+        countsByWeekday={pattern.onCallCountsByWeekday}
+        totalSessions={pattern.totalOnCallSessions}
       />
       <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
         <span>On-call cover</span>
@@ -546,9 +550,13 @@ function AmPmStrip({
 function SpaStrip({
   amDays,
   pmDays,
+  countsByWeekday,
+  totalSessions,
 }: {
   amDays: number[];
   pmDays: number[];
+  countsByWeekday: number[];
+  totalSessions: number;
 }) {
   const am = new Set(amDays);
   const pm = new Set(pmDays);
@@ -561,19 +569,35 @@ function SpaStrip({
           const p = pm.has(d);
           const active = a || p;
           const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
+          const pct =
+            active && totalSessions > 0
+              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
+              : null;
           return (
             <div
               key={d}
               className={
                 CELL_CLASS +
-                " flex h-6 items-center justify-center rounded border text-[10px] font-medium " +
+                " flex flex-col items-center justify-center rounded border text-[10px] font-medium leading-none px-0.5 " +
+                (pct !== null ? "py-0.5" : "h-6") +
+                " " +
                 (active
                   ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
                   : "border-border bg-muted/40 text-muted-foreground")
               }
-              title={`${WEEKDAY_LABELS[d]}${active ? ` · SPA ${label}` : ""}`}
+              title={
+                `${WEEKDAY_LABELS[d]}` +
+                (active
+                  ? ` · SPA ${label} · ${countsByWeekday[d]} of ${totalSessions} SPA sessions (${pct}%)`
+                  : "")
+              }
             >
-              {label}
+              <span>{label}</span>
+              {pct !== null && (
+                <span className="text-[9px] font-normal opacity-90 tabular-nums">
+                  {pct}%
+                </span>
+              )}
             </div>
           );
         })}
@@ -586,10 +610,14 @@ function WeekdayStrip({
   label,
   highlighted,
   tone = "default",
+  countsByWeekday,
+  totalSessions,
 }: {
   label: string;
   highlighted: number[];
   tone?: "default" | "primary" | "amber";
+  countsByWeekday?: number[];
+  totalSessions?: number;
 }) {
   const set = new Set(highlighted);
   const highlightClass =
@@ -604,21 +632,36 @@ function WeekdayStrip({
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
+          const pct =
+            active && countsByWeekday && totalSessions && totalSessions > 0
+              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
+              : null;
           return (
             <div
               key={d}
               className={
                 CELL_CLASS +
-                " flex h-6 items-center justify-center rounded border text-[11px] font-medium " +
+                " flex flex-col items-center justify-center rounded border text-[11px] font-medium leading-none px-0.5 " +
+                (pct !== null ? "py-0.5" : "h-6") +
+                " " +
                 (active
                   ? highlightClass
                   : "border-border bg-muted/40 text-muted-foreground")
               }
-              title={WEEKDAY_LABELS[d]}
+              title={
+                WEEKDAY_LABELS[d] +
+                (pct !== null
+                  ? ` · ${countsByWeekday![d]} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)`
+                  : "")
+              }
             >
-              {active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}
+              <span>{active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}</span>
+              {pct !== null && (
+                <span className="text-[9px] font-normal opacity-90 tabular-nums">
+                  {pct}%
+                </span>
+              )}
             </div>
-
           );
         })}
       </div>
