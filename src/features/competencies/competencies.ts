@@ -88,16 +88,25 @@ export interface EvaluateCompetencyArgs {
   requirements: CompetencyRequirement[];
   staffCompetencies: StaffCompetency[];
   competencies: Competency[];
+  /**
+   * When true (default), a missing `required` competency — or a solo role
+   * held only at `supervised` level — is emitted as an ERROR, so the rota
+   * validator will block the assignment. Set to false to downgrade to a
+   * warning (used for read-only surfaces such as reports/inbox).
+   */
+  blockMissingRequired?: boolean;
 }
 
 /**
  * Return Issue[] describing any missing/expiring competencies for the
- * candidate assignment. Missing `required` = warning, missing `recommended`
- * = info. Never emits an error — coordinators keep discretion.
+ * candidate assignment. By default, missing `required` competencies raise an
+ * ERROR which blocks the assignment in the rota editor. Missing
+ * `recommended` competencies remain informational.
  */
 export function evaluateCompetency(args: EvaluateCompetencyArgs): Issue[] {
   const issues: Issue[] = [];
   if (!args.specialtyId) return issues;
+  const block = args.blockMissingRequired ?? true;
 
   const relevant = args.requirements.filter(
     (r) =>
@@ -119,13 +128,17 @@ export function evaluateCompetency(args: EvaluateCompetencyArgs): Issue[] {
     if (!comp) continue;
     const holding = held.get(r.competency_id);
     if (!holding) {
-      issues.push({
-        severity: r.requirement === "required" ? "warning" : "info",
-        message:
-          r.requirement === "required"
-            ? `Not signed off for "${comp.name}" (required for this list).`
-            : `Not signed off for "${comp.name}" (recommended).`,
-      });
+      if (r.requirement === "required") {
+        issues.push({
+          severity: block ? "error" : "warning",
+          message: `Not signed off for "${comp.name}" — required competency for this list.`,
+        });
+      } else {
+        issues.push({
+          severity: "info",
+          message: `Not signed off for "${comp.name}" (recommended).`,
+        });
+      }
       continue;
     }
     if (holding.expires_at) {
@@ -139,8 +152,8 @@ export function evaluateCompetency(args: EvaluateCompetencyArgs): Issue[] {
     }
     if (holding.level === "supervised" && args.role === "solo") {
       issues.push({
-        severity: "warning",
-        message: `"${comp.name}" sign-off is "supervised" only — solo role may be inappropriate.`,
+        severity: block && r.requirement === "required" ? "error" : "warning",
+        message: `"${comp.name}" sign-off is "supervised" only — solo role not permitted.`,
       });
     }
   }
