@@ -508,6 +508,17 @@ async function computeCurrentPatternForStaff(
     .lte("start_date", to)
     .gte("end_date", from);
   if (leaveErr) throw new Error(leaveErr.message);
+  const validHalf = (v: unknown) => v === null || v === undefined || v === "am" || v === "pm";
+  for (const r of leaveRowsRaw ?? []) {
+    if (!validHalf(r.half_day_start) || !validHalf(r.half_day_end)) {
+      throw new Error(
+        `Invalid half-day marker on leave request (${r.start_date} → ${r.end_date}): ` +
+          `half_day_start=${JSON.stringify(r.half_day_start)}, ` +
+          `half_day_end=${JSON.stringify(r.half_day_end)}. ` +
+          `Expected null, "am", or "pm".`,
+      );
+    }
+  }
   const leaveOverlay = expandApprovedLeaveToAssignments(
     staffId,
     (leaveRowsRaw ?? []) as LeaveRowLite[],
