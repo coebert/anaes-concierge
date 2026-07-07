@@ -62,6 +62,7 @@ import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
+import { Route as AuthenticatedAdminCompetenciesRouteImport } from './routes/_authenticated/admin.competencies'
 import { Route as AuthenticatedAdminClwrotaStepStatusRouteImport } from './routes/_authenticated/admin.clwrota-step-status'
 import { Route as AuthenticatedAdminClwrotaStatusRouteImport } from './routes/_authenticated/admin.clwrota-status'
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
@@ -379,6 +380,12 @@ const AuthenticatedAdminDashboardRoute =
     path: '/admin/dashboard',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminCompetenciesRoute =
+  AuthenticatedAdminCompetenciesRouteImport.update({
+    id: '/admin/competencies',
+    path: '/admin/competencies',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminClwrotaStepStatusRoute =
   AuthenticatedAdminClwrotaStepStatusRouteImport.update({
     id: '/admin/clwrota-step-status',
@@ -537,6 +544,7 @@ export interface FileRoutesByFullPath {
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
   '/admin/clwrota-step-status': typeof AuthenticatedAdminClwrotaStepStatusRoute
+  '/admin/competencies': typeof AuthenticatedAdminCompetenciesRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -612,6 +620,7 @@ export interface FileRoutesByTo {
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
   '/admin/clwrota-step-status': typeof AuthenticatedAdminClwrotaStepStatusRoute
+  '/admin/competencies': typeof AuthenticatedAdminCompetenciesRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -690,6 +699,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
   '/_authenticated/admin/clwrota-step-status': typeof AuthenticatedAdminClwrotaStepStatusRoute
+  '/_authenticated/admin/competencies': typeof AuthenticatedAdminCompetenciesRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
@@ -768,6 +778,7 @@ export interface FileRouteTypes {
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
     | '/admin/clwrota-step-status'
+    | '/admin/competencies'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
     | '/admin/clwrota-step-status'
+    | '/admin/competencies'
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
@@ -920,6 +932,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/clwrota-status'
     | '/_authenticated/admin/clwrota-step-status'
+    | '/_authenticated/admin/competencies'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
@@ -1360,6 +1373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/competencies': {
+      id: '/_authenticated/admin/competencies'
+      path: '/admin/competencies'
+      fullPath: '/admin/competencies'
+      preLoaderRoute: typeof AuthenticatedAdminCompetenciesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/clwrota-step-status': {
       id: '/_authenticated/admin/clwrota-step-status'
       path: '/admin/clwrota-step-status'
@@ -1627,6 +1647,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminClwrotaStatusRoute: typeof AuthenticatedAdminClwrotaStatusRoute
   AuthenticatedAdminClwrotaStepStatusRoute: typeof AuthenticatedAdminClwrotaStepStatusRoute
+  AuthenticatedAdminCompetenciesRoute: typeof AuthenticatedAdminCompetenciesRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
@@ -1680,6 +1701,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminClwrotaStatusRoute: AuthenticatedAdminClwrotaStatusRoute,
   AuthenticatedAdminClwrotaStepStatusRoute:
     AuthenticatedAdminClwrotaStepStatusRoute,
+  AuthenticatedAdminCompetenciesRoute: AuthenticatedAdminCompetenciesRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,

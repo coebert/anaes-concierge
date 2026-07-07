@@ -20,6 +20,12 @@ import {
   type Issue, type Profile, type RotaRules,
 } from "@/lib/rota-validation";
 import { checkCustomRuleViolations } from "@/features/rules/custom-rules.functions";
+import {
+  evaluateCompetency,
+  type Competency,
+  type CompetencyRequirement,
+  type StaffCompetency,
+} from "@/features/competencies/competencies";
 import { useServerFn } from "@tanstack/react-start";
 import {
   SeverityIcon,
@@ -141,6 +147,40 @@ export function CellDialog({
     [rawAssigns, staff],
   );
 
+  // Competency register data — used to emit soft warnings when the candidate
+  // staff member is not signed off for the specialty of this list.
+  const { data: competencyRows } = useQuery({
+    queryKey: ["competencies-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("competencies")
+        .select("id,code,name,description,category,applies_to_grades,active,sort_order")
+        .eq("active", true);
+      if (error) throw error;
+      return (data ?? []) as Competency[];
+    },
+  });
+  const { data: competencyRequirements } = useQuery({
+    queryKey: ["specialty-competency-requirements"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("specialty_competency_requirements")
+        .select("id,specialty_id,competency_id,requirement,applies_to_role");
+      if (error) throw error;
+      return (data ?? []) as CompetencyRequirement[];
+    },
+  });
+  const { data: staffHoldings } = useQuery({
+    queryKey: ["staff-competencies-all-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_competencies")
+        .select("id,staff_id,competency_id,level,granted_at,expires_at,revoked_at,notes");
+      if (error) throw error;
+      return (data ?? []) as StaffCompetency[];
+    },
+  });
+
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
       const { error } = await supabase
@@ -220,10 +260,37 @@ export function CellDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newStaff, newRole, date, session]);
 
-  const allCandidateIssues = [...candidateIssues, ...customIssues];
+  // Soft warnings from the competency register for the candidate being added.
+  const candidateCompetencyIssues: Issue[] = newStaff && specialtyId
+    ? evaluateCompetency({
+        staffId: newStaff,
+        specialtyId,
+        role: newRole,
+        onDate: date,
+        requirements: competencyRequirements ?? [],
+        staffCompetencies: staffHoldings ?? [],
+        competencies: competencyRows ?? [],
+      })
+    : [];
 
-  const issuesFor = (staffId: string, role: RotaRole) =>
-    validateAssignment({
+  const allCandidateIssues = [
+    ...candidateIssues,
+    ...customIssues,
+    ...candidateCompetencyIssues,
+  ];
+
+  const competencyIssuesFor = (staffId: string, role: RotaRole): Issue[] =>
+    specialtyId
+      ? evaluateCompetency({
+          staffId, specialtyId, role, onDate: date,
+          requirements: competencyRequirements ?? [],
+          staffCompetencies: staffHoldings ?? [],
+          competencies: competencyRows ?? [],
+        })
+      : [];
+
+  const issuesFor = (staffId: string, role: RotaRole) => [
+    ...validateAssignment({
       candidateStaffId: staffId,
       role,
       date,
@@ -240,7 +307,9 @@ export function CellDialog({
       leave,
       fixedSessions,
       rules,
-    });
+    }),
+    ...competencyIssuesFor(staffId, role),
+  ];
 
   const addAssign = useMutation({
     mutationFn: async () => {

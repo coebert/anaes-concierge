@@ -123,6 +123,9 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/staff/working-patterns", icon: Users, group: "staff",
     roles: ["admin", "rota_coordinator"],
     keywords: ["consultant", "pattern", "on-call", "SAG", "private", "SPA", "days worked"] },
+  { id: "competencies", label: "Competency register", to: "/admin/competencies",
+    icon: ShieldCheck, group: "staff", roles: ["admin"],
+    keywords: ["competency", "credential", "sign-off", "cardiac", "paeds", "airway", "MTP", "HALO"] },
 
   // Audits & robustness
   { id: "robustness", label: "Robustness overview", to: "/robustness",

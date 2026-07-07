@@ -304,6 +304,45 @@ export type Database = {
         }
         Relationships: []
       }
+      competencies: {
+        Row: {
+          active: boolean
+          applies_to_grades: string[]
+          category: string
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          applies_to_grades?: string[]
+          category: string
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          applies_to_grades?: string[]
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_rota_rules: {
         Row: {
           active: boolean
@@ -1916,6 +1955,146 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      specialty_competency_requirements: {
+        Row: {
+          applies_to_role: string
+          competency_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          requirement: string
+          specialty_id: string
+          updated_at: string
+        }
+        Insert: {
+          applies_to_role?: string
+          competency_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          requirement?: string
+          specialty_id: string
+          updated_at?: string
+        }
+        Update: {
+          applies_to_role?: string
+          competency_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          requirement?: string
+          specialty_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "specialty_competency_requirements_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "competencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "specialty_competency_requirements_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "specialties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_competencies: {
+        Row: {
+          competency_id: string
+          created_at: string
+          expires_at: string | null
+          granted_at: string
+          granted_by: string | null
+          id: string
+          level: string | null
+          notes: string | null
+          revoked_at: string | null
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          competency_id: string
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          level?: string | null
+          notes?: string | null
+          revoked_at?: string | null
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          competency_id?: string
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          level?: string | null
+          notes?: string | null
+          revoked_at?: string | null
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_competencies_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "competencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_competencies_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_competencies_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_competencies_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_competencies_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_competencies_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_competencies_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       theatre_name_aliases: {
         Row: {
