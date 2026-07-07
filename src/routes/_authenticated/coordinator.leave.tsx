@@ -1,15 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { computeLeaveConflicts, type LeaveConflict } from "@/features/leave/leave-utils";
+import {
+  computeStudyBudget,
+  previewAfterDecision,
+  type StudyLeaveRow,
+} from "@/features/leave/study-leave-budget";
+import { leaveWorkingDays } from "@/features/leave/leave-allowances";
+import { StudyLeaveBudgetCard } from "@/components/leave/StudyLeaveBudgetCard";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveDecided } from "@/features/leave/leave-notifications.functions";
@@ -31,7 +40,28 @@ interface LeaveRow {
   decided_at: string | null;
   reserve_listed_at: string | null;
   created_at: string;
+  study_cost_gbp: number | null;
 }
+
+interface AllowanceRow {
+  staff_id: string;
+  leave_year_start: string;
+  study_days: number;
+  study_budget_gbp: number;
+}
+
+interface StaffProfile {
+  name: string;
+  grade: string | null;
+}
+
+function defaultLeaveYearStart(today = new Date()): string {
+  // NHS leave year: 1 April → 31 March.
+  const y = today.getUTCFullYear();
+  const beforeApril = today.getUTCMonth() < 3;
+  return `${beforeApril ? y - 1 : y}-04-01`;
+}
+
 
 export const Route = createFileRoute("/_authenticated/coordinator/leave")({
   head: () => ({ meta: [{ title: "Coordinator — Leave — Salisbury Anaesthetics Rota" }] }),
@@ -40,7 +70,8 @@ export const Route = createFileRoute("/_authenticated/coordinator/leave")({
 
 function ApproveLeavePage() {
   const [rows, setRows] = useState<LeaveRow[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<Record<string, StaffProfile>>({});
+  const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending");
 
@@ -55,11 +86,20 @@ function ApproveLeavePage() {
     setRows(all);
     const staffIds = [...new Set(all.map((r) => r.staff_id))];
     if (staffIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", staffIds);
-      setProfiles(Object.fromEntries((profs ?? []).map((p) => [p.id, p.full_name || p.email])));
+      const [profRes, allowanceRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email, grade").in("id", staffIds),
+        supabase
+          .from("leave_allowances")
+          .select("staff_id, leave_year_start, study_days, study_budget_gbp")
+          .in("staff_id", staffIds),
+      ]);
+      setProfiles(Object.fromEntries(
+        (profRes.data ?? []).map((p) => [
+          p.id,
+          { name: p.full_name || p.email, grade: p.grade ?? null } as StaffProfile,
+        ]),
+      ));
+      setAllowances((allowanceRes.data ?? []) as AllowanceRow[]);
     }
     setLoading(false);
   };
@@ -69,6 +109,28 @@ function ApproveLeavePage() {
   const filtered = rows.filter((r) =>
     tab === "pending" ? r.status === "pending" : r.status !== "pending",
   );
+
+  // Rows needed for study-budget aggregation, in the shape the pure helper expects.
+  const studyLeaveRows: StudyLeaveRow[] = useMemo(
+    () => rows.map((r) => ({
+      id: r.id,
+      staff_id: r.staff_id,
+      type: r.type,
+      status: r.status,
+      start_date: r.start_date,
+      end_date: r.end_date,
+      half_day_start: r.half_day_start,
+      half_day_end: r.half_day_end,
+      study_cost_gbp: r.study_cost_gbp,
+    })),
+    [rows],
+  );
+  const allowanceByStaff = useMemo(() => {
+    const m = new Map<string, AllowanceRow>();
+    for (const a of allowances) m.set(a.staff_id, a);
+    return m;
+  }, [allowances]);
+  const yearStart = defaultLeaveYearStart();
 
   return (
     <div className="space-y-6">
@@ -91,7 +153,15 @@ function ApproveLeavePage() {
             <p className="text-sm text-muted-foreground">Nothing here.</p>
           ) : (
             filtered.map((r) => (
-              <LeaveCard key={r.id} row={r} staffName={profiles[r.staff_id] ?? r.staff_id} onChanged={load} />
+              <LeaveCard
+                key={r.id}
+                row={r}
+                profile={profiles[r.staff_id] ?? { name: r.staff_id, grade: null }}
+                allowance={allowanceByStaff.get(r.staff_id)}
+                studyRows={studyLeaveRows}
+                yearStart={yearStart}
+                onChanged={load}
+              />
             ))
           )}
         </TabsContent>
@@ -100,13 +170,52 @@ function ApproveLeavePage() {
   );
 }
 
-function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: string; onChanged: () => void }) {
+
+function LeaveCard({
+  row,
+  profile,
+  allowance,
+  studyRows,
+  yearStart,
+  onChanged,
+}: {
+  row: LeaveRow;
+  profile: StaffProfile;
+  allowance: AllowanceRow | undefined;
+  studyRows: StudyLeaveRow[];
+  yearStart: string;
+  onChanged: () => void;
+}) {
   const { user } = useAuth();
+  const staffName = profile.name;
   const notifyDecided = useServerFn(notifyLeaveDecided);
   const [conflicts, setConflicts] = useState<LeaveConflict[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [acting, setActing] = useState(false);
+  const [costInput, setCostInput] = useState<string>(
+    row.study_cost_gbp != null ? String(row.study_cost_gbp) : "",
+  );
+
+  const isStudy = row.type === "study";
+  const requestDays = useMemo(() => leaveWorkingDays(row), [row]);
+  const requestCostGbp = useMemo(() => {
+    const n = Number.parseFloat(costInput);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [costInput]);
+
+  const baseBudget = useMemo(
+    () => (isStudy
+      ? computeStudyBudget(row.staff_id, studyRows, allowance, yearStart, row.id)
+      : null),
+    [isStudy, row.staff_id, row.id, studyRows, allowance, yearStart],
+  );
+  const previewBudget = useMemo(
+    () => (baseBudget
+      ? previewAfterDecision(baseBudget, { days: requestDays, costGbp: requestCostGbp }, "approved")
+      : null),
+    [baseBudget, requestDays, requestCostGbp],
+  );
 
   useEffect(() => {
     if (row.status !== "pending") return;
@@ -121,9 +230,24 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     ).then((c) => { setConflicts(c); setLoading(false); });
   }, [row.id]);
 
+  const persistCost = async (): Promise<boolean> => {
+    if (!isStudy) return true;
+    if (costInput === "" && row.study_cost_gbp == null) return true;
+    const next = costInput === "" ? null : requestCostGbp;
+    if (next === row.study_cost_gbp) return true;
+    const { error } = await supabase
+      .from("leave_requests")
+      .update({ study_cost_gbp: next })
+      .eq("id", row.id);
+    if (error) { toast.error(error.message); return false; }
+    return true;
+  };
+
   const decide = async (status: "approved" | "rejected", reserveList = false) => {
     if (!user) return;
     setActing(true);
+    const costOk = await persistCost();
+    if (!costOk) { setActing(false); return; }
     const { error } = await supabase
       .from("leave_requests")
       .update({
@@ -140,6 +264,7 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
+
 
   const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
   const otherConflicts = (conflicts ?? []).filter((c) => c.type === "other_leave");
@@ -207,12 +332,48 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
               </>
             )}
 
+            {isStudy && baseBudget && previewBudget && (
+              <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <div className="space-y-1">
+                    <Label htmlFor={`cost-${row.id}`} className="text-xs">
+                      Estimated cost (£)
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        course fees, travel, accommodation
+                      </span>
+                    </Label>
+                    <Input
+                      id={`cost-${row.id}`}
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="10"
+                      placeholder="0"
+                      value={costInput}
+                      onChange={(e) => setCostInput(e.target.value)}
+                      className="max-w-[10rem]"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground sm:text-right">
+                    {requestDays.toFixed(requestDays % 1 === 0 ? 0 : 1)} working day{requestDays === 1 ? "" : "s"} requested
+                  </div>
+                </div>
+                <StudyLeaveBudgetCard
+                  base={baseBudget}
+                  preview={previewBudget}
+                  requestDays={requestDays}
+                  requestCostGbp={requestCostGbp}
+                />
+              </div>
+            )}
+
             <Textarea
               placeholder="Decision notes (optional)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
             />
+
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => decide("approved")} disabled={acting}>
@@ -226,6 +387,18 @@ function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: st
               </Button>
             </div>
           </>
+        )}
+
+        {row.status !== "pending" && isStudy && baseBudget && row.study_cost_gbp != null && (
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium">Study cost:</span>{" "}
+            {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })
+              .format(Number(row.study_cost_gbp))}
+            {" · "}
+            <span className="font-medium">Budget left this year:</span>{" "}
+            {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })
+              .format(baseBudget.remainingGbp - (row.status === "approved" ? Number(row.study_cost_gbp) : 0))}
+          </div>
         )}
 
         {row.status !== "pending" && row.decision_notes && (
