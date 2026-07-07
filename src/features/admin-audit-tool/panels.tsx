@@ -827,7 +827,7 @@ export async function downloadAllPdf(reports: Array<{ id: string; output: RunSql
   doc.text("Audit Reports", 40, 40);
   doc.setFontSize(9);
   doc.setTextColor(120);
-  doc.text(`Generated ${new Date().toLocaleString()}`, 40, 56);
+  doc.text(`Generated ${formatDateTimeGB(new Date())}`, 40, 56);
   doc.setTextColor(0);
 
   reports.forEach((r, i) => {
