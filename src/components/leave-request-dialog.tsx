@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { computeLeaveConflicts, countWorkingDays, type LeaveConflict } from "@/features/leave/leave-utils";
+import { validateHalfDayRange } from "@/features/leave/half-day-validation";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveSubmitted } from "@/features/leave/leave-notifications.functions";
 import { formatDateGB } from "@/lib/utils";
