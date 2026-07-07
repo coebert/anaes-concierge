@@ -112,7 +112,14 @@ export function ExceptionCard({
   const setStatus = async (next: ExceptionStatus) => {
     if (!user) return;
     setBusy(true);
-    const patch: Record<string, unknown> = { status: next };
+    const patch: {
+      status: ExceptionStatus;
+      acknowledged_at?: string;
+      responder_id?: string;
+      resolved_at?: string;
+      outcome?: ExceptionOutcome;
+      outcome_note?: string;
+    } = { status: next };
     if (next === "acknowledged" && !report.acknowledged_at) {
       patch.acknowledged_at = new Date().toISOString();
       patch.responder_id = user.id;
