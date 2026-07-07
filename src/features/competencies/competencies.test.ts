@@ -61,15 +61,25 @@ describe("evaluateCompetency", () => {
     expect(issues).toEqual([]);
   });
 
-  it("missing required competency → warning", () => {
+  it("missing required competency → error (blocking)", () => {
     const issues = evaluateCompetency({
       staffId: "s1", specialtyId: "spec-paeds", role: "solo", onDate: "2025-06-01",
       requirements: [req("spec-paeds", "paeds", "required")],
       staffCompetencies: [], competencies,
     });
     expect(issues).toHaveLength(1);
-    expect(issues[0].severity).toBe("warning");
+    expect(issues[0].severity).toBe("error");
     expect(issues[0].message).toMatch(/Paediatric/);
+  });
+
+  it("missing required with blockMissingRequired=false → warning", () => {
+    const issues = evaluateCompetency({
+      staffId: "s1", specialtyId: "spec-paeds", role: "solo", onDate: "2025-06-01",
+      requirements: [req("spec-paeds", "paeds", "required")],
+      staffCompetencies: [], competencies,
+      blockMissingRequired: false,
+    });
+    expect(issues[0].severity).toBe("warning");
   });
 
   it("missing recommended competency → info", () => {
