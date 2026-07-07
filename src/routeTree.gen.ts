@@ -21,6 +21,7 @@ import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/leave'
 import { Route as AuthenticatedGlossaryRouteImport } from './routes/_authenticated/glossary'
+import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
@@ -50,6 +51,7 @@ import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
+import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_authenticated/admin.exceptions'
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
@@ -123,6 +125,11 @@ const AuthenticatedLeaveRoute = AuthenticatedLeaveRouteImport.update({
 const AuthenticatedGlossaryRoute = AuthenticatedGlossaryRouteImport.update({
   id: '/glossary',
   path: '/glossary',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedExceptionsRoute = AuthenticatedExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
@@ -292,6 +299,12 @@ const AuthenticatedAdminJobPlansRoute =
     path: '/admin/job-plans',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminExceptionsRoute =
+  AuthenticatedAdminExceptionsRouteImport.update({
+    id: '/admin/exceptions',
+    path: '/admin/exceptions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminDutyMappingsRoute =
   AuthenticatedAdminDutyMappingsRouteImport.update({
     id: '/admin/duty-mappings',
@@ -391,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/chat': typeof AuthenticatedChatRouteWithChildren
+  '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
@@ -405,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
+  '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -446,6 +461,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/account': typeof AuthenticatedAccountRoute
   '/calendar': typeof AuthenticatedCalendarRouteWithChildren
+  '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRoute
   '/me': typeof AuthenticatedMeRoute
@@ -461,6 +477,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
+  '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -505,6 +522,7 @@ export interface FileRoutesById {
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
+  '/_authenticated/exceptions': typeof AuthenticatedExceptionsRoute
   '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
@@ -520,6 +538,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
+  '/_authenticated/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -565,6 +584,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/calendar'
     | '/chat'
+    | '/exceptions'
     | '/glossary'
     | '/leave'
     | '/me'
@@ -579,6 +599,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
+    | '/admin/exceptions'
     | '/admin/job-plans'
     | '/admin/rota-gaps'
     | '/admin/rules'
@@ -620,6 +641,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/account'
     | '/calendar'
+    | '/exceptions'
     | '/glossary'
     | '/leave'
     | '/me'
@@ -635,6 +657,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
+    | '/admin/exceptions'
     | '/admin/job-plans'
     | '/admin/rota-gaps'
     | '/admin/rules'
@@ -678,6 +701,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account'
     | '/_authenticated/calendar'
     | '/_authenticated/chat'
+    | '/_authenticated/exceptions'
     | '/_authenticated/glossary'
     | '/_authenticated/leave'
     | '/_authenticated/me'
@@ -693,6 +717,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
+    | '/_authenticated/admin/exceptions'
     | '/_authenticated/admin/job-plans'
     | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
@@ -828,6 +853,13 @@ declare module '@tanstack/react-router' {
       path: '/glossary'
       fullPath: '/glossary'
       preLoaderRoute: typeof AuthenticatedGlossaryRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/exceptions': {
+      id: '/_authenticated/exceptions'
+      path: '/exceptions'
+      fullPath: '/exceptions'
+      preLoaderRoute: typeof AuthenticatedExceptionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/chat': {
@@ -1033,6 +1065,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminJobPlansRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/exceptions': {
+      id: '/_authenticated/admin/exceptions'
+      path: '/admin/exceptions'
+      fullPath: '/admin/exceptions'
+      preLoaderRoute: typeof AuthenticatedAdminExceptionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/duty-mappings': {
       id: '/_authenticated/admin/duty-mappings'
       path: '/admin/duty-mappings'
@@ -1188,6 +1227,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
+  AuthenticatedExceptionsRoute: typeof AuthenticatedExceptionsRoute
   AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
@@ -1201,6 +1241,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
+  AuthenticatedAdminExceptionsRoute: typeof AuthenticatedAdminExceptionsRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
   AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
@@ -1229,6 +1270,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRouteWithChildren,
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
+  AuthenticatedExceptionsRoute: AuthenticatedExceptionsRoute,
   AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
@@ -1243,6 +1285,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
+  AuthenticatedAdminExceptionsRoute: AuthenticatedAdminExceptionsRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
   AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
