@@ -195,9 +195,8 @@ describe("LeaveRequestDialog — week-boundary half-day range", () => {
     await user.selectOptions(endSel, "am");
 
     // Confirmation of the working-day count is visible.
-    expect(
-      await screen.findByText(/Approx\./i),
-    ).toHaveTextContent(/1\s*working day\(s\)/i);
+    const confirm = await screen.findByText(/Approx\./i);
+    expect(confirm.textContent ?? "").toMatch(/1\s*working day\(s\)/i);
 
     await user.click(screen.getByRole("button", { name: /submit request/i }));
 
