@@ -285,6 +285,8 @@ function WorkingPatternsPage() {
         </CardContent>
       </Card>
 
+      <PatternLegend windowDays={windowDays} displayMode={displayMode} />
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">
           Loading rota history and computing patterns…
@@ -310,6 +312,86 @@ function WorkingPatternsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function PatternLegend({
+  windowDays,
+  displayMode,
+}: {
+  windowDays: number;
+  displayMode: StripDisplayMode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">
+          How SPA &amp; on-call figures are calculated
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Applies to every consultant card below. Currently showing{" "}
+          <strong>
+            {displayMode === "percent" ? "percentage shares" : "raw session counts"}
+          </strong>{" "}
+          over the last <strong>{windowDays} days</strong>.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0 text-xs text-muted-foreground space-y-2">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <span className="inline-block h-3 w-3 rounded-sm bg-sky-600 dark:bg-sky-500" />
+              SPA cells
+            </div>
+            <p>
+              Denominator = <strong>every SPA half-session</strong> the
+              consultant did in the window (AM and PM each count as one
+              session). It is <em>not</em> a per-week average.
+            </p>
+            <p className="font-mono text-[11px] text-foreground/80">
+              share(day) = SPA sessions on that weekday ÷ total SPA sessions
+              in window
+            </p>
+            <p>
+              Example: 12 Wed-AM SPAs + 6 Fri-PM SPAs = 18 total → Wed shows
+              12/18 = <strong>67%</strong>, Fri shows 6/18 ={" "}
+              <strong>33%</strong>. Shares across all five weekdays sum to
+              100%.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <span className="inline-block h-3 w-3 rounded-sm bg-amber-500" />
+              On-call cells
+            </div>
+            <p>
+              Denominator = <strong>every on-call duty</strong> recorded in
+              the window (each dated on-call assignment counts once,
+              regardless of AM/PM). Weekend on-calls are included in the
+              total but do not populate the Mon–Fri strip.
+            </p>
+            <p className="font-mono text-[11px] text-foreground/80">
+              share(day) = on-call duties on that weekday ÷ total on-call
+              duties in window
+            </p>
+          </div>
+        </div>
+        <div className="border-t pt-2 space-y-1">
+          <p>
+            <strong>Highlighted (coloured) cells</strong> are weekdays that
+            meet the regularity threshold for the selected window — roughly
+            one occurrence per four weeks. <strong>Faded cells</strong> also
+            show a share when that weekday had any activity, so you can see
+            occasional shifts that don't meet the "regular" bar.
+          </p>
+          <p>
+            <strong>Toggle "% ↔ #"</strong> above swaps every cell between
+            the percentage share and the raw session/duty count. Hover a
+            cell for the exact "N of M" breakdown.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
