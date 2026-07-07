@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { parseDateLocal, toISODateLocal } from "@/lib/utils";
+import { parseDateLocal, toISODateLocal, formatDateWithWeekdayGB } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { type Profile, type RotaRules } from "@/lib/rota-validation";
 import { RotaWeekGrid } from "@/features/coordinator-rota/RotaWeekGrid";
