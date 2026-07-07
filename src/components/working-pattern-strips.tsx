@@ -37,9 +37,10 @@ export function SpaStrip({
           const p = pm.has(d);
           const active = a || p;
           const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
+          const count = countsByWeekday[d] ?? 0;
           const pct =
-            active && totalSessions > 0
-              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
+            totalSessions > 0 && count > 0
+              ? Math.round((count / totalSessions) * 100)
               : null;
           return (
             <div
@@ -57,8 +58,13 @@ export function SpaStrip({
               title={
                 `${WEEKDAY_LABELS[d]}` +
                 (active
-                  ? ` · SPA ${label} · ${countsByWeekday[d]} of ${totalSessions} SPA sessions (${pct}%)`
-                  : "")
+                  ? ` · SPA ${label}` +
+                    (pct !== null
+                      ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%)`
+                      : "")
+                  : pct !== null
+                    ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%) — below regularity threshold`
+                    : "")
               }
             >
               <span>{label}</span>
