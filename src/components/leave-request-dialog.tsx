@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { computeLeaveConflicts, countWorkingDays, type LeaveConflict } from "@/features/leave/leave-utils";
+import { validateHalfDayRange } from "@/features/leave/half-day-validation";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveSubmitted } from "@/features/leave/leave-notifications.functions";
 import { formatDateGB } from "@/lib/utils";
@@ -48,12 +49,23 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
     }
   }, [open]);
 
+  const validate = () => {
+    const r = validateHalfDayRange({
+      start_date: startDate,
+      end_date: endDate,
+      half_day_start: halfDayStart === "none" ? null : halfDayStart,
+      half_day_end: halfDayEnd === "none" ? null : halfDayEnd,
+    });
+    if (!r.ok) {
+      toast.error(r.errors[0].message);
+      return null;
+    }
+    return r;
+  };
+
   const checkConflicts = async () => {
     if (!user || !startDate || !endDate) return;
-    if (endDate < startDate) {
-      toast.error("End date must be on or after start date");
-      return;
-    }
+    if (!validate()) return;
     setChecking(true);
     try {
       const c = await computeLeaveConflicts(
@@ -74,6 +86,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
 
   const submit = async () => {
     if (!user || !startDate || !endDate) return;
+    if (!validate()) return;
     setSaving(true);
     const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
     const conflictNotes =
@@ -148,24 +161,22 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setConflicts(null); }} />
             </div>
             <div>
-              <Label>Half day (start)</Label>
+              <Label>Start day</Label>
               <Select value={halfDayStart} onValueChange={(v) => { setHalfDayStart(v as typeof halfDayStart); setConflicts(null); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Full day</SelectItem>
-                  <SelectItem value="am">PM only (skip AM)</SelectItem>
-                  <SelectItem value="pm">AM only (skip PM)</SelectItem>
+                  <SelectItem value="pm">Afternoon only (skip AM)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Half day (end)</Label>
+              <Label>End day</Label>
               <Select value={halfDayEnd} onValueChange={(v) => { setHalfDayEnd(v as typeof halfDayEnd); setConflicts(null); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Full day</SelectItem>
-                  <SelectItem value="am">AM only</SelectItem>
-                  <SelectItem value="pm">PM only</SelectItem>
+                  <SelectItem value="am">Morning only (skip PM)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
