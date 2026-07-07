@@ -468,19 +468,9 @@ function ConsultantPatternBlock({
   );
 }
 
-// Shared column geometry so every row aligns under the same day columns.
-// Label has a fixed width; the 5 weekday cells share the remaining card
-// width equally so the grid always fits inside its card, on every
-// breakpoint. All rows use the same wrappers so cells line up.
-const ROW_CLASS = "flex items-center gap-2 text-xs";
-// Narrow (mobile / 3-col xl grid) → shorter label; sm+ → full width.
-// `truncate` is a safety net so unexpected long labels can't stretch the row.
-const ROW_LABEL_CLASS =
-  "w-20 sm:w-24 shrink-0 truncate text-muted-foreground";
-const STRIP_CLASS = "flex flex-1 min-w-0 gap-1";
-// `overflow-hidden` lets cell text clip gracefully if a cell is squeezed
-// below its intrinsic content width on very narrow cards.
-const CELL_CLASS = "flex-1 min-w-0 overflow-hidden";
+// Shared column geometry (ROW_CLASS / ROW_LABEL_CLASS / STRIP_CLASS /
+// CELL_CLASS) is imported from `@/components/working-pattern-strips` so
+// WeekdayHeader / AmPmStrip line up with SpaStrip / WeekdayStrip.
 
 function WeekdayHeader() {
   return (
