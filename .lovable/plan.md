@@ -1,97 +1,115 @@
-# Point 4 — Leave fairness & full entitlement ledger
+# Point 10 — Wellbeing & retention signals
 
-Turn `leave_requests` + `leave_allowances` into an HR-usable fairness &
-entitlement system. No duplicate leave tables — we extend what exists.
+Turn the rota + leave + sickness data the app already collects into
+proactive wellbeing and retention intelligence, plus two lightweight new
+data streams (pulse survey + peer recognition).
 
 ## What gets built
 
-### 1. Schema (migration)
+### 1. Wellbeing score engine (pure TS)
 
-- **Extend `leave_type` enum** with `carers`, `jury`, `industrial`, `toil`
-  (already have `annual`, `study`, `professional`, `compassionate`, `sick`,
-  `parental`, `other`).
-- **Extend `leave_allowances`** with the fields HR actually asks for:
-  - `carers_days numeric(6,2) not null default 5`
-  - `parental_days numeric(6,2) not null default 0`
-  - `compassionate_days numeric(6,2) not null default 5`
-  - `ltft_fraction numeric(4,3) not null default 1.000` — pro-rating knob
-  - `carry_over_days numeric(6,2) not null default 0` — annual leave brought
-    forward
-  - `sla_target_days smallint not null default 14` — decision SLA
-- **New table `public.leave_ledger_entries`** (TOIL / banked-hours ledger):
-  - `id`, `staff_id`, `entry_date`, `kind` (`accrual` | `spend` | `adjustment`),
-  - `hours numeric(6,2)`, `reason text` (encrypted), `related_leave_request_id`,
-  - `created_by`, `created_at`, `updated_at`.
-  - RLS: staff read own, admins full, coordinators read-only.
-  - Encryption on `reason` follows the existing `_sync_..._encryption` trigger
-    pattern; `get_leave_ledger_decrypted()` RPC for reads.
+`src/features/wellbeing/wellbeing-score.ts`
 
-### 2. Pure-TS entitlement engine
+Composite per-staff score over rolling 90 days, derived from:
 
-`src/features/leave/entitlement-ledger.ts`
+- Nights worked / month (from `rota_assignments.session = 'night'`)
+- Weekends worked / month (Saturday + Sunday sessions)
+- Unsocial-hours share (evening + night as % of all sessions)
+- Short-notice changes *received* by this doctor (from `rota_change_log`
+  where `hours_before_session <= 48`, filtered to their assignments)
+- Cancelled / denied leave count (from `leave_requests` where status
+  went from approved → cancelled or denied within window)
+- Sickness Bradford Factor (imported from `bradford-factor.ts`)
+- Exception reports raised in window
 
-For a given staff + leave-year, returns per-type breakdown:
-`{ type, entitlement, prorated_entitlement, carry_over, taken, pending,
-   remaining, unit }` — days for calendar leave, hours for TOIL.
+Each signal is normalised 0–1 against role-peer median and combined with
+transparent weights. Output: `{ score 0–100, band, drivers[] }` where
+higher = better wellbeing. Unit-tested with fixtures.
 
-- Pro-rates against `ltft_fraction` and mid-year start (`profiles.start_date`)
-  / leaver date (`profiles.left_at`).
-- Half-days count as 0.5.
-- TOIL sourced from `leave_ledger_entries` (accruals − spends).
+### 2. Attrition risk model (pure TS)
 
-Unit-tested with fixtures (full-timer, LTFT 0.6, mid-year starter, leaver
-mid-year, carry-over).
+`src/lib/attrition-risk.ts`
 
-### 3. Pure-TS fairness engine
+Composite features from existing data:
 
-`src/lib/leave-fairness.ts` (with tests)
+- Wellbeing score (inverse)
+- Bradford Factor (>200)
+- Leave-denial rate (12m)
+- Short-notice changes received (12m)
+- LTFT requests recorded in `leave_requests` for parental/carers
+- Time-since-last-approved-annual-leave
+- Overdue RTW interviews
+- Recent pulse-survey score trend (if available)
 
-Rolling 12-month window per staff member:
+Output: `{ risk 0–1, band: low|watch|elevated|high, top_factors[] }`.
+Explicitly *not* a black-box ML model — a transparent weighted rubric so
+HR can defend the flag in a conversation.
 
-- **Denial rate** = denied / (approved + denied), with denial-reason taxonomy
-  from `decision_notes`.
-- **Prime-date share**: fraction of approved leave days falling on school
-  holidays, bank holidays, or the Christmas/NY window (Dec 20 – Jan 2).
-- **SLA compliance**: median hours from `created_at` → `decided_at`, and
-  count breaching `sla_target_days`.
-- **Peer Gini index** across staff — surface the top/bottom deciles.
+### 3. Pulse-survey module
 
-### 4. Staff route — `/leave/entitlements`
+New tables:
 
-`src/routes/_authenticated/leave.entitlements.tsx`
+- `public.pulse_survey_cycles`: `opens_at`, `closes_at`,
+  `question_1`, `question_2`, `question_3`, `active bool`.
+- `public.pulse_survey_responses`: `cycle_id`, `staff_id`,
+  `score_1..3 smallint (1..5)`, `comment_enc bytea`, `created_at`.
+  Unique `(cycle_id, staff_id)`.
 
-- One card per leave type with a progress bar (taken / pending / remaining).
-- TOIL balance card with ledger history.
-- SLA countdown chip on any pending requests.
-- Read-only view of own record; link to submit new leave.
+RLS:
+- Any authenticated user can insert their own response and read their own.
+- Admins read all rows.
+- Coordinators read aggregated stats only via RPC `get_pulse_aggregate()`
+  (returns cycle + grade-level averages, no per-user rows).
 
-### 5. Admin route — `/admin/leave-fairness`
+The comment field is encrypted with the existing sync-trigger pattern; a
+`get_pulse_responses_decrypted()` RPC follows the same `decrypt_owner_or_coord`
+rule as the other encrypted tables.
 
-`src/routes/_authenticated/admin.leave-fairness.tsx`
+### 4. Recognition ledger
 
-- **Denial-reason league** — categorised counts and trend.
-- **Prime-date allocation league** — per-doctor share of leave on prime dates,
-  sortable, highlighting outliers.
-- **SLA breach table** — pending > target and decided > target.
-- **Per-doctor Gini** and 12-month totals.
+New table `public.recognition_entries`:
 
-### 6. TOIL grant/spend dialog
+- `staff_id` (recipient), `from_user_id`, `category`
+  (`teaching`, `kindness`, `clinical`, `above_beyond`, `covering_gap`, `other`),
+- `message`/`message_enc`, `is_public bool`, `created_at`.
 
-`src/components/leave/ToilLedgerDialog.tsx` — admin action to grant or spend
-TOIL hours, writes to `leave_ledger_entries`. Reachable from admin fairness
-page and from a trainee detail card.
+RLS:
+- Any authenticated user can insert (they are the sender).
+- Recipient always reads their own.
+- Public entries readable by all authenticated users (feed).
+- Sender always reads their own sent messages.
+- Admins read all.
 
-### 7. Sidebar
+### 5. Routes
 
-Add "Leave fairness" under `Audits` (admin/HR only) and "My entitlements"
-under the staff leave section of `src/lib/navigation.ts`.
+- `src/routes/_authenticated/wellbeing.tsx` — staff-facing:
+  their own score, trend line, top drivers, current pulse-survey CTA,
+  received recognition list.
+- `src/routes/_authenticated/admin.wellbeing.tsx` — admin league table:
+  per-doctor wellbeing score, attrition-risk badge, drivers, quick links.
+- `src/routes/_authenticated/pulse.tsx` — take the currently-open pulse survey.
+- `src/routes/_authenticated/admin.pulse.tsx` — manage cycles, view aggregated
+  results (grade × cycle heatmap, comments feed if entitled).
+- `src/routes/_authenticated/recognition.tsx` — send kudos + view public feed.
+
+### 6. Dialogs / components
+
+- `PulseSurveyDialog` — 3-question form, 1–5 slider each, optional comment.
+- `RecognitionDialog` — pick recipient + category + short message.
+- Wellbeing score card component reused on the trainee detail page.
+
+### 7. Navigation
+
+- `Wellbeing` (self) under `Home`
+- `Recognition` under `Home`
+- `Wellbeing (admin)` and `Pulse surveys` under `Audits & robustness`
 
 ## Sequencing
 
-1. Migration: extend enum, extend `leave_allowances`, create
-   `leave_ledger_entries` + encryption trigger + RPC + RLS/GRANTs.
-2. `entitlement-ledger.ts` + tests.
-3. `leave-fairness.ts` + tests.
-4. `/leave/entitlements` route + nav.
-5. `/admin/leave-fairness` route + nav.
-6. `ToilLedgerDialog`.
+1. Migration: `pulse_survey_cycles`, `pulse_survey_responses`,
+   `recognition_entries`, encryption triggers, decrypted RPCs, RLS, GRANTs.
+2. Pure-TS `wellbeing-score.ts` + `attrition-risk.ts` with tests.
+3. Dialogs (`PulseSurveyDialog`, `RecognitionDialog`).
+4. Staff routes (`/wellbeing`, `/pulse`, `/recognition`).
+5. Admin routes (`/admin/wellbeing`, `/admin/pulse`).
+6. Nav entries.
