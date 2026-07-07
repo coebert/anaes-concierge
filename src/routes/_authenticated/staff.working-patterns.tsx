@@ -429,6 +429,8 @@ function ConsultantPatternBlock({
       <SpaStrip
         amDays={pattern.spaAmWeekdays}
         pmDays={pattern.spaPmWeekdays}
+        countsByWeekday={pattern.spaCountsByWeekday}
+        totalSessions={pattern.totalSpaSessions}
       />
       {!hasAnySpa && (
         <p className="text-[11px] text-muted-foreground pl-[5.5rem] sm:pl-[6.5rem] -mt-1">
@@ -439,6 +441,8 @@ function ConsultantPatternBlock({
         label="On-call"
         highlighted={pattern.onCallWeekdays}
         tone="amber"
+        countsByWeekday={pattern.onCallCountsByWeekday}
+        totalSessions={pattern.totalOnCallSessions}
       />
       <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
         <span>On-call cover</span>
