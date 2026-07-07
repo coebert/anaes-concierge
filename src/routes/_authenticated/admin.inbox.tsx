@@ -379,7 +379,19 @@ function FilterChip({
   );
 }
 
-function InboxRow({ item }: { item: InboxItem }) {
+function InboxRow({
+  item,
+  addressed,
+  onDismiss,
+  onRestore,
+  busy,
+}: {
+  item: InboxItem;
+  addressed: boolean;
+  onDismiss: () => void;
+  onRestore: () => void;
+  busy: boolean;
+}) {
   const meta = KIND_META[item.kind];
   const Icon = meta.icon;
   return (
@@ -396,14 +408,45 @@ function InboxRow({ item }: { item: InboxItem }) {
                 {item.severity === "critical" ? "Urgent" : item.severity === "warning" ? "Soon" : "Upcoming"}
               </Badge>
               <Badge variant="outline">{meta.label}</Badge>
+              {addressed ? (
+                <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+                  Addressed
+                </Badge>
+              ) : null}
             </div>
             <div className="text-sm text-muted-foreground">{item.detail}</div>
           </div>
         </div>
-        <Button asChild size="sm" variant="outline" className="self-start sm:self-center">
-          <Link to={item.href}>Open</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+          <Button asChild size="sm" variant="outline">
+            <Link to={item.href}>Open</Link>
+          </Button>
+          {addressed ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={onRestore}
+              disabled={busy}
+            >
+              <Undo2 className="mr-1 h-4 w-4" />
+              Restore
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={onDismiss}
+              disabled={busy}
+            >
+              <Check className="mr-1 h-4 w-4" />
+              Mark addressed
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
+
