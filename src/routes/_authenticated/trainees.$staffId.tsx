@@ -225,6 +225,10 @@ function TraineeDetailPage() {
 
       {audit && <AuditLenses audit={audit} />}
 
+      <ExceptionReportsCard staffId={staffId} />
+
+
+
 
 
       <Card>
