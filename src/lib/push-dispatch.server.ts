@@ -278,3 +278,244 @@ export async function dispatchPendingPushNotifications(): Promise<{
 
   return { scanned: rows.length, sent, failed, pruned };
 }
+
+type LeaveChangeRow = {
+  id: string;
+  leave_request_id: string;
+  staff_id: string;
+  action: string;
+  prev_status: string | null;
+  new_status: string | null;
+  prev_start_date: string | null;
+  new_start_date: string | null;
+  prev_end_date: string | null;
+  new_end_date: string | null;
+  prev_type: string | null;
+  new_type: string | null;
+  changed_by: string | null;
+  changed_at: string;
+};
+
+function formatRange(start: string | null, end: string | null): string {
+  if (!start) return "";
+  if (!end || end === start) return formatDate(start);
+  return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
+function humanStatus(s: string | null): string {
+  if (!s) return "";
+  switch (s) {
+    case "pending":
+      return "pending";
+    case "approved":
+      return "approved";
+    case "denied":
+      return "denied";
+    case "cancelled":
+      return "cancelled";
+    case "reserve":
+      return "on the reserve list";
+    default:
+      return s;
+  }
+}
+
+function buildLeaveTitleBody(row: LeaveChangeRow): { title: string; body: string } {
+  const range =
+    formatRange(row.new_start_date ?? row.prev_start_date, row.new_end_date ?? row.prev_end_date) ||
+    "your leave";
+
+  if (row.action === "insert") {
+    return {
+      title: "Leave request created",
+      body: `New ${row.new_type ?? "leave"} request for ${range} — status: ${humanStatus(row.new_status)}.`,
+    };
+  }
+  if (row.action === "delete") {
+    return {
+      title: "Leave request removed",
+      body: `Your ${row.prev_type ?? "leave"} request for ${range} has been deleted.`,
+    };
+  }
+  // update — surface the most useful change
+  if (row.prev_status !== row.new_status) {
+    return {
+      title: `Leave ${humanStatus(row.new_status)}`,
+      body: `Your ${row.new_type ?? "leave"} for ${range} is now ${humanStatus(row.new_status)}.`,
+    };
+  }
+  if (row.prev_start_date !== row.new_start_date || row.prev_end_date !== row.new_end_date) {
+    return {
+      title: "Leave dates changed",
+      body: `Your ${row.new_type ?? "leave"} dates were updated to ${range}.`,
+    };
+  }
+  return {
+    title: "Leave request updated",
+    body: `Your ${row.new_type ?? "leave"} for ${range} was updated.`,
+  };
+}
+
+export async function dispatchPendingLeavePushNotifications(): Promise<{
+  scanned: number;
+  sent: number;
+  failed: number;
+  pruned: number;
+}> {
+  configureVapid();
+
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: changes, error: changesErr } = await supabaseAdmin
+    .from("leave_change_log")
+    .select(
+      "id, leave_request_id, staff_id, action, prev_status, new_status, prev_start_date, new_start_date, prev_end_date, new_end_date, prev_type, new_type, changed_by, changed_at",
+    )
+    .gte("changed_at", cutoff)
+    .order("changed_at", { ascending: true })
+    .limit(500);
+  if (changesErr) throw changesErr;
+  const rows = (changes ?? []) as LeaveChangeRow[];
+  if (rows.length === 0) return { scanned: 0, sent: 0, failed: 0, pruned: 0 };
+
+  const { data: alreadyLogged } = await supabaseAdmin
+    .from("push_notification_log")
+    .select("leave_change_log_id")
+    .in(
+      "leave_change_log_id",
+      rows.map((r) => r.id),
+    );
+  const loggedSet = new Set(
+    (alreadyLogged ?? [])
+      .map((r) => (r as { leave_change_log_id: string | null }).leave_change_log_id)
+      .filter((v): v is string => !!v),
+  );
+  const pending = rows.filter((r) => !loggedSet.has(r.id));
+  if (pending.length === 0) return { scanned: rows.length, sent: 0, failed: 0, pruned: 0 };
+
+  // Suppress self-notifications: don't notify the user of a change they made
+  // themselves (e.g. creating their own leave request).
+  const relevant = pending.filter((r) => r.changed_by !== r.staff_id || r.action !== "insert");
+  if (relevant.length === 0) {
+    // Still log them so we don't re-scan next minute.
+    await supabaseAdmin.from("push_notification_log").upsert(
+      pending.map((r) => ({
+        leave_change_log_id: r.id,
+        subscription_id: null,
+        staff_id: r.staff_id,
+        status: "self_change",
+        error: null,
+      })),
+      { onConflict: "leave_change_log_id,subscription_id" },
+    );
+    return { scanned: rows.length, sent: 0, failed: 0, pruned: 0 };
+  }
+
+  const userIds = Array.from(new Set(relevant.map((r) => r.staff_id)));
+  const { data: subs } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("id, user_id, endpoint, p256dh, auth")
+    .in("user_id", userIds);
+  const subsByUser = new Map<string, SubscriptionRow[]>();
+  for (const s of (subs ?? []) as SubscriptionRow[]) {
+    const arr = subsByUser.get(s.user_id) ?? [];
+    arr.push(s);
+    subsByUser.set(s.user_id, arr);
+  }
+
+  let sent = 0;
+  let failed = 0;
+  let pruned = 0;
+  const logEntries: Array<{
+    leave_change_log_id: string;
+    subscription_id: string | null;
+    staff_id: string;
+    status: string;
+    error: string | null;
+  }> = [];
+
+  // Also record the self-changes so they're not rescanned.
+  for (const r of pending) {
+    if (r.changed_by === r.staff_id && r.action === "insert") {
+      logEntries.push({
+        leave_change_log_id: r.id,
+        subscription_id: null,
+        staff_id: r.staff_id,
+        status: "self_change",
+        error: null,
+      });
+    }
+  }
+
+  for (const row of relevant) {
+    const userSubs = subsByUser.get(row.staff_id) ?? [];
+    if (userSubs.length === 0) {
+      logEntries.push({
+        leave_change_log_id: row.id,
+        subscription_id: null,
+        staff_id: row.staff_id,
+        status: "no_subscription",
+        error: null,
+      });
+      continue;
+    }
+    const { title, body } = buildLeaveTitleBody(row);
+    const payload = JSON.stringify({
+      title,
+      body,
+      tag: `leave-${row.leave_request_id}`,
+      url: "/leave",
+    });
+    for (const sub of userSubs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+          { TTL: 60 * 60 * 24 },
+        );
+        sent += 1;
+        logEntries.push({
+          leave_change_log_id: row.id,
+          subscription_id: sub.id,
+          staff_id: row.staff_id,
+          status: "sent",
+          error: null,
+        });
+      } catch (err: unknown) {
+        const statusCode =
+          typeof err === "object" && err !== null && "statusCode" in err
+            ? Number((err as { statusCode: unknown }).statusCode)
+            : 0;
+        const message = err instanceof Error ? err.message : String(err);
+        if (statusCode === 404 || statusCode === 410) {
+          await supabaseAdmin.from("push_subscriptions").delete().eq("id", sub.id);
+          pruned += 1;
+          logEntries.push({
+            leave_change_log_id: row.id,
+            subscription_id: sub.id,
+            staff_id: row.staff_id,
+            status: "pruned",
+            error: message,
+          });
+        } else {
+          failed += 1;
+          logEntries.push({
+            leave_change_log_id: row.id,
+            subscription_id: sub.id,
+            staff_id: row.staff_id,
+            status: "failed",
+            error: message,
+          });
+        }
+      }
+    }
+  }
+
+  if (logEntries.length > 0) {
+    await supabaseAdmin
+      .from("push_notification_log")
+      .upsert(logEntries, { onConflict: "leave_change_log_id,subscription_id" });
+  }
+
+  return { scanned: rows.length, sent, failed, pruned };
+}
+
