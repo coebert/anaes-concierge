@@ -118,6 +118,140 @@ export type Database = {
           },
         ]
       }
+      arcp_progress: {
+        Row: {
+          arcp_date: string | null
+          created_at: string
+          current_value: number
+          id: string
+          last_reviewed_at: string | null
+          notes: string | null
+          requirement_id: string
+          trainee_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          arcp_date?: string | null
+          created_at?: string
+          current_value?: number
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          requirement_id: string
+          trainee_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          arcp_date?: string | null
+          created_at?: string
+          current_value?: number
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          requirement_id?: string
+          trainee_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arcp_progress_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "arcp_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcp_progress_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcp_progress_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcp_progress_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcp_progress_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcp_progress_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcp_progress_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arcp_requirements: {
+        Row: {
+          active: boolean
+          category: string
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          label: string
+          sort_order: number
+          target_value: number
+          training_level: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          label: string
+          sort_order?: number
+          target_value?: number
+          training_level: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          label?: string
+          sort_order?: number
+          target_value?: number
+          training_level?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_assistant_memories: {
         Row: {
           content: string
@@ -447,6 +581,82 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      educational_supervisor_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          supervisor_id: string
+          trainee_id: string
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          supervisor_id: string
+          trainee_id: string
+          updated_at?: string
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          supervisor_id?: string
+          trainee_id?: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "educational_supervisor_assignments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "educational_supervisor_assignments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "educational_supervisor_assignments_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "educational_supervisor_assignments_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "educational_supervisor_assignments_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "educational_supervisor_assignments_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_inbound_log: {
         Row: {
