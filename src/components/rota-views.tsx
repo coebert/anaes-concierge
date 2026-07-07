@@ -43,7 +43,8 @@ export function addDays(d: Date, n: number) {
 }
 export function iso(d: Date) { return toISODateLocal(d); }
 export function fmt(d: Date) {
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  // British DD/MM/YYYY with weekday context, e.g. "Mon 26/05/2026".
+  return formatDateWithWeekdayGB(d);
 }
 
 export type ViewMode = "day" | "week" | "month";
