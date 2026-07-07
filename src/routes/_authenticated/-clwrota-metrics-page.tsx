@@ -39,7 +39,7 @@ import {
   parseListClwRotaSyncMetricsResponse,
   type ClwRotaSyncMetricRow,
 } from "@/lib/clwrota-metrics-types";
-import { formatDateGB } from "@/lib/utils";
+import { formatDateGB, formatDateTimeGB } from "@/lib/utils";
 
 
 
