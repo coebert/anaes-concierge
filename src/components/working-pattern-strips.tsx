@@ -37,11 +37,25 @@ const CELL_SHARE_TEXT =
  */
 export function PatternStripsScroll({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto sm:overflow-visible -mx-3 px-3 sm:mx-0 sm:px-0">
-      <div className="min-w-[20rem] sm:min-w-0 space-y-1.5">{children}</div>
+    <div
+      className="overflow-x-auto sm:overflow-visible -mx-3 px-3 sm:mx-0 sm:px-0"
+      role="table"
+      aria-label="Weekday working pattern breakdown"
+    >
+      <div
+        role="rowgroup"
+        className="min-w-[20rem] sm:min-w-0 space-y-1.5"
+      >
+        {children}
+      </div>
     </div>
   );
 }
+
+// Focus ring applied to every keyboard-focusable strip cell. Uses the
+// design-system `ring` token so the ring adapts to light/dark mode.
+const CELL_FOCUS_CLASS =
+  "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
 
 /**
  * Render a single "SPA" row for the working-patterns card. Each cell shows
@@ -66,8 +80,10 @@ export function SpaStrip({
   const am = new Set(amDays);
   const pm = new Set(pmDays);
   return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>SPA</div>
+    <div className={ROW_CLASS} role="row">
+      <div className={ROW_LABEL_CLASS} role="rowheader">
+        SPA
+      </div>
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const a = am.has(d);
@@ -87,14 +103,28 @@ export function SpaStrip({
               : pct !== null
                 ? `${pct}%`
                 : null;
+          const description = active
+            ? `SPA ${a && p ? "morning and afternoon" : a ? "morning" : "afternoon"}` +
+              (hasShare
+                ? `, ${count} of ${totalSessions} SPA sessions, ${pct} percent`
+                : "")
+            : hasShare
+              ? `${count} of ${totalSessions} SPA sessions, ${pct} percent, below regularity threshold`
+              : "no regular SPA session";
+          const focusable = active || hasShare;
           return (
             <div
               key={d}
               data-testid={`spa-cell-${d}`}
+              role="gridcell"
+              tabIndex={focusable ? 0 : -1}
+              aria-label={`${WEEKDAY_LABELS[d]}: ${description}`}
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border font-medium px-0.5 " +
                 CELL_LABEL_TEXT +
+                " " +
+                CELL_FOCUS_CLASS +
                 " " +
                 (shareText !== null ? "py-0.5 sm:py-1" : "h-6 sm:h-7") +
                 " " +
@@ -114,11 +144,12 @@ export function SpaStrip({
                     : "")
               }
             >
-              <span>{label}</span>
+              <span aria-hidden="true">{label}</span>
               {shareText !== null && (
                 <span
                   data-testid={`spa-pct-${d}`}
                   className={CELL_SHARE_TEXT}
+                  aria-hidden="true"
                 >
                   {shareText}
                 </span>
@@ -160,8 +191,10 @@ export function WeekdayStrip({
         ? "bg-amber-500/90 text-white border-amber-500 dark:bg-amber-500 dark:border-amber-500"
         : "bg-foreground text-background border-foreground";
   return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>{label}</div>
+    <div className={ROW_CLASS} role="row">
+      <div className={ROW_LABEL_CLASS} role="rowheader">
+        {label}
+      </div>
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
@@ -182,14 +215,27 @@ export function WeekdayStrip({
               : pct !== null
                 ? `${pct}%`
                 : null;
+          const lowerLabel = label.toLowerCase();
+          const description = hasShare
+            ? `${count} of ${totalSessions} ${lowerLabel} sessions, ${pct} percent` +
+              (active ? "" : ", below regularity threshold")
+            : active
+              ? `regular ${lowerLabel} day`
+              : `no ${lowerLabel} activity`;
+          const focusable = active || hasShare;
           return (
             <div
               key={d}
               data-testid={`weekday-cell-${d}`}
+              role="gridcell"
+              tabIndex={focusable ? 0 : -1}
+              aria-label={`${WEEKDAY_LABELS[d]}: ${description}`}
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border font-medium px-0.5 " +
                 CELL_LABEL_TEXT +
+                " " +
+                CELL_FOCUS_CLASS +
                 " " +
                 (shareText !== null ? "py-0.5 sm:py-1" : "h-6 sm:h-7") +
                 " " +
@@ -200,16 +246,19 @@ export function WeekdayStrip({
               title={
                 WEEKDAY_LABELS[d] +
                 (hasShare
-                  ? ` · ${count} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)` +
+                  ? ` · ${count} of ${totalSessions} ${lowerLabel} sessions (${pct}%)` +
                     (active ? "" : " — below regularity threshold")
                   : "")
               }
             >
-              <span>{active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}</span>
+              <span aria-hidden="true">
+                {active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}
+              </span>
               {shareText !== null && (
                 <span
                   data-testid={`weekday-pct-${d}`}
                   className={CELL_SHARE_TEXT}
+                  aria-hidden="true"
                 >
                   {shareText}
                 </span>
