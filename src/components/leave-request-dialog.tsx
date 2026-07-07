@@ -86,6 +86,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
 
   const submit = async () => {
     if (!user || !startDate || !endDate) return;
+    if (!validate()) return;
     setSaving(true);
     const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
     const conflictNotes =
