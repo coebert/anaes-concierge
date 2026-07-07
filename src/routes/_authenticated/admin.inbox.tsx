@@ -244,7 +244,16 @@ function CoordinatorInboxPage() {
     },
   });
 
-  const items = useMemo(() => (data ? buildInbox(data) : []), [data]);
+  const allItems = useMemo(() => (data ? buildInbox(data) : []), [data]);
+  const pendingItems = useMemo(
+    () => allItems.filter((i) => !dismissedIds.has(i.id)),
+    [allItems, dismissedIds],
+  );
+  const addressedItems = useMemo(
+    () => allItems.filter((i) => dismissedIds.has(i.id)),
+    [allItems, dismissedIds],
+  );
+  const items = showAddressed ? addressedItems : pendingItems;
   const filtered = useMemo(
     () => (filter === "all" ? items : items.filter((i) => i.kind === filter)),
     [items, filter],
@@ -259,7 +268,8 @@ function CoordinatorInboxPage() {
     rtw: items.filter((i) => i.kind === "rtw").length,
     competency: items.filter((i) => i.kind === "competency").length,
   };
-  const criticalCount = items.filter((i) => i.severity === "critical").length;
+  const criticalCount = pendingItems.filter((i) => i.severity === "critical").length;
+
 
   return (
     <div className="space-y-6">
