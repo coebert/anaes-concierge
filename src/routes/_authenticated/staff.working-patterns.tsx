@@ -27,6 +27,14 @@ import {
   type TheatreKind,
   type TheatreLite,
 } from "@/lib/staff-working-patterns";
+import {
+  SpaStrip,
+  WeekdayStrip,
+  ROW_CLASS,
+  ROW_LABEL_CLASS,
+  STRIP_CLASS,
+  CELL_CLASS,
+} from "@/components/working-pattern-strips";
 
 export const Route = createFileRoute("/_authenticated/staff/working-patterns")({
   head: () => ({ meta: [{ title: "Staff working patterns — Salisbury Anaesthetics Rota" }] }),
@@ -460,19 +468,9 @@ function ConsultantPatternBlock({
   );
 }
 
-// Shared column geometry so every row aligns under the same day columns.
-// Label has a fixed width; the 5 weekday cells share the remaining card
-// width equally so the grid always fits inside its card, on every
-// breakpoint. All rows use the same wrappers so cells line up.
-const ROW_CLASS = "flex items-center gap-2 text-xs";
-// Narrow (mobile / 3-col xl grid) → shorter label; sm+ → full width.
-// `truncate` is a safety net so unexpected long labels can't stretch the row.
-const ROW_LABEL_CLASS =
-  "w-20 sm:w-24 shrink-0 truncate text-muted-foreground";
-const STRIP_CLASS = "flex flex-1 min-w-0 gap-1";
-// `overflow-hidden` lets cell text clip gracefully if a cell is squeezed
-// below its intrinsic content width on very narrow cards.
-const CELL_CLASS = "flex-1 min-w-0 overflow-hidden";
+// Shared column geometry (ROW_CLASS / ROW_LABEL_CLASS / STRIP_CLASS /
+// CELL_CLASS) is imported from `@/components/working-pattern-strips` so
+// WeekdayHeader / AmPmStrip line up with SpaStrip / WeekdayStrip.
 
 function WeekdayHeader() {
   return (
@@ -547,124 +545,5 @@ function AmPmStrip({
   );
 }
 
-function SpaStrip({
-  amDays,
-  pmDays,
-  countsByWeekday,
-  totalSessions,
-}: {
-  amDays: number[];
-  pmDays: number[];
-  countsByWeekday: number[];
-  totalSessions: number;
-}) {
-  const am = new Set(amDays);
-  const pm = new Set(pmDays);
-  return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>SPA</div>
-      <div className={STRIP_CLASS}>
-        {[1, 2, 3, 4, 5].map((d) => {
-          const a = am.has(d);
-          const p = pm.has(d);
-          const active = a || p;
-          const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
-          const pct =
-            active && totalSessions > 0
-              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
-              : null;
-          return (
-            <div
-              key={d}
-              className={
-                CELL_CLASS +
-                " flex flex-col items-center justify-center rounded border text-[10px] font-medium leading-none px-0.5 " +
-                (pct !== null ? "py-0.5" : "h-6") +
-                " " +
-                (active
-                  ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
-                  : "border-border bg-muted/40 text-muted-foreground")
-              }
-              title={
-                `${WEEKDAY_LABELS[d]}` +
-                (active
-                  ? ` · SPA ${label} · ${countsByWeekday[d]} of ${totalSessions} SPA sessions (${pct}%)`
-                  : "")
-              }
-            >
-              <span>{label}</span>
-              {pct !== null && (
-                <span className="text-[9px] font-normal opacity-90 tabular-nums">
-                  {pct}%
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// SpaStrip and WeekdayStrip live in `@/components/working-pattern-strips`.
 
-function WeekdayStrip({
-  label,
-  highlighted,
-  tone = "default",
-  countsByWeekday,
-  totalSessions,
-}: {
-  label: string;
-  highlighted: number[];
-  tone?: "default" | "primary" | "amber";
-  countsByWeekday?: number[];
-  totalSessions?: number;
-}) {
-  const set = new Set(highlighted);
-  const highlightClass =
-    tone === "primary"
-      ? "bg-primary text-primary-foreground border-primary"
-      : tone === "amber"
-        ? "bg-amber-500/90 text-white border-amber-500 dark:bg-amber-500 dark:border-amber-500"
-        : "bg-foreground text-background border-foreground";
-  return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>{label}</div>
-      <div className={STRIP_CLASS}>
-        {[1, 2, 3, 4, 5].map((d) => {
-          const active = set.has(d);
-          const pct =
-            active && countsByWeekday && totalSessions && totalSessions > 0
-              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
-              : null;
-          return (
-            <div
-              key={d}
-              className={
-                CELL_CLASS +
-                " flex flex-col items-center justify-center rounded border text-[11px] font-medium leading-none px-0.5 " +
-                (pct !== null ? "py-0.5" : "h-6") +
-                " " +
-                (active
-                  ? highlightClass
-                  : "border-border bg-muted/40 text-muted-foreground")
-              }
-              title={
-                WEEKDAY_LABELS[d] +
-                (pct !== null
-                  ? ` · ${countsByWeekday![d]} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)`
-                  : "")
-              }
-            >
-              <span>{active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}</span>
-              {pct !== null && (
-                <span className="text-[9px] font-normal opacity-90 tabular-nums">
-                  {pct}%
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
