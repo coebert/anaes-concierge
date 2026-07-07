@@ -116,9 +116,10 @@ export function WeekdayStrip({
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
+          const count = countsByWeekday?.[d] ?? 0;
           const pct =
-            active && countsByWeekday && totalSessions && totalSessions > 0
-              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
+            countsByWeekday && totalSessions && totalSessions > 0 && count > 0
+              ? Math.round((count / totalSessions) * 100)
               : null;
           return (
             <div
@@ -136,7 +137,8 @@ export function WeekdayStrip({
               title={
                 WEEKDAY_LABELS[d] +
                 (pct !== null
-                  ? ` · ${countsByWeekday![d]} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)`
+                  ? ` · ${count} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)` +
+                    (active ? "" : " — below regularity threshold")
                   : "")
               }
             >
