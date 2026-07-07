@@ -58,6 +58,7 @@ import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminPulseRouteImport } from './routes/_authenticated/admin.pulse'
 import { Route as AuthenticatedAdminLeaveFairnessRouteImport } from './routes/_authenticated/admin.leave-fairness'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
+import { Route as AuthenticatedAdminInboxRouteImport } from './routes/_authenticated/admin.inbox'
 import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_authenticated/admin.exceptions'
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
@@ -356,6 +357,11 @@ const AuthenticatedAdminJobPlansRoute =
     path: '/admin/job-plans',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminInboxRoute = AuthenticatedAdminInboxRouteImport.update({
+  id: '/admin/inbox',
+  path: '/admin/inbox',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAdminExceptionsRoute =
   AuthenticatedAdminExceptionsRouteImport.update({
     id: '/admin/exceptions',
@@ -549,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
+  '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
   '/admin/pulse': typeof AuthenticatedAdminPulseRoute
@@ -625,6 +632,7 @@ export interface FileRoutesByTo {
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
+  '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
   '/admin/pulse': typeof AuthenticatedAdminPulseRoute
@@ -704,6 +712,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/_authenticated/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
+  '/_authenticated/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/_authenticated/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
   '/_authenticated/admin/pulse': typeof AuthenticatedAdminPulseRoute
@@ -783,6 +792,7 @@ export interface FileRouteTypes {
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
     | '/admin/exceptions'
+    | '/admin/inbox'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
     | '/admin/pulse'
@@ -859,6 +869,7 @@ export interface FileRouteTypes {
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
     | '/admin/exceptions'
+    | '/admin/inbox'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
     | '/admin/pulse'
@@ -937,6 +948,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
     | '/_authenticated/admin/exceptions'
+    | '/_authenticated/admin/inbox'
     | '/_authenticated/admin/job-plans'
     | '/_authenticated/admin/leave-fairness'
     | '/_authenticated/admin/pulse'
@@ -1345,6 +1357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminJobPlansRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/inbox': {
+      id: '/_authenticated/admin/inbox'
+      path: '/admin/inbox'
+      fullPath: '/admin/inbox'
+      preLoaderRoute: typeof AuthenticatedAdminInboxRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/exceptions': {
       id: '/_authenticated/admin/exceptions'
       path: '/admin/exceptions'
@@ -1652,6 +1671,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
   AuthenticatedAdminExceptionsRoute: typeof AuthenticatedAdminExceptionsRoute
+  AuthenticatedAdminInboxRoute: typeof AuthenticatedAdminInboxRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
   AuthenticatedAdminLeaveFairnessRoute: typeof AuthenticatedAdminLeaveFairnessRoute
   AuthenticatedAdminPulseRoute: typeof AuthenticatedAdminPulseRoute
@@ -1706,6 +1726,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
   AuthenticatedAdminExceptionsRoute: AuthenticatedAdminExceptionsRoute,
+  AuthenticatedAdminInboxRoute: AuthenticatedAdminInboxRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
   AuthenticatedAdminLeaveFairnessRoute: AuthenticatedAdminLeaveFairnessRoute,
   AuthenticatedAdminPulseRoute: AuthenticatedAdminPulseRoute,
