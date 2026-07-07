@@ -1,15 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { computeLeaveConflicts, type LeaveConflict } from "@/features/leave/leave-utils";
+import {
+  computeStudyBudget,
+  previewAfterDecision,
+  type StudyLeaveRow,
+} from "@/features/leave/study-leave-budget";
+import { leaveWorkingDays } from "@/features/leave/leave-allowances";
+import { StudyLeaveBudgetCard } from "@/components/leave/StudyLeaveBudgetCard";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveDecided } from "@/features/leave/leave-notifications.functions";
@@ -31,7 +40,28 @@ interface LeaveRow {
   decided_at: string | null;
   reserve_listed_at: string | null;
   created_at: string;
+  study_cost_gbp: number | null;
 }
+
+interface AllowanceRow {
+  staff_id: string;
+  leave_year_start: string;
+  study_days: number;
+  study_budget_gbp: number;
+}
+
+interface StaffProfile {
+  name: string;
+  grade: string | null;
+}
+
+function defaultLeaveYearStart(today = new Date()): string {
+  // NHS leave year: 1 April → 31 March.
+  const y = today.getUTCFullYear();
+  const beforeApril = today.getUTCMonth() < 3;
+  return `${beforeApril ? y - 1 : y}-04-01`;
+}
+
 
 export const Route = createFileRoute("/_authenticated/coordinator/leave")({
   head: () => ({ meta: [{ title: "Coordinator — Leave — Salisbury Anaesthetics Rota" }] }),
