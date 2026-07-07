@@ -44,13 +44,7 @@ import {
 } from "@/features/clwrota/clwrota.functions";
 
 function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatDateTimeGB(iso);
 }
 
 function relativeFrom(iso: string | null | undefined): string {
