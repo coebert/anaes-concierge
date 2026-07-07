@@ -77,6 +77,15 @@ export const NAV_ITEMS: NavItem[] = [
   // Home
   { id: "home", label: "Home", to: "/", icon: Home, group: "home",
     keywords: ["dashboard", "overview", "start"] },
+  { id: "wellbeing-mine", label: "My wellbeing", to: "/wellbeing",
+    icon: HeartPulse, group: "home",
+    keywords: ["burnout", "score", "retention", "attrition"] },
+  { id: "pulse", label: "Wellbeing pulse", to: "/pulse",
+    icon: MessageSquare, group: "home",
+    keywords: ["survey", "check-in", "wellbeing"] },
+  { id: "recognition", label: "Recognition", to: "/recognition",
+    icon: Sparkles, group: "home",
+    keywords: ["kudos", "thanks", "peer"] },
 
   // Rota
   { id: "rota-theatre", label: "Theatre rota", to: "/coordinator/rota",
