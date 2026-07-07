@@ -539,6 +539,19 @@ export function CellDialog({
                     <div className="text-xs font-medium flex items-center gap-1.5">
                       <SeverityIcon severity={worstSeverity(allCandidateIssues) ?? "info"} />
                       Validation
+                      {specialtyId && newStaff && (
+                        <CompetencyMismatchTooltip
+                          staffId={newStaff}
+                          staffName={staff.find((s) => s.id === newStaff)?.full_name}
+                          specialtyId={specialtyId}
+                          specialtyName={specialties?.find((s) => s.id === specialtyId)?.name}
+                          role={newRole}
+                          onDate={date}
+                          competencies={competencyRows ?? []}
+                          requirements={competencyRequirements ?? []}
+                          staffCompetencies={staffHoldings ?? []}
+                        />
+                      )}
                     </div>
                     <ul className="space-y-0.5 text-[11px]">
                       {allCandidateIssues.map((i, idx) => (
