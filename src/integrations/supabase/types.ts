@@ -445,6 +445,165 @@ export type Database = {
         }
         Relationships: []
       }
+      exception_report_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          report_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          report_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exception_report_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_report_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_report_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_report_comments_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "exception_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exception_reports: {
+        Row: {
+          acknowledged_at: string | null
+          category: string
+          created_at: string
+          description: string
+          due_by: string
+          event_date: string
+          event_session: Database["public"]["Enums"]["session_half"] | null
+          hours_worked_extra: number | null
+          id: string
+          immediate_safety_concern: boolean
+          outcome: string | null
+          outcome_note: string | null
+          resolved_at: string | null
+          responder_id: string | null
+          rest_missed_hours: number | null
+          status: string
+          trainee_id: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          category: string
+          created_at?: string
+          description: string
+          due_by: string
+          event_date: string
+          event_session?: Database["public"]["Enums"]["session_half"] | null
+          hours_worked_extra?: number | null
+          id?: string
+          immediate_safety_concern?: boolean
+          outcome?: string | null
+          outcome_note?: string | null
+          resolved_at?: string | null
+          responder_id?: string | null
+          rest_missed_hours?: number | null
+          status?: string
+          trainee_id: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          due_by?: string
+          event_date?: string
+          event_session?: Database["public"]["Enums"]["session_half"] | null
+          hours_worked_extra?: number | null
+          id?: string
+          immediate_safety_concern?: boolean
+          outcome?: string | null
+          outcome_note?: string | null
+          resolved_at?: string | null
+          responder_id?: string | null
+          rest_missed_hours?: number | null
+          status?: string
+          trainee_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exception_reports_responder_id_fkey"
+            columns: ["responder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_reports_responder_id_fkey"
+            columns: ["responder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_reports_responder_id_fkey"
+            columns: ["responder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_reports_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_reports_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exception_reports_trainee_id_fkey"
+            columns: ["trainee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixed_sessions: {
         Row: {
           created_at: string
