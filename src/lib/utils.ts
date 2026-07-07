@@ -95,6 +95,22 @@ export function formatDateWithWeekdayGB(value: Date | string | null | undefined)
   return `${wd} ${formatDateGB(d)}`;
 }
 
+/**
+ * Format a timestamp (Date or ISO string) as `DD/MM/YYYY, HH:mm` (British).
+ * Returns `"—"` for invalid input. Uses the user's local timezone for the
+ * time portion; the date portion is timezone-safe via `parseDateLocal` for
+ * plain-date input and via en-GB locale rules for ISO timestamps.
+ */
+export function formatDateTimeGB(value: Date | string | null | undefined): string {
+  if (value == null || value === "") return "—";
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-GB", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
 /* ----------------------------------------------------------------------------
  * Name parsing
  * -------------------------------------------------------------------------- */

@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Check, X, Trash2 } from "lucide-react";
 import { PageLoading } from "@/components/loading";
+import { formatDateTimeGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/access-requests")({
   head: () => ({ meta: [{ title: "Access requests — Salisbury Anaesthetics Rota" }] }),
@@ -104,7 +105,7 @@ function AdminAccessRequestsPage() {
                       {r.message || "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(r.created_at).toLocaleString()}
+                      {formatDateTimeGB(r.created_at)}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
@@ -166,7 +167,7 @@ function AdminAccessRequestsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {r.decided_at ? new Date(r.decided_at).toLocaleString() : "—"}
+                      {r.decided_at ? formatDateTimeGB(r.decided_at) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

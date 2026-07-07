@@ -31,6 +31,7 @@ import {
   AreaChart,
 } from "recharts";
 import { Download, Database, AlertCircle, FileText } from "lucide-react";
+import { formatDateTimeGB } from "@/lib/utils";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   DropdownMenu,
@@ -147,7 +148,7 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
           </h2>
           {report.generatedAt && (
             <div className="mt-1 text-[11px] text-muted-foreground">
-              Generated {new Date(report.generatedAt).toLocaleString()}
+              Generated {formatDateTimeGB(report.generatedAt)}
             </div>
           )}
         </div>
@@ -328,7 +329,7 @@ async function downloadReportPdf(report: ReportOutput) {
   // Title block
   writeHeading(report.title, 1);
   if (report.generatedAt) {
-    writeWrapped(`Generated ${new Date(report.generatedAt).toLocaleString()}`, {
+    writeWrapped(`Generated ${formatDateTimeGB(report.generatedAt)}`, {
       size: 9,
       color: [120, 120, 120],
       gap: 14,
@@ -785,7 +786,7 @@ async function downloadPdf(
   doc.setFontSize(9);
   doc.setTextColor(120);
   doc.text(
-    `Generated ${new Date().toLocaleString()} — ${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
+    `Generated ${formatDateTimeGB(new Date())} — ${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
     40,
     56,
   );
@@ -826,7 +827,7 @@ export async function downloadAllPdf(reports: Array<{ id: string; output: RunSql
   doc.text("Audit Reports", 40, 40);
   doc.setFontSize(9);
   doc.setTextColor(120);
-  doc.text(`Generated ${new Date().toLocaleString()}`, 40, 56);
+  doc.text(`Generated ${formatDateTimeGB(new Date())}`, 40, 56);
   doc.setTextColor(0);
 
   reports.forEach((r, i) => {

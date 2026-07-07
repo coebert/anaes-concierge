@@ -17,6 +17,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
+import { formatDateTimeGB } from "@/lib/utils";
 
 interface HealthCheck {
   name: string;
@@ -136,7 +137,7 @@ function HealthPage() {
 
             {/* Footer */}
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Checked: {new Date(health.timestamp).toLocaleString()}</span>
+              <span>Checked: {formatDateTimeGB(health.timestamp)}</span>
               <span>Version: {health.version}</span>
             </div>
           </div>

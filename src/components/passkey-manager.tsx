@@ -10,6 +10,7 @@ import {
   deleteMyPasskey,
 } from "@/features/passkeys/passkeys.functions";
 import { detectDeviceName } from "@/lib/passkey-device-name";
+import { formatDateGB } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -124,9 +125,9 @@ export function PasskeyManager() {
                       {p.device_name ?? "Unnamed device"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Added {new Date(p.created_at).toLocaleDateString()}
+                      Added {formatDateGB(p.created_at)}
                       {p.last_used_at
-                        ? ` · Last used ${new Date(p.last_used_at).toLocaleDateString()}`
+                        ? ` · Last used ${formatDateGB(p.last_used_at)}`
                         : ""}
                     </p>
                   </div>
