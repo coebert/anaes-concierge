@@ -736,30 +736,48 @@ export type Database = {
       leave_allowances: {
         Row: {
           annual_days: number
+          carers_days: number
+          carry_over_days: number
+          compassionate_days: number
           created_at: string
           id: string
           leave_year_start: string
+          ltft_fraction: number
+          parental_days: number
           professional_days: number
+          sla_target_days: number
           staff_id: string
           study_days: number
           updated_at: string
         }
         Insert: {
           annual_days?: number
+          carers_days?: number
+          carry_over_days?: number
+          compassionate_days?: number
           created_at?: string
           id?: string
           leave_year_start: string
+          ltft_fraction?: number
+          parental_days?: number
           professional_days?: number
+          sla_target_days?: number
           staff_id: string
           study_days?: number
           updated_at?: string
         }
         Update: {
           annual_days?: number
+          carers_days?: number
+          carry_over_days?: number
+          compassionate_days?: number
           created_at?: string
           id?: string
           leave_year_start?: string
+          ltft_fraction?: number
+          parental_days?: number
           professional_days?: number
+          sla_target_days?: number
           staff_id?: string
           study_days?: number
           updated_at?: string
@@ -838,6 +856,112 @@ export type Database = {
           staff_id?: string
         }
         Relationships: []
+      }
+      leave_ledger_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          hours: number
+          id: string
+          kind: string
+          reason: string | null
+          reason_enc: string | null
+          related_leave_request_id: string | null
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entry_date: string
+          hours: number
+          id?: string
+          kind: string
+          reason?: string | null
+          reason_enc?: string | null
+          related_leave_request_id?: string | null
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          hours?: number
+          id?: string
+          kind?: string
+          reason?: string | null
+          reason_enc?: string | null
+          related_leave_request_id?: string | null
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_ledger_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_related_leave_request_id_fkey"
+            columns: ["related_leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "leave_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_related_leave_request_id_fkey"
+            columns: ["related_leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "leave_requests_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_related_leave_request_id_fkey"
+            columns: ["related_leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "leave_requests_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_ledger_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leave_requests: {
         Row: {
@@ -2335,6 +2459,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_leave_ledger_decrypted: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          hours: number
+          id: string
+          kind: string
+          reason: string
+          related_leave_request_id: string
+          staff_id: string
+          updated_at: string
+        }[]
+      }
       get_leave_requests_decrypted: {
         Args: never
         Returns: {
@@ -2499,6 +2638,10 @@ export type Database = {
         | "parental"
         | "other"
         | "professional"
+        | "carers"
+        | "jury"
+        | "industrial"
+        | "toil"
       rota_role:
         | "solo"
         | "supervised"
@@ -2668,6 +2811,10 @@ export const Constants = {
         "parental",
         "other",
         "professional",
+        "carers",
+        "jury",
+        "industrial",
+        "toil",
       ],
       rota_role: [
         "solo",

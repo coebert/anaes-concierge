@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LineChart,
   MessageSquare,
+  Scale,
   Settings,
   ShieldAlert,
   ShieldCheck,
@@ -100,6 +101,9 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Activity, group: "leave", roles: ["admin", "rota_coordinator"] },
   { id: "leave-calendar", label: "Global calendar", to: "/calendar",
     icon: CalendarDays, group: "leave" },
+  { id: "leave-entitlements", label: "My entitlements", to: "/leave/entitlements",
+    icon: ClipboardList, group: "leave",
+    keywords: ["allowance", "TOIL", "carry over", "study leave", "SPA"] },
 
   // Staff
   { id: "setup-staff", label: "Staff", to: "/admin/staff",
@@ -145,6 +149,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "absence", label: "Absence (Bradford)", to: "/admin/absence",
     icon: HeartPulse, group: "audits", roles: ["admin"],
     keywords: ["sickness", "bradford", "RTW", "return to work", "attendance"] },
+  { id: "leave-fairness", label: "Leave fairness", to: "/admin/leave-fairness",
+    icon: Scale, group: "audits", roles: ["admin"],
+    keywords: ["denial", "SLA", "prime dates", "TOIL", "entitlement", "gini"] },
   { id: "audit-data", label: "Rota source data", to: "/admin/dashboard",
     icon: LayoutDashboard, group: "audits", roles: ["admin"],
     keywords: ["raw", "ingest", "clwrota"] },
