@@ -260,10 +260,37 @@ export function CellDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newStaff, newRole, date, session]);
 
-  const allCandidateIssues = [...candidateIssues, ...customIssues];
+  // Soft warnings from the competency register for the candidate being added.
+  const candidateCompetencyIssues: Issue[] = newStaff && specialtyId
+    ? evaluateCompetency({
+        staffId: newStaff,
+        specialtyId,
+        role: newRole,
+        onDate: date,
+        requirements: competencyRequirements ?? [],
+        staffCompetencies: staffHoldings ?? [],
+        competencies: competencyRows ?? [],
+      })
+    : [];
 
-  const issuesFor = (staffId: string, role: RotaRole) =>
-    validateAssignment({
+  const allCandidateIssues = [
+    ...candidateIssues,
+    ...customIssues,
+    ...candidateCompetencyIssues,
+  ];
+
+  const competencyIssuesFor = (staffId: string, role: RotaRole): Issue[] =>
+    specialtyId
+      ? evaluateCompetency({
+          staffId, specialtyId, role, onDate: date,
+          requirements: competencyRequirements ?? [],
+          staffCompetencies: staffHoldings ?? [],
+          competencies: competencyRows ?? [],
+        })
+      : [];
+
+  const issuesFor = (staffId: string, role: RotaRole) => [
+    ...validateAssignment({
       candidateStaffId: staffId,
       role,
       date,
@@ -280,7 +307,9 @@ export function CellDialog({
       leave,
       fixedSessions,
       rules,
-    });
+    }),
+    ...competencyIssuesFor(staffId, role),
+  ];
 
   const addAssign = useMutation({
     mutationFn: async () => {
