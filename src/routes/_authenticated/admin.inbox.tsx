@@ -89,8 +89,63 @@ function workingDaysSince(dateIso: string, today: Date): number {
 }
 
 function CoordinatorInboxPage() {
-  const { hasRole, loading } = useAuth();
+  const { hasRole, loading, user } = useAuth();
   const [filter, setFilter] = useState<KindFilter>("all");
+  const [showAddressed, setShowAddressed] = useState(false);
+  const queryClient = useQueryClient();
+
+  const dismissalsQuery = useQuery({
+    queryKey: ["coordinator-inbox-dismissals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inbox_dismissals")
+        .select("item_id,kind,dismissed_at,dismissed_by");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const dismissedIds = useMemo(
+    () => new Set((dismissalsQuery.data ?? []).map((d) => d.item_id)),
+    [dismissalsQuery.data],
+  );
+
+  const dismissMutation = useMutation({
+    mutationFn: async (item: InboxItem) => {
+      if (!user) throw new Error("Not signed in");
+      const { error } = await supabase.from("inbox_dismissals").upsert({
+        item_id: item.id,
+        kind: item.kind,
+        dismissed_by: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coordinator-inbox-dismissals"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to mark addressed";
+      toast.error(msg);
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await supabase
+        .from("inbox_dismissals")
+        .delete()
+        .eq("item_id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coordinator-inbox-dismissals"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to restore item";
+      toast.error(msg);
+    },
+  });
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["coordinator-inbox"],
