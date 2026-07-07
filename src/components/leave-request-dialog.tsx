@@ -49,12 +49,23 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
     }
   }, [open]);
 
+  const validate = () => {
+    const r = validateHalfDayRange({
+      start_date: startDate,
+      end_date: endDate,
+      half_day_start: halfDayStart === "none" ? null : halfDayStart,
+      half_day_end: halfDayEnd === "none" ? null : halfDayEnd,
+    });
+    if (!r.ok) {
+      toast.error(r.errors[0].message);
+      return null;
+    }
+    return r;
+  };
+
   const checkConflicts = async () => {
     if (!user || !startDate || !endDate) return;
-    if (endDate < startDate) {
-      toast.error("End date must be on or after start date");
-      return;
-    }
+    if (!validate()) return;
     setChecking(true);
     try {
       const c = await computeLeaveConflicts(
