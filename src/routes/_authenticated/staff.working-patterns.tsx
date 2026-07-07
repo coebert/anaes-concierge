@@ -546,33 +546,35 @@ function ConsultantPatternBlock({
         <CalendarRange className="h-3.5 w-3.5" />
         <span>Normal working pattern</span>
       </div>
-      <WeekdayHeader />
-      <AmPmStrip amSet={amSet} pmSet={pmSet} />
-      <WeekdayStrip
-        label="Private / SAG"
-        highlighted={pattern.privateWeekdays}
-        tone="primary"
-      />
-      <SpaStrip
-        amDays={pattern.spaAmWeekdays}
-        pmDays={pattern.spaPmWeekdays}
-        countsByWeekday={pattern.spaCountsByWeekday}
-        totalSessions={pattern.totalSpaSessions}
-        displayMode={displayMode}
-      />
-      {!hasAnySpa && (
-        <p className="text-[11px] text-muted-foreground pl-[4rem] sm:pl-[6.5rem] -mt-1">
-          No regular SPA slot identified in this window.
-        </p>
-      )}
-      <WeekdayStrip
-        label="On-call"
-        highlighted={pattern.onCallWeekdays}
-        tone="amber"
-        countsByWeekday={pattern.onCallCountsByWeekday}
-        totalSessions={pattern.totalOnCallSessions}
-        displayMode={displayMode}
-      />
+      <PatternStripsScroll>
+        <WeekdayHeader />
+        <AmPmStrip amSet={amSet} pmSet={pmSet} />
+        <WeekdayStrip
+          label="Private / SAG"
+          highlighted={pattern.privateWeekdays}
+          tone="primary"
+        />
+        <SpaStrip
+          amDays={pattern.spaAmWeekdays}
+          pmDays={pattern.spaPmWeekdays}
+          countsByWeekday={pattern.spaCountsByWeekday}
+          totalSessions={pattern.totalSpaSessions}
+          displayMode={displayMode}
+        />
+        {!hasAnySpa && (
+          <p className="text-[11px] text-muted-foreground pl-[4rem] sm:pl-[6.5rem] -mt-1">
+            No regular SPA slot identified in this window.
+          </p>
+        )}
+        <WeekdayStrip
+          label="On-call"
+          highlighted={pattern.onCallWeekdays}
+          tone="amber"
+          countsByWeekday={pattern.onCallCountsByWeekday}
+          totalSessions={pattern.totalOnCallSessions}
+          displayMode={displayMode}
+        />
+      </PatternStripsScroll>
       <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
         <span>On-call cover</span>
         <Badge variant="outline" className="text-[11px]">
