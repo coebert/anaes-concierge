@@ -40,6 +40,7 @@ import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './ro
 import { Route as AuthenticatedRobustnessLastMinuteChangesRouteImport } from './routes/_authenticated/robustness.last-minute-changes'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
 import { Route as AuthenticatedRobustnessConsultantAuditsRouteImport } from './routes/_authenticated/robustness.consultant-audits'
+import { Route as AuthenticatedMeCompetenciesRouteImport } from './routes/_authenticated/me.competencies'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
 import { Route as AuthenticatedLeaveEntitlementsRouteImport } from './routes/_authenticated/leave.entitlements'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
@@ -252,6 +253,12 @@ const AuthenticatedRobustnessConsultantAuditsRoute =
     id: '/robustness/consultant-audits',
     path: '/robustness/consultant-audits',
     getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMeCompetenciesRoute =
+  AuthenticatedMeCompetenciesRouteImport.update({
+    id: '/competencies',
+    path: '/competencies',
+    getParentRoute: () => AuthenticatedMeRoute,
   } as any)
 const AuthenticatedLeaveForecastRoute =
   AuthenticatedLeaveForecastRouteImport.update({
@@ -543,7 +550,7 @@ export interface FileRoutesByFullPath {
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
-  '/me': typeof AuthenticatedMeRoute
+  '/me': typeof AuthenticatedMeRouteWithChildren
   '/pulse': typeof AuthenticatedPulseRoute
   '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -582,6 +589,7 @@ export interface FileRoutesByFullPath {
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/me/competencies': typeof AuthenticatedMeCompetenciesRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -620,7 +628,7 @@ export interface FileRoutesByTo {
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
-  '/me': typeof AuthenticatedMeRoute
+  '/me': typeof AuthenticatedMeRouteWithChildren
   '/pulse': typeof AuthenticatedPulseRoute
   '/recognition': typeof AuthenticatedRecognitionRoute
   '/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -660,6 +668,7 @@ export interface FileRoutesByTo {
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/me/competencies': typeof AuthenticatedMeCompetenciesRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -701,7 +710,7 @@ export interface FileRoutesById {
   '/_authenticated/exceptions': typeof AuthenticatedExceptionsRoute
   '/_authenticated/glossary': typeof AuthenticatedGlossaryRoute
   '/_authenticated/leave': typeof AuthenticatedLeaveRouteWithChildren
-  '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
   '/_authenticated/pulse': typeof AuthenticatedPulseRoute
   '/_authenticated/recognition': typeof AuthenticatedRecognitionRoute
   '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
@@ -741,6 +750,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
   '/_authenticated/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
+  '/_authenticated/me/competencies': typeof AuthenticatedMeCompetenciesRoute
   '/_authenticated/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/_authenticated/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -822,6 +832,7 @@ export interface FileRouteTypes {
     | '/coordinator/rota'
     | '/leave/entitlements'
     | '/leave/forecast'
+    | '/me/competencies'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/last-minute-changes'
@@ -900,6 +911,7 @@ export interface FileRouteTypes {
     | '/coordinator/rota'
     | '/leave/entitlements'
     | '/leave/forecast'
+    | '/me/competencies'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/last-minute-changes'
@@ -980,6 +992,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/rota'
     | '/_authenticated/leave/entitlements'
     | '/_authenticated/leave_/forecast'
+    | '/_authenticated/me/competencies'
     | '/_authenticated/robustness/consultant-audits'
     | '/_authenticated/robustness/consultant-feasibility'
     | '/_authenticated/robustness/last-minute-changes'
@@ -1243,6 +1256,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/robustness/consultant-audits'
       preLoaderRoute: typeof AuthenticatedRobustnessConsultantAuditsRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/me/competencies': {
+      id: '/_authenticated/me/competencies'
+      path: '/competencies'
+      fullPath: '/me/competencies'
+      preLoaderRoute: typeof AuthenticatedMeCompetenciesRouteImport
+      parentRoute: typeof AuthenticatedMeRoute
     }
     '/_authenticated/leave_/forecast': {
       id: '/_authenticated/leave_/forecast'
@@ -1614,6 +1634,18 @@ const AuthenticatedLeaveRouteChildren: AuthenticatedLeaveRouteChildren = {
 const AuthenticatedLeaveRouteWithChildren =
   AuthenticatedLeaveRoute._addFileChildren(AuthenticatedLeaveRouteChildren)
 
+interface AuthenticatedMeRouteChildren {
+  AuthenticatedMeCompetenciesRoute: typeof AuthenticatedMeCompetenciesRoute
+}
+
+const AuthenticatedMeRouteChildren: AuthenticatedMeRouteChildren = {
+  AuthenticatedMeCompetenciesRoute: AuthenticatedMeCompetenciesRoute,
+}
+
+const AuthenticatedMeRouteWithChildren = AuthenticatedMeRoute._addFileChildren(
+  AuthenticatedMeRouteChildren,
+)
+
 interface AuthenticatedTraineesRouteChildren {
   AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
   AuthenticatedTraineesStartDateAuditRoute: typeof AuthenticatedTraineesStartDateAuditRoute
@@ -1673,7 +1705,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedExceptionsRoute: typeof AuthenticatedExceptionsRoute
   AuthenticatedGlossaryRoute: typeof AuthenticatedGlossaryRoute
   AuthenticatedLeaveRoute: typeof AuthenticatedLeaveRouteWithChildren
-  AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedMeRoute: typeof AuthenticatedMeRouteWithChildren
   AuthenticatedPulseRoute: typeof AuthenticatedPulseRoute
   AuthenticatedRecognitionRoute: typeof AuthenticatedRecognitionRoute
   AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
@@ -1727,7 +1759,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedExceptionsRoute: AuthenticatedExceptionsRoute,
   AuthenticatedGlossaryRoute: AuthenticatedGlossaryRoute,
   AuthenticatedLeaveRoute: AuthenticatedLeaveRouteWithChildren,
-  AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedMeRoute: AuthenticatedMeRouteWithChildren,
   AuthenticatedPulseRoute: AuthenticatedPulseRoute,
   AuthenticatedRecognitionRoute: AuthenticatedRecognitionRoute,
   AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
