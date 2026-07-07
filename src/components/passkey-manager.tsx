@@ -10,6 +10,7 @@ import {
   deleteMyPasskey,
 } from "@/features/passkeys/passkeys.functions";
 import { detectDeviceName } from "@/lib/passkey-device-name";
+import { formatDateGB } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
