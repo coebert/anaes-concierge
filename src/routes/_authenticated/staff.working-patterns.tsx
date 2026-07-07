@@ -316,9 +316,11 @@ function WorkingPatternsPage() {
 function StaffCard({
   summary,
   windowDays,
+  displayMode,
 }: {
   summary: StaffSummary;
   windowDays: number;
+  displayMode: StripDisplayMode;
 }) {
   const totalByLoc = LOCATION_ORDER.reduce(
     (acc, k) => acc + summary.byLocation[k],
