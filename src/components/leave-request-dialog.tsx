@@ -84,6 +84,17 @@ function buildImpactPreview(
   return rows;
 }
 
+function ImpactCellView({ cell }: { cell: ImpactCell }) {
+  if (!cell.changed) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span>
+      <span className="text-muted-foreground">{cell.before}</span>
+      <span className="mx-1 text-muted-foreground">→</span>
+      <span className="font-medium text-destructive">{cell.after}</span>
+    </span>
+  );
+}
+
 
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const notify = useServerFn(notifyLeaveSubmitted);
