@@ -56,14 +56,8 @@ function halfLabel(session: string): string {
 }
 
 function formatDate(iso: string): string {
-  // 2026-07-08 -> Wed 8 Jul
-  const d = new Date(iso + "T00:00:00Z");
-  return d.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "Europe/London",
-  });
+  // 2026-07-08 -> "Wed 08/07/2026"
+  return formatDateWithWeekdayGB(iso);
 }
 
 function buildTitle(row: ChangeLogRow): string {
