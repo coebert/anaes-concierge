@@ -70,7 +70,8 @@ export const Route = createFileRoute("/_authenticated/coordinator/leave")({
 
 function ApproveLeavePage() {
   const [rows, setRows] = useState<LeaveRow[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<Record<string, StaffProfile>>({});
+  const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending");
 
@@ -85,11 +86,20 @@ function ApproveLeavePage() {
     setRows(all);
     const staffIds = [...new Set(all.map((r) => r.staff_id))];
     if (staffIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", staffIds);
-      setProfiles(Object.fromEntries((profs ?? []).map((p) => [p.id, p.full_name || p.email])));
+      const [profRes, allowanceRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email, grade").in("id", staffIds),
+        supabase
+          .from("leave_allowances")
+          .select("staff_id, leave_year_start, study_days, study_budget_gbp")
+          .in("staff_id", staffIds),
+      ]);
+      setProfiles(Object.fromEntries(
+        (profRes.data ?? []).map((p) => [
+          p.id,
+          { name: p.full_name || p.email, grade: p.grade ?? null } as StaffProfile,
+        ]),
+      ));
+      setAllowances((allowanceRes.data ?? []) as AllowanceRow[]);
     }
     setLoading(false);
   };
@@ -99,6 +109,28 @@ function ApproveLeavePage() {
   const filtered = rows.filter((r) =>
     tab === "pending" ? r.status === "pending" : r.status !== "pending",
   );
+
+  // Rows needed for study-budget aggregation, in the shape the pure helper expects.
+  const studyLeaveRows: StudyLeaveRow[] = useMemo(
+    () => rows.map((r) => ({
+      id: r.id,
+      staff_id: r.staff_id,
+      type: r.type,
+      status: r.status,
+      start_date: r.start_date,
+      end_date: r.end_date,
+      half_day_start: r.half_day_start,
+      half_day_end: r.half_day_end,
+      study_cost_gbp: r.study_cost_gbp,
+    })),
+    [rows],
+  );
+  const allowanceByStaff = useMemo(() => {
+    const m = new Map<string, AllowanceRow>();
+    for (const a of allowances) m.set(a.staff_id, a);
+    return m;
+  }, [allowances]);
+  const yearStart = defaultLeaveYearStart();
 
   return (
     <div className="space-y-6">
@@ -121,7 +153,15 @@ function ApproveLeavePage() {
             <p className="text-sm text-muted-foreground">Nothing here.</p>
           ) : (
             filtered.map((r) => (
-              <LeaveCard key={r.id} row={r} staffName={profiles[r.staff_id] ?? r.staff_id} onChanged={load} />
+              <LeaveCard
+                key={r.id}
+                row={r}
+                profile={profiles[r.staff_id] ?? { name: r.staff_id, grade: null }}
+                allowance={allowanceByStaff.get(r.staff_id)}
+                studyRows={studyLeaveRows}
+                yearStart={yearStart}
+                onChanged={load}
+              />
             ))
           )}
         </TabsContent>
@@ -129,6 +169,7 @@ function ApproveLeavePage() {
     </div>
   );
 }
+
 
 function LeaveCard({ row, staffName, onChanged }: { row: LeaveRow; staffName: string; onChanged: () => void }) {
   const { user } = useAuth();
