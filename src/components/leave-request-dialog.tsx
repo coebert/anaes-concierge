@@ -301,7 +301,51 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               </AlertDescription>
             </Alert>
           )}
+
+          {impactRows.length > 0 && (
+            <div className="rounded-md border">
+              <div className="border-b px-3 py-2 text-sm font-medium">
+                Impact preview — how your weekly grid will change
+              </div>
+              <div className="max-h-56 overflow-y-auto">
+                <table
+                  className="w-full text-xs"
+                  aria-label="Leave impact preview"
+                >
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-1.5 text-left font-medium">Date</th>
+                      <th className="px-3 py-1.5 text-left font-medium">AM</th>
+                      <th className="px-3 py-1.5 text-left font-medium">PM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {impactRows.map((row) => (
+                      <tr key={row.date} className="border-t">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          {formatDateGB(row.date)}
+                          {row.weekend && (
+                            <span className="ml-1 text-muted-foreground">(weekend)</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <ImpactCellView cell={row.am} />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <ImpactCellView cell={row.pm} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+                "—" means the half-session is not covered by this request.
+              </div>
+            </div>
+          )}
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
