@@ -30,6 +30,13 @@ import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
 type SessionHalf = "am" | "pm";
 
+// Trainee levels too junior to ever genuinely run a list solo. Kept in sync
+// with JUNIOR_LEVELS in src/lib/solo-stats.ts — an unmatched entry means the
+// calendar and the solo-stats aggregator would disagree.
+const JUNIOR_TRAINEE_LEVELS = new Set([
+  "FY2", "ACCS", "CT1", "CT2", "ST1", "ST2",
+]);
+
 export function startOfWeek(d: Date) {
   const x = new Date(d);
   const day = x.getDay();
@@ -432,14 +439,14 @@ export function GlobalWeekGrid({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,session,session_date,theatre_session_id,role_on_list")
+        .select("id,staff_id,session,session_date,theatre_session_id,role_on_list,supervisor_id")
         .eq("duty_type", "theatre")
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
       return (data ?? []) as Array<{
         id: string; staff_id: string; session: SessionHalf; session_date: string;
-        theatre_session_id: string | null; role_on_list: string;
+        theatre_session_id: string | null; role_on_list: string; supervisor_id: string | null;
       }>;
     },
   });
@@ -556,12 +563,15 @@ export function GlobalWeekGrid({
               gradeRank(staffMap.get(a.staff_id)?.grade) -
               gradeRank(staffMap.get(b.staff_id)?.grade),
           );
-          const hasConsultant = sortedAssigns.some(
-            (x) => staffMap.get(x.staff_id)?.grade === "consultant",
-          );
+          const hasSupervisor = sortedAssigns.some((x) => {
+            const g = staffMap.get(x.staff_id)?.grade;
+            return g === "consultant" || g === "sas";
+          });
           const assignModels: TheatreAssignModel[] = sortedAssigns.map((a) => {
             const sp = staffMap.get(a.staff_id);
             const isTrainee = sp?.grade === "trainee";
+            const level = (sp?.training_level ?? "").trim().toUpperCase().replace(/\s+/g, "");
+            const isJunior = JUNIOR_TRAINEE_LEVELS.has(level);
             return {
               id: a.id,
               staffId: a.staff_id,
@@ -570,7 +580,11 @@ export function GlobalWeekGrid({
               trainingLevel: sp?.training_level ?? null,
               roleOnList: a.role_on_list,
               isSoloTrainee:
-                !!isTrainee && a.role_on_list === "solo" && !hasConsultant,
+                !!isTrainee &&
+                a.role_on_list === "solo" &&
+                !a.supervisor_id &&
+                !hasSupervisor &&
+                !isJunior,
             };
           });
           const spec = ts ? specMap.get(ts.specialty_id ?? "") : undefined;
