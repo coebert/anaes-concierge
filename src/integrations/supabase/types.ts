@@ -3062,6 +3062,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_competency_eligibility: {
+        Args: { p_on_date?: string }
+        Returns: {
+          eligible_solo: boolean
+          eligible_supervising: boolean
+          full_name: string
+          grade: Database["public"]["Enums"]["staff_grade"]
+          specialty_id: string
+          specialty_name: string
+          staff_id: string
+        }[]
+      }
       get_leave_ledger_decrypted: {
         Args: never
         Returns: {
