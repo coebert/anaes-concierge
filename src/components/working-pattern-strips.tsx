@@ -93,8 +93,10 @@ export function SpaStrip({
               data-testid={`spa-cell-${d}`}
               className={
                 CELL_CLASS +
-                " flex flex-col items-center justify-center rounded border text-[10px] font-medium leading-none px-0.5 " +
-                (shareText !== null ? "py-0.5" : "h-6") +
+                " flex flex-col items-center justify-center rounded border font-medium px-0.5 " +
+                CELL_LABEL_TEXT +
+                " " +
+                (shareText !== null ? "py-0.5 sm:py-1" : "h-6 sm:h-7") +
                 " " +
                 (active
                   ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
