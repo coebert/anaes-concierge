@@ -37,6 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { formatDateTimeGB } from "@/lib/utils";
 import {
   getClwRotaSyncStatus,
   type ClwRotaCronRow,
