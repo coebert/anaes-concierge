@@ -167,7 +167,7 @@ function AdminAccessRequestsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {r.decided_at ? new Date(r.decided_at).toLocaleString() : "—"}
+                      {r.decided_at ? formatDateTimeGB(r.decided_at) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
