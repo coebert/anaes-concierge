@@ -300,7 +300,12 @@ function WorkingPatternsPage() {
       ) : (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((r) => (
-            <StaffCard key={r.staff_id} summary={r} windowDays={windowDays} />
+            <StaffCard
+              key={r.staff_id}
+              summary={r}
+              windowDays={windowDays}
+              displayMode={displayMode}
+            />
           ))}
         </div>
       )}
