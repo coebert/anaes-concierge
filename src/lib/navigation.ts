@@ -77,6 +77,9 @@ export const NAV_ITEMS: NavItem[] = [
   // Home
   { id: "home", label: "Home", to: "/", icon: Home, group: "home",
     keywords: ["dashboard", "overview", "start"] },
+  { id: "coordinator-inbox", label: "Coordinator inbox", to: "/admin/inbox",
+    icon: ClipboardList, group: "home", roles: ["admin", "rota_coordinator"],
+    keywords: ["inbox", "pending", "leave", "exception", "RTW", "return to work", "expiry", "competency", "urgent"] },
   { id: "wellbeing-mine", label: "My wellbeing", to: "/wellbeing",
     icon: HeartPulse, group: "home",
     keywords: ["burnout", "score", "retention", "attrition"] },
