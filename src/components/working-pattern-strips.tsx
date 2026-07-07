@@ -37,9 +37,10 @@ export function SpaStrip({
           const p = pm.has(d);
           const active = a || p;
           const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
+          const count = countsByWeekday[d] ?? 0;
           const pct =
-            active && totalSessions > 0
-              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
+            totalSessions > 0 && count > 0
+              ? Math.round((count / totalSessions) * 100)
               : null;
           return (
             <div
@@ -57,8 +58,13 @@ export function SpaStrip({
               title={
                 `${WEEKDAY_LABELS[d]}` +
                 (active
-                  ? ` · SPA ${label} · ${countsByWeekday[d]} of ${totalSessions} SPA sessions (${pct}%)`
-                  : "")
+                  ? ` · SPA ${label}` +
+                    (pct !== null
+                      ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%)`
+                      : "")
+                  : pct !== null
+                    ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%) — below regularity threshold`
+                    : "")
               }
             >
               <span>{label}</span>
@@ -110,9 +116,10 @@ export function WeekdayStrip({
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
+          const count = countsByWeekday?.[d] ?? 0;
           const pct =
-            active && countsByWeekday && totalSessions && totalSessions > 0
-              ? Math.round((countsByWeekday[d] / totalSessions) * 100)
+            countsByWeekday && totalSessions && totalSessions > 0 && count > 0
+              ? Math.round((count / totalSessions) * 100)
               : null;
           return (
             <div
@@ -130,7 +137,8 @@ export function WeekdayStrip({
               title={
                 WEEKDAY_LABELS[d] +
                 (pct !== null
-                  ? ` · ${countsByWeekday![d]} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)`
+                  ? ` · ${count} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)` +
+                    (active ? "" : " — below regularity threshold")
                   : "")
               }
             >
