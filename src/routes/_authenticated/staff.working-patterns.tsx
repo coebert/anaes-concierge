@@ -597,18 +597,20 @@ function ConsultantPatternBlock({
 
 function WeekdayHeader() {
   return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS} />
+    <div className={ROW_CLASS} role="row">
+      <div className={ROW_LABEL_CLASS} role="rowheader" aria-hidden="true" />
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => (
           <div
             key={d}
+            role="columnheader"
+            aria-label={WEEKDAY_LABELS[d]}
             className={
               CELL_CLASS +
               " text-center font-medium text-muted-foreground text-[10px] leading-tight sm:text-[11px] md:text-[12px]"
             }
           >
-            {WEEKDAY_LABELS[d].slice(0, 3)}
+            <span aria-hidden="true">{WEEKDAY_LABELS[d].slice(0, 3)}</span>
           </div>
         ))}
       </div>
@@ -625,20 +627,37 @@ function AmPmStrip({
 }) {
   const halfCell =
     "flex h-4 sm:h-5 items-center justify-center text-[9px] leading-none sm:text-[10px] md:text-[11px] font-medium border";
+  const CELL_FOCUS =
+    "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background rounded";
   return (
-    <div className={ROW_CLASS}>
-      <div className={ROW_LABEL_CLASS}>Working</div>
+    <div className={ROW_CLASS} role="row">
+      <div className={ROW_LABEL_CLASS} role="rowheader">
+        Working
+      </div>
       <div className={STRIP_CLASS}>
         {[1, 2, 3, 4, 5].map((d) => {
           const am = amSet.has(d);
           const pm = pmSet.has(d);
+          const description =
+            am && pm
+              ? "typically works morning and afternoon"
+              : am
+                ? "typically works morning only"
+                : pm
+                  ? "typically works afternoon only"
+                  : "no regular working half-session";
+          const focusable = am || pm;
           return (
             <div
               key={d}
-              className={CELL_CLASS + " flex flex-col"}
+              role="gridcell"
+              tabIndex={focusable ? 0 : -1}
+              aria-label={`${WEEKDAY_LABELS[d]}: ${description}`}
+              className={CELL_CLASS + " flex flex-col " + CELL_FOCUS}
               title={WEEKDAY_LABELS[d]}
             >
               <div
+                aria-hidden="true"
                 className={
                   halfCell +
                   " rounded-t " +
@@ -650,6 +669,7 @@ function AmPmStrip({
                 {am ? "AM" : ""}
               </div>
               <div
+                aria-hidden="true"
                 className={
                   halfCell +
                   " rounded-b border-t-0 " +
@@ -667,6 +687,7 @@ function AmPmStrip({
     </div>
   );
 }
+
 
 // SpaStrip and WeekdayStrip live in `@/components/working-pattern-strips`.
 
