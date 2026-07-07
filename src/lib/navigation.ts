@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LineChart,
   MessageSquare,
+  Scale,
   Settings,
   ShieldAlert,
   ShieldCheck,
