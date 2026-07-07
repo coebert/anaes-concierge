@@ -11,6 +11,7 @@ import {
   Clock,
   GraduationCap,
   Grid3x3,
+  HeartPulse,
   Home,
   LayoutDashboard,
   LineChart,
