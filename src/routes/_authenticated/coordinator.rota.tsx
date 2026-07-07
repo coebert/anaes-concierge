@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { type Profile, type RotaRules } from "@/lib/rota-validation";
 import { RotaWeekGrid } from "@/features/coordinator-rota/RotaWeekGrid";
 import { CellDialog } from "@/features/coordinator-rota/CellDialog";
+import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyBlockersPanel";
 import type {
   SessionHalf, RotaRole, WeekAssignment, ContextAssignment,
 } from "@/features/coordinator-rota/types";
@@ -225,6 +226,14 @@ function RotaGridPage() {
         }
       />
 
+      <CompetencyBlockersPanel
+        assignments={assignments ?? []}
+        theatreSessions={theatreSessions ?? []}
+        theatres={theatres ?? []}
+        staff={(staff ?? []).map((s) => ({ id: s.id, full_name: s.full_name }))}
+        onSelectCell={setCellOpen}
+      />
+
       <RotaWeekGrid
         days={days}
         theatres={theatres}
@@ -234,6 +243,7 @@ function RotaGridPage() {
         specialtiesList={specialtiesList}
         onCellClick={setCellOpen}
       />
+
 
       {cellOpen && (
         <CellDialog
