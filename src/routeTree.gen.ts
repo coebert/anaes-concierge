@@ -55,6 +55,7 @@ import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
+import { Route as AuthenticatedAdminPulseRouteImport } from './routes/_authenticated/admin.pulse'
 import { Route as AuthenticatedAdminLeaveFairnessRouteImport } from './routes/_authenticated/admin.leave-fairness'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_authenticated/admin.exceptions'
@@ -328,6 +329,11 @@ const AuthenticatedAdminRotaGapsRoute =
     path: '/admin/rota-gaps',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminPulseRoute = AuthenticatedAdminPulseRouteImport.update({
+  id: '/admin/pulse',
+  path: '/admin/pulse',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAdminLeaveFairnessRoute =
   AuthenticatedAdminLeaveFairnessRouteImport.update({
     id: '/admin/leave-fairness',
@@ -473,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -538,6 +545,7 @@ export interface FileRoutesByTo {
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -606,6 +614,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/_authenticated/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/_authenticated/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -674,6 +683,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
+    | '/admin/pulse'
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | '/admin/exceptions'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
+    | '/admin/pulse'
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
@@ -806,6 +817,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/exceptions'
     | '/_authenticated/admin/job-plans'
     | '/_authenticated/admin/leave-fairness'
+    | '/_authenticated/admin/pulse'
     | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
@@ -1182,6 +1194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRotaGapsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/pulse': {
+      id: '/_authenticated/admin/pulse'
+      path: '/admin/pulse'
+      fullPath: '/admin/pulse'
+      preLoaderRoute: typeof AuthenticatedAdminPulseRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/leave-fairness': {
       id: '/_authenticated/admin/leave-fairness'
       path: '/admin/leave-fairness'
@@ -1397,6 +1416,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminExceptionsRoute: typeof AuthenticatedAdminExceptionsRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
   AuthenticatedAdminLeaveFairnessRoute: typeof AuthenticatedAdminLeaveFairnessRoute
+  AuthenticatedAdminPulseRoute: typeof AuthenticatedAdminPulseRoute
   AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -1447,6 +1467,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminExceptionsRoute: AuthenticatedAdminExceptionsRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
   AuthenticatedAdminLeaveFairnessRoute: AuthenticatedAdminLeaveFairnessRoute,
+  AuthenticatedAdminPulseRoute: AuthenticatedAdminPulseRoute,
   AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
