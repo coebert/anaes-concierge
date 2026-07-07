@@ -30,6 +30,7 @@ import {
 import {
   SpaStrip,
   WeekdayStrip,
+  PatternStripsScroll,
   ROW_CLASS,
   ROW_LABEL_CLASS,
   STRIP_CLASS,
