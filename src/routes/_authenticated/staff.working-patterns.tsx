@@ -560,7 +560,7 @@ function ConsultantPatternBlock({
         displayMode={displayMode}
       />
       {!hasAnySpa && (
-        <p className="text-[11px] text-muted-foreground pl-[5.5rem] sm:pl-[6.5rem] -mt-1">
+        <p className="text-[11px] text-muted-foreground pl-[4rem] sm:pl-[6.5rem] -mt-1">
           No regular SPA slot identified in this window.
         </p>
       )}
