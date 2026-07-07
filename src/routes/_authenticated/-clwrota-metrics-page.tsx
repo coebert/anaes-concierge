@@ -39,7 +39,7 @@ import {
   parseListClwRotaSyncMetricsResponse,
   type ClwRotaSyncMetricRow,
 } from "@/lib/clwrota-metrics-types";
-import { formatDateGB } from "@/lib/utils";
+import { formatDateGB, formatDateTimeGB } from "@/lib/utils";
 
 
 
@@ -375,7 +375,7 @@ export function ClwRotaMetricsPage() {
                     return (
                       <tr key={r.id} className={`border-t border-border ${isBackfill ? "bg-amber-50/40" : ""}`}>
                         <td className="py-1.5 pr-3 whitespace-nowrap">
-                          {new Date(r.run_at).toLocaleString("en-GB")}
+                          {formatDateTimeGB(r.run_at)}
                           {isBackfill && (
                             <Badge variant="outline" className="ml-2 text-warning border-amber-300 bg-amber-100">
                               Backfill

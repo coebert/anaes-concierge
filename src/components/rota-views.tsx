@@ -24,7 +24,7 @@ import {
   ChevronUp,
   User,
 } from "lucide-react";
-import { cn, parseDateLocal, toISODateLocal } from "@/lib/utils";
+import { cn, parseDateLocal, toISODateLocal, formatDateGB, formatDateWithWeekdayGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
@@ -43,7 +43,8 @@ export function addDays(d: Date, n: number) {
 }
 export function iso(d: Date) { return toISODateLocal(d); }
 export function fmt(d: Date) {
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  // British DD/MM/YYYY with weekday context, e.g. "Mon 26/05/2026".
+  return formatDateWithWeekdayGB(d);
 }
 
 export type ViewMode = "day" | "week" | "month";
@@ -141,7 +142,11 @@ export function PeriodNav({
   anchor, mode, onChange,
 }: { anchor: Date; mode: ViewMode; onChange: (d: Date) => void }) {
   const label = (() => {
-    if (mode === "day") return anchor.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    if (mode === "day") {
+      // British DD/MM/YYYY with full weekday, e.g. "Monday, 26/05/2026".
+      const wd = anchor.toLocaleDateString("en-GB", { weekday: "long" });
+      return `${wd}, ${formatDateGB(anchor)}`;
+    }
     if (mode === "month") return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     const ws = startOfWeek(anchor);
     return `Week of ${fmt(ws)}`;

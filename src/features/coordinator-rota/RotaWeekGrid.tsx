@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatDateWithWeekdayGB } from "@/lib/utils";
 import { specialtyTone } from "@/lib/specialty-colors";
 import { SessionChip } from "@/components/rota-views";
 import type { Profile } from "@/lib/rota-validation";
@@ -24,7 +24,8 @@ function iso(d: Date) {
   return `${y}-${m}-${dd}`;
 }
 function fmt(d: Date) {
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  // British DD/MM/YYYY with weekday context, e.g. "Mon 26/05/2026".
+  return formatDateWithWeekdayGB(d);
 }
 
 export function RotaWeekGrid({
