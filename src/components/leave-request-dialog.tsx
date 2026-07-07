@@ -24,6 +24,67 @@ interface Props {
 
 const TYPES = ["annual", "study", "professional", "compassionate", "sick", "parental", "other"] as const;
 
+interface ImpactCell {
+  before: string;
+  after: string;
+  changed: boolean;
+}
+interface ImpactRow {
+  date: string;
+  weekend: boolean;
+  am: ImpactCell;
+  pm: ImpactCell;
+}
+
+function buildImpactPreview(
+  startDate: string,
+  endDate: string,
+  halfDayStart: "am" | "pm" | null,
+  halfDayEnd: "am" | "pm" | null,
+  ownConflicts: LeaveConflict[],
+  ready: boolean,
+): ImpactRow[] {
+  if (!ready || !startDate || !endDate || endDate < startDate) return [];
+
+  const byKey = new Map<string, LeaveConflict>();
+  for (const c of ownConflicts) {
+    if (c.session === "am" || c.session === "pm") {
+      byKey.set(`${c.date}|${c.session}`, c);
+    }
+  }
+
+  const rows: ImpactRow[] = [];
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    const iso = d.toISOString().slice(0, 10);
+    const dow = d.getUTCDay(); // 0 Sun, 6 Sat
+    const weekend = dow === 0 || dow === 6;
+
+    // Honour half-day markers: skip halves not covered by the leave.
+    const skipAm = iso === startDate && halfDayStart === "pm";
+    const skipPm = iso === endDate && halfDayEnd === "am";
+
+    const build = (half: "am" | "pm", skipped: boolean): ImpactCell => {
+      if (skipped || weekend) {
+        return { before: "—", after: "—", changed: false };
+      }
+      const c = byKey.get(`${iso}|${half}`);
+      const before = c ? c.theatre?.trim() || c.role || "Rota session" : "Free";
+      return { before, after: "On leave", changed: true };
+    };
+
+    rows.push({
+      date: iso,
+      weekend,
+      am: build("am", skipAm),
+      pm: build("pm", skipPm),
+    });
+  }
+  return rows;
+}
+
+
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const notify = useServerFn(notifyLeaveSubmitted);
   const { user } = useAuth();
