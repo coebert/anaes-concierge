@@ -1,68 +1,115 @@
-# Web Push Notifications for Rota Changes
+# Bradford Factor + Return-to-Work workflow
 
-## Scope
+Absence management for HR/Guardian: score each staff member's sickness pattern using the standard Bradford Factor (S²×D) and track a Return-to-Work (RTW) interview for every sickness spell, as NHS policy requires.
 
-Send a browser push notification to Dr Rob Coe whenever one of his `rota_assignments` is added, removed, or edited **within 48h of the session**. The existing `rota_change_log` trigger already logs exactly those events (its ±48h filter matches this requirement), so we build on top of it.
+Sickness data already exists — `leave_requests` has `type='sick'` (142 approved rows). We derive Bradford scores from that; no duplicate sickness table is created.
 
-All notifications are effectively immediate — the "only within 48h" trigger scope makes the batched-vs-immediate distinction moot, since every eligible event is a short-notice change.
+## What gets built
 
-## Components
+### 1. Bradford Factor engine (pure library)
 
-### 1. Database
-- New table `public.push_subscriptions` (`user_id`, `endpoint` unique, `p256dh`, `auth`, `user_agent`, `created_at`). RLS: user manages their own rows; service_role reads all.
-- New table `public.push_notification_log` (`assignment_id`, `staff_id`, `change_log_id` unique, `sent_at`, `status`, `error`) to make dispatch idempotent.
-- Reuse `public.rota_change_log` as the change source (already 48h-scoped, already records action/prev/new).
+`src/lib/bradford-factor.ts`
 
-### 2. Secrets
-- Generate `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` server-side.
-- Expose the public key to the browser via `VITE_VAPID_PUBLIC_KEY` (safe to ship).
+- `computeBradfordFactor(spells, referenceDate)` → `{ score, spells, days, band }`.
+- Rolling 12 months back from `referenceDate` (default: today).
+- **S** = number of distinct sickness spells that overlap the window.
+- **D** = total calendar days of sickness inside the window (half-days count as 0.5, weekends included by default; a flag lets HR switch to working days).
+- Score bands (industry standard, editable):
+  - `0–50` Green (no action)
+  - `51–200` Amber (informal review)
+  - `201–450` Red (formal review / attendance meeting)
+  - `>450` Critical (final review)
+- Unit-tested with fixtures — single long spell vs many short spells produces the expected S²×D difference.
 
-### 3. Service worker
-- `public/push-sw.js` — handles `push` and `notificationclick` only. Scoped narrowly so it doesn't interfere with anything else. No offline / app-shell caching.
+### 2. Per-staff sickness summary
 
-### 4. Client
-- `src/lib/push-notifications.ts` — helpers to check support, request permission, subscribe, persist the subscription server-side, and unsubscribe.
-- New card on `src/routes/_authenticated/staff.tsx` profile / a dedicated "Notifications" section on the settings page: toggle "Push notifications for last-minute list changes", plus per-device status.
-- Only surface the UI to users whose profile matches (works for everyone but Rob Coe is the primary use case; no hard-coding a single user).
+`src/features/absence/absence-summary.ts`
 
-### 5. Dispatcher
-- Server route `POST /api/public/hooks/push-dispatch` (webhook-secret protected, matches the existing `clwrota-sync` pattern).
-- Reads `rota_change_log` rows without a corresponding `push_notification_log` row, joins to `push_subscriptions` for that `staff_id`, sends via `web-push`, records outcome. Auto-prunes 410/404 subscriptions.
-- pg_cron job every 1 minute calls the endpoint.
+Given a staff member's `leave_requests` rows (type='sick', status='approved'), returns:
+- Bradford score + band
+- Spell count, total days
+- Days since last spell
+- Post-weekend / post-on-call pattern flags (spell starts on Monday, or day after a rostered night/weekend from `rota_assignments`)
+- Frequent short-spell flag (≥3 spells ≤2 days each in 6 months)
+- RTW status per spell: `not_started` / `scheduled` / `completed` / `overdue`
 
-### 6. Notification content
-Title: "Rota change — <date> <AM/PM>"
-Body examples:
-- Insert: "Added: <Theatre> · <role>"
-- Delete: "Removed: <Theatre> · <role>"
-- Update: "Changed: <what changed> on <Theatre>"
-Clicking opens `/rota?date=YYYY-MM-DD`.
+### 3. Return-to-Work interviews
 
-## Technical Notes
+New table `public.return_to_work_interviews`:
 
-- `web-push` is Worker-compatible (pure JS, uses Web Crypto). Install as a dependency; import lazily inside the dispatch handler.
-- The dispatch route lives under `/api/public/*` so pg_cron can reach it without auth; it verifies `x-webhook-secret` against `PUSH_WEBHOOK_SECRET` (generated).
-- `supabaseAdmin` is imported inside the handler only (route files are client-reachable).
-- Subscribing requires HTTPS + user gesture; the toggle handles both.
-- iOS support requires the site added to the home screen first — the UI notes this if `Notification` is unavailable.
+- `id`, `leave_request_id` (FK to the sickness spell), `staff_id`, `conducted_by`, `conducted_at`
+- `fitness_confirmed` boolean
+- `reasonable_adjustments` text (encrypted like other notes fields)
+- `follow_up_required` boolean, `follow_up_date`
+- `notes` text (encrypted)
+- Standard `created_at`, `updated_at`
 
-## Files
+RLS:
+- Staff can read their own interview record.
+- Admins (Guardian/HR) can read/write all.
+- Coordinators read-only.
+- Same encryption pattern as `leave_requests.decision_notes` (coord+owner decrypt).
 
-New:
-- `supabase/migrations/<ts>_push_subscriptions.sql`
-- `public/push-sw.js`
-- `src/lib/push-notifications.ts`
-- `src/lib/push-dispatch.server.ts`
-- `src/routes/api/public/hooks/push-dispatch.ts`
-- `src/components/push-notifications-card.tsx`
+An RTW is **due** when a sickness spell's `end_date` is in the past and no interview exists. **Overdue** after 3 working days.
 
-Edited:
-- Settings/profile page — mount the card.
-- `.env` / secrets — VAPID keys, `PUSH_WEBHOOK_SECRET`.
-- pg_cron job (via `supabase--insert`).
+### 4. HR admin page — `/admin/absence`
 
-## Out of scope
+New route `src/routes/_authenticated/admin.absence.tsx` (Guardian/HR-facing):
 
-- Email fallback (user chose push-only).
-- Batched digests (all eligible changes are already <48h → immediate).
-- Notifying on changes >48h in the future or historical edits.
+- **League table**: every active staff member, sorted by Bradford score (descending). Columns: name, grade, spells (12m), days (12m), Bradford, band pill, last spell, RTW status. Filters: band, grade, has-open-RTW.
+- **Trigger thresholds panel**: shows count of staff in each band.
+- **Pattern flags column**: post-on-call, post-weekend, frequent short spells.
+- **Row click** → drawer with each spell, RTW status per spell, "Log RTW interview" button.
+
+### 5. RTW interview dialog
+
+`src/components/absence/RTWInterviewDialog.tsx`
+
+Reachable from:
+- Admin absence page (per spell)
+- Trainee detail card (new section — see below)
+- Staff's own leave history (read-only view of their own completed RTW)
+
+Fields: date, fitness confirmed, adjustments, follow-up, notes. Save inserts into `return_to_work_interviews`.
+
+### 6. Absence card on trainee detail page
+
+Adds an "Absence & wellbeing" card to `src/routes/_authenticated/trainees.$staffId.tsx`, alongside the exception-reports card added earlier:
+
+- Bradford score + band
+- Spell/days summary (12m)
+- Overdue RTW badge (if any)
+- Recent 5 sickness spells with RTW status
+
+### 7. Sidebar
+
+Add "Absence (Bradford)" under the `Audits` section of `src/lib/navigation.ts` — admin/HR only.
+
+## Data model summary
+
+```text
+leave_requests (existing)
+   type='sick', status='approved'  ─── source of truth for spells
+      │
+      └─ return_to_work_interviews (new)
+             leave_request_id  ─── one interview per spell
+```
+
+## Technical details
+
+- All Bradford math is pure-TS in `src/lib/bradford-factor.ts` and unit-tested — no DB triggers for scoring; the score is recomputed on read from the leave rows (cheap, ≤ few hundred rows per staff).
+- Post-on-call/post-weekend detection joins each spell start against `rota_assignments` for the preceding day; done in the query layer, not stored.
+- Encrypted note columns follow the existing `leave_requests` trigger pattern (`_sync_..._encryption`) — plaintext columns present for compatibility, encrypted `*_enc` columns synced by trigger, RPC `get_rtw_interviews_decrypted()` for reads.
+- Grants: `authenticated` gets SELECT/INSERT/UPDATE, `service_role` ALL, no `anon`.
+- Route file follows the `_authenticated/` pattern; navigation entry gated by the existing admin/HR role check.
+
+## Sequencing
+
+1. Migration: `return_to_work_interviews` table, encryption triggers, RPC, RLS/GRANTs.
+2. Pure-TS `bradford-factor.ts` + tests.
+3. Absence-summary helper + tests.
+4. `RTWInterviewDialog` component.
+5. `/admin/absence` page + navigation link.
+6. Trainee-card "Absence & wellbeing" section.
+
+Wait for approval before starting the migration.

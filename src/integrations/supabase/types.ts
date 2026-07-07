@@ -1168,6 +1168,79 @@ export type Database = {
         }
         Relationships: []
       }
+      return_to_work_interviews: {
+        Row: {
+          conducted_at: string
+          conducted_by: string | null
+          created_at: string
+          fitness_confirmed: boolean
+          follow_up_date: string | null
+          follow_up_required: boolean
+          id: string
+          leave_request_id: string
+          notes: string | null
+          notes_enc: string | null
+          reasonable_adjustments: string | null
+          reasonable_adjustments_enc: string | null
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          conducted_at?: string
+          conducted_by?: string | null
+          created_at?: string
+          fitness_confirmed?: boolean
+          follow_up_date?: string | null
+          follow_up_required?: boolean
+          id?: string
+          leave_request_id: string
+          notes?: string | null
+          notes_enc?: string | null
+          reasonable_adjustments?: string | null
+          reasonable_adjustments_enc?: string | null
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          conducted_at?: string
+          conducted_by?: string | null
+          created_at?: string
+          fitness_confirmed?: boolean
+          follow_up_date?: string | null
+          follow_up_required?: boolean
+          id?: string
+          leave_request_id?: string
+          notes?: string | null
+          notes_enc?: string | null
+          reasonable_adjustments?: string | null
+          reasonable_adjustments_enc?: string | null
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "return_to_work_interviews_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: true
+            referencedRelation: "leave_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_to_work_interviews_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: true
+            referencedRelation: "leave_requests_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "return_to_work_interviews_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: true
+            referencedRelation: "leave_requests_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rota_assignments: {
         Row: {
           clwrota_external_id: string | null
@@ -2321,6 +2394,23 @@ export type Database = {
           rotation_end_date: string
           start_date: string
           training_level: string
+          updated_at: string
+        }[]
+      }
+      get_rtw_interviews_decrypted: {
+        Args: never
+        Returns: {
+          conducted_at: string
+          conducted_by: string
+          created_at: string
+          fitness_confirmed: boolean
+          follow_up_date: string
+          follow_up_required: boolean
+          id: string
+          leave_request_id: string
+          notes: string
+          reasonable_adjustments: string
+          staff_id: string
           updated_at: string
         }[]
       }
