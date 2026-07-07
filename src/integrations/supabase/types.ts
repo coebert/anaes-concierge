@@ -870,6 +870,84 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_log: {
+        Row: {
+          change_log_id: string
+          error: string | null
+          id: string
+          sent_at: string
+          staff_id: string
+          status: string
+          subscription_id: string | null
+        }
+        Insert: {
+          change_log_id: string
+          error?: string | null
+          id?: string
+          sent_at?: string
+          staff_id: string
+          status: string
+          subscription_id?: string | null
+        }
+        Update: {
+          change_log_id?: string
+          error?: string | null
+          id?: string
+          sent_at?: string
+          staff_id?: string
+          status?: string
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_notification_log_change_log_id_fkey"
+            columns: ["change_log_id"]
+            isOneToOne: false
+            referencedRelation: "rota_change_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_notification_log_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       rota_assignments: {
         Row: {
           clwrota_external_id: string | null
