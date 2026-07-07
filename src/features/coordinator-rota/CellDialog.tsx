@@ -20,6 +20,12 @@ import {
   type Issue, type Profile, type RotaRules,
 } from "@/lib/rota-validation";
 import { checkCustomRuleViolations } from "@/features/rules/custom-rules.functions";
+import {
+  evaluateCompetency,
+  type Competency,
+  type CompetencyRequirement,
+  type StaffCompetency,
+} from "@/features/competencies/competencies";
 import { useServerFn } from "@tanstack/react-start";
 import {
   SeverityIcon,
