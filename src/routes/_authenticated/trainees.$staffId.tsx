@@ -13,10 +13,18 @@ import {
 import { computeProgress } from "@/lib/competency-utils";
 import { computeFullAudit, isIcuBlockOnly, type AuditAssignment, type AuditTheatreSession, type AuditTarget } from "@/features/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
-import { ArrowLeft, AlertTriangle, Sparkles, Users, FileWarning } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Sparkles, Users, FileWarning, HeartPulse, CheckCircle2 } from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
 import { PageLoading } from "@/components/loading";
 import { STATUS_LABEL, type ExceptionStatus } from "@/features/exceptions/types";
+import {
+  summariseAbsence,
+  type RtwRow,
+  type SickSpellRow,
+} from "@/features/absence/absence-summary";
+import { BAND_THRESHOLDS } from "@/lib/bradford-factor";
+import { RTWInterviewDialog } from "@/components/absence/RTWInterviewDialog";
+import { useState } from "react";
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   head: () => ({ meta: [{ title: "Trainee — Salisbury Anaesthetics Rota" }] }),
   component: TraineeDetailPage,
