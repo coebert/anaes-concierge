@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PasskeyManager } from "@/components/passkey-manager";
+import { PushNotificationsCard } from "@/components/push-notifications-card";
 
 
 export const Route = createFileRoute("/_authenticated/account")({
@@ -128,6 +129,7 @@ function AccountPage() {
           </form>
         </CardContent>
       </Card>
+      <PushNotificationsCard />
       <PasskeyManager />
     </div>
   );
