@@ -148,7 +148,7 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
           </h2>
           {report.generatedAt && (
             <div className="mt-1 text-[11px] text-muted-foreground">
-              Generated {new Date(report.generatedAt).toLocaleString()}
+              Generated {formatDateTimeGB(report.generatedAt)}
             </div>
           )}
         </div>
