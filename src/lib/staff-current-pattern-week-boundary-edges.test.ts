@@ -221,19 +221,19 @@ describe("weeklyGrid — leave ends on a Sunday (weekend, off-grid)", () => {
     leave({ start_date: wed, end_date: sun }),
   );
 
-  it("Fri AM+PM flip to 'On leave' 3/3; Wed AM+PM also flip; Mon/Tue/Thu remain empty", () => {
+  it("Wed, Thu, Fri all flip to 'On leave' 3/3; Mon/Tue remain empty (Sat/Sun stay off-grid)", () => {
     const overlay = expandApprovedLeaveToAssignments(
       STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO,
     );
     const res = build(applyLeaveOverlay(baseline, overlay));
 
-    for (const half of ["am", "pm"] as const) {
-      expect(cell(res, half, "Wed").location).toBe(LOCATION_LABELS.leave);
-      expect(cell(res, half, "Wed").recurrence).toBe("3/3");
-      expect(cell(res, half, "Fri").location).toBe(LOCATION_LABELS.leave);
-      expect(cell(res, half, "Fri").recurrence).toBe("3/3");
+    for (const wd of ["Wed", "Thu", "Fri"]) {
+      for (const half of ["am", "pm"] as const) {
+        expect(cell(res, half, wd).location).toBe(LOCATION_LABELS.leave);
+        expect(cell(res, half, wd).recurrence).toBe("3/3");
+      }
     }
-    for (const wd of ["Mon", "Tue", "Thu"]) {
+    for (const wd of ["Mon", "Tue"]) {
       expect(cell(res, "am", wd).location).toBeNull();
       expect(cell(res, "pm", wd).location).toBeNull();
     }
