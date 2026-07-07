@@ -285,6 +285,8 @@ function WorkingPatternsPage() {
         </CardContent>
       </Card>
 
+      <PatternLegend windowDays={windowDays} displayMode={displayMode} />
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">
           Loading rota history and computing patterns…
