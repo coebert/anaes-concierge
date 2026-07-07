@@ -34,7 +34,9 @@ import {
   ROW_LABEL_CLASS,
   STRIP_CLASS,
   CELL_CLASS,
+  type StripDisplayMode,
 } from "@/components/working-pattern-strips";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const Route = createFileRoute("/_authenticated/staff/working-patterns")({
   head: () => ({ meta: [{ title: "Staff working patterns — Salisbury Anaesthetics Rota" }] }),
@@ -56,6 +58,7 @@ function WorkingPatternsPage() {
   const [windowDays, setWindowDays] = useState<number>(180);
   const [gradeFilter, setGradeFilter] = useState<GradeFilter>("all");
   const [filter, setFilter] = useState("");
+  const [displayMode, setDisplayMode] = useState<StripDisplayMode>("percent");
 
   const from = useMemo(() => isoDaysAgo(windowDays), [windowDays]);
   const to = todayIso();
@@ -257,6 +260,27 @@ function WorkingPatternsPage() {
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="strip-display">Cell values</Label>
+              <ToggleGroup
+                id="strip-display"
+                type="single"
+                value={displayMode}
+                onValueChange={(v) => {
+                  if (v === "percent" || v === "count") setDisplayMode(v);
+                }}
+                variant="outline"
+                size="sm"
+                aria-label="Show SPA and on-call cells as percentages or raw counts"
+              >
+                <ToggleGroupItem value="percent" aria-label="Show percentages">
+                  %
+                </ToggleGroupItem>
+                <ToggleGroupItem value="count" aria-label="Show raw counts">
+                  #
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -276,7 +300,12 @@ function WorkingPatternsPage() {
       ) : (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((r) => (
-            <StaffCard key={r.staff_id} summary={r} windowDays={windowDays} />
+            <StaffCard
+              key={r.staff_id}
+              summary={r}
+              windowDays={windowDays}
+              displayMode={displayMode}
+            />
           ))}
         </div>
       )}
@@ -287,9 +316,11 @@ function WorkingPatternsPage() {
 function StaffCard({
   summary,
   windowDays,
+  displayMode,
 }: {
   summary: StaffSummary;
   windowDays: number;
+  displayMode: StripDisplayMode;
 }) {
   const totalByLoc = LOCATION_ORDER.reduce(
     (acc, k) => acc + summary.byLocation[k],
@@ -322,7 +353,10 @@ function StaffCard({
         <LocationBreakdown byLocation={summary.byLocation} total={totalByLoc} />
         <SpecialtyList bySpecialty={summary.bySpecialty} />
         {summary.consultantPattern && (
-          <ConsultantPatternBlock pattern={summary.consultantPattern} />
+          <ConsultantPatternBlock
+            pattern={summary.consultantPattern}
+            displayMode={displayMode}
+          />
         )}
       </CardContent>
     </Card>
@@ -404,8 +438,10 @@ function SpecialtyList({
 
 function ConsultantPatternBlock({
   pattern,
+  displayMode,
 }: {
   pattern: NonNullable<StaffSummary["consultantPattern"]>;
+  displayMode: StripDisplayMode;
 }) {
   const onCallLabel =
     pattern.onCallType === "both"
@@ -439,6 +475,7 @@ function ConsultantPatternBlock({
         pmDays={pattern.spaPmWeekdays}
         countsByWeekday={pattern.spaCountsByWeekday}
         totalSessions={pattern.totalSpaSessions}
+        displayMode={displayMode}
       />
       {!hasAnySpa && (
         <p className="text-[11px] text-muted-foreground pl-[5.5rem] sm:pl-[6.5rem] -mt-1">
@@ -451,6 +488,7 @@ function ConsultantPatternBlock({
         tone="amber"
         countsByWeekday={pattern.onCallCountsByWeekday}
         totalSessions={pattern.totalOnCallSessions}
+        displayMode={displayMode}
       />
       <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
         <span>On-call cover</span>

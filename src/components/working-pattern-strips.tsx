@@ -1,5 +1,13 @@
 import { WEEKDAY_LABELS } from "@/lib/staff-working-patterns";
 
+/**
+ * How each populated cell displays its share of total sessions:
+ *   - "percent": rounded percentage of total (default, matches historical behaviour).
+ *   - "count":   raw session count for that weekday.
+ * Empty cells (count === 0 or totalSessions === 0) are suppressed in both modes.
+ */
+export type StripDisplayMode = "percent" | "count";
+
 // Shared column geometry — kept in sync with the sibling rows rendered by
 // the staff working-patterns route (WeekdayHeader / AmPmStrip live there).
 export const ROW_CLASS = "flex items-center gap-2 text-xs";
@@ -20,11 +28,13 @@ export function SpaStrip({
   pmDays,
   countsByWeekday,
   totalSessions,
+  displayMode = "percent",
 }: {
   amDays: number[];
   pmDays: number[];
   countsByWeekday: number[];
   totalSessions: number;
+  displayMode?: StripDisplayMode;
 }) {
   const am = new Set(amDays);
   const pm = new Set(pmDays);
@@ -38,10 +48,18 @@ export function SpaStrip({
           const active = a || p;
           const label = a && p ? "AM+PM" : a ? "AM" : p ? "PM" : "–";
           const count = countsByWeekday[d] ?? 0;
-          const pct =
-            totalSessions > 0 && count > 0
-              ? Math.round((count / totalSessions) * 100)
-              : null;
+          const hasShare = totalSessions > 0 && count > 0;
+          const pct = hasShare
+            ? Math.round((count / totalSessions) * 100)
+            : null;
+          const shareText =
+            displayMode === "count"
+              ? hasShare
+                ? String(count)
+                : null
+              : pct !== null
+                ? `${pct}%`
+                : null;
           return (
             <div
               key={d}
@@ -49,7 +67,7 @@ export function SpaStrip({
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border text-[10px] font-medium leading-none px-0.5 " +
-                (pct !== null ? "py-0.5" : "h-6") +
+                (shareText !== null ? "py-0.5" : "h-6") +
                 " " +
                 (active
                   ? "bg-sky-600 text-white border-sky-600 dark:bg-sky-500 dark:border-sky-500"
@@ -59,21 +77,21 @@ export function SpaStrip({
                 `${WEEKDAY_LABELS[d]}` +
                 (active
                   ? ` · SPA ${label}` +
-                    (pct !== null
+                    (hasShare
                       ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%)`
                       : "")
-                  : pct !== null
+                  : hasShare
                     ? ` · ${count} of ${totalSessions} SPA sessions (${pct}%) — below regularity threshold`
                     : "")
               }
             >
               <span>{label}</span>
-              {pct !== null && (
+              {shareText !== null && (
                 <span
                   data-testid={`spa-pct-${d}`}
                   className="text-[9px] font-normal opacity-90 tabular-nums"
                 >
-                  {pct}%
+                  {shareText}
                 </span>
               )}
             </div>
@@ -96,12 +114,14 @@ export function WeekdayStrip({
   tone = "default",
   countsByWeekday,
   totalSessions,
+  displayMode = "percent",
 }: {
   label: string;
   highlighted: number[];
   tone?: "default" | "primary" | "amber";
   countsByWeekday?: number[];
   totalSessions?: number;
+  displayMode?: StripDisplayMode;
 }) {
   const set = new Set(highlighted);
   const highlightClass =
@@ -117,10 +137,22 @@ export function WeekdayStrip({
         {[1, 2, 3, 4, 5].map((d) => {
           const active = set.has(d);
           const count = countsByWeekday?.[d] ?? 0;
-          const pct =
-            countsByWeekday && totalSessions && totalSessions > 0 && count > 0
-              ? Math.round((count / totalSessions) * 100)
-              : null;
+          const hasShare =
+            !!countsByWeekday &&
+            !!totalSessions &&
+            totalSessions > 0 &&
+            count > 0;
+          const pct = hasShare
+            ? Math.round((count / totalSessions!) * 100)
+            : null;
+          const shareText =
+            displayMode === "count"
+              ? hasShare
+                ? String(count)
+                : null
+              : pct !== null
+                ? `${pct}%`
+                : null;
           return (
             <div
               key={d}
@@ -128,7 +160,7 @@ export function WeekdayStrip({
               className={
                 CELL_CLASS +
                 " flex flex-col items-center justify-center rounded border text-[11px] font-medium leading-none px-0.5 " +
-                (pct !== null ? "py-0.5" : "h-6") +
+                (shareText !== null ? "py-0.5" : "h-6") +
                 " " +
                 (active
                   ? highlightClass
@@ -136,19 +168,19 @@ export function WeekdayStrip({
               }
               title={
                 WEEKDAY_LABELS[d] +
-                (pct !== null
+                (hasShare
                   ? ` · ${count} of ${totalSessions} ${label.toLowerCase()} sessions (${pct}%)` +
                     (active ? "" : " — below regularity threshold")
                   : "")
               }
             >
               <span>{active ? WEEKDAY_LABELS[d].slice(0, 3) : "–"}</span>
-              {pct !== null && (
+              {shareText !== null && (
                 <span
                   data-testid={`weekday-pct-${d}`}
                   className="text-[9px] font-normal opacity-90 tabular-nums"
                 >
-                  {pct}%
+                  {shareText}
                 </span>
               )}
             </div>
