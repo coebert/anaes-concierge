@@ -142,7 +142,18 @@ describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", ()
     });
   });
 
-  describe("runtime guard behaviour (calls under anon / authenticated roles)", () => {
+  const canSetRole =
+    dbAvailable &&
+    (() => {
+      const probe = spawnSync(
+        "psql",
+        ["-v", "ON_ERROR_STOP=1", "-c", "BEGIN; SET LOCAL role authenticated; ROLLBACK"],
+        { encoding: "utf8" },
+      );
+      return probe.status === 0;
+    })();
+
+  describe.skipIf(!canSetRole)("runtime guard behaviour (calls under anon / authenticated roles)", () => {
     /**
      * Drive a single transaction: SET LOCAL role, call the RPC, catch
      * the error, ROLLBACK. We assert the error code is 42501
