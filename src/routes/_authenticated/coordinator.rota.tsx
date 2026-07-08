@@ -16,9 +16,11 @@ import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyB
 import { usePreferenceMatchFilter } from "@/features/coordinator-rota/use-preference-match-filter";
 import {
   preferenceMatches,
+  isPreferred,
   type StaffPracticePref,
   type StaffSpecialtyPref,
 } from "@/features/coordinator-rota/preferences";
+
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -262,27 +264,41 @@ function RotaGridPage() {
       .sort((a, b) => a.localeCompare(b));
 
     if (weekSpecialties.length === 0) {
-      return { matching: total, total, hasLists: false, specialtyNames };
+      return {
+        matching: total,
+        preferred: 0,
+        total,
+        hasLists: false,
+        specialtyNames,
+      };
     }
 
     let matching = 0;
+    let preferred = 0;
     for (const s of applicable) {
       const pp = practiceById.get(s.id);
       const specs = specByStaff.get(s.id);
-      const ok = weekSpecialties.some((sp) =>
-        preferenceMatches({
+      let anyMatch = false;
+      let anyPreferred = false;
+      for (const sp of weekSpecialties) {
+        const input = {
           staffId: s.id,
           grade: s.grade,
           specialtyId: sp.id,
           specialtyName: sp.name,
           practicePref: pp,
           specialtyPref: specs?.get(sp.id),
-        }),
-      );
-      if (ok) matching++;
+        };
+        if (isPreferred(input)) anyPreferred = true;
+        if (preferenceMatches(input)) anyMatch = true;
+        if (anyMatch && anyPreferred) break;
+      }
+      if (anyMatch) matching++;
+      if (anyPreferred) preferred++;
     }
-    return { matching, total, hasLists: true, specialtyNames };
+    return { matching, preferred, total, hasLists: true, specialtyNames };
   }, [staff, theatreSessions, specialtiesList, practicePrefs, specialtyPrefs]);
+
 
 
 
@@ -325,16 +341,24 @@ function RotaGridPage() {
                 {matchOnly ? "matches only" : "all staff"}
               </span>
               <span
-                className="ml-1 rounded bg-background px-1.5 py-0.5 font-medium tabular-nums text-foreground border border-border"
+                className="ml-1 inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 font-medium tabular-nums text-foreground border border-border"
                 title={
                   matchStats.hasLists
-                    ? `${matchStats.matching} of ${matchStats.total} consultants / SAS match at least one list scheduled this week.\n\nSpecialties requiring cover this week:\n• ${matchStats.specialtyNames.join("\n• ")}`
+                    ? `${matchStats.preferred} preferred, ${matchStats.matching} matching (of ${matchStats.total} consultants / SAS) for at least one list scheduled this week.\n\nSpecialties requiring cover this week:\n• ${matchStats.specialtyNames.join("\n• ")}`
                     : "No lists scheduled this week yet — all consultants / SAS count as matching."
                 }
               >
-
-                {matchStats.matching}/{matchStats.total} match
+                <span className="text-amber-500" aria-hidden>★</span>
+                <span aria-label={`${matchStats.preferred} preferred`}>
+                  {matchStats.preferred}
+                </span>
+                <span className="text-muted-foreground" aria-hidden>·</span>
+                <span className="text-emerald-600 dark:text-emerald-400" aria-hidden>✓</span>
+                <span aria-label={`${matchStats.matching} matching of ${matchStats.total}`}>
+                  {matchStats.matching}/{matchStats.total}
+                </span>
               </span>
+
 
             </div>
           </>
