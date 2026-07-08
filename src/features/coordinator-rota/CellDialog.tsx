@@ -14,7 +14,7 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
-  evaluatePreference, preferenceMatches, isPreferred,
+  evaluatePreference, preferenceMatches, isPreferred, compareStaffByPreference,
   detectListCoverageRequirements,
   type StaffPracticePref, type StaffSpecialtyPref,
 } from "./preferences";
