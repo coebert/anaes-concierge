@@ -238,7 +238,7 @@ export function CellDialog({
     };
   };
 
-  const [filterToMatching, setFilterToMatching] = useState(true);
+  const [filterToMatching, setFilterToMatching] = usePreferenceMatchFilter();
 
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
