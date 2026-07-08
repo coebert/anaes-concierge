@@ -598,17 +598,17 @@ export function CellDialog({
                     <SelectContent>
                       {staff
                         .filter((s) => !assigns?.some((a) => a.staff_id === s.id))
-                        .filter((s) =>
-                          !filterToMatching || preferenceMatches(prefInputFor(s.id)),
-                        )
                         .sort((a, b) =>
-                          compareStaffByPreference<Profile>(
-                            a,
-                            b,
-                            (s) => prefInputFor(s.id),
-                            (x, y) => compareBySurname(x.full_name, y.full_name),
-                          ),
+                          filterToMatching
+                            ? compareStaffByPreference<Profile>(
+                                a,
+                                b,
+                                (s) => prefInputFor(s.id),
+                                (x, y) => compareBySurname(x.full_name, y.full_name),
+                              )
+                            : compareBySurname(a.full_name, b.full_name),
                         )
+
 
 
                         .map((s) => {
