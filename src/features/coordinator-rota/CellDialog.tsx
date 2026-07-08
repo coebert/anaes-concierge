@@ -14,7 +14,7 @@ import {
 import { Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
-  evaluatePreference, preferenceMatches, isPreferred,
+  evaluatePreference, preferenceMatches, isPreferred, compareStaffByPreference,
   detectListCoverageRequirements,
   type StaffPracticePref, type StaffSpecialtyPref,
 } from "./preferences";
@@ -601,15 +601,16 @@ export function CellDialog({
                         .filter((s) =>
                           !filterToMatching || preferenceMatches(prefInputFor(s.id)),
                         )
-                        .sort((a, b) => {
-                          const ap = isPreferred(prefInputFor(a.id)) ? 0 : 1;
-                          const bp = isPreferred(prefInputFor(b.id)) ? 0 : 1;
-                          const am = preferenceMatches(prefInputFor(a.id)) ? 0 : 1;
-                          const bm = preferenceMatches(prefInputFor(b.id)) ? 0 : 1;
-                          if (ap !== bp) return ap - bp;
-                          if (am !== bm) return am - bm;
-                          return compareBySurname(a.full_name, b.full_name);
-                        })
+                        .sort((a, b) =>
+                          compareStaffByPreference<Profile>(
+                            a,
+                            b,
+                            (s) => prefInputFor(s.id),
+                            (x, y) => compareBySurname(x.full_name, y.full_name),
+                          ),
+                        )
+
+
                         .map((s) => {
                           const pi = prefInputFor(s.id);
                           const preferred = isPreferred(pi);
