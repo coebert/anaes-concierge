@@ -58,6 +58,7 @@ import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
 import { Route as AuthenticatedAdminPulseRouteImport } from './routes/_authenticated/admin.pulse'
+import { Route as AuthenticatedAdminPracticePreferencesRouteImport } from './routes/_authenticated/admin.practice-preferences'
 import { Route as AuthenticatedAdminLeaveFairnessRouteImport } from './routes/_authenticated/admin.leave-fairness'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
 import { Route as AuthenticatedAdminInboxRouteImport } from './routes/_authenticated/admin.inbox'
@@ -359,6 +360,12 @@ const AuthenticatedAdminPulseRoute = AuthenticatedAdminPulseRouteImport.update({
   path: '/admin/pulse',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminPracticePreferencesRoute =
+  AuthenticatedAdminPracticePreferencesRouteImport.update({
+    id: '/admin/practice-preferences',
+    path: '/admin/practice-preferences',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminLeaveFairnessRoute =
   AuthenticatedAdminLeaveFairnessRouteImport.update({
     id: '/admin/leave-fairness',
@@ -572,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/admin/practice-preferences': typeof AuthenticatedAdminPracticePreferencesRoute
   '/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -651,6 +659,7 @@ export interface FileRoutesByTo {
   '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/admin/practice-preferences': typeof AuthenticatedAdminPracticePreferencesRoute
   '/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -733,6 +742,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
   '/_authenticated/admin/leave-fairness': typeof AuthenticatedAdminLeaveFairnessRoute
+  '/_authenticated/admin/practice-preferences': typeof AuthenticatedAdminPracticePreferencesRoute
   '/_authenticated/admin/pulse': typeof AuthenticatedAdminPulseRoute
   '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
@@ -815,6 +825,7 @@ export interface FileRouteTypes {
     | '/admin/inbox'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
+    | '/admin/practice-preferences'
     | '/admin/pulse'
     | '/admin/rota-gaps'
     | '/admin/rules'
@@ -894,6 +905,7 @@ export interface FileRouteTypes {
     | '/admin/inbox'
     | '/admin/job-plans'
     | '/admin/leave-fairness'
+    | '/admin/practice-preferences'
     | '/admin/pulse'
     | '/admin/rota-gaps'
     | '/admin/rules'
@@ -975,6 +987,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/inbox'
     | '/_authenticated/admin/job-plans'
     | '/_authenticated/admin/leave-fairness'
+    | '/_authenticated/admin/practice-preferences'
     | '/_authenticated/admin/pulse'
     | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
@@ -1383,6 +1396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPulseRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/practice-preferences': {
+      id: '/_authenticated/admin/practice-preferences'
+      path: '/admin/practice-preferences'
+      fullPath: '/admin/practice-preferences'
+      preLoaderRoute: typeof AuthenticatedAdminPracticePreferencesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/leave-fairness': {
       id: '/_authenticated/admin/leave-fairness'
       path: '/admin/leave-fairness'
@@ -1726,6 +1746,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminInboxRoute: typeof AuthenticatedAdminInboxRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
   AuthenticatedAdminLeaveFairnessRoute: typeof AuthenticatedAdminLeaveFairnessRoute
+  AuthenticatedAdminPracticePreferencesRoute: typeof AuthenticatedAdminPracticePreferencesRoute
   AuthenticatedAdminPulseRoute: typeof AuthenticatedAdminPulseRoute
   AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
@@ -1782,6 +1803,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminInboxRoute: AuthenticatedAdminInboxRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
   AuthenticatedAdminLeaveFairnessRoute: AuthenticatedAdminLeaveFairnessRoute,
+  AuthenticatedAdminPracticePreferencesRoute:
+    AuthenticatedAdminPracticePreferencesRoute,
   AuthenticatedAdminPulseRoute: AuthenticatedAdminPulseRoute,
   AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,

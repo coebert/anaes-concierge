@@ -1,0 +1,421 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { toast } from "sonner";
+import { compareBySurname } from "@/lib/name-sort";
+import { Baby, HeartPulse, Smile, Pencil } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/admin/practice-preferences")({
+  head: () => ({
+    meta: [
+      { title: "Practice preferences — Salisbury Anaesthetics Rota" },
+      {
+        name: "description",
+        content:
+          "Record each consultant and SAS doctor's preferred specialties and coverage of obstetrics, paediatrics and cleft palate lists.",
+      },
+    ],
+  }),
+  component: PracticePreferencesGuard,
+});
+
+type PreferenceLevel = "preferred" | "willing" | "none";
+
+interface StaffRow {
+  id: string;
+  full_name: string;
+  grade: string | null;
+  active: boolean;
+}
+interface Specialty {
+  id: string;
+  name: string;
+}
+interface PracticePref {
+  staff_id: string;
+  covers_obstetrics: boolean;
+  covers_paediatrics: boolean;
+  covers_cleft_palate: boolean;
+  notes: string | null;
+}
+interface SpecialtyPref {
+  staff_id: string;
+  specialty_id: string;
+  preference: PreferenceLevel;
+}
+
+function PracticePreferencesGuard() {
+  const { hasRole, loading } = useAuth();
+  if (loading) return null;
+  if (!hasRole("admin")) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Only administrators can manage practice preferences.
+        </CardContent>
+      </Card>
+    );
+  }
+  return <PracticePreferencesPage />;
+}
+
+function PracticePreferencesPage() {
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState<StaffRow | null>(null);
+
+  const { data: staff } = useQuery({
+    queryKey: ["prefs-staff-consultant-sas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,full_name,grade,active")
+        .in("grade", ["consultant", "sas"])
+        .eq("active", true);
+      if (error) throw error;
+      return (data ?? []) as StaffRow[];
+    },
+  });
+
+  const { data: specialties } = useQuery({
+    queryKey: ["specialties-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("specialties").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as Specialty[];
+    },
+  });
+
+  const { data: practicePrefs } = useQuery({
+    queryKey: ["staff-practice-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_practice_preferences")
+        .select("staff_id,covers_obstetrics,covers_paediatrics,covers_cleft_palate,notes");
+      if (error) throw error;
+      return (data ?? []) as PracticePref[];
+    },
+  });
+
+  const { data: specialtyPrefs } = useQuery({
+    queryKey: ["staff-specialty-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_specialty_preferences")
+        .select("staff_id,specialty_id,preference");
+      if (error) throw error;
+      return (data ?? []) as SpecialtyPref[];
+    },
+  });
+
+  const practiceById = useMemo(() => {
+    const m = new Map<string, PracticePref>();
+    for (const p of practicePrefs ?? []) m.set(p.staff_id, p);
+    return m;
+  }, [practicePrefs]);
+
+  const specialtyByStaff = useMemo(() => {
+    const m = new Map<string, SpecialtyPref[]>();
+    for (const p of specialtyPrefs ?? []) {
+      const arr = m.get(p.staff_id) ?? [];
+      arr.push(p);
+      m.set(p.staff_id, arr);
+    }
+    return m;
+  }, [specialtyPrefs]);
+
+  const filteredStaff = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = (staff ?? []).slice().sort((a, b) =>
+      compareBySurname(a.full_name, b.full_name));
+    if (!q) return rows;
+    return rows.filter((s) => s.full_name.toLowerCase().includes(q));
+  }, [staff, query]);
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Practice preferences"
+        description="Record specialty preferences and coverage of obstetrics, paediatrics and cleft palate lists for consultant and SAS grade doctors."
+      />
+
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Search by name…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-9 max-w-sm"
+        />
+        <span className="text-xs text-muted-foreground">
+          {filteredStaff.length} of {staff?.length ?? 0}
+        </span>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Grade</TableHead>
+                <TableHead>Coverage</TableHead>
+                <TableHead>Preferred specialties</TableHead>
+                <TableHead className="w-16 text-right"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredStaff.map((s) => {
+                const pp = practiceById.get(s.id);
+                const sp = specialtyByStaff.get(s.id) ?? [];
+                const preferred = sp
+                  .filter((x) => x.preference === "preferred")
+                  .map((x) => specialties?.find((sp2) => sp2.id === x.specialty_id)?.name)
+                  .filter(Boolean) as string[];
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.full_name}</TableCell>
+                    <TableCell className="capitalize text-xs text-muted-foreground">
+                      {s.grade ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1.5">
+                        {pp?.covers_obstetrics && (
+                          <Badge variant="secondary" className="gap-1">
+                            <HeartPulse className="h-3 w-3" /> Obstetrics
+                          </Badge>
+                        )}
+                        {pp?.covers_paediatrics && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Baby className="h-3 w-3" /> Paediatrics
+                          </Badge>
+                        )}
+                        {pp?.covers_cleft_palate && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Smile className="h-3 w-3" /> Cleft palate
+                          </Badge>
+                        )}
+                        {!pp?.covers_obstetrics && !pp?.covers_paediatrics && !pp?.covers_cleft_palate && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {preferred.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {preferred.map((name) => (
+                            <Badge key={name} variant="outline">{name}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm" variant="ghost"
+                        onClick={() => setEditing(s)}
+                        aria-label={`Edit preferences for ${s.full_name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {filteredStaff.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                    No consultants or SAS doctors match.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {editing && (
+        <EditPreferencesDialog
+          staff={editing}
+          specialties={specialties ?? []}
+          practicePref={practiceById.get(editing.id)}
+          specialtyPrefs={specialtyByStaff.get(editing.id) ?? []}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditPreferencesDialog({
+  staff, specialties, practicePref, specialtyPrefs, onClose,
+}: {
+  staff: StaffRow;
+  specialties: Specialty[];
+  practicePref: PracticePref | undefined;
+  specialtyPrefs: SpecialtyPref[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [obstetrics, setObstetrics] = useState(!!practicePref?.covers_obstetrics);
+  const [paediatrics, setPaediatrics] = useState(!!practicePref?.covers_paediatrics);
+  const [cleft, setCleft] = useState(!!practicePref?.covers_cleft_palate);
+  const [notes, setNotes] = useState(practicePref?.notes ?? "");
+
+  const [prefs, setPrefs] = useState<Record<string, PreferenceLevel>>(() => {
+    const m: Record<string, PreferenceLevel> = {};
+    for (const s of specialties) m[s.id] = "willing";
+    for (const p of specialtyPrefs) m[p.specialty_id] = p.preference;
+    return m;
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error: e1 } = await supabase
+        .from("staff_practice_preferences")
+        .upsert({
+          staff_id: staff.id,
+          covers_obstetrics: obstetrics,
+          covers_paediatrics: paediatrics,
+          covers_cleft_palate: cleft,
+          notes: notes.trim() ? notes.trim() : null,
+        });
+      if (e1) throw e1;
+
+      const rows = specialties.map((s) => ({
+        staff_id: staff.id,
+        specialty_id: s.id,
+        preference: prefs[s.id] ?? "willing",
+      }));
+      const { error: e2 } = await supabase
+        .from("staff_specialty_preferences")
+        .upsert(rows, { onConflict: "staff_id,specialty_id" });
+      if (e2) throw e2;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["staff-practice-prefs"] }),
+        qc.invalidateQueries({ queryKey: ["staff-specialty-prefs"] }),
+      ]);
+      toast.success("Preferences saved");
+      onClose();
+    },
+    onError: (err: unknown) => {
+      toast.error("Could not save preferences", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{staff.full_name}</DialogTitle>
+          <DialogDescription>
+            Specialty preferences and coverage flags. Advisory only — does not block rota assignments.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold">Coverage</h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <label className="flex items-center gap-2 rounded border border-border p-2 cursor-pointer">
+                <Checkbox
+                  checked={obstetrics}
+                  onCheckedChange={(v) => setObstetrics(!!v)}
+                />
+                <span className="text-sm">Covers obstetrics</span>
+              </label>
+              <label className="flex items-center gap-2 rounded border border-border p-2 cursor-pointer">
+                <Checkbox
+                  checked={paediatrics}
+                  onCheckedChange={(v) => setPaediatrics(!!v)}
+                />
+                <span className="text-sm">Covers paediatrics</span>
+              </label>
+              <label className="flex items-center gap-2 rounded border border-border p-2 cursor-pointer">
+                <Checkbox
+                  checked={cleft}
+                  onCheckedChange={(v) => setCleft(!!v)}
+                />
+                <span className="text-sm">Does cleft palate lists</span>
+              </label>
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold">Specialty preferences</h3>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Preferred</span> — actively enjoys / requests these lists.
+              {" "}
+              <span className="font-medium">Willing</span> — happy to cover.
+              {" "}
+              <span className="font-medium">Does not cover</span> — should not be assigned.
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {specialties.map((s) => (
+                <div key={s.id} className="flex items-center justify-between gap-3 rounded border border-border p-2">
+                  <span className="text-sm">{s.name}</span>
+                  <Select
+                    value={prefs[s.id] ?? "willing"}
+                    onValueChange={(v: PreferenceLevel) =>
+                      setPrefs((prev) => ({ ...prev, [s.id]: v }))}
+                  >
+                    <SelectTrigger className="h-8 w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="preferred">Preferred</SelectItem>
+                      <SelectItem value="willing">Willing</SelectItem>
+                      <SelectItem value="none">Does not cover</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              {specialties.length === 0 && (
+                <p className="text-sm text-muted-foreground">No specialties configured.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold">Notes</h3>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional context, e.g. only covers day-case paediatrics."
+              rows={3}
+            />
+          </section>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={save.isPending}>Cancel</Button>
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save preferences"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
