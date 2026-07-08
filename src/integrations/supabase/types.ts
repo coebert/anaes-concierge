@@ -2333,6 +2333,114 @@ export type Database = {
           },
         ]
       }
+      staff_practice_preferences: {
+        Row: {
+          covers_cleft_palate: boolean
+          covers_obstetrics: boolean
+          covers_paediatrics: boolean
+          created_at: string
+          notes: string | null
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          covers_cleft_palate?: boolean
+          covers_obstetrics?: boolean
+          covers_paediatrics?: boolean
+          created_at?: string
+          notes?: string | null
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          covers_cleft_palate?: boolean
+          covers_obstetrics?: boolean
+          covers_paediatrics?: boolean
+          created_at?: string
+          notes?: string | null
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_practice_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_practice_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_practice_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_specialty_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          preference: Database["public"]["Enums"]["specialty_preference"]
+          specialty_id: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          preference?: Database["public"]["Enums"]["specialty_preference"]
+          specialty_id: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          preference?: Database["public"]["Enums"]["specialty_preference"]
+          specialty_id?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_specialty_preferences_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "specialties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_specialty_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_specialty_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_specialty_preferences_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theatre_name_aliases: {
         Row: {
           active: boolean
@@ -3325,6 +3433,7 @@ export type Database = {
         | "admin_session"
       rota_source: "manual" | "clwrota"
       session_half: "am" | "pm" | "eve" | "night"
+      specialty_preference: "preferred" | "willing" | "none"
       staff_grade: "consultant" | "sas" | "trainee"
       theatre_kind: "main" | "day_surgery" | "private"
     }
@@ -3500,6 +3609,7 @@ export const Constants = {
       ],
       rota_source: ["manual", "clwrota"],
       session_half: ["am", "pm", "eve", "night"],
+      specialty_preference: ["preferred", "willing", "none"],
       staff_grade: ["consultant", "sas", "trainee"],
       theatre_kind: ["main", "day_surgery", "private"],
     },
