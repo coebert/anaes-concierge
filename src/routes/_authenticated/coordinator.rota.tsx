@@ -13,6 +13,9 @@ import { type Profile, type RotaRules } from "@/lib/rota-validation";
 import { RotaWeekGrid } from "@/features/coordinator-rota/RotaWeekGrid";
 import { CellDialog } from "@/features/coordinator-rota/CellDialog";
 import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyBlockersPanel";
+import { usePreferenceMatchFilter } from "@/features/coordinator-rota/use-preference-match-filter";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type {
   SessionHalf, RotaRole, WeekAssignment, ContextAssignment,
 } from "@/features/coordinator-rota/types";
@@ -198,6 +201,8 @@ function RotaGridPage() {
     },
   });
 
+  const [matchOnly, setMatchOnly] = usePreferenceMatchFilter();
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -222,6 +227,21 @@ function RotaGridPage() {
             <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
               This week
             </Button>
+            <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1 text-xs">
+              <span aria-hidden className="text-amber-500">★</span>
+              <Label htmlFor="rota-pref-match" className="text-xs font-medium cursor-pointer">
+                Match preferences
+              </Label>
+              <Switch
+                id="rota-pref-match"
+                checked={matchOnly}
+                onCheckedChange={setMatchOnly}
+                aria-label="Only show staff whose preferences match required coverage"
+              />
+              <span className="text-muted-foreground">
+                {matchOnly ? "matches only" : "all staff"}
+              </span>
+            </div>
           </>
         }
       />

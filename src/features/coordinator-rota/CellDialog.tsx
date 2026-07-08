@@ -11,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   evaluatePreference, preferenceMatches, isPreferred,
   detectListCoverageRequirements,
   type StaffPracticePref, type StaffSpecialtyPref,
 } from "./preferences";
+import { usePreferenceMatchFilter } from "./use-preference-match-filter";
 import { toast } from "sonner";
 import { cn, formatDateLongGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
@@ -237,7 +238,7 @@ export function CellDialog({
     };
   };
 
-  const [filterToMatching, setFilterToMatching] = useState(true);
+  const [filterToMatching, setFilterToMatching] = usePreferenceMatchFilter();
 
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
@@ -567,7 +568,7 @@ export function CellDialog({
                 {specialtyId && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1">
-                      <Sparkles className="h-3 w-3 text-primary" />
+                      <span aria-hidden className="text-amber-500">★</span>
                       <span className="font-medium">Match preferences</span>
                       <Switch
                         checked={filterToMatching}
