@@ -99,3 +99,30 @@ export function isPreferred(input: EvaluatePreferenceInput): boolean {
   if (input.grade !== "consultant" && input.grade !== "sas") return false;
   return (input.specialtyPref?.preference ?? "willing") === "preferred";
 }
+
+/**
+ * Compare two staff members for the assignment dropdown. Ordering:
+ *   1. Preferred (★) first
+ *   2. Then matching (covers all required flags + specialty not "none")
+ *   3. Then everyone else
+ * Ties fall through to a caller-provided tiebreaker (usually surname).
+ *
+ * Exported so the sort is unit-testable independently of the dialog.
+ */
+export function compareStaffByPreference<T>(
+  a: T,
+  b: T,
+  toInput: (s: T) => EvaluatePreferenceInput,
+  tiebreak: (a: T, b: T) => number = () => 0,
+): number {
+  const ai = toInput(a);
+  const bi = toInput(b);
+  const ap = isPreferred(ai) ? 0 : 1;
+  const bp = isPreferred(bi) ? 0 : 1;
+  if (ap !== bp) return ap - bp;
+  const am = preferenceMatches(ai) ? 0 : 1;
+  const bm = preferenceMatches(bi) ? 0 : 1;
+  if (am !== bm) return am - bm;
+  return tiebreak(a, b);
+}
+
