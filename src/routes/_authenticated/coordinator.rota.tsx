@@ -328,10 +328,11 @@ function RotaGridPage() {
                 className="ml-1 rounded bg-background px-1.5 py-0.5 font-medium tabular-nums text-foreground border border-border"
                 title={
                   matchStats.hasLists
-                    ? `${matchStats.matching} of ${matchStats.total} consultants / SAS match at least one list scheduled this week`
-                    : "No lists scheduled this week yet — all consultants / SAS count as matching"
+                    ? `${matchStats.matching} of ${matchStats.total} consultants / SAS match at least one list scheduled this week.\n\nSpecialties requiring cover this week:\n• ${matchStats.specialtyNames.join("\n• ")}`
+                    : "No lists scheduled this week yet — all consultants / SAS count as matching."
                 }
               >
+
                 {matchStats.matching}/{matchStats.total} match
               </span>
 
