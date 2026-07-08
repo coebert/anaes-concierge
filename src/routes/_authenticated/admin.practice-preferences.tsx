@@ -404,6 +404,15 @@ function EditPreferencesDialog({
             </div>
           </section>
 
+          <PreviewSection
+            grade={staff.grade}
+            specialties={specialties}
+            prefs={prefs}
+            obstetrics={obstetrics}
+            paediatrics={paediatrics}
+            cleft={cleft}
+          />
+
           <section className="space-y-2">
             <h3 className="text-sm font-semibold">Notes</h3>
             <Textarea
@@ -413,6 +422,7 @@ function EditPreferencesDialog({
               rows={3}
             />
           </section>
+
         </div>
 
         <DialogFooter>
