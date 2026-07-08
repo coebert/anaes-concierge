@@ -188,6 +188,57 @@ export function CellDialog({
     },
   });
 
+  const { data: practicePrefs } = useQuery({
+    queryKey: ["staff-practice-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_practice_preferences")
+        .select("staff_id,covers_obstetrics,covers_paediatrics,covers_cleft_palate");
+      if (error) throw error;
+      return (data ?? []) as StaffPracticePref[];
+    },
+  });
+  const { data: specialtyPrefs } = useQuery({
+    queryKey: ["staff-specialty-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_specialty_preferences")
+        .select("staff_id,specialty_id,preference");
+      if (error) throw error;
+      return (data ?? []) as StaffSpecialtyPref[];
+    },
+  });
+  const practiceByStaff = useMemo(() => {
+    const m = new Map<string, StaffPracticePref>();
+    for (const p of practicePrefs ?? []) m.set(p.staff_id, p);
+    return m;
+  }, [practicePrefs]);
+  const specialtyPrefByStaff = useMemo(() => {
+    const m = new Map<string, Map<string, StaffSpecialtyPref>>();
+    for (const p of specialtyPrefs ?? []) {
+      let inner = m.get(p.staff_id);
+      if (!inner) { inner = new Map(); m.set(p.staff_id, inner); }
+      inner.set(p.specialty_id, p);
+    }
+    return m;
+  }, [specialtyPrefs]);
+  const currentSpecialtyName = specialties?.find((s) => s.id === specialtyId)?.name ?? null;
+  const coverageReq = detectListCoverageRequirements(currentSpecialtyName);
+
+  const prefInputFor = (staffId: string) => {
+    const sp = staff.find((s) => s.id === staffId);
+    return {
+      staffId,
+      grade: sp?.grade ?? null,
+      specialtyId: specialtyId || null,
+      specialtyName: currentSpecialtyName,
+      practicePref: practiceByStaff.get(staffId),
+      specialtyPref: specialtyPrefByStaff.get(staffId)?.get(specialtyId ?? ""),
+    };
+  };
+
+  const [filterToMatching, setFilterToMatching] = useState(true);
+
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
       const { error } = await supabase
