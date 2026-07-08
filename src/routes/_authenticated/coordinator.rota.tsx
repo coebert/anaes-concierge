@@ -360,6 +360,43 @@ function RotaGridPage() {
                   {matchStats.matching}/{matchStats.total}
                 </span>
               </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-background"
+                    aria-label="Dropdown legend"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="end" className="w-64 p-3 text-xs">
+                  <p className="mb-2 font-semibold">Staff dropdown legend</p>
+                  <ul className="space-y-1.5">
+                    <li className="flex items-start gap-2">
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-amber-500">★</span>
+                      <span>
+                        <span className="font-medium">Preferred</span> — actively enjoys / requests this specialty.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-emerald-600 dark:text-emerald-400">✓</span>
+                      <span>
+                        <span className="font-medium">Matches</span> — covers the required specialty and any obs / paeds / cleft flags.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-destructive">!</span>
+                      <span>
+                        <span className="font-medium">Warning</span> — missing a required coverage or marked as not covering the specialty.
+                      </span>
+                    </li>
+                  </ul>
+                  <p className="mt-2 text-muted-foreground">
+                    Icons appear next to each name in the assignment dropdown when <span className="font-medium">Match preferences</span> is on.
+                  </p>
+                </PopoverContent>
+              </Popover>
 
 
             </div>
