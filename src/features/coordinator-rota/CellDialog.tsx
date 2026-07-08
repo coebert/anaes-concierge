@@ -644,9 +644,29 @@ export function CellDialog({
                               )}
                             >
                               <span className="flex items-center gap-1.5">
-                                {preferred && (
+                                {filterToMatching && (
+                                  <span
+                                    aria-label={
+                                      preferred
+                                        ? "Preferred"
+                                        : matches
+                                          ? "Matches preferences"
+                                          : "Does not match preferences"
+                                    }
+                                    className={cn(
+                                      "inline-flex h-4 w-4 items-center justify-center text-xs font-bold tabular-nums",
+                                      preferred && "text-amber-500",
+                                      !preferred && matches && "text-emerald-600 dark:text-emerald-400",
+                                      !matches && "text-destructive",
+                                    )}
+                                  >
+                                    {preferred ? "★" : matches ? "✓" : "!"}
+                                  </span>
+                                )}
+                                {!filterToMatching && preferred && (
                                   <span aria-label="Preferred" className="text-amber-500">★</span>
                                 )}
+
                                 <span>
                                   {s.full_name}
                                   {s.grade ? ` (${s.grade})` : ""}
