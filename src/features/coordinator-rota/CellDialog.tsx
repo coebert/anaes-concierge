@@ -568,7 +568,7 @@ export function CellDialog({
                 {specialtyId && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1">
-                      <Sparkles className="h-3 w-3 text-primary" />
+                      <span aria-hidden className="text-amber-500">★</span>
                       <span className="font-medium">Match preferences</span>
                       <Switch
                         checked={filterToMatching}
