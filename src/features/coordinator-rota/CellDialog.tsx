@@ -564,7 +564,7 @@ export function CellDialog({
                 ) : (
                   <p className="text-xs text-muted-foreground">No staff assigned.</p>
                 )}
-                {specialtyId && (coverageReq.needsObstetrics || coverageReq.needsPaediatrics || coverageReq.needsCleft || true) && (
+                {specialtyId && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1">
                       <Sparkles className="h-3 w-3 text-primary" />
