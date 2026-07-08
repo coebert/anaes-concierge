@@ -603,16 +603,63 @@ export function CellDialog({
                         .sort((a, b) => {
                           const ap = isPreferred(prefInputFor(a.id)) ? 0 : 1;
                           const bp = isPreferred(prefInputFor(b.id)) ? 0 : 1;
+                          const am = preferenceMatches(prefInputFor(a.id)) ? 0 : 1;
+                          const bm = preferenceMatches(prefInputFor(b.id)) ? 0 : 1;
                           if (ap !== bp) return ap - bp;
+                          if (am !== bm) return am - bm;
                           return compareBySurname(a.full_name, b.full_name);
                         })
                         .map((s) => {
                           const pi = prefInputFor(s.id);
                           const preferred = isPreferred(pi);
+                          const matches = preferenceMatches(pi);
+                          const scopedToPrefs =
+                            !!specialtyId &&
+                            (s.grade === "consultant" || s.grade === "sas");
+                          const reasons: string[] = [];
+                          if (scopedToPrefs) {
+                            const sPref =
+                              specialtyPrefByStaff.get(s.id)?.get(specialtyId)?.preference ??
+                              "willing";
+                            if (sPref === "none") reasons.push("does not cover specialty");
+                            const pp = practiceByStaff.get(s.id);
+                            if (coverageReq.needsObstetrics && !pp?.covers_obstetrics)
+                              reasons.push("no obstetrics");
+                            if (coverageReq.needsPaediatrics && !pp?.covers_paediatrics)
+                              reasons.push("no paeds");
+                            if (coverageReq.needsCleft && !pp?.covers_cleft_palate)
+                              reasons.push("no cleft");
+                          }
                           return (
-                            <SelectItem key={s.id} value={s.id}>
-                              {preferred && "★ "}
-                              {s.full_name} {s.grade ? `(${s.grade})` : ""}
+                            <SelectItem
+                              key={s.id}
+                              value={s.id}
+                              className={cn(
+                                preferred &&
+                                  "bg-emerald-500/10 data-[highlighted]:bg-emerald-500/20 font-medium",
+                                !matches &&
+                                  "text-muted-foreground data-[highlighted]:bg-destructive/10",
+                              )}
+                            >
+                              <span className="flex items-center gap-1.5">
+                                {preferred && (
+                                  <Sparkles className="h-3 w-3 text-emerald-600" />
+                                )}
+                                <span>
+                                  {s.full_name}
+                                  {s.grade ? ` (${s.grade})` : ""}
+                                </span>
+                                {preferred && (
+                                  <span className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                                    preferred
+                                  </span>
+                                )}
+                                {!matches && reasons.length > 0 && (
+                                  <span className="text-[10px] uppercase tracking-wide text-destructive">
+                                    · {reasons.join(", ")}
+                                  </span>
+                                )}
+                              </span>
                             </SelectItem>
                           );
                         })}
