@@ -209,6 +209,78 @@ function RotaGridPage() {
 
   const [matchOnly, setMatchOnly] = usePreferenceMatchFilter();
 
+  const { data: practicePrefs } = useQuery({
+    queryKey: ["staff-practice-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_practice_preferences")
+        .select("staff_id,covers_obstetrics,covers_paediatrics,covers_cleft_palate");
+      if (error) throw error;
+      return (data ?? []) as StaffPracticePref[];
+    },
+  });
+
+  const { data: specialtyPrefs } = useQuery({
+    queryKey: ["staff-specialty-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_specialty_preferences")
+        .select("staff_id,specialty_id,preference");
+      if (error) throw error;
+      return (data ?? []) as StaffSpecialtyPref[];
+    },
+  });
+
+  // Count consultants/SAS who would match at least one list scheduled this week.
+  const matchStats = useMemo(() => {
+    const applicable = (staff ?? []).filter(
+      (s) => s.grade === "consultant" || s.grade === "sas",
+    );
+    const total = applicable.length;
+
+    // Distinct specialties present on this week's sessions.
+    const weekSpecialtyIds = new Set<string>();
+    for (const ts of theatreSessions ?? []) {
+      if (ts.specialty_id) weekSpecialtyIds.add(ts.specialty_id);
+    }
+    const weekSpecialties = (specialtiesList ?? []).filter((sp) =>
+      weekSpecialtyIds.has(sp.id),
+    );
+
+    const practiceById = new Map<string, StaffPracticePref>();
+    for (const p of practicePrefs ?? []) practiceById.set(p.staff_id, p);
+
+    const specByStaff = new Map<string, Map<string, StaffSpecialtyPref>>();
+    for (const p of specialtyPrefs ?? []) {
+      let m = specByStaff.get(p.staff_id);
+      if (!m) { m = new Map(); specByStaff.set(p.staff_id, m); }
+      m.set(p.specialty_id, p);
+    }
+
+    if (weekSpecialties.length === 0) {
+      return { matching: total, total, hasLists: false };
+    }
+
+    let matching = 0;
+    for (const s of applicable) {
+      const pp = practiceById.get(s.id);
+      const specs = specByStaff.get(s.id);
+      const ok = weekSpecialties.some((sp) =>
+        preferenceMatches({
+          staffId: s.id,
+          grade: s.grade,
+          specialtyId: sp.id,
+          specialtyName: sp.name,
+          practicePref: pp,
+          specialtyPref: specs?.get(sp.id),
+        }),
+      );
+      if (ok) matching++;
+    }
+    return { matching, total, hasLists: true };
+  }, [staff, theatreSessions, specialtiesList, practicePrefs, specialtyPrefs]);
+
+
   return (
     <div className="space-y-4">
       <PageHeader
