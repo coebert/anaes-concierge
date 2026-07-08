@@ -602,10 +602,14 @@ export function CellDialog({
                           !filterToMatching || preferenceMatches(prefInputFor(s.id)),
                         )
                         .sort((a, b) =>
-                          compareStaffByPreference(a, b, (s) => prefInputFor(s.id), (x, y) =>
-                            compareBySurname(x.full_name, y.full_name),
+                          compareStaffByPreference<Profile>(
+                            a,
+                            b,
+                            (s) => prefInputFor(s.id),
+                            (x, y) => compareBySurname(x.full_name, y.full_name),
                           ),
                         )
+
 
                         .map((s) => {
                           const pi = prefInputFor(s.id);
