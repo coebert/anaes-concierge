@@ -60,18 +60,18 @@ const sortNames = (list: Staff[], ctx: Ctx) =>
     .sort((a, b) => compareStaffByPreference(a, b, toInput(ctx), surname))
     .map((s) => s.full_name);
 
-describe("compareStaffByPreference — dropdown ordering", () => {
-  const alice: Staff = { id: "a", full_name: "Alice", grade: "consultant" };
-  const bob: Staff = { id: "b", full_name: "Bob", grade: "consultant" };
-  const carol: Staff = { id: "c", full_name: "Carol", grade: "consultant" };
-  const dave: Staff = { id: "d", full_name: "Dave", grade: "consultant" };
+const alice: Staff = { id: "a", full_name: "Alice", grade: "consultant" };
+const bob: Staff = { id: "b", full_name: "Bob", grade: "consultant" };
+const carol: Staff = { id: "c", full_name: "Carol", grade: "consultant" };
+const dave: Staff = { id: "d", full_name: "Dave", grade: "consultant" };
 
-  it("orders preferred, then matching, then non-matching", () => {
+describe("compareStaffByPreference — dropdown ordering", () => {
+  it("orders preferred (★), then matching, then non-matching", () => {
     const ctx = makeCtx("General surgery");
     setSpec(ctx, alice.id, "none"); // non-matching
     setSpec(ctx, bob.id, "preferred"); // preferred
-    setSpec(ctx, carol.id, "willing"); // matching (default willing)
-    // dave: no pref rows → default willing → matching
+    setSpec(ctx, carol.id, "willing"); // matching
+    // dave: no rows → default willing → matching
 
     expect(sortNames([alice, bob, carol, dave], ctx)).toEqual([
       "Bob",
@@ -94,15 +94,16 @@ describe("compareStaffByPreference — dropdown ordering", () => {
     ]);
   });
 
-  it("demotes staff missing a required obstetrics flag to non-matching", () => {
+  it("keeps preferred at the top even when a required coverage flag is missing", () => {
+    // Preferred outranks matching by design — a coordinator explicitly
+    // marked this consultant as preferred, so surface them first and let
+    // the inline warnings flag the missing coverage.
     const ctx = makeCtx("Obstetric anaesthesia");
-    setSpec(ctx, alice.id, "preferred"); // preferred but no obs → still preferred wins tier 1
+    setSpec(ctx, alice.id, "preferred"); // preferred, no obs flag
     setSpec(ctx, bob.id, "willing");
     setPractice(ctx, bob.id, { covers_obstetrics: true }); // matching
-    setSpec(ctx, carol.id, "willing"); // no obs flag → non-matching
+    setSpec(ctx, carol.id, "willing"); // non-matching (no obs flag)
 
-    // Preferred first even if obs flag missing (preferred outranks matching);
-    // then matching; then non-matching.
     expect(sortNames([carol, bob, alice], ctx)).toEqual([
       "Alice",
       "Bob",
@@ -110,9 +111,7 @@ describe("compareStaffByPreference — dropdown ordering", () => {
     ]);
   });
 
-  it("reorders when the specialty (and thus coverage requirements) change", () => {
-    // Same staff, different list specialty → different ordering.
-    setPractice = setPractice; // keep tsc happy about referenced binding
+  it("reorders when the specialty changes coverage requirements", () => {
     const build = (specialtyName: string) => {
       const ctx = makeCtx(specialtyName);
       setSpec(ctx, alice.id, "willing");
@@ -123,22 +122,29 @@ describe("compareStaffByPreference — dropdown ordering", () => {
       return ctx;
     };
 
-    // Obstetrics list: Carol (preferred), Bob (matches obs), Alice (missing obs)
+    // Obstetrics: Carol (★), Bob (obs), Alice (missing obs)
     expect(sortNames([alice, bob, carol], build("Obstetric anaesthesia"))).toEqual([
       "Carol",
       "Bob",
       "Alice",
     ]);
 
-    // Paediatrics list: Carol (preferred), Alice (matches paeds), Bob (missing paeds)
+    // Paediatrics: Carol (★), Alice (paeds), Bob (missing paeds)
     expect(sortNames([alice, bob, carol], build("Paediatric surgery"))).toEqual([
       "Carol",
       "Alice",
       "Bob",
     ]);
 
-    // Cleft list: Carol (preferred), then non-matching Alice/Bob alphabetically
+    // Cleft: Carol (★), then Alice/Bob both non-matching → alphabetical
     expect(sortNames([alice, bob, carol], build("Cleft palate"))).toEqual([
+      "Carol",
+      "Alice",
+      "Bob",
+    ]);
+
+    // No required coverage: Carol (★), Alice/Bob both matching → alphabetical
+    expect(sortNames([alice, bob, carol], build("General surgery"))).toEqual([
       "Carol",
       "Alice",
       "Bob",
@@ -146,20 +152,17 @@ describe("compareStaffByPreference — dropdown ordering", () => {
   });
 
   it("treats trainees as matching regardless of preference rows", () => {
-    const ctx = makeCtx("Obstetric anaesthesia");
     const trainee: Staff = { id: "t", full_name: "Trainee", grade: "trainee" };
-    setSpec(ctx, bob.id, "preferred");
-    // Trainee has no practice pref and no spec pref → still matching (tier 2)
-    expect(sortNames([trainee, bob, alice], ctx)).toEqual([
+    const ctx = makeCtx("Obstetric anaesthesia");
+    setSpec(ctx, bob.id, "preferred"); // preferred consultant
+    // alice consultant: default willing, no obs flag → non-matching
+    // trainee: grade "trainee" → always matches, never preferred
+
+    expect(sortNames([alice, bob, trainee], ctx)).toEqual([
       "Bob", // preferred
-      "Alice", // consultant, no obs → non-matching, but wait: default willing, no obs flag → non-matching
-      "Trainee", // matching
-    ].sort((a, b) => {
-      // recompute expected via same tiers to be robust
-      return 0;
-    }).length === 3
-      ? ["Bob", "Trainee", "Alice"]
-      : []);
+      "Trainee", // matching (grade bypasses coverage checks)
+      "Alice", // non-matching consultant
+    ]);
   });
 
   it("respects a 'none' specialty preference even when coverage flags are set", () => {
@@ -170,5 +173,15 @@ describe("compareStaffByPreference — dropdown ordering", () => {
     setPractice(ctx, bob.id, { covers_obstetrics: true });
 
     expect(sortNames([alice, bob], ctx)).toEqual(["Bob", "Alice"]);
+  });
+
+  it("applies the same tiers to SAS grade", () => {
+    const s1: Staff = { id: "s1", full_name: "Sami", grade: "sas" };
+    const s2: Staff = { id: "s2", full_name: "Sana", grade: "sas" };
+    const ctx = makeCtx("General surgery");
+    setSpec(ctx, s1.id, "none");
+    setSpec(ctx, s2.id, "preferred");
+
+    expect(sortNames([s1, s2], ctx)).toEqual(["Sana", "Sami"]);
   });
 });
