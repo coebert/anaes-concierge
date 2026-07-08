@@ -201,6 +201,8 @@ function RotaGridPage() {
     },
   });
 
+  const [matchOnly, setMatchOnly] = usePreferenceMatchFilter();
+
   return (
     <div className="space-y-4">
       <PageHeader
