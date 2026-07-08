@@ -643,7 +643,7 @@ export function CellDialog({
                             >
                               <span className="flex items-center gap-1.5">
                                 {preferred && (
-                                  <Sparkles className="h-3 w-3 text-emerald-600" />
+                                  <span aria-label="Preferred" className="text-amber-500">★</span>
                                 )}
                                 <span>
                                   {s.full_name}
