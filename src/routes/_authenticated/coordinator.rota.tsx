@@ -227,6 +227,21 @@ function RotaGridPage() {
             <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
               This week
             </Button>
+            <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1 text-xs">
+              <span aria-hidden className="text-amber-500">★</span>
+              <Label htmlFor="rota-pref-match" className="text-xs font-medium cursor-pointer">
+                Match preferences
+              </Label>
+              <Switch
+                id="rota-pref-match"
+                checked={matchOnly}
+                onCheckedChange={setMatchOnly}
+                aria-label="Only show staff whose preferences match required coverage"
+              />
+              <span className="text-muted-foreground">
+                {matchOnly ? "matches only" : "all staff"}
+              </span>
+            </div>
           </>
         }
       />
