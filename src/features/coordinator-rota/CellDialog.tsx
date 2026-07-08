@@ -11,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   evaluatePreference, preferenceMatches, isPreferred,
   detectListCoverageRequirements,
   type StaffPracticePref, type StaffSpecialtyPref,
 } from "./preferences";
+import { usePreferenceMatchFilter } from "./use-preference-match-filter";
 import { toast } from "sonner";
 import { cn, formatDateLongGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
