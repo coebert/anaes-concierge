@@ -435,3 +435,125 @@ function EditPreferencesDialog({
     </Dialog>
   );
 }
+
+function PreviewSection({
+  grade,
+  specialties,
+  prefs,
+  obstetrics,
+  paediatrics,
+  cleft,
+}: {
+  grade: string | null;
+  specialties: Specialty[];
+  prefs: Record<string, PreferenceLevel>;
+  obstetrics: boolean;
+  paediatrics: boolean;
+  cleft: boolean;
+}) {
+  // Default the preview to the first specialty whose name triggers a
+  // coverage requirement, so the admin immediately sees how obs/paeds/cleft
+  // flags interact. Falls back to the first specialty.
+  const defaultId = useMemo(() => {
+    const trigger = specialties.find((s) =>
+      /\bobstet|\bpaed|\bpediat|\bcleft/i.test(s.name),
+    );
+    return (trigger ?? specialties[0])?.id ?? "";
+  }, [specialties]);
+  const [previewId, setPreviewId] = useState<string>(defaultId);
+  const effectiveId = previewId || defaultId;
+  const previewSpec = specialties.find((s) => s.id === effectiveId);
+
+  const draftInput = useMemo(
+    () => ({
+      staffId: "preview",
+      grade,
+      specialtyId: previewSpec?.id ?? null,
+      specialtyName: previewSpec?.name ?? null,
+      practicePref: {
+        staff_id: "preview",
+        covers_obstetrics: obstetrics,
+        covers_paediatrics: paediatrics,
+        covers_cleft_palate: cleft,
+      },
+      specialtyPref: previewSpec
+        ? {
+            staff_id: "preview",
+            specialty_id: previewSpec.id,
+            preference: prefs[previewSpec.id] ?? "willing",
+          }
+        : undefined,
+    }),
+    [grade, previewSpec, obstetrics, paediatrics, cleft, prefs],
+  );
+
+  const issues = evaluatePreference(draftInput);
+  const matches = preferenceMatches(draftInput);
+  const preferred = isPreferred(draftInput);
+
+  const applicable = grade === "consultant" || grade === "sas";
+
+  return (
+    <section className="space-y-2 rounded-md border border-dashed border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Live preview</h3>
+        <Select value={effectiveId} onValueChange={setPreviewId}>
+          <SelectTrigger className="h-8 w-56">
+            <SelectValue placeholder="Choose a list…" />
+          </SelectTrigger>
+          <SelectContent>
+            {specialties.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {!applicable ? (
+        <p className="text-xs text-muted-foreground">
+          Preferences only affect warnings for consultants and SAS grade doctors.
+        </p>
+      ) : !previewSpec ? (
+        <p className="text-xs text-muted-foreground">
+          Add a specialty above to preview warnings.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {preferred && (
+              <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40 gap-1">
+                ★ Preferred
+              </Badge>
+            )}
+            {matches ? (
+              <Badge variant="outline" className="gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-500/40">
+                <CheckCircle2 className="h-3 w-3" /> Matches list requirements
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400 border-amber-500/40">
+                <AlertTriangle className="h-3 w-3" /> Would trigger warnings
+              </Badge>
+            )}
+          </div>
+
+          {issues.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No preference warnings would appear on the rota picker for a{" "}
+              <span className="font-medium">{previewSpec.name}</span> list.
+            </p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {issues.map((w, i) => (
+                <li key={i} className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span>{w.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
