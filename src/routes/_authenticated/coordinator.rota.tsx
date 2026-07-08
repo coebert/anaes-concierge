@@ -257,8 +257,12 @@ function RotaGridPage() {
       m.set(p.specialty_id, p);
     }
 
+    const specialtyNames = weekSpecialties
+      .map((sp) => sp.name)
+      .sort((a, b) => a.localeCompare(b));
+
     if (weekSpecialties.length === 0) {
-      return { matching: total, total, hasLists: false };
+      return { matching: total, total, hasLists: false, specialtyNames };
     }
 
     let matching = 0;
@@ -277,8 +281,9 @@ function RotaGridPage() {
       );
       if (ok) matching++;
     }
-    return { matching, total, hasLists: true };
+    return { matching, total, hasLists: true, specialtyNames };
   }, [staff, theatreSessions, specialtiesList, practicePrefs, specialtyPrefs]);
+
 
 
   return (
