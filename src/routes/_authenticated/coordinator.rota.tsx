@@ -272,11 +272,19 @@ function RotaGridPage() {
         total,
         hasLists: false,
         specialtyNames,
+        perSpecialty: [] as Array<{ name: string; preferred: number; matching: number }>,
       };
     }
 
     let matching = 0;
     let preferred = 0;
+
+    // Per-specialty tallies.
+    const perSpecialtyCounts = new Map<string, { preferred: number; matching: number }>();
+    for (const sp of weekSpecialties) {
+      perSpecialtyCounts.set(sp.id, { preferred: 0, matching: 0 });
+    }
+
     for (const s of applicable) {
       const pp = practiceById.get(s.id);
       const specs = specByStaff.get(s.id);
@@ -291,15 +299,29 @@ function RotaGridPage() {
           practicePref: pp,
           specialtyPref: specs?.get(sp.id),
         };
-        if (isPreferred(input)) anyPreferred = true;
-        if (preferenceMatches(input)) anyMatch = true;
-        if (anyMatch && anyPreferred) break;
+        const isPref = isPreferred(input);
+        const isMatch = preferenceMatches(input);
+        if (isPref) anyPreferred = true;
+        if (isMatch) anyMatch = true;
+        const bucket = perSpecialtyCounts.get(sp.id)!;
+        if (isPref) bucket.preferred++;
+        if (isMatch) bucket.matching++;
       }
       if (anyMatch) matching++;
       if (anyPreferred) preferred++;
     }
-    return { matching, preferred, total, hasLists: true, specialtyNames };
+
+    const perSpecialty = weekSpecialties
+      .map((sp) => ({
+        name: sp.name,
+        preferred: perSpecialtyCounts.get(sp.id)!.preferred,
+        matching: perSpecialtyCounts.get(sp.id)!.matching,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return { matching, preferred, total, hasLists: true, specialtyNames, perSpecialty };
   }, [staff, theatreSessions, specialtiesList, practicePrefs, specialtyPrefs]);
+
 
 
 
@@ -347,9 +369,12 @@ function RotaGridPage() {
                 className="ml-1 inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 font-medium tabular-nums text-foreground border border-border"
                 title={
                   matchStats.hasLists
-                    ? `${matchStats.preferred} preferred, ${matchStats.matching} matching (of ${matchStats.total} consultants / SAS) for at least one list scheduled this week.\n\nSpecialties requiring cover this week:\n• ${matchStats.specialtyNames.join("\n• ")}`
+                    ? `${matchStats.preferred} preferred, ${matchStats.matching} matching (of ${matchStats.total} consultants / SAS) for at least one list scheduled this week.\n\nPer specialty (★ preferred / ✓ matching):\n${matchStats.perSpecialty
+                        .map((r) => `• ${r.name} — ★ ${r.preferred} / ✓ ${r.matching}`)
+                        .join("\n")}`
                     : "No lists scheduled this week yet — all consultants / SAS count as matching."
                 }
+
               >
                 <span className="text-amber-500" aria-hidden>★</span>
                 <span aria-label={`${matchStats.preferred} preferred`}>
