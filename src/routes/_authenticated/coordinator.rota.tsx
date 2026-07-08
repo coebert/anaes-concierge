@@ -369,9 +369,12 @@ function RotaGridPage() {
                 className="ml-1 inline-flex items-center gap-1 rounded bg-background px-1.5 py-0.5 font-medium tabular-nums text-foreground border border-border"
                 title={
                   matchStats.hasLists
-                    ? `${matchStats.preferred} preferred, ${matchStats.matching} matching (of ${matchStats.total} consultants / SAS) for at least one list scheduled this week.\n\nSpecialties requiring cover this week:\n• ${matchStats.specialtyNames.join("\n• ")}`
+                    ? `${matchStats.preferred} preferred, ${matchStats.matching} matching (of ${matchStats.total} consultants / SAS) for at least one list scheduled this week.\n\nPer specialty (★ preferred / ✓ matching):\n${matchStats.perSpecialty
+                        .map((r) => `• ${r.name} — ★ ${r.preferred} / ✓ ${r.matching}`)
+                        .join("\n")}`
                     : "No lists scheduled this week yet — all consultants / SAS count as matching."
                 }
+
               >
                 <span className="text-amber-500" aria-hidden>★</span>
                 <span aria-label={`${matchStats.preferred} preferred`}>
