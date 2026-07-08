@@ -11,7 +11,13 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Sparkles } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  evaluatePreference, preferenceMatches, isPreferred,
+  detectListCoverageRequirements,
+  type StaffPracticePref, type StaffSpecialtyPref,
+} from "./preferences";
 import { toast } from "sonner";
 import { cn, formatDateLongGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
@@ -182,6 +188,57 @@ export function CellDialog({
     },
   });
 
+  const { data: practicePrefs } = useQuery({
+    queryKey: ["staff-practice-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_practice_preferences")
+        .select("staff_id,covers_obstetrics,covers_paediatrics,covers_cleft_palate");
+      if (error) throw error;
+      return (data ?? []) as StaffPracticePref[];
+    },
+  });
+  const { data: specialtyPrefs } = useQuery({
+    queryKey: ["staff-specialty-prefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_specialty_preferences")
+        .select("staff_id,specialty_id,preference");
+      if (error) throw error;
+      return (data ?? []) as StaffSpecialtyPref[];
+    },
+  });
+  const practiceByStaff = useMemo(() => {
+    const m = new Map<string, StaffPracticePref>();
+    for (const p of practicePrefs ?? []) m.set(p.staff_id, p);
+    return m;
+  }, [practicePrefs]);
+  const specialtyPrefByStaff = useMemo(() => {
+    const m = new Map<string, Map<string, StaffSpecialtyPref>>();
+    for (const p of specialtyPrefs ?? []) {
+      let inner = m.get(p.staff_id);
+      if (!inner) { inner = new Map(); m.set(p.staff_id, inner); }
+      inner.set(p.specialty_id, p);
+    }
+    return m;
+  }, [specialtyPrefs]);
+  const currentSpecialtyName = specialties?.find((s) => s.id === specialtyId)?.name ?? null;
+  const coverageReq = detectListCoverageRequirements(currentSpecialtyName);
+
+  const prefInputFor = (staffId: string) => {
+    const sp = staff.find((s) => s.id === staffId);
+    return {
+      staffId,
+      grade: sp?.grade ?? null,
+      specialtyId: specialtyId || null,
+      specialtyName: currentSpecialtyName,
+      practicePref: practiceByStaff.get(staffId),
+      specialtyPref: specialtyPrefByStaff.get(staffId)?.get(specialtyId ?? ""),
+    };
+  };
+
+  const [filterToMatching, setFilterToMatching] = useState(true);
+
   const updateAssign = useMutation({
     mutationFn: async (vars: { id: string; staff_id: string; role_on_list: RotaRole }) => {
       const { error } = await supabase
@@ -274,10 +331,15 @@ export function CellDialog({
       })
     : [];
 
+  const candidatePreferenceIssues: Issue[] = newStaff
+    ? evaluatePreference(prefInputFor(newStaff))
+    : [];
+
   const allCandidateIssues = [
     ...candidateIssues,
     ...customIssues,
     ...candidateCompetencyIssues,
+    ...candidatePreferenceIssues,
   ];
 
   const competencyIssuesFor = (staffId: string, role: RotaRole): Issue[] =>
@@ -310,6 +372,7 @@ export function CellDialog({
       rules,
     }),
     ...competencyIssuesFor(staffId, role),
+    ...evaluatePreference(prefInputFor(staffId)),
   ];
 
   const addAssign = useMutation({
@@ -501,6 +564,31 @@ export function CellDialog({
                 ) : (
                   <p className="text-xs text-muted-foreground">No staff assigned.</p>
                 )}
+                {specialtyId && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1">
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      <span className="font-medium">Match preferences</span>
+                      <Switch
+                        checked={filterToMatching}
+                        onCheckedChange={setFilterToMatching}
+                        aria-label="Only show staff who match this list's preferences"
+                      />
+                      <span className="text-muted-foreground">
+                        {filterToMatching ? "showing matches only" : "showing all"}
+                      </span>
+                    </div>
+                    {coverageReq.needsObstetrics && (
+                      <Badge variant="outline">requires obstetrics cover</Badge>
+                    )}
+                    {coverageReq.needsPaediatrics && (
+                      <Badge variant="outline">requires paediatrics cover</Badge>
+                    )}
+                    {coverageReq.needsCleft && (
+                      <Badge variant="outline">requires cleft palate cover</Badge>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                   <Select value={newStaff} onValueChange={setNewStaff}>
                     <SelectTrigger className="h-9 min-w-[14rem]">
@@ -509,12 +597,25 @@ export function CellDialog({
                     <SelectContent>
                       {staff
                         .filter((s) => !assigns?.some((a) => a.staff_id === s.id))
-                        .sort((a, b) => compareBySurname(a.full_name, b.full_name))
-                        .map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.full_name} {s.grade ? `(${s.grade})` : ""}
-                        </SelectItem>
-                      ))}
+                        .filter((s) =>
+                          !filterToMatching || preferenceMatches(prefInputFor(s.id)),
+                        )
+                        .sort((a, b) => {
+                          const ap = isPreferred(prefInputFor(a.id)) ? 0 : 1;
+                          const bp = isPreferred(prefInputFor(b.id)) ? 0 : 1;
+                          if (ap !== bp) return ap - bp;
+                          return compareBySurname(a.full_name, b.full_name);
+                        })
+                        .map((s) => {
+                          const pi = prefInputFor(s.id);
+                          const preferred = isPreferred(pi);
+                          return (
+                            <SelectItem key={s.id} value={s.id}>
+                              {preferred && "★ "}
+                              {s.full_name} {s.grade ? `(${s.grade})` : ""}
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                   <Select value={newRole} onValueChange={(v) => setNewRole(v as RotaRole)}>
