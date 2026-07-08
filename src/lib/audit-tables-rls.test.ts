@@ -135,23 +135,11 @@ describe.skipIf(!dbAvailable)("audit / log tables RLS", () => {
       .map((t) => t.writerFn)
       .filter((w) => w.startsWith("public."));
     for (const fn of definerFns) {
-      const row = psql(
-        `SELECT prosecdef::text FROM pg_proc
-          WHERE oid IN (
-            SELECT oid FROM pg_proc
-             WHERE (nspname_from(pronamespace) || '.' || proname) = '${fn}'
-                OR (
-                  pronamespace = 'public'::regnamespace
-                  AND ('public.' || proname) = '${fn}'
-                )
-          )
-          LIMIT 1`,
-      ).trim();
-      // Fallback: simpler lookup when the CTE above returns nothing.
-      const secdef = row || psql(
+      const bareName = fn.replace(/^public\./, "");
+      const secdef = psql(
         `SELECT prosecdef::text FROM pg_proc
           WHERE pronamespace = 'public'::regnamespace
-            AND proname = split_part('${fn}', '.', 2)
+            AND proname = '${bareName}'
           LIMIT 1`,
       );
       expect(secdef, `${fn} is missing or not SECURITY DEFINER`).toBe("t");
