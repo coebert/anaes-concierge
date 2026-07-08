@@ -264,27 +264,41 @@ function RotaGridPage() {
       .sort((a, b) => a.localeCompare(b));
 
     if (weekSpecialties.length === 0) {
-      return { matching: total, total, hasLists: false, specialtyNames };
+      return {
+        matching: total,
+        preferred: 0,
+        total,
+        hasLists: false,
+        specialtyNames,
+      };
     }
 
     let matching = 0;
+    let preferred = 0;
     for (const s of applicable) {
       const pp = practiceById.get(s.id);
       const specs = specByStaff.get(s.id);
-      const ok = weekSpecialties.some((sp) =>
-        preferenceMatches({
+      let anyMatch = false;
+      let anyPreferred = false;
+      for (const sp of weekSpecialties) {
+        const input = {
           staffId: s.id,
           grade: s.grade,
           specialtyId: sp.id,
           specialtyName: sp.name,
           practicePref: pp,
           specialtyPref: specs?.get(sp.id),
-        }),
-      );
-      if (ok) matching++;
+        };
+        if (isPreferred(input)) anyPreferred = true;
+        if (preferenceMatches(input)) anyMatch = true;
+        if (anyMatch && anyPreferred) break;
+      }
+      if (anyMatch) matching++;
+      if (anyPreferred) preferred++;
     }
-    return { matching, total, hasLists: true, specialtyNames };
+    return { matching, preferred, total, hasLists: true, specialtyNames };
   }, [staff, theatreSessions, specialtiesList, practicePrefs, specialtyPrefs]);
+
 
 
 
