@@ -13,6 +13,9 @@ import { type Profile, type RotaRules } from "@/lib/rota-validation";
 import { RotaWeekGrid } from "@/features/coordinator-rota/RotaWeekGrid";
 import { CellDialog } from "@/features/coordinator-rota/CellDialog";
 import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyBlockersPanel";
+import { usePreferenceMatchFilter } from "@/features/coordinator-rota/use-preference-match-filter";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type {
   SessionHalf, RotaRole, WeekAssignment, ContextAssignment,
 } from "@/features/coordinator-rota/types";
