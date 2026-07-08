@@ -137,7 +137,7 @@ describe.skipIf(!dbAvailable)("audit / log tables RLS", () => {
     for (const fn of definerFns) {
       const bareName = fn.replace(/^public\./, "");
       const secdef = psql(
-        `SELECT prosecdef::text FROM pg_proc
+        `SELECT prosecdef FROM pg_proc
           WHERE pronamespace = 'public'::regnamespace
             AND proname = '${bareName}'
           LIMIT 1`,
