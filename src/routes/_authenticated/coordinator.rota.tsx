@@ -16,9 +16,11 @@ import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyB
 import { usePreferenceMatchFilter } from "@/features/coordinator-rota/use-preference-match-filter";
 import {
   preferenceMatches,
+  isPreferred,
   type StaffPracticePref,
   type StaffSpecialtyPref,
 } from "@/features/coordinator-rota/preferences";
+
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
