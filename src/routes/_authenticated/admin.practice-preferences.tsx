@@ -21,7 +21,13 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { compareBySurname } from "@/lib/name-sort";
-import { Baby, HeartPulse, Smile, Pencil } from "lucide-react";
+import { Baby, HeartPulse, Smile, Pencil, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  evaluatePreference,
+  preferenceMatches,
+  isPreferred,
+} from "@/features/coordinator-rota/preferences";
+
 
 export const Route = createFileRoute("/_authenticated/admin/practice-preferences")({
   head: () => ({
