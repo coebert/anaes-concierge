@@ -337,7 +337,7 @@ function RotaGridPage() {
                 id="rota-pref-match"
                 checked={matchOnly}
                 onCheckedChange={setMatchOnly}
-                aria-label="Only show staff whose preferences match required coverage"
+                aria-label="Sort the staff dropdown by preference match (preferred first, then matching, then warnings)"
               />
               <span className="text-muted-foreground">
                 {matchOnly ? "sorted by match" : "alphabetical"}
