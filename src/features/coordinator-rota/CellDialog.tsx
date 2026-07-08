@@ -331,10 +331,15 @@ export function CellDialog({
       })
     : [];
 
+  const candidatePreferenceIssues: Issue[] = newStaff
+    ? evaluatePreference(prefInputFor(newStaff))
+    : [];
+
   const allCandidateIssues = [
     ...candidateIssues,
     ...customIssues,
     ...candidateCompetencyIssues,
+    ...candidatePreferenceIssues,
   ];
 
   const competencyIssuesFor = (staffId: string, role: RotaRole): Issue[] =>
@@ -367,6 +372,7 @@ export function CellDialog({
       rules,
     }),
     ...competencyIssuesFor(staffId, role),
+    ...evaluatePreference(prefInputFor(staffId)),
   ];
 
   const addAssign = useMutation({
