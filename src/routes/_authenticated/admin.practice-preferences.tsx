@@ -399,6 +399,7 @@ function EditPreferencesDialog({
                     <SelectContent>
                       <SelectItem value="preferred">Preferred</SelectItem>
                       <SelectItem value="willing">Willing</SelectItem>
+                      <SelectItem value="prefer_not_to">Prefer not to</SelectItem>
                       <SelectItem value="none">Does not cover</SelectItem>
                     </SelectContent>
                   </Select>
