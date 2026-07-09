@@ -375,15 +375,30 @@ function EditPreferencesDialog({
 
           <section className="space-y-2">
             <h3 className="text-sm font-semibold">Specialty preferences</h3>
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Preferred</span> — actively enjoys / requests these lists.
-              {" "}
-              <span className="font-medium">Willing</span> — happy to cover.
-              {" "}
-              <span className="font-medium">Prefer not to</span> — would rather not, but able to if needed.
-              {" "}
-              <span className="font-medium">Does not cover</span> — should not be assigned.
-            </p>
+            <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                Assignable — the coordinator can pick this doctor
+              </p>
+              <ul className="mb-2 space-y-0.5 text-muted-foreground">
+                <li>
+                  <span className="font-medium text-foreground">★ Preferred</span> — actively enjoys or requests these lists. Sorted to the top of the staff picker.
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">✓ Willing</span> — happy to cover as part of normal practice.
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">~ Prefer not to</span> — would rather not, but <span className="italic">is able to cover if needed</span>. Soft preference: still eligible, just sorted below "Willing" and flagged with an amber note in the picker so the coordinator knows to try other options first.
+                </li>
+              </ul>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+                Not assignable — hard exclusion
+              </p>
+              <ul className="space-y-0.5 text-muted-foreground">
+                <li>
+                  <span className="font-medium text-foreground">! Does not cover</span> — should not be assigned to this specialty at all (e.g. lack of experience or a formal decision not to practise).
+                </li>
+              </ul>
+            </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {specialties.map((s) => (
                 <div key={s.id} className="flex items-center justify-between gap-3 rounded border border-border p-2">
@@ -393,14 +408,34 @@ function EditPreferencesDialog({
                     onValueChange={(v: PreferenceLevel) =>
                       setPrefs((prev) => ({ ...prev, [s.id]: v }))}
                   >
-                    <SelectTrigger className="h-8 w-40">
+                    <SelectTrigger className="h-8 w-52">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="preferred">Preferred</SelectItem>
-                      <SelectItem value="willing">Willing</SelectItem>
-                      <SelectItem value="prefer_not_to">Prefer not to</SelectItem>
-                      <SelectItem value="none">Does not cover</SelectItem>
+                      <SelectItem value="preferred">
+                        <span className="flex flex-col">
+                          <span>★ Preferred</span>
+                          <span className="text-[10px] text-muted-foreground">Enjoys / requests</span>
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="willing">
+                        <span className="flex flex-col">
+                          <span>✓ Willing</span>
+                          <span className="text-[10px] text-muted-foreground">Happy to cover</span>
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="prefer_not_to">
+                        <span className="flex flex-col">
+                          <span>~ Prefer not to</span>
+                          <span className="text-[10px] text-muted-foreground">Soft — still assignable if needed</span>
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="none">
+                        <span className="flex flex-col">
+                          <span>! Does not cover</span>
+                          <span className="text-[10px] text-muted-foreground">Hard exclusion — do not assign</span>
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
