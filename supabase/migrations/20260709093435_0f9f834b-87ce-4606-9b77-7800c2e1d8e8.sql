@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_specialty_preference_offered() FROM PUBLIC, anon, authenticated;
