@@ -58,7 +58,7 @@ export function evaluatePreference(input: EvaluatePreferenceInput): Issue[] {
   } else if (spec === "prefer_not_to") {
     issues.push({
       severity: "warning",
-      message: `Preference — this ${grader} would rather not cover ${input.specialtyName ?? "this specialty"} but is able to if needed.`,
+      message: `Preference — this ${grader} would rather not cover ${input.specialtyName ?? "this specialty"}, but is still able to if needed (soft preference, not an exclusion).`,
     });
   }
 

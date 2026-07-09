@@ -683,8 +683,11 @@ export function CellDialog({
                                   </span>
                                 )}
                                 {matches && preferNot && (
-                                  <span className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                                    would rather not
+                                  <span
+                                    className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                                    title="Soft preference — this doctor would rather not cover this list, but is still able to if needed. Not an exclusion."
+                                  >
+                                    would rather not (soft)
                                   </span>
                                 )}
                                 {!matches && reasons.length > 0 && (
