@@ -48,11 +48,17 @@ export function evaluatePreference(input: EvaluatePreferenceInput): Issue[] {
   if (!input.specialtyId) return issues;
   if (input.grade !== "consultant" && input.grade !== "sas") return issues;
 
+  const grader = input.grade === "sas" ? "SAS doctor" : "consultant";
   const spec = input.specialtyPref?.preference ?? "willing";
   if (spec === "none") {
     issues.push({
       severity: "warning",
-      message: `Preference — this ${input.grade === "sas" ? "SAS doctor" : "consultant"} is marked as not covering ${input.specialtyName ?? "this specialty"}.`,
+      message: `Preference — this ${grader} is marked as not covering ${input.specialtyName ?? "this specialty"}.`,
+    });
+  } else if (spec === "prefer_not_to") {
+    issues.push({
+      severity: "warning",
+      message: `Preference — this ${grader} would rather not cover ${input.specialtyName ?? "this specialty"} but is able to if needed.`,
     });
   }
 
@@ -80,8 +86,8 @@ export function evaluatePreference(input: EvaluatePreferenceInput): Issue[] {
 
 /**
  * True if this staff member "matches" the list based on preferences.
- * A match means: no specialty preference of "none", plus all required
- * coverage flags are set. Non-consultant/SAS staff always match.
+ * "prefer_not_to" still counts as a match — the doctor is able to cover
+ * if needed — but is sorted below "willing" in the picker.
  */
 export function preferenceMatches(input: EvaluatePreferenceInput): boolean {
   if (input.grade !== "consultant" && input.grade !== "sas") return true;
@@ -100,14 +106,20 @@ export function isPreferred(input: EvaluatePreferenceInput): boolean {
   return (input.specialtyPref?.preference ?? "willing") === "preferred";
 }
 
+/** True if this staff member has explicitly asked not to cover this list. */
+export function prefersNotTo(input: EvaluatePreferenceInput): boolean {
+  if (input.grade !== "consultant" && input.grade !== "sas") return false;
+  if (!input.specialtyId) return false;
+  return (input.specialtyPref?.preference ?? "willing") === "prefer_not_to";
+}
+
 /**
  * Compare two staff members for the assignment dropdown. Ordering:
  *   1. Preferred (★) first
- *   2. Then matching (covers all required flags + specialty not "none")
- *   3. Then everyone else
+ *   2. Then willing / matching (✓)
+ *   3. Then "prefer not to" (still able, but deprioritised)
+ *   4. Then everyone else (missing coverage or "does not cover")
  * Ties fall through to a caller-provided tiebreaker (usually surname).
- *
- * Exported so the sort is unit-testable independently of the dialog.
  */
 export function compareStaffByPreference<T>(
   a: T,
@@ -115,14 +127,14 @@ export function compareStaffByPreference<T>(
   toInput: (s: T) => EvaluatePreferenceInput,
   tiebreak: (a: T, b: T) => number = () => 0,
 ): number {
-  const ai = toInput(a);
-  const bi = toInput(b);
-  const ap = isPreferred(ai) ? 0 : 1;
-  const bp = isPreferred(bi) ? 0 : 1;
-  if (ap !== bp) return ap - bp;
-  const am = preferenceMatches(ai) ? 0 : 1;
-  const bm = preferenceMatches(bi) ? 0 : 1;
-  if (am !== bm) return am - bm;
+  const tier = (i: EvaluatePreferenceInput): number => {
+    if (isPreferred(i)) return 0;
+    if (preferenceMatches(i)) return prefersNotTo(i) ? 2 : 1;
+    return 3;
+  };
+  const at = tier(toInput(a));
+  const bt = tier(toInput(b));
+  if (at !== bt) return at - bt;
   return tiebreak(a, b);
 }
 
