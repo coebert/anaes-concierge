@@ -615,6 +615,7 @@ export function CellDialog({
                           const pi = prefInputFor(s.id);
                           const preferred = isPreferred(pi);
                           const matches = preferenceMatches(pi);
+                          const preferNot = prefersNotTo(pi);
                           const scopedToPrefs =
                             !!specialtyId &&
                             (s.grade === "consultant" || s.grade === "sas");
@@ -624,6 +625,7 @@ export function CellDialog({
                               specialtyPrefByStaff.get(s.id)?.get(specialtyId)?.preference ??
                               "willing";
                             if (sPref === "none") reasons.push("does not cover specialty");
+                            if (sPref === "prefer_not_to") reasons.push("would rather not");
                             const pp = practiceByStaff.get(s.id);
                             if (coverageReq.needsObstetrics && !pp?.covers_obstetrics)
                               reasons.push("no obstetrics");
@@ -641,6 +643,7 @@ export function CellDialog({
                                   "bg-emerald-500/10 data-[highlighted]:bg-emerald-500/20 font-medium",
                                 !matches &&
                                   "text-muted-foreground data-[highlighted]:bg-destructive/10",
+                                matches && preferNot && "text-muted-foreground",
                               )}
                             >
                               <span className="flex items-center gap-1.5">
@@ -649,18 +652,21 @@ export function CellDialog({
                                     aria-label={
                                       preferred
                                         ? "Preferred"
-                                        : matches
-                                          ? "Matches preferences"
-                                          : "Does not match preferences"
+                                        : preferNot
+                                          ? "Would rather not, but able"
+                                          : matches
+                                            ? "Matches preferences"
+                                            : "Does not match preferences"
                                     }
                                     className={cn(
                                       "inline-flex h-4 w-4 items-center justify-center text-xs font-bold tabular-nums",
                                       preferred && "text-amber-500",
-                                      !preferred && matches && "text-emerald-600 dark:text-emerald-400",
+                                      !preferred && matches && !preferNot && "text-emerald-600 dark:text-emerald-400",
+                                      matches && preferNot && "text-amber-600 dark:text-amber-400",
                                       !matches && "text-destructive",
                                     )}
                                   >
-                                    {preferred ? "★" : matches ? "✓" : "!"}
+                                    {preferred ? "★" : preferNot ? "~" : matches ? "✓" : "!"}
                                   </span>
                                 )}
                                 {!filterToMatching && preferred && (
@@ -674,6 +680,11 @@ export function CellDialog({
                                 {preferred && (
                                   <span className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                                     preferred
+                                  </span>
+                                )}
+                                {matches && preferNot && (
+                                  <span className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                                    would rather not
                                   </span>
                                 )}
                                 {!matches && reasons.length > 0 && (
