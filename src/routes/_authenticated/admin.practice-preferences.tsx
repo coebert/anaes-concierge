@@ -380,6 +380,8 @@ function EditPreferencesDialog({
               {" "}
               <span className="font-medium">Willing</span> — happy to cover.
               {" "}
+              <span className="font-medium">Prefer not to</span> — would rather not, but able to if needed.
+              {" "}
               <span className="font-medium">Does not cover</span> — should not be assigned.
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
