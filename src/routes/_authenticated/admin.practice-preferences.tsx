@@ -106,7 +106,11 @@ function PracticePreferencesPage() {
       const { data, error } = await supabase
         .from("specialties").select("id,name").order("name");
       if (error) throw error;
-      return (data ?? []) as Specialty[];
+      // SDH does not offer vascular or cardiac/cardiothoracic surgery,
+      // so those specialties are hidden from the practice preferences list.
+      return ((data ?? []) as Specialty[]).filter(
+        (s) => !/vascular|cardiac|cardio-?thoracic/i.test(s.name),
+      );
     },
   });
 
