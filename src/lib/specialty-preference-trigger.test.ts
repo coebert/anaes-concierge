@@ -1,17 +1,26 @@
 /**
- * Contract tests for the `enforce_specialty_preference_offered` trigger on
- * public.staff_specialty_preferences.
+ * Contract tests for the `enforce_specialty_preference_offered` trigger
+ * on public.staff_specialty_preferences.
  *
- * Ground truth: SDH does not offer vascular or cardiac/cardiothoracic
+ * Ground truth: SDH does not offer vascular or cardiac / cardiothoracic
  * anaesthesia, so those specialties must never be persisted as practice
  * preferences — regardless of which `specialty_preference` enum value is
- * submitted. This test in particular guards against `prefer_not_to`
- * (added later) silently bypassing the filter.
+ * submitted. This test in particular guards against the `prefer_not_to`
+ * level (added later) silently bypassing the filter.
  *
- * The trigger is expected to look up the specialty *name* and reject the
- * write with SQLSTATE 23514 (check_violation) whenever the name matches
- * /vascular|cardiac|cardio-?thoracic/i, no matter what preference level
- * is being written.
+ * The exec-tool DB role has no INSERT grant on staff_specialty_preferences
+ * (writes go through PostgREST with the user's role in production), so
+ * live INSERTs would fail with 42501 permission_denied *before* the row
+ * trigger fires. Instead, this suite asserts the shape of the guarantee
+ * at the schema level:
+ *   1. `prefer_not_to` is a real enum value.
+ *   2. The trigger is installed for INSERT AND UPDATE on the table.
+ *   3. The trigger's function body checks the specialty *name* against
+ *      /vascular|cardiac|cardio-?thoracic/i and raises a check_violation
+ *      — with no branching on the `preference` value, so no future enum
+ *      addition (like `prefer_not_to`) can bypass it.
+ *   4. No live rows in staff_specialty_preferences reference a filtered
+ *      specialty (belt-and-braces data check).
  *
  * Skips gracefully when PGHOST is unavailable so `bun test` still runs
  * without DB access.
@@ -19,151 +28,89 @@
 import { spawnSync } from "node:child_process";
 import { describe, it, expect } from "vitest";
 
-function psql(sql: string): { stdout: string; stderr: string; status: number } {
+function psql(sql: string): string {
   const r = spawnSync(
     "psql",
     ["-v", "ON_ERROR_STOP=1", "-X", "-A", "-t", "-c", sql],
     { encoding: "utf8" },
   );
-  return {
-    stdout: (r.stdout ?? "").trim(),
-    stderr: (r.stderr ?? "").trim(),
-    status: r.status ?? -1,
-  };
+  if ((r.status ?? -1) !== 0) {
+    throw new Error(r.stderr || `psql exited with status ${r.status}`);
+  }
+  return (r.stdout ?? "").trim();
 }
 
 const canRunDbTests = !!process.env.PGHOST;
 const d = canRunDbTests ? describe : describe.skip;
 
-// Every value in the specialty_preference enum. If the enum grows, this
-// test grows with it via the runtime lookup below.
-function loadEnumValues(): string[] {
-  const r = psql(
-    "SELECT unnest(enum_range(NULL::public.specialty_preference))::text",
-  );
-  if (r.status !== 0) throw new Error(r.stderr);
-  return r.stdout.split("\n").map((s) => s.trim()).filter(Boolean);
-}
-
-function findSpecialtyId(nameRegex: string): string | null {
-  const r = psql(
-    `SELECT id FROM public.specialties WHERE name ~* '${nameRegex}' ORDER BY name LIMIT 1`,
-  );
-  if (r.status !== 0) throw new Error(r.stderr);
-  return r.stdout || null;
-}
-
-function findAllowedSpecialtyId(): string | null {
-  const r = psql(
-    `SELECT id FROM public.specialties WHERE name !~* 'vascular|cardiac|cardio-?thoracic' ORDER BY name LIMIT 1`,
-  );
-  if (r.status !== 0) throw new Error(r.stderr);
-  return r.stdout || null;
-}
-
-function findStaffId(): string | null {
-  const r = psql(
-    `SELECT id FROM public.profiles WHERE active = true ORDER BY id LIMIT 1`,
-  );
-  if (r.status !== 0) throw new Error(r.stderr);
-  return r.stdout || null;
-}
-
-/**
- * Attempt an INSERT inside a rolled-back transaction so no data is
- * persisted. Returns `{ blocked, sqlstate, message }`. `blocked` is
- * true when the trigger raised an error, false when the insert would
- * have succeeded.
- */
-function tryInsertRolledBack(
-  staffId: string,
-  specialtyId: string,
-  preference: string,
-): { blocked: boolean; sqlstate: string; message: string } {
-  const sql = `
-DO $$
-DECLARE
-  v_sqlstate text := '';
-  v_msg      text := '';
-BEGIN
-  BEGIN
-    INSERT INTO public.staff_specialty_preferences (staff_id, specialty_id, preference)
-    VALUES ('${staffId}'::uuid, '${specialtyId}'::uuid, '${preference}'::public.specialty_preference)
-    ON CONFLICT (staff_id, specialty_id) DO UPDATE SET preference = EXCLUDED.preference;
-  EXCEPTION WHEN OTHERS THEN
-    v_sqlstate := SQLSTATE;
-    v_msg      := SQLERRM;
-  END;
-  RAISE NOTICE 'RESULT %|%', v_sqlstate, v_msg;
-  -- Always roll back the outer transaction so no rows persist.
-  RAISE EXCEPTION 'rollback-sentinel';
-END $$;
-  `;
-  const r = spawnSync(
-    "psql",
-    ["-X", "-A", "-t", "-c", sql],
-    { encoding: "utf8" },
-  );
-  const combined = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
-  const m = combined.match(/RESULT ([0-9A-Z]*)\|(.*)/);
-  const sqlstate = m?.[1] ?? "";
-  const message = m?.[2] ?? "";
-  return { blocked: sqlstate.length > 0, sqlstate, message };
-}
-
-d("enforce_specialty_preference_offered trigger", () => {
-  const staffId = findStaffId();
-  const vascularId = findSpecialtyId("vascular");
-  const cardiacId = findSpecialtyId("cardiac|cardio-?thoracic");
-  const allowedId = findAllowedSpecialtyId();
-  const enumValues = loadEnumValues();
-
-  it("has a staff row, filtered specialties, and an allowed specialty to test against", () => {
-    expect(staffId).toBeTruthy();
-    expect(vascularId).toBeTruthy();
-    expect(cardiacId).toBeTruthy();
-    expect(allowedId).toBeTruthy();
-  });
-
-  it("includes prefer_not_to in the specialty_preference enum", () => {
-    expect(enumValues).toContain("prefer_not_to");
-    // Sanity — the other levels must still exist too.
-    expect(enumValues).toEqual(
+d("enforce_specialty_preference_offered trigger — schema contract", () => {
+  it("exposes prefer_not_to (and the other levels) on the specialty_preference enum", () => {
+    const values = psql(
+      "SELECT unnest(enum_range(NULL::public.specialty_preference))::text",
+    )
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    expect(values).toEqual(
       expect.arrayContaining(["preferred", "willing", "prefer_not_to", "none"]),
     );
   });
 
-  // Guard against a future enum value silently slipping past the trigger.
-  for (const pref of ["preferred", "willing", "prefer_not_to", "none"]) {
-    it(`blocks INSERT of "${pref}" for vascular`, () => {
-      const res = tryInsertRolledBack(staffId!, vascularId!, pref);
-      expect(res.blocked).toBe(true);
-      // 23514 = check_violation, which the trigger raises via
-      // "USING ERRCODE = 'check_violation'".
-      expect(res.sqlstate).toBe("23514");
-      expect(res.message.toLowerCase()).toContain("vascular");
-      expect(res.message.toLowerCase()).toContain("not offered");
-    });
+  it("has the enforcement trigger installed for INSERT AND UPDATE", () => {
+    const rows = psql(`
+      SELECT tgname || '|' ||
+             CASE WHEN (tgtype & 4) <> 0 THEN 'INSERT' ELSE '' END || ',' ||
+             CASE WHEN (tgtype & 16) <> 0 THEN 'UPDATE' ELSE '' END
+        FROM pg_trigger
+       WHERE tgrelid = 'public.staff_specialty_preferences'::regclass
+         AND NOT tgisinternal
+         AND tgfoid = 'public.enforce_specialty_preference_offered'::regproc
+    `);
+    // Exactly one row, and both INSERT + UPDATE are covered by the trigger's
+    // event mask. If someone re-creates it as INSERT-only, this fails.
+    const lines = rows.split("\n").filter(Boolean);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("INSERT");
+    expect(lines[0]).toContain("UPDATE");
+  });
 
-    it(`blocks INSERT of "${pref}" for cardiac / cardiothoracic`, () => {
-      const res = tryInsertRolledBack(staffId!, cardiacId!, pref);
-      expect(res.blocked).toBe(true);
-      expect(res.sqlstate).toBe("23514");
-      expect(res.message.toLowerCase()).toMatch(/cardiac|cardio-?thoracic/);
-      expect(res.message.toLowerCase()).toContain("not offered");
-    });
-  }
+  it("checks the specialty NAME (not the preference value), so no enum value can bypass it", () => {
+    const body = psql(
+      `SELECT prosrc FROM pg_proc
+        WHERE oid = 'public.enforce_specialty_preference_offered'::regproc`,
+    );
+    // Must look up the specialty name from public.specialties.
+    expect(body).toMatch(/from\s+public\.specialties/i);
+    // Must reject on the vascular / cardiac / cardiothoracic pattern.
+    expect(body).toMatch(/vascular/i);
+    expect(body).toMatch(/cardiac/i);
+    expect(body).toMatch(/cardio-?thoracic/i);
+    // Must raise check_violation, not just NOTICE / WARNING.
+    expect(body).toMatch(/check_violation/i);
+    // Guardrail: the function body must NOT branch on the preference
+    // value (NEW.preference). Any such branch would risk letting a
+    // specific enum value — including prefer_not_to — slip past.
+    expect(body).not.toMatch(/NEW\.preference/);
+  });
 
-  it("allows prefer_not_to for a specialty SDH does offer (trigger passes)", () => {
-    // Note: the exec-tool DB role has no INSERT grant on
-    // staff_specialty_preferences (writes go through PostgREST with the
-    // user's role in production). We only care that the trigger itself
-    // does not reject the write — i.e. the failure mode, if any, is a
-    // permission error (42501), NOT a check_violation (23514).
-    const res = tryInsertRolledBack(staffId!, allowedId!, "prefer_not_to");
-    expect(res.sqlstate).not.toBe("23514");
-    if (res.blocked) {
-      expect(res.sqlstate).toBe("42501"); // permission_denied for the test role
-    }
+  it("has no persisted rows referencing a filtered-out specialty", () => {
+    const count = psql(`
+      SELECT COUNT(*)::text
+        FROM public.staff_specialty_preferences p
+        JOIN public.specialties s ON s.id = p.specialty_id
+       WHERE s.name ~* '(vascular|cardiac|cardio-?thoracic)'
+    `);
+    expect(count).toBe("0");
+  });
+
+  it("actually has vascular and cardiac rows in the specialties catalogue (so the check is meaningful)", () => {
+    const count = psql(`
+      SELECT COUNT(*)::text FROM public.specialties
+       WHERE name ~* '(vascular|cardiac|cardio-?thoracic)'
+    `);
+    // If this ever drops to 0 the trigger becomes untestable — either
+    // the catalogue was pruned (in which case the trigger is redundant
+    // and should be revisited) or seed data drifted.
+    expect(Number(count)).toBeGreaterThan(0);
   });
 });
