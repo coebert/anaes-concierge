@@ -1,0 +1,1 @@
+ALTER TYPE public.specialty_preference ADD VALUE IF NOT EXISTS 'prefer_not_to' BEFORE 'none';
