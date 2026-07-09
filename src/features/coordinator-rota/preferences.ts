@@ -1,6 +1,6 @@
 import type { Issue } from "@/lib/rota-validation";
 
-export type PreferenceLevel = "preferred" | "willing" | "none";
+export type PreferenceLevel = "preferred" | "willing" | "prefer_not_to" | "none";
 
 export interface StaffPracticePref {
   staff_id: string;
