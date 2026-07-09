@@ -167,6 +167,72 @@ function PracticePreferencesPage() {
         description="Record specialty preferences and coverage of obstetrics, paediatrics and cleft palate lists for consultant and SAS grade doctors."
       />
 
+      <Card>
+        <CardContent className="p-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Assignment priority legend
+          </div>
+          <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2">
+              <span
+                aria-hidden
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-sm font-bold text-amber-600 dark:text-amber-400"
+              >
+                ★
+              </span>
+              <div>
+                <div className="font-medium text-foreground">Preferred</div>
+                <div className="text-muted-foreground">
+                  Enjoys or requests these lists. Sorted to the top of the staff picker.
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2">
+              <span
+                aria-hidden
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-600 dark:text-emerald-400"
+              >
+                ✓
+              </span>
+              <div>
+                <div className="font-medium text-foreground">Willing</div>
+                <div className="text-muted-foreground">
+                  Happy to cover as part of normal practice. Default level.
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+              <span
+                aria-hidden
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-sm font-bold text-amber-600 dark:text-amber-400"
+              >
+                ~
+              </span>
+              <div>
+                <div className="font-medium text-foreground">Prefer not to</div>
+                <div className="text-muted-foreground">
+                  Soft — still assignable if needed, but sorted below Willing and flagged in amber.
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
+              <span
+                aria-hidden
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive/20 text-sm font-bold text-destructive"
+              >
+                !
+              </span>
+              <div>
+                <div className="font-medium text-foreground">Does not cover</div>
+                <div className="text-muted-foreground">
+                  Hard exclusion — will not be offered in the picker for this specialty.
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center gap-2">
         <Input
           placeholder="Search by name…"
