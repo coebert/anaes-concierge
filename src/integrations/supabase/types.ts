@@ -3433,7 +3433,7 @@ export type Database = {
         | "admin_session"
       rota_source: "manual" | "clwrota"
       session_half: "am" | "pm" | "eve" | "night"
-      specialty_preference: "preferred" | "willing" | "none"
+      specialty_preference: "preferred" | "willing" | "prefer_not_to" | "none"
       staff_grade: "consultant" | "sas" | "trainee"
       theatre_kind: "main" | "day_surgery" | "private"
     }
@@ -3609,7 +3609,7 @@ export const Constants = {
       ],
       rota_source: ["manual", "clwrota"],
       session_half: ["am", "pm", "eve", "night"],
-      specialty_preference: ["preferred", "willing", "none"],
+      specialty_preference: ["preferred", "willing", "prefer_not_to", "none"],
       staff_grade: ["consultant", "sas", "trainee"],
       theatre_kind: ["main", "day_surgery", "private"],
     },
