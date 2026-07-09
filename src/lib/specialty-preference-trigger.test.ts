@@ -84,7 +84,7 @@ d("enforce_specialty_preference_offered trigger — schema contract", () => {
     // Must reject on the vascular / cardiac / cardiothoracic pattern.
     expect(body).toMatch(/vascular/i);
     expect(body).toMatch(/cardiac/i);
-    expect(body).toMatch(/cardio-?thoracic/i);
+    expect(body).toContain("cardio-?thoracic");
     // Must raise check_violation, not just NOTICE / WARNING.
     expect(body).toMatch(/check_violation/i);
     // Guardrail: the function body must NOT branch on the preference
