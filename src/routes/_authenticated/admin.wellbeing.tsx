@@ -55,12 +55,21 @@ function AdminWellbeingPage() {
     queryKey: ["admin-wellbeing"],
     queryFn: async () => {
       const yearAgo = isoDaysAgo(365);
-      const [profRes, assignments, changes, leave, exceptionsRaw, rtwRes] =
+      const [profiles, assignments, changes, leave, exceptionsRaw, rtws] =
         await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id,full_name,email,grade,active")
-            .eq("active", true),
+          fetchAllPaged<{
+            id: string;
+            full_name: string | null;
+            email: string | null;
+            grade: string | null;
+            active: boolean | null;
+          }>(() =>
+            supabase
+              .from("profiles")
+              .select("id,full_name,email,grade,active")
+              .eq("active", true)
+              .order("id", { ascending: true }),
+          ),
           // Paginate — a single wide .range() is capped at db-max-rows (1000
           // on hosted Supabase), so unordered wide reads silently drop rows.
           fetchAllPaged<{ staff_id: string; session_date: string; session: string }>(
@@ -103,14 +112,15 @@ function AdminWellbeingPage() {
               .select("trainee_id,event_date")
               .order("event_date", { ascending: false }),
           ),
-          supabase
-            .from("return_to_work_interviews")
-            .select("leave_request_id,conducted_at"),
+          fetchAllPaged<{ leave_request_id: string; conducted_at: string | null }>(() =>
+            supabase
+              .from("return_to_work_interviews")
+              .select("leave_request_id,conducted_at")
+              .order("conducted_at", { ascending: false, nullsFirst: false }),
+          ),
         ]);
-      if (profRes.error) throw profRes.error;
-      if (rtwRes.error) throw rtwRes.error;
       return {
-        profiles: profRes.data ?? [],
+        profiles,
         assignments,
         changes,
         leave,
@@ -118,7 +128,7 @@ function AdminWellbeingPage() {
           staff_id: e.trainee_id,
           event_date: e.event_date,
         })),
-        rtws: rtwRes.data ?? [],
+        rtws,
       };
     },
   });

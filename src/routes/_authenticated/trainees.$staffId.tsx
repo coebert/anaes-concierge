@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaged } from "@/lib/supabase-chunked";
 import { getTraineeProfileWithSupervisors } from "@/features/staff/staff-directory.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,41 +39,45 @@ function TraineeDetailPage() {
     queryKey: ["trainee-detail", staffId],
     queryFn: async () => {
       const today = todayISO();
-      const [
-        { data: assignments, error: e2 },
-        { data: targets, error: e3 },
-        { data: specs, error: e4 },
-        { data: futureRows, error: e5 },
-      ] = await Promise.all([
-        // Select `locally_modified` so the displacement lens actually works
-        // — previously this column was missing from the projection, so every
-        // trainee showed 0 displaced sessions regardless of reality.
-        // `.range` lifts the default 1000-row PostgREST cap; long-tenured
-        // trainees can exceed that on their own.
-        supabase
-          .from("rota_assignments")
-          .select(
-            "id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type,locally_modified",
-          )
-          .eq("staff_id", staffId)
-          .lte("session_date", today)
-          .order("session_date", { ascending: false })
-          .range(0, 9999),
-        supabase.from("trainee_targets").select("*"),
-        supabase.from("specialties").select("id,name"),
-        // Future rota assignments — used to flag "ICU block only" trainees
-        // whose remaining rotation contains no theatre work.
-        supabase
-          .from("rota_assignments")
-          .select("session_date,duty_type")
-          .eq("staff_id", staffId)
-          .gt("session_date", today)
-          .range(0, 9999),
-      ]);
-      if (e2) throw e2;
+      const [assignments, { data: targets, error: e3 }, { data: specs, error: e4 }, futureRows] =
+        await Promise.all([
+          // Paginated with deterministic order — long-tenured trainees can
+          // exceed the 1000-row PostgREST cap on their own history.
+          fetchAllPaged<{
+            id: string;
+            role_on_list: string | null;
+            session_date: string;
+            theatre_session_id: string | null;
+            supervisor_id: string | null;
+            notes: string | null;
+            session: string;
+            duty_type: string | null;
+            locally_modified: boolean | null;
+          }>(() =>
+            supabase
+              .from("rota_assignments")
+              .select(
+                "id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type,locally_modified",
+              )
+              .eq("staff_id", staffId)
+              .lte("session_date", today)
+              .order("session_date", { ascending: false }),
+          ),
+          supabase.from("trainee_targets").select("*"),
+          supabase.from("specialties").select("id,name"),
+          // Future rota assignments — used to flag "ICU block only" trainees
+          // whose remaining rotation contains no theatre work.
+          fetchAllPaged<{ session_date: string; duty_type: string | null }>(() =>
+            supabase
+              .from("rota_assignments")
+              .select("session_date,duty_type")
+              .eq("staff_id", staffId)
+              .gt("session_date", today)
+              .order("session_date", { ascending: true }),
+          ),
+        ]);
       if (e3) throw e3;
       if (e4) throw e4;
-      if (e5) throw e5;
 
       const tsIds = Array.from(
         new Set(
@@ -84,17 +89,31 @@ function TraineeDetailPage() {
           (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[],
         ),
       );
-      const [{ profile, supervisors: sups }, { data: ts }] = await Promise.all([
+      const [{ profile, supervisors: sups }, ts] = await Promise.all([
         fetchProfile({ data: { staffId, supervisorIds: supIds } }),
         tsIds.length
-          ? supabase
-              .from("theatre_sessions")
-              .select("id,specialty_id,surgical_consultant,theatre_id")
-              .in("id", tsIds)
-              .range(0, 9999)
-          : Promise.resolve({ data: [] as any[] }),
+          ? fetchAllPaged<{
+              id: string;
+              specialty_id: string | null;
+              surgical_consultant: string | null;
+              theatre_id: string | null;
+            }>(() =>
+              supabase
+                .from("theatre_sessions")
+                .select("id,specialty_id,surgical_consultant,theatre_id")
+                .in("id", tsIds)
+                .order("id", { ascending: true }),
+            )
+          : Promise.resolve([] as Array<{
+              id: string;
+              specialty_id: string | null;
+              surgical_consultant: string | null;
+              theatre_id: string | null;
+            }>),
       ]);
-      const theatreIds = Array.from(new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean)));
+      const theatreIds = Array.from(
+        new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean) as string[]),
+      );
       const { data: theatres } = theatreIds.length
         ? await supabase.from("theatres").select("id,name").in("id", theatreIds)
         : { data: [] as any[] };
@@ -105,16 +124,18 @@ function TraineeDetailPage() {
       // overview's solo/supervised counts and curriculum-progress percentages.
       const supervisorSessionIds = new Set<string>();
       if (tsIds.length) {
-        const { data: tsAssigns, error: e6 } = await supabase
-          .from("rota_assignments")
-          .select(
-            "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
-          )
-          .in("theatre_session_id", tsIds)
-          .in("profiles.grade", ["consultant", "sas"])
-          .range(0, 9999);
-        if (e6) throw e6;
-        for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+        const tsAssigns = await fetchAllPaged<{ theatre_session_id: string | null }>(
+          () =>
+            supabase
+              .from("rota_assignments")
+              .select(
+                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              )
+              .in("theatre_session_id", tsIds)
+              .in("profiles.grade", ["consultant", "sas"])
+              .order("theatre_session_id", { ascending: true }),
+        );
+        for (const r of tsAssigns) {
           if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
         }
       }
@@ -165,12 +186,12 @@ function TraineeDetailPage() {
         required_sessions: t.required_sessions,
       })),
       data.assignments
-        .filter((a) => ["solo", "supervised"].includes(a.role_on_list))
+        .filter((a) => ["solo", "supervised"].includes(a.role_on_list ?? ""))
         .map((a) => ({
           specialty_id: a.theatre_session_id
             ? data.tsMap.get(a.theatre_session_id)?.specialty_id ?? null
             : null,
-          role_on_list: a.role_on_list,
+          role_on_list: a.role_on_list ?? "",
         })),
     );
   }, [data]);
@@ -191,7 +212,7 @@ function TraineeDetailPage() {
   if (!data?.profile) return <p>Not found.</p>;
 
   const clinicalAssignments = data.assignments.filter((a) =>
-    ["solo", "supervised", "supervising"].includes(a.role_on_list),
+    ["solo", "supervised", "supervising"].includes(a.role_on_list ?? ""),
   );
 
   const rotationEnd =
@@ -451,14 +472,23 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["trainee-exception-reports", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exception_reports")
-        .select("id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at")
-        .eq("trainee_id", staffId)
-        .order("created_at", { ascending: false })
-        .range(0, 999);
-      if (error) throw error;
-      return (data ?? []) as Array<{
+      const data = await fetchAllPaged<{
+        id: string;
+        status: string;
+        category: string;
+        event_date: string;
+        immediate_safety_concern: boolean;
+        due_by: string;
+        resolved_at: string | null;
+        created_at: string;
+      }>(() =>
+        supabase
+          .from("exception_reports")
+          .select("id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at")
+          .eq("trainee_id", staffId)
+          .order("created_at", { ascending: false }),
+      );
+      return data as Array<{
         id: string;
         status: ExceptionStatus;
         category: string;
@@ -559,26 +589,25 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["trainee-absence", staffId],
     queryFn: async () => {
-      const [leaveRes, rtwRes] = await Promise.all([
-        supabase
-          .from("leave_requests")
-          .select("id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
-          .eq("staff_id", staffId)
-          .eq("type", "sick")
-          .eq("status", "approved")
-          .range(0, 999),
-        supabase
-          .from("return_to_work_interviews")
-          .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
-          .eq("staff_id", staffId)
-          .range(0, 999),
+      const [leaveRows, rtwRows] = await Promise.all([
+        fetchAllPaged<SickSpellRow>(() =>
+          supabase
+            .from("leave_requests")
+            .select("id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
+            .eq("staff_id", staffId)
+            .eq("type", "sick")
+            .eq("status", "approved")
+            .order("end_date", { ascending: false }),
+        ),
+        fetchAllPaged<RtwRow>(() =>
+          supabase
+            .from("return_to_work_interviews")
+            .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
+            .eq("staff_id", staffId)
+            .order("conducted_at", { ascending: false }),
+        ),
       ]);
-      if (leaveRes.error) throw leaveRes.error;
-      if (rtwRes.error) throw rtwRes.error;
-      return summariseAbsence(
-        (leaveRes.data ?? []) as SickSpellRow[],
-        (rtwRes.data ?? []) as RtwRow[],
-      );
+      return summariseAbsence(leaveRows, rtwRows);
     },
   });
 
