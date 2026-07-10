@@ -14,6 +14,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { installCacheBuster, maybeCacheBust } from "@/lib/cache-buster";
+import { WellbeingInvalidationsPanel } from "@/components/dev/WellbeingInvalidationsPanel";
 
 function NotFoundComponent() {
   return (
@@ -146,6 +147,7 @@ function RootComponent() {
         <AuthProvider>
           <Outlet />
           <Toaster richColors position="top-right" />
+          <WellbeingInvalidationsPanel />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
