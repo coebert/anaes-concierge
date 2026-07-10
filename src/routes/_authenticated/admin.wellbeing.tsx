@@ -128,7 +128,7 @@ function AdminWellbeingPage() {
           staff_id: e.trainee_id,
           event_date: e.event_date,
         })),
-        rtws: rtwRes.data ?? [],
+        rtws,
       };
     },
   });
