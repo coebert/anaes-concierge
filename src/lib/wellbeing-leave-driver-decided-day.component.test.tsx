@@ -33,7 +33,9 @@ import { computeWellbeing, type LeaveLite } from "@/features/wellbeing/wellbeing
 const USER_ID = "user-decided-day";
 // Pin "now" so the 90-day window is deterministic. Window covers
 // [NOW-90d, NOW] inclusive, day-normalised.
-const NOW = new Date("2026-07-10T12:00:00Z");
+// Anchor at UTC midnight so the 90-day window boundary is a clean
+// calendar-day boundary (`isoDay(now - 90d)` == `windowStart`).
+const NOW = new Date("2026-07-10T00:00:00Z");
 // 90 days before 2026-07-10 = 2026-04-11 (inclusive window start).
 const BOUNDARY_DAY = "2026-04-11";
 const BEFORE_BOUNDARY_DAY = "2026-04-10";
