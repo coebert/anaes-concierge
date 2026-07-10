@@ -429,4 +429,96 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
       dispose();
     },
   );
+
+  it(
+    "withdrawing an exception refreshes BOTH admin-wellbeing and my-wellbeing " +
+      "immediately — before any refetchInterval could have fired",
+    async () => {
+      // Focused contract: setting an exception's status to "withdrawn" must
+      // land BOTH wellbeing keys in the same event turn as the Supabase
+      // UPDATE — never "admin refreshed but my-wellbeing didn't" and never
+      // "both refreshed 10 minutes later on the poll".
+      //
+      // This is deliberately stricter than the broader withdraw test above:
+      // it fails a plausible regression where a future refactor calls
+      // `qc.invalidateQueries({ queryKey: ["admin-wellbeing"] })` directly
+      // (forgetting the my-wellbeing key), because the my-wellbeing spy
+      // would stay at 1 call. It also caps how long we're willing to wait
+      // for the refresh so a regression that relies on the 10-minute
+      // `refetchInterval` fails fast instead of hanging.
+      const qc = makeQueryClient();
+      const {
+        adminSpy,
+        mineSpy,
+        expectUnrelatedUntouched,
+        dispose,
+      } = await primeWellbeingQueries(qc);
+
+      const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
+      const onChange = vi.fn();
+      render(
+        <ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />,
+        { wrapper: wrap(qc) },
+      );
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: /Hours of work/i }));
+
+      const start = Date.now();
+      await user.click(screen.getByRole("button", { name: /Withdraw/i }));
+
+      // The Supabase mutation carries the exact status transition the
+      // wellbeing pipeline reads.
+      await waitFor(() => {
+        const update = supabaseCalls.find(
+          (c) =>
+            c.table === "exception_reports" &&
+            c.op === "update" &&
+            (c.patch as { status: string }).status === "withdrawn" &&
+            (c.where as { id: string }).id === REPORT_ID,
+        );
+        expect(update, "withdraw did not persist status='withdrawn'").toBeDefined();
+      });
+
+      // BOTH wellbeing keys refetch — asserted together so the test can
+      // report which one drifted if a regression breaks only one wire.
+      await waitFor(() => {
+        expect(
+          {
+            admin: adminSpy.mock.calls.length,
+            mine: mineSpy.mock.calls.length,
+          },
+          "expected both wellbeing queries to refetch after withdraw",
+        ).toEqual({ admin: 2, mine: 2 });
+      });
+
+      // Immediacy: the whole withdraw → double-refresh must complete far
+      // faster than the 10-minute (600_000 ms) `refetchInterval`. A 3 s
+      // budget is >100× the observed happy path and still catches any
+      // regression that leans on the interval.
+      const elapsedMs = Date.now() - start;
+      expect(
+        elapsedMs,
+        `withdraw → dual refresh took ${elapsedMs}ms; must be well under 600000ms refetchInterval`,
+      ).toBeLessThan(3000);
+
+      // After the refetch resolves, neither wellbeing cache entry is left
+      // stuck in the `isInvalidated: true` state — a page rendering right
+      // now would show fresh data, not another spinner.
+      const cache = qc.getQueryCache();
+      const adminEntry = cache.find({ queryKey: ["admin-wellbeing"], exact: true });
+      const mineEntry = cache.find({ queryKey: ["my-wellbeing", USER_ID], exact: true });
+      expect(adminEntry?.state.isInvalidated).toBe(false);
+      expect(mineEntry?.state.isInvalidated).toBe(false);
+
+      // Refresh is scoped — rota/profiles/my-wellbeing-history stay put.
+      expectUnrelatedUntouched();
+
+      // Parent list re-read too (mirrors the route wiring).
+      expect(onChange).toHaveBeenCalled();
+
+      confirmSpy.mockRestore();
+      dispose();
+    },
+  );
 });
