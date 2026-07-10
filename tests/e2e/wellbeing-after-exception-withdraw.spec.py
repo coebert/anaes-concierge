@@ -67,6 +67,8 @@ def _rows_for_wellbeing_query(url: str, withdrawn: bool) -> list[dict]:
 
 
 async def main() -> None:
+    # Loud failure on TZ drift before any Playwright work runs.
+    ensure_utc()
     state = {"withdrawn": False, "patch_seen": False}
 
     async def exception_route(route: Route) -> None:
