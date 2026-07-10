@@ -26,7 +26,7 @@ function CalendarPage() {
   const deferredSearch = useDeferredValue(search);
   const navigate = useNavigate();
 
-  const days = useMemo(() => buildDays(anchor, mode, false), [anchor, mode]);
+  const days = useMemo(() => buildDays(anchor, mode, true), [anchor, mode]);
 
   return (
     <div className="space-y-4">
