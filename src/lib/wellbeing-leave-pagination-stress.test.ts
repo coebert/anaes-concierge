@@ -331,6 +331,7 @@ const TEST_TIMEOUT_MS = HARD_TIME_LIMIT_MS + 30_000;
 
 describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
   it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
+    const t0 = performance.now();
     const { staff, perStaff } = PROFILE.scenarioA;
     const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
@@ -366,9 +367,11 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
       PAGE_SIZE,
     );
     expect(out2.map((r) => r.id)).toEqual(out.map((r) => r.id));
+    recordAndAssert("orderedRead", performance.now() - t0);
   });
 
   it("issues exactly ceil(rows/pageSize) requests, never per-row", { timeout: TEST_TIMEOUT_MS }, async () => {
+    const t0 = performance.now();
     const { staff, perStaff } = PROFILE.scenarioA;
     const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
@@ -378,9 +381,11 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     );
     expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
     expect(table.rangeCalls).toBeLessThan(rows.length);
+    recordAndAssert("requestCount", performance.now() - t0);
   });
 
   it("keeps request count bounded when a staff filter is applied", { timeout: TEST_TIMEOUT_MS }, async () => {
+    const t0 = performance.now();
     const { staff, perStaff } = PROFILE.scenarioB;
     const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
@@ -398,6 +403,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     expect(out).toHaveLength(perStaff);
     expect(table.rangeCalls).toBe(expectedRangeCalls(perStaff, PAGE_SIZE));
     expect(out.every((r) => r.staff_id === targetStaff)).toBe(true);
+    recordAndAssert("filteredRead", performance.now() - t0);
   });
 
   it(
