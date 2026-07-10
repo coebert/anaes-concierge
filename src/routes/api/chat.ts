@@ -25,6 +25,12 @@ import {
   mergeLeaveAvailability,
   type LeaveRowLite,
 } from "@/lib/staff-current-pattern";
+import {
+  computeWellbeing,
+  WELLBEING_BAND_LABEL,
+} from "@/features/wellbeing/wellbeing-score";
+import { computeBradfordFactor } from "@/lib/bradford-factor";
+
 
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
