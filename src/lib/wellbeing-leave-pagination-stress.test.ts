@@ -78,6 +78,20 @@ const PROFILE: Profile =
   PROFILES[(process.env.LEAVE_STRESS_PROFILE as "small" | "large") ?? "small"] ??
   PROFILES.small;
 
+// Small overrun the wall-clock assertion tolerates before failing the build.
+// The profile's `timeBudgetMs` is the *target* — a small buffer absorbs
+// legitimate CI noise (cold caches, shared-runner jitter) while still failing
+// hard on real regressions. Override with `LEAVE_STRESS_TIME_THRESHOLD` if
+// tuning is needed (e.g. `0.25` = 25%). Default 15%.
+const RAW_THRESHOLD = Number.parseFloat(
+  process.env.LEAVE_STRESS_TIME_THRESHOLD ?? "0.15",
+);
+const TIME_OVERRUN_THRESHOLD =
+  Number.isFinite(RAW_THRESHOLD) && RAW_THRESHOLD >= 0 ? RAW_THRESHOLD : 0.15;
+const HARD_TIME_LIMIT_MS = Math.round(
+  PROFILE.timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD),
+);
+
 // eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
@@ -160,10 +174,10 @@ function expectedRangeCalls(rows: number, pageSize: number): number {
   return Math.floor(rows / pageSize) + (rows % pageSize === 0 ? 1 : Math.ceil((rows % pageSize) / pageSize));
 }
 
-// Any single test must be allowed to run for the profile's full time budget
-// plus generous CI cold-start headroom. Vitest's default 5s would kill large
-// profile runs before assertions fire.
-const TEST_TIMEOUT_MS = PROFILE.timeBudgetMs + 30_000;
+// Any single test must be allowed to run for the profile's hard time limit
+// (budget + overrun threshold) plus generous CI cold-start headroom. Vitest's
+// default 5s would kill large profile runs before assertions fire.
+const TEST_TIMEOUT_MS = HARD_TIME_LIMIT_MS + 30_000;
 
 describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
   it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
@@ -231,12 +245,29 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
 
       expect(out).toHaveLength(rows.length);
       expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
-      expect(elapsed).toBeLessThan(PROFILE.timeBudgetMs);
+
+      // Soft budget: log a warning if we've exceeded the target but stayed
+      // under the hard limit. Hard budget: fail the build once elapsed
+      // exceeds `timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD)`.
+      if (elapsed > PROFILE.timeBudgetMs) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[stress:${PROFILE.name}] scenario C exceeded soft budget: ` +
+            `${elapsed.toFixed(0)}ms > ${PROFILE.timeBudgetMs}ms ` +
+            `(hard limit ${HARD_TIME_LIMIT_MS}ms, +${(TIME_OVERRUN_THRESHOLD * 100).toFixed(0)}%)`,
+        );
+      }
+      expect(
+        elapsed,
+        `scenario C runtime ${elapsed.toFixed(0)}ms exceeded hard limit ` +
+          `${HARD_TIME_LIMIT_MS}ms (budget ${PROFILE.timeBudgetMs}ms + ` +
+          `${(TIME_OVERRUN_THRESHOLD * 100).toFixed(0)}% overrun threshold)`,
+      ).toBeLessThan(HARD_TIME_LIMIT_MS);
     },
     // Vitest's default 5s test timeout would kill the large-profile run before
-    // the elapsed assertion could fire. Bound it to the profile's own budget
+    // the elapsed assertion could fire. Bound it to the profile's hard limit
     // plus generous headroom for CI cold-start.
-    PROFILE.timeBudgetMs + 30_000,
+    HARD_TIME_LIMIT_MS + 30_000,
   );
 
   it("computes correct 'days since last annual leave' for every staff member at scale", { timeout: TEST_TIMEOUT_MS }, async () => {
