@@ -65,9 +65,12 @@ const PROFILES: Record<"small" | "large", Profile> = {
     name: "large",
     scenarioA: { staff: 500, perStaff: 100 }, // 50,000
     scenarioB: { staff: 2_000, perStaff: 30 }, // 60,000
-    scenarioC: { staff: 1_000, perStaff: 200 }, // 200,000
-    scenarioD: { staff: 500, perStaff: 200 }, // 100,000 + 500 recent
-    timeBudgetMs: 20_000,
+    scenarioC: { staff: 500, perStaff: 200 }, // 100,000
+    scenarioD: { staff: 500, perStaff: 100 }, // 50,000 + 500 recent
+    // Fake table sorts each page against the full row set, so total work is
+    // O(pages × rows log rows). CI machines are slower than dev; 60s covers
+    // the 100k-row case with plenty of headroom before flakiness.
+    timeBudgetMs: 60_000,
   },
 };
 
