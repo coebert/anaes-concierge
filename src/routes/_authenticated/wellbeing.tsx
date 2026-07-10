@@ -46,7 +46,7 @@ function WellbeingPage() {
       // 1000-row PostgREST cap never silently drops recent rota/leave rows.
       const [assignments, changes, leave, exceptions, cycleRes, responseRes, recRes] =
         await Promise.all([
-          fetchAllPaged<{ staff_id: string; session_date: string; session: string }>(
+          fetchAllPaged<{ staff_id: string | null; session_date: string; session: string }>(
             () =>
               supabase
                 .from("rota_assignments")
@@ -55,7 +55,14 @@ function WellbeingPage() {
                 .gte("session_date", isoDaysAgo(365))
                 .order("session_date", { ascending: true }),
           ),
-          fetchAllPaged<{ staff_id: string; session_date: string; hours_before_session: number | null }>(
+          fetchAllPaged<{ staff_id: string | null; session_date: string; hours_before_session: number | null }>(
+            () =>
+              supabase
+                .from("rota_change_log")
+                .select("staff_id,session_date,hours_before_session")
+                .eq("staff_id", user!.id)
+                .order("session_date", { ascending: true }),
+          ),
             () =>
               supabase
                 .from("rota_change_log")
@@ -100,10 +107,10 @@ function WellbeingPage() {
         ]);
 
       return {
-        assignments: assignRes.data ?? [],
-        changes: changesRes.data ?? [],
-        leave: leaveRes.data ?? [],
-        exceptions: exRes.data ?? [],
+        assignments,
+        changes,
+        leave,
+        exceptions,
         openCycle: (cycleRes.data ?? [])[0] as PulseCycle | undefined,
         respondedCycleIds: new Set((responseRes.data ?? []).map((r) => r.cycle_id)),
         recognition: (recRes.data ?? []) as Array<{
