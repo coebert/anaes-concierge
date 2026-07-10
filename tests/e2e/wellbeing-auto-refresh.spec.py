@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from playwright.async_api import async_playwright, Route  # noqa: E402
 
+from _lib.assert_utc import ensure_utc  # noqa: E402
 from _lib.signed_in import (  # noqa: E402
     BASE_URL,
     SUPABASE_HOST,
