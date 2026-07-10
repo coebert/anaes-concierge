@@ -126,7 +126,7 @@ function LeavePage() {
     const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Request cancelled");
-    invalidateWellbeing(qc);
+    invalidateWellbeing(qc, "leave.cancel");
     void load();
   };
 

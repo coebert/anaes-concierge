@@ -264,7 +264,7 @@ function LeaveCard({
     setActing(false);
     if (error) return toast.error(error.message);
     toast.success(reserveList ? "Rejected & placed on reserve list" : `Leave ${status}`);
-    invalidateWellbeing(qc);
+    invalidateWellbeing(qc, `leave.decide:${status}${reserveList ? "+reserve" : ""}`);
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
