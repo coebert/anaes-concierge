@@ -256,7 +256,9 @@ export function WellbeingPage() {
             <div className="space-y-2 pt-2">
               {wellbeing.drivers.map((d) => (
                 <div key={d.key} className="flex items-center gap-2 text-sm">
-                  <div className="w-40 shrink-0 text-muted-foreground">{d.key}</div>
+                  <div className="w-40 shrink-0 text-muted-foreground">
+                    {WELLBEING_DRIVER_LABEL[d.key] ?? d.key}
+                  </div>
                   <div className="h-2 flex-1 rounded bg-muted">
                     <div
                       className="h-2 rounded bg-primary/60"
