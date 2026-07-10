@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from playwright.async_api import async_playwright  # noqa: E402
-from _lib.assert_utc import ensure_utc, assert_browser_tz_utc  # noqa: E402
+from _lib.assert_utc import ensure_utc  # noqa: E402
 from _lib.signed_in import (  # noqa: E402
     BASE_URL,
     FAKE_USER_ID,
