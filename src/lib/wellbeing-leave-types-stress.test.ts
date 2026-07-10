@@ -166,9 +166,33 @@ describe.each(LEAVE_TYPES)(
       );
 
       expect(out).toHaveLength(rows.length);
-      for (let i = 1; i < out.length; i++) {
-        expect(out[i - 1]!.end_date >= out[i]!.end_date).toBe(true);
-      }
+
+      // Compare the entire end_date sequence to an explicitly-sorted
+      // canonical reference instead of pairwise `prev >= cur` checks:
+      // a TZ quirk that shifts every date by one day still satisfies a
+      // pairwise ordering check but diverges from this reference.
+      const expectedDates = rows
+        .map((r) => r.end_date)
+        .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+      expect(out.map((r) => r.end_date)).toEqual(expectedDates);
+
+      // Explicit UTC anchor: the newest recent row is 5 days before NOW,
+      // regardless of `leaveType`, because every staff gets an annual
+      // spell at `annualDaysAgo = 5 + (s % 30)` with s=0 producing 5.
+      // A local-time contamination would shift this by a day.
+      expect(out[0]!.end_date).toBe("2026-07-05");
+      // Oldest row: derived from `NOW - maxDaysAgo * DAY_MS` where
+      // maxDaysAgo is the largest offset the generator uses (staff 199,
+      // filler i=39). Comparing the entire sequence — not just this
+      // endpoint — is what catches any date-string drift.
+      const maxDaysAgo = 200 + 199 * 3 + 39 * 7;
+      const oldestExpected = new Date(
+        NOW.getTime() - maxDaysAgo * DAY_MS,
+      )
+        .toISOString()
+        .slice(0, 10);
+      expect(out[out.length - 1]!.end_date).toBe(oldestExpected);
+
       // Query budget: exactly ceil(n / pageSize), plus one empty stop
       // page when n is a multiple of pageSize.
       const expectedCalls =
