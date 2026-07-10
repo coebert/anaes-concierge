@@ -229,7 +229,14 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
 
   it("computes correct 'days since last annual leave' for every staff member at scale", async () => {
     const { staff, perStaff } = PROFILE.scenarioD;
-    const rows = generateLeaveRows(staff, perStaff);
+    // Strip pre-existing annual/approved rows so the injected "recent" row
+    // is unambiguously the most recent for every staff — otherwise the
+    // generator's spread can, at large profile sizes, produce a base row
+    // with an even later end_date and beat the injected value.
+    const baseRows = generateLeaveRows(staff, perStaff).filter(
+      (r) => !(r.type === "annual" && r.status === "approved"),
+    );
+    const rows: Row[] = baseRows;
     const recentByStaff = new Map<string, string>();
     const todayMs = new Date("2026-07-10T00:00:00Z").getTime();
     for (let s = 0; s < staff; s++) {
