@@ -31,7 +31,7 @@ import {
   type AttritionResult,
 } from "@/lib/attrition-risk";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
-import { fetchAllPaged } from "@/lib/supabase-chunked";
+import { fetchAllPaged, createQueryBudget, reportQueryBudget } from "@/lib/supabase-chunked";
 
 export const Route = createFileRoute("/_authenticated/admin/wellbeing")({
   head: () => ({
