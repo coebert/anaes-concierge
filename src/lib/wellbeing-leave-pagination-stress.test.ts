@@ -341,6 +341,22 @@ function expectedRangeCalls(rows: number, pageSize: number): number {
 const TEST_TIMEOUT_MS = HARD_TIME_LIMIT_MS + 30_000;
 
 describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
+  beforeAll(() => {
+    // Belt-and-braces guard: if a future edit imports something that
+    // mutates `process.env.TZ`, this assertion fires before any run so
+    // date-derived assertions below can't silently drift on a non-UTC
+    // runner. `getTimezoneOffset()` returns 0 for UTC on every Node
+    // build we support.
+    expect(
+      process.env.TZ,
+      "stress test requires TZ=UTC for deterministic date reasoning",
+    ).toBe("UTC");
+    expect(
+      new Date("2026-07-10T00:00:00Z").getTimezoneOffset(),
+      "Date is not resolving to UTC — CI runner timezone leaked in",
+    ).toBe(0);
+  });
+
   it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
     const t0 = performance.now();
     const { staff, perStaff } = PROFILE.scenarioA;
