@@ -846,6 +846,41 @@ export function GlobalWeekGrid({
     return cells;
   }, [days, nhhOncall, staffMap]);
 
+  const nightRow = useMemo(() => {
+    const cells: NightCellModel[] = [];
+    for (const d of days) {
+      const dayIso = iso(d);
+      const dayAssigns = (nightOnCall ?? []).filter((a) => a.session_date === dayIso);
+      const sorted = [...dayAssigns].sort(
+        (a, b) =>
+          gradeRank(staffMap.get(a.staff_id)?.grade) -
+          gradeRank(staffMap.get(b.staff_id)?.grade),
+      );
+      const seen = new Set<string>();
+      const staffList: NightCellModel["staff"] = [];
+      for (const a of sorted) {
+        const key = a.staff_id + ":" + a.duty_type;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const sp = staffMap.get(a.staff_id);
+        staffList.push({
+          id: a.staff_id,
+          fullName: sp?.full_name ?? "—",
+          grade: sp?.grade ?? null,
+          tag: dutyTag(a.duty_type),
+        });
+      }
+      cells.push({
+        key: "night-" + dayIso,
+        staff: staffList,
+        parts: staffList.map((s) => s.fullName),
+      });
+    }
+    return cells;
+  }, [days, nightOnCall, staffMap]);
+
+
+
   // Dimming helper — cheap string scan, runs per-cell on each keystroke but
   // only toggles a className on the outer <td>; memoized cell-content
   // components below skip re-rendering entirely.
