@@ -132,8 +132,8 @@ function WellbeingPage() {
     );
     return computeWellbeing({
       staffId: user.id,
-      assignments: data.assignments,
-      changes: data.changes,
+      assignments: data.assignments as Array<{ staff_id: string; session_date: string; session: string }>,
+      changes: data.changes as Array<{ staff_id: string; session_date: string; hours_before_session: number | null }>,
       leave: data.leave,
       exceptions: data.exceptions.map((e) => ({
         staff_id: (e as { trainee_id: string }).trainee_id,
