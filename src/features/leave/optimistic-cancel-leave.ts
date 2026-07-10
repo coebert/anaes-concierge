@@ -90,12 +90,22 @@ export async function optimisticCancelLeave(
     return prev.map(applyRow);
   });
 
-  const cacheSnapshots: Array<[readonly unknown[], CachedWellbeingData | undefined]> = [];
+  // Snapshot each matching query by its EXACT key so rollback restores
+  // the right cache entry even when the key includes extra segments
+  // (e.g. `["my-wellbeing", staffId]`).
+  const cacheSnapshots: Array<{ key: readonly unknown[]; prev: CachedWellbeingData | undefined }> = [];
+  const cache = qc.getQueryCache();
   for (const keyPrefix of [["my-wellbeing"], ["admin-wellbeing"]]) {
+    const matches = cache.findAll({ queryKey: keyPrefix });
+    for (const q of matches) {
+      cacheSnapshots.push({
+        key: q.queryKey,
+        prev: q.state.data as CachedWellbeingData | undefined,
+      });
+    }
     qc.setQueriesData<CachedWellbeingData>(
       { queryKey: keyPrefix },
       (old) => {
-        cacheSnapshots.push([keyPrefix, old]);
         if (!old || !Array.isArray(old.leave)) return old;
         return {
           ...old,
