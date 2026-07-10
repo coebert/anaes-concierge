@@ -1,4 +1,15 @@
-import { afterAll, describe, expect, it } from "vitest";
+// Pin the process timezone to UTC BEFORE any Date object is constructed
+// in this module. `Date` reads `process.env.TZ` on Node/glibc when it
+// computes local components (getHours, toDateString, toString, and the
+// yyyy-mm-dd slice of a non-Z ISO string), so an America/Los_Angeles or
+// Europe/London CI runner would otherwise produce different day
+// boundaries than the UTC-fixture assertions in this file. Setting it
+// here — top of the module, before any Date usage — guarantees the same
+// wall-clock reasoning on every runner. Explicit `TZ=UTC` on the shell
+// still takes precedence via the surrounding process env.
+process.env.TZ = process.env.TZ ?? "UTC";
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fetchAllPaged } from "./supabase-chunked";
