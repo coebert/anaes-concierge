@@ -21,3 +21,39 @@ export function chunkIds<T>(ids: readonly T[], size: number = SUPABASE_IN_CHUNK)
   }
   return out;
 }
+
+/**
+ * Fetch every row from a PostgREST query in fixed-size pages.
+ *
+ * Supabase's Data API caps a single response at `db-max-rows` (1000 by
+ * default on hosted projects), even when the caller asks for a much larger
+ * `.range(0, N)`. Callers that assumed a single wide `.range()` returned
+ * every row silently got the first 1000 in effectively arbitrary order —
+ * dropping recent leave/rota rows and making downstream metrics (e.g. the
+ * wellbeing/attrition "days since last annual leave") wildly wrong.
+ *
+ * The builder must return the base PostgREST query with `.select`, filters
+ * and a deterministic `.order(...)` already applied, but WITHOUT `.range()`
+ * or `.limit()`. The pager attaches `.range()` in fixed windows and stops
+ * when a page returns fewer rows than the window size.
+ */
+export async function fetchAllPaged<T>(
+  build: () => {
+    range: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+  },
+  pageSize = 1000,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await build().range(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    out.push(...page);
+    if (page.length < pageSize) break;
+    if (from > 500_000) break; // safety cap
+  }
+  return out;
+}
