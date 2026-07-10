@@ -23,10 +23,12 @@ const STAFF_ID = "staff-fallback";
 const OTHER_STAFF = "staff-other";
 const NOW = new Date("2026-07-10T12:00:00Z");
 const WINDOW_DAYS = 90;
-// Window = [2026-04-11, 2026-07-10] inclusive by day-string comparison.
-const WINDOW_START_DAY = "2026-04-11";
+// Window = (NOW - 90d, NOW] by ms comparison; day-string comparison uses
+// `<day>T00:00:00Z`. With NOW = 2026-07-10T12:00:00Z, the earliest day
+// whose 00:00:00Z timestamp is >= windowStart is 2026-04-12.
+const WINDOW_START_DAY = "2026-04-12";
 const IN_WINDOW_DAY = "2026-05-01";
-const JUST_BEFORE_WINDOW = "2026-04-10";
+const JUST_BEFORE_WINDOW = "2026-04-11";
 const OUT_WINDOW_DAY = "2020-01-01";
 
 function makeRow(status: string, overrides: Partial<LeaveLite> = {}): LeaveLite {
