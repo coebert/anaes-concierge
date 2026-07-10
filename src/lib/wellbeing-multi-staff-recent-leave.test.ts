@@ -249,12 +249,29 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       const paginatedLeaveDriver = paginatedScore.drivers.find((d) => d.key === "leave")!;
       const legacyLeaveDriver = legacyScore.drivers.find((d) => d.key === "leave")!;
 
-      // Paginated view sees the denied spell → leave driver > 0.
-      expect(paginatedLeaveDriver.value).toBeGreaterThanOrEqual(1);
+      // The fixture plants exactly ONE in-window denied row per staff (2 days
+      // ago). Pin the driver to that specific row — value, normalised harm
+      // (1 / cap 3), weight (0.10), and the resulting composite score.
+      const deniedRowsInWindow = paginatedLeave.filter(
+        (l) =>
+          (l.status === "denied" || l.status === "cancelled") &&
+          daysSince(l.start_date) <= 90 &&
+          daysSince(l.start_date) >= 0,
+      );
+      expect(deniedRowsInWindow).toHaveLength(1);
+      expect(deniedRowsInWindow[0].start_date).toBe(isoDaysAgo(4));
+      expect(deniedRowsInWindow[0].end_date).toBe(isoDaysAgo(2));
+
+      expect(paginatedLeaveDriver.value).toBe(1);
+      expect(paginatedLeaveDriver.normalised).toBeCloseTo(1 / 3, 10);
+      expect(paginatedLeaveDriver.weight).toBe(0.1);
       // Legacy view misses it → leave driver stays at 0.
       expect(legacyLeaveDriver.value).toBe(0);
-      // And that difference propagates to the composite score.
-      expect(paginatedScore.score).toBeLessThan(legacyScore.score);
+      expect(legacyLeaveDriver.normalised).toBe(0);
+      // Exact composite delta: the only driver that changed is `leave`, so
+      // paginatedScore = round(legacyHarmMinus100 - 100 * (1/3) * 0.10).
+      const expectedDelta = Math.round(100 * (1 / 3) * 0.1);
+      expect(legacyScore.score - paginatedScore.score).toBe(expectedDelta);
     }
   });
 
