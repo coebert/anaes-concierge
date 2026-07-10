@@ -166,9 +166,30 @@ describe.each(LEAVE_TYPES)(
       );
 
       expect(out).toHaveLength(rows.length);
-      for (let i = 1; i < out.length; i++) {
-        expect(out[i - 1]!.end_date >= out[i]!.end_date).toBe(true);
-      }
+
+      // Compare the entire end_date sequence to an explicitly-sorted
+      // canonical reference instead of pairwise `prev >= cur` checks:
+      // a TZ quirk that shifts every date by one day still satisfies a
+      // pairwise ordering check but diverges from this reference.
+      const expectedDates = rows
+        .map((r) => r.end_date)
+        .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+      expect(out.map((r) => r.end_date)).toEqual(expectedDates);
+
+      // Explicit UTC anchors. `isoDaysAgo` is `NOW - N * DAY_MS` sliced
+      // to YYYY-MM-DD, so on a UTC runner the newest recent row is 5
+      // days before 2026-07-10 (2026-07-05) and the oldest filler row
+      // is `200 + 199*3 + 39*7 = 1070` days before NOW (2023-08-04).
+      // Any local-time contamination would shift these by a day.
+      expect(out[0]!.end_date).toBe("2026-07-05");
+      const oldestExpected = new Date(
+        NOW.getTime() - (200 + 199 * 3 + 39 * 7) * DAY_MS,
+      )
+        .toISOString()
+        .slice(0, 10);
+      expect(oldestExpected).toBe("2023-08-04");
+      expect(out[out.length - 1]!.end_date).toBe(oldestExpected);
+
       // Query budget: exactly ceil(n / pageSize), plus one empty stop
       // page when n is a multiple of pageSize.
       const expectedCalls =
