@@ -111,11 +111,11 @@ function AdminWellbeingPage() {
       if (rtwRes.error) throw rtwRes.error;
       return {
         profiles: profRes.data ?? [],
-        assignments: assignRes.data ?? [],
-        changes: changesRes.data ?? [],
-        leave: leaveRes.data ?? [],
-        exceptions: (exRes.data ?? []).map((e) => ({
-          staff_id: (e as { trainee_id: string }).trainee_id,
+        assignments,
+        changes,
+        leave,
+        exceptions: exceptionsRaw.map((e) => ({
+          staff_id: e.trainee_id,
           event_date: e.event_date,
         })),
         rtws: rtwRes.data ?? [],
