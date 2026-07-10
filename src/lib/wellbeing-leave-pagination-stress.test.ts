@@ -7,7 +7,7 @@
 // here — top of the module, before any Date usage — guarantees the same
 // wall-clock reasoning on every runner. Explicit `TZ=UTC` on the shell
 // still takes precedence via the surrounding process env.
-process.env.TZ = process.env.TZ ?? "UTC";
+process.env.TZ = "UTC";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
