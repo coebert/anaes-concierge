@@ -159,6 +159,8 @@ function AdminAbsencePage() {
         <StatCard label="Overdue RTW" value={totalOverdue} icon={AlertTriangle} />
       </div>
 
+      <BradfordExplainer />
+
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2 pb-3">
