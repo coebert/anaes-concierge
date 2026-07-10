@@ -39,41 +39,45 @@ function TraineeDetailPage() {
     queryKey: ["trainee-detail", staffId],
     queryFn: async () => {
       const today = todayISO();
-      const [
-        { data: assignments, error: e2 },
-        { data: targets, error: e3 },
-        { data: specs, error: e4 },
-        { data: futureRows, error: e5 },
-      ] = await Promise.all([
-        // Select `locally_modified` so the displacement lens actually works
-        // — previously this column was missing from the projection, so every
-        // trainee showed 0 displaced sessions regardless of reality.
-        // `.range` lifts the default 1000-row PostgREST cap; long-tenured
-        // trainees can exceed that on their own.
-        supabase
-          .from("rota_assignments")
-          .select(
-            "id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type,locally_modified",
-          )
-          .eq("staff_id", staffId)
-          .lte("session_date", today)
-          .order("session_date", { ascending: false })
-          .range(0, 9999),
-        supabase.from("trainee_targets").select("*"),
-        supabase.from("specialties").select("id,name"),
-        // Future rota assignments — used to flag "ICU block only" trainees
-        // whose remaining rotation contains no theatre work.
-        supabase
-          .from("rota_assignments")
-          .select("session_date,duty_type")
-          .eq("staff_id", staffId)
-          .gt("session_date", today)
-          .range(0, 9999),
-      ]);
-      if (e2) throw e2;
+      const [assignments, { data: targets, error: e3 }, { data: specs, error: e4 }, futureRows] =
+        await Promise.all([
+          // Paginated with deterministic order — long-tenured trainees can
+          // exceed the 1000-row PostgREST cap on their own history.
+          fetchAllPaged<{
+            id: string;
+            role_on_list: string | null;
+            session_date: string;
+            theatre_session_id: string | null;
+            supervisor_id: string | null;
+            notes: string | null;
+            session: string;
+            duty_type: string | null;
+            locally_modified: boolean | null;
+          }>(() =>
+            supabase
+              .from("rota_assignments")
+              .select(
+                "id,role_on_list,session_date,theatre_session_id,supervisor_id,notes,session,duty_type,locally_modified",
+              )
+              .eq("staff_id", staffId)
+              .lte("session_date", today)
+              .order("session_date", { ascending: false }),
+          ),
+          supabase.from("trainee_targets").select("*"),
+          supabase.from("specialties").select("id,name"),
+          // Future rota assignments — used to flag "ICU block only" trainees
+          // whose remaining rotation contains no theatre work.
+          fetchAllPaged<{ session_date: string; duty_type: string | null }>(() =>
+            supabase
+              .from("rota_assignments")
+              .select("session_date,duty_type")
+              .eq("staff_id", staffId)
+              .gt("session_date", today)
+              .order("session_date", { ascending: true }),
+          ),
+        ]);
       if (e3) throw e3;
       if (e4) throw e4;
-      if (e5) throw e5;
 
       const tsIds = Array.from(
         new Set(
