@@ -24,6 +24,49 @@ jobs:
       - run: bun run lint:fix-order:check
       - run: bun run lint
 
+  test:
+    # Fast unit + regression suite (default `small` stress profile).
+    # Runs on every push and PR — must stay under a minute.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+
+  stress-tests:
+    # Large-dataset pagination stress test. Runs on pushes to `main` and can
+    # be dispatched manually from the Actions tab. Catches performance
+    # regressions (O(n^2) sorts, per-row fetches, memory blow-ups) that the
+    # default `small` profile is too small to expose.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Run pagination stress test (large profile)
+        env:
+          LEAVE_STRESS_PROFILE: large
+        run: bun run test:stress:large
+
   supply-chain:
     # Re-runs the supply-chain scan on every push / PR. Fails the build if
     # high or moderate advisories appear (matches Lovable supply-chain
