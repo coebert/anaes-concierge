@@ -92,11 +92,14 @@ function buildDataset() {
   let counter = 0;
   const push = (r: Omit<Row, "id">) =>
     rows.push({ id: `r-${counter++}`, ...r });
+  const recent: Row[] = [];
+  const pushRecent = (r: Omit<Row, "id">) =>
+    recent.push({ id: `r-${counter++}`, ...r });
 
-  // Recent approved annual leave for every staff member — the row that must
-  // be visible after pagination.
+  // Recent approved annual leave for every staff member — held aside and
+  // placed AFTER the db-max-rows cap so the legacy unordered read drops them.
   for (const s of staffIds) {
-    push({
+    pushRecent({
       staff_id: s,
       type: "annual",
       status: "approved",
@@ -104,8 +107,7 @@ function buildDataset() {
     });
   }
 
-  // Fill up to well past the 1000-row cap with older / noise rows. Vary
-  // dates so ordering by end_date desc pushes the recent rows to the front.
+  // Fill up to well past the 1000-row cap with older / noise rows.
   while (rows.length < 2500) {
     const s = staffIds[rows.length % staffIds.length];
     const daysAgo = 400 + (rows.length % 600); // all older than a year
@@ -121,14 +123,9 @@ function buildDataset() {
     }
   }
 
-  // Shuffle deterministically so the recent rows aren't accidentally at the
-  // top of the natural table order — the exact scenario that caused the bug.
-  let seed = 42;
-  rows.sort(() => {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280 - 0.5;
-  });
-
+  // Recent rows go at the tail so, without .order(), a range(0, 999) read
+  // never sees them — exactly the silent truncation the fix must handle.
+  rows.push(...recent);
   return { staffIds, rows };
 }
 
