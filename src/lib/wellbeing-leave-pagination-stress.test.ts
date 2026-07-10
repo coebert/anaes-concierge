@@ -20,10 +20,63 @@ import { fetchAllPaged } from "./supabase-chunked";
  * The fake PostgREST builder enforces the same `db-max-rows` cap the
  * hosted Data API applies, so a broken pager cannot "cheat" by pulling
  * everything in one range.
+ *
+ * ## Dataset profiles
+ *
+ * The suite runs with a size profile chosen from `LEAVE_STRESS_PROFILE`:
+ *
+ *   - `small` (default, used in normal `bun run test` and PR CI):
+ *       5k / 6k / 25k rows across the scenarios. Fast (<3s), keeps the
+ *       stress test in the standard test loop without slowing feedback.
+ *   - `large` (opt-in, used by the `stress-tests` CI job on push to main
+ *       and via `bun run test:stress:large`):
+ *       50k / 60k / 200k rows. Catches performance regressions (accidental
+ *       O(n^2) sorts, per-row fetches, memory blow-ups) that a 5k dataset
+ *       is too small to expose.
+ *
+ * Row-count budgets (`table.rangeCalls`) and time budgets scale with the
+ * profile so a doubling of the dataset does NOT mean a doubling of the
+ * page-request count — the pager must remain O(rows/pageSize).
  */
 
 const DB_MAX_ROWS = 1000;
 const PAGE_SIZE = 1000;
+
+type Profile = {
+  name: "small" | "large";
+  scenarioA: { staff: number; perStaff: number }; // ordered read
+  scenarioB: { staff: number; perStaff: number }; // filtered read
+  scenarioC: { staff: number; perStaff: number }; // time budget
+  scenarioD: { staff: number; perStaff: number }; // days-since-last-annual
+  // Wall-clock ceiling for scenario C, in milliseconds.
+  timeBudgetMs: number;
+};
+
+const PROFILES: Record<"small" | "large", Profile> = {
+  small: {
+    name: "small",
+    scenarioA: { staff: 50, perStaff: 100 }, // 5,000
+    scenarioB: { staff: 200, perStaff: 30 }, // 6,000
+    scenarioC: { staff: 250, perStaff: 100 }, // 25,000
+    scenarioD: { staff: 100, perStaff: 50 }, // 5,000 + 100 recent
+    timeBudgetMs: 5_000,
+  },
+  large: {
+    name: "large",
+    scenarioA: { staff: 500, perStaff: 100 }, // 50,000
+    scenarioB: { staff: 2_000, perStaff: 30 }, // 60,000
+    scenarioC: { staff: 1_000, perStaff: 200 }, // 200,000
+    scenarioD: { staff: 500, perStaff: 200 }, // 100,000 + 500 recent
+    timeBudgetMs: 20_000,
+  },
+};
+
+const PROFILE: Profile =
+  PROFILES[(process.env.LEAVE_STRESS_PROFILE as "small" | "large") ?? "small"] ??
+  PROFILES.small;
+
+// eslint-disable-next-line no-console
+console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
 type Row = {
   id: string;
