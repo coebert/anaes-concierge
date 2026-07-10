@@ -97,7 +97,8 @@ describe("query budget instrumentation", () => {
         fetchAllPaged<Row>(() => makeTable(5000), { budget, source }),
       ),
     );
-    expect(budget.count).toBe(30);
+    // 5000 rows = 5 full pages of 1000 + one short/empty page that exits the loop.
+    expect(budget.count).toBe(36);
     expect(budget.count).toBeLessThanOrEqual(budget.max);
   });
 });
