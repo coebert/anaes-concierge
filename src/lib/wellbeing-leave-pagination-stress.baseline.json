@@ -1,0 +1,16 @@
+{
+  "$schema": "Recorded last-successful runtimes for the leave-pagination stress test, large profile. CI fails if any scenario regresses past baseline*(1+regressionThreshold). Update by re-running with LEAVE_STRESS_UPDATE_BASELINE=1 (writes this file with fresh numbers) and committing the diff.",
+  "regressionThreshold": 0.25,
+  "large": {
+    "recordedAt": "2026-07-10",
+    "runner": "github-actions ubuntu-latest",
+    "seed": "0xC0FFEE",
+    "scenarios": {
+      "orderedRead": { "ms": 12000 },
+      "requestCount": { "ms": 12000 },
+      "filteredRead": { "ms": 2000 },
+      "timeBudget": { "ms": 30000 },
+      "daysSinceLastAnnual": { "ms": 15000 }
+    }
+  }
+}
