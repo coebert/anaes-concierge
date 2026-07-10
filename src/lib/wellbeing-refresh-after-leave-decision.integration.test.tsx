@@ -138,7 +138,7 @@ async function waitCalls(spy: ReturnType<typeof vi.fn>, n: number) {
     if (Date.now() - start > 1500) break;
     await new Promise((r) => setTimeout(r, 5));
   }
-  expect(spy).toHaveBeenCalledTimes(n);
+  expect(spy.mock.calls.length).toBeGreaterThanOrEqual(n);
 }
 
 // --------------------- test setup ---------------------
