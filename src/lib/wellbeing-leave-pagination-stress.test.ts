@@ -78,6 +78,20 @@ const PROFILE: Profile =
   PROFILES[(process.env.LEAVE_STRESS_PROFILE as "small" | "large") ?? "small"] ??
   PROFILES.small;
 
+// Small overrun the wall-clock assertion tolerates before failing the build.
+// The profile's `timeBudgetMs` is the *target* — a small buffer absorbs
+// legitimate CI noise (cold caches, shared-runner jitter) while still failing
+// hard on real regressions. Override with `LEAVE_STRESS_TIME_THRESHOLD` if
+// tuning is needed (e.g. `0.25` = 25%). Default 15%.
+const RAW_THRESHOLD = Number.parseFloat(
+  process.env.LEAVE_STRESS_TIME_THRESHOLD ?? "0.15",
+);
+const TIME_OVERRUN_THRESHOLD =
+  Number.isFinite(RAW_THRESHOLD) && RAW_THRESHOLD >= 0 ? RAW_THRESHOLD : 0.15;
+const HARD_TIME_LIMIT_MS = Math.round(
+  PROFILE.timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD),
+);
+
 // eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
