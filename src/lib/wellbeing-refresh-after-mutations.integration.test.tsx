@@ -134,36 +134,79 @@ function makeQueryClient() {
 }
 
 /**
- * Prime both wellbeing queries with an initial fetch and return spies on
- * their queryFns. `waitFor(() => spy.mock.calls.length > 1)` then proves
- * the invalidation triggered a real refetch.
+ * Prime both wellbeing queries — plus a handful of unrelated queries —
+ * with an initial fetch and return spies on every queryFn.
+ *
+ * `waitFor(() => spy.mock.calls.length > 1)` on the wellbeing spies proves
+ * the invalidation triggered a real refetch. Asserting the unrelated
+ * spies stay at 1 call proves the invalidation is **scoped**: a bug that
+ * broadens `invalidateWellbeing` (e.g. dropping the queryKey and calling
+ * `qc.invalidateQueries()` with no args) would refetch every observed
+ * query on the page and would trip the unrelated-spy assertions below.
+ *
+ * Unrelated queries chosen to mirror queries that co-live on the
+ * wellbeing routes today: rota, profiles, and a namespaced my-wellbeing
+ * sibling (`my-wellbeing-history`) whose prefix would be caught by a
+ * regression that switched to a fuzzy/prefix match.
  */
 async function primeWellbeingQueries(qc: QueryClient) {
   const adminSpy = vi.fn(async () => ({ rows: [], asOf: 1 }));
   const mineSpy = vi.fn(async () => ({ score: 100, asOf: 1 }));
+  const rotaSpy = vi.fn(async () => ({ shifts: [] }));
+  const profilesSpy = vi.fn(async () => ({ profiles: [] }));
+  // Same string prefix as `my-wellbeing` — must NOT be invalidated by an
+  // exact-key match. Guards against a future refactor that swaps
+  // `queryKey: ["my-wellbeing"]` for `predicate: q => q.queryKey[0].startsWith("my-wellbeing")`.
+  const myWellbeingHistorySpy = vi.fn(async () => ({ points: [] }));
 
   await qc.prefetchQuery({ queryKey: ["admin-wellbeing"], queryFn: adminSpy });
   await qc.prefetchQuery({ queryKey: ["my-wellbeing", USER_ID], queryFn: mineSpy });
+  await qc.prefetchQuery({ queryKey: ["rota", "week", "2026-07-06"], queryFn: rotaSpy });
+  await qc.prefetchQuery({ queryKey: ["profiles"], queryFn: profilesSpy });
+  await qc.prefetchQuery({
+    queryKey: ["my-wellbeing-history", USER_ID],
+    queryFn: myWellbeingHistorySpy,
+  });
 
   // Both must be observed by an active subscriber, or invalidate won't
   // trigger a refetch (React Query only refetches queries with observers).
-  const adminObs = new QueryObserver(qc, { queryKey: ["admin-wellbeing"], queryFn: adminSpy });
-  const mineObs = new QueryObserver(qc, {
-    queryKey: ["my-wellbeing", USER_ID],
-    queryFn: mineSpy,
-  });
-  const unsubAdmin = adminObs.subscribe(() => {});
-  const unsubMine = mineObs.subscribe(() => {});
+  // We subscribe to the unrelated queries too — otherwise "no refetch"
+  // could just mean "no observer", not "correctly scoped invalidation".
+  const observers = [
+    new QueryObserver(qc, { queryKey: ["admin-wellbeing"], queryFn: adminSpy }),
+    new QueryObserver(qc, { queryKey: ["my-wellbeing", USER_ID], queryFn: mineSpy }),
+    new QueryObserver(qc, { queryKey: ["rota", "week", "2026-07-06"], queryFn: rotaSpy }),
+    new QueryObserver(qc, { queryKey: ["profiles"], queryFn: profilesSpy }),
+    new QueryObserver(qc, {
+      queryKey: ["my-wellbeing-history", USER_ID],
+      queryFn: myWellbeingHistorySpy,
+    }),
+  ];
+  const unsubs = observers.map((o) => o.subscribe(() => {}));
 
   expect(adminSpy).toHaveBeenCalledTimes(1);
   expect(mineSpy).toHaveBeenCalledTimes(1);
+  expect(rotaSpy).toHaveBeenCalledTimes(1);
+  expect(profilesSpy).toHaveBeenCalledTimes(1);
+  expect(myWellbeingHistorySpy).toHaveBeenCalledTimes(1);
 
   return {
     adminSpy,
     mineSpy,
+    rotaSpy,
+    profilesSpy,
+    myWellbeingHistorySpy,
+    /**
+     * Assert every non-wellbeing query is still at its initial call count —
+     * i.e. `invalidateWellbeing` did not fan out to unrelated caches.
+     */
+    expectUnrelatedUntouched() {
+      expect(rotaSpy).toHaveBeenCalledTimes(1);
+      expect(profilesSpy).toHaveBeenCalledTimes(1);
+      expect(myWellbeingHistorySpy).toHaveBeenCalledTimes(1);
+    },
     dispose: () => {
-      unsubAdmin();
-      unsubMine();
+      for (const u of unsubs) u();
     },
   };
 }
