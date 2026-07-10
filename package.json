@@ -15,6 +15,9 @@
     "check:worker-globals": "node scripts/check-worker-global-scope.mjs",
     "check:deps": "node scripts/check-tanstack-versions.mjs",
     "check:supply-chain": "node scripts/check-supply-chain.mjs",
+    "test": "vitest run",
+    "test:stress": "vitest run src/lib/wellbeing-leave-pagination-stress.test.ts",
+    "test:stress:large": "LEAVE_STRESS_PROFILE=large vitest run src/lib/wellbeing-leave-pagination-stress.test.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
