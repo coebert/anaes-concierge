@@ -345,4 +345,147 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       expect(approved).toEqual([isoDaysAgo(s.recentEnd), isoDaysAgo(s.staleEnd)]);
     }
   });
+
+  it("handles leave rows on the 90-day window boundary — inclusive at day 90, exclusive at day 91", async () => {
+    // Small dedicated fixture: one staff, four denied spells straddling the
+    // window edge, plus filler to still exercise pagination through the cap.
+    const STAFF = { id: "staff-boundary", name: "Dr Boundary" };
+    const rows: Row[] = [];
+    let counter = 0;
+    const push = (r: Omit<Row, "id">) => rows.push({ id: `b-${counter++}`, ...r });
+
+    // 1) Denied, start_date exactly on the window start (90 days ago) → IN.
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "annual",
+      status: "denied",
+      start_date: isoDaysAgo(90),
+      end_date: isoDaysAgo(85),
+    });
+    // 2) Denied, start_date 91 days ago → OUT (one day past the boundary).
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "annual",
+      status: "denied",
+      start_date: isoDaysAgo(91),
+      end_date: isoDaysAgo(86),
+    });
+    // 3) Cancelled today (start_date 0 days ago) → IN (upper edge).
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "annual",
+      status: "cancelled",
+      start_date: isoDaysAgo(0),
+      end_date: isoDaysAgo(0),
+    });
+    // 4) Denied with start_date 89 (IN) but end_date 100 (OUT) — the driver
+    //    keys off start_date, so this must still count.
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "annual",
+      status: "denied",
+      start_date: isoDaysAgo(89),
+      end_date: isoDaysAgo(100),
+    });
+
+    // Filler to push the boundary rows past the 1000-row cap so pagination
+    // is genuinely exercised.
+    while (rows.length < 1400) {
+      push({
+        staff_id: `filler-${rows.length % 20}`,
+        staff_name: `Filler ${rows.length % 20}`,
+        type: "annual",
+        status: "approved",
+        start_date: isoDaysAgo(200 + (rows.length % 300) + 5),
+        end_date: isoDaysAgo(200 + (rows.length % 300)),
+      });
+    }
+
+    const table = makeFakeTable(rows);
+    const fetched = await fetchAllPaged<Row>(() =>
+      table.order("end_date", { ascending: false }),
+    );
+    expect(fetched.length).toBe(rows.length);
+
+    // Ordering: every page fetched with end_date desc, no exceptions.
+    for (const call of table.rangeCalls) {
+      expect(call.orderedBy).toEqual({ key: "end_date", ascending: false });
+    }
+
+    // Returned date list for this staff, ordered end_date desc.
+    const staffRows = fetched.filter((r) => r.staff_id === STAFF.id);
+    expect(staffRows.map((r) => r.end_date)).toEqual([
+      isoDaysAgo(0), // cancelled today
+      isoDaysAgo(85), // denied, day-90 boundary
+      isoDaysAgo(86), // denied, day-91 (out of window but still returned)
+      isoDaysAgo(100), // denied with start=89 (in-window) but end=100
+    ]);
+
+    // Score contribution: three of the four rows are in-window bad leave
+    // (rows 1, 3, 4). Row 2 (start_date 91 days ago) must NOT count.
+    const leaveInput: LeaveLite[] = staffRows.map((r) => ({
+      staff_id: r.staff_id,
+      status: r.status,
+      type: r.type,
+      start_date: r.start_date,
+      end_date: r.end_date,
+    }));
+
+    const result = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: leaveInput,
+      exceptions: [],
+    });
+    const leaveDriver = result.drivers.find((d) => d.key === "leave")!;
+    expect(leaveDriver.value).toBe(3);
+    // Cap is 3, so normalised saturates at exactly 1.0 on this boundary set.
+    expect(leaveDriver.normalised).toBe(1);
+    expect(leaveDriver.weight).toBe(0.1);
+
+    // Verify the exclusion is specifically the 91-days-ago row — drop it,
+    // reduce value to 2, normalised to 2/3.
+    const withoutBoundary: LeaveLite[] = leaveInput.filter(
+      (l) => l.start_date !== isoDaysAgo(91),
+    );
+    // (No-op: the 91-day row was already excluded from the score above.
+    // This branch removes it from the *input* to confirm the score is
+    // identical — proving the driver truly ignored it, not merely capped.)
+    const resultWithoutOutOfWindow = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: withoutBoundary,
+      exceptions: [],
+    });
+    expect(resultWithoutOutOfWindow.score).toBe(result.score);
+    expect(
+      resultWithoutOutOfWindow.drivers.find((d) => d.key === "leave")!.value,
+    ).toBe(3);
+
+    // And dropping an in-window row (the day-90 boundary one) must lower
+    // the driver — confirming day 90 is inclusive.
+    const withoutDay90: LeaveLite[] = leaveInput.filter(
+      (l) => l.start_date !== isoDaysAgo(90),
+    );
+    const resultWithoutDay90 = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: withoutDay90,
+      exceptions: [],
+    });
+    expect(
+      resultWithoutDay90.drivers.find((d) => d.key === "leave")!.value,
+    ).toBe(2);
+    expect(resultWithoutDay90.score).toBeGreaterThan(result.score);
+  });
 });
