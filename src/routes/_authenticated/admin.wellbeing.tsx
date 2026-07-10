@@ -51,7 +51,7 @@ export function AdminWellbeingPage() {
   const { hasRole, loading } = useAuth();
   const [q, setQ] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ["admin-wellbeing"],
     refetchOnWindowFocus: true,
     refetchInterval: 10 * 60_000,
@@ -249,12 +249,42 @@ export function AdminWellbeingPage() {
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
+  const refetching = isFetching && !isLoading;
+  const errorMessage =
+    isError && error instanceof Error
+      ? error.message
+      : isError
+        ? "Failed to load wellbeing data."
+        : null;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Wellbeing & retention"
         description="Rolling 90-day wellbeing score per active staff member, plus a transparent attrition-risk rubric — sorted worst-first for triage."
       />
+
+      {errorMessage ? (
+        <div
+          data-testid="admin-wellbeing-error"
+          role="alert"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          Wellbeing update failed: {errorMessage}
+        </div>
+      ) : null}
+      {refetching ? (
+        <div
+          data-testid="admin-wellbeing-refetching"
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-muted bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+        >
+          Refreshing wellbeing data…
+        </div>
+      ) : null}
+
+
 
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard label="Staff assessed" value={rows.length} icon={HeartPulse} />
