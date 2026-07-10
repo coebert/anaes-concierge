@@ -182,12 +182,12 @@ async function primeUnrelated(qc: QueryClient) {
     coordinatorLeave: vi.fn(async () => ({ items: [] })),
     myWellbeingHistory: vi.fn(async () => ({ points: [] })),
   };
-  const opts = [
+  const opts: Array<{ queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }> = [
     { queryKey: ["rota", "week", "2026-07-06"], queryFn: spies.rota },
     { queryKey: ["profiles"], queryFn: spies.profiles },
     { queryKey: ["coordinator-leave"], queryFn: spies.coordinatorLeave },
     { queryKey: ["my-wellbeing-history", USER_ID], queryFn: spies.myWellbeingHistory },
-  ] as const;
+  ];
   for (const o of opts) await qc.prefetchQuery(o);
   const unsubs = opts.map((o) =>
     new QueryObserver(qc, { queryKey: o.queryKey, queryFn: o.queryFn }).subscribe(
