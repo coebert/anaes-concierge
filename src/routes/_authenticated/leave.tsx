@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
 
@@ -36,6 +38,7 @@ export const Route = createFileRoute("/_authenticated/leave")({
 
 function LeavePage() {
   const { user, isCoordinatorOrAdmin } = useAuth();
+  const qc = useQueryClient();
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
@@ -123,6 +126,7 @@ function LeavePage() {
     const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Request cancelled");
+    invalidateWellbeing(qc);
     void load();
   };
 

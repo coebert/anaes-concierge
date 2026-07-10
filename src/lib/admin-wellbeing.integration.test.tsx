@@ -46,6 +46,7 @@ type TableCallLog = {
   rangeCalls: Array<{ from: number; to: number }>;
   eqFilters: Array<{ key: string; value: unknown }>;
   gteFilters: Array<{ key: string; value: unknown }>;
+  neqFilters: Array<{ key: string; value: unknown }>;
 };
 
 // `vi.mock` factories are hoisted to the very top of the file, so anything
@@ -67,12 +68,14 @@ vi.mock("@/integrations/supabase/client", () => {
       rangeCalls: [],
       eqFilters: [],
       gteFilters: [],
+      neqFilters: [],
     };
     callLogs.push(log);
     let orderKey: string | null = null;
     let ascending = true;
     const eqFilters: Array<{ key: string; value: unknown }> = [];
     const gteFilters: Array<{ key: string; value: unknown }> = [];
+    const neqFilters: Array<{ key: string; value: unknown }> = [];
 
     const api: Record<string, unknown> = {
       select: () => api,
@@ -84,6 +87,11 @@ vi.mock("@/integrations/supabase/client", () => {
       gte(key: string, value: unknown) {
         log.gteFilters.push({ key, value });
         gteFilters.push({ key, value });
+        return api;
+      },
+      neq(key: string, value: unknown) {
+        log.neqFilters.push({ key, value });
+        neqFilters.push({ key, value });
         return api;
       },
       order(key: string, opts: { ascending: boolean }) {
@@ -98,6 +106,7 @@ vi.mock("@/integrations/supabase/client", () => {
         for (const f of eqFilters) source = source.filter((r) => r[f.key] === f.value);
         for (const g of gteFilters)
           source = source.filter((r) => (r[g.key] as string) >= (g.value as string));
+        for (const n of neqFilters) source = source.filter((r) => r[n.key] !== n.value);
         if (orderKey) {
           const k = orderKey;
           const dir = ascending ? 1 : -1;

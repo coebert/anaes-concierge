@@ -41,6 +41,8 @@ function WellbeingPage() {
   const { data, isLoading, refetch } = useQuery({
     enabled: !!user,
     queryKey: ["my-wellbeing", user?.id],
+    refetchOnWindowFocus: true,
+    refetchInterval: 10 * 60_000,
     queryFn: async () => {
       // Wide reads use fetchAllPaged with deterministic .order(...) so the
       // 1000-row PostgREST cap never silently drops recent rota/leave rows.
@@ -65,6 +67,7 @@ function WellbeingPage() {
                 .from("rota_change_log")
                 .select("staff_id,session_date,hours_before_session")
                 .eq("staff_id", user!.id)
+                .gte("session_date", isoDaysAgo(365))
                 .order("session_date", { ascending: true }),
             { budget, source: "rota_change_log" },
           ),
@@ -74,23 +77,26 @@ function WellbeingPage() {
             status: string;
             start_date: string;
             end_date: string;
+            decided_at: string | null;
             half_day_start: string | null;
             half_day_end: string | null;
           }>(
             () =>
               supabase
                 .from("leave_requests")
-                .select("staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
+                .select("staff_id,type,status,start_date,end_date,decided_at,half_day_start,half_day_end")
                 .eq("staff_id", user!.id)
                 .order("end_date", { ascending: false }),
             { budget, source: "leave_requests" },
           ),
-          fetchAllPaged<{ trainee_id: string; event_date: string }>(
+          fetchAllPaged<{ trainee_id: string; event_date: string; status: string }>(
             () =>
               supabase
                 .from("exception_reports")
-                .select("trainee_id,event_date")
+                .select("trainee_id,event_date,status")
                 .eq("trainee_id", user!.id)
+                .gte("event_date", isoDaysAgo(365))
+                .neq("status", "withdrawn")
                 .order("event_date", { ascending: false }),
             { budget, source: "exception_reports" },
           ),

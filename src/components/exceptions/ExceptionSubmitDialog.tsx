@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 import { toast } from "sonner";
 import {
   CATEGORY_LABEL,
@@ -68,6 +70,7 @@ export function ExceptionSubmitDialog({
   onSubmitted: () => void;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
 
   const [eventDate, setEventDate] = useState(today);
@@ -225,6 +228,7 @@ export function ExceptionSubmitDialog({
         ? "Exception submitted — flagged for same-day Guardian response."
         : "Exception submitted. You'll hear back within 7 days.",
     );
+    invalidateWellbeing(qc);
     reset();
     onOpenChange(false);
     onSubmitted();
