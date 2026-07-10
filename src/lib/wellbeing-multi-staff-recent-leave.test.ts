@@ -138,7 +138,7 @@ function buildFixture() {
       staff_id: s.id,
       staff_name: s.name,
       type: s.type,
-      status: "rejected",
+      status: "denied",
       start_date: isoDaysAgo(4),
       end_date: isoDaysAgo(2),
     });
