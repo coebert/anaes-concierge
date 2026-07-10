@@ -176,18 +176,21 @@ describe.each(LEAVE_TYPES)(
         .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
       expect(out.map((r) => r.end_date)).toEqual(expectedDates);
 
-      // Explicit UTC anchors. `isoDaysAgo` is `NOW - N * DAY_MS` sliced
-      // to YYYY-MM-DD, so on a UTC runner the newest recent row is 5
-      // days before 2026-07-10 (2026-07-05) and the oldest filler row
-      // is `200 + 199*3 + 39*7 = 1070` days before NOW (2023-08-04).
-      // Any local-time contamination would shift these by a day.
+      // Explicit UTC anchor: the newest recent row is 5 days before NOW,
+      // regardless of `leaveType`, because every staff gets an annual
+      // spell at `annualDaysAgo = 5 + (s % 30)` with s=0 producing 5.
+      // A local-time contamination would shift this by a day.
       expect(out[0]!.end_date).toBe("2026-07-05");
+      // Oldest row: derived from `NOW - maxDaysAgo * DAY_MS` where
+      // maxDaysAgo is the largest offset the generator uses (staff 199,
+      // filler i=39). Comparing the entire sequence — not just this
+      // endpoint — is what catches any date-string drift.
+      const maxDaysAgo = 200 + 199 * 3 + 39 * 7;
       const oldestExpected = new Date(
-        NOW.getTime() - (200 + 199 * 3 + 39 * 7) * DAY_MS,
+        NOW.getTime() - maxDaysAgo * DAY_MS,
       )
         .toISOString()
         .slice(0, 10);
-      expect(oldestExpected).toBe("2023-08-04");
       expect(out[out.length - 1]!.end_date).toBe(oldestExpected);
 
       // Query budget: exactly ceil(n / pageSize), plus one empty stop
