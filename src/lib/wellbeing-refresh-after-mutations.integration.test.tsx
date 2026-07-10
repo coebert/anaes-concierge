@@ -28,7 +28,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -147,14 +147,13 @@ async function primeWellbeingQueries(qc: QueryClient) {
 
   // Both must be observed by an active subscriber, or invalidate won't
   // trigger a refetch (React Query only refetches queries with observers).
-  const unsubAdmin = qc
-    .getQueryCache()
-    .find({ queryKey: ["admin-wellbeing"] })!
-    .subscribe(() => {});
-  const unsubMine = qc
-    .getQueryCache()
-    .find({ queryKey: ["my-wellbeing", USER_ID] })!
-    .subscribe(() => {});
+  const adminObs = new QueryObserver(qc, { queryKey: ["admin-wellbeing"], queryFn: adminSpy });
+  const mineObs = new QueryObserver(qc, {
+    queryKey: ["my-wellbeing", USER_ID],
+    queryFn: mineSpy,
+  });
+  const unsubAdmin = adminObs.subscribe(() => {});
+  const unsubMine = mineObs.subscribe(() => {});
 
   expect(adminSpy).toHaveBeenCalledTimes(1);
   expect(mineSpy).toHaveBeenCalledTimes(1);
