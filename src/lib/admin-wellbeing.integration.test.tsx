@@ -25,6 +25,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AdminWellbeingPage } from "@/routes/_authenticated/admin.wellbeing";
 
 const DB_MAX_ROWS = 1000;
 const TODAY = new Date();
