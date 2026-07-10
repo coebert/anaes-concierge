@@ -472,14 +472,7 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["trainee-exception-reports", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("exception_reports")
-        .select("id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at")
-        .eq("trainee_id", staffId)
-        .order("created_at", { ascending: false })
-        .range(0, 999);
-      if (error) throw error;
-      return (data ?? []) as Array<{
+      const data = await fetchAllPaged<{
         id: string;
         status: ExceptionStatus;
         category: string;
@@ -488,7 +481,14 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
         due_by: string;
         resolved_at: string | null;
         created_at: string;
-      }>;
+      }>(() =>
+        supabase
+          .from("exception_reports")
+          .select("id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at")
+          .eq("trainee_id", staffId)
+          .order("created_at", { ascending: false }),
+      );
+      return data;
     },
   });
 
