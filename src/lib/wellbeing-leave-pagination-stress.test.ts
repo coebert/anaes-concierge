@@ -98,6 +98,117 @@ const HARD_TIME_LIMIT_MS = Math.round(
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
 // -----------------------------------------------------------------------------
+// Baseline-vs-regression enforcement.
+//
+// The `large` profile records the last-known-good runtime for each scenario
+// in `wellbeing-leave-pagination-stress.baseline.json`. When the large
+// profile runs (nightly + push-to-main CI), each scenario's elapsed time is
+// checked against `baseline * (1 + regressionThreshold)`; anything slower
+// fails the build. This catches gradual O(n^2) creep the absolute
+// `timeBudgetMs` on scenario C alone would miss (e.g. a 10x slowdown on
+// scenario A that still fits under the wall-clock cap).
+//
+// To refresh the baseline after a legitimate perf change:
+//   LEAVE_STRESS_PROFILE=large LEAVE_STRESS_UPDATE_BASELINE=1 \
+//     bun run test:stress:large
+// then commit the updated JSON.
+// -----------------------------------------------------------------------------
+type ScenarioKey =
+  | "orderedRead"
+  | "requestCount"
+  | "filteredRead"
+  | "timeBudget"
+  | "daysSinceLastAnnual";
+
+type Baseline = {
+  regressionThreshold: number;
+  large: {
+    recordedAt: string;
+    runner: string;
+    seed: string;
+    scenarios: Record<ScenarioKey, { ms: number }>;
+  };
+};
+
+const BASELINE_URL = new URL(
+  "./wellbeing-leave-pagination-stress.baseline.json",
+  import.meta.url,
+);
+const BASELINE_PATH = fileURLToPath(BASELINE_URL);
+const BASELINE: Baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+
+const RAW_REGRESSION = Number.parseFloat(
+  process.env.LEAVE_STRESS_REGRESSION_THRESHOLD ?? "",
+);
+const REGRESSION_THRESHOLD =
+  Number.isFinite(RAW_REGRESSION) && RAW_REGRESSION >= 0
+    ? RAW_REGRESSION
+    : BASELINE.regressionThreshold;
+
+const UPDATE_BASELINE = process.env.LEAVE_STRESS_UPDATE_BASELINE === "1";
+const ENFORCE_BASELINE = PROFILE.name === "large" && !UPDATE_BASELINE;
+
+const recordedRuntimes: Partial<Record<ScenarioKey, number>> = {};
+
+function recordAndAssert(key: ScenarioKey, elapsedMs: number): void {
+  recordedRuntimes[key] = elapsedMs;
+  if (!ENFORCE_BASELINE) return;
+  const baselineMs = BASELINE.large.scenarios[key].ms;
+  const ceilingMs = Math.round(baselineMs * (1 + REGRESSION_THRESHOLD));
+  if (elapsedMs > baselineMs) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[stress:large] ${key} slower than baseline: ${elapsedMs.toFixed(0)}ms ` +
+        `> ${baselineMs}ms (ceiling ${ceilingMs}ms, +${(REGRESSION_THRESHOLD * 100).toFixed(0)}%)`,
+    );
+  }
+  expect(
+    elapsedMs,
+    `scenario ${key} regressed: ${elapsedMs.toFixed(0)}ms exceeds baseline ` +
+      `${baselineMs}ms + ${(REGRESSION_THRESHOLD * 100).toFixed(0)}% = ${ceilingMs}ms. ` +
+      `If this is intentional, re-record with LEAVE_STRESS_UPDATE_BASELINE=1.`,
+  ).toBeLessThanOrEqual(ceilingMs);
+}
+
+afterAll(() => {
+  if (!UPDATE_BASELINE || PROFILE.name !== "large") return;
+  const next: Baseline = {
+    ...BASELINE,
+    large: {
+      ...BASELINE.large,
+      recordedAt: new Date().toISOString().slice(0, 10),
+      seed: `0x${SEED.toString(16)}`,
+      scenarios: {
+        orderedRead: {
+          ms: Math.round(recordedRuntimes.orderedRead ?? BASELINE.large.scenarios.orderedRead.ms),
+        },
+        requestCount: {
+          ms: Math.round(recordedRuntimes.requestCount ?? BASELINE.large.scenarios.requestCount.ms),
+        },
+        filteredRead: {
+          ms: Math.round(recordedRuntimes.filteredRead ?? BASELINE.large.scenarios.filteredRead.ms),
+        },
+        timeBudget: {
+          ms: Math.round(recordedRuntimes.timeBudget ?? BASELINE.large.scenarios.timeBudget.ms),
+        },
+        daysSinceLastAnnual: {
+          ms: Math.round(
+            recordedRuntimes.daysSinceLastAnnual ??
+              BASELINE.large.scenarios.daysSinceLastAnnual.ms,
+          ),
+        },
+      },
+    },
+  };
+  writeFileSync(BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  // eslint-disable-next-line no-console
+  console.info(
+    `[stress:large] baseline updated at ${BASELINE_PATH}: ${JSON.stringify(next.large.scenarios)}`,
+  );
+});
+
+
+// -----------------------------------------------------------------------------
 // Deterministic pseudo-random source.
 //
 // The stress suite must be bit-for-bit repeatable across runs and CI machines
