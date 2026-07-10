@@ -19,6 +19,10 @@ import { PulseSurveyDialog, type PulseCycle } from "@/components/wellbeing/Pulse
 import { RecognitionDialog } from "@/components/wellbeing/RecognitionDialog";
 import { HeartHandshake, MessageCircleHeart, Sparkles } from "lucide-react";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
+import {
+  WellbeingMetricGuide,
+  WELLBEING_DRIVER_LABEL,
+} from "@/components/wellbeing/MetricsGuide";
 
 export const Route = createFileRoute("/_authenticated/wellbeing")({
   head: () => ({
