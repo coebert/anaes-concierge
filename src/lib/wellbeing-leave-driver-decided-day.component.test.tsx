@@ -33,12 +33,15 @@ import { computeWellbeing, type LeaveLite } from "@/features/wellbeing/wellbeing
 const USER_ID = "user-decided-day";
 // Pin "now" so the 90-day window is deterministic. Window covers
 // [NOW-90d, NOW] inclusive, day-normalised.
-// Anchor at UTC midnight so the 90-day window boundary is a clean
-// calendar-day boundary (`isoDay(now - 90d)` == `windowStart`).
+// Anchor at UTC midnight so day-arithmetic against the 90-day window
+// lines up on clean calendar-day boundaries.
 const NOW = new Date("2026-07-10T00:00:00Z");
-// 90 days before 2026-07-10 = 2026-04-11 (inclusive window start).
-const BOUNDARY_DAY = "2026-04-11";
-const BEFORE_BOUNDARY_DAY = "2026-04-10";
+// Just inside the 90-day window (88 days before NOW). Room to spare so
+// the sub-millisecond drift `useFakeTimers({shouldAdvanceTime:true})`
+// introduces during `waitFor` polling can never flip inclusion.
+const NEAR_WINDOW_START_DAY = "2026-04-13";
+// Comfortably outside the window (roughly 91 days before NOW).
+const OUTSIDE_WINDOW_DAY = "2026-04-09";
 const MID_WINDOW_DAY = "2026-05-20";
 
 type LeaveRow = {
