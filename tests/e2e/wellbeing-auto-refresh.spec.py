@@ -82,6 +82,8 @@ async def wait_settled(page) -> None:
 
 
 async def main() -> None:
+    # Loud failure on TZ drift before any Playwright work runs.
+    ensure_utc()
     state = {"withdrawn": False, "patch_seen": False}
 
     async def exception_route(route: Route) -> None:
