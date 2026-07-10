@@ -1006,6 +1006,27 @@ export function GlobalWeekGrid({
                 </td>
               ))}
             </tr>
+            {/* Night on-call — full-day row grouping general/ICU consultant
+                and registrar/SHO night cover. NHH nights render separately
+                in the row above. */}
+            <tr className="align-top bg-indigo-500/5">
+              <td className="border-r border-t p-2 font-medium whitespace-nowrap">
+                Night on-call
+                <div className="text-[10px] text-muted-foreground">Overnight cover</div>
+              </td>
+              {nightRow.map((c) => (
+                <td
+                  key={c.key}
+                  colSpan={2}
+                  className={cn(
+                    "min-w-[110px] border-b border-t border-r p-1.5 align-top",
+                    dimClass(c.staff.length > 0, c.parts),
+                  )}
+                >
+                  <NightCellContent model={c} />
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </CardContent>
