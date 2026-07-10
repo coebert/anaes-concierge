@@ -148,9 +148,16 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
     expect(leaveDriver.value).toBe(1);
     expect(leaveDriver.label).toBe("1 rejected/cancelled leave");
 
-    // (c) The Supabase call was fired but hasn't resolved.
+    // (c) The Supabase call was fired but hasn't resolved. The
+    // update now stamps `decided_at` alongside `status` so the
+    // server row matches what `computeWellbeing` needs to bucket
+    // the cancellation into the rolling window.
     expect(calls).toEqual([
-      { table: "leave_requests", patch: { status: "cancelled" }, id: LEAVE_ID },
+      {
+        table: "leave_requests",
+        patch: { status: "cancelled", decided_at: NOW.toISOString() },
+        id: LEAVE_ID,
+      },
     ]);
 
     // Now let the server respond and complete the flow.

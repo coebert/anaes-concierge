@@ -1,27 +1,33 @@
 /**
- * Optimistic leave-cancel flow.
+ * Optimistic leave-status flow.
  *
- * The user's ask: cancelling a leave request must trigger an *immediate*
- * wellbeing recalculation on the page, without waiting for the server
- * round-trip or the 10-minute wellbeing refetch interval.
+ * A leave-row status change (cancel from any state, or a coordinator
+ * decision that flips a `pending` row to `approved` / `rejected`) must
+ * trigger an *immediate* wellbeing recalculation on every mounted
+ * dashboard, without waiting for the server round-trip or the 10-minute
+ * refetch interval. `computeWellbeing` reads:
  *
- * Strategy:
- *   1. Patch the local `leave.tsx` row arrays synchronously so the row
- *      shows `status = "cancelled"` right away.
+ *   - `status` — drives the leave counter that surfaces on both the
+ *     personal `/wellbeing` card and the admin retention row.
+ *   - `decided_at` — the day-bucketed timestamp used to place the row
+ *     inside the rolling 90-day window.
+ *
+ * Both flows (cancel + decide) share the same 5-step recipe:
+ *
+ *   1. Patch the local row-array snapshots (page-level `useState`) so
+ *      the UI reflects the new status immediately.
  *   2. Patch every cached wellbeing query (`["my-wellbeing", ...]` and
  *      `["admin-wellbeing"]`) so their `useMemo(computeWellbeing, ...)`
- *      picks up the new row without a network fetch. Because
- *      `computeWellbeing` treats status `cancelled` (with a `decided_at`
- *      inside the 90-day window) as a wellbeing driver, the score falls
- *      instantly wherever the wellbeing card is mounted.
- *   3. Fire the Supabase UPDATE.
- *   4. On success, call `invalidateWellbeing(qc)` to reconcile every
- *      wellbeing query with server truth on the next tick.
- *   5. On failure, roll back the row-array and cache patches from step 1/2
- *      and surface the error.
+ *      picks up the new row without a network fetch.
+ *   3. Fire the Supabase UPDATE with the caller-specified patch.
+ *   4. On success, call `invalidateWellbeing(qc, reason, { ids })` to
+ *      reconcile every wellbeing query with server truth on the next
+ *      tick.
+ *   5. On failure, roll back steps 1/2 and surface the error.
  *
- * The helper is pure w.r.t. React — it takes patcher callbacks — so it
- * can be unit-tested end-to-end without rendering `leave.tsx`.
+ * The helper is pure w.r.t. React — it takes patcher callbacks — so
+ * the whole flow can be unit-tested end-to-end without mounting any
+ * route component.
  */
 import type { QueryClient } from "@tanstack/react-query";
 import type { LeaveRow } from "@/features/leave/tabs/shared";
@@ -53,42 +59,84 @@ interface CachedWellbeingData {
   [key: string]: unknown;
 }
 
-export interface OptimisticCancelOptions {
+/**
+ * Terminal statuses `computeWellbeing` actually looks for. Kept as a
+ * string union so callers can't accidentally push a `"pending"` back
+ * through the optimistic path (which would silently reverse a
+ * cancellation without touching the server row).
+ */
+export type LeaveStatusTerminal = "cancelled" | "approved" | "rejected";
+
+export interface OptimisticUpdateLeaveStatusOptions {
   id: string;
+  /** New row status — written to the cache AND to the Supabase update. */
+  status: LeaveStatusTerminal;
+  /**
+   * Stable dotted label passed to `invalidateWellbeing` for the
+   * dev-diagnostics trail, e.g. `"leave.cancel"`,
+   * `"leave.decide:approved"`, `"leave.decide:rejected+reserve"`.
+   */
+  reason: string;
+  /**
+   * Extra columns to include in the Supabase UPDATE **and** in the
+   * optimistic cache patch. Use for coordinator decisions that also
+   * write `decided_by`, `decision_notes`, or `reserve_listed_at`. The
+   * cache mirrors the same fields so `computeWellbeing` sees the same
+   * shape as the eventual server row.
+   */
+  extraPatch?: Record<string, unknown>;
   supabase: SupabaseLike;
   qc: QueryClient;
-  patchRows: Patcher;
-  patchMyLeave: Patcher;
+  /**
+   * Row-array patchers. Optional because the coordinator page owns
+   * its rows via a `useQuery` cache rather than a local `useState`.
+   */
+  patchRows?: Patcher;
+  patchMyLeave?: Patcher;
   /** Injectable clock — tests pin this so `decided_at` is deterministic. */
   now?: () => Date;
 }
 
-export type OptimisticCancelResult =
+export type OptimisticUpdateLeaveStatusResult =
   | { ok: true }
   | { ok: false; error: Error };
 
-export async function optimisticCancelLeave(
-  opts: OptimisticCancelOptions,
-): Promise<OptimisticCancelResult> {
-  const { id, supabase, qc, patchRows, patchMyLeave } = opts;
+export async function optimisticUpdateLeaveStatus(
+  opts: OptimisticUpdateLeaveStatusOptions,
+): Promise<OptimisticUpdateLeaveStatusResult> {
+  const { id, status, reason, extraPatch, supabase, qc, patchRows, patchMyLeave } = opts;
   const now = (opts.now ?? (() => new Date()))();
   const decidedAt = now.toISOString();
+
+  // Every terminal status transition stamps `decided_at` — the
+  // wellbeing engine buckets on it and skips rows without one. Callers
+  // can still override via `extraPatch` if they need to preserve an
+  // existing timestamp.
+  const rowPatch: Record<string, unknown> = {
+    status,
+    decided_at: decidedAt,
+    ...(extraPatch ?? {}),
+  };
 
   // -- 1/2. Optimistic patches (row arrays + wellbeing caches) ---------
   let rowsSnapshot: LeaveRow[] | null = null;
   let myLeaveSnapshot: LeaveRow[] | null = null;
 
   const applyRow = (r: LeaveRow): LeaveRow =>
-    r.id === id ? { ...r, status: "cancelled", decided_at: decidedAt } : r;
+    r.id === id ? { ...r, ...(rowPatch as Partial<LeaveRow>) } : r;
 
-  patchRows((prev) => {
-    rowsSnapshot = prev;
-    return prev.map(applyRow);
-  });
-  patchMyLeave((prev) => {
-    myLeaveSnapshot = prev;
-    return prev.map(applyRow);
-  });
+  if (patchRows) {
+    patchRows((prev) => {
+      rowsSnapshot = prev;
+      return prev.map(applyRow);
+    });
+  }
+  if (patchMyLeave) {
+    patchMyLeave((prev) => {
+      myLeaveSnapshot = prev;
+      return prev.map(applyRow);
+    });
+  }
 
   // Snapshot each matching query by its EXACT key so rollback restores
   // the right cache entry even when the key includes extra segments
@@ -110,9 +158,7 @@ export async function optimisticCancelLeave(
         return {
           ...old,
           leave: old.leave.map((l) =>
-            l.id === id
-              ? { ...l, status: "cancelled", decided_at: decidedAt }
-              : l,
+            l.id === id ? { ...l, ...rowPatch } : l,
           ),
         };
       },
@@ -122,13 +168,14 @@ export async function optimisticCancelLeave(
   // -- 3. Server round-trip --------------------------------------------
   const { error } = await supabase
     .from("leave_requests")
-    .update({ status: "cancelled" })
+    .update(rowPatch)
     .eq("id", id);
 
   if (error) {
     // -- 5. Roll back everything ---------------------------------------
-    if (rowsSnapshot !== null) patchRows(() => rowsSnapshot as LeaveRow[]);
-    if (myLeaveSnapshot !== null) patchMyLeave(() => myLeaveSnapshot as LeaveRow[]);
+    if (rowsSnapshot !== null && patchRows) patchRows(() => rowsSnapshot as LeaveRow[]);
+    if (myLeaveSnapshot !== null && patchMyLeave)
+      patchMyLeave(() => myLeaveSnapshot as LeaveRow[]);
     // Restore the exact prior cache values — including `undefined` if the
     // key wasn't in the cache before we patched it.
     for (const snap of cacheSnapshots) {
@@ -138,6 +185,36 @@ export async function optimisticCancelLeave(
   }
 
   // -- 4. Reconcile with server truth ----------------------------------
-  invalidateWellbeing(qc, "leave.cancel", { ids: [id] });
+  invalidateWellbeing(qc, reason, { ids: [id] });
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Backwards-compatible cancel wrapper.
+// ---------------------------------------------------------------------
+
+export interface OptimisticCancelOptions {
+  id: string;
+  supabase: SupabaseLike;
+  qc: QueryClient;
+  patchRows: Patcher;
+  patchMyLeave: Patcher;
+  now?: () => Date;
+}
+
+export type OptimisticCancelResult = OptimisticUpdateLeaveStatusResult;
+
+export async function optimisticCancelLeave(
+  opts: OptimisticCancelOptions,
+): Promise<OptimisticCancelResult> {
+  return optimisticUpdateLeaveStatus({
+    id: opts.id,
+    status: "cancelled",
+    reason: "leave.cancel",
+    supabase: opts.supabase,
+    qc: opts.qc,
+    patchRows: opts.patchRows,
+    patchMyLeave: opts.patchMyLeave,
+    now: opts.now,
+  });
 }
