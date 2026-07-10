@@ -111,7 +111,9 @@ function TraineeDetailPage() {
               theatre_id: string | null;
             }>),
       ]);
-      const theatreIds = Array.from(new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean)));
+      const theatreIds = Array.from(
+        new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean) as string[]),
+      );
       const { data: theatres } = theatreIds.length
         ? await supabase.from("theatres").select("id,name").in("id", theatreIds)
         : { data: [] as any[] };
