@@ -47,7 +47,7 @@ export const Route = createFileRoute("/_authenticated/admin/wellbeing")({
   component: AdminWellbeingPage,
 });
 
-function AdminWellbeingPage() {
+export function AdminWellbeingPage() {
   const { hasRole, loading } = useAuth();
   const [q, setQ] = useState("");
 
