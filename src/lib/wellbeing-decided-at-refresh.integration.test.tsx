@@ -27,8 +27,9 @@ import "@/test/assert-utc-hook";
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
+import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 
 // --------------------- shared mock state ---------------------
 
