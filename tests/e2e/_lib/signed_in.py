@@ -224,10 +224,23 @@ async def signed_in_context(
     for `page.goto("/some/authenticated/route")`.
 
     Callers close `browser` when done.
+
+    The context is pinned to `timezone_id="UTC"` so every `Date` inside
+    the page resolves the same way as the Node-side wellbeing engine
+    (see `_lib.assert_utc`). `assert_browser_tz_utc(page)` is called
+    once here to fail loudly if the pin ever drops — parity with the
+    Vitest `assertUtcTimezone` hook.
     """
+    # Re-verify the Python-side pin at every entry point in case a spec
+    # mutated `os.environ["TZ"]` between imports and this call.
+    ensure_utc()
     browser = await playwright.chromium.launch(headless=True)
-    context = await browser.new_context(viewport={"width": 1280, "height": 1800})
+    context = await browser.new_context(
+        viewport={"width": 1280, "height": 1800},
+        timezone_id=PLAYWRIGHT_TIMEZONE_ID,
+    )
     await route_supabase(context, roles=roles, rest_tables=rest_tables)
     page = await context.new_page()
     await install_session(page)
+    await assert_browser_tz_utc(page)
     return browser, context, page
