@@ -589,26 +589,25 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["trainee-absence", staffId],
     queryFn: async () => {
-      const [leaveRes, rtwRes] = await Promise.all([
-        supabase
-          .from("leave_requests")
-          .select("id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
-          .eq("staff_id", staffId)
-          .eq("type", "sick")
-          .eq("status", "approved")
-          .range(0, 999),
-        supabase
-          .from("return_to_work_interviews")
-          .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
-          .eq("staff_id", staffId)
-          .range(0, 999),
+      const [leaveRows, rtwRows] = await Promise.all([
+        fetchAllPaged<SickSpellRow>(() =>
+          supabase
+            .from("leave_requests")
+            .select("id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
+            .eq("staff_id", staffId)
+            .eq("type", "sick")
+            .eq("status", "approved")
+            .order("end_date", { ascending: false }),
+        ),
+        fetchAllPaged<RtwRow>(() =>
+          supabase
+            .from("return_to_work_interviews")
+            .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
+            .eq("staff_id", staffId)
+            .order("conducted_at", { ascending: false }),
+        ),
       ]);
-      if (leaveRes.error) throw leaveRes.error;
-      if (rtwRes.error) throw rtwRes.error;
-      return summariseAbsence(
-        (leaveRes.data ?? []) as SickSpellRow[],
-        (rtwRes.data ?? []) as RtwRow[],
-      );
+      return summariseAbsence(leaveRows, rtwRows);
     },
   });
 
