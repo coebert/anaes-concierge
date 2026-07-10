@@ -815,6 +815,138 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
       },
     }),
 
+    get_my_wellbeing_score: tool({
+      description:
+        "Compute the signed-in user's current wellbeing score (0-100, higher = better), band (thriving/steady/strained/at_risk), and the ranked list of drivers that shaped it. Uses the same engine as the app's Wellbeing page and the same rolling 90-day window. Exception reports with status = 'withdrawn' are excluded, so if an exception is updated or withdrawn the score and driver mapping will change on the next call. Call this whenever the user asks 'what is my wellbeing score?', 'why is my score X?', 'how did withdrawing my exception change things?', or otherwise references their wellbeing/burnout/attrition signals.",
+      inputSchema: z.object({
+        windowDays: z
+          .number()
+          .int()
+          .min(28)
+          .max(365)
+          .optional()
+          .describe("Rolling window for the score. Default 90 (matches the UI)."),
+      }),
+      execute: async ({ windowDays }) => {
+        const days = windowDays ?? 90;
+        const from = addDays(todayISO(), -days);
+        // Fetch the same inputs the /wellbeing page reads, with the SAME
+        // `.neq("status", "withdrawn")` filter on exception_reports so
+        // updating or withdrawing an exception causes the score to
+        // recalculate on the next call.
+        const [
+          { data: assignments, error: aErr },
+          { data: changes, error: cErr },
+          { data: leave, error: lErr },
+          { data: exceptions, error: eErr },
+        ] = await Promise.all([
+          admin
+            .from("rota_assignments")
+            .select("staff_id,session_date,session")
+            .eq("staff_id", userId)
+            .gte("session_date", from),
+          admin
+            .from("rota_change_log")
+            .select("staff_id,session_date,hours_before_session")
+            .eq("staff_id", userId)
+            .gte("session_date", from),
+          admin
+            .from("leave_requests")
+            .select(
+              "staff_id,type,status,start_date,end_date,decided_at,half_day_start,half_day_end",
+            )
+            .eq("staff_id", userId),
+          admin
+            .from("exception_reports")
+            .select("trainee_id,event_date,status,category,event_session")
+            .eq("trainee_id", userId)
+            .neq("status", "withdrawn")
+            .gte("event_date", from),
+        ]);
+        const err = aErr ?? cErr ?? lErr ?? eErr;
+        if (err) return { error: err.message };
+
+        const leaveRows = (leave ?? []) as Array<{
+          staff_id: string;
+          type: string;
+          status: string;
+          start_date: string;
+          end_date: string;
+          decided_at: string | null;
+          half_day_start: string | null;
+          half_day_end: string | null;
+        }>;
+        const sickSpells = leaveRows.filter(
+          (l) => l.type === "sick" && l.status === "approved",
+        );
+        const bradford = computeBradfordFactor(
+          sickSpells.map((s) => ({
+            start_date: s.start_date,
+            end_date: s.end_date,
+            half_day_start: !!s.half_day_start,
+            half_day_end: !!s.half_day_end,
+          })),
+        );
+
+        const excRows = (exceptions ?? []) as Array<{
+          trainee_id: string;
+          event_date: string;
+          status: string;
+          category: string | null;
+          event_session: string | null;
+        }>;
+        const result = computeWellbeing({
+          staffId: userId,
+          windowDays: days,
+          assignments: (assignments ?? []) as Array<{
+            staff_id: string;
+            session_date: string;
+            session: string;
+          }>,
+          changes: (changes ?? []) as Array<{
+            staff_id: string;
+            session_date: string;
+            hours_before_session: number | null;
+          }>,
+          leave: leaveRows,
+          exceptions: excRows.map((e) => ({
+            staff_id: e.trainee_id,
+            event_date: e.event_date,
+          })),
+          bradfordScore: bradford.score,
+        });
+
+        return {
+          score: result.score,
+          band: result.band,
+          band_label: WELLBEING_BAND_LABEL[result.band],
+          windowStart: result.windowStart,
+          windowEnd: result.windowEnd,
+          drivers: result.drivers
+            .slice()
+            .sort((a, b) => b.normalised * b.weight - a.normalised * a.weight)
+            .map((d) => ({
+              key: d.key,
+              label: d.label,
+              value: d.value,
+              weight: d.weight,
+              // Higher = worse. Rounded for a compact tool payload.
+              impact: Math.round(d.normalised * d.weight * 100) / 100,
+            })),
+          bradford: { score: bradford.score, band: bradford.band },
+          active_exception_count: excRows.length,
+          active_exceptions: excRows.map((e) => ({
+            event_date: e.event_date,
+            event_session: e.event_session,
+            category: e.category,
+            status: e.status,
+          })),
+        };
+      },
+    }),
+
+
+
 
     get_team_on_call_today: tool({
       description:
