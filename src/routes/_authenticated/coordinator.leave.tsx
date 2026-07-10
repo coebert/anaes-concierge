@@ -267,7 +267,7 @@ function LeaveCard({
         decision_notes: notes || null,
         ...(reserveList ? { reserve_listed_at: reserveListedAt } : {}),
       },
-      supabase,
+      supabase: supabase as unknown as Parameters<typeof optimisticUpdateLeaveStatus>[0]["supabase"],
       qc,
     });
     setActing(false);
