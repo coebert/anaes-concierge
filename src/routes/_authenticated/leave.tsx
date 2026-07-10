@@ -38,6 +38,7 @@ export const Route = createFileRoute("/_authenticated/leave")({
 
 function LeavePage() {
   const { user, isCoordinatorOrAdmin } = useAuth();
+  const qc = useQueryClient();
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [allowances, setAllowances] = useState<AllowanceRow[]>([]);
@@ -125,6 +126,7 @@ function LeavePage() {
     const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Request cancelled");
+    invalidateWellbeing(qc);
     void load();
   };
 
