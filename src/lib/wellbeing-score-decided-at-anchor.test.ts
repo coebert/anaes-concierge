@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 /**
  * Regression coverage for the `decided_at` anchor in `computeWellbeing`.
  *

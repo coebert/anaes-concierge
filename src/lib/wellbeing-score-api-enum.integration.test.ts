@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 /**
  * API-level integration test for the wellbeing data pipeline.
  *

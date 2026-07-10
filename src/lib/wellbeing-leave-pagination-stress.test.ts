@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 // Pin the process timezone to UTC BEFORE any Date object is constructed
 // in this module. `Date` reads `process.env.TZ` on Node/glibc when it
 // computes local components (getHours, toDateString, toString, and the
@@ -531,4 +532,3 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     recordAndAssert("daysSinceLastAnnual", performance.now() - t0);
   });
 });
-

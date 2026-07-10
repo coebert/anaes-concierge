@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 /**
  * Enum-conformance test for the wellbeing-score engine.
  *

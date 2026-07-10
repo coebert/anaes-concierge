@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 /**
  * Regression tests for the wellbeing "leave" driver under OVERLAPPING
  * rejected/cancelled leave windows in every possible ordering.

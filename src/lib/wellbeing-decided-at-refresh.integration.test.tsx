@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 // @vitest-environment jsdom
 /**
  * End-to-end regression: cancelling or rejecting a leave request updates

@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 import { describe, expect, it } from "vitest";
 import { fetchAllPaged } from "./supabase-chunked";
 

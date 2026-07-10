@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 // @vitest-environment jsdom
 /**
  * End-to-end regression for the "wellbeing dashboards refresh immediately"

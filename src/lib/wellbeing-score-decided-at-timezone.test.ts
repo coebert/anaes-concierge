@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 /**
  * Timezone-boundary coverage for the `decided_at` anchor in
  * `computeWellbeing`.
