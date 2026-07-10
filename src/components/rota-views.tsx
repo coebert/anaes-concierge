@@ -261,6 +261,12 @@ type NhhCellModel = {
   parts: string[];
 };
 
+type NightCellModel = {
+  key: string;
+  staff: Array<{ id: string; fullName: string; grade: string | null; tag: string | null }>;
+  parts: string[];
+};
+
 const TheatreCellContent = memo(function TheatreCellContent({
   model,
 }: {
@@ -393,6 +399,49 @@ const NhhCellContent = memo(function NhhCellContent({
   );
 });
 
+const NightCellContent = memo(function NightCellContent({
+  model,
+}: {
+  model: NightCellModel;
+}) {
+  if (model.staff.length === 0) {
+    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
+  }
+  return (
+    <div className="space-y-1">
+      <Badge
+        variant="outline"
+        className="px-1 py-0 text-[9px] border-indigo-500 text-indigo-700 dark:text-indigo-300"
+      >
+        Night
+      </Badge>
+      {model.staff.map((s) => {
+        const isConsultant = s.grade === "consultant";
+        const isTrainee = s.grade === "trainee";
+        return (
+          <Link
+            key={s.id + (s.tag ?? "")}
+            to="/calendar/staff/$staffId"
+            params={{ staffId: s.id }}
+            className={cn(
+              "block truncate text-[10px] hover:underline",
+              isConsultant && "font-bold",
+              isTrainee && "text-blue-600 dark:text-blue-400",
+            )}
+          >
+            {s.tag && (
+              <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
+                {s.tag}
+              </Badge>
+            )}
+            {s.fullName}
+          </Link>
+        );
+      })}
+    </div>
+  );
+});
+
 export function GlobalWeekGrid({
   weekStart,
   days: daysProp,
@@ -508,6 +557,37 @@ export function GlobalWeekGrid({
       }>;
     },
   });
+
+  // Night on-call — separate row spanning the whole day. Covers general/ICU
+  // consultants and registrar/SHO cover for the night shift (excludes NHH,
+  // which has its own dedicated row above).
+  const nightOnCallDutyTypes = useMemo(
+    () => [
+      "general_consultant_oncall",
+      "icu_consultant_oncall",
+      "registrar_oncall",
+      "sho_oncall",
+    ] as const,
+    [],
+  );
+  const { data: nightOnCall } = useQuery({
+    queryKey: ["night-oncall", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,duty_type")
+        .in("duty_type", [...nightOnCallDutyTypes])
+        .eq("session", "night")
+        .gte("session_date", startIso).lte("session_date", endIso);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; staff_id: string; session: string; session_date: string;
+        duty_type: string;
+      }>;
+    },
+  });
+
+
 
 
   const listActive = useServerFn(listActiveStaffSafe);
@@ -766,6 +846,41 @@ export function GlobalWeekGrid({
     return cells;
   }, [days, nhhOncall, staffMap]);
 
+  const nightRow = useMemo(() => {
+    const cells: NightCellModel[] = [];
+    for (const d of days) {
+      const dayIso = iso(d);
+      const dayAssigns = (nightOnCall ?? []).filter((a) => a.session_date === dayIso);
+      const sorted = [...dayAssigns].sort(
+        (a, b) =>
+          gradeRank(staffMap.get(a.staff_id)?.grade) -
+          gradeRank(staffMap.get(b.staff_id)?.grade),
+      );
+      const seen = new Set<string>();
+      const staffList: NightCellModel["staff"] = [];
+      for (const a of sorted) {
+        const key = a.staff_id + ":" + a.duty_type;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const sp = staffMap.get(a.staff_id);
+        staffList.push({
+          id: a.staff_id,
+          fullName: sp?.full_name ?? "—",
+          grade: sp?.grade ?? null,
+          tag: dutyTag(a.duty_type),
+        });
+      }
+      cells.push({
+        key: "night-" + dayIso,
+        staff: staffList,
+        parts: staffList.map((s) => s.fullName),
+      });
+    }
+    return cells;
+  }, [days, nightOnCall, staffMap]);
+
+
+
   // Dimming helper — cheap string scan, runs per-cell on each keystroke but
   // only toggles a className on the outer <td>; memoized cell-content
   // components below skip re-rendering entirely.
@@ -888,6 +1003,27 @@ export function GlobalWeekGrid({
                   )}
                 >
                   <NhhCellContent model={c} />
+                </td>
+              ))}
+            </tr>
+            {/* Night on-call — full-day row grouping general/ICU consultant
+                and registrar/SHO night cover. NHH nights render separately
+                in the row above. */}
+            <tr className="align-top bg-indigo-500/5">
+              <td className="border-r border-t p-2 font-medium whitespace-nowrap">
+                Night on-call
+                <div className="text-[10px] text-muted-foreground">Overnight cover</div>
+              </td>
+              {nightRow.map((c) => (
+                <td
+                  key={c.key}
+                  colSpan={2}
+                  className={cn(
+                    "min-w-[110px] border-b border-t border-r p-1.5 align-top",
+                    dimClass(c.staff.length > 0, c.parts),
+                  )}
+                >
+                  <NightCellContent model={c} />
                 </td>
               ))}
             </tr>
