@@ -627,6 +627,11 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
   const b = data.bradford;
   const bandInfo = BAND_THRESHOLDS[b.band];
   const recent = data.spells.slice(0, 5);
+  // Full list of approved-sick spells that contributed to B, oldest
+  // → newest so the audit read matches how the Bradford calculation
+  // walks the window. `data.spells` from `summariseAbsence` is newest
+  // first, so we reverse a shallow copy for display.
+  const allSpells = [...data.spells].reverse();
 
   return (
     <Card>
@@ -701,6 +706,94 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
                 </li>
               ))}
             </ul>
+
+            {/*
+              Per-staff Bradford breakdown — collapsed by default so the
+              card stays compact, expanded when an admin needs to audit
+              exactly which spells drove the score. Renders directly
+              beneath the Bradford stat / recent-spells list so the
+              formula, window, filter, and every contributing spell are
+              one click away.
+            */}
+            <details
+              data-testid="bradford-breakdown"
+              className="rounded-md border border-border bg-muted/30 text-xs"
+            >
+              <summary className="cursor-pointer select-none px-2 py-1.5 font-medium text-foreground">
+                Bradford breakdown — how {b.score} was produced
+              </summary>
+              <div className="space-y-2 px-2 pb-2 pt-1">
+                <div className="tabular-nums text-muted-foreground">
+                  <span className="font-mono text-foreground">
+                    B = S² × D = {b.spellCount}² × {b.totalDays} ={" "}
+                    <span className="font-semibold">{b.score}</span>
+                  </span>
+                </div>
+                <div className="text-muted-foreground">
+                  Window: {formatDateWithWeekdayGB(b.windowStart)} →{" "}
+                  {formatDateWithWeekdayGB(b.windowEnd)} (rolling 12 months, inclusive)
+                </div>
+                <div className="text-muted-foreground">
+                  Filter: leave rows where <code>type = &quot;sick&quot;</code> AND{" "}
+                  <code>status = &quot;approved&quot;</code>. Other statuses
+                  (pending, rejected, cancelled) and non-sick leave are excluded.
+                </div>
+                <div>
+                  <div className="pb-1 font-medium text-foreground">
+                    Contributing spells ({allSpells.length})
+                  </div>
+                  <ol className="space-y-0.5">
+                    {allSpells.map((s, idx) => (
+                      <li
+                        key={`bfd-${s.id}`}
+                        data-testid="bradford-breakdown-spell"
+                        className="flex flex-wrap items-center justify-between gap-2 tabular-nums"
+                      >
+                        <span className="text-muted-foreground">
+                          <span className="inline-block w-5 text-right">{idx + 1}.</span>{" "}
+                          <span className="text-foreground">
+                            {formatDateWithWeekdayGB(s.start_date)} →{" "}
+                            {formatDateWithWeekdayGB(s.end_date)}
+                          </span>{" "}
+                          · {s.days}d
+                          {s.daysSinceLast !== null ? (
+                            <span> · {s.daysSinceLast}d since previous</span>
+                          ) : null}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-1">
+                          {s.postWeekend ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              Post-weekend
+                            </Badge>
+                          ) : null}
+                          <Badge
+                            variant={
+                              s.rtwStatus === "completed"
+                                ? "default"
+                                : s.rtwStatus === "overdue"
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                            className="text-[10px]"
+                          >
+                            RTW{" "}
+                            {s.rtwStatus === "completed"
+                              ? "done"
+                              : s.rtwStatus === "overdue"
+                                ? "overdue"
+                                : "pending"}
+                          </Badge>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="pt-1.5 text-[10px] text-muted-foreground">
+                    Totals: S = {b.spellCount} spell{b.spellCount === 1 ? "" : "s"},
+                    D = {b.totalDays}d.
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         )}
       </CardContent>
