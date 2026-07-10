@@ -176,7 +176,7 @@ describe("wellbeing score — study & compassionate leave", () => {
     ];
     const leave = await fetchLeaveForStaff(rows, staffId);
     // Both approved rows must survive pagination.
-    expect(leave.some((l) => l.id === "study-approved" || l.type === "study")).toBe(true);
+    expect(leave.some((l) => l.type === "study" && l.status === "approved")).toBe(true);
     expect(
       leave.some((l) => l.type === "compassionate" && l.status === "approved"),
     ).toBe(true);
