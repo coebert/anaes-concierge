@@ -52,7 +52,7 @@ export type WellbeingInvalidationEntry = {
 };
 
 const MAX_ENTRIES = 50;
-const entries: WellbeingInvalidationEntry[] = [];
+let entries: WellbeingInvalidationEntry[] = [];
 const listeners = new Set<() => void>();
 let nextId = 1;
 
@@ -81,8 +81,13 @@ function recordWellbeingInvalidation(
   console.debug(
     `[wellbeing] invalidate queryKey=["${key}"] reason=${label} mutation=${mutationType} ids=${formatIds(ids)} at=${at}`,
   );
-  entries.unshift({ id: nextId++, key, reason: label, mutationType, ids: [...ids], at });
-  if (entries.length > MAX_ENTRIES) entries.length = MAX_ENTRIES;
+  // Replace the array reference so `useSyncExternalStore` (which
+  // bails on Object.is-equal snapshots) actually re-renders.
+  entries = [
+    { id: nextId++, key, reason: label, mutationType, ids: [...ids], at },
+    ...entries,
+  ];
+  if (entries.length > MAX_ENTRIES) entries = entries.slice(0, MAX_ENTRIES);
   for (const l of listeners) l();
 }
 
@@ -101,6 +106,6 @@ export function subscribeWellbeingInvalidations(fn: () => void): () => void {
 
 /** Test helper: clear the buffer. */
 export function clearWellbeingInvalidations(): void {
-  entries.length = 0;
+  entries = [];
   for (const l of listeners) l();
 }
