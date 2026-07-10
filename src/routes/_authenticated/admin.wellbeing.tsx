@@ -53,6 +53,8 @@ export function AdminWellbeingPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-wellbeing"],
+    refetchOnWindowFocus: true,
+    refetchInterval: 10 * 60_000,
     queryFn: async () => {
       const yearAgo = isoDaysAgo(365);
       // Wellbeing/attrition drives sit on top of a handful of wide reads.
@@ -94,6 +96,7 @@ export function AdminWellbeingPage() {
               supabase
                 .from("rota_change_log")
                 .select("staff_id,session_date,hours_before_session")
+                .gte("session_date", yearAgo)
                 .order("session_date", { ascending: true }),
             { budget, source: "rota_change_log" },
           ),
@@ -118,11 +121,13 @@ export function AdminWellbeingPage() {
                 .order("end_date", { ascending: false }),
             { budget, source: "leave_requests" },
           ),
-          fetchAllPaged<{ trainee_id: string; event_date: string }>(
+          fetchAllPaged<{ trainee_id: string; event_date: string; status: string }>(
             () =>
               supabase
                 .from("exception_reports")
-                .select("trainee_id,event_date")
+                .select("trainee_id,event_date,status")
+                .gte("event_date", yearAgo)
+                .neq("status", "withdrawn")
                 .order("event_date", { ascending: false }),
             { budget, source: "exception_reports" },
           ),
