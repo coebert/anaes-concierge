@@ -130,8 +130,12 @@ function readEntries(): Array<{ key: string; reason: string; at: string }> {
   const rows = screen.queryAllByTestId("wellbeing-diagnostics-entry");
   return rows.map((row) => {
     const key = within(row).getByText(/^(admin-wellbeing|my-wellbeing)$/).textContent!;
-    const reasonNode = within(row).getByText(/reason:/).parentElement!;
-    const reason = reasonNode.querySelector("span")!.textContent!;
+    // The reason line is `<div>reason: <span>{reason}</span></div>` —
+    // grab the inner span directly to avoid picking up the key span.
+    const reasonLine = Array.from(row.querySelectorAll("div")).find((d) =>
+      /^reason:/.test(d.textContent ?? ""),
+    )!;
+    const reason = reasonLine.querySelector("span")!.textContent!;
     const at = row.querySelector("time")!.getAttribute("datetime")!;
     return { key, reason, at };
   });
