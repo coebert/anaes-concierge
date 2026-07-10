@@ -145,10 +145,6 @@ function renderPage() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
   });
-  // Import lazily so the vi.mock() calls above are wired up first.
-  const { AdminWellbeingPage } = require("@/routes/_authenticated/admin.wellbeing") as {
-    AdminWellbeingPage: React.ComponentType;
-  };
   return render(
     <QueryClientProvider client={qc}>
       <AdminWellbeingPage />
