@@ -101,11 +101,11 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
       c.hours_before_session >= -48,
   ).length;
 
-  // Cancelled/denied leave in window
+  // Cancelled/rejected leave in window
   const badLeave = input.leave.filter(
     (l) =>
       l.staff_id === input.staffId &&
-      (l.status === "denied" || l.status === "cancelled") &&
+      (l.status === "rejected" || l.status === "cancelled") &&
       inWin(l.start_date),
   ).length;
 
@@ -149,7 +149,7 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
     },
     {
       key: "leave",
-      label: `${badLeave} denied/cancelled leave`,
+      label: `${badLeave} rejected/cancelled leave`,
       value: badLeave,
       normalised: harmNorm(badLeave, 3),
       weight: 0.10,

@@ -18,7 +18,7 @@ import { computeWellbeing, type LeaveLite } from "@/features/wellbeing/wellbeing
  *   3. Query-count budget — `fetchAllPaged` issues `ceil(n/pageSize)`
  *      (+1 empty stop page when n is a multiple of pageSize) requests,
  *      never per-row.
- *   4. Wellbeing signals derived from those rows (denied/cancelled
+ *   4. Wellbeing signals derived from those rows (rejected/cancelled
  *      `badLeave`, days-since-last-approved for annual) match the
  *      values computed against the ground-truth dataset.
  */
@@ -73,7 +73,7 @@ function makeFakeLeaveTable(rows: Row[]) {
 /**
  * Build a large synthetic leave dataset: 200 staff, each with a mix of
  * rows across all types plus one known-recent annual spell and one
- * known-recent denied spell of the given `focusType`. Total rows are
+ * known-recent rejected spell of the given `focusType`. Total rows are
  * comfortably above db-max-rows so pagination is exercised.
  */
 function buildDataset(focusType: LeaveType) {
@@ -123,10 +123,10 @@ function buildDataset(focusType: LeaveType) {
     const denialDaysAgo = 10 + (s % 40);
     const denialEnd = isoDaysAgo(denialDaysAgo);
     rows.push({
-      id: `${staffId}-recent-${focusType}-denied`,
+      id: `${staffId}-recent-${focusType}-rejected`,
       staff_id: staffId,
       type: focusType,
-      status: "denied",
+      status: "rejected",
       start_date: isoDaysAgo(denialDaysAgo + 2),
       end_date: denialEnd,
     });
@@ -207,7 +207,7 @@ describe.each(LEAVE_TYPES)(
             id: `${staffId}-${i}`,
             staff_id: staffId,
             type: leaveType,
-            status: i % 7 === 0 ? "denied" : "approved",
+            status: i % 7 === 0 ? "rejected" : "approved",
             start_date: isoDaysAgo(200 + i),
             end_date: isoDaysAgo(200 + i),
           });
@@ -289,7 +289,7 @@ describe("paginated leave read — cross-type correctness at scale", () => {
           id: `${staffId}-recent-${type}`,
           staff_id: staffId,
           type,
-          status: type === "annual" ? "approved" : "denied",
+          status: type === "annual" ? "approved" : "rejected",
           start_date: isoDaysAgo(15 + s % 30),
           end_date: isoDaysAgo(12 + s % 30),
         });

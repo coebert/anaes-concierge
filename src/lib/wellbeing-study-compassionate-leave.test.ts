@@ -5,8 +5,8 @@ import { computeWellbeing, type LeaveLite } from "@/features/wellbeing/wellbeing
 /**
  * Regression: study and compassionate leave were only exercised indirectly
  * by the annual-leave regression suite. `computeWellbeing`'s `badLeave`
- * driver counts denied/cancelled leave of ANY type — so a denied study
- * or compassionate spell should degrade the score just like a denied
+ * driver counts rejected/cancelled leave of ANY type — so a rejected study
+ * or compassionate spell should degrade the score just like a rejected
  * annual spell. Approved study/compassionate leave, by contrast, must
  * NOT count toward `badLeave` (it isn't a wellbeing harm signal).
  *
@@ -85,15 +85,15 @@ async function fetchLeaveForStaff(rows: Row[], staffId: string): Promise<LeaveLi
 }
 
 describe("wellbeing score — study & compassionate leave", () => {
-  it("denied study leave in-window degrades the score", async () => {
+  it("rejected study leave in-window degrades the score", async () => {
     const staffId = "staff-study";
     const rows: Row[] = [
-      // Recent denied study spell — well inside the 90-day window.
+      // Recent rejected study spell — well inside the 90-day window.
       {
-        id: "study-denied-1",
+        id: "study-rejected-1",
         staff_id: staffId,
         type: "study",
-        status: "denied",
+        status: "rejected",
         start_date: isoDaysAgo(20),
         end_date: isoDaysAgo(18),
       },
@@ -107,7 +107,7 @@ describe("wellbeing score — study & compassionate leave", () => {
       now: NOW,
       assignments: [],
       changes: [],
-      leave: leave.filter((l) => l.status !== "denied"),
+      leave: leave.filter((l) => l.status !== "rejected"),
       exceptions: [],
     });
     const withDenial = computeWellbeing({
@@ -192,14 +192,14 @@ describe("wellbeing score — study & compassionate leave", () => {
     expect(result.drivers.find((d) => d.key === "leave")!.value).toBe(0);
   });
 
-  it("denied study/compassionate leave OLDER than the 90-day window is ignored", async () => {
+  it("rejected study/compassionate leave OLDER than the 90-day window is ignored", async () => {
     const staffId = "staff-old-denial";
     const rows: Row[] = [
       {
-        id: "study-denied-old",
+        id: "study-rejected-old",
         staff_id: staffId,
         type: "study",
-        status: "denied",
+        status: "rejected",
         start_date: isoDaysAgo(200),
         end_date: isoDaysAgo(199),
       },
@@ -225,7 +225,7 @@ describe("wellbeing score — study & compassionate leave", () => {
     expect(result.drivers.find((d) => d.key === "leave")!.value).toBe(0);
   });
 
-  it("multiple denied study/compassionate spells across pages all count", async () => {
+  it("multiple rejected study/compassionate spells across pages all count", async () => {
     const staffId = "staff-multi";
     // Interleave the denials with padding so the recent denials are NOT all
     // in the first raw page — the ordered pager must still surface them.
@@ -235,7 +235,7 @@ describe("wellbeing score — study & compassionate leave", () => {
         id: "d1",
         staff_id: staffId,
         type: "study",
-        status: "denied",
+        status: "rejected",
         start_date: isoDaysAgo(60),
         end_date: isoDaysAgo(59),
       },
@@ -252,7 +252,7 @@ describe("wellbeing score — study & compassionate leave", () => {
         id: "d3",
         staff_id: staffId,
         type: "study",
-        status: "denied",
+        status: "rejected",
         start_date: isoDaysAgo(20),
         end_date: isoDaysAgo(19),
       },
