@@ -31,6 +31,7 @@ import {
   type AttritionResult,
 } from "@/lib/attrition-risk";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
+import { fetchAllPaged } from "@/lib/supabase-chunked";
 
 export const Route = createFileRoute("/_authenticated/admin/wellbeing")({
   head: () => ({
@@ -54,46 +55,67 @@ function AdminWellbeingPage() {
     queryKey: ["admin-wellbeing"],
     queryFn: async () => {
       const yearAgo = isoDaysAgo(365);
-      const [profRes, assignRes, changesRes, leaveRes, exRes, rtwRes] =
+      const [profRes, assignments, changes, leave, exceptionsRaw, rtwRes] =
         await Promise.all([
           supabase
             .from("profiles")
             .select("id,full_name,email,grade,active")
             .eq("active", true),
-          supabase
-            .from("rota_assignments")
-            .select("staff_id,session_date,session")
-            .gte("session_date", yearAgo)
-            .range(0, 49999),
-          supabase
-            .from("rota_change_log")
-            .select("staff_id,session_date,hours_before_session")
-            .range(0, 19999),
-          supabase
-            .from("leave_requests")
-            .select("id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at")
-            .range(0, 19999),
-          supabase
-            .from("exception_reports")
-            .select("trainee_id,event_date")
-            .range(0, 4999),
+          // Paginate — a single wide .range() is capped at db-max-rows (1000
+          // on hosted Supabase), so unordered wide reads silently drop rows.
+          fetchAllPaged<{ staff_id: string; session_date: string; session: string }>(
+            () =>
+              supabase
+                .from("rota_assignments")
+                .select("staff_id,session_date,session")
+                .gte("session_date", yearAgo)
+                .order("session_date", { ascending: true }),
+          ),
+          fetchAllPaged<{ staff_id: string | null; session_date: string; hours_before_session: number | null }>(
+            () =>
+              supabase
+                .from("rota_change_log")
+                .select("staff_id,session_date,hours_before_session")
+                .order("session_date", { ascending: true }),
+          ),
+          fetchAllPaged<{
+            id: string;
+            staff_id: string;
+            type: string;
+            status: string;
+            start_date: string;
+            end_date: string;
+            half_day_start: string | null;
+            half_day_end: string | null;
+            created_at: string;
+            decided_at: string | null;
+          }>(() =>
+            supabase
+              .from("leave_requests")
+              .select(
+                "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+              )
+              .order("end_date", { ascending: false }),
+          ),
+          fetchAllPaged<{ trainee_id: string; event_date: string }>(() =>
+            supabase
+              .from("exception_reports")
+              .select("trainee_id,event_date")
+              .order("event_date", { ascending: false }),
+          ),
           supabase
             .from("return_to_work_interviews")
             .select("leave_request_id,conducted_at"),
         ]);
       if (profRes.error) throw profRes.error;
-      if (assignRes.error) throw assignRes.error;
-      if (changesRes.error) throw changesRes.error;
-      if (leaveRes.error) throw leaveRes.error;
-      if (exRes.error) throw exRes.error;
       if (rtwRes.error) throw rtwRes.error;
       return {
         profiles: profRes.data ?? [],
-        assignments: assignRes.data ?? [],
-        changes: changesRes.data ?? [],
-        leave: leaveRes.data ?? [],
-        exceptions: (exRes.data ?? []).map((e) => ({
-          staff_id: (e as { trainee_id: string }).trainee_id,
+        assignments,
+        changes,
+        leave,
+        exceptions: exceptionsRaw.map((e) => ({
+          staff_id: e.trainee_id,
           event_date: e.event_date,
         })),
         rtws: rtwRes.data ?? [],
