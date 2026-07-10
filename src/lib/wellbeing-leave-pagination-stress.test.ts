@@ -95,6 +95,33 @@ const HARD_TIME_LIMIT_MS = Math.round(
 // eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
+// -----------------------------------------------------------------------------
+// Deterministic pseudo-random source.
+//
+// The stress suite must be bit-for-bit repeatable across runs and CI machines
+// so a failure is a signal, not noise. Every "randomised" choice below flows
+// through `mulberry32(SEED)` — a tiny, fast, deterministic PRNG — so the same
+// SEED always yields the same rows, the same shuffle, and therefore the same
+// paginated output. Override with `LEAVE_STRESS_SEED=<int>` to reproduce a
+// reported failure with a different seed while keeping the run deterministic.
+// -----------------------------------------------------------------------------
+const RAW_SEED = Number.parseInt(process.env.LEAVE_STRESS_SEED ?? "", 10);
+const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xC0FFEE;
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// eslint-disable-next-line no-console
+console.info(`[leave-pagination-stress] seed=0x${SEED.toString(16)}`);
+
 type Row = {
   id: string;
   staff_id: string;
@@ -124,9 +151,17 @@ function makeFakeLeaveTable(rows: Row[]) {
       if (orderKey) {
         const k = orderKey;
         const dir = ascending ? 1 : -1;
-        source = source
-          .slice()
-          .sort((a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : 0) * dir);
+        source = source.slice().sort((a, b) => {
+          // Primary key: the requested column. Ties are broken by `id` so
+          // rows sharing an `end_date` still have a single, deterministic
+          // ordering — independent of V8's sort-stability implementation
+          // details or the pre-sort row order.
+          if (a[k] < b[k]) return -1 * dir;
+          if (a[k] > b[k]) return 1 * dir;
+          if (a.id < b.id) return -1;
+          if (a.id > b.id) return 1;
+          return 0;
+        });
       }
       const cappedTo = Math.min(to, from + DB_MAX_ROWS - 1);
       return { data: source.slice(from, cappedTo + 1), error: null };
@@ -138,7 +173,7 @@ function makeFakeLeaveTable(rows: Row[]) {
   return api;
 }
 
-function generateLeaveRows(staffCount: number, rowsPerStaff: number): Row[] {
+function generateLeaveRows(staffCount: number, rowsPerStaff: number, seed = SEED): Row[] {
   const rows: Row[] = [];
   const types = ["annual", "sick", "study", "parental"] as const;
   const base = new Date("2020-01-01T00:00:00Z").getTime();
@@ -158,10 +193,12 @@ function generateLeaveRows(staffCount: number, rowsPerStaff: number): Row[] {
       });
     }
   }
-  // Shuffle deterministically so the raw table order does NOT match the
-  // requested `.order('end_date')` — proves the pager honours ordering.
+  // Seeded Fisher–Yates shuffle so the raw table order does NOT match the
+  // requested `.order('end_date')` — proves the pager honours ordering — but
+  // is still fully reproducible from `SEED`.
+  const rand = mulberry32(seed);
   for (let i = rows.length - 1; i > 0; i--) {
-    const j = (i * 2654435761) % (i + 1); // Knuth multiplicative hash → deterministic
+    const j = Math.floor(rand() * (i + 1));
     const tmp = rows[i]!;
     rows[i] = rows[j]!;
     rows[j] = tmp;
