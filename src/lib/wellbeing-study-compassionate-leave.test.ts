@@ -44,7 +44,7 @@ function makeFakeLeaveTable(rows: Row[]) {
         const dir = ascending ? 1 : -1;
         source = source
           .slice()
-          .sort((a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : 0) * dir);
+          .sort((a, b) => (((a[k] ?? "") < (b[k] ?? "")) ? -1 : ((a[k] ?? "") > (b[k] ?? "")) ? 1 : 0) * dir);
       }
       const cappedTo = Math.min(to, from + DB_MAX_ROWS - 1);
       return { data: source.slice(from, cappedTo + 1), error: null };
