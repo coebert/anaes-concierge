@@ -173,7 +173,7 @@ describe(
             .update({ status: "cancelled" })
             .eq("id", id);
           if (error) throw error;
-          invalidateWellbeing(qc, "leave.cancel");
+          invalidateWellbeing(qc, "leave.cancel", { ids: [id] });
         };
 
         await cancelLeave(LEAVE_REQUEST_ID);
