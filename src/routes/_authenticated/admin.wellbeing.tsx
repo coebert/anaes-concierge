@@ -330,6 +330,8 @@ export function AdminWellbeingPage() {
           )}
         </CardContent>
       </Card>
+
+      <WellbeingMetricGuide showAttrition />
     </div>
   );
 }
