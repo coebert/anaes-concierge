@@ -45,16 +45,28 @@ function daysSince(iso: string): number {
   return Math.floor((TODAY.getTime() - new Date(iso).getTime()) / DAY_MS);
 }
 
+type OrderCall = { key: keyof Row; ascending: boolean };
+
 function makeFakeTable(rows: Row[]) {
   let orderKey: keyof Row | null = null;
   let ascending = true;
+  const orderCalls: OrderCall[] = [];
+  const rangeCalls: Array<{ from: number; to: number; orderedBy: OrderCall | null }> = [];
   const build = {
+    orderCalls,
+    rangeCalls,
     order(key: keyof Row, opts: { ascending: boolean }) {
       orderKey = key;
       ascending = opts.ascending;
+      orderCalls.push({ key, ascending: opts.ascending });
       return build;
     },
     async range(from: number, to: number) {
+      rangeCalls.push({
+        from,
+        to,
+        orderedBy: orderKey ? { key: orderKey, ascending } : null,
+      });
       const source = rows.slice();
       if (orderKey) {
         const k = orderKey;
