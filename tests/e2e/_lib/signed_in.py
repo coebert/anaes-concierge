@@ -50,6 +50,15 @@ from playwright.async_api import (
     Route,
 )
 
+# Side-effect import: pins the Python process to UTC and raises loudly
+# if the pin didn't stick. Every spec that funnels through
+# `signed_in_context` inherits this guard for free.
+from _lib.assert_utc import (  # noqa: F401  (imported for side effect + re-export)
+    PLAYWRIGHT_TIMEZONE_ID,
+    assert_browser_tz_utc,
+    ensure_utc,
+)
+
 BASE_URL = "http://localhost:8080"
 
 # Must match VITE_SUPABASE_URL. The auth-storage key format is
