@@ -40,6 +40,7 @@ export interface LeaveLite {
   type: string;
   start_date: string;
   end_date: string;
+  decided_at?: string | null;
 }
 
 export interface ExceptionReportLite {
@@ -101,13 +102,16 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
       c.hours_before_session >= -48,
   ).length;
 
-  // Cancelled/rejected leave in window
-  const badLeave = input.leave.filter(
-    (l) =>
-      l.staff_id === input.staffId &&
-      (l.status === "rejected" || l.status === "cancelled") &&
-      inWin(l.start_date),
-  ).length;
+  // Cancelled/rejected leave in window. Anchor the "when" on decided_at when
+  // present (the rejection/cancellation event date is what actually affects
+  // wellbeing), and fall back to start_date when the row lacks a decision
+  // timestamp (older data, cancellations that predate decided_at).
+  const badLeave = input.leave.filter((l) => {
+    if (l.staff_id !== input.staffId) return false;
+    if (l.status !== "rejected" && l.status !== "cancelled") return false;
+    const anchor = l.decided_at ? l.decided_at.slice(0, 10) : l.start_date;
+    return inWin(anchor);
+  }).length;
 
   const exceptionsInWin = input.exceptions.filter(
     (e) => e.staff_id === input.staffId && inWin(e.event_date),
@@ -156,7 +160,7 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
     },
     {
       key: "exceptions",
-      label: `${exceptionsInWin} exception reports`,
+      label: `${exceptionsInWin} trainee exception reports`,
       value: exceptionsInWin,
       normalised: harmNorm(exceptionsInWin, 4),
       weight: 0.10,
