@@ -399,6 +399,49 @@ const NhhCellContent = memo(function NhhCellContent({
   );
 });
 
+const NightCellContent = memo(function NightCellContent({
+  model,
+}: {
+  model: NightCellModel;
+}) {
+  if (model.staff.length === 0) {
+    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
+  }
+  return (
+    <div className="space-y-1">
+      <Badge
+        variant="outline"
+        className="px-1 py-0 text-[9px] border-indigo-500 text-indigo-700 dark:text-indigo-300"
+      >
+        Night
+      </Badge>
+      {model.staff.map((s) => {
+        const isConsultant = s.grade === "consultant";
+        const isTrainee = s.grade === "trainee";
+        return (
+          <Link
+            key={s.id + (s.tag ?? "")}
+            to="/calendar/staff/$staffId"
+            params={{ staffId: s.id }}
+            className={cn(
+              "block truncate text-[10px] hover:underline",
+              isConsultant && "font-bold",
+              isTrainee && "text-blue-600 dark:text-blue-400",
+            )}
+          >
+            {s.tag && (
+              <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
+                {s.tag}
+              </Badge>
+            )}
+            {s.fullName}
+          </Link>
+        );
+      })}
+    </div>
+  );
+});
+
 export function GlobalWeekGrid({
   weekStart,
   days: daysProp,
