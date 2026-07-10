@@ -173,7 +173,7 @@ afterEach(() => {
 describe("AdminWellbeingPage — study & compassionate leave integration", () => {
   it("uses paginated, end_date-ordered reads for leave_requests and surfaces recent study/compassionate denials in the rendered score", async () => {
     // Two staff so the page can rank them worst-first:
-    //   - Dr Study — has a denied study spell 15 days ago (in the 90-day window)
+    //   - Dr Study — has a rejected study spell 15 days ago (in the 90-day window)
     //   - Dr Compassionate — has a cancelled compassionate spell 20 days ago
     // Padding rows push the table past the 1,000-row db-max-rows cap so a
     // single unordered .range() would silently drop the recent denials.
@@ -184,10 +184,10 @@ describe("AdminWellbeingPage — study & compassionate leave integration", () =>
 
     const leave: Row[] = [
       {
-        id: "l-study-denied",
+        id: "l-study-rejected",
         staff_id: "s-study",
         type: "study",
-        status: "denied",
+        status: "rejected",
         start_date: isoDaysAgo(16),
         end_date: isoDaysAgo(15),
         half_day_start: null,
@@ -264,7 +264,7 @@ describe("AdminWellbeingPage — study & compassionate leave integration", () =>
 
     // --- Assertion 3: both denials reach the rendered score. ---
     // The page renders the score in the same TableRow as the staff name.
-    // A denied study/compassionate spell inside the 90-day window bumps the
+    // A rejected study/compassionate spell inside the 90-day window bumps the
     // `leave` driver, so score < 100.
     const studyRow = screen.getByText("Dr Study").closest("tr")!;
     const compRow = screen.getByText("Dr Compassionate").closest("tr")!;

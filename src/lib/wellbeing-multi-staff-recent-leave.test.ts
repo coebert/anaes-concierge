@@ -32,7 +32,7 @@ type Row = {
   staff_id: string;
   staff_name: string;
   type: LeaveType | "sick";
-  status: "approved" | "rejected" | "pending" | "denied" | "cancelled";
+  status: "approved" | "rejected" | "pending" | "cancelled";
   start_date: string;
   end_date: string;
 };
@@ -150,7 +150,7 @@ function buildFixture() {
       staff_id: s.id,
       staff_name: s.name,
       type: s.type,
-      status: "denied",
+      status: "rejected",
       start_date: isoDaysAgo(4),
       end_date: isoDaysAgo(2),
     });
@@ -209,7 +209,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       expect(daysSince(last!.end_date)).toBeLessThan(90);
     }
 
-    // Score contribution: the in-window denied spell for each staff (2 days ago,
+    // Score contribution: the in-window rejected spell for each staff (2 days ago,
     // hidden behind the row cap) must now flow into computeWellbeing via the
     // `leave` driver. Compare against a "legacy view" — the same fetched set
     // with each staff's recent rows stripped — to prove the paginated dates
@@ -249,18 +249,18 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       const paginatedLeaveDriver = paginatedScore.drivers.find((d) => d.key === "leave")!;
       const legacyLeaveDriver = legacyScore.drivers.find((d) => d.key === "leave")!;
 
-      // The fixture plants exactly ONE in-window denied row per staff (2 days
+      // The fixture plants exactly ONE in-window rejected row per staff (2 days
       // ago). Pin the driver to that specific row — value, normalised harm
       // (1 / cap 3), weight (0.10), and the resulting composite score.
-      const deniedRowsInWindow = paginatedLeave.filter(
+      const rejectedRowsInWindow = paginatedLeave.filter(
         (l) =>
-          (l.status === "denied" || l.status === "cancelled") &&
+          (l.status === "rejected" || l.status === "cancelled") &&
           daysSince(l.start_date) <= 90 &&
           daysSince(l.start_date) >= 0,
       );
-      expect(deniedRowsInWindow).toHaveLength(1);
-      expect(deniedRowsInWindow[0].start_date).toBe(isoDaysAgo(4));
-      expect(deniedRowsInWindow[0].end_date).toBe(isoDaysAgo(2));
+      expect(rejectedRowsInWindow).toHaveLength(1);
+      expect(rejectedRowsInWindow[0].start_date).toBe(isoDaysAgo(4));
+      expect(rejectedRowsInWindow[0].end_date).toBe(isoDaysAgo(2));
 
       expect(paginatedLeaveDriver.value).toBe(1);
       expect(paginatedLeaveDriver.normalised).toBeCloseTo(1 / 3, 10);
@@ -291,7 +291,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       expect(last!.end_date).toBe(isoDaysAgo(s.staleEnd));
       expect(daysSince(last!.end_date)).toBeGreaterThan(300);
 
-      // And the truncated slice has zero in-window denied spells for this
+      // And the truncated slice has zero in-window rejected spells for this
       // staff — so the wellbeing `leave` driver stays flat at 0, understating
       // the real harm.
       const legacyLeave: LeaveLite[] = data
@@ -347,7 +347,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
   });
 
   it("handles leave rows on the 90-day window boundary — inclusive at day 90, exclusive at day 91", async () => {
-    // Small dedicated fixture: one staff, four denied spells straddling the
+    // Small dedicated fixture: one staff, four rejected spells straddling the
     // window edge, plus filler to still exercise pagination through the cap.
     const STAFF = { id: "staff-boundary", name: "Dr Boundary" };
     const rows: Row[] = [];
@@ -359,7 +359,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       staff_id: STAFF.id,
       staff_name: STAFF.name,
       type: "annual",
-      status: "denied",
+      status: "rejected",
       start_date: isoDaysAgo(90),
       end_date: isoDaysAgo(85),
     });
@@ -368,7 +368,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       staff_id: STAFF.id,
       staff_name: STAFF.name,
       type: "annual",
-      status: "denied",
+      status: "rejected",
       start_date: isoDaysAgo(91),
       end_date: isoDaysAgo(86),
     });
@@ -387,7 +387,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       staff_id: STAFF.id,
       staff_name: STAFF.name,
       type: "annual",
-      status: "denied",
+      status: "rejected",
       start_date: isoDaysAgo(89),
       end_date: isoDaysAgo(100),
     });
@@ -420,9 +420,9 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     const staffRows = fetched.filter((r) => r.staff_id === STAFF.id);
     expect(staffRows.map((r) => r.end_date)).toEqual([
       isoDaysAgo(0), // cancelled today
-      isoDaysAgo(85), // denied, day-90 boundary
-      isoDaysAgo(86), // denied, day-91 (out of window but still returned)
-      isoDaysAgo(100), // denied with start=89 (in-window) but end=100
+      isoDaysAgo(85), // rejected, day-90 boundary
+      isoDaysAgo(86), // rejected, day-91 (out of window but still returned)
+      isoDaysAgo(100), // rejected with start=89 (in-window) but end=100
     ]);
 
     // Score contribution: three of the four rows are in-window bad leave
