@@ -45,16 +45,28 @@ function daysSince(iso: string): number {
   return Math.floor((TODAY.getTime() - new Date(iso).getTime()) / DAY_MS);
 }
 
+type OrderCall = { key: keyof Row; ascending: boolean };
+
 function makeFakeTable(rows: Row[]) {
   let orderKey: keyof Row | null = null;
   let ascending = true;
+  const orderCalls: OrderCall[] = [];
+  const rangeCalls: Array<{ from: number; to: number; orderedBy: OrderCall | null }> = [];
   const build = {
+    orderCalls,
+    rangeCalls,
     order(key: keyof Row, opts: { ascending: boolean }) {
       orderKey = key;
       ascending = opts.ascending;
+      orderCalls.push({ key, ascending: opts.ascending });
       return build;
     },
     async range(from: number, to: number) {
+      rangeCalls.push({
+        from,
+        to,
+        orderedBy: orderKey ? { key: orderKey, ascending } : null,
+      });
       const source = rows.slice();
       if (orderKey) {
         const k = orderKey;
@@ -173,6 +185,21 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     );
     expect(fetched.length).toBe(rows.length);
 
+    // Every `.range(...)` call must have been preceded by a consistent
+    // `.order('end_date', { ascending: false })` — no page can slip through
+    // unordered, and no page may switch key or direction mid-scan. This is
+    // what makes the pagination result deterministic across the row cap.
+    expect(table.rangeCalls.length).toBeGreaterThan(1);
+    for (const call of table.rangeCalls) {
+      expect(call.orderedBy).not.toBeNull();
+      expect(call.orderedBy!.key).toBe("end_date");
+      expect(call.orderedBy!.ascending).toBe(false);
+    }
+    for (const call of table.orderCalls) {
+      expect(call.key).toBe("end_date");
+      expect(call.ascending).toBe(false);
+    }
+
     for (const s of staff) {
       const last = lastApproved(s.id, s.type, fetched);
       expect(last, `no recent ${s.type} for ${s.name}`).not.toBeNull();
@@ -222,12 +249,29 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       const paginatedLeaveDriver = paginatedScore.drivers.find((d) => d.key === "leave")!;
       const legacyLeaveDriver = legacyScore.drivers.find((d) => d.key === "leave")!;
 
-      // Paginated view sees the denied spell → leave driver > 0.
-      expect(paginatedLeaveDriver.value).toBeGreaterThanOrEqual(1);
+      // The fixture plants exactly ONE in-window denied row per staff (2 days
+      // ago). Pin the driver to that specific row — value, normalised harm
+      // (1 / cap 3), weight (0.10), and the resulting composite score.
+      const deniedRowsInWindow = paginatedLeave.filter(
+        (l) =>
+          (l.status === "denied" || l.status === "cancelled") &&
+          daysSince(l.start_date) <= 90 &&
+          daysSince(l.start_date) >= 0,
+      );
+      expect(deniedRowsInWindow).toHaveLength(1);
+      expect(deniedRowsInWindow[0].start_date).toBe(isoDaysAgo(4));
+      expect(deniedRowsInWindow[0].end_date).toBe(isoDaysAgo(2));
+
+      expect(paginatedLeaveDriver.value).toBe(1);
+      expect(paginatedLeaveDriver.normalised).toBeCloseTo(1 / 3, 10);
+      expect(paginatedLeaveDriver.weight).toBe(0.1);
       // Legacy view misses it → leave driver stays at 0.
       expect(legacyLeaveDriver.value).toBe(0);
-      // And that difference propagates to the composite score.
-      expect(paginatedScore.score).toBeLessThan(legacyScore.score);
+      expect(legacyLeaveDriver.normalised).toBe(0);
+      // Exact composite delta: the only driver that changed is `leave`, so
+      // paginatedScore = round(legacyHarmMinus100 - 100 * (1/3) * 0.10).
+      const expectedDelta = Math.round(100 * (1 / 3) * 0.1);
+      expect(legacyScore.score - paginatedScore.score).toBe(expectedDelta);
     }
   });
 
