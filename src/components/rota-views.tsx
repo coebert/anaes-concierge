@@ -558,6 +558,37 @@ export function GlobalWeekGrid({
     },
   });
 
+  // Night on-call — separate row spanning the whole day. Covers general/ICU
+  // consultants and registrar/SHO cover for the night shift (excludes NHH,
+  // which has its own dedicated row above).
+  const nightOnCallDutyTypes = useMemo(
+    () => [
+      "general_consultant_oncall",
+      "icu_consultant_oncall",
+      "registrar_oncall",
+      "sho_oncall",
+    ] as const,
+    [],
+  );
+  const { data: nightOnCall } = useQuery({
+    queryKey: ["night-oncall", startIso, endIso],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rota_assignments")
+        .select("id,staff_id,session,session_date,duty_type")
+        .in("duty_type", [...nightOnCallDutyTypes])
+        .eq("session", "night")
+        .gte("session_date", startIso).lte("session_date", endIso);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; staff_id: string; session: string; session_date: string;
+        duty_type: string;
+      }>;
+    },
+  });
+
+
+
 
   const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
