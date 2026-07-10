@@ -12,7 +12,7 @@ import { AlertTriangle, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useQueryClient } from "@tanstack/react-query";
-import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
+import { optimisticUpdateLeaveStatus } from "@/features/leave/optimistic-cancel-leave";
 import { computeLeaveConflicts, type LeaveConflict } from "@/features/leave/leave-utils";
 import {
   computeStudyBudget,
