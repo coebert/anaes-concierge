@@ -313,6 +313,7 @@ describe(
         state.leaveRows = [pendingRow()];
         const { qc } = renderPage();
         await waitForInitialLoad(qc);
+        const unrelated = await primeUnrelated(qc);
         expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
 
         // Reject flow: status → rejected, DB stamps decided_at at end of
@@ -328,11 +329,15 @@ describe(
           }),
         ];
         await act(async () => {
-          await qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
+          invalidateWellbeing(qc, "test.leave.reject");
+          await qc.getQueryCache().find({ queryKey: ["my-wellbeing"] })
+            ?.fetch();
         });
         await waitFor(() => {
           expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
         });
+        unrelated.expectUnrelatedUntouched();
+        unrelated.dispose();
       },
     );
 
