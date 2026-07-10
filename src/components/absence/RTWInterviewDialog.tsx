@@ -70,7 +70,7 @@ export function RTWInterviewDialog({
       return;
     }
     toast.success("Return-to-Work interview recorded.");
-    invalidateWellbeing(qc);
+    invalidateWellbeing(qc, "rtw.save");
     onOpenChange(false);
     onSaved();
   };

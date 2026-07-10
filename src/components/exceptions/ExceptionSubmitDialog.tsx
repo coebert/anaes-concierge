@@ -228,7 +228,7 @@ export function ExceptionSubmitDialog({
         ? "Exception submitted — flagged for same-day Guardian response."
         : "Exception submitted. You'll hear back within 7 days.",
     );
-    invalidateWellbeing(qc);
+    invalidateWellbeing(qc, immediate ? "exception.submit:immediate" : "exception.submit");
     reset();
     onOpenChange(false);
     onSubmitted();
