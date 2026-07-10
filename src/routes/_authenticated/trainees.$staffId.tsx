@@ -474,7 +474,7 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
     queryFn: async () => {
       const data = await fetchAllPaged<{
         id: string;
-        status: ExceptionStatus;
+        status: string;
         category: string;
         event_date: string;
         immediate_safety_concern: boolean;
@@ -488,7 +488,16 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
           .eq("trainee_id", staffId)
           .order("created_at", { ascending: false }),
       );
-      return data;
+      return data as Array<{
+        id: string;
+        status: ExceptionStatus;
+        category: string;
+        event_date: string;
+        immediate_safety_concern: boolean;
+        due_by: string;
+        resolved_at: string | null;
+        created_at: string;
+      }>;
     },
   });
 
