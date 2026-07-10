@@ -39,6 +39,7 @@ export function RTWInterviewDialog({
   staffName?: string | null;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
 
   const [conductedAt, setConductedAt] = useState(today);
@@ -69,6 +70,7 @@ export function RTWInterviewDialog({
       return;
     }
     toast.success("Return-to-Work interview recorded.");
+    invalidateWellbeing(qc);
     onOpenChange(false);
     onSaved();
   };

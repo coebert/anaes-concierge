@@ -70,6 +70,7 @@ export function ExceptionSubmitDialog({
   onSubmitted: () => void;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
 
   const [eventDate, setEventDate] = useState(today);
@@ -227,6 +228,7 @@ export function ExceptionSubmitDialog({
         ? "Exception submitted — flagged for same-day Guardian response."
         : "Exception submitted. You'll hear back within 7 days.",
     );
+    invalidateWellbeing(qc);
     reset();
     onOpenChange(false);
     onSubmitted();

@@ -49,6 +49,7 @@ export function ExceptionCard({
   onChange: () => void;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentBody, setCommentBody] = useState("");
@@ -147,6 +148,7 @@ export function ExceptionCard({
       return;
     }
     toast.success(`Marked ${STATUS_LABEL[next].toLowerCase()}`);
+    invalidateWellbeing(qc);
     onChange();
   };
 
@@ -162,6 +164,7 @@ export function ExceptionCard({
       toast.error(error.message);
       return;
     }
+    invalidateWellbeing(qc);
     onChange();
   };
 
