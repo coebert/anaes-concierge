@@ -304,23 +304,30 @@ describe("wellbeing page — leave-driver label uses normalised decided_at day",
   );
 
   it(
-    "day-normalises the inclusive 90-day boundary — a boundary-day row " +
-      "counts at any hh:mm:ss, a day-before-boundary row never does",
+    "day-normalises the 90-day window — an in-window day counts at any " +
+      "hh:mm:ss, an out-of-window day never does even at 23:59:59Z",
     async () => {
-      // On-boundary: any time-of-day must be included.
       state.leaveRows = [
-        makeRow("boundary-midnight", {
+        // In-window day, at both extremes of the UTC day.
+        makeRow("in-midnight", {
           status: "rejected",
-          decided_at: `${BOUNDARY_DAY}T00:00:00Z`,
+          start_date: NEAR_WINDOW_START_DAY,
+          end_date: NEAR_WINDOW_START_DAY,
+          decided_at: `${NEAR_WINDOW_START_DAY}T00:00:00Z`,
         }),
-        makeRow("boundary-late", {
+        makeRow("in-late", {
           status: "cancelled",
-          decided_at: `${BOUNDARY_DAY}T23:30:00Z`,
+          start_date: NEAR_WINDOW_START_DAY,
+          end_date: NEAR_WINDOW_START_DAY,
+          decided_at: `${NEAR_WINDOW_START_DAY}T23:30:00Z`,
         }),
-        // Before-boundary: even at 23:59:59Z the day is out of window.
-        makeRow("before-boundary", {
+        // Out-of-window day: even at 23:59:59Z the day is outside the
+        // window, so the row must not count.
+        makeRow("outside", {
           status: "rejected",
-          decided_at: `${BEFORE_BOUNDARY_DAY}T23:59:59Z`,
+          start_date: OUTSIDE_WINDOW_DAY,
+          end_date: OUTSIDE_WINDOW_DAY,
+          decided_at: `${OUTSIDE_WINDOW_DAY}T23:59:59Z`,
         }),
       ];
 
@@ -332,7 +339,7 @@ describe("wellbeing page — leave-driver label uses normalised decided_at day",
         leave: toLeaveLite(state.leaveRows),
         exceptions: [],
       });
-      // Reference contract: exactly the two boundary-day rows count.
+      // Reference contract: exactly the two in-window-day rows count.
       expect(reference.drivers.find((d) => d.key === "leave")!.value).toBe(2);
 
       const { qc } = renderWithClient(<WellbeingPage />);
