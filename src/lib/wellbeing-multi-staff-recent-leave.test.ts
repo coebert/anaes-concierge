@@ -32,7 +32,7 @@ type Row = {
   staff_id: string;
   staff_name: string;
   type: LeaveType | "sick";
-  status: "approved" | "rejected" | "pending" | "rejected" | "cancelled";
+  status: "approved" | "rejected" | "pending" | "cancelled";
   start_date: string;
   end_date: string;
 };
