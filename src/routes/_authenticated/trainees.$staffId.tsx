@@ -89,15 +89,27 @@ function TraineeDetailPage() {
           (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[],
         ),
       );
-      const [{ profile, supervisors: sups }, { data: ts }] = await Promise.all([
+      const [{ profile, supervisors: sups }, ts] = await Promise.all([
         fetchProfile({ data: { staffId, supervisorIds: supIds } }),
         tsIds.length
-          ? supabase
-              .from("theatre_sessions")
-              .select("id,specialty_id,surgical_consultant,theatre_id")
-              .in("id", tsIds)
-              .range(0, 9999)
-          : Promise.resolve({ data: [] as any[] }),
+          ? fetchAllPaged<{
+              id: string;
+              specialty_id: string | null;
+              surgical_consultant: string | null;
+              theatre_id: string | null;
+            }>(() =>
+              supabase
+                .from("theatre_sessions")
+                .select("id,specialty_id,surgical_consultant,theatre_id")
+                .in("id", tsIds)
+                .order("id", { ascending: true }),
+            )
+          : Promise.resolve([] as Array<{
+              id: string;
+              specialty_id: string | null;
+              surgical_consultant: string | null;
+              theatre_id: string | null;
+            }>),
       ]);
       const theatreIds = Array.from(new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean)));
       const { data: theatres } = theatreIds.length
@@ -110,16 +122,18 @@ function TraineeDetailPage() {
       // overview's solo/supervised counts and curriculum-progress percentages.
       const supervisorSessionIds = new Set<string>();
       if (tsIds.length) {
-        const { data: tsAssigns, error: e6 } = await supabase
-          .from("rota_assignments")
-          .select(
-            "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
-          )
-          .in("theatre_session_id", tsIds)
-          .in("profiles.grade", ["consultant", "sas"])
-          .range(0, 9999);
-        if (e6) throw e6;
-        for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
+        const tsAssigns = await fetchAllPaged<{ theatre_session_id: string | null }>(
+          () =>
+            supabase
+              .from("rota_assignments")
+              .select(
+                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              )
+              .in("theatre_session_id", tsIds)
+              .in("profiles.grade", ["consultant", "sas"])
+              .order("theatre_session_id", { ascending: true }),
+        );
+        for (const r of tsAssigns) {
           if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
         }
       }
