@@ -174,10 +174,10 @@ function expectedRangeCalls(rows: number, pageSize: number): number {
   return Math.floor(rows / pageSize) + (rows % pageSize === 0 ? 1 : Math.ceil((rows % pageSize) / pageSize));
 }
 
-// Any single test must be allowed to run for the profile's full time budget
-// plus generous CI cold-start headroom. Vitest's default 5s would kill large
-// profile runs before assertions fire.
-const TEST_TIMEOUT_MS = PROFILE.timeBudgetMs + 30_000;
+// Any single test must be allowed to run for the profile's hard time limit
+// (budget + overrun threshold) plus generous CI cold-start headroom. Vitest's
+// default 5s would kill large profile runs before assertions fire.
+const TEST_TIMEOUT_MS = HARD_TIME_LIMIT_MS + 30_000;
 
 describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
   it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
