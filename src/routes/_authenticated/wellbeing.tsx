@@ -63,13 +63,6 @@ function WellbeingPage() {
                 .eq("staff_id", user!.id)
                 .order("session_date", { ascending: true }),
           ),
-            () =>
-              supabase
-                .from("rota_change_log")
-                .select("staff_id,session_date,hours_before_session")
-                .eq("staff_id", user!.id)
-                .order("session_date", { ascending: true }),
-          ),
           fetchAllPaged<{
             staff_id: string;
             type: string;
