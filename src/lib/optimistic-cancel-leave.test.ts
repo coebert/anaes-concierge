@@ -155,7 +155,7 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
     expect(calls).toEqual([
       {
         table: "leave_requests",
-        patch: { status: "cancelled", decided_at: NOW().toISOString() },
+        patch: { status: "cancelled", decided_at: NOW.toISOString() },
         id: LEAVE_ID,
       },
     ]);
