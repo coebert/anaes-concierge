@@ -48,11 +48,11 @@ jobs:
       - run: bun run test
 
   stress-tests:
-    # Large-dataset pagination stress test. Runs on pushes to `main` and can
-    # be dispatched manually from the Actions tab. Catches performance
+    # Large-dataset pagination stress test. Runs on pushes to `main`, on the
+    # nightly schedule, and can be dispatched manually. Catches performance
     # regressions (O(n^2) sorts, per-row fetches, memory blow-ups) that the
     # default `small` profile is too small to expose.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
