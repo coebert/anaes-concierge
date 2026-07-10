@@ -64,7 +64,14 @@ dominant-location-per-half-session logic, the regularity threshold (\`minRecurre
 consultants/SAS — that on-call/SAG/SPA days come from the consultant-pattern calculation over the
 same window. Use the \`assumptions\` field returned by the tool verbatim as your source of truth for
 these caveats, and surface them whenever the user asks how a pattern was worked out, why a cell is
-blank, or how confident the summary is.`;
+blank, or how confident the summary is.
+
+WELLBEING SCORE: For any question about the user's wellbeing, burnout risk, score, drivers,
+attrition risk, or "why did my score change after withdrawing an exception?", call
+\`get_my_wellbeing_score\`. It runs the same engine as the app's Wellbeing page and excludes
+withdrawn exception reports, so updating or withdrawing an exception recalculates the score
+and the driver mapping on the next call. Cite the returned \`score\`, \`band_label\`, and top
+drivers by their \`label\` when answering; do not guess a score without calling the tool.`;
 
 
 
