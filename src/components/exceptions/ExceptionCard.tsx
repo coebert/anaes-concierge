@@ -148,7 +148,7 @@ export function ExceptionCard({
       return;
     }
     toast.success(`Marked ${STATUS_LABEL[next].toLowerCase()}`);
-    invalidateWellbeing(qc, `exception.status:${next}`);
+    invalidateWellbeing(qc, `exception.status:${next}`, { ids: [report.id] });
     onChange();
   };
 
@@ -164,7 +164,7 @@ export function ExceptionCard({
       toast.error(error.message);
       return;
     }
-    invalidateWellbeing(qc, "exception.withdraw");
+    invalidateWellbeing(qc, "exception.withdraw", { ids: [report.id] });
     onChange();
   };
 
