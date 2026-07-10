@@ -34,11 +34,11 @@ export const Route = createFileRoute("/_authenticated/wellbeing")({
   component: WellbeingPage,
 });
 
-function WellbeingPage() {
+export function WellbeingPage() {
   const { user } = useAuth();
   const [pulseOpen, setPulseOpen] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     enabled: !!user,
     queryKey: ["my-wellbeing", user?.id],
     refetchOnWindowFocus: true,
@@ -160,10 +160,46 @@ function WellbeingPage() {
     });
   }, [data, user]);
 
-  if (isLoading || !wellbeing) return <PageLoading />;
+  const refetching = isFetching && !isLoading;
+  const errorMessage =
+    isError && error instanceof Error
+      ? error.message
+      : isError
+        ? "Failed to load wellbeing data."
+        : null;
+
+  // Show the error banner even before the first successful load so a
+  // failing mutation-triggered refetch is never silently swallowed.
+  if (isLoading || !wellbeing) {
+    return (
+      <div className="space-y-6">
+        {errorMessage ? (
+          <div
+            data-testid="wellbeing-error"
+            role="alert"
+            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            Wellbeing update failed: {errorMessage}
+          </div>
+        ) : null}
+        {refetching ? (
+          <div
+            data-testid="wellbeing-refetching"
+            role="status"
+            aria-live="polite"
+            className="rounded-md border border-muted bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          >
+            Refreshing your wellbeing score…
+          </div>
+        ) : null}
+        <PageLoading />
+      </div>
+    );
+  }
 
   const alreadyResponded =
     data?.openCycle && data.respondedCycleIds.has(data.openCycle.id);
+
 
   return (
     <div className="space-y-6">
@@ -171,6 +207,28 @@ function WellbeingPage() {
         title="My wellbeing"
         description="A private snapshot combining your rota load, unsocial hours, short-notice changes, leave and sickness signals. Only you and admins can see this page."
       />
+
+      {errorMessage ? (
+        <div
+          data-testid="wellbeing-error"
+          role="alert"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          Wellbeing update failed: {errorMessage}
+        </div>
+      ) : null}
+      {refetching ? (
+        <div
+          data-testid="wellbeing-refetching"
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-muted bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+        >
+          Refreshing your wellbeing score…
+        </div>
+      ) : null}
+
+
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
