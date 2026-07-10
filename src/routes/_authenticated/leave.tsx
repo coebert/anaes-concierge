@@ -126,7 +126,9 @@ function LeavePage() {
   const cancel = async (id: string) => {
     const result = await optimisticCancelLeave({
       id,
-      supabase,
+      // Supabase's generated typings are deeply generic; the helper only
+      // needs the minimal `.from().update().eq()` surface it declares.
+      supabase: supabase as unknown as Parameters<typeof optimisticCancelLeave>[0]["supabase"],
       qc,
       patchRows: (u) => setRows((prev) => u(prev)),
       patchMyLeave: (u) => setMyLeave((prev) => u(prev)),
