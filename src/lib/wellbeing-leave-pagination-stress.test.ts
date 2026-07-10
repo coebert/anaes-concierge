@@ -166,7 +166,7 @@ function expectedRangeCalls(rows: number, pageSize: number): number {
 const TEST_TIMEOUT_MS = PROFILE.timeBudgetMs + 30_000;
 
 describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
-  it("returns every row in deterministic end_date-desc order", async () => {
+  it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
     const { staff, perStaff } = PROFILE.scenarioA;
     const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
@@ -183,7 +183,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     expect(new Set(out.map((r) => r.id))).toEqual(new Set(rows.map((r) => r.id)));
   });
 
-  it("issues exactly ceil(rows/pageSize) requests, never per-row", async () => {
+  it("issues exactly ceil(rows/pageSize) requests, never per-row", { timeout: TEST_TIMEOUT_MS }, async () => {
     const { staff, perStaff } = PROFILE.scenarioA;
     const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
@@ -195,7 +195,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     expect(table.rangeCalls).toBeLessThan(rows.length);
   });
 
-  it("keeps request count bounded when a staff filter is applied", async () => {
+  it("keeps request count bounded when a staff filter is applied", { timeout: TEST_TIMEOUT_MS }, async () => {
     const { staff, perStaff } = PROFILE.scenarioB;
     const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
@@ -239,7 +239,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     PROFILE.timeBudgetMs + 30_000,
   );
 
-  it("computes correct 'days since last annual leave' for every staff member at scale", async () => {
+  it("computes correct 'days since last annual leave' for every staff member at scale", { timeout: TEST_TIMEOUT_MS }, async () => {
     const { staff, perStaff } = PROFILE.scenarioD;
     // Strip pre-existing annual/approved rows so the injected "recent" row
     // is unambiguously the most recent for every staff — otherwise the
