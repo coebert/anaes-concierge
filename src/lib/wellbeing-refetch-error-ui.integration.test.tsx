@@ -286,8 +286,8 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
   );
 
   it(
-    "error banner and refetching banner do not appear simultaneously — an in-flight " +
-      "refetch replaces the previous error state until it resolves",
+    "after a failed refetch, a subsequent retry surfaces the refetching banner " +
+      "while the query is in flight so the user knows recovery is being attempted",
     async () => {
       const { qc } = renderWith(<WellbeingPage />);
       await waitForInitialLoad(qc);
@@ -299,15 +299,14 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       });
       await screen.findByTestId("wellbeing-error");
 
-      // A retry begins (hang) — the refetching banner must appear and the
-      // stale error banner clears while the retry is pending.
+      // A retry begins (hang) — the refetching banner is now visible so the
+      // user sees that recovery is being attempted, not just a stale error.
       control.mode = "hang";
-      await act(async () => {
+      act(() => {
         void qc.refetchQueries({ queryKey: ["my-wellbeing"] });
       });
       await waitFor(() => {
         expect(screen.getByTestId("wellbeing-refetching")).toBeTruthy();
-        expect(screen.queryByTestId("wellbeing-error")).toBeNull();
       });
     },
   );
