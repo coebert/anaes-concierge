@@ -115,6 +115,8 @@ async def check_admin_wellbeing_blocks_non_admin() -> None:
 
 
 async def main() -> None:
+    # Loud failure on TZ drift before any Playwright work runs.
+    ensure_utc()
     await check_personal_wellbeing()
     await check_admin_wellbeing_as_admin()
     await check_admin_wellbeing_blocks_non_admin()
