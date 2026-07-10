@@ -229,9 +229,30 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
 
     expect(out).toHaveLength(rows.length);
     for (let i = 1; i < out.length; i++) {
-      expect(out[i - 1]!.end_date >= out[i]!.end_date).toBe(true);
+      // Primary order: end_date desc. Ties: id asc — the same total order
+      // the fake table applies, so the paged output is a single canonical
+      // sequence regardless of how the underlying rows were shuffled.
+      const prev = out[i - 1]!;
+      const cur = out[i]!;
+      if (prev.end_date === cur.end_date) {
+        expect(prev.id <= cur.id).toBe(true);
+      } else {
+        expect(prev.end_date > cur.end_date).toBe(true);
+      }
     }
     expect(new Set(out.map((r) => r.id))).toEqual(new Set(rows.map((r) => r.id)));
+
+    // Repeatability: a second independent run with the same SEED must
+    // produce a bit-for-bit identical id sequence. This is what "stable"
+    // buys us — any accidental Date.now()/Math.random() creeping back in
+    // would diverge the two sequences and fail here.
+    const rows2 = generateLeaveRows(staff, perStaff);
+    const table2 = makeFakeLeaveTable(rows2);
+    const out2 = await fetchAllPaged<Row>(
+      () => table2.order("end_date", { ascending: false }),
+      PAGE_SIZE,
+    );
+    expect(out2.map((r) => r.id)).toEqual(out.map((r) => r.id));
   });
 
   it("issues exactly ceil(rows/pageSize) requests, never per-row", { timeout: TEST_TIMEOUT_MS }, async () => {
