@@ -27,8 +27,9 @@ import "@/test/assert-utc-hook";
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { render, screen, cleanup, waitFor, act } from "@testing-library/react";
+import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 
 // --------------------- shared mock state ---------------------
 
@@ -160,6 +161,64 @@ async function waitForInitialLoad(qc: QueryClient) {
   await waitFor(() => expect(qc.isFetching()).toBe(0), { timeout: 3000 });
 }
 
+/**
+ * Prime a set of unrelated queries against the same QueryClient with spy
+ * queryFns, subscribed via QueryObservers (React Query only refetches
+ * queries with active observers). If a future regression widens
+ * `invalidateWellbeing` — e.g. drops the queryKey filter and calls
+ * `qc.invalidateQueries()` — every one of these spies would fire again,
+ * failing `expectUnrelatedUntouched()`.
+ *
+ * The keys were chosen to represent the caches that actually co-live on
+ * the wellbeing routes today: rota, profiles, coordinator-leave lists,
+ * plus a `my-wellbeing-history` sibling that shares the string prefix
+ * with `my-wellbeing` — a regression that swapped exact-key match for a
+ * prefix match would trip that spy.
+ */
+async function primeUnrelated(qc: QueryClient) {
+  const spies = {
+    rota: vi.fn(async () => ({ shifts: [] })),
+    profiles: vi.fn(async () => ({ profiles: [] })),
+    coordinatorLeave: vi.fn(async () => ({ items: [] })),
+    myWellbeingHistory: vi.fn(async () => ({ points: [] })),
+  };
+  const opts: Array<{
+    queryKey: readonly unknown[];
+    queryFn: () => Promise<unknown>;
+    staleTime: number;
+  }> = [
+    { queryKey: ["rota", "week", "2026-07-06"], queryFn: spies.rota, staleTime: Infinity },
+    { queryKey: ["profiles"], queryFn: spies.profiles, staleTime: Infinity },
+    { queryKey: ["coordinator-leave"], queryFn: spies.coordinatorLeave, staleTime: Infinity },
+    { queryKey: ["my-wellbeing-history", USER_ID], queryFn: spies.myWellbeingHistory, staleTime: Infinity },
+  ];
+  for (const o of opts) await qc.prefetchQuery(o);
+  // staleTime: Infinity on the observer too — otherwise a fresh subscribe
+  // against a query that the QueryClient defaults consider stale
+  // (`staleTime: 0`) would trigger an immediate refetch and defeat the
+  // "unrelated cache untouched" assertion. This is a test-instrumentation
+  // detail, not something the real invalidation path relies on.
+  const unsubs = opts.map((o) =>
+    new QueryObserver(qc, {
+      queryKey: o.queryKey,
+      queryFn: o.queryFn,
+      staleTime: Infinity,
+    }).subscribe(() => {}),
+  );
+  for (const s of Object.values(spies)) expect(s).toHaveBeenCalledTimes(1);
+  return {
+    expectUnrelatedUntouched() {
+      // Each unrelated cache stays at 1 fetch — invalidation was scoped
+      // to the wellbeing keys only.
+      expect(spies.rota).toHaveBeenCalledTimes(1);
+      expect(spies.profiles).toHaveBeenCalledTimes(1);
+      expect(spies.coordinatorLeave).toHaveBeenCalledTimes(1);
+      expect(spies.myWellbeingHistory).toHaveBeenCalledTimes(1);
+    },
+    dispose: () => { for (const u of unsubs) u(); },
+  };
+}
+
 function leaveDriverLabel(): string {
   // The wellbeing-score engine emits the leave driver as:
   //   `${badLeave} rejected/cancelled leave`
@@ -215,6 +274,11 @@ describe(
 
         const { qc } = renderPage();
         await waitForInitialLoad(qc);
+        // Prime unrelated caches AFTER the page's own queries have loaded,
+        // so their `dataUpdatedAt` is close to the invalidation moment —
+        // if the (buggy) invalidation broadened, they'd refetch and the
+        // spy counts would tick up.
+        const unrelated = await primeUnrelated(qc);
         expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
 
         // Simulate the cancel handler in `_authenticated/leave.tsx`:
@@ -233,13 +297,23 @@ describe(
           }),
         ];
 
+        // Use the real helper the cancel handler calls — this test now
+        // also proves it does NOT fan out to unrelated caches.
         await act(async () => {
-          await qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
+          invalidateWellbeing(qc, "test.leave.cancel");
+          await qc.getQueryCache().find({ queryKey: ["my-wellbeing"] })
+            ?.fetch();
         });
 
         await waitFor(() => {
           expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
         });
+        // Scoped invalidation contract: rota / profiles / coordinator-leave
+        // / my-wellbeing-history caches are untouched — a regression that
+        // broadened `invalidateWellbeing` to `qc.invalidateQueries()` (no
+        // filter) would refetch all four here.
+        unrelated.expectUnrelatedUntouched();
+        unrelated.dispose();
       },
     );
 
@@ -250,6 +324,7 @@ describe(
         state.leaveRows = [pendingRow()];
         const { qc } = renderPage();
         await waitForInitialLoad(qc);
+        const unrelated = await primeUnrelated(qc);
         expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
 
         // Reject flow: status → rejected, DB stamps decided_at at end of
@@ -265,11 +340,15 @@ describe(
           }),
         ];
         await act(async () => {
-          await qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
+          invalidateWellbeing(qc, "test.leave.reject");
+          await qc.getQueryCache().find({ queryKey: ["my-wellbeing"] })
+            ?.fetch();
         });
         await waitFor(() => {
           expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
         });
+        unrelated.expectUnrelatedUntouched();
+        unrelated.dispose();
       },
     );
 
