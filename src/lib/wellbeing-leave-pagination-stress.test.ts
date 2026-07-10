@@ -440,6 +440,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
           `${HARD_TIME_LIMIT_MS}ms (budget ${PROFILE.timeBudgetMs}ms + ` +
           `${(TIME_OVERRUN_THRESHOLD * 100).toFixed(0)}% overrun threshold)`,
       ).toBeLessThan(HARD_TIME_LIMIT_MS);
+      recordAndAssert("timeBudget", elapsed);
     },
     // Vitest's default 5s test timeout would kill the large-profile run before
     // the elapsed assertion could fire. Bound it to the profile's hard limit
@@ -448,6 +449,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
   );
 
   it("computes correct 'days since last annual leave' for every staff member at scale", { timeout: TEST_TIMEOUT_MS }, async () => {
+    const t0 = performance.now();
     const { staff, perStaff } = PROFILE.scenarioD;
     // Strip pre-existing annual/approved rows so the injected "recent" row
     // is unambiguously the most recent for every staff — otherwise the
@@ -499,6 +501,7 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
       expect(gotDays).toBe(expectedDays);
       expect(gotDays).toBeLessThan(300);
     }
+    recordAndAssert("daysSinceLastAnnual", performance.now() - t0);
   });
 });
 
