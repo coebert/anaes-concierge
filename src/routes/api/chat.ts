@@ -740,27 +740,43 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           const lookahead = leaveLookaheadDays ?? 60;
           const today = todayISO();
           const until = addDays(today, lookahead);
-          const [{ data: allowance }, { data: leaveRows }] = await Promise.all([
-            admin
-              .from("leave_allowances")
-              .select("annual_days,study_days,leave_year_start")
-              .eq("staff_id", targetId)
-              .maybeSingle(),
-            admin
-              .from("leave_requests")
-              .select(
-                "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
-              )
-              .eq("staff_id", targetId)
-              .lte("start_date", until)
-              .gte("end_date", today)
-              .order("start_date"),
-          ]);
+          const windowStart = addDays(today, -(windowDays ?? 90));
+          const [{ data: allowance }, { data: leaveRows }, { data: excRows }] =
+            await Promise.all([
+              admin
+                .from("leave_allowances")
+                .select("annual_days,study_days,leave_year_start")
+                .eq("staff_id", targetId)
+                .maybeSingle(),
+              admin
+                .from("leave_requests")
+                .select(
+                  "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+                )
+                .eq("staff_id", targetId)
+                .lte("start_date", until)
+                .gte("end_date", today)
+                .order("start_date"),
+              // Active (non-withdrawn) exception reports for this staff member
+              // across the pattern window + lookahead. Withdrawn reports are
+              // excluded so a status flip to `withdrawn` causes the tool
+              // payload to recalculate on the next call.
+              admin
+                .from("exception_reports")
+                .select(
+                  "id,event_date,event_session,category,status,immediate_safety_concern,due_by",
+                )
+                .eq("trainee_id", targetId)
+                .neq("status", "withdrawn")
+                .gte("event_date", windowStart)
+                .lte("event_date", until)
+                .order("event_date"),
+            ]);
 
           // Strip free-text fields when the caller shouldn't see colleague PII,
           // and surface every overlapping leave type (annual/study/compassionate/…)
           // through the shared merger.
-          return mergeLeaveAvailability(
+          const merged = mergeLeaveAvailability(
             pattern,
             allowance ?? null,
             (leaveRows ?? []) as LeaveRowLite[],
@@ -770,6 +786,20 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               isSelf: targetId === userId,
             },
           );
+
+          return {
+            ...merged,
+            exceptions: ((excRows ?? []) as any[]).map((e) => ({
+              id: e.id,
+              category: e.category,
+              status: e.status,
+              event_date: e.event_date,
+              event_session: e.event_session ?? null,
+              immediate_safety_concern: !!e.immediate_safety_concern,
+              due_by: e.due_by,
+            })),
+          };
+
 
         } catch (e) {
           return {
