@@ -161,6 +161,53 @@ async function waitForInitialLoad(qc: QueryClient) {
   await waitFor(() => expect(qc.isFetching()).toBe(0), { timeout: 3000 });
 }
 
+/**
+ * Prime a set of unrelated queries against the same QueryClient with spy
+ * queryFns, subscribed via QueryObservers (React Query only refetches
+ * queries with active observers). If a future regression widens
+ * `invalidateWellbeing` — e.g. drops the queryKey filter and calls
+ * `qc.invalidateQueries()` — every one of these spies would fire again,
+ * failing `expectUnrelatedUntouched()`.
+ *
+ * The keys were chosen to represent the caches that actually co-live on
+ * the wellbeing routes today: rota, profiles, coordinator-leave lists,
+ * plus a `my-wellbeing-history` sibling that shares the string prefix
+ * with `my-wellbeing` — a regression that swapped exact-key match for a
+ * prefix match would trip that spy.
+ */
+async function primeUnrelated(qc: QueryClient) {
+  const spies = {
+    rota: vi.fn(async () => ({ shifts: [] })),
+    profiles: vi.fn(async () => ({ profiles: [] })),
+    coordinatorLeave: vi.fn(async () => ({ items: [] })),
+    myWellbeingHistory: vi.fn(async () => ({ points: [] })),
+  };
+  const opts = [
+    { queryKey: ["rota", "week", "2026-07-06"], queryFn: spies.rota },
+    { queryKey: ["profiles"], queryFn: spies.profiles },
+    { queryKey: ["coordinator-leave"], queryFn: spies.coordinatorLeave },
+    { queryKey: ["my-wellbeing-history", USER_ID], queryFn: spies.myWellbeingHistory },
+  ] as const;
+  for (const o of opts) await qc.prefetchQuery(o);
+  const unsubs = opts.map((o) =>
+    new QueryObserver(qc, { queryKey: o.queryKey, queryFn: o.queryFn }).subscribe(
+      () => {},
+    ),
+  );
+  for (const s of Object.values(spies)) expect(s).toHaveBeenCalledTimes(1);
+  return {
+    expectUnrelatedUntouched() {
+      // Each unrelated cache stays at 1 fetch — invalidation was scoped
+      // to the wellbeing keys only.
+      expect(spies.rota).toHaveBeenCalledTimes(1);
+      expect(spies.profiles).toHaveBeenCalledTimes(1);
+      expect(spies.coordinatorLeave).toHaveBeenCalledTimes(1);
+      expect(spies.myWellbeingHistory).toHaveBeenCalledTimes(1);
+    },
+    dispose: () => { for (const u of unsubs) u(); },
+  };
+}
+
 function leaveDriverLabel(): string {
   // The wellbeing-score engine emits the leave driver as:
   //   `${badLeave} rejected/cancelled leave`
