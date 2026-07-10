@@ -1,3 +1,4 @@
+import "@/test/assert-utc-hook";
 /**
  * End-to-end regression test for the CLWRota → DB enum → wellbeing pipeline.
  *
