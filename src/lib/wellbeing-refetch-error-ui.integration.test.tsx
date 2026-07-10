@@ -166,7 +166,7 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       "refetch is in flight, then clears it once the refetch succeeds",
     async () => {
       const { qc } = renderWith(<WellbeingPage />);
-      await waitForInitialLoad();
+      await waitForInitialLoad(qc);
 
       // Sanity — no banners are visible in the resting state.
       expect(screen.queryByTestId("wellbeing-refetching")).toBeNull();
@@ -176,7 +176,7 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       // a background refetch that hasn't finished yet.
       control.mode = "hang";
       await act(async () => {
-        await qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
+        void qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
       });
 
       await waitFor(() => {
@@ -202,7 +202,7 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       "post-mutation refetch fails, and clears it on the next successful refetch",
     async () => {
       const { qc } = renderWith(<WellbeingPage />);
-      await waitForInitialLoad();
+      await waitForInitialLoad(qc);
 
       // Simulate a mutation-triggered refetch that hits a Supabase error.
       control.mode = "reject";
@@ -233,14 +233,14 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       "refetch is in flight, then clears it once the refetch succeeds",
     async () => {
       const { qc } = renderWith(<AdminWellbeingPage />);
-      await waitForInitialLoad();
+      await waitForInitialLoad(qc);
 
       expect(screen.queryByTestId("admin-wellbeing-refetching")).toBeNull();
       expect(screen.queryByTestId("admin-wellbeing-error")).toBeNull();
 
       control.mode = "hang";
       await act(async () => {
-        await qc.invalidateQueries({ queryKey: ["admin-wellbeing"] });
+        void qc.invalidateQueries({ queryKey: ["admin-wellbeing"] });
       });
 
       await waitFor(() => {
@@ -262,7 +262,7 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       "post-mutation refetch fails, and clears it on the next successful refetch",
     async () => {
       const { qc } = renderWith(<AdminWellbeingPage />);
-      await waitForInitialLoad();
+      await waitForInitialLoad(qc);
 
       control.mode = "reject";
       control.rejectMessage = "exception_reports update failed";
@@ -290,7 +290,7 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       "refetch replaces the previous error state until it resolves",
     async () => {
       const { qc } = renderWith(<WellbeingPage />);
-      await waitForInitialLoad();
+      await waitForInitialLoad(qc);
 
       control.mode = "reject";
       control.rejectMessage = "transient failure";
