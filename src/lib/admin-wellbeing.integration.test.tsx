@@ -1,5 +1,5 @@
-import "@/test/assert-utc-hook";
 // @vitest-environment jsdom
+import "@/test/assert-utc-hook";
 /**
  * Integration regression for the admin wellbeing page.
  *

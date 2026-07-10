@@ -1,5 +1,5 @@
-import "@/test/assert-utc-hook";
 // @vitest-environment jsdom
+import "@/test/assert-utc-hook";
 /**
  * End-to-end regression: cancelling or rejecting a leave request updates
  * the rendered wellbeing page immediately, and the new score reflects the
