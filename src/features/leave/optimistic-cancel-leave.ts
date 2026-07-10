@@ -131,8 +131,8 @@ export async function optimisticCancelLeave(
     if (myLeaveSnapshot !== null) patchMyLeave(() => myLeaveSnapshot as LeaveRow[]);
     // Restore the exact prior cache values — including `undefined` if the
     // key wasn't in the cache before we patched it.
-    for (const [key, prev] of cacheSnapshots) {
-      qc.setQueryData(key as unknown[], prev);
+    for (const snap of cacheSnapshots) {
+      qc.setQueryData(snap.key as unknown[], snap.prev);
     }
     return { ok: false, error: new Error(error.message) };
   }
