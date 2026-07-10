@@ -42,14 +42,17 @@ export async function fetchAllPaged<T>(
     range: (
       from: number,
       to: number,
-    ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+    ) => PromiseLike<{ data: T[] | null; error: unknown }>;
   },
   pageSize = 1000,
 ): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await build().range(from, from + pageSize - 1);
-    if (error) throw new Error(error.message);
+    if (error) {
+      const msg = (error as { message?: string }).message ?? String(error);
+      throw new Error(msg);
+    }
     const page = data ?? [];
     out.push(...page);
     if (page.length < pageSize) break;
