@@ -251,20 +251,28 @@ function LeaveCard({
     setActing(true);
     const costOk = await persistCost();
     if (!costOk) { setActing(false); return; }
-    const { error } = await supabase
-      .from("leave_requests")
-      .update({
-        status,
+    // Optimistic path — patches every mounted wellbeing cache
+    // (`["my-wellbeing", ...]` + `["admin-wellbeing"]`) BEFORE the
+    // Supabase round-trip so the personal card and admin retention
+    // row recompute instantly, then reconciles via
+    // `invalidateWellbeing` on success or rolls back on failure.
+    // Mirrors the cancel flow's contract exactly.
+    const reserveListedAt = reserveList ? new Date().toISOString() : null;
+    const result = await optimisticUpdateLeaveStatus({
+      id: row.id,
+      status,
+      reason: `leave.decide:${status}${reserveList ? "+reserve" : ""}`,
+      extraPatch: {
         decided_by: user.id,
-        decided_at: new Date().toISOString(),
         decision_notes: notes || null,
-        ...(reserveList ? { reserve_listed_at: new Date().toISOString() } : {}),
-      })
-      .eq("id", row.id);
+        ...(reserveList ? { reserve_listed_at: reserveListedAt } : {}),
+      },
+      supabase,
+      qc,
+    });
     setActing(false);
-    if (error) return toast.error(error.message);
+    if (!result.ok) return toast.error(result.error.message);
     toast.success(reserveList ? "Rejected & placed on reserve list" : `Leave ${status}`);
-    invalidateWellbeing(qc, `leave.decide:${status}${reserveList ? "+reserve" : ""}`);
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
