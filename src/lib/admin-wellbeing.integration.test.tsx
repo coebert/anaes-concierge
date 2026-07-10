@@ -48,73 +48,81 @@ type TableCallLog = {
   gteFilters: Array<{ key: string; value: unknown }>;
 };
 
-const callLogs: TableCallLog[] = [];
-const rowsByTable: Record<string, Row[]> = {};
-
-function makeBuilder(table: string) {
-  const log: TableCallLog = {
-    table,
-    orderCalls: [],
-    rangeCalls: [],
-    eqFilters: [],
-    gteFilters: [],
+// `vi.mock` factories are hoisted to the very top of the file, so anything
+// they close over must be created via `vi.hoisted(...)`. We keep the call
+// logs and the fixture row map inside the hoisted block so both the test
+// body and the mocked supabase client share the exact same state.
+const { callLogs, rowsByTable } = vi.hoisted(() => {
+  return {
+    callLogs: [] as TableCallLog[],
+    rowsByTable: {} as Record<string, Row[]>,
   };
-  callLogs.push(log);
-  let orderKey: string | null = null;
-  let ascending = true;
-  const eqFilters: Array<{ key: string; value: unknown }> = [];
-  const gteFilters: Array<{ key: string; value: unknown }> = [];
+});
 
-  const api: Record<string, unknown> = {
-    select: () => api,
-    eq(key: string, value: unknown) {
-      log.eqFilters.push({ key, value });
-      eqFilters.push({ key, value });
-      return api;
-    },
-    gte(key: string, value: unknown) {
-      log.gteFilters.push({ key, value });
-      gteFilters.push({ key, value });
-      return api;
-    },
-    order(key: string, opts: { ascending: boolean }) {
-      log.orderCalls.push({ key, ascending: opts.ascending });
-      orderKey = key;
-      ascending = opts.ascending;
-      return api;
-    },
-    async range(from: number, to: number) {
-      log.rangeCalls.push({ from, to });
-      let source = (rowsByTable[table] ?? []).slice();
-      for (const f of eqFilters) source = source.filter((r) => r[f.key] === f.value);
-      for (const g of gteFilters) source = source.filter((r) => (r[g.key] as string) >= (g.value as string));
-      if (orderKey) {
-        const k = orderKey;
-        const dir = ascending ? 1 : -1;
-        source.sort((a, b) => {
-          const av = a[k];
-          const bv = b[k];
-          if (av === bv) return 0;
-          return ((av as string | number) < (bv as string | number) ? -1 : 1) * dir;
-        });
-      }
-      // Enforce the db-max-rows cap: no single response can exceed 1,000
-      // rows. A broken (unpaginated) caller would only ever see the first
-      // 1,000 rows of the underlying set — exactly the historical bug.
-      const cappedTo = Math.min(to, from + DB_MAX_ROWS - 1);
-      return { data: source.slice(from, cappedTo + 1), error: null };
+vi.mock("@/integrations/supabase/client", () => {
+  function makeBuilder(table: string) {
+    const log: TableCallLog = {
+      table,
+      orderCalls: [],
+      rangeCalls: [],
+      eqFilters: [],
+      gteFilters: [],
+    };
+    callLogs.push(log);
+    let orderKey: string | null = null;
+    let ascending = true;
+    const eqFilters: Array<{ key: string; value: unknown }> = [];
+    const gteFilters: Array<{ key: string; value: unknown }> = [];
+
+    const api: Record<string, unknown> = {
+      select: () => api,
+      eq(key: string, value: unknown) {
+        log.eqFilters.push({ key, value });
+        eqFilters.push({ key, value });
+        return api;
+      },
+      gte(key: string, value: unknown) {
+        log.gteFilters.push({ key, value });
+        gteFilters.push({ key, value });
+        return api;
+      },
+      order(key: string, opts: { ascending: boolean }) {
+        log.orderCalls.push({ key, ascending: opts.ascending });
+        orderKey = key;
+        ascending = opts.ascending;
+        return api;
+      },
+      async range(from: number, to: number) {
+        log.rangeCalls.push({ from, to });
+        let source = (rowsByTable[table] ?? []).slice();
+        for (const f of eqFilters) source = source.filter((r) => r[f.key] === f.value);
+        for (const g of gteFilters)
+          source = source.filter((r) => (r[g.key] as string) >= (g.value as string));
+        if (orderKey) {
+          const k = orderKey;
+          const dir = ascending ? 1 : -1;
+          source.sort((a, b) => {
+            const av = a[k];
+            const bv = b[k];
+            if (av === bv) return 0;
+            return ((av as string | number) < (bv as string | number) ? -1 : 1) * dir;
+          });
+        }
+        // Enforce the db-max-rows cap: no single response can exceed 1,000
+        // rows. A broken (unpaginated) caller would only ever see the first
+        // 1,000 rows of the underlying set — the historical bug.
+        const cappedTo = Math.min(to, from + 1000 - 1);
+        return { data: source.slice(from, cappedTo + 1), error: null };
+      },
+    };
+    return api;
+  }
+  return {
+    supabase: {
+      from: (table: string) => makeBuilder(table),
     },
   };
-  return api;
-}
-
-const fakeSupabase = {
-  from: (table: string) => makeBuilder(table),
-};
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: fakeSupabase,
-}));
+});
 
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
