@@ -189,6 +189,7 @@ function LeaveCard({
   onChanged: () => void;
 }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const staffName = profile.name;
   const notifyDecided = useServerFn(notifyLeaveDecided);
   const [conflicts, setConflicts] = useState<LeaveConflict[] | null>(null);
@@ -263,6 +264,7 @@ function LeaveCard({
     setActing(false);
     if (error) return toast.error(error.message);
     toast.success(reserveList ? "Rejected & placed on reserve list" : `Leave ${status}`);
+    invalidateWellbeing(qc);
     void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
     onChanged();
   };
