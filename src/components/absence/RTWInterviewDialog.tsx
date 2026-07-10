@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 import { toast } from "sonner";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 

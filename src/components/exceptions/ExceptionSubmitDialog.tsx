@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 import { toast } from "sonner";
 import {
   CATEGORY_LABEL,
