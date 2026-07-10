@@ -185,7 +185,10 @@ function pendingRow(overrides: Partial<LeaveRow> = {}): LeaveRow {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
+  // shouldAdvanceTime keeps microtask/setInterval progression alive so
+  // testing-library's `waitFor` (which polls on setInterval) still ticks
+  // while we pin `Date.now()` to NOW for the wellbeing window.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(NOW);
 });
 afterEach(() => {
