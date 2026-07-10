@@ -263,6 +263,11 @@ describe(
 
         const { qc } = renderPage();
         await waitForInitialLoad(qc);
+        // Prime unrelated caches AFTER the page's own queries have loaded,
+        // so their `dataUpdatedAt` is close to the invalidation moment —
+        // if the (buggy) invalidation broadened, they'd refetch and the
+        // spy counts would tick up.
+        const unrelated = await primeUnrelated(qc);
         expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
 
         // Simulate the cancel handler in `_authenticated/leave.tsx`:
@@ -281,13 +286,23 @@ describe(
           }),
         ];
 
+        // Use the real helper the cancel handler calls — this test now
+        // also proves it does NOT fan out to unrelated caches.
         await act(async () => {
-          await qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
+          invalidateWellbeing(qc, "test.leave.cancel");
+          await qc.getQueryCache().find({ queryKey: ["my-wellbeing"] })
+            ?.fetch();
         });
 
         await waitFor(() => {
           expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
         });
+        // Scoped invalidation contract: rota / profiles / coordinator-leave
+        // / my-wellbeing-history caches are untouched — a regression that
+        // broadened `invalidateWellbeing` to `qc.invalidateQueries()` (no
+        // filter) would refetch all four here.
+        unrelated.expectUnrelatedUntouched();
+        unrelated.dispose();
       },
     );
 
