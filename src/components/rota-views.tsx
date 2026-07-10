@@ -261,6 +261,12 @@ type NhhCellModel = {
   parts: string[];
 };
 
+type NightCellModel = {
+  key: string;
+  staff: Array<{ id: string; fullName: string; grade: string | null; tag: string | null }>;
+  parts: string[];
+};
+
 const TheatreCellContent = memo(function TheatreCellContent({
   model,
 }: {
