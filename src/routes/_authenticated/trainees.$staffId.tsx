@@ -170,12 +170,12 @@ function TraineeDetailPage() {
         required_sessions: t.required_sessions,
       })),
       data.assignments
-        .filter((a) => ["solo", "supervised"].includes(a.role_on_list))
+        .filter((a) => ["solo", "supervised"].includes(a.role_on_list ?? ""))
         .map((a) => ({
           specialty_id: a.theatre_session_id
             ? data.tsMap.get(a.theatre_session_id)?.specialty_id ?? null
             : null,
-          role_on_list: a.role_on_list,
+          role_on_list: a.role_on_list ?? "",
         })),
     );
   }, [data]);
@@ -196,7 +196,7 @@ function TraineeDetailPage() {
   if (!data?.profile) return <p>Not found.</p>;
 
   const clinicalAssignments = data.assignments.filter((a) =>
-    ["solo", "supervised", "supervising"].includes(a.role_on_list),
+    ["solo", "supervised", "supervising"].includes(a.role_on_list ?? ""),
   );
 
   const rotationEnd =
