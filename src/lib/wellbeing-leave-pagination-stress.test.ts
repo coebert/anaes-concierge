@@ -152,9 +152,15 @@ function generateLeaveRows(staffCount: number, rowsPerStaff: number): Row[] {
   return rows;
 }
 
-describe("paginated leave query — stress & performance", () => {
-  it("returns every row in deterministic end_date-desc order across 5,000 rows", async () => {
-    const rows = generateLeaveRows(50, 100); // 5,000 rows
+/** ceil(rows/pageSize) with an extra "stop" page when rows is a multiple of pageSize. */
+function expectedRangeCalls(rows: number, pageSize: number): number {
+  return Math.floor(rows / pageSize) + (rows % pageSize === 0 ? 1 : Math.ceil((rows % pageSize) / pageSize));
+}
+
+describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
+  it("returns every row in deterministic end_date-desc order", async () => {
+    const { staff, perStaff } = PROFILE.scenarioA;
+    const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
 
     const out = await fetchAllPaged<Row>(
@@ -166,44 +172,44 @@ describe("paginated leave query — stress & performance", () => {
     for (let i = 1; i < out.length; i++) {
       expect(out[i - 1]!.end_date >= out[i]!.end_date).toBe(true);
     }
-    // Correctness cross-check: id set is identical.
     expect(new Set(out.map((r) => r.id))).toEqual(new Set(rows.map((r) => r.id)));
   });
 
   it("issues exactly ceil(rows/pageSize) requests, never per-row", async () => {
-    // 5,000 rows → 5 full pages, then one short/empty stop page.
-    const rows = generateLeaveRows(50, 100);
+    const { staff, perStaff } = PROFILE.scenarioA;
+    const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
     await fetchAllPaged<Row>(
       () => table.order("end_date", { ascending: false }),
       PAGE_SIZE,
     );
-    // 5,000 % 1,000 === 0 → pager must issue one extra empty page to detect
-    // the end. Budget: 6 requests total, and absolutely not 5,000.
-    expect(table.rangeCalls).toBe(6);
+    expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
     expect(table.rangeCalls).toBeLessThan(rows.length);
   });
 
   it("keeps request count bounded when a staff filter is applied", async () => {
-    const rows = generateLeaveRows(200, 30); // 6,000 rows across 200 staff
+    const { staff, perStaff } = PROFILE.scenarioB;
+    const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
 
+    const targetStaff = "staff-0007";
     const out = await fetchAllPaged<Row>(
       () =>
         table
-          .eq("staff_id", "staff-0007")
+          .eq("staff_id", targetStaff)
           .order("end_date", { ascending: false }),
       PAGE_SIZE,
     );
 
-    // 30 rows for that staff → single short page terminates immediately.
-    expect(out).toHaveLength(30);
-    expect(table.rangeCalls).toBe(1);
-    expect(out.every((r) => r.staff_id === "staff-0007")).toBe(true);
+    // One page per <= PAGE_SIZE rows for that staff.
+    expect(out).toHaveLength(perStaff);
+    expect(table.rangeCalls).toBe(expectedRangeCalls(perStaff, PAGE_SIZE));
+    expect(out.every((r) => r.staff_id === targetStaff)).toBe(true);
   });
 
-  it("stays within a tight time budget for a 25,000-row dataset", async () => {
-    const rows = generateLeaveRows(250, 100); // 25,000 rows
+  it("stays within a tight time budget for a large dataset", async () => {
+    const { staff, perStaff } = PROFILE.scenarioC;
+    const rows = generateLeaveRows(staff, perStaff);
     const table = makeFakeLeaveTable(rows);
 
     const start = performance.now();
@@ -213,25 +219,17 @@ describe("paginated leave query — stress & performance", () => {
     );
     const elapsed = performance.now() - start;
 
-    expect(out).toHaveLength(25_000);
-    // 25 full pages + 1 stop page. Absolutely no per-row fetching.
-    expect(table.rangeCalls).toBe(26);
-    // Generous ceiling — real bug would be O(n^2) sorting per page and blow
-    // past this by orders of magnitude. On CI hardware this typically runs
-    // in under 500 ms.
-    expect(elapsed).toBeLessThan(5_000);
+    expect(out).toHaveLength(rows.length);
+    expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
+    expect(elapsed).toBeLessThan(PROFILE.timeBudgetMs);
   });
 
   it("computes correct 'days since last annual leave' for every staff member at scale", async () => {
-    // 100 staff, each with a recent annual-leave spell that ONLY the
-    // paginated + ordered read can surface once the table exceeds
-    // db-max-rows.
-    const rows = generateLeaveRows(100, 50); // 5,000 rows
-    // Inject a known-recent annual leave for each staff so we have an
-    // expected answer to check against.
+    const { staff, perStaff } = PROFILE.scenarioD;
+    const rows = generateLeaveRows(staff, perStaff);
     const recentByStaff = new Map<string, string>();
     const todayMs = new Date("2026-07-10T00:00:00Z").getTime();
-    for (let s = 0; s < 100; s++) {
+    for (let s = 0; s < staff; s++) {
       const staffId = `staff-${String(s).padStart(4, "0")}`;
       const daysAgo = 5 + (s % 40); // 5..44 days ago
       const end = new Date(todayMs - daysAgo * 86_400_000)
@@ -252,8 +250,6 @@ describe("paginated leave query — stress & performance", () => {
       PAGE_SIZE,
     );
 
-    // Group by staff and compute "days since last approved annual leave"
-    // using the same logic the app uses.
     const perStaffLast = new Map<string, string>();
     for (const r of out) {
       if (r.type !== "annual" || r.status !== "approved") continue;
@@ -271,9 +267,8 @@ describe("paginated leave query — stress & performance", () => {
         (todayMs - new Date(gotEnd!).getTime()) / 86_400_000,
       );
       expect(gotDays).toBe(expectedDays);
-      // Guard against the historical bug: never > 300 days when a real
-      // recent spell exists.
       expect(gotDays).toBeLessThan(300);
     }
   });
 });
+
