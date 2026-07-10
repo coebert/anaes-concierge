@@ -124,10 +124,20 @@ function LeavePage() {
   }, [user?.id, selectedYearStartISO]);
 
   const cancel = async (id: string) => {
-    const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
-    if (error) return toast.error(error.message);
+    const result = await optimisticCancelLeave({
+      id,
+      supabase,
+      qc,
+      patchRows: (u) => setRows((prev) => u(prev)),
+      patchMyLeave: (u) => setMyLeave((prev) => u(prev)),
+    });
+    if (!result.ok) {
+      toast.error(result.error.message);
+      return;
+    }
     toast.success("Request cancelled");
-    invalidateWellbeing(qc, "leave.cancel");
+    // Reconcile local row arrays with server truth (invalidateWellbeing
+    // inside the helper handles the wellbeing caches).
     void load();
   };
 
