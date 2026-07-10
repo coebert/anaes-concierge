@@ -35,6 +35,7 @@ import {
   type SickSpellRow,
 } from "@/features/absence/absence-summary";
 import { BAND_THRESHOLDS, type BradfordBand } from "@/lib/bradford-factor";
+import { BradfordExplainer } from "@/components/absence/BradfordExplainer";
 
 export const Route = createFileRoute("/_authenticated/admin/absence")({
   head: () => ({
@@ -157,6 +158,8 @@ function AdminAbsencePage() {
         <StatCard label="Open RTW interviews" value={totalOpenRtw} icon={Clock} />
         <StatCard label="Overdue RTW" value={totalOverdue} icon={AlertTriangle} />
       </div>
+
+      <BradfordExplainer />
 
       <Card>
         <CardContent className="p-4">
