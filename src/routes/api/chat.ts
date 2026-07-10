@@ -579,6 +579,17 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
             (data ?? []).map((r) => r.supervisor_id).filter(Boolean) as string[],
           ),
         );
+        // Active (non-withdrawn) exception reports the user has raised for any
+        // session in the window. Withdrawn reports are excluded so that
+        // withdrawing one causes this tool's output to recalculate on the
+        // next call.
+        const { data: excRows } = await admin
+          .from("exception_reports")
+          .select("id,event_date,event_session,category,status,immediate_safety_concern")
+          .eq("trainee_id", userId)
+          .neq("status", "withdrawn")
+          .gte("event_date", from)
+          .lte("event_date", to);
         const [{ data: ts }, { data: sups }] = await Promise.all([
           tsIds.length
             ? admin
@@ -608,10 +619,38 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         const theatreMap = new Map((theatres ?? []).map((t: any) => [t.id, t.name]));
         const specMap = new Map((specs ?? []).map((s: any) => [s.id, s.name]));
         const supMap = new Map((sups ?? []).map((s: any) => [s.id, s.full_name]));
+        // Index active exceptions by date+session, and also date-only for
+        // reports raised without a session half.
+        const excByKey = new Map<string, any[]>();
+        for (const e of (excRows ?? []) as any[]) {
+          const keys = [
+            `${e.event_date}::${e.event_session ?? ""}`,
+            `${e.event_date}::`,
+          ];
+          for (const k of keys) {
+            const arr = excByKey.get(k) ?? [];
+            arr.push(e);
+            excByKey.set(k, arr);
+          }
+        }
         return {
           range: { from, to },
           assignments: (data ?? []).map((a) => {
             const ts = a.theatre_session_id ? tsMap.get(a.theatre_session_id) : null;
+            const excMatches = new Map<string, any>();
+            for (const k of [
+              `${a.session_date}::${a.session ?? ""}`,
+              `${a.session_date}::`,
+            ]) {
+              for (const e of excByKey.get(k) ?? []) excMatches.set(e.id, e);
+            }
+            const exceptions = Array.from(excMatches.values()).map((e) => ({
+              id: e.id,
+              category: e.category,
+              status: e.status,
+              immediate_safety_concern: !!e.immediate_safety_concern,
+              event_session: e.event_session ?? null,
+            }));
             return {
               date: a.session_date,
               session: a.session,
@@ -625,10 +664,12 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
                   : "Withheld"
                 : null,
               notes: a.notes,
+              exceptions,
             };
           }),
         };
       },
+
     }),
 
     get_my_leave_summary: tool({
