@@ -136,13 +136,13 @@ function renderWith(component: React.ReactElement) {
   return { qc, ...utils };
 }
 
-async function waitForInitialLoad() {
-  // The initial `isLoading` state renders <PageLoading />. Wait for it to
-  // clear, then proceed with the refetch/error assertions.
+async function waitForInitialLoad(qc: QueryClient) {
+  // The initial fetch resolves against the "success" mock. Wait for the
+  // QueryClient to report no in-flight fetches so subsequent assertions
+  // start from a stable data-loaded baseline.
   await waitFor(
     () => {
-      const loadingNodes = document.querySelectorAll('[data-testid="page-loading"]');
-      expect(loadingNodes.length).toBe(0);
+      expect(qc.isFetching()).toBe(0);
     },
     { timeout: 3000 },
   );
