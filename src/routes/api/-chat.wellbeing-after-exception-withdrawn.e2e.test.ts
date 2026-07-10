@@ -1,34 +1,17 @@
 /**
  * End-to-end test for /api/chat: withdrawing an exception report (or
- * flipping its status to `withdrawn`) must NOT perturb the tool payloads
- * the assistant uses to answer wellbeing / rota-impact questions.
+ * flipping its status to `withdrawn`) must cause the rota-impact tools —
+ * `get_my_upcoming_rota` and `get_staff_current_pattern` — to recalculate
+ * on the next call. Active (non-withdrawn) reports annotate the matching
+ * assignment; withdrawn reports are excluded and the annotation drops.
  *
- * Rationale
- * ---------
- * The chat route does not (currently) expose an exception-reports tool.
- * Its wellbeing/rota surface is:
- *   - get_my_upcoming_rota      (rota_assignments)
+ * The chat wellbeing/rota surface:
+ *   - get_my_upcoming_rota      (rota_assignments + active exception_reports)
  *   - get_my_leave_summary      (leave_requests + leave_allowances)
- *   - get_staff_current_pattern (rota + leave, via computeCurrentPatternForStaff)
+ *   - get_staff_current_pattern (rota + leave + active exception_reports)
  *
- * Exception reports live in a separate table (`exception_reports`). The
- * user-visible mutation flow — clicking "withdraw" on an ExceptionCard, or
- * an admin setting `status = 'withdrawn'` — updates only that table. If a
- * regression ever wired the chat tools to read from `exception_reports`
- * (e.g. filtering rota, dropping leave rows, mutating current pattern)
- * without a status filter, this test locks in that the assistant's view of
- * rota/leave is INSENSITIVE to that mutation.
- *
- * We assert this by running the same chat request twice against the SAME
- * underlying fixture, differing ONLY in the state of `exception_reports`:
- *   run A — one active exception report (status = 'submitted')
- *   run B — same report withdrawn (status = 'withdrawn')
- * The captured tool outputs must be byte-for-byte identical.
- *
- * If a future turn adds an exception-report tool to chat, this test
- * should be updated (or replaced) to assert the withdrawn rows are
- * kept distinct — see -chat.wellbeing-rejected-vs-cancelled.e2e.test.ts
- * for the pattern.
+ * `get_my_leave_summary` remains insensitive to exception status (it
+ * only reads leave_requests / leave_allowances).
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
@@ -41,12 +24,16 @@ const THEATRE_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
 const SPECIALTY_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
 const SESSION_ID = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
 
+// Exception raised for the 2026-07-13 AM assignment.
+const EXC_EVENT_DATE = "2026-07-13";
+const EXC_EVENT_SESSION = "am";
+
 const rotaAssignments = [
   { staff_id: USER_ID, duty_type: null, session_date: "2026-06-01", session: "am",
     theatre_session_id: SESSION_ID, role_on_list: null, notes: null, supervisor_id: null },
   { staff_id: USER_ID, duty_type: null, session_date: "2026-06-08", session: "am",
     theatre_session_id: SESSION_ID, role_on_list: null, notes: null, supervisor_id: null },
-  { staff_id: USER_ID, duty_type: null, session_date: "2026-07-13", session: "am",
+  { staff_id: USER_ID, duty_type: null, session_date: EXC_EVENT_DATE, session: EXC_EVENT_SESSION,
     theatre_session_id: SESSION_ID, role_on_list: null, notes: null, supervisor_id: null },
 ];
 const theatreSessions = [
@@ -62,17 +49,25 @@ const leaveRows = [
     reason: null, decision_notes: null },
 ];
 
-// The mutation-under-test: the exception report row is either active or
-// withdrawn. Chat MUST NOT read this table for wellbeing/rota answers, so
-// this variable being flipped between runs must have zero effect on the
-// captured tool payloads.
-let exceptionReportsFixture: Array<{ id: string; staff_id: string; status: string }> = [];
+type ExcRow = {
+  id: string;
+  trainee_id: string;
+  status: string;
+  event_date: string;
+  event_session: string | null;
+  category: string;
+  immediate_safety_concern: boolean;
+  due_by: string;
+};
+
+let exceptionReportsFixture: ExcRow[] = [];
 
 // --------------------- Supabase mock ---------------------
 
 interface QueryState {
   table: string;
   eqCols: Record<string, unknown[]>;
+  neqCols: Record<string, unknown[]>;
   gteCols: Record<string, string>;
   lteCols: Record<string, string>;
   single: boolean;
@@ -81,13 +76,17 @@ interface QueryState {
 function makeAdminClient() {
   const build = (table: string) => {
     const state: QueryState = {
-      table, eqCols: {}, gteCols: {}, lteCols: {}, single: false,
+      table, eqCols: {}, neqCols: {}, gteCols: {}, lteCols: {}, single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
     const b: any = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
+      return b;
+    };
+    b.neq = (col: string, val: unknown) => {
+      (state.neqCols[col] ??= []).push(val);
       return b;
     };
     b.in = () => b;
@@ -140,7 +139,15 @@ function dataFor(state: QueryState): unknown {
         ? { annual_days: 32, study_days: 10, leave_year_start: "2026-04-01" }
         : [];
     case "custom_rota_rules": return [];
-    case "exception_reports": return exceptionReportsFixture;
+    case "exception_reports": {
+      // Honour the .neq("status", "withdrawn") filter the tools apply.
+      const excludeStatuses = new Set(
+        (state.neqCols.status ?? []) as string[],
+      );
+      return exceptionReportsFixture.filter(
+        (r) => !excludeStatuses.has(r.status),
+      );
+    }
     default: return state.single ? null : [];
   }
 }
@@ -170,7 +177,8 @@ vi.mock("ai", async () => {
       const promise = (async () => {
         captured.leaveSummary = summaryTool ? await summaryTool.execute({}) : null;
         captured.currentPattern = patternTool ? await patternTool.execute({}) : null;
-        captured.upcomingRota = rotaTool ? await rotaTool.execute({}) : null;
+        // Ask for a longer window so the 2026-07-13 fixture is in range.
+        captured.upcomingRota = rotaTool ? await rotaTool.execute({ days: 30 }) : null;
       })();
       return {
         toUIMessageStreamResponse: async () => {
@@ -237,56 +245,93 @@ async function runAndCapture(): Promise<{
   };
 }
 
+function annotatedAssignment(rota: any) {
+  return rota.assignments.find((a: any) => a.date === EXC_EVENT_DATE);
+}
+
 describe(
-  "/api/chat e2e — withdrawing an exception does not perturb wellbeing/rota tool payloads",
+  "/api/chat e2e — withdrawing an exception recalculates upcoming-rota and current-pattern",
   () => {
     it(
-      "leave-summary + current-pattern + upcoming-rota payloads are byte-identical " +
-        "whether the exception is active (submitted) or withdrawn",
+      "active exception annotates the matching upcoming-rota assignment and " +
+        "appears on current-pattern; flipping status to withdrawn drops both",
       async () => {
-        // Run A — an active exception report exists.
+        // Run A — active exception.
         exceptionReportsFixture = [
-          { id: "ex-1", staff_id: USER_ID, status: "submitted" },
+          {
+            id: "ex-1",
+            trainee_id: USER_ID,
+            status: "submitted",
+            event_date: EXC_EVENT_DATE,
+            event_session: EXC_EVENT_SESSION,
+            category: "rest",
+            immediate_safety_concern: false,
+            due_by: "2026-07-20",
+          },
         ];
         const active = await runAndCapture();
 
-        // Sanity: every wellbeing/rota tool actually produced output.
-        expect(active.leaveSummary).not.toBeNull();
-        expect(active.currentPattern).not.toBeNull();
-        expect(active.upcomingRota).not.toBeNull();
+        const activeAssignment = annotatedAssignment(active.upcomingRota);
+        expect(activeAssignment).toBeDefined();
+        expect(activeAssignment.exceptions).toHaveLength(1);
+        expect(activeAssignment.exceptions[0]).toMatchObject({
+          id: "ex-1",
+          status: "submitted",
+          category: "rest",
+        });
+        expect((active.currentPattern as any).exceptions).toHaveLength(1);
+        expect((active.currentPattern as any).exceptions[0].id).toBe("ex-1");
 
         // Run B — same report, withdrawn.
         exceptionReportsFixture = [
-          { id: "ex-1", staff_id: USER_ID, status: "withdrawn" },
+          {
+            id: "ex-1",
+            trainee_id: USER_ID,
+            status: "withdrawn",
+            event_date: EXC_EVENT_DATE,
+            event_session: EXC_EVENT_SESSION,
+            category: "rest",
+            immediate_safety_concern: false,
+            due_by: "2026-07-20",
+          },
         ];
         const withdrawn = await runAndCapture();
 
-        // The three tool payloads the assistant uses to answer wellbeing /
-        // rota-impact questions must be identical. Any drift would mean a
-        // wellbeing/rota code path is silently reading exception_reports —
-        // which it must NOT do without a status filter (and today, must
-        // not do at all).
+        const withdrawnAssignment = annotatedAssignment(withdrawn.upcomingRota);
+        expect(withdrawnAssignment).toBeDefined();
+        expect(withdrawnAssignment.exceptions).toEqual([]);
+        expect((withdrawn.currentPattern as any).exceptions).toEqual([]);
+
+        // Leave summary does not read exceptions and must be unchanged.
         expect(withdrawn.leaveSummary).toEqual(active.leaveSummary);
-        expect(withdrawn.currentPattern).toEqual(active.currentPattern);
-        expect(withdrawn.upcomingRota).toEqual(active.upcomingRota);
       },
     );
 
     it(
-      "removing the exception entirely also leaves the payloads unchanged " +
-        "(a hard-delete withdraw path is equivalent to a status flip for chat)",
+      "hard-deleting the exception is equivalent to a status flip: the " +
+        "annotations disappear from both rota tools",
       async () => {
         exceptionReportsFixture = [
-          { id: "ex-2", staff_id: USER_ID, status: "submitted" },
+          {
+            id: "ex-2",
+            trainee_id: USER_ID,
+            status: "submitted",
+            event_date: EXC_EVENT_DATE,
+            event_session: EXC_EVENT_SESSION,
+            category: "workload",
+            immediate_safety_concern: true,
+            due_by: "2026-07-20",
+          },
         ];
         const active = await runAndCapture();
+        expect(annotatedAssignment(active.upcomingRota).exceptions).toHaveLength(1);
+        expect((active.currentPattern as any).exceptions).toHaveLength(1);
 
         exceptionReportsFixture = [];
         const gone = await runAndCapture();
-
+        expect(annotatedAssignment(gone.upcomingRota).exceptions).toEqual([]);
+        expect((gone.currentPattern as any).exceptions).toEqual([]);
         expect(gone.leaveSummary).toEqual(active.leaveSummary);
-        expect(gone.currentPattern).toEqual(active.currentPattern);
-        expect(gone.upcomingRota).toEqual(active.upcomingRota);
       },
     );
   },
