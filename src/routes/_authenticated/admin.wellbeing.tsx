@@ -31,7 +31,7 @@ import {
   type AttritionResult,
 } from "@/lib/attrition-risk";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
-import { fetchAllPaged } from "@/lib/supabase-chunked";
+import { fetchAllPaged, createQueryBudget, reportQueryBudget } from "@/lib/supabase-chunked";
 
 export const Route = createFileRoute("/_authenticated/admin/wellbeing")({
   head: () => ({
@@ -55,6 +55,12 @@ function AdminWellbeingPage() {
     queryKey: ["admin-wellbeing"],
     queryFn: async () => {
       const yearAgo = isoDaysAgo(365);
+      // Wellbeing/attrition drives sit on top of a handful of wide reads.
+      // We budget the total page requests so a future regression (e.g. an
+      // accidental per-staff N+1) is logged and — in dev — throws.
+      // Budget math: 6 sources × up to 10 pages each ≈ 60 requests worst-case
+      // on the current dataset. If real usage grows, bump this deliberately.
+      const budget = createQueryBudget("admin-wellbeing", 60);
       const [profiles, assignments, changes, leave, exceptionsRaw, rtws] =
         await Promise.all([
           fetchAllPaged<{
@@ -63,12 +69,14 @@ function AdminWellbeingPage() {
             email: string | null;
             grade: string | null;
             active: boolean | null;
-          }>(() =>
-            supabase
-              .from("profiles")
-              .select("id,full_name,email,grade,active")
-              .eq("active", true)
-              .order("id", { ascending: true }),
+          }>(
+            () =>
+              supabase
+                .from("profiles")
+                .select("id,full_name,email,grade,active")
+                .eq("active", true)
+                .order("id", { ascending: true }),
+            { budget, source: "profiles" },
           ),
           // Paginate — a single wide .range() is capped at db-max-rows (1000
           // on hosted Supabase), so unordered wide reads silently drop rows.
@@ -79,6 +87,7 @@ function AdminWellbeingPage() {
                 .select("staff_id,session_date,session")
                 .gte("session_date", yearAgo)
                 .order("session_date", { ascending: true }),
+            { budget, source: "rota_assignments" },
           ),
           fetchAllPaged<{ staff_id: string | null; session_date: string; hours_before_session: number | null }>(
             () =>
@@ -86,6 +95,7 @@ function AdminWellbeingPage() {
                 .from("rota_change_log")
                 .select("staff_id,session_date,hours_before_session")
                 .order("session_date", { ascending: true }),
+            { budget, source: "rota_change_log" },
           ),
           fetchAllPaged<{
             id: string;
@@ -98,27 +108,34 @@ function AdminWellbeingPage() {
             half_day_end: string | null;
             created_at: string;
             decided_at: string | null;
-          }>(() =>
-            supabase
-              .from("leave_requests")
-              .select(
-                "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
-              )
-              .order("end_date", { ascending: false }),
+          }>(
+            () =>
+              supabase
+                .from("leave_requests")
+                .select(
+                  "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+                )
+                .order("end_date", { ascending: false }),
+            { budget, source: "leave_requests" },
           ),
-          fetchAllPaged<{ trainee_id: string; event_date: string }>(() =>
-            supabase
-              .from("exception_reports")
-              .select("trainee_id,event_date")
-              .order("event_date", { ascending: false }),
+          fetchAllPaged<{ trainee_id: string; event_date: string }>(
+            () =>
+              supabase
+                .from("exception_reports")
+                .select("trainee_id,event_date")
+                .order("event_date", { ascending: false }),
+            { budget, source: "exception_reports" },
           ),
-          fetchAllPaged<{ leave_request_id: string; conducted_at: string | null }>(() =>
-            supabase
-              .from("return_to_work_interviews")
-              .select("leave_request_id,conducted_at")
-              .order("conducted_at", { ascending: false, nullsFirst: false }),
+          fetchAllPaged<{ leave_request_id: string; conducted_at: string | null }>(
+            () =>
+              supabase
+                .from("return_to_work_interviews")
+                .select("leave_request_id,conducted_at")
+                .order("conducted_at", { ascending: false, nullsFirst: false }),
+            { budget, source: "return_to_work_interviews" },
           ),
         ]);
+      reportQueryBudget(budget);
       return {
         profiles,
         assignments,

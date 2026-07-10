@@ -37,6 +37,54 @@ export function chunkIds<T>(ids: readonly T[], size: number = SUPABASE_IN_CHUNK)
  * or `.limit()`. The pager attaches `.range()` in fixed windows and stops
  * when a page returns fewer rows than the window size.
  */
+export type QueryBudget = {
+  /** Human-readable name used in log/error messages. */
+  label: string;
+  /** Hard upper bound on the number of `.range()` requests attributed to this budget. */
+  max: number;
+  /** Live request count. Incremented by `fetchAllPaged` on every page request. */
+  count: number;
+  /** Optional per-source breakdown for diagnostics. */
+  bySource: Record<string, number>;
+};
+
+export function createQueryBudget(label: string, max: number): QueryBudget {
+  return { label, max, count: 0, bySource: {} };
+}
+
+/**
+ * Emit an instrumentation log + enforce the hard cap. Call once after the
+ * batch of paginated reads finishes. In test runs enforcement is skipped so
+ * unit tests can inspect `budget.count` without tripping the guard.
+ *
+ * - In dev, exceeding the budget throws so regressions are caught in preview.
+ * - In prod, exceeding the budget is a `console.error` (never crash the UI
+ *   for a metric-driven read), so the log surfaces the regression while the
+ *   page still renders.
+ */
+export function reportQueryBudget(budget: QueryBudget): void {
+  const isTest =
+    (typeof import.meta !== "undefined" && (import.meta as { env?: { MODE?: string } }).env?.MODE === "test") ||
+    (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
+    (typeof process !== "undefined" && !!process.env?.VITEST);
+  const isDev =
+    typeof import.meta !== "undefined" &&
+    (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+
+  const summary = `[query-budget] ${budget.label}: ${budget.count}/${budget.max} requests ${JSON.stringify(budget.bySource)}`;
+  if (!isTest) {
+    // eslint-disable-next-line no-console
+    console.info(summary);
+  }
+  if (budget.count > budget.max) {
+    const msg = `Query budget exceeded for "${budget.label}": ${budget.count} > ${budget.max}. Breakdown: ${JSON.stringify(budget.bySource)}`;
+    if (isTest) return;
+    if (isDev) throw new Error(msg);
+    // eslint-disable-next-line no-console
+    console.error(msg);
+  }
+}
+
 export async function fetchAllPaged<T>(
   build: () => {
     range: (
@@ -44,10 +92,24 @@ export async function fetchAllPaged<T>(
       to: number,
     ) => PromiseLike<{ data: T[] | null; error: unknown }>;
   },
-  pageSize = 1000,
+  pageSizeOrOpts: number | { pageSize?: number; budget?: QueryBudget; source?: string } = 1000,
+  maybeOpts?: { budget?: QueryBudget; source?: string },
 ): Promise<T[]> {
+  const pageSize =
+    typeof pageSizeOrOpts === "number"
+      ? pageSizeOrOpts
+      : pageSizeOrOpts.pageSize ?? 1000;
+  const opts =
+    typeof pageSizeOrOpts === "number" ? maybeOpts : pageSizeOrOpts;
+  const budget = opts?.budget;
+  const source = opts?.source ?? "unnamed";
+
   const out: T[] = [];
   for (let from = 0; ; from += pageSize) {
+    if (budget) {
+      budget.count += 1;
+      budget.bySource[source] = (budget.bySource[source] ?? 0) + 1;
+    }
     const { data, error } = await build().range(from, from + pageSize - 1);
     if (error) {
       const msg = (error as { message?: string }).message ?? String(error);

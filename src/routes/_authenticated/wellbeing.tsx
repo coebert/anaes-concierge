@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllPaged } from "@/lib/supabase-chunked";
+import { fetchAllPaged, createQueryBudget, reportQueryBudget } from "@/lib/supabase-chunked";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +44,9 @@ function WellbeingPage() {
     queryFn: async () => {
       // Wide reads use fetchAllPaged with deterministic .order(...) so the
       // 1000-row PostgREST cap never silently drops recent rota/leave rows.
+      // Per-user reads are always small, so the budget is tight — a
+      // regression that reintroduces an unfiltered wide read will trip it.
+      const budget = createQueryBudget("my-wellbeing", 12);
       const [assignments, changes, leave, exceptions, cycleRes, responseRes, recRes] =
         await Promise.all([
           fetchAllPaged<{ staff_id: string | null; session_date: string; session: string }>(
@@ -54,6 +57,7 @@ function WellbeingPage() {
                 .eq("staff_id", user!.id)
                 .gte("session_date", isoDaysAgo(365))
                 .order("session_date", { ascending: true }),
+            { budget, source: "rota_assignments" },
           ),
           fetchAllPaged<{ staff_id: string | null; session_date: string; hours_before_session: number | null }>(
             () =>
@@ -62,6 +66,7 @@ function WellbeingPage() {
                 .select("staff_id,session_date,hours_before_session")
                 .eq("staff_id", user!.id)
                 .order("session_date", { ascending: true }),
+            { budget, source: "rota_change_log" },
           ),
           fetchAllPaged<{
             staff_id: string;
@@ -71,19 +76,23 @@ function WellbeingPage() {
             end_date: string;
             half_day_start: string | null;
             half_day_end: string | null;
-          }>(() =>
-            supabase
-              .from("leave_requests")
-              .select("staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
-              .eq("staff_id", user!.id)
-              .order("end_date", { ascending: false }),
+          }>(
+            () =>
+              supabase
+                .from("leave_requests")
+                .select("staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
+                .eq("staff_id", user!.id)
+                .order("end_date", { ascending: false }),
+            { budget, source: "leave_requests" },
           ),
-          fetchAllPaged<{ trainee_id: string; event_date: string }>(() =>
-            supabase
-              .from("exception_reports")
-              .select("trainee_id,event_date")
-              .eq("trainee_id", user!.id)
-              .order("event_date", { ascending: false }),
+          fetchAllPaged<{ trainee_id: string; event_date: string }>(
+            () =>
+              supabase
+                .from("exception_reports")
+                .select("trainee_id,event_date")
+                .eq("trainee_id", user!.id)
+                .order("event_date", { ascending: false }),
+            { budget, source: "exception_reports" },
           ),
           supabase
             .from("pulse_survey_cycles")
@@ -98,6 +107,8 @@ function WellbeingPage() {
           supabase
             .rpc("get_recognition_decrypted", { p_staff_id: user!.id, p_limit: 20 }),
         ]);
+      reportQueryBudget(budget);
+
 
       return {
         assignments,
