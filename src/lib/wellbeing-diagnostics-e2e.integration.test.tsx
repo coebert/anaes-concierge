@@ -125,7 +125,7 @@ function makeQueryClient(): QueryClient {
 function wellbeingLines(spy: ReturnType<typeof vi.spyOn>): string[] {
   return spy.mock.calls
     .map((c: unknown[]) => String(c[0]))
-    .filter((l) => l.startsWith("[wellbeing] invalidate"));
+    .filter((l: string) => l.startsWith("[wellbeing] invalidate"));
 }
 
 /** The line-shape contract, asserted once per emitted line. */
