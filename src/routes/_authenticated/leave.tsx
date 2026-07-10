@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
+import { optimisticCancelLeave } from "@/features/leave/optimistic-cancel-leave";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
 
@@ -123,10 +124,22 @@ function LeavePage() {
   }, [user?.id, selectedYearStartISO]);
 
   const cancel = async (id: string) => {
-    const { error } = await supabase.from("leave_requests").update({ status: "cancelled" }).eq("id", id);
-    if (error) return toast.error(error.message);
+    const result = await optimisticCancelLeave({
+      id,
+      // Supabase's generated typings are deeply generic; the helper only
+      // needs the minimal `.from().update().eq()` surface it declares.
+      supabase: supabase as unknown as Parameters<typeof optimisticCancelLeave>[0]["supabase"],
+      qc,
+      patchRows: (u) => setRows((prev) => u(prev)),
+      patchMyLeave: (u) => setMyLeave((prev) => u(prev)),
+    });
+    if (!result.ok) {
+      toast.error(result.error.message);
+      return;
+    }
     toast.success("Request cancelled");
-    invalidateWellbeing(qc, "leave.cancel");
+    // Reconcile local row arrays with server truth (invalidateWellbeing
+    // inside the helper handles the wellbeing caches).
     void load();
   };
 
