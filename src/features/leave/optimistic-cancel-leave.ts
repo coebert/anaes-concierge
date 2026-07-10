@@ -138,6 +138,6 @@ export async function optimisticCancelLeave(
   }
 
   // -- 4. Reconcile with server truth ----------------------------------
-  invalidateWellbeing(qc, "leave.cancel");
+  invalidateWellbeing(qc, "leave.cancel", { ids: [id] });
   return { ok: true };
 }
