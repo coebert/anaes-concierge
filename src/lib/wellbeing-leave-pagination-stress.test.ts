@@ -210,22 +210,29 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     expect(out.every((r) => r.staff_id === targetStaff)).toBe(true);
   });
 
-  it("stays within a tight time budget for a large dataset", async () => {
-    const { staff, perStaff } = PROFILE.scenarioC;
-    const rows = generateLeaveRows(staff, perStaff);
-    const table = makeFakeLeaveTable(rows);
+  it(
+    "stays within a tight time budget for a large dataset",
+    async () => {
+      const { staff, perStaff } = PROFILE.scenarioC;
+      const rows = generateLeaveRows(staff, perStaff);
+      const table = makeFakeLeaveTable(rows);
 
-    const start = performance.now();
-    const out = await fetchAllPaged<Row>(
-      () => table.order("end_date", { ascending: false }),
-      PAGE_SIZE,
-    );
-    const elapsed = performance.now() - start;
+      const start = performance.now();
+      const out = await fetchAllPaged<Row>(
+        () => table.order("end_date", { ascending: false }),
+        PAGE_SIZE,
+      );
+      const elapsed = performance.now() - start;
 
-    expect(out).toHaveLength(rows.length);
-    expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
-    expect(elapsed).toBeLessThan(PROFILE.timeBudgetMs);
-  });
+      expect(out).toHaveLength(rows.length);
+      expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
+      expect(elapsed).toBeLessThan(PROFILE.timeBudgetMs);
+    },
+    // Vitest's default 5s test timeout would kill the large-profile run before
+    // the elapsed assertion could fire. Bound it to the profile's own budget
+    // plus generous headroom for CI cold-start.
+    PROFILE.timeBudgetMs + 30_000,
+  );
 
   it("computes correct 'days since last annual leave' for every staff member at scale", async () => {
     const { staff, perStaff } = PROFILE.scenarioD;
