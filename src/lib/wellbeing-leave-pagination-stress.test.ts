@@ -503,8 +503,13 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
       (r) => !(r.type === "annual" && r.status === "approved"),
     );
     const rows: Row[] = baseRows;
-    const recentByStaff = new Map<string, string>();
-    const todayMs = new Date("2026-07-10T00:00:00Z").getTime();
+    // Explicit UTC anchor. `Date.UTC` bypasses the host timezone entirely
+    // so the same numeric timestamp is produced on every runner; the
+    // roundtrip assertion below fails immediately if a rogue local-time
+    // `Date` constructor leaks in.
+    const todayMs = Date.UTC(2026, 6, 10);
+    expect(new Date(todayMs).toISOString()).toBe("2026-07-10T00:00:00.000Z");
+    const recentByStaff = new Map<string, { end: string; daysAgo: number }>();
     for (let s = 0; s < staff; s++) {
       const staffId = `staff-${String(s).padStart(4, "0")}`;
       const daysAgo = 5 + (s % 40); // 5..44 days ago
@@ -518,8 +523,14 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
         status: "approved",
         end_date: end,
       });
-      recentByStaff.set(staffId, end);
+      recentByStaff.set(staffId, { end, daysAgo });
     }
+    // Spot-check the boundary rows against fully-explicit UTC ISO dates.
+    // If any Date arithmetic above silently used local time, these fail
+    // loudly rather than only surfacing as an off-by-one day count later.
+    expect(recentByStaff.get("staff-0000")!.end).toBe("2026-07-05"); // 5 days
+    expect(recentByStaff.get("staff-0039")!.end).toBe("2026-05-27"); // 44 days
+
     const table = makeFakeLeaveTable(rows);
     const out = await fetchAllPaged<Row>(
       () => table.order("end_date", { ascending: false }),
@@ -533,16 +544,19 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
       if (!cur || r.end_date > cur) perStaffLast.set(r.staff_id, r.end_date);
     }
 
-    for (const [staffId, expectedEnd] of recentByStaff) {
+    for (const [staffId, { end: expectedEnd, daysAgo }] of recentByStaff) {
       const gotEnd = perStaffLast.get(staffId);
       expect(gotEnd, `no annual leave found for ${staffId}`).toBeDefined();
-      const expectedDays = Math.floor(
-        (todayMs - new Date(expectedEnd).getTime()) / 86_400_000,
-      );
+      // Exact ISO calendar-day match. Any UTC drift shifts `gotEnd` by
+      // one day and this fires before day-count math can mask it.
+      expect(gotEnd).toBe(expectedEnd);
       const gotDays = Math.floor(
         (todayMs - new Date(gotEnd!).getTime()) / 86_400_000,
       );
-      expect(gotDays).toBe(expectedDays);
+      // `daysAgo` is the ground truth we injected, computed WITHOUT
+      // round-tripping through `expectedEnd` — so this is an independent
+      // check that "date string → day count" matches the seed value.
+      expect(gotDays).toBe(daysAgo);
       expect(gotDays).toBeLessThan(300);
     }
     recordAndAssert("daysSinceLastAnnual", performance.now() - t0);
