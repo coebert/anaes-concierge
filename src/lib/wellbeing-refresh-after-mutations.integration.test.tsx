@@ -232,7 +232,8 @@ afterEach(() => {
 describe("wellbeing dashboards refresh after cancel-leave & exception-status mutations", () => {
   it("refetches admin-wellbeing and my-wellbeing after the user cancels a leave request", async () => {
     const qc = makeQueryClient();
-    const { adminSpy, mineSpy, dispose } = await primeWellbeingQueries(qc);
+    const { adminSpy, mineSpy, expectUnrelatedUntouched, dispose } =
+      await primeWellbeingQueries(qc);
 
     // Mirrors src/routes/_authenticated/leave.tsx `cancel` handler line-for-line.
     // The handler is a local closure inside the route component and not
@@ -268,12 +269,18 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
     await waitFor(() => expect(adminSpy).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(mineSpy).toHaveBeenCalledTimes(2));
 
+    // …and no unrelated observed query refetched. A regression that
+    // widened the invalidation (or dropped the queryKey filter) would
+    // refetch rota / profiles / my-wellbeing-history here.
+    expectUnrelatedUntouched();
+
     dispose();
   });
 
   it("refetches admin-wellbeing and my-wellbeing after the trainee withdraws an exception report", async () => {
     const qc = makeQueryClient();
-    const { adminSpy, mineSpy, dispose } = await primeWellbeingQueries(qc);
+    const { adminSpy, mineSpy, expectUnrelatedUntouched, dispose } =
+      await primeWellbeingQueries(qc);
 
     // ExceptionCard's `withdraw` calls window.confirm; auto-confirm.
     const confirmSpy = vi
@@ -316,6 +323,10 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
     await waitFor(() => expect(adminSpy).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(mineSpy).toHaveBeenCalledTimes(2));
 
+    // Unrelated queries stay put — the withdraw path is scoped to
+    // wellbeing caches, it does not blow away the whole cache.
+    expectUnrelatedUntouched();
+
     // Parent list was told to re-read too (mirrors the route's onChange).
     expect(onChange).toHaveBeenCalled();
 
@@ -330,7 +341,8 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
     // `refetchInterval`, the two queries would still be marked fresh
     // right after the mutation and this assertion would fire.
     const qc = makeQueryClient();
-    const { adminSpy, mineSpy, dispose } = await primeWellbeingQueries(qc);
+    const { adminSpy, mineSpy, expectUnrelatedUntouched, dispose } =
+      await primeWellbeingQueries(qc);
 
     invalidateWellbeing(qc);
 
@@ -344,6 +356,77 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
     expect(adminEntry).toBeDefined();
     expect(mineEntry).toBeDefined();
 
+    // No collateral refetches.
+    expectUnrelatedUntouched();
+
     dispose();
   });
+
+  it(
+    "invalidateWellbeing marks EXACTLY the two wellbeing query keys as invalidated — " +
+      "unrelated queries (rota, profiles, my-wellbeing-history) stay fresh",
+    async () => {
+      // Direct invariant on the QueryCache: after `invalidateWellbeing`,
+      // `["admin-wellbeing"]` and `["my-wellbeing", …]` are both flagged
+      // `isInvalidated: true`, and every other query in the cache is still
+      // `isInvalidated: false`. This is the strongest possible statement of
+      // "scoped invalidation" — independent of the observer/refetch plumbing
+      // asserted above.
+      const qc = makeQueryClient();
+      const {
+        adminSpy,
+        mineSpy,
+        rotaSpy,
+        profilesSpy,
+        myWellbeingHistorySpy,
+        dispose,
+      } = await primeWellbeingQueries(qc);
+
+      invalidateWellbeing(qc, "test.scoped-keys");
+
+      // Wait for the two wellbeing refetches to complete before inspecting
+      // final cache state (RQ clears `isInvalidated` once the refetch
+      // resolves — so we assert on call counts here).
+      await waitFor(() => expect(adminSpy).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(mineSpy).toHaveBeenCalledTimes(2));
+
+      // Exact-key match: unrelated observed queries were never asked to
+      // refetch — their queryFns are still at 1 call. A regression that
+      // called `qc.invalidateQueries()` with no filter would send every
+      // spy here to 2.
+      expect(rotaSpy).toHaveBeenCalledTimes(1);
+      expect(profilesSpy).toHaveBeenCalledTimes(1);
+      expect(myWellbeingHistorySpy).toHaveBeenCalledTimes(1);
+
+      // And the two wellbeing keys really are the ones that got matched —
+      // read straight from the cache so a bug that invalidated the WRONG
+      // key (e.g. `["wellbeing"]`) fails here rather than looking green.
+      const cache = qc.getQueryCache();
+      const invalidatedKeys = cache
+        .getAll()
+        .filter((q) => q.state.fetchStatus !== "idle" || q.state.dataUpdateCount > 1)
+        .map((q) => q.queryKey);
+
+      // Every key that saw an extra fetch must be one of the two wellbeing keys.
+      for (const key of invalidatedKeys) {
+        const head = key[0];
+        expect(
+          head === "admin-wellbeing" || head === "my-wellbeing",
+          `unexpected key refetched by invalidateWellbeing: ${JSON.stringify(key)}`,
+        ).toBe(true);
+      }
+      // And both wellbeing keys are present in the cache (sanity — the
+      // primeWellbeingQueries setup wasn't silently skipped).
+      expect(
+        cache.find({ queryKey: ["admin-wellbeing"], exact: true }),
+        "admin-wellbeing cache entry missing",
+      ).toBeDefined();
+      expect(
+        cache.find({ queryKey: ["my-wellbeing", USER_ID], exact: true }),
+        "my-wellbeing cache entry missing",
+      ).toBeDefined();
+
+      dispose();
+    },
+  );
 });
