@@ -173,7 +173,7 @@ describe(
             .update({ status: "cancelled" })
             .eq("id", id);
           if (error) throw error;
-          invalidateWellbeing(qc, "leave.cancel");
+          invalidateWellbeing(qc, "leave.cancel", { ids: [id] });
         };
 
         await cancelLeave(LEAVE_REQUEST_ID);
@@ -242,24 +242,52 @@ describe(
 
     it(
       "flipping DEV back on mid-suite restores the diagnostics — proves the guard is " +
-        "read at call-time, not baked in at module load",
+        "read at call-time, not baked in at module load, AND every line carries " +
+        "mutation=<type> and ids=[<affected>]",
       () => {
         const qc = makeQueryClient();
 
         // Prod mode (set in beforeEach) — silent.
-        invalidateWellbeing(qc, "leave.cancel");
+        invalidateWellbeing(qc, "leave.cancel", { ids: [LEAVE_REQUEST_ID] });
         expect(wellbeingLines(debugSpy)).toEqual([]);
         expect(getWellbeingInvalidations()).toEqual([]);
 
-        // Flip DEV on and call again — now noisy.
+        // Flip DEV on and call the exception.withdraw path — now noisy.
         (import.meta.env as MutableEnv).DEV = true;
-        invalidateWellbeing(qc, "exception.withdraw");
-        const lines = wellbeingLines(debugSpy);
-        expect(lines).toHaveLength(2);
-        expect(lines.every((l) => l.includes("reason=exception.withdraw"))).toBe(
-          true,
+        invalidateWellbeing(qc, "exception.withdraw", { ids: [REPORT_ID] });
+        const withdrawLines = wellbeingLines(debugSpy);
+        expect(withdrawLines).toHaveLength(2);
+        // Every line MUST carry the reason, the mutation-type prefix,
+        // and the affected exception-report ID.
+        for (const line of withdrawLines) {
+          expect(line).toContain("reason=exception.withdraw");
+          expect(line).toContain("mutation=exception");
+          expect(line).toContain(`ids=["${REPORT_ID}"]`);
+        }
+        // One line per invalidated key.
+        expect(withdrawLines.some((l) => l.includes(`queryKey=["admin-wellbeing"]`))).toBe(true);
+        expect(withdrawLines.some((l) => l.includes(`queryKey=["my-wellbeing"]`))).toBe(true);
+
+        // Ring-buffer entries mirror the structured fields.
+        const buf = getWellbeingInvalidations();
+        expect(buf).toHaveLength(2);
+        for (const entry of buf) {
+          expect(entry.reason).toBe("exception.withdraw");
+          expect(entry.mutationType).toBe("exception");
+          expect(entry.ids).toEqual([REPORT_ID]);
+        }
+
+        // Same run, different mutation — assert the leave.cancel shape
+        // too, so we catch a regression that hard-codes "exception".
+        invalidateWellbeing(qc, "leave.cancel", { ids: [LEAVE_REQUEST_ID] });
+        const cancelLines = wellbeingLines(debugSpy).filter((l) =>
+          l.includes("reason=leave.cancel"),
         );
-        expect(getWellbeingInvalidations()).toHaveLength(2);
+        expect(cancelLines).toHaveLength(2);
+        for (const line of cancelLines) {
+          expect(line).toContain("mutation=leave");
+          expect(line).toContain(`ids=["${LEAVE_REQUEST_ID}"]`);
+        }
       },
     );
   },

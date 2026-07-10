@@ -16,9 +16,26 @@ import type { QueryClient } from "@tanstack/react-query";
  * entry into an in-memory ring buffer consumed by the dev diagnostics panel
  * (see `WellbeingInvalidationsPanel`). In prod both are no-ops.
  */
-export function invalidateWellbeing(qc: QueryClient, reason?: string): void {
-  recordWellbeingInvalidation("admin-wellbeing", reason);
-  recordWellbeingInvalidation("my-wellbeing", reason);
+export type InvalidateWellbeingOptions = {
+  /**
+   * Row IDs directly affected by the triggering mutation — the leave
+   * request ID(s) for `leave.*` reasons, the exception report ID(s)
+   * for `exception.*` reasons, the RTW interview ID(s) for `rtw.*`,
+   * etc. Included verbatim in the dev-mode `console.debug` trail and
+   * in the ring-buffer entry so the diagnostics panel can link a
+   * cache refresh back to the row it came from. Prod: ignored.
+   */
+  ids?: readonly string[];
+};
+
+export function invalidateWellbeing(
+  qc: QueryClient,
+  reason?: string,
+  opts?: InvalidateWellbeingOptions,
+): void {
+  const ids = opts?.ids ?? [];
+  recordWellbeingInvalidation("admin-wellbeing", reason, ids);
+  recordWellbeingInvalidation("my-wellbeing", reason, ids);
   void qc.invalidateQueries({ queryKey: ["admin-wellbeing"] });
   void qc.invalidateQueries({ queryKey: ["my-wellbeing"] });
 }
@@ -27,6 +44,10 @@ export type WellbeingInvalidationEntry = {
   id: number;
   key: string;
   reason: string;
+  /** Mutation-type prefix, e.g. "leave" for reason "leave.cancel". */
+  mutationType: string;
+  /** Row IDs affected by the mutation (may be empty). */
+  ids: readonly string[];
   at: string;
 };
 
@@ -35,15 +56,32 @@ const entries: WellbeingInvalidationEntry[] = [];
 const listeners = new Set<() => void>();
 let nextId = 1;
 
-function recordWellbeingInvalidation(key: string, reason: string | undefined): void {
+function formatIds(ids: readonly string[]): string {
+  // Deterministic JSON-ish format so tests and log grep are stable.
+  return `[${ids.map((id) => JSON.stringify(id)).join(",")}]`;
+}
+
+function mutationTypeOf(reason: string): string {
+  // Everything before the first "." or ":" — "leave.cancel" -> "leave",
+  // "exception.status:resolved" -> "exception", "unspecified" -> "unspecified".
+  const cut = reason.search(/[.:]/);
+  return cut === -1 ? reason : reason.slice(0, cut);
+}
+
+function recordWellbeingInvalidation(
+  key: string,
+  reason: string | undefined,
+  ids: readonly string[],
+): void {
   if (!import.meta.env.DEV) return;
   const label = reason ?? "unspecified";
+  const mutationType = mutationTypeOf(label);
   const at = new Date().toISOString();
   // eslint-disable-next-line no-console
   console.debug(
-    `[wellbeing] invalidate queryKey=["${key}"] reason=${label} at=${at}`,
+    `[wellbeing] invalidate queryKey=["${key}"] reason=${label} mutation=${mutationType} ids=${formatIds(ids)} at=${at}`,
   );
-  entries.unshift({ id: nextId++, key, reason: label, at });
+  entries.unshift({ id: nextId++, key, reason: label, mutationType, ids: [...ids], at });
   if (entries.length > MAX_ENTRIES) entries.length = MAX_ENTRIES;
   for (const l of listeners) l();
 }
