@@ -36,9 +36,9 @@ describe("invalidateWellbeing — dev-mode diagnostics", () => {
     // Exactly two log lines: one per invalidated key.
     expect(debugSpy).toHaveBeenCalledTimes(2);
 
-    const lines = debugSpy.mock.calls.map((c) => String(c[0]));
-    const adminLine = lines.find((l) => l.includes('["admin-wellbeing"]'));
-    const meLine = lines.find((l) => l.includes('["my-wellbeing"]'));
+    const lines = debugSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    const adminLine = lines.find((l: string) => l.includes('["admin-wellbeing"]'));
+    const meLine = lines.find((l: string) => l.includes('["my-wellbeing"]'));
 
     expect(adminLine, "missing admin-wellbeing debug line").toBeDefined();
     expect(meLine, "missing my-wellbeing debug line").toBeDefined();
@@ -53,7 +53,7 @@ describe("invalidateWellbeing — dev-mode diagnostics", () => {
 
   it("falls back to reason=unspecified when the caller omits a reason", () => {
     invalidateWellbeing(qc);
-    const lines = debugSpy.mock.calls.map((c) => String(c[0]));
+    const lines = debugSpy.mock.calls.map((c: unknown[]) => String(c[0]));
     expect(lines).toHaveLength(2);
     for (const line of lines) {
       expect(line).toContain("reason=unspecified");
@@ -65,7 +65,7 @@ describe("invalidateWellbeing — dev-mode diagnostics", () => {
 
     // Two invalidateQueries calls — one per key — regardless of logging.
     expect(invalidateSpy).toHaveBeenCalledTimes(2);
-    const keys = invalidateSpy.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey);
+    const keys = invalidateSpy.mock.calls.map((c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey);
     expect(keys).toContainEqual(["admin-wellbeing"]);
     expect(keys).toContainEqual(["my-wellbeing"]);
   });
