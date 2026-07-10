@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPaged } from "@/lib/supabase-chunked";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,29 +42,49 @@ function WellbeingPage() {
     enabled: !!user,
     queryKey: ["my-wellbeing", user?.id],
     queryFn: async () => {
-      const [assignRes, changesRes, leaveRes, exRes, cycleRes, responseRes, recRes] =
+      // Wide reads use fetchAllPaged with deterministic .order(...) so the
+      // 1000-row PostgREST cap never silently drops recent rota/leave rows.
+      const [assignments, changes, leave, exceptions, cycleRes, responseRes, recRes] =
         await Promise.all([
-          supabase
-            .from("rota_assignments")
-            .select("staff_id,session_date,session")
-            .eq("staff_id", user!.id)
-            .gte("session_date", isoDaysAgo(365))
-            .range(0, 9999),
-          supabase
-            .from("rota_change_log")
-            .select("staff_id,session_date,hours_before_session")
-            .eq("staff_id", user!.id)
-            .range(0, 4999),
-          supabase
-            .from("leave_requests")
-            .select("staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
-            .eq("staff_id", user!.id)
-            .range(0, 4999),
-          supabase
-            .from("exception_reports")
-            .select("trainee_id,event_date")
-            .eq("trainee_id", user!.id)
-            .range(0, 999),
+          fetchAllPaged<{ staff_id: string; session_date: string; session: string }>(
+            () =>
+              supabase
+                .from("rota_assignments")
+                .select("staff_id,session_date,session")
+                .eq("staff_id", user!.id)
+                .gte("session_date", isoDaysAgo(365))
+                .order("session_date", { ascending: true }),
+          ),
+          fetchAllPaged<{ staff_id: string; session_date: string; hours_before_session: number | null }>(
+            () =>
+              supabase
+                .from("rota_change_log")
+                .select("staff_id,session_date,hours_before_session")
+                .eq("staff_id", user!.id)
+                .order("session_date", { ascending: true }),
+          ),
+          fetchAllPaged<{
+            staff_id: string;
+            type: string;
+            status: string;
+            start_date: string;
+            end_date: string;
+            half_day_start: string | null;
+            half_day_end: string | null;
+          }>(() =>
+            supabase
+              .from("leave_requests")
+              .select("staff_id,type,status,start_date,end_date,half_day_start,half_day_end")
+              .eq("staff_id", user!.id)
+              .order("end_date", { ascending: false }),
+          ),
+          fetchAllPaged<{ trainee_id: string; event_date: string }>(() =>
+            supabase
+              .from("exception_reports")
+              .select("trainee_id,event_date")
+              .eq("trainee_id", user!.id)
+              .order("event_date", { ascending: false }),
+          ),
           supabase
             .from("pulse_survey_cycles")
             .select("*")
@@ -77,11 +98,6 @@ function WellbeingPage() {
           supabase
             .rpc("get_recognition_decrypted", { p_staff_id: user!.id, p_limit: 20 }),
         ]);
-
-      if (assignRes.error) throw assignRes.error;
-      if (changesRes.error) throw changesRes.error;
-      if (leaveRes.error) throw leaveRes.error;
-      if (exRes.error) throw exRes.error;
 
       return {
         assignments: assignRes.data ?? [],
