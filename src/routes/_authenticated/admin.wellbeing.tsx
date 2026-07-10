@@ -32,6 +32,7 @@ import {
 } from "@/lib/attrition-risk";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
 import { fetchAllPaged, createQueryBudget, reportQueryBudget } from "@/lib/supabase-chunked";
+import { WellbeingMetricGuide } from "@/components/wellbeing/MetricsGuide";
 
 export const Route = createFileRoute("/_authenticated/admin/wellbeing")({
   head: () => ({
