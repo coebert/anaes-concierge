@@ -488,4 +488,186 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     ).toBe(2);
     expect(resultWithoutDay90.score).toBeGreaterThan(result.score);
   });
+
+  it("cancelled compassionate + cancelled study leave side by side: date lists per type and combined score contribution", async () => {
+    // One staff with recent cancelled spells in BOTH compassionate and study.
+    // Each type also has an older approved spell (visible) and an older
+    // cancelled spell (out of window) so we can pin the "recent" filter.
+    const STAFF = { id: "staff-mixed", name: "Dr Mixed" };
+    const rows: Row[] = [];
+    let counter = 0;
+    const push = (r: Omit<Row, "id">) => rows.push({ id: `m-${counter++}`, ...r });
+
+    // OLD approved (still returned in the list — visible but not "bad leave").
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "compassionate",
+      status: "approved",
+      start_date: isoDaysAgo(200),
+      end_date: isoDaysAgo(198),
+    });
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "study",
+      status: "approved",
+      start_date: isoDaysAgo(180),
+      end_date: isoDaysAgo(178),
+    });
+    // OLD cancelled (out of the 90-day window — MUST NOT count toward the score).
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "compassionate",
+      status: "cancelled",
+      start_date: isoDaysAgo(150),
+      end_date: isoDaysAgo(148),
+    });
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "study",
+      status: "cancelled",
+      start_date: isoDaysAgo(160),
+      end_date: isoDaysAgo(158),
+    });
+
+    // Filler to push the recent rows past the 1000-row cap.
+    while (rows.length < 1300) {
+      push({
+        staff_id: `filler-${rows.length % 20}`,
+        staff_name: `Filler ${rows.length % 20}`,
+        type: "annual",
+        status: "approved",
+        start_date: isoDaysAgo(200 + (rows.length % 300) + 5),
+        end_date: isoDaysAgo(200 + (rows.length % 300)),
+      });
+    }
+
+    // RECENT cancelled — the pair we're asserting on. Placed after the cap.
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "compassionate",
+      status: "cancelled",
+      start_date: isoDaysAgo(20),
+      end_date: isoDaysAgo(18),
+    });
+    push({
+      staff_id: STAFF.id,
+      staff_name: STAFF.name,
+      type: "study",
+      status: "cancelled",
+      start_date: isoDaysAgo(10),
+      end_date: isoDaysAgo(8),
+    });
+
+    const table = makeFakeTable(rows);
+    const fetched = await fetchAllPaged<Row>(() =>
+      table.order("end_date", { ascending: false }),
+    );
+    expect(fetched.length).toBe(rows.length);
+    // Ordering discipline holds across the paginated scan.
+    for (const call of table.rangeCalls) {
+      expect(call.orderedBy).toEqual({ key: "end_date", ascending: false });
+    }
+
+    const staffRows = fetched.filter((r) => r.staff_id === STAFF.id);
+
+    // Per-type returned date lists (end_date desc).
+    const compassionate = staffRows.filter((r) => r.type === "compassionate");
+    const study = staffRows.filter((r) => r.type === "study");
+    expect(compassionate.map((r) => ({ status: r.status, end_date: r.end_date }))).toEqual([
+      { status: "cancelled", end_date: isoDaysAgo(18) },
+      { status: "cancelled", end_date: isoDaysAgo(148) },
+      { status: "approved", end_date: isoDaysAgo(198) },
+    ]);
+    expect(study.map((r) => ({ status: r.status, end_date: r.end_date }))).toEqual([
+      { status: "cancelled", end_date: isoDaysAgo(8) },
+      { status: "cancelled", end_date: isoDaysAgo(158) },
+      { status: "approved", end_date: isoDaysAgo(178) },
+    ]);
+
+    // Most-recent cancelled per type — the values the UI surfaces.
+    const lastCancelled = (type: LeaveType) =>
+      staffRows
+        .filter((r) => r.type === type && r.status === "cancelled")
+        .sort((a, b) => b.end_date.localeCompare(a.end_date))[0];
+    expect(lastCancelled("compassionate")!.end_date).toBe(isoDaysAgo(18));
+    expect(lastCancelled("study")!.end_date).toBe(isoDaysAgo(8));
+
+    // Score contribution: both recent cancellations are in-window bad leave.
+    // The two OLD cancellations sit outside the 90d window and must NOT count.
+    const leaveInput: LeaveLite[] = staffRows.map((r) => ({
+      staff_id: r.staff_id,
+      status: r.status,
+      type: r.type,
+      start_date: r.start_date,
+      end_date: r.end_date,
+    }));
+    const result = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: leaveInput,
+      exceptions: [],
+    });
+    const leaveDriver = result.drivers.find((d) => d.key === "leave")!;
+    // Two in-window bad-leave rows (both cancelled), cap 3.
+    expect(leaveDriver.value).toBe(2);
+    expect(leaveDriver.normalised).toBeCloseTo(2 / 3, 10);
+    expect(leaveDriver.weight).toBe(0.1);
+
+    // Drop the compassionate cancellation → value 1 (study only).
+    const studyOnly: LeaveLite[] = leaveInput.filter(
+      (l) => !(l.type === "compassionate" && l.status === "cancelled" && l.start_date === isoDaysAgo(20)),
+    );
+    const studyOnlyResult = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: studyOnly,
+      exceptions: [],
+    });
+    expect(studyOnlyResult.drivers.find((d) => d.key === "leave")!.value).toBe(1);
+
+    // Drop the study cancellation → value 1 (compassionate only). Confirms
+    // both types contribute symmetrically to the same driver.
+    const compassionateOnly: LeaveLite[] = leaveInput.filter(
+      (l) => !(l.type === "study" && l.status === "cancelled" && l.start_date === isoDaysAgo(10)),
+    );
+    const compassionateOnlyResult = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: compassionateOnly,
+      exceptions: [],
+    });
+    expect(
+      compassionateOnlyResult.drivers.find((d) => d.key === "leave")!.value,
+    ).toBe(1);
+    expect(compassionateOnlyResult.score).toBe(studyOnlyResult.score);
+
+    // Composite delta: driver went from 0 (drop both) to 2/3 saturation.
+    const noneResult = computeWellbeing({
+      staffId: STAFF.id,
+      now: TODAY,
+      assignments: [],
+      changes: [],
+      leave: leaveInput.filter(
+        (l) =>
+          !(
+            l.status === "cancelled" &&
+            (l.start_date === isoDaysAgo(10) || l.start_date === isoDaysAgo(20))
+          ),
+      ),
+      exceptions: [],
+    });
+    expect(noneResult.drivers.find((d) => d.key === "leave")!.value).toBe(0);
+    expect(noneResult.score - result.score).toBe(Math.round(100 * (2 / 3) * 0.1));
+  });
 });
