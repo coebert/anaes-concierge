@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from playwright.async_api import async_playwright  # noqa: E402
+from _lib.assert_utc import ensure_utc  # noqa: E402
 from _lib.signed_in import (  # noqa: E402
     BASE_URL,
     FAKE_USER_ID,
@@ -114,6 +115,8 @@ async def check_admin_wellbeing_blocks_non_admin() -> None:
 
 
 async def main() -> None:
+    # Loud failure on TZ drift before any Playwright work runs.
+    ensure_utc()
     await check_personal_wellbeing()
     await check_admin_wellbeing_as_admin()
     await check_admin_wellbeing_blocks_non_admin()
