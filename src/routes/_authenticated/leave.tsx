@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
+import { optimisticCancelLeave } from "@/features/leave/optimistic-cancel-leave";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
 
