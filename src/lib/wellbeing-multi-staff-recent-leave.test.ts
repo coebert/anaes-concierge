@@ -185,6 +185,21 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     );
     expect(fetched.length).toBe(rows.length);
 
+    // Every `.range(...)` call must have been preceded by a consistent
+    // `.order('end_date', { ascending: false })` — no page can slip through
+    // unordered, and no page may switch key or direction mid-scan. This is
+    // what makes the pagination result deterministic across the row cap.
+    expect(table.rangeCalls.length).toBeGreaterThan(1);
+    for (const call of table.rangeCalls) {
+      expect(call.orderedBy).not.toBeNull();
+      expect(call.orderedBy!.key).toBe("end_date");
+      expect(call.orderedBy!.ascending).toBe(false);
+    }
+    for (const call of table.orderCalls) {
+      expect(call.key).toBe("end_date");
+      expect(call.ascending).toBe(false);
+    }
+
     for (const s of staff) {
       const last = lastApproved(s.id, s.type, fetched);
       expect(last, `no recent ${s.type} for ${s.name}`).not.toBeNull();
