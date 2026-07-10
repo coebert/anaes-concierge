@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Nightly at 06:00 UTC — runs the large-profile pagination stress test
+    # so performance regressions surface within 24h, independent of PR churn.
+    - cron: "0 6 * * *"
 
 jobs:
   lint:
