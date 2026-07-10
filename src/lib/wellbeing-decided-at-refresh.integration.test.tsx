@@ -182,17 +182,28 @@ async function primeUnrelated(qc: QueryClient) {
     coordinatorLeave: vi.fn(async () => ({ items: [] })),
     myWellbeingHistory: vi.fn(async () => ({ points: [] })),
   };
-  const opts: Array<{ queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }> = [
-    { queryKey: ["rota", "week", "2026-07-06"], queryFn: spies.rota },
-    { queryKey: ["profiles"], queryFn: spies.profiles },
-    { queryKey: ["coordinator-leave"], queryFn: spies.coordinatorLeave },
-    { queryKey: ["my-wellbeing-history", USER_ID], queryFn: spies.myWellbeingHistory },
+  const opts: Array<{
+    queryKey: readonly unknown[];
+    queryFn: () => Promise<unknown>;
+    staleTime: number;
+  }> = [
+    { queryKey: ["rota", "week", "2026-07-06"], queryFn: spies.rota, staleTime: Infinity },
+    { queryKey: ["profiles"], queryFn: spies.profiles, staleTime: Infinity },
+    { queryKey: ["coordinator-leave"], queryFn: spies.coordinatorLeave, staleTime: Infinity },
+    { queryKey: ["my-wellbeing-history", USER_ID], queryFn: spies.myWellbeingHistory, staleTime: Infinity },
   ];
   for (const o of opts) await qc.prefetchQuery(o);
+  // staleTime: Infinity on the observer too — otherwise a fresh subscribe
+  // against a query that the QueryClient defaults consider stale
+  // (`staleTime: 0`) would trigger an immediate refetch and defeat the
+  // "unrelated cache untouched" assertion. This is a test-instrumentation
+  // detail, not something the real invalidation path relies on.
   const unsubs = opts.map((o) =>
-    new QueryObserver(qc, { queryKey: o.queryKey, queryFn: o.queryFn }).subscribe(
-      () => {},
-    ),
+    new QueryObserver(qc, {
+      queryKey: o.queryKey,
+      queryFn: o.queryFn,
+      staleTime: Infinity,
+    }).subscribe(() => {}),
   );
   for (const s of Object.values(spies)) expect(s).toHaveBeenCalledTimes(1);
   return {
