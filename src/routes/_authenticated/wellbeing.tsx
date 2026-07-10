@@ -352,6 +352,10 @@ export function WellbeingPage() {
         </CardContent>
       </Card>
 
+      <WellbeingMetricGuide />
+
+
+
       <PulseSurveyDialog
         open={pulseOpen}
         onOpenChange={setPulseOpen}
