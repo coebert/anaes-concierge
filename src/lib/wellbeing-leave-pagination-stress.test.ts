@@ -1,4 +1,15 @@
-import { afterAll, describe, expect, it } from "vitest";
+// Pin the process timezone to UTC BEFORE any Date object is constructed
+// in this module. `Date` reads `process.env.TZ` on Node/glibc when it
+// computes local components (getHours, toDateString, toString, and the
+// yyyy-mm-dd slice of a non-Z ISO string), so an America/Los_Angeles or
+// Europe/London CI runner would otherwise produce different day
+// boundaries than the UTC-fixture assertions in this file. Setting it
+// here — top of the module, before any Date usage — guarantees the same
+// wall-clock reasoning on every runner. Explicit `TZ=UTC` on the shell
+// still takes precedence via the surrounding process env.
+process.env.TZ = "UTC";
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { fetchAllPaged } from "./supabase-chunked";
@@ -330,6 +341,22 @@ function expectedRangeCalls(rows: number, pageSize: number): number {
 const TEST_TIMEOUT_MS = HARD_TIME_LIMIT_MS + 30_000;
 
 describe(`paginated leave query — stress & performance (profile=${PROFILE.name})`, () => {
+  beforeAll(() => {
+    // Belt-and-braces guard: if a future edit imports something that
+    // mutates `process.env.TZ`, this assertion fires before any run so
+    // date-derived assertions below can't silently drift on a non-UTC
+    // runner. `getTimezoneOffset()` returns 0 for UTC on every Node
+    // build we support.
+    expect(
+      process.env.TZ,
+      "stress test requires TZ=UTC for deterministic date reasoning",
+    ).toBe("UTC");
+    expect(
+      new Date("2026-07-10T00:00:00Z").getTimezoneOffset(),
+      "Date is not resolving to UTC — CI runner timezone leaked in",
+    ).toBe(0);
+  });
+
   it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
     const t0 = performance.now();
     const { staff, perStaff } = PROFILE.scenarioA;
