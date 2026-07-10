@@ -181,9 +181,57 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       expect(daysSince(last!.end_date)).toBe(s.recentEnd);
       expect(daysSince(last!.end_date)).toBeLessThan(90);
     }
+
+    // Score contribution: the in-window denied spell for each staff (2 days ago,
+    // hidden behind the row cap) must now flow into computeWellbeing via the
+    // `leave` driver. Compare against a "legacy view" — the same fetched set
+    // with each staff's recent rows stripped — to prove the paginated dates
+    // both appear in the returned list AND move the score.
+    const NOW = TODAY;
+    for (const s of staff) {
+      const paginatedLeave: LeaveLite[] = fetched
+        .filter((r) => r.staff_id === s.id)
+        .map((r) => ({
+          staff_id: r.staff_id,
+          status: r.status,
+          type: r.type,
+          start_date: r.start_date,
+          end_date: r.end_date,
+        }));
+      const legacyLeave: LeaveLite[] = paginatedLeave.filter(
+        (l) => daysSince(l.start_date) > 90,
+      );
+
+      const paginatedScore = computeWellbeing({
+        staffId: s.id,
+        now: NOW,
+        assignments: [],
+        changes: [],
+        leave: paginatedLeave,
+        exceptions: [],
+      });
+      const legacyScore = computeWellbeing({
+        staffId: s.id,
+        now: NOW,
+        assignments: [],
+        changes: [],
+        leave: legacyLeave,
+        exceptions: [],
+      });
+
+      const paginatedLeaveDriver = paginatedScore.drivers.find((d) => d.key === "leave")!;
+      const legacyLeaveDriver = legacyScore.drivers.find((d) => d.key === "leave")!;
+
+      // Paginated view sees the denied spell → leave driver > 0.
+      expect(paginatedLeaveDriver.value).toBeGreaterThanOrEqual(1);
+      // Legacy view misses it → leave driver stays at 0.
+      expect(legacyLeaveDriver.value).toBe(0);
+      // And that difference propagates to the composite score.
+      expect(paginatedScore.score).toBeLessThan(legacyScore.score);
+    }
   });
 
-  it("legacy single unordered .range(0, 19999) inflates 'days since last leave' for every staff", async () => {
+  it("legacy single unordered .range(0, 19999) inflates 'days since last leave' AND misses the score penalty", async () => {
     const { staff, rows } = buildFixture();
     const table = makeFakeTable(rows);
 
@@ -191,12 +239,37 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     expect(error).toBeNull();
     expect(data.length).toBe(DB_MAX_ROWS);
 
+    const NOW = TODAY;
     for (const s of staff) {
       const last = lastApproved(s.id, s.type, data);
       expect(last, `${s.name} should have a stale row visible`).not.toBeNull();
       // Under the legacy path only the ancient spell is visible.
       expect(last!.end_date).toBe(isoDaysAgo(s.staleEnd));
       expect(daysSince(last!.end_date)).toBeGreaterThan(300);
+
+      // And the truncated slice has zero in-window denied spells for this
+      // staff — so the wellbeing `leave` driver stays flat at 0, understating
+      // the real harm.
+      const legacyLeave: LeaveLite[] = data
+        .filter((r) => r.staff_id === s.id)
+        .map((r) => ({
+          staff_id: r.staff_id,
+          status: r.status,
+          type: r.type,
+          start_date: r.start_date,
+          end_date: r.end_date,
+        }));
+      const result = computeWellbeing({
+        staffId: s.id,
+        now: NOW,
+        assignments: [],
+        changes: [],
+        leave: legacyLeave,
+        exceptions: [],
+      });
+      const leaveDriver = result.drivers.find((d) => d.key === "leave")!;
+      expect(leaveDriver.value).toBe(0);
+      expect(leaveDriver.normalised).toBe(0);
     }
   });
 
