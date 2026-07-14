@@ -83,10 +83,10 @@ describe("navigation — test files reference only known NAV_ITEMS ids", () => {
         // compared to `i.id ===`. Detect via a per-file substring search.
         const isIdContext =
           new RegExp(`\\.id\\s*===\\s*"${slug}"`).test(source) ||
-          new RegExp(`\\bid:\\s*"${slug}"`).test(source) ||
+          new RegExp(`\\{\\s*id:\\s*"${slug}"`).test(source) ||
           new RegExp(`byId[^\\n]*\\.get\\("${slug}"\\)`).test(source) ||
-          new RegExp(`\\bMOVED_IDS\\b[\\s\\S]*?"${slug}"`).test(source) ||
-          new RegExp(`AUDITS_EXPECTED[\\s\\S]*?"${slug}"`).test(source);
+          new RegExp(`MOVED_IDS\\s*=\\s*\\[[^\\]]*"${slug}"`).test(source) ||
+          new RegExp(`AUDITS_EXPECTED\\s*=\\s*\\[[^\\]]*"${slug}"`).test(source);
         if (!isIdContext) continue;
         if (!knownIds.has(slug)) unknown.push(slug);
       }
