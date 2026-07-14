@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { CalendarClock, Users } from "lucide-react";
 import { splitName } from "@/lib/utils";
+import { countWeekendExtras } from "@/features/analytics/weekend-workload";
 
 const searchSchema = z.object({
   from: fallback(z.string(), "").default(""),
