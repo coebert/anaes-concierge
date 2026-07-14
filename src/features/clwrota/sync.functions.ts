@@ -1026,6 +1026,7 @@ export async function performRotaSync(
         // sessions that don't resolve to a specific NHH theatre (or are
         // on-call) are still counted in audits.
         is_non_sag: isNonSagRow,
+        extra_type: extraTypeName ? String(extraTypeName).trim().toLowerCase() || null : null,
       });
     }
 
