@@ -817,6 +817,7 @@ export async function performRotaSync(
       clwrota_external_id: string;
       notes: string | null;
       is_non_sag: boolean;
+      extra_type: string | null;
     };
 
 
