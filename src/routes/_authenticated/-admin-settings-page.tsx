@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/page-header";
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
@@ -36,14 +35,7 @@ import {
   StaffSyncResultPanel,
 } from "@/features/admin-settings/result-panels";
 
-// Re-exported for the co-located investigate-solo test.
-export { InvestigateSoloCard };
-
-export const Route = createFileRoute("/_authenticated/admin/settings")({
-  component: SettingsPage,
-});
-
-function SettingsPage() {
+export function AdminSettingsPage() {
   const qc = useQueryClient();
   const getSettings = useServerFn(getClwRotaSettings);
   const saveSettings = useServerFn(saveClwRotaSettings);
