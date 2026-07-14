@@ -25,7 +25,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/weekend-workload",
+  "/_authenticated/admin/weekend-workload",
 )({
   validateSearch: zodValidator(searchSchema),
   head: () => ({

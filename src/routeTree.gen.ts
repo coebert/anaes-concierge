@@ -48,6 +48,7 @@ import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_aut
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedAdminWellbeingRouteImport } from './routes/_authenticated/admin.wellbeing'
+import { Route as AuthenticatedAdminWeekendWorkloadRouteImport } from './routes/_authenticated/admin.weekend-workload'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
 import { Route as AuthenticatedAdminTheatreAliasesRouteImport } from './routes/_authenticated/admin.theatre-aliases'
@@ -81,7 +82,6 @@ import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/publ
 import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar/$token'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
-import { Route as AuthenticatedAdminAnalyticsWeekendWorkloadRouteImport } from './routes/_authenticated/admin.analytics.weekend-workload'
 import { Route as AuthenticatedAdminAnalyticsTraineeExposureRouteImport } from './routes/_authenticated/admin.analytics.trainee-exposure'
 import { Route as AuthenticatedAdminAnalyticsSicknessSeasonalityRouteImport } from './routes/_authenticated/admin.analytics.sickness-seasonality'
 import { Route as AuthenticatedAdminAnalyticsShortNoticeRouteImport } from './routes/_authenticated/admin.analytics.short-notice'
@@ -304,6 +304,12 @@ const AuthenticatedAdminWellbeingRoute =
     path: '/admin/wellbeing',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminWeekendWorkloadRoute =
+  AuthenticatedAdminWeekendWorkloadRouteImport.update({
+    id: '/admin/weekend-workload',
+    path: '/admin/weekend-workload',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminTheatresRoute =
   AuthenticatedAdminTheatresRouteImport.update({
     id: '/admin/theatres',
@@ -497,12 +503,6 @@ const AuthenticatedCalendarStaffStaffIdRoute =
     path: '/staff/$staffId',
     getParentRoute: () => AuthenticatedCalendarRoute,
   } as any)
-const AuthenticatedAdminAnalyticsWeekendWorkloadRoute =
-  AuthenticatedAdminAnalyticsWeekendWorkloadRouteImport.update({
-    id: '/weekend-workload',
-    path: '/weekend-workload',
-    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
-  } as any)
 const AuthenticatedAdminAnalyticsTraineeExposureRoute =
   AuthenticatedAdminAnalyticsTraineeExposureRouteImport.update({
     id: '/trainee-exposure',
@@ -597,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/weekend-workload': typeof AuthenticatedAdminWeekendWorkloadRoute
   '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
@@ -625,7 +626,6 @@ export interface FileRoutesByFullPath {
   '/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   '/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   '/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
-  '/admin/analytics/weekend-workload': typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -678,6 +678,7 @@ export interface FileRoutesByTo {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/weekend-workload': typeof AuthenticatedAdminWeekendWorkloadRoute
   '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
@@ -706,7 +707,6 @@ export interface FileRoutesByTo {
   '/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   '/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   '/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
-  '/admin/analytics/weekend-workload': typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -762,6 +762,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/_authenticated/admin/weekend-workload': typeof AuthenticatedAdminWeekendWorkloadRoute
   '/_authenticated/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
@@ -790,7 +791,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   '/_authenticated/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   '/_authenticated/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
-  '/_authenticated/admin/analytics/weekend-workload': typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -846,6 +846,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/weekend-workload'
     | '/admin/wellbeing'
     | '/chat/$conversationId'
     | '/coordinator/duties'
@@ -874,7 +875,6 @@ export interface FileRouteTypes {
     | '/admin/analytics/short-notice'
     | '/admin/analytics/sickness-seasonality'
     | '/admin/analytics/trainee-exposure'
-    | '/admin/analytics/weekend-workload'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -927,6 +927,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/weekend-workload'
     | '/admin/wellbeing'
     | '/chat/$conversationId'
     | '/coordinator/duties'
@@ -955,7 +956,6 @@ export interface FileRouteTypes {
     | '/admin/analytics/short-notice'
     | '/admin/analytics/sickness-seasonality'
     | '/admin/analytics/trainee-exposure'
-    | '/admin/analytics/weekend-workload'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -1010,6 +1010,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatre-aliases'
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
+    | '/_authenticated/admin/weekend-workload'
     | '/_authenticated/admin/wellbeing'
     | '/_authenticated/chat/$conversationId'
     | '/_authenticated/coordinator/duties'
@@ -1038,7 +1039,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/analytics/short-notice'
     | '/_authenticated/admin/analytics/sickness-seasonality'
     | '/_authenticated/admin/analytics/trainee-exposure'
-    | '/_authenticated/admin/analytics/weekend-workload'
     | '/_authenticated/calendar/staff/$staffId'
     | '/_authenticated/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -1339,6 +1339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWellbeingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/weekend-workload': {
+      id: '/_authenticated/admin/weekend-workload'
+      path: '/admin/weekend-workload'
+      fullPath: '/admin/weekend-workload'
+      preLoaderRoute: typeof AuthenticatedAdminWeekendWorkloadRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/theatres': {
       id: '/_authenticated/admin/theatres'
       path: '/admin/theatres'
@@ -1570,13 +1577,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarStaffStaffIdRouteImport
       parentRoute: typeof AuthenticatedCalendarRoute
     }
-    '/_authenticated/admin/analytics/weekend-workload': {
-      id: '/_authenticated/admin/analytics/weekend-workload'
-      path: '/weekend-workload'
-      fullPath: '/admin/analytics/weekend-workload'
-      preLoaderRoute: typeof AuthenticatedAdminAnalyticsWeekendWorkloadRouteImport
-      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
-    }
     '/_authenticated/admin/analytics/trainee-exposure': {
       id: '/_authenticated/admin/analytics/trainee-exposure'
       path: '/trainee-exposure'
@@ -1711,7 +1711,6 @@ interface AuthenticatedAdminAnalyticsRouteChildren {
   AuthenticatedAdminAnalyticsShortNoticeRoute: typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   AuthenticatedAdminAnalyticsSicknessSeasonalityRoute: typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   AuthenticatedAdminAnalyticsTraineeExposureRoute: typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
-  AuthenticatedAdminAnalyticsWeekendWorkloadRoute: typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
 }
 
 const AuthenticatedAdminAnalyticsRouteChildren: AuthenticatedAdminAnalyticsRouteChildren =
@@ -1732,8 +1731,6 @@ const AuthenticatedAdminAnalyticsRouteChildren: AuthenticatedAdminAnalyticsRoute
       AuthenticatedAdminAnalyticsSicknessSeasonalityRoute,
     AuthenticatedAdminAnalyticsTraineeExposureRoute:
       AuthenticatedAdminAnalyticsTraineeExposureRoute,
-    AuthenticatedAdminAnalyticsWeekendWorkloadRoute:
-      AuthenticatedAdminAnalyticsWeekendWorkloadRoute,
   }
 
 const AuthenticatedAdminAnalyticsRouteWithChildren =
@@ -1780,6 +1777,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminTheatreAliasesRoute: typeof AuthenticatedAdminTheatreAliasesRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
+  AuthenticatedAdminWeekendWorkloadRoute: typeof AuthenticatedAdminWeekendWorkloadRoute
   AuthenticatedAdminWellbeingRoute: typeof AuthenticatedAdminWellbeingRoute
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
@@ -1838,6 +1836,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminTheatreAliasesRoute: AuthenticatedAdminTheatreAliasesRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
+  AuthenticatedAdminWeekendWorkloadRoute:
+    AuthenticatedAdminWeekendWorkloadRoute,
   AuthenticatedAdminWellbeingRoute: AuthenticatedAdminWellbeingRoute,
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
