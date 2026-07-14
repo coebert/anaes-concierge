@@ -1,49 +1,29 @@
-import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Loader2, CheckCircle2, XCircle, RefreshCw, Plug } from "lucide-react";
-import {
-  getClwRotaSettings,
-  saveClwRotaSettings,
-  testClwRotaConnection,
-  backfillNonSagLabels,
-} from "@/features/clwrota/clwrota.functions";
-import {
-  useSyncClwRotaStaff,
-  useSyncClwRotaRota,
-  useSyncClwRotaLeave,
-} from "@/features/clwrota/clwrota-sync-hooks";
-import { validateTraineeTheatreMatches } from "@/features/trainees/trainee-theatre-validation.functions";
-import { formatDateGB } from "@/lib/utils";
-import { Stat } from "./-admin-settings-stat";
-import { InvestigateSoloCard } from "./-admin-settings-investigate-solo-card";
-import { ReclassificationUndoCard } from "./-admin-settings-reclassification-undo-card";
-import { NameSortPreferenceCard } from "./-admin-settings-name-sort-card";
-import {
-  ValidateResultPanel,
-  BackfillNonSagResultPanel,
-  LeaveSyncResultPanel,
-  RotaSyncResultPanel,
-  StaffSyncResultPanel,
-} from "@/features/admin-settings/result-panels";
+import { lazy, Suspense } from "react";
 
-// Re-exported for the co-located investigate-solo test.
-export { InvestigateSoloCard };
+const AdminSettingsPage = lazy(() =>
+  import("./-admin-settings-page").then((module) => ({
+    default: module.AdminSettingsPage,
+  })),
+);
 
 export const Route = createFileRoute("/_authenticated/admin/settings")({
-  component: SettingsPage,
+  component: AdminSettingsRoute,
 });
 
-function SettingsPage() {
+function AdminSettingsRoute() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+          Loading settings…
+        </div>
+      }
+    >
+      <AdminSettingsPage />
+    </Suspense>
+  );
+}
   const qc = useQueryClient();
   const getSettings = useServerFn(getClwRotaSettings);
   const saveSettings = useServerFn(saveClwRotaSettings);
