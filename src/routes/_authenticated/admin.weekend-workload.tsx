@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { CalendarClock, Users } from "lucide-react";
 import { splitName } from "@/lib/utils";
+import { countWeekendExtras } from "@/features/analytics/weekend-workload";
 
 const searchSchema = z.object({
   from: fallback(z.string(), "").default(""),
@@ -116,7 +117,6 @@ function WeekendWorkloadPage() {
           .in("staff_id", staffIds)
           .gte("session_date", fromDate)
           .lte("session_date", toDate)
-          .is("extra_type", null)
           .range(from, from + PAGE_SIZE - 1);
         if (error) throw error;
         rows.push(...((page ?? []) as unknown as Row[]));
@@ -153,6 +153,10 @@ function WeekendWorkloadPage() {
       set.add(r.session_date);
     }
 
+    const extraCountsById = new Map(
+      countWeekendExtras(data.rows).map((c) => [c.staff_id, c]),
+    );
+
     const rows = Array.from(nameById.keys()).map((id) => {
       const dates = weekendDatesByStaff.get(id) ?? new Set<string>();
       let sat = 0;
@@ -162,6 +166,9 @@ function WeekendWorkloadPage() {
         if (dow === 6) sat++;
         else if (dow === 0) sun++;
       }
+      const extras = extraCountsById.get(id) ?? {
+        staff_id: id, extra: 0, locum: 0, wli: 0, sag: 0,
+      };
       return {
         staff_id: id,
         name: nameById.get(id) ?? "Unknown",
@@ -169,6 +176,10 @@ function WeekendWorkloadPage() {
         total: dates.size,
         sat,
         sun,
+        extra: extras.extra,
+        locum: extras.locum,
+        wli: extras.wli,
+        sag: extras.sag,
         ...splitName(nameById.get(id) ?? ""),
       };
     }).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
@@ -179,6 +190,7 @@ function WeekendWorkloadPage() {
 
     return { rows, totalDays, workedStaff, mean };
   }, [data]);
+
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
@@ -266,6 +278,18 @@ function WeekendWorkloadPage() {
                     <TableHead className="text-right">Saturdays</TableHead>
                     <TableHead className="text-right">Sundays</TableHead>
                     <TableHead className="text-right">Total weekend days</TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as extra sessions">
+                      Extra
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as locum">
+                      Locum
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as Waiting-List Initiative">
+                      WLI
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked on SAG (private) lists">
+                      SAG
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -280,9 +304,14 @@ function WeekendWorkloadPage() {
                       <TableCell className="text-right tabular-nums font-semibold">
                         {r.total}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.extra}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.locum}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.wli}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.sag}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
+
               </Table>
             </CardContent>
           </Card>

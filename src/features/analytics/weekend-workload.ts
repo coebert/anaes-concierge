@@ -76,3 +76,80 @@ export function countWeekendDates(
   }
   return out.sort((a, b) => b.total - a.total || a.staff_id.localeCompare(b.staff_id));
 }
+
+/** Categories of weekend sessions excluded from the job-plan count. */
+export type ExtraCategory = "extra" | "locum" | "wli" | "sag";
+
+/**
+ * Classify a weekend row into one of the "not job-planned" buckets, or
+ * `null` when it's a normal job-plan session (counted by countWeekendDates).
+ *
+ * - extra_type of "extra" / "locum" / "wli" / "sag" maps directly.
+ * - Any other non-null extra_type is treated as an "extra" for counting.
+ * - A row with no extra_type but on a SAG private list
+ *   (theatre.kind === "private" AND not flagged non_sag) is bucketed as "sag".
+ */
+export function classifyExtraCategory(
+  row: WeekendWorkloadRow,
+): ExtraCategory | null {
+  const raw = row.extra_type?.trim().toLowerCase() ?? "";
+  if (raw) {
+    if (raw === "locum") return "locum";
+    if (raw === "wli") return "wli";
+    if (raw === "sag") return "sag";
+    // "extra" and any other non-empty tag fall into the extras bucket.
+    return "extra";
+  }
+  if (isExcludedSagRow(row)) return "sag";
+  return null;
+}
+
+export type ExtraCategoryCounts = Record<ExtraCategory, number>;
+
+export type WeekendExtraCounts = {
+  staff_id: string;
+  extra: number;
+  locum: number;
+  wli: number;
+  sag: number;
+};
+
+/**
+ * Count distinct Sat/Sun dates per staff member for each "not job-planned"
+ * category (extra / locum / WLI / SAG). A single weekend date only counts
+ * once per category, even if the staff member had multiple sessions of
+ * that kind on the same day. Different categories on the same date are
+ * counted independently.
+ */
+export function countWeekendExtras(
+  rows: readonly WeekendWorkloadRow[],
+): WeekendExtraCounts[] {
+  const perStaff = new Map<string, Record<ExtraCategory, Set<string>>>();
+
+  for (const r of rows) {
+    if (!r.staff_id || !r.session_date) continue;
+    if (!isWeekendISO(r.session_date)) continue;
+    const cat = classifyExtraCategory(r);
+    if (!cat) continue;
+
+    let bucket = perStaff.get(r.staff_id);
+    if (!bucket) {
+      bucket = { extra: new Set(), locum: new Set(), wli: new Set(), sag: new Set() };
+      perStaff.set(r.staff_id, bucket);
+    }
+    bucket[cat].add(r.session_date);
+  }
+
+  const out: WeekendExtraCounts[] = [];
+  for (const [staff_id, b] of perStaff) {
+    out.push({
+      staff_id,
+      extra: b.extra.size,
+      locum: b.locum.size,
+      wli: b.wli.size,
+      sag: b.sag.size,
+    });
+  }
+  return out;
+}
+
