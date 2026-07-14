@@ -26,9 +26,15 @@ const STAFF_URL = "https://central.example/api/staff.json?fields=all";
 const ROTA_URL = "https://central.example/api/rota.json?start_date=2025-06-01&end_date=2025-06-30";
 const API_KEY = "test-api-key-123";
 
-/** Rotamap `central_api` shape: { columns, rows } with parallel arrays. */
+/** Rotamap `central_api` shape: { columns: [{ field_name, ... }, ...], rows }. */
 const staffPayload = {
-  columns: ["local_id", "first_name", "last_name", "email", "grade"],
+  columns: [
+    { field_name: "local_id" },
+    { field_name: "first_name" },
+    { field_name: "last_name" },
+    { field_name: "email" },
+    { field_name: "grade" },
+  ],
   rows: [
     ["ext-consultant-1", "Alice", "Ng", "alice.ng@nhs.example", "consultant"],
     ["ext-consultant-2", "Bob", "Patel", "bob.patel@nhs.example", "consultant"],
