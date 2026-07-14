@@ -12,7 +12,6 @@ import {
   Thermometer,
   ArrowRightLeft,
   AlertTriangle,
-  CalendarClock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics")({
