@@ -277,19 +277,28 @@ function WeekendWorkloadPage() {
                     <TableHead>Grade</TableHead>
                     <TableHead className="text-right">Saturdays</TableHead>
                     <TableHead className="text-right">Sundays</TableHead>
-                    <TableHead className="text-right">Total weekend days</TableHead>
-                    <TableHead className="text-right" title="Weekend days worked as extra sessions">
+                    <TableHead
+                      className="text-right"
+                      title="Job-planned weekend days only — excludes extra, locum, WLI, and SAG (private) sessions, which are shown separately in the columns to the right."
+                    >
+                      Total weekend days<br />
+                      <span className="text-[10px] font-normal text-muted-foreground">
+                        (job plan only — excl. extra/locum/WLI/SAG)
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as extra sessions (not included in Total)">
                       Extra
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked as locum">
+                    <TableHead className="text-right" title="Weekend days worked as locum (not included in Total)">
                       Locum
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked as Waiting-List Initiative">
+                    <TableHead className="text-right" title="Weekend days worked as Waiting-List Initiative (not included in Total)">
                       WLI
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked on SAG (private) lists">
+                    <TableHead className="text-right" title="Weekend days worked on SAG (private) lists (not included in Total)">
                       SAG
                     </TableHead>
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>
