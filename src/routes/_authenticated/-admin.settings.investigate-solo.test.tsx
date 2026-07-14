@@ -98,7 +98,7 @@ vi.mock("sonner", () => ({
 }));
 
 // Import AFTER mocks are registered.
-import { InvestigateSoloCard } from "./admin.settings";
+import { InvestigateSoloCard } from "./-admin-settings-investigate-solo-card";
 
 // --- Fake handler -------------------------------------------------------
 
