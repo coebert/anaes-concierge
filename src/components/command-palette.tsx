@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { filterNavForUser, groupNav, NAV_GROUPS } from "@/lib/navigation";
+import { commandPaletteFilter } from "@/lib/command-palette-filter";
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -52,7 +53,7 @@ export function CommandPalette() {
           ⌘K
         </kbd>
       </Button>
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog open={open} onOpenChange={setOpen} filter={commandPaletteFilter}>
         <CommandInput placeholder="Jump to a tool or view…" />
         <CommandList>
           <CommandEmpty>No matches.</CommandEmpty>
