@@ -278,6 +278,18 @@ function WeekendWorkloadPage() {
                     <TableHead className="text-right">Saturdays</TableHead>
                     <TableHead className="text-right">Sundays</TableHead>
                     <TableHead className="text-right">Total weekend days</TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as extra sessions">
+                      Extra
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as locum">
+                      Locum
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked as Waiting-List Initiative">
+                      WLI
+                    </TableHead>
+                    <TableHead className="text-right" title="Weekend days worked on SAG (private) lists">
+                      SAG
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -292,9 +304,14 @@ function WeekendWorkloadPage() {
                       <TableCell className="text-right tabular-nums font-semibold">
                         {r.total}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.extra}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.locum}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.wli}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.sag}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
+
               </Table>
             </CardContent>
           </Card>
