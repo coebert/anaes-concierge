@@ -100,6 +100,13 @@ const CARDS: Array<{
       "First-90-days sickness, exception reports and short-notice changes.",
     Icon: AlertTriangle,
   },
+  {
+    to: "/admin/analytics/weekend-workload",
+    title: "9. Weekend workload (job plan)",
+    blurb:
+      "Distinct Sat/Sun dates worked by permanent staff over 12 months; excludes extras, locum, WLI and SAG lists.",
+    Icon: CalendarClock,
+  },
 ];
 
 function AnalyticsIndex() {
