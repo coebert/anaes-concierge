@@ -226,6 +226,11 @@ function makeStore(seed?: { profiles?: Profile[]; theatres?: Array<{ id: string;
         skipped.push({ label: extAsgId, reason: `unknown theatre "${theatreName}"` });
         continue;
       }
+      if (half !== "am" && half !== "pm") {
+        skipped.push({ label: extAsgId, reason: `unsupported session "${half}"` });
+        continue;
+      }
+      const halfAmPm: "am" | "pm" = half;
       const staff = profiles.find((p) => p.clwrota_external_id === staffExt);
       if (!staff) {
         skipped.push({ label: extAsgId, reason: `unknown staff "${staffExt}"` });
@@ -233,22 +238,23 @@ function makeStore(seed?: { profiles?: Profile[]; theatres?: Array<{ id: string;
       }
 
       // theatre_sessions upsert (UNIQUE on date+theatre+session).
-      const skey = sessionKey({ session_date: date, theatre_id: theatreId, session: half });
+      const skey = sessionKey({ session_date: date, theatre_id: theatreId, session: halfAmPm });
       let ts = sessionByKey.get(skey);
       if (!ts) {
-        ts = { id: newId("ts"), session_date: date, theatre_id: theatreId, session: half };
+        ts = { id: newId("ts"), session_date: date, theatre_id: theatreId, session: halfAmPm };
         sessions.push(ts);
         sessionByKey.set(skey, ts);
         sessionsUpserted++;
       }
+      const tsRow: TheatreSession = ts;
 
       // rota_assignments upsert (UNIQUE on clwrota_external_id).
       const prior = assignments.find((a) => a.clwrota_external_id === extAsgId);
       if (prior) {
         prior.staff_id = staff.id;
         prior.session_date = date;
-        prior.session = half;
-        prior.theatre_session_id = ts.id;
+        prior.session = halfAmPm;
+        prior.theatre_session_id = tsRow.id;
         prior.role_on_list = role;
         prior.duty_type = dutyType;
         assignmentsUpdated++;
@@ -258,14 +264,15 @@ function makeStore(seed?: { profiles?: Profile[]; theatres?: Array<{ id: string;
           clwrota_external_id: extAsgId,
           staff_id: staff.id,
           session_date: date,
-          session: half,
-          theatre_session_id: ts.id,
+          session: halfAmPm,
+          theatre_session_id: tsRow.id,
           role_on_list: role,
           duty_type: dutyType,
         });
         assignmentsInserted++;
       }
     }
+
 
     return { sessionsUpserted, assignmentsInserted, assignmentsUpdated, skipped };
   };
