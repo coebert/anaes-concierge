@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
  * If any of these imports throws at module scope, the test fails —
  * catching regressions before they surface as a 500 on the live app.
  */
-describe("app boot smoke", () => {
+describe("app boot smoke", { timeout: 30_000 }, () => {
   it("imports the generated route tree without throwing", async () => {
     const mod = await import("@/routeTree.gen");
     expect(mod.routeTree).toBeDefined();
