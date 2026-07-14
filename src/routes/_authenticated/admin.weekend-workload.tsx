@@ -265,7 +265,7 @@ function WeekendWorkloadPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Permanent staff" value={view.rows.length} icon={Users} />
             <StatCard label="Worked ≥1 weekend day" value={view.workedStaff} icon={Users} />
-            <StatCard label="Total weekend days" value={view.totalDays} icon={CalendarClock} />
+            <StatCard label="Total weekend days (job plan only)" value={view.totalDays} icon={CalendarClock} />
             <StatCard label="Mean per staff member" value={view.mean.toFixed(1)} icon={CalendarClock} />
           </div>
           <Card>
