@@ -1854,6 +1854,7 @@ export type Database = {
           clwrota_external_id: string | null
           created_at: string
           duty_type: Database["public"]["Enums"]["duty_type"]
+          extra_type: string | null
           id: string
           is_non_sag: boolean
           locally_modified: boolean
@@ -1871,6 +1872,7 @@ export type Database = {
           clwrota_external_id?: string | null
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
+          extra_type?: string | null
           id?: string
           is_non_sag?: boolean
           locally_modified?: boolean
@@ -1888,6 +1890,7 @@ export type Database = {
           clwrota_external_id?: string | null
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
+          extra_type?: string | null
           id?: string
           is_non_sag?: boolean
           locally_modified?: boolean

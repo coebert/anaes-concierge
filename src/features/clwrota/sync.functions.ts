@@ -817,6 +817,7 @@ export async function performRotaSync(
       clwrota_external_id: string;
       notes: string | null;
       is_non_sag: boolean;
+      extra_type: string | null;
     };
 
 
@@ -1025,6 +1026,7 @@ export async function performRotaSync(
         // sessions that don't resolve to a specific NHH theatre (or are
         // on-call) are still counted in audits.
         is_non_sag: isNonSagRow,
+        extra_type: extraTypeName ? String(extraTypeName).trim().toLowerCase() || null : null,
       });
     }
 
@@ -1220,6 +1222,7 @@ export async function performRotaSync(
         clwrota_external_id: a.clwrota_external_id,
         notes: a.notes,
         is_non_sag: a.is_non_sag,
+        extra_type: a.extra_type,
       }));
 
 

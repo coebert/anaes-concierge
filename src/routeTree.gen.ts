@@ -81,6 +81,7 @@ import { Route as ApiPublicHooksClwrotaSyncRouteImport } from './routes/api/publ
 import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar/$token'
 import { Route as AuthenticatedRobustnessDayDateRouteImport } from './routes/_authenticated/robustness.day.$date'
 import { Route as AuthenticatedCalendarStaffStaffIdRouteImport } from './routes/_authenticated/calendar.staff.$staffId'
+import { Route as AuthenticatedAdminAnalyticsWeekendWorkloadRouteImport } from './routes/_authenticated/admin.analytics.weekend-workload'
 import { Route as AuthenticatedAdminAnalyticsTraineeExposureRouteImport } from './routes/_authenticated/admin.analytics.trainee-exposure'
 import { Route as AuthenticatedAdminAnalyticsSicknessSeasonalityRouteImport } from './routes/_authenticated/admin.analytics.sickness-seasonality'
 import { Route as AuthenticatedAdminAnalyticsShortNoticeRouteImport } from './routes/_authenticated/admin.analytics.short-notice'
@@ -496,6 +497,12 @@ const AuthenticatedCalendarStaffStaffIdRoute =
     path: '/staff/$staffId',
     getParentRoute: () => AuthenticatedCalendarRoute,
   } as any)
+const AuthenticatedAdminAnalyticsWeekendWorkloadRoute =
+  AuthenticatedAdminAnalyticsWeekendWorkloadRouteImport.update({
+    id: '/weekend-workload',
+    path: '/weekend-workload',
+    getParentRoute: () => AuthenticatedAdminAnalyticsRoute,
+  } as any)
 const AuthenticatedAdminAnalyticsTraineeExposureRoute =
   AuthenticatedAdminAnalyticsTraineeExposureRouteImport.update({
     id: '/trainee-exposure',
@@ -618,6 +625,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   '/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   '/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
+  '/admin/analytics/weekend-workload': typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -698,6 +706,7 @@ export interface FileRoutesByTo {
   '/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   '/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   '/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
+  '/admin/analytics/weekend-workload': typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
   '/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -781,6 +790,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/analytics/short-notice': typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   '/_authenticated/admin/analytics/sickness-seasonality': typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   '/_authenticated/admin/analytics/trainee-exposure': typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
+  '/_authenticated/admin/analytics/weekend-workload': typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
   '/_authenticated/calendar/staff/$staffId': typeof AuthenticatedCalendarStaffStaffIdRoute
   '/_authenticated/robustness/day/$date': typeof AuthenticatedRobustnessDayDateRoute
   '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
@@ -864,6 +874,7 @@ export interface FileRouteTypes {
     | '/admin/analytics/short-notice'
     | '/admin/analytics/sickness-seasonality'
     | '/admin/analytics/trainee-exposure'
+    | '/admin/analytics/weekend-workload'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -944,6 +955,7 @@ export interface FileRouteTypes {
     | '/admin/analytics/short-notice'
     | '/admin/analytics/sickness-seasonality'
     | '/admin/analytics/trainee-exposure'
+    | '/admin/analytics/weekend-workload'
     | '/calendar/staff/$staffId'
     | '/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -1026,6 +1038,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/analytics/short-notice'
     | '/_authenticated/admin/analytics/sickness-seasonality'
     | '/_authenticated/admin/analytics/trainee-exposure'
+    | '/_authenticated/admin/analytics/weekend-workload'
     | '/_authenticated/calendar/staff/$staffId'
     | '/_authenticated/robustness/day/$date'
     | '/api/public/calendar/$token'
@@ -1557,6 +1570,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarStaffStaffIdRouteImport
       parentRoute: typeof AuthenticatedCalendarRoute
     }
+    '/_authenticated/admin/analytics/weekend-workload': {
+      id: '/_authenticated/admin/analytics/weekend-workload'
+      path: '/weekend-workload'
+      fullPath: '/admin/analytics/weekend-workload'
+      preLoaderRoute: typeof AuthenticatedAdminAnalyticsWeekendWorkloadRouteImport
+      parentRoute: typeof AuthenticatedAdminAnalyticsRoute
+    }
     '/_authenticated/admin/analytics/trainee-exposure': {
       id: '/_authenticated/admin/analytics/trainee-exposure'
       path: '/trainee-exposure'
@@ -1691,6 +1711,7 @@ interface AuthenticatedAdminAnalyticsRouteChildren {
   AuthenticatedAdminAnalyticsShortNoticeRoute: typeof AuthenticatedAdminAnalyticsShortNoticeRoute
   AuthenticatedAdminAnalyticsSicknessSeasonalityRoute: typeof AuthenticatedAdminAnalyticsSicknessSeasonalityRoute
   AuthenticatedAdminAnalyticsTraineeExposureRoute: typeof AuthenticatedAdminAnalyticsTraineeExposureRoute
+  AuthenticatedAdminAnalyticsWeekendWorkloadRoute: typeof AuthenticatedAdminAnalyticsWeekendWorkloadRoute
 }
 
 const AuthenticatedAdminAnalyticsRouteChildren: AuthenticatedAdminAnalyticsRouteChildren =
@@ -1711,6 +1732,8 @@ const AuthenticatedAdminAnalyticsRouteChildren: AuthenticatedAdminAnalyticsRoute
       AuthenticatedAdminAnalyticsSicknessSeasonalityRoute,
     AuthenticatedAdminAnalyticsTraineeExposureRoute:
       AuthenticatedAdminAnalyticsTraineeExposureRoute,
+    AuthenticatedAdminAnalyticsWeekendWorkloadRoute:
+      AuthenticatedAdminAnalyticsWeekendWorkloadRoute,
   }
 
 const AuthenticatedAdminAnalyticsRouteWithChildren =
@@ -1858,13 +1881,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
