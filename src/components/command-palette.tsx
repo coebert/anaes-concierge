@@ -53,7 +53,7 @@ export function CommandPalette() {
           ⌘K
         </kbd>
       </Button>
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog open={open} onOpenChange={setOpen} filter={commandPaletteFilter}>
         <CommandInput placeholder="Jump to a tool or view…" />
         <CommandList>
           <CommandEmpty>No matches.</CommandEmpty>
