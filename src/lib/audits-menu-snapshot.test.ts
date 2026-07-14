@@ -124,7 +124,7 @@ describe("audits/robustness menu snapshot", () => {
         {
           "id": "weekend-workload",
           "label": "Weekend workload (job plan)",
-          "to": "/admin/analytics/weekend-workload",
+          "to": "/admin/weekend-workload",
         },
       ]
     `);

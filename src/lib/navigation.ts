@@ -183,7 +183,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: GraduationCap, group: "audits", traineeOrAdmin: true,
     keywords: ["trainee", "ARCP"] },
   { id: "weekend-workload", label: "Weekend workload (job plan)",
-    to: "/admin/analytics/weekend-workload",
+    to: "/admin/weekend-workload",
     icon: CalendarClock, group: "audits", roles: ["admin"],
     keywords: ["weekend", "saturday", "sunday", "job plan", "workload", "permanent", "consultant", "sas"] },
 
