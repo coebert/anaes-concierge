@@ -12,7 +12,6 @@ import {
   Thermometer,
   ArrowRightLeft,
   AlertTriangle,
-  CalendarClock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics")({
@@ -38,8 +37,7 @@ const CARDS: Array<{
     | "/admin/analytics/oncall-inequality"
     | "/admin/analytics/sickness-seasonality"
     | "/admin/analytics/handover-risk"
-    | "/admin/analytics/new-starters"
-    | "/admin/analytics/weekend-workload";
+    | "/admin/analytics/new-starters";
   title: string;
   blurb: string;
   Icon: typeof Scale;
@@ -99,13 +97,6 @@ const CARDS: Array<{
     blurb:
       "First-90-days sickness, exception reports and short-notice changes.",
     Icon: AlertTriangle,
-  },
-  {
-    to: "/admin/analytics/weekend-workload",
-    title: "9. Weekend workload (job plan)",
-    blurb:
-      "Distinct Sat/Sun dates worked by permanent staff over 12 months; excludes extras, locum, WLI and SAG lists.",
-    Icon: CalendarClock,
   },
 ];
 

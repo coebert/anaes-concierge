@@ -112,6 +112,11 @@ describe("audits/robustness menu snapshot", () => {
           "to": "/admin/analytics",
         },
         {
+          "id": "weekend-workload",
+          "label": "Weekend workload (job plan)",
+          "to": "/admin/analytics/weekend-workload",
+        },
+        {
           "id": "audit-data",
           "label": "Rota source data",
           "to": "/admin/dashboard",
