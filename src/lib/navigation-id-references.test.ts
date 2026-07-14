@@ -27,10 +27,11 @@ const NAV_ID_TEST_FILES = [
   "navigation-staff-group.test.ts",
 ];
 
-// A NAV_ITEMS id is a kebab-case slug (matches every entry in navigation.ts).
-// This pattern is intentionally narrow so it doesn't sweep up unrelated
-// string literals (route paths, keywords, css classes, etc.).
-const ID_TOKEN = /"([a-z][a-z0-9]*(?:-[a-z0-9]+)+)"/g;
+// A NAV_ITEMS id is a lowercase slug (with or without hyphens) that never
+// contains slashes, spaces, or punctuation. Route paths (`"/admin/foo"`),
+// keywords with spaces (`"return to work"`), and camelCase identifiers are
+// all naturally excluded by this shape.
+const ID_TOKEN = /"([a-z][a-z0-9-]*)"/g;
 
 // Slugs that appear in the test sources but are not NAV_ITEMS ids
 // (route segments, url paths, group ids, etc.). Add sparingly, with a reason.
