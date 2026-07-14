@@ -38,7 +38,8 @@ const CARDS: Array<{
     | "/admin/analytics/oncall-inequality"
     | "/admin/analytics/sickness-seasonality"
     | "/admin/analytics/handover-risk"
-    | "/admin/analytics/new-starters";
+    | "/admin/analytics/new-starters"
+    | "/admin/analytics/weekend-workload";
   title: string;
   blurb: string;
   Icon: typeof Scale;
