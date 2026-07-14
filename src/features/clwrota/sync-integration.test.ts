@@ -427,7 +427,8 @@ describe("CLWRota Central API sync — integration", () => {
     expect(second.assignmentsInserted).toBe(0);
     expect(second.assignmentsUpdated).toBe(2);
     expect(second.sessionsUpserted).toBe(0);
-    expect(store.sessions).toHaveLength(1);
+    // Two sessions survived (Sat AM T1 + Sat PM T1); Theatre 2 rows were skipped.
+    expect(store.sessions).toHaveLength(2);
     expect(store.assignments).toHaveLength(2);
   });
 
