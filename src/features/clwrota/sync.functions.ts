@@ -1222,6 +1222,7 @@ export async function performRotaSync(
         clwrota_external_id: a.clwrota_external_id,
         notes: a.notes,
         is_non_sag: a.is_non_sag,
+        extra_type: a.extra_type,
       }));
 
 
