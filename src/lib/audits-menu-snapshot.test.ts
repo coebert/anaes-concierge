@@ -47,24 +47,9 @@ describe("audits/robustness menu snapshot", () => {
     expect(shape).toMatchInlineSnapshot(`
       [
         {
-          "id": "robustness",
-          "label": "Robustness overview",
-          "to": "/robustness",
-        },
-        {
-          "id": "robustness-list",
-          "label": "List feasibility",
-          "to": "/robustness/list-feasibility",
-        },
-        {
-          "id": "robustness-consultant",
-          "label": "Consultant feasibility",
-          "to": "/robustness/consultant-feasibility",
-        },
-        {
-          "id": "robustness-simulate",
-          "label": "Simulator",
-          "to": "/robustness/simulate",
+          "id": "audit-ai",
+          "label": "AI audit assistant",
+          "to": "/admin/audit-tool",
         },
         {
           "id": "consultant-audits",
@@ -72,29 +57,9 @@ describe("audits/robustness menu snapshot", () => {
           "to": "/robustness/consultant-audits",
         },
         {
-          "id": "poac-audit",
-          "label": "POAC audit",
-          "to": "/robustness/poac-audit",
-        },
-        {
-          "id": "last-minute-changes",
-          "label": "Last minute changes audit",
-          "to": "/robustness/last-minute-changes",
-        },
-        {
-          "id": "trainees",
-          "label": "Trainee audit",
-          "to": "/trainees",
-        },
-        {
-          "id": "tcs",
-          "label": "TCS 2016 audit",
-          "to": "/admin/tcs-audit",
-        },
-        {
-          "id": "exceptions-mine",
-          "label": "My exception reports",
-          "to": "/exceptions",
+          "id": "robustness-consultant",
+          "label": "Consultant feasibility",
+          "to": "/robustness/consultant-feasibility",
         },
         {
           "id": "exceptions-admin",
@@ -102,19 +67,39 @@ describe("audits/robustness menu snapshot", () => {
           "to": "/admin/exceptions",
         },
         {
-          "id": "pulse-admin",
-          "label": "Pulse surveys",
-          "to": "/admin/pulse",
-        },
-        {
           "id": "hr-analytics",
           "label": "HR analytics pack",
           "to": "/admin/analytics",
         },
         {
-          "id": "weekend-workload",
-          "label": "Weekend workload (job plan)",
-          "to": "/admin/analytics/weekend-workload",
+          "id": "last-minute-changes",
+          "label": "Last minute changes audit",
+          "to": "/robustness/last-minute-changes",
+        },
+        {
+          "id": "robustness-list",
+          "label": "List feasibility",
+          "to": "/robustness/list-feasibility",
+        },
+        {
+          "id": "exceptions-mine",
+          "label": "My exception reports",
+          "to": "/exceptions",
+        },
+        {
+          "id": "poac-audit",
+          "label": "POAC audit",
+          "to": "/robustness/poac-audit",
+        },
+        {
+          "id": "pulse-admin",
+          "label": "Pulse surveys",
+          "to": "/admin/pulse",
+        },
+        {
+          "id": "robustness",
+          "label": "Robustness overview",
+          "to": "/robustness",
         },
         {
           "id": "audit-data",
@@ -122,9 +107,24 @@ describe("audits/robustness menu snapshot", () => {
           "to": "/admin/dashboard",
         },
         {
-          "id": "audit-ai",
-          "label": "AI audit assistant",
-          "to": "/admin/audit-tool",
+          "id": "robustness-simulate",
+          "label": "Simulator",
+          "to": "/robustness/simulate",
+        },
+        {
+          "id": "tcs",
+          "label": "TCS 2016 audit",
+          "to": "/admin/tcs-audit",
+        },
+        {
+          "id": "trainees",
+          "label": "Trainee audit",
+          "to": "/trainees",
+        },
+        {
+          "id": "weekend-workload",
+          "label": "Weekend workload (job plan)",
+          "to": "/admin/analytics/weekend-workload",
         },
       ]
     `);
