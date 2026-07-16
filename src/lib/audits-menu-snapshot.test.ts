@@ -41,92 +41,11 @@ describe("audits/robustness menu snapshot", () => {
   });
 
   it("matches the locked snapshot of audits group members", () => {
-    // Ordered {id, label, to} triples — order matches declaration order in
-    // NAV_ITEMS so it doubles as a stable menu-ordering check.
+    // The legacy "audits" umbrella group was split into Robustness,
+    // Analytics, and Compliance. No items should remain assigned to the
+    // legacy id; each former member now lives in one of the three
+    // focused groups (see NAV_ITEMS in src/lib/navigation.ts).
     const shape = auditItems.map((i) => ({ id: i.id, label: i.label, to: i.to }));
-    expect(shape).toMatchInlineSnapshot(`
-      [
-        {
-          "id": "audit-ai",
-          "label": "AI audit assistant",
-          "to": "/admin/audit-tool",
-        },
-        {
-          "id": "consultant-audits",
-          "label": "Consultant audits",
-          "to": "/robustness/consultant-audits",
-        },
-        {
-          "id": "robustness-consultant",
-          "label": "Consultant feasibility",
-          "to": "/robustness/consultant-feasibility",
-        },
-        {
-          "id": "exceptions-admin",
-          "label": "Exception reports (Guardian)",
-          "to": "/admin/exceptions",
-        },
-        {
-          "id": "hr-analytics",
-          "label": "HR analytics pack",
-          "to": "/admin/analytics",
-        },
-        {
-          "id": "last-minute-changes",
-          "label": "Last minute changes audit",
-          "to": "/robustness/last-minute-changes",
-        },
-        {
-          "id": "robustness-list",
-          "label": "List feasibility",
-          "to": "/robustness/list-feasibility",
-        },
-        {
-          "id": "exceptions-mine",
-          "label": "My exception reports",
-          "to": "/exceptions",
-        },
-        {
-          "id": "poac-audit",
-          "label": "POAC audit",
-          "to": "/robustness/poac-audit",
-        },
-        {
-          "id": "pulse-admin",
-          "label": "Pulse surveys",
-          "to": "/admin/pulse",
-        },
-        {
-          "id": "robustness",
-          "label": "Robustness overview",
-          "to": "/robustness",
-        },
-        {
-          "id": "audit-data",
-          "label": "Rota source data",
-          "to": "/admin/dashboard",
-        },
-        {
-          "id": "robustness-simulate",
-          "label": "Simulator",
-          "to": "/robustness/simulate",
-        },
-        {
-          "id": "tcs",
-          "label": "TCS 2016 audit",
-          "to": "/admin/tcs-audit",
-        },
-        {
-          "id": "trainees",
-          "label": "Trainee audit",
-          "to": "/trainees",
-        },
-        {
-          "id": "weekend-workload",
-          "label": "Weekend workload (job plan)",
-          "to": "/admin/weekend-workload",
-        },
-      ]
-    `);
+    expect(shape).toMatchInlineSnapshot(`[]`);
   });
 });

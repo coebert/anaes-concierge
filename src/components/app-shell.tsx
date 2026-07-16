@@ -132,24 +132,12 @@ function NavSectionGroup({
   items: NavItem[];
   pathname: string;
 }) {
-  const hasActive = items.some((i) => isActive(pathname, i.to));
+  const common = items.filter((i) => !i.rare);
+  const rare = items.filter((i) => i.rare);
+  const hasActiveCommon = common.some((i) => isActive(pathname, i.to));
+  const hasActiveRare = rare.some((i) => isActive(pathname, i.to));
   const defaultOpen = group.defaultOpen ?? true;
-  const open = hasActive || defaultOpen;
-
-  // Home and Account groups are single-item — render flat without collapsible chrome.
-  if (items.length === 1 && (group.id === "home" || group.id === "account")) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {items.map((item) => (
-              <NavLeaf key={item.id} item={item} pathname={pathname} />
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    );
-  }
+  const open = hasActiveCommon || hasActiveRare || defaultOpen;
 
   return (
     <Collapsible defaultOpen={open} className="group/collapsible">
@@ -163,13 +151,47 @@ function NavSectionGroup({
         <CollapsibleContent>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {common.map((item) => (
                 <NavLeaf key={item.id} item={item} pathname={pathname} />
               ))}
+              {rare.length > 0 ? (
+                <RareItems items={rare} pathname={pathname} expandedByDefault={hasActiveRare} />
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsibleContent>
       </SidebarGroup>
+    </Collapsible>
+  );
+}
+
+function RareItems({
+  items,
+  pathname,
+  expandedByDefault,
+}: {
+  items: NavItem[];
+  pathname: string;
+  expandedByDefault: boolean;
+}) {
+  return (
+    <Collapsible defaultOpen={expandedByDefault} className="group/rare">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton
+            tooltip="More"
+            className="text-muted-foreground"
+          >
+            <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/rare:rotate-90" />
+            <span>More</span>
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+      </SidebarMenuItem>
+      <CollapsibleContent>
+        {items.map((item) => (
+          <NavLeaf key={item.id} item={item} pathname={pathname} />
+        ))}
+      </CollapsibleContent>
     </Collapsible>
   );
 }
