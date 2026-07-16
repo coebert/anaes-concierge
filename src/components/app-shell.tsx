@@ -132,24 +132,12 @@ function NavSectionGroup({
   items: NavItem[];
   pathname: string;
 }) {
-  const hasActive = items.some((i) => isActive(pathname, i.to));
+  const common = items.filter((i) => !i.rare);
+  const rare = items.filter((i) => i.rare);
+  const hasActiveCommon = common.some((i) => isActive(pathname, i.to));
+  const hasActiveRare = rare.some((i) => isActive(pathname, i.to));
   const defaultOpen = group.defaultOpen ?? true;
-  const open = hasActive || defaultOpen;
-
-  // Home and Account groups are single-item — render flat without collapsible chrome.
-  if (items.length === 1 && (group.id === "home" || group.id === "account")) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {items.map((item) => (
-              <NavLeaf key={item.id} item={item} pathname={pathname} />
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    );
-  }
+  const open = hasActiveCommon || hasActiveRare || defaultOpen;
 
   return (
     <Collapsible defaultOpen={open} className="group/collapsible">
@@ -163,9 +151,12 @@ function NavSectionGroup({
         <CollapsibleContent>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {common.map((item) => (
                 <NavLeaf key={item.id} item={item} pathname={pathname} />
               ))}
+              {rare.length > 0 ? (
+                <RareItems items={rare} pathname={pathname} expandedByDefault={hasActiveRare} />
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsibleContent>
