@@ -1,7 +1,7 @@
 import { Link, useLocation, useRouterState } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Stethoscope, ChevronRight } from "lucide-react";
+import { Stethoscope, ChevronRight, Search, X } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -18,6 +18,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
@@ -37,11 +38,9 @@ import { CommandPalette } from "@/components/command-palette";
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, roles, hasRole, grade, fullName } = useAuth();
   const location = useLocation();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const isAdmin = hasRole("admin");
   const visibleItems = filterNavForUser({ hasRole, grade });
-  const grouped = groupNav(visibleItems);
 
   const roleLabel = isAdmin
     ? "Admin"
@@ -72,20 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </SidebarHeader>
 
-        <SidebarContent>
-          {NAV_GROUPS.map((group) => {
-            const items = grouped.get(group.id) ?? [];
-            if (items.length === 0) return null;
-            return (
-              <NavSectionGroup
-                key={group.id}
-                group={group}
-                items={items}
-                pathname={pathname}
-              />
-            );
-          })}
-        </SidebarContent>
+        <SidebarNavBody visibleItems={visibleItems} />
 
         <SidebarFooter className="border-t">
           <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
@@ -118,6 +104,83 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+function normaliseSearch(s: string) {
+  return s.toLowerCase().trim();
+}
+
+function itemMatchesQuery(item: NavItem, q: string) {
+  if (!q) return true;
+  const hay = [item.label, ...(item.keywords ?? [])].join(" ").toLowerCase();
+  return hay.includes(q);
+}
+
+function SidebarNavBody({ visibleItems }: { visibleItems: NavItem[] }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [query, setQuery] = useState("");
+  const q = normaliseSearch(query);
+
+  const filteredItems = useMemo(
+    () => (q ? visibleItems.filter((i) => itemMatchesQuery(i, q)) : visibleItems),
+    [visibleItems, q],
+  );
+  const grouped = useMemo(() => groupNav(filteredItems), [filteredItems]);
+  const hasResults = filteredItems.length > 0;
+
+  return (
+    <SidebarContent>
+      {/* Quick search — collapses away when the sidebar is in icon-only mode
+          but stays visible on mobile (drawer) and expanded desktop. */}
+      <div className="px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="search"
+            role="searchbox"
+            aria-label="Search menu"
+            placeholder="Search menu…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-8 w-full rounded-md border border-input bg-background pl-7 pr-7 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          {query ? (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {!hasResults && q ? (
+        <div className="px-3 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+          No matches for &ldquo;{query}&rdquo;.
+        </div>
+      ) : null}
+
+      {NAV_GROUPS.map((group) => {
+        const items = grouped.get(group.id) ?? [];
+        if (items.length === 0) return null;
+        return (
+          <NavSectionGroup
+            key={group.id}
+            group={group}
+            items={items}
+            pathname={pathname}
+            forceOpen={Boolean(q)}
+          />
+        );
+      })}
+    </SidebarContent>
+  );
+}
+
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/";
   return pathname === to || pathname.startsWith(to + "/");
@@ -127,20 +190,24 @@ function NavSectionGroup({
   group,
   items,
   pathname,
+  forceOpen = false,
 }: {
   group: NavGroup;
   items: NavItem[];
   pathname: string;
+  /** When true (e.g. an active search), the group and its rare bucket
+   *  are forced open so every matching item is visible without extra clicks. */
+  forceOpen?: boolean;
 }) {
   const common = items.filter((i) => !i.rare);
   const rare = items.filter((i) => i.rare);
   const hasActiveCommon = common.some((i) => isActive(pathname, i.to));
   const hasActiveRare = rare.some((i) => isActive(pathname, i.to));
   const defaultOpen = group.defaultOpen ?? true;
-  const open = hasActiveCommon || hasActiveRare || defaultOpen;
+  const open = forceOpen || hasActiveCommon || hasActiveRare || defaultOpen;
 
   return (
-    <Collapsible defaultOpen={open} className="group/collapsible">
+    <Collapsible key={forceOpen ? "open" : "auto"} defaultOpen={open} className="group/collapsible">
       <SidebarGroup>
         <SidebarGroupLabel asChild>
           <CollapsibleTrigger className="flex w-full items-center justify-between">
@@ -155,7 +222,11 @@ function NavSectionGroup({
                 <NavLeaf key={item.id} item={item} pathname={pathname} />
               ))}
               {rare.length > 0 ? (
-                <RareItems items={rare} pathname={pathname} expandedByDefault={hasActiveRare} />
+                <RareItems
+                  items={rare}
+                  pathname={pathname}
+                  expandedByDefault={forceOpen || hasActiveRare}
+                />
               ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -199,10 +270,16 @@ function RareItems({
 function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
   const active = isActive(pathname, item.to);
+  const { isMobile, setOpenMobile } = useSidebar();
+  const handleClick = () => {
+    // Auto-close the mobile drawer when a nav link is tapped, so the user
+    // sees the destination page instead of the sheet.
+    if (isMobile) setOpenMobile(false);
+  };
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-        <Link to={item.to} className={cn("flex items-center gap-2")}>
+        <Link to={item.to} onClick={handleClick} className={cn("flex items-center gap-2")}>
           <Icon className="h-4 w-4" />
           <span>{item.label}</span>
         </Link>
