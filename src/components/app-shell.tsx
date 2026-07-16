@@ -190,20 +190,24 @@ function NavSectionGroup({
   group,
   items,
   pathname,
+  forceOpen = false,
 }: {
   group: NavGroup;
   items: NavItem[];
   pathname: string;
+  /** When true (e.g. an active search), the group and its rare bucket
+   *  are forced open so every matching item is visible without extra clicks. */
+  forceOpen?: boolean;
 }) {
   const common = items.filter((i) => !i.rare);
   const rare = items.filter((i) => i.rare);
   const hasActiveCommon = common.some((i) => isActive(pathname, i.to));
   const hasActiveRare = rare.some((i) => isActive(pathname, i.to));
   const defaultOpen = group.defaultOpen ?? true;
-  const open = hasActiveCommon || hasActiveRare || defaultOpen;
+  const open = forceOpen || hasActiveCommon || hasActiveRare || defaultOpen;
 
   return (
-    <Collapsible defaultOpen={open} className="group/collapsible">
+    <Collapsible key={forceOpen ? "open" : "auto"} defaultOpen={open} className="group/collapsible">
       <SidebarGroup>
         <SidebarGroupLabel asChild>
           <CollapsibleTrigger className="flex w-full items-center justify-between">
@@ -218,7 +222,11 @@ function NavSectionGroup({
                 <NavLeaf key={item.id} item={item} pathname={pathname} />
               ))}
               {rare.length > 0 ? (
-                <RareItems items={rare} pathname={pathname} expandedByDefault={hasActiveRare} />
+                <RareItems
+                  items={rare}
+                  pathname={pathname}
+                  expandedByDefault={forceOpen || hasActiveRare}
+                />
               ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
