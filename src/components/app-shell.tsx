@@ -165,6 +165,37 @@ function NavSectionGroup({
   );
 }
 
+function RareItems({
+  items,
+  pathname,
+  expandedByDefault,
+}: {
+  items: NavItem[];
+  pathname: string;
+  expandedByDefault: boolean;
+}) {
+  return (
+    <Collapsible defaultOpen={expandedByDefault} className="group/rare">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton
+            tooltip="More"
+            className="text-muted-foreground"
+          >
+            <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/rare:rotate-90" />
+            <span>More</span>
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+      </SidebarMenuItem>
+      <CollapsibleContent>
+        {items.map((item) => (
+          <NavLeaf key={item.id} item={item} pathname={pathname} />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
   const active = isActive(pathname, item.to);
