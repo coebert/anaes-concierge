@@ -270,10 +270,16 @@ function RareItems({
 function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
   const active = isActive(pathname, item.to);
+  const { isMobile, setOpenMobile } = useSidebar();
+  const handleClick = () => {
+    // Auto-close the mobile drawer when a nav link is tapped, so the user
+    // sees the destination page instead of the sheet.
+    if (isMobile) setOpenMobile(false);
+  };
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-        <Link to={item.to} className={cn("flex items-center gap-2")}>
+        <Link to={item.to} onClick={handleClick} className={cn("flex items-center gap-2")}>
           <Icon className="h-4 w-4" />
           <span>{item.label}</span>
         </Link>
