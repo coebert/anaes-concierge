@@ -38,11 +38,9 @@ import { CommandPalette } from "@/components/command-palette";
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, roles, hasRole, grade, fullName } = useAuth();
   const location = useLocation();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const isAdmin = hasRole("admin");
   const visibleItems = filterNavForUser({ hasRole, grade });
-  const grouped = groupNav(visibleItems);
 
   const roleLabel = isAdmin
     ? "Admin"
@@ -73,20 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </SidebarHeader>
 
-        <SidebarContent>
-          {NAV_GROUPS.map((group) => {
-            const items = grouped.get(group.id) ?? [];
-            if (items.length === 0) return null;
-            return (
-              <NavSectionGroup
-                key={group.id}
-                group={group}
-                items={items}
-                pathname={pathname}
-              />
-            );
-          })}
-        </SidebarContent>
+        <SidebarNavBody visibleItems={visibleItems} />
 
         <SidebarFooter className="border-t">
           <div className="px-2 py-1 group-data-[collapsible=icon]:hidden">
@@ -116,6 +101,83 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+function normaliseSearch(s: string) {
+  return s.toLowerCase().trim();
+}
+
+function itemMatchesQuery(item: NavItem, q: string) {
+  if (!q) return true;
+  const hay = [item.label, ...(item.keywords ?? [])].join(" ").toLowerCase();
+  return hay.includes(q);
+}
+
+function SidebarNavBody({ visibleItems }: { visibleItems: NavItem[] }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [query, setQuery] = useState("");
+  const q = normaliseSearch(query);
+
+  const filteredItems = useMemo(
+    () => (q ? visibleItems.filter((i) => itemMatchesQuery(i, q)) : visibleItems),
+    [visibleItems, q],
+  );
+  const grouped = useMemo(() => groupNav(filteredItems), [filteredItems]);
+  const hasResults = filteredItems.length > 0;
+
+  return (
+    <SidebarContent>
+      {/* Quick search — collapses away when the sidebar is in icon-only mode
+          but stays visible on mobile (drawer) and expanded desktop. */}
+      <div className="px-2 pt-2 pb-1 group-data-[collapsible=icon]:hidden">
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="search"
+            role="searchbox"
+            aria-label="Search menu"
+            placeholder="Search menu…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-8 w-full rounded-md border border-input bg-background pl-7 pr-7 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          {query ? (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {!hasResults && q ? (
+        <div className="px-3 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+          No matches for &ldquo;{query}&rdquo;.
+        </div>
+      ) : null}
+
+      {NAV_GROUPS.map((group) => {
+        const items = grouped.get(group.id) ?? [];
+        if (items.length === 0) return null;
+        return (
+          <NavSectionGroup
+            key={group.id}
+            group={group}
+            items={items}
+            pathname={pathname}
+            forceOpen={Boolean(q)}
+          />
+        );
+      })}
+    </SidebarContent>
   );
 }
 
