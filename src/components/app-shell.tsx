@@ -1,7 +1,7 @@
 import { Link, useLocation, useRouterState } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Stethoscope, ChevronRight } from "lucide-react";
+import { Stethoscope, ChevronRight, Search, X } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -18,6 +18,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
