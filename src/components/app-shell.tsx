@@ -290,16 +290,76 @@ function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
 
 function Breadcrumbs({ pathname, items }: { pathname: string; items: NavItem[] }) {
   if (pathname === "/") return null;
+
   // Find the nav item whose `to` is the longest prefix of pathname.
   const match = items
     .filter((i) => i.to !== "/" && (pathname === i.to || pathname.startsWith(i.to + "/")))
     .sort((a, b) => b.to.length - a.to.length)[0];
-  const label = match?.label ?? prettifySegment(pathname);
+
+  // Section label from the matched item's group. Strip the "Admin · "
+  // prefix used in the sidebar to keep the trail compact ("Analytics"
+  // rather than "Admin · Analytics"); the top-level Home already anchors
+  // the trail.
+  const groupLabel = match
+    ? NAV_GROUPS.find((g) => g.id === match.group)?.label.replace(/^Admin\s·\s/, "") ?? null
+    : null;
+
+  const itemLabel = match?.label ?? prettifySegment(pathname);
+
+  // Any pathname segments beyond the matched nav item become extra crumbs,
+  // e.g. matched item /admin/staff, current /admin/staff/$id → append the
+  // trailing segments so users can see nested position.
+  const extraSegments = match
+    ? pathname
+        .slice(match.to.length)
+        .split("/")
+        .filter(Boolean)
+        .map((seg) => prettifySegment("/" + seg))
+    : [];
+
   return (
-    <nav className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground md:mb-4">
+    <nav
+      aria-label="Breadcrumb"
+      className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground md:mb-4"
+    >
       <Link to="/" className="hover:text-foreground">Home</Link>
-      <ChevronRight className="h-3 w-3" />
-      <span className="text-foreground">{label}</span>
+      {groupLabel ? (
+        <>
+          <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate">{groupLabel}</span>
+        </>
+      ) : null}
+      <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+      {match ? (
+        <Link
+          to={match.to}
+          className={cn(
+            "truncate hover:text-foreground",
+            extraSegments.length === 0 && "text-foreground",
+          )}
+          aria-current={extraSegments.length === 0 ? "page" : undefined}
+        >
+          {itemLabel}
+        </Link>
+      ) : (
+        <span className="truncate text-foreground" aria-current="page">
+          {itemLabel}
+        </span>
+      )}
+      {extraSegments.map((seg, i) => {
+        const isLast = i === extraSegments.length - 1;
+        return (
+          <span key={i} className="flex items-center gap-1.5">
+            <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span
+              className={cn("truncate", isLast && "text-foreground")}
+              aria-current={isLast ? "page" : undefined}
+            >
+              {seg}
+            </span>
+          </span>
+        );
+      })}
     </nav>
   );
 }
