@@ -998,39 +998,59 @@ export async function performRotaSync(
       }
 
 
-      assignmentDrafts.push({
-        staff_id: staffId,
-        session_date,
-        session,
-        duty_type: dutyType,
-        // Theatre rows keep the parsed role. Non-patient-facing scheduled
-        // activities (SPA / admin / teaching / non-clinical) record an
-        // appropriate non-clinical role. Everything else (on-call, ICU,
-        // obstetrics, CIC) is on-call style.
-        role_on_list:
-          dutyType === "theatre"
-            ? normaliseRole(roleRaw)
-            : dutyType === "spa" || dutyType === "admin"
-              ? "admin_session"
-              : dutyType === "teaching"
-                ? "teaching"
-                : dutyType === "non_clinical"
-                  ? "non_clinical"
-                  : "on_call",
-        source: "clwrota",
-        theatre_session_key: theatreSessionKey,
-        clwrota_external_id: externalId,
-        notes: NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
-          ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
-          : consultantName
-            ? `Surgeon: ${consultantName}`
-            : null,
-        // Carry the Non-SAG marker through to the assignment so non-SAG
-        // sessions that don't resolve to a specific NHH theatre (or are
-        // on-call) are still counted in audits.
-        is_non_sag: isNonSagRow,
-        extra_type: extraTypeName ? String(extraTypeName).trim().toLowerCase() || null : null,
-      });
+      // Medical examiner sessions in CLWRota are frequently recorded as a
+      // single all-day row (e.g. start_time 08:00, end_time 17:00) rather
+      // than one AM and one PM row. Without splitting, the assignment
+      // shows up in only one column of the global calendar / staff-in-work
+      // views. When the shift's start/end range covers both halves of the
+      // day, emit a draft per covered half so every rota view reflects the
+      // real coverage. All other duty types keep the single-row behaviour.
+      const coveredHalves: SessionHalf[] =
+        dutyType === "medical_examiner"
+          ? (() => {
+              const covered = sessionsCoveredByTimeRange(startTimeRaw, endTimeRaw);
+              return covered.length > 0 ? covered : [session];
+            })()
+          : [session];
+
+      const roleOnList =
+        dutyType === "theatre"
+          ? normaliseRole(roleRaw)
+          : dutyType === "spa" || dutyType === "admin"
+            ? "admin_session"
+            : dutyType === "teaching"
+              ? "teaching"
+              : dutyType === "non_clinical"
+                ? "non_clinical"
+                : "on_call";
+
+      const notes = NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
+        ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
+        : consultantName
+          ? `Surgeon: ${consultantName}`
+          : null;
+
+      for (const half of coveredHalves) {
+        // When we synthesise a second half from an all-day ME row the
+        // upstream external id would collide across halves and the second
+        // upsert would clobber the first. Suffix the external id with the
+        // synthesised half so both rows land as distinct assignments.
+        const extIdForHalf =
+          coveredHalves.length > 1 ? `${externalId}|${half}` : externalId;
+        assignmentDrafts.push({
+          staff_id: staffId,
+          session_date,
+          session: half,
+          duty_type: dutyType,
+          role_on_list: roleOnList,
+          source: "clwrota",
+          theatre_session_key: half === session ? theatreSessionKey : null,
+          clwrota_external_id: extIdForHalf,
+          notes,
+          is_non_sag: isNonSagRow,
+          extra_type: extraTypeName ? String(extraTypeName).trim().toLowerCase() || null : null,
+        });
+      }
     }
 
 
