@@ -1523,7 +1523,16 @@ export async function performRotaSync(
       }
     }
 
-    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors`;
+    // Count unmapped Medical Examiner sessions separately so admins see
+    // them in the summary/notes and can act on the missing mapping.
+    const unmappedMeWarnings = warnings.filter((w) =>
+      w.reason.startsWith("unmapped medical examiner session"),
+    );
+    const meAlert =
+      unmappedMeWarnings.length > 0
+        ? ` · ${unmappedMeWarnings.length} unmapped ME session${unmappedMeWarnings.length === 1 ? "" : "s"}`
+        : "";
+    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors${meAlert}`;
     const runOk = errors.length === 0;
     const stateUpdate: Record<string, unknown> = {
       id: 1,
