@@ -17,6 +17,7 @@ import {
   explicitDateWindow,
   normaliseSession,
   sessionsCoveredByTimeRange,
+  looksLikeMedicalExaminerLabel,
   normaliseDate,
   normaliseRole,
   classifyDutyType,
