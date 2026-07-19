@@ -18,10 +18,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Info,
   User,
 } from "lucide-react";
 import { cn, parseDateLocal, toISODateLocal, formatDateGB, formatDateWithWeekdayGB } from "@/lib/utils";
@@ -239,6 +243,22 @@ type TheatreCellModel = {
   parts: string[];
 };
 
+export type MedicalExaminerDetails = {
+  assignmentId: string;
+  sessionDate: string;
+  session: SessionHalf;
+  dutyType: string;
+  clwrotaExternalId: string | null;
+  source: string;
+  roleOnList: string;
+  notes: string | null;
+  extraType: string | null;
+  locallyModified: boolean;
+  isNonSag: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type StaffListAssignModel = {
   id: string;
   staffId: string;
@@ -246,6 +266,7 @@ type StaffListAssignModel = {
   grade: string | null;
   trainingLevel: string | null;
   tag?: string | null;
+  medicalExaminer?: MedicalExaminerDetails;
 };
 
 type StaffListCellModel = {
@@ -345,27 +366,120 @@ const StaffListCellContent = memo(function StaffListCellContent({
         const isConsultant = a.grade === "consultant";
         const isTrainee = a.grade === "trainee";
         return (
-          <Link
-            key={a.id}
-            to="/calendar/staff/$staffId"
-            params={{ staffId: a.staffId }}
-            className={cn(
-              "block truncate text-[10px] hover:underline",
-              isConsultant && "font-bold",
-              isTrainee && "text-blue-600 dark:text-blue-400",
+          <div key={a.id} className="flex items-center gap-1 min-w-0">
+            <Link
+              to="/calendar/staff/$staffId"
+              params={{ staffId: a.staffId }}
+              className={cn(
+                "block truncate text-[10px] hover:underline flex-1 min-w-0",
+                isConsultant && "font-bold",
+                isTrainee && "text-blue-600 dark:text-blue-400",
+              )}
+            >
+              {a.tag && (
+                <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
+                  {a.tag}
+                </Badge>
+              )}
+              {a.fullName}
+              {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
+            </Link>
+            {a.medicalExaminer && (
+              <MedicalExaminerDetailsDialog
+                details={a.medicalExaminer}
+                staffName={a.fullName}
+              />
             )}
-          >
-            {a.tag && (
-              <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
-                {a.tag}
-              </Badge>
-            )}
-            {a.fullName}
-            {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
-          </Link>
+          </div>
         );
       })}
     </div>
+  );
+});
+
+const SESSION_TIMES: Record<SessionHalf, { start: string; end: string; label: string }> = {
+  am: { start: "08:00", end: "13:00", label: "AM (08:00–13:00)" },
+  pm: { start: "13:00", end: "18:00", label: "PM (13:00–18:00)" },
+};
+
+const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog({
+  details,
+  staffName,
+}: {
+  details: MedicalExaminerDetails;
+  staffName: string;
+}) {
+  const times = SESSION_TIMES[details.session];
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label="Medical examiner session details"
+          data-testid="medical-examiner-details-trigger"
+          className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Info className="h-3 w-3" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md" data-testid="medical-examiner-details-panel">
+        <DialogHeader>
+          <DialogTitle>Medical examiner session</DialogTitle>
+          <DialogDescription>
+            {staffName} — {formatDateWithWeekdayGB(parseDateLocal(details.sessionDate))}
+          </DialogDescription>
+        </DialogHeader>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+          <dt className="text-muted-foreground">Session</dt>
+          <dd className="font-medium">{times.label}</dd>
+          <dt className="text-muted-foreground">Start time</dt>
+          <dd className="font-mono">{times.start}</dd>
+          <dt className="text-muted-foreground">End time</dt>
+          <dd className="font-mono">{times.end}</dd>
+          <dt className="text-muted-foreground">Duty type</dt>
+          <dd className="font-medium">{details.dutyType}</dd>
+          <dt className="text-muted-foreground">Role</dt>
+          <dd>{details.roleOnList}</dd>
+          <dt className="text-muted-foreground">Source</dt>
+          <dd>
+            {details.source}
+            {details.locallyModified && (
+              <Badge variant="outline" className="ml-2 text-[9px]">
+                Locally modified
+              </Badge>
+            )}
+          </dd>
+          <dt className="text-muted-foreground">CLWRota ID</dt>
+          <dd className="font-mono break-all">
+            {details.clwrotaExternalId ?? <span className="text-muted-foreground">—</span>}
+          </dd>
+          {details.extraType && (
+            <>
+              <dt className="text-muted-foreground">Extra type</dt>
+              <dd>{details.extraType}</dd>
+            </>
+          )}
+          {details.isNonSag && (
+            <>
+              <dt className="text-muted-foreground">Flags</dt>
+              <dd>
+                <Badge variant="outline" className="text-[9px]">Non-SAG</Badge>
+              </dd>
+            </>
+          )}
+          {details.notes && (
+            <>
+              <dt className="text-muted-foreground">Notes</dt>
+              <dd className="whitespace-pre-wrap">{details.notes}</dd>
+            </>
+          )}
+          <dt className="text-muted-foreground">Synced</dt>
+          <dd className="text-muted-foreground">
+            {new Date(details.updatedAt).toLocaleString("en-GB")}
+          </dd>
+        </dl>
+      </DialogContent>
+    </Dialog>
   );
 });
 
@@ -520,7 +634,7 @@ export function GlobalWeekGrid({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,session,session_date,duty_type")
+        .select("id,staff_id,session,session_date,duty_type,clwrota_external_id,source,role_on_list,notes,extra_type,locally_modified,is_non_sag,created_at,updated_at")
         .in("duty_type", ["spa", "admin", "medical_examiner"])
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
@@ -528,6 +642,15 @@ export function GlobalWeekGrid({
       return (data ?? []) as Array<{
         id: string; staff_id: string; session: SessionHalf; session_date: string;
         duty_type: "spa" | "admin" | "medical_examiner";
+        clwrota_external_id: string | null;
+        source: string;
+        role_on_list: string;
+        notes: string | null;
+        extra_type: string | null;
+        locally_modified: boolean;
+        is_non_sag: boolean;
+        created_at: string;
+        updated_at: string;
       }>;
     },
   });
@@ -721,6 +844,24 @@ export function GlobalWeekGrid({
               fullName: sp?.full_name ?? "—",
               grade: sp?.grade ?? null,
               trainingLevel: sp?.training_level ?? null,
+              medicalExaminer:
+                a.duty_type === "medical_examiner"
+                  ? {
+                      assignmentId: a.id,
+                      sessionDate: a.session_date,
+                      session: a.session,
+                      dutyType: a.duty_type,
+                      clwrotaExternalId: a.clwrota_external_id,
+                      source: a.source,
+                      roleOnList: a.role_on_list,
+                      notes: a.notes,
+                      extraType: a.extra_type,
+                      locallyModified: a.locally_modified,
+                      isNonSag: a.is_non_sag,
+                      createdAt: a.created_at,
+                      updatedAt: a.updated_at,
+                    }
+                  : undefined,
             };
           });
           cells.push({
