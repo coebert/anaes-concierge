@@ -239,6 +239,22 @@ type TheatreCellModel = {
   parts: string[];
 };
 
+export type MedicalExaminerDetails = {
+  assignmentId: string;
+  sessionDate: string;
+  session: SessionHalf;
+  dutyType: string;
+  clwrotaExternalId: string | null;
+  source: string;
+  roleOnList: string;
+  notes: string | null;
+  extraType: string | null;
+  locallyModified: boolean;
+  isNonSag: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type StaffListAssignModel = {
   id: string;
   staffId: string;
@@ -246,6 +262,7 @@ type StaffListAssignModel = {
   grade: string | null;
   trainingLevel: string | null;
   tag?: string | null;
+  medicalExaminer?: MedicalExaminerDetails;
 };
 
 type StaffListCellModel = {
