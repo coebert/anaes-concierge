@@ -16,6 +16,7 @@ import {
   clampDateWindow,
   explicitDateWindow,
   normaliseSession,
+  sessionsCoveredByTimeRange,
   normaliseDate,
   normaliseRole,
   classifyDutyType,
