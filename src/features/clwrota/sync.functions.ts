@@ -961,6 +961,29 @@ export async function performRotaSync(
         dutyMappings,
       );
 
+      // Validation: any CLWRota row whose free-text labels clearly describe
+      // a Medical Examiner session ("medical examiner", "ME session") must
+      // map to duty_type='medical_examiner'. If it didn't, the ME mapping
+      // is missing (or a competing mapping is winning) — surface it as a
+      // warning so the admin CLWRota status/metrics page shows the row
+      // and the admin can add the missing duty_type_mappings entry rather
+      // than have the session silently classified as SPA/admin/etc.
+      if (
+        dutyType !== "medical_examiner" &&
+        looksLikeMedicalExaminerLabel([
+          roleRaw,
+          theatreName,
+          specialtyName,
+          consultantName,
+          extraTypeName,
+        ])
+      ) {
+        warnings.push({
+          label,
+          reason: `unmapped medical examiner session (classified as ${dutyType}); add a duty_type_mappings entry for role/theatre/specialty text "${(roleRaw ?? theatreName ?? specialtyName ?? "").slice(0, 80)}"`,
+        });
+      }
+
 
       // Detect Non-SAG markers anywhere in this row's free-text fields.
       // CLWRota tags NHH/non-SAG lists by appending "[Non-SAG]" (or similar)
