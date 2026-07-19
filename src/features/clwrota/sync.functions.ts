@@ -1575,7 +1575,13 @@ export async function performRotaSync(
     const rotaNotes = errors.length
       ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
       : warnings.length
-        ? warnings.slice(0, 3).map((w) => `${w.label}: ${w.reason}`).join("; ").slice(0, 1000)
+        ? // Surface unmapped-ME warnings first so admins see the missing
+          // duty_type_mappings alert even when other warnings are noisier.
+          [...unmappedMeWarnings, ...warnings.filter((w) => !unmappedMeWarnings.includes(w))]
+            .slice(0, 3)
+            .map((w) => `${w.label}: ${w.reason}`)
+            .join("; ")
+            .slice(0, 1000)
         : null;
     const { error: rotaMetricsErr } = await supabaseAdmin
       .from("clwrota_sync_metrics")
