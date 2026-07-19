@@ -825,6 +825,13 @@ export async function performRotaSync(
 
     const sessionDraftsByKey = new Map<string, SessionDraft>();
     const assignmentDrafts: AssignmentDraft[] = [];
+    // Track CLWRota external IDs whose all-day medical_examiner row we've
+    // split into `|am` / `|pm` suffixed drafts. Any previously-persisted
+    // un-suffixed row with the same external ID must be removed before the
+    // upsert so re-sync stays idempotent (no orphan un-suffixed row alongside
+    // the two new halves, and no violation of the (staff,date,session)
+    // uniqueness constraint from a stale legacy row).
+    const splitMeParentExtIds = new Set<string>();
     const newSpecialtyNames = new Set<string>();
     // Theatre-session keys (date|theatreId|session) that the upstream feed
     // tags as Non-SAG on any of their assignments. Detected from "[Non-SAG]"
