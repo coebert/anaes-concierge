@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, SpecialtyLegend, buildDays,
+  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, SpecialtyLegend, DutyTypeLegend, buildDays,
   type ViewMode,
 } from "@/components/rota-views";
 
