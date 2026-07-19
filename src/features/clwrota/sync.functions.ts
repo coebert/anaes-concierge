@@ -1066,11 +1066,6 @@ export async function performRotaSync(
         // upstream external id would collide across halves and the second
         // upsert would clobber the first. Suffix the external id with the
         // synthesised half so both rows land as distinct assignments.
-      for (const half of coveredHalves) {
-        // When we synthesise a second half from an all-day ME row the
-        // upstream external id would collide across halves and the second
-        // upsert would clobber the first. Suffix the external id with the
-        // synthesised half so both rows land as distinct assignments.
         const isSplit = coveredHalves.length > 1;
         const extIdForHalf = isSplit ? `${externalId}|${half}` : externalId;
         if (isSplit) splitMeParentExtIds.add(externalId);
