@@ -118,6 +118,7 @@ const DEFAULT_UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "consultant_in_charge",
   "teaching",
   "non_clinical",
+  "medical_examiner",
   "admin",
 ]);
 const DEFAULT_FLEX_DUTY_TYPES = new Set<string>(["spa"]);
