@@ -521,13 +521,13 @@ export function GlobalWeekGrid({
       const { data, error } = await supabase
         .from("rota_assignments")
         .select("id,staff_id,session,session_date,duty_type")
-        .in("duty_type", ["spa", "admin"])
+        .in("duty_type", ["spa", "admin", "medical_examiner"])
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
       return (data ?? []) as Array<{
         id: string; staff_id: string; session: SessionHalf; session_date: string;
-        duty_type: "spa" | "admin";
+        duty_type: "spa" | "admin" | "medical_examiner";
       }>;
     },
   });
@@ -694,6 +694,7 @@ export function GlobalWeekGrid({
       [
         { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
         { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
+        { key: "medical_examiner", label: "Medical examiner", sub: "ME session", tint: "bg-violet-500/5" },
       ] as const,
     [],
   );

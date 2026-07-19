@@ -3413,6 +3413,7 @@ export type Database = {
         | "teaching"
         | "non_clinical"
         | "nhh_oncall"
+        | "medical_examiner"
       leave_status: "pending" | "approved" | "rejected" | "cancelled"
       leave_type:
         | "annual"
@@ -3586,6 +3587,7 @@ export const Constants = {
         "teaching",
         "non_clinical",
         "nhh_oncall",
+        "medical_examiner",
       ],
       leave_status: ["pending", "approved", "rejected", "cancelled"],
       leave_type: [

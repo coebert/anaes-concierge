@@ -118,6 +118,7 @@ const DEFAULT_UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "consultant_in_charge",
   "teaching",
   "non_clinical",
+  "medical_examiner",
   "admin",
 ]);
 const DEFAULT_FLEX_DUTY_TYPES = new Set<string>(["spa"]);
@@ -1265,6 +1266,7 @@ function formatDutyLabel(dt: string): string {
     consultant_in_charge: "Consultant in charge",
     teaching: "Teaching",
     non_clinical: "Non-clinical",
+    medical_examiner: "Medical examiner",
     admin: "Admin",
   };
   return map[dt] ?? dt.replace(/_/g, " ");

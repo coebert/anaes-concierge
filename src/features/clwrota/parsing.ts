@@ -454,13 +454,15 @@ export type ResolvedDutyType =
   | "spa"
   | "admin"
   | "teaching"
-  | "non_clinical";
+  | "non_clinical"
+  | "medical_examiner";
 
 export const NON_PATIENT_FACING_DUTY_TYPES: ReadonlySet<ResolvedDutyType> = new Set([
   "spa",
   "admin",
   "teaching",
   "non_clinical",
+  "medical_examiner",
 ]);
 
 export type DutyTypeMappingRow = {
