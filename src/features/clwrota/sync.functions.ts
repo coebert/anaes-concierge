@@ -17,6 +17,7 @@ import {
   explicitDateWindow,
   normaliseSession,
   sessionsCoveredByTimeRange,
+  looksLikeMedicalExaminerLabel,
   normaliseDate,
   normaliseRole,
   classifyDutyType,
@@ -960,6 +961,29 @@ export async function performRotaSync(
         dutyMappings,
       );
 
+      // Validation: any CLWRota row whose free-text labels clearly describe
+      // a Medical Examiner session ("medical examiner", "ME session") must
+      // map to duty_type='medical_examiner'. If it didn't, the ME mapping
+      // is missing (or a competing mapping is winning) — surface it as a
+      // warning so the admin CLWRota status/metrics page shows the row
+      // and the admin can add the missing duty_type_mappings entry rather
+      // than have the session silently classified as SPA/admin/etc.
+      if (
+        dutyType !== "medical_examiner" &&
+        looksLikeMedicalExaminerLabel([
+          roleRaw,
+          theatreName,
+          specialtyName,
+          consultantName,
+          extraTypeName,
+        ])
+      ) {
+        warnings.push({
+          label,
+          reason: `unmapped medical examiner session (classified as ${dutyType}); add a duty_type_mappings entry for role/theatre/specialty text "${(roleRaw ?? theatreName ?? specialtyName ?? "").slice(0, 80)}"`,
+        });
+      }
+
 
       // Detect Non-SAG markers anywhere in this row's free-text fields.
       // CLWRota tags NHH/non-SAG lists by appending "[Non-SAG]" (or similar)
@@ -1499,7 +1523,16 @@ export async function performRotaSync(
       }
     }
 
-    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors`;
+    // Count unmapped Medical Examiner sessions separately so admins see
+    // them in the summary/notes and can act on the missing mapping.
+    const unmappedMeWarnings = warnings.filter((w) =>
+      w.reason.startsWith("unmapped medical examiner session"),
+    );
+    const meAlert =
+      unmappedMeWarnings.length > 0
+        ? ` · ${unmappedMeWarnings.length} unmapped ME session${unmappedMeWarnings.length === 1 ? "" : "s"}`
+        : "";
+    const summary = `Rota sync: ${rows.length} rows · ${assignmentsUpserted} assignments · ${sessionsUpserted} new sessions · ${skipped.length} skipped · ${warnings.length} warnings · ${errors.length} errors${meAlert}`;
     const runOk = errors.length === 0;
     const stateUpdate: Record<string, unknown> = {
       id: 1,
@@ -1542,7 +1575,13 @@ export async function performRotaSync(
     const rotaNotes = errors.length
       ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
       : warnings.length
-        ? warnings.slice(0, 3).map((w) => `${w.label}: ${w.reason}`).join("; ").slice(0, 1000)
+        ? // Surface unmapped-ME warnings first so admins see the missing
+          // duty_type_mappings alert even when other warnings are noisier.
+          [...unmappedMeWarnings, ...warnings.filter((w) => !unmappedMeWarnings.includes(w))]
+            .slice(0, 3)
+            .map((w) => `${w.label}: ${w.reason}`)
+            .join("; ")
+            .slice(0, 1000)
         : null;
     const { error: rotaMetricsErr } = await supabaseAdmin
       .from("clwrota_sync_metrics")
