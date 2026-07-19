@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import { buildSearchTokens, cellMatchesSearch } from "@/lib/calendar-search";
+import { filterAssignmentsForCell } from "@/features/clwrota/me-cell-visibility";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
@@ -828,9 +829,7 @@ export function GlobalWeekGrid({
       for (const d of days) {
         const dayIso = iso(d);
         for (const sh of ["am", "pm"] as SessionHalf[]) {
-          const raw = (spaAdmin ?? []).filter(
-            (a) => a.duty_type === row.key && a.session_date === dayIso && a.session === sh,
-          );
+          const raw = filterAssignmentsForCell(spaAdmin, row.key, dayIso, sh);
           const sorted = [...raw].sort(
             (a, b) =>
               gradeRank(staffMap.get(a.staff_id)?.grade) -
