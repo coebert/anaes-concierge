@@ -411,6 +411,54 @@ export function normaliseSession(raw: string | null): SessionHalf | null {
   return null;
 }
 
+/**
+ * Return the AM/PM half-day session(s) that a CLWRota shift covers, given
+ * its raw start_time / end_time strings. Used to correctly split single
+ * "all-day" CLWRota rows (e.g. a Medical Examiner session running
+ * 08:00–17:00) into both an AM and a PM assignment so every rota view
+ * shows the person in both halves.
+ *
+ * Boundary rule: AM = [00:00, 13:00), PM = [13:00, 24:00). A shift that
+ * ends exactly at 13:00 stays AM-only; a shift that starts exactly at
+ * 13:00 is PM-only.
+ *
+ * Returns an empty array when the range cannot be parsed — callers should
+ * fall back to `normaliseSession()` on the raw session/shift label.
+ */
+export function sessionsCoveredByTimeRange(
+  startRaw: string | null | undefined,
+  endRaw: string | null | undefined,
+): Array<"am" | "pm"> {
+  const startH = extractHour(startRaw);
+  const endH = extractHour(endRaw);
+  if (startH === null || endH === null) return [];
+  // End before start (e.g. crosses midnight) — treat as unknown and let the
+  // caller fall back to the shift label.
+  if (endH <= startH) return [];
+  const halves: Array<"am" | "pm"> = [];
+  if (startH < 13) halves.push("am");
+  if (endH > 13) halves.push("pm");
+  return halves;
+}
+
+function extractHour(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+  const iso = s.match(/t(\d{2}):(\d{2})/);
+  if (iso) {
+    const h = parseInt(iso[1], 10);
+    const m = parseInt(iso[2], 10);
+    if (Number.isFinite(h)) return h + (Number.isFinite(m) ? m / 60 : 0);
+  }
+  const bare = s.match(/^(\d{1,2})[:.](\d{2})/);
+  if (bare) {
+    const h = parseInt(bare[1], 10);
+    const m = parseInt(bare[2], 10);
+    if (Number.isFinite(h)) return h + (Number.isFinite(m) ? m / 60 : 0);
+  }
+  return null;
+}
+
 export function normaliseDate(raw: string | null): string | null {
   if (!raw) return null;
   const s = raw.trim();
