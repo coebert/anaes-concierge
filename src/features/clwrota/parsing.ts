@@ -513,6 +513,31 @@ export const NON_PATIENT_FACING_DUTY_TYPES: ReadonlySet<ResolvedDutyType> = new 
   "medical_examiner",
 ]);
 
+/**
+ * Heuristic detector for CLWRota rows that a human would recognise as a
+ * Medical Examiner session but whose configured duty_type_mappings didn't
+ * classify to `medical_examiner`. Used by the sync validation step to
+ * surface unmapped ME sessions in the admin alert so admins can add a
+ * missing mapping row instead of silently mis-classifying the session.
+ *
+ * Matches the same phrases the seed mappings use ("medical examiner",
+ * "medical examiners", "ME session") across any free-text field on the
+ * row, case-insensitively and tolerant of surrounding punctuation.
+ */
+export function looksLikeMedicalExaminerLabel(
+  labels: ReadonlyArray<string | null | undefined>,
+): boolean {
+  for (const raw of labels) {
+    if (!raw) continue;
+    const s = String(raw).toLowerCase();
+    if (s.includes("medical examiner")) return true;
+    // "ME session", "ME sessions", "M.E. session" — require a word boundary
+    // on the ME so we don't false-positive on "me" inside other words.
+    if (/(^|[^a-z])m\.?e\.?\s+sessions?\b/i.test(raw)) return true;
+  }
+  return false;
+}
+
 export type DutyTypeMappingRow = {
   duty_type: ResolvedDutyType;
   pattern: string;
