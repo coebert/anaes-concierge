@@ -751,6 +751,24 @@ export function GlobalWeekGrid({
               fullName: sp?.full_name ?? "—",
               grade: sp?.grade ?? null,
               trainingLevel: sp?.training_level ?? null,
+              medicalExaminer:
+                a.duty_type === "medical_examiner"
+                  ? {
+                      assignmentId: a.id,
+                      sessionDate: a.session_date,
+                      session: a.session,
+                      dutyType: a.duty_type,
+                      clwrotaExternalId: a.clwrota_external_id,
+                      source: a.source,
+                      roleOnList: a.role_on_list,
+                      notes: a.notes,
+                      extraType: a.extra_type,
+                      locallyModified: a.locally_modified,
+                      isNonSag: a.is_non_sag,
+                      createdAt: a.created_at,
+                      updatedAt: a.updated_at,
+                    }
+                  : undefined,
             };
           });
           cells.push({
