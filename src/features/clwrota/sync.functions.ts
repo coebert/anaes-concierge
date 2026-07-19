@@ -1230,6 +1230,33 @@ export async function performRotaSync(
 
 
 
+    // --- Pass 3b: purge stale un-suffixed medical_examiner rows whose all-day
+    // CLWRota source has now been split into `|am` / `|pm` halves. Without
+    // this, a re-sync would leave the pre-split legacy row alongside the two
+    // new halves (duplicate ME assignment for that day), and could also
+    // trip the (staff_id, session_date, session) unique constraint on
+    // insert. Only purge un-modified CLWRota rows — never touch rows the
+    // coordinator has edited locally.
+    if (splitMeParentExtIds.size > 0) {
+      const parentIds = Array.from(splitMeParentExtIds);
+      const PURGE_CHUNK = SUPABASE_IN_CHUNK;
+      for (let i = 0; i < parentIds.length; i += PURGE_CHUNK) {
+        const ids = parentIds.slice(i, i + PURGE_CHUNK);
+        const { error: purgeErr } = await supabaseAdmin
+          .from("rota_assignments")
+          .delete()
+          .in("clwrota_external_id", ids)
+          .eq("duty_type", "medical_examiner")
+          .eq("locally_modified", false);
+        if (purgeErr) {
+          errors.push({
+            label: `(medical_examiner pre-split purge chunk ${i}-${i + ids.length})`,
+            error: purgeErr.message,
+          });
+        }
+      }
+    }
+
     // --- Pass 4: bulk-upsert rota assignments (dedup external id). -----------
     // Dedupe by external id keeping the last occurrence (latest in the feed).
     const assignmentByExtId = new Map<string, AssignmentDraft>();
