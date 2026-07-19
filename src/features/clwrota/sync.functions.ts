@@ -881,6 +881,8 @@ export async function performRotaSync(
         "role.name", "assignment_type.name", "place_category.name",
         "role", "duty", "type", "Role", "Duty",
       ]);
+      const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
+      const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
       const externalId =
         pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
         (personExtId && dateRaw && sessRaw ? `${personExtId}|${dateRaw}|${sessRaw}` : null);
