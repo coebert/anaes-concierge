@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, SpecialtyLegend, buildDays,
+  GlobalWeekGrid, StaffPicker, ViewModeToggle, PeriodNav, SpecialtyLegend, DutyTypeLegend, buildDays,
   type ViewMode,
 } from "@/components/rota-views";
 
@@ -65,6 +65,7 @@ function CalendarPage() {
         </span>
       </div>
       <SpecialtyLegend />
+      <DutyTypeLegend />
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input

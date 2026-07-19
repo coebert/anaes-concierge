@@ -1465,3 +1465,74 @@ export function SpecialtyLegend() {
     </Collapsible>
   );
 }
+
+/**
+ * Legend describing every duty type rendered on the global calendar / staff-in-work
+ * view. Lets users verify that Medical examiner sessions (and every other row)
+ * are actually included in the filter, and shows what is deliberately excluded.
+ */
+export function DutyTypeLegend() {
+  const [open, setOpen] = useState(false);
+  const included: Array<{ label: string; sub: string; swatch: string }> = [
+    { label: "Theatre lists", sub: "All theatre sessions (main, day surgery, private/NHH)", swatch: "bg-muted" },
+    { label: "SPA", sub: "duty_type = spa · Supporting professional activities", swatch: "bg-emerald-500/40" },
+    { label: "Admin", sub: "duty_type = admin · Administrative time", swatch: "bg-sky-500/40" },
+    { label: "Medical examiner", sub: "duty_type = medical_examiner · AM/PM split from CLWRota", swatch: "bg-violet-500/40" },
+    { label: "Consultant in charge", sub: "duty_type = consultant_in_charge", swatch: "bg-rose-500/40" },
+    { label: "Obstetrics / Labour ward", sub: "duty_type = obstetrics, obstetrics_2nd", swatch: "bg-pink-500/40" },
+    { label: "ICU", sub: "duty_type = icu (consultant + trainee)", swatch: "bg-cyan-500/40" },
+    { label: "NHH 1st on-call", sub: "duty_type = nhh_oncall · Out-of-hours cover", swatch: "bg-purple-500/40" },
+    { label: "Night on-call", sub: "General/ICU consultant + trainee night cover", swatch: "bg-slate-500/40" },
+  ];
+  const excluded: Array<{ label: string; sub: string }> = [
+    { label: "Leave", sub: "Approved/pending leave is shown on staff views, not counted as duty" },
+    { label: "Non-work markers", sub: "Blank cells indicate no scheduled duty" },
+  ];
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger
+        data-testid="duty-type-legend-trigger"
+        className="flex items-center gap-1 text-xs font-medium text-foreground hover:opacity-80 transition-opacity cursor-pointer"
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        <span>Duty types shown</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div
+          data-testid="duty-type-legend-panel"
+          className="mt-1.5 grid gap-3 text-xs sm:grid-cols-2"
+        >
+          <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Included in staff-in-work view
+            </div>
+            <ul className="space-y-1">
+              {included.map((row) => (
+                <li key={row.label} className="flex items-start gap-2" data-testid={`duty-legend-included-${row.label}`}>
+                  <span className={cn("mt-1 h-2.5 w-2.5 rounded-sm shrink-0", row.swatch)} />
+                  <span>
+                    <span className="font-medium">{row.label}</span>
+                    <span className="text-muted-foreground"> — {row.sub}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Not counted as duty
+            </div>
+            <ul className="space-y-1">
+              {excluded.map((row) => (
+                <li key={row.label} data-testid={`duty-legend-excluded-${row.label}`}>
+                  <span className="font-medium">{row.label}</span>
+                  <span className="text-muted-foreground"> — {row.sub}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
