@@ -57,7 +57,7 @@ function isoDaysAgo(days: number): string {
 
 function TutorialsAuditPage() {
   const [rangeDays, setRangeDays] = useState<number>(180);
-  const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas" | "trainee">(
+  const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas">(
     "all",
   );
   const [search, setSearch] = useState("");
@@ -100,9 +100,13 @@ function TutorialsAuditPage() {
         .lte("session_date", endIso)
         .order("session_date", { ascending: false });
       if (error) throw error;
-      return ((data ?? []) as TutorialRow[]).filter((row) =>
-        looksLikeTutorialLabel([row.notes, row.role_on_list]),
-      );
+      return ((data ?? []) as TutorialRow[]).filter((row) => {
+        const notes = row.notes ?? "";
+        return (
+          !/^\s*tutorial\s*\(attending\)/i.test(notes) &&
+          looksLikeTutorialLabel([notes, row.role_on_list])
+        );
+      });
     },
   });
 
@@ -116,6 +120,8 @@ function TutorialsAuditPage() {
     const q = search.trim().toLowerCase();
     return (rows ?? []).filter((r) => {
       const sp = staffMap.get(r.staff_id);
+      const isDelivererGrade = sp?.grade === "consultant" || sp?.grade === "sas";
+      if (!isDelivererGrade) return false;
       if (gradeFilter !== "all" && sp?.grade !== gradeFilter) return false;
       if (!q) return true;
       const hay = `${sp?.full_name ?? ""} ${r.notes ?? ""} ${r.session_date}`.toLowerCase();
@@ -175,7 +181,6 @@ function TutorialsAuditPage() {
                 <SelectItem value="all">All grades</SelectItem>
                 <SelectItem value="consultant">Consultants</SelectItem>
                 <SelectItem value="sas">SAS</SelectItem>
-                <SelectItem value="trainee">Trainees</SelectItem>
               </SelectContent>
             </Select>
           </div>
