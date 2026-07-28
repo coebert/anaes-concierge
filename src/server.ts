@@ -70,9 +70,21 @@ function isStaleRouterEntryError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   // After HMR of src/routeTree.gen.ts, TanStack Start's cached entriesPromise
   // may hold a stale routerEntry whose getRouter export has been stripped.
-  // Dropping our own cached server-entry module lets Vite hand back a fresh
-  // one with a fresh entriesPromise on retry.
+  // Dropping our own cached server-entry module and flushing the dev HMR gate
+  // lets Vite hand back a fresh one with a fresh entriesPromise on retry.
   return /routerEntry\.getRouter is not a function/.test(message);
+}
+
+async function flushHmrGateForRequest(request: Request): Promise<void> {
+  if (process.env.TSS_DEV_SERVER !== "true") return;
+
+  try {
+    const url = new URL("/__hmr_flush", request.url);
+    await fetch(url, { method: "POST" });
+  } catch {
+    // Best-effort dev-only recovery; the retry below will still either succeed
+    // or fall through to the normal logged error response.
+  }
 }
 
 export default {
@@ -85,6 +97,7 @@ export default {
       } catch (error) {
         if (attempt === 0 && isStaleRouterEntryError(error)) {
           serverEntryPromise = undefined;
+          await flushHmrGateForRequest(request);
           continue;
         }
         console.error(error);
