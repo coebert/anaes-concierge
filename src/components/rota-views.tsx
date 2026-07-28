@@ -659,7 +659,9 @@ export function GlobalWeekGrid({
         // so the calendar row config filter (filterAssignmentsForCell) can
         // find them without leaking generic teaching blocks into the row.
         duty_type:
-          r.duty_type === "teaching" && looksLikeTutorialLabel([r.notes, r.role_on_list])
+          r.duty_type !== "medical_examiner" &&
+          !/^\s*tutorial\s*\(attending\)/i.test(r.notes ?? "") &&
+          looksLikeTutorialLabel([r.notes, r.role_on_list])
             ? "tutorial"
             : r.duty_type,
       })) as Array<{
@@ -852,7 +854,11 @@ export function GlobalWeekGrid({
       for (const d of days) {
         const dayIso = iso(d);
         for (const sh of ["am", "pm"] as SessionHalf[]) {
-          const raw = filterAssignmentsForCell(spaAdmin, row.key, dayIso, sh);
+          const raw = filterAssignmentsForCell(spaAdmin, row.key, dayIso, sh).filter((assignment) => {
+            if (row.key !== "tutorial") return true;
+            const grade = staffMap.get(assignment.staff_id)?.grade;
+            return grade === "consultant" || grade === "sas";
+          });
           const sorted = [...raw].sort(
             (a, b) =>
               gradeRank(staffMap.get(a.staff_id)?.grade) -
