@@ -905,6 +905,14 @@ export async function performRotaSync(
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
       const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName];
+      const tutorialLabels = [
+        roleRaw,
+        theatreName,
+        specialtyName,
+        consultantName,
+        extraTypeName,
+        sessRaw,
+      ];
       if (isNonWorkingRotaLabel(dutyLabels)) {
         if (externalId) nonWorkingExtIds.add(externalId);
         skipped.push({ label, reason: "non-working rota label (off/day off/available)" });
@@ -962,12 +970,19 @@ export async function performRotaSync(
 
       // Classify duty type from free-text labels + staff grade.
       const prof = profById.get(staffId);
-      const dutyType = classifyDutyType(
+      const classifiedDutyType = classifyDutyType(
         dutyLabels,
         prof?.grade,
         prof?.training_level,
         dutyMappings,
       );
+      // CLWRota often records tutorials as hybrid labels such as
+      // "Tutorial/SPA". The generic SPA mapping intentionally has high
+      // priority for normal job-plan work, but for tutorial labels we need to
+      // promote the row into teaching before SPA/admin can win, otherwise the
+      // audit and global-calendar Tutorials row never see it.
+      const isTutorial = looksLikeTutorialLabel(tutorialLabels);
+      const dutyType: ResolvedDutyType = isTutorial ? "teaching" : classifiedDutyType;
 
       // Validation: any CLWRota row whose free-text labels clearly describe
       // a Medical Examiner session ("medical examiner", "ME session") must
@@ -988,7 +1003,7 @@ export async function performRotaSync(
       ) {
         warnings.push({
           label,
-          reason: `unmapped medical examiner session (classified as ${dutyType}); add a duty_type_mappings entry for role/theatre/specialty text "${(roleRaw ?? theatreName ?? specialtyName ?? "").slice(0, 80)}"`,
+          reason: `unmapped medical examiner session (classified as ${classifiedDutyType}); add a duty_type_mappings entry for role/theatre/specialty text "${(roleRaw ?? theatreName ?? specialtyName ?? "").slice(0, 80)}"`,
         });
       }
 
@@ -1056,9 +1071,6 @@ export async function performRotaSync(
                 ? "non_clinical"
                 : "on_call";
 
-      const isTutorial =
-        dutyType === "teaching" &&
-        looksLikeTutorialLabel([roleRaw, theatreName, specialtyName, consultantName, extraTypeName]);
       // Trainees assigned to a tutorial slot ("Tutorial/SPA") are attending
       // the tutorial, not delivering it. Only consultants and SAS doctors
       // are recorded as tutorial deliverers ("Tutorial: …"); trainees get
