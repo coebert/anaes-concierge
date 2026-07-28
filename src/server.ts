@@ -66,15 +66,31 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+function isStaleRouterEntryError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  // After HMR of src/routeTree.gen.ts, TanStack Start's cached entriesPromise
+  // may hold a stale routerEntry whose getRouter export has been stripped.
+  // Dropping our own cached server-entry module lets Vite hand back a fresh
+  // one with a fresh entriesPromise on retry.
+  return /routerEntry\.getRouter is not a function/.test(message);
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    try {
-      const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
-    } catch (error) {
-      console.error(error);
-      return brandedErrorResponse();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const handler = await getServerEntry();
+        const response = await handler.fetch(request, env, ctx);
+        return await normalizeCatastrophicSsrResponse(response);
+      } catch (error) {
+        if (attempt === 0 && isStaleRouterEntryError(error)) {
+          serverEntryPromise = undefined;
+          continue;
+        }
+        console.error(error);
+        return brandedErrorResponse();
+      }
     }
+    return brandedErrorResponse();
   },
 };
