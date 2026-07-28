@@ -538,6 +538,32 @@ export function looksLikeMedicalExaminerLabel(
   return false;
 }
 
+/**
+ * Heuristic detector for CLWRota rows that describe a tutorial / lecture /
+ * departmental teaching session delivered by a member of staff (typically
+ * a consultant or SAS doctor). Used by the sync to stamp a "Tutorial: …"
+ * prefix on the assignment notes so downstream views (the Tutorials audit
+ * and the "Tutorials" row on the global calendar) can identify them
+ * reliably without re-parsing the CLWRota free text.
+ *
+ * Deliberately conservative — matches whole-word tutorial/tutor/lecture
+ * tokens and the phrase "departmental teaching" only, so plain trainee
+ * teaching blocks ("Non-patient-facing: Fellow") do not get mislabelled.
+ */
+export function looksLikeTutorialLabel(
+  labels: ReadonlyArray<string | null | undefined>,
+): boolean {
+  for (const raw of labels) {
+    if (!raw) continue;
+    const s = String(raw).toLowerCase();
+    if (/\btutorials?\b/.test(s)) return true;
+    if (/\btutor\b/.test(s) && !/college\s+tutor/.test(s)) return true;
+    if (/\blectures?\b/.test(s)) return true;
+    if (/departmental\s+teaching/.test(s)) return true;
+  }
+  return false;
+}
+
 export type DutyTypeMappingRow = {
   duty_type: ResolvedDutyType;
   pattern: string;

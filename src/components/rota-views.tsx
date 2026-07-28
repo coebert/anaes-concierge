@@ -636,13 +636,22 @@ export function GlobalWeekGrid({
       const { data, error } = await supabase
         .from("rota_assignments")
         .select("id,staff_id,session,session_date,duty_type,clwrota_external_id,source,role_on_list,notes,extra_type,locally_modified,is_non_sag,created_at,updated_at")
-        .in("duty_type", ["spa", "admin", "medical_examiner"])
+        .or("duty_type.in.(spa,admin,medical_examiner),and(duty_type.eq.teaching,notes.ilike.Tutorial:%25)")
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
-      return (data ?? []) as Array<{
+      return (data ?? []).map((r) => ({
+        ...r,
+        // Re-map teaching-tutorial rows onto a synthetic "tutorial" bucket
+        // so the calendar row config filter (filterAssignmentsForCell) can
+        // find them without leaking generic teaching blocks into the row.
+        duty_type:
+          r.duty_type === "teaching" && (r.notes ?? "").startsWith("Tutorial:")
+            ? "tutorial"
+            : r.duty_type,
+      })) as Array<{
         id: string; staff_id: string; session: SessionHalf; session_date: string;
-        duty_type: "spa" | "admin" | "medical_examiner";
+        duty_type: "spa" | "admin" | "medical_examiner" | "tutorial";
         clwrota_external_id: string | null;
         source: string;
         role_on_list: string;
@@ -819,6 +828,7 @@ export function GlobalWeekGrid({
         { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
         { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
         { key: "medical_examiner", label: "Medical examiner", sub: "ME session", tint: "bg-violet-500/5" },
+        { key: "tutorial", label: "Tutorials", sub: "Tutorial / lecture delivery", tint: "bg-amber-500/5" },
       ] as const,
     [],
   );

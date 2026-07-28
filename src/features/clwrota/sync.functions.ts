@@ -18,6 +18,7 @@ import {
   normaliseSession,
   sessionsCoveredByTimeRange,
   looksLikeMedicalExaminerLabel,
+  looksLikeTutorialLabel,
   normaliseDate,
   normaliseRole,
   classifyDutyType,
@@ -1055,11 +1056,16 @@ export async function performRotaSync(
                 ? "non_clinical"
                 : "on_call";
 
-      const notes = NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
-        ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
-        : consultantName
-          ? `Surgeon: ${consultantName}`
-          : null;
+      const isTutorial =
+        dutyType === "teaching" &&
+        looksLikeTutorialLabel([roleRaw, theatreName, specialtyName, consultantName, extraTypeName]);
+      const notes = isTutorial
+        ? `Tutorial: ${(roleRaw ?? extraTypeName ?? "session").trim()}`
+        : NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
+          ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
+          : consultantName
+            ? `Surgeon: ${consultantName}`
+            : null;
 
       for (const half of coveredHalves) {
         // When we synthesise a second half from an all-day ME row the
