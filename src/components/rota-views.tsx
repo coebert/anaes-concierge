@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { buildSearchTokens, cellMatchesSearch } from "@/lib/calendar-search";
 import { filterAssignmentsForCell } from "@/features/clwrota/me-cell-visibility";
+import { looksLikeTutorialLabel } from "@/features/clwrota/parsing";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
@@ -636,7 +637,19 @@ export function GlobalWeekGrid({
       const { data, error } = await supabase
         .from("rota_assignments")
         .select("id,staff_id,session,session_date,duty_type,clwrota_external_id,source,role_on_list,notes,extra_type,locally_modified,is_non_sag,created_at,updated_at")
-        .or("duty_type.in.(spa,admin,medical_examiner),and(duty_type.eq.teaching,notes.ilike.Tutorial:%25)")
+        .or(
+          [
+            "duty_type.in.(spa,admin,medical_examiner)",
+            "and(duty_type.eq.teaching,notes.ilike.%tutorial%)",
+            "and(duty_type.eq.teaching,role_on_list.ilike.%tutorial%)",
+            "and(duty_type.eq.teaching,notes.ilike.%tutor%)",
+            "and(duty_type.eq.teaching,role_on_list.ilike.%tutor%)",
+            "and(duty_type.eq.teaching,notes.ilike.%lecture%)",
+            "and(duty_type.eq.teaching,role_on_list.ilike.%lecture%)",
+            "and(duty_type.eq.teaching,notes.ilike.%departmental teaching%)",
+            "and(duty_type.eq.teaching,role_on_list.ilike.%departmental teaching%)",
+          ].join(","),
+        )
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
@@ -646,7 +659,7 @@ export function GlobalWeekGrid({
         // so the calendar row config filter (filterAssignmentsForCell) can
         // find them without leaking generic teaching blocks into the row.
         duty_type:
-          r.duty_type === "teaching" && (r.notes ?? "").startsWith("Tutorial:")
+          r.duty_type === "teaching" && looksLikeTutorialLabel([r.notes, r.role_on_list])
             ? "tutorial"
             : r.duty_type,
       })) as Array<{
