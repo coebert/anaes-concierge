@@ -93,7 +93,7 @@ function TutorialsAuditPage() {
 
   const staffMap = useMemo(() => {
     const m = new Map<string, { full_name: string; grade: Grade }>();
-    for (const s of staff ?? []) m.set(s.id, { full_name: s.full_name, grade: (s.grade ?? null) as Grade });
+    for (const s of staff ?? []) m.set(s.id, { full_name: s.full_name ?? "—", grade: (s.grade ?? null) as Grade });
     return m;
   }, [staff]);
 
