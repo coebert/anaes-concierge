@@ -224,7 +224,18 @@ async def main() -> None:
             await page.goto(
                 f"{BASE_URL}/calendar", wait_until="domcontentloaded"
             )
-            await page.wait_for_selector("text=Medical examiner", timeout=10_000)
+            try:
+                await page.wait_for_selector(
+                    "text=Global calendar", timeout=15_000
+                )
+                await page.wait_for_selector(
+                    'th:has-text("Medical examiner"), td:has-text("Medical examiner")',
+                    timeout=15_000,
+                )
+            except Exception:
+                await page.screenshot(path=str(SHOTS / "0_failure.png"))
+                Path(SHOTS / "0_failure.html").write_text(await page.content())
+                raise
             # Both ME cells rendered ⇒ exactly two info triggers.
             await page.wait_for_function(
                 """
