@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { listActiveStaffSafe } from "@/features/staff/staff-directory.functions";
+import { looksLikeTutorialLabel } from "@/features/clwrota/parsing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +41,7 @@ interface TutorialRow {
   staff_id: string;
   session_date: string;
   session: Session;
+  duty_type: "spa" | "admin" | "teaching";
   notes: string | null;
   role_on_list: string;
   clwrota_external_id: string | null;
@@ -55,7 +57,7 @@ function isoDaysAgo(days: number): string {
 
 function TutorialsAuditPage() {
   const [rangeDays, setRangeDays] = useState<number>(180);
-  const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas" | "trainee">(
+  const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas">(
     "all",
   );
   const [search, setSearch] = useState("");
@@ -79,15 +81,32 @@ function TutorialsAuditPage() {
       const { data, error } = await supabase
         .from("rota_assignments")
         .select(
-          "id,staff_id,session_date,session,notes,role_on_list,clwrota_external_id,source,locally_modified",
+          "id,staff_id,session_date,session,duty_type,notes,role_on_list,clwrota_external_id,source,locally_modified",
         )
-        .eq("duty_type", "teaching")
-        .ilike("notes", "Tutorial:%")
+        .in("duty_type", ["spa", "admin", "teaching"])
+        .or(
+          [
+            "notes.ilike.%tutorial%",
+            "role_on_list.ilike.%tutorial%",
+            "notes.ilike.%tutor%",
+            "role_on_list.ilike.%tutor%",
+            "notes.ilike.%lecture%",
+            "role_on_list.ilike.%lecture%",
+            "notes.ilike.%departmental teaching%",
+            "role_on_list.ilike.%departmental teaching%",
+          ].join(","),
+        )
         .gte("session_date", startIso)
         .lte("session_date", endIso)
         .order("session_date", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as TutorialRow[];
+      return ((data ?? []) as TutorialRow[]).filter((row) => {
+        const notes = row.notes ?? "";
+        return (
+          !/^\s*tutorial\s*\(attending\)/i.test(notes) &&
+          looksLikeTutorialLabel([notes, row.role_on_list])
+        );
+      });
     },
   });
 
@@ -101,6 +120,8 @@ function TutorialsAuditPage() {
     const q = search.trim().toLowerCase();
     return (rows ?? []).filter((r) => {
       const sp = staffMap.get(r.staff_id);
+      const isDelivererGrade = sp?.grade === "consultant" || sp?.grade === "sas";
+      if (!isDelivererGrade) return false;
       if (gradeFilter !== "all" && sp?.grade !== gradeFilter) return false;
       if (!q) return true;
       const hay = `${sp?.full_name ?? ""} ${r.notes ?? ""} ${r.session_date}`.toLowerCase();
@@ -160,7 +181,6 @@ function TutorialsAuditPage() {
                 <SelectItem value="all">All grades</SelectItem>
                 <SelectItem value="consultant">Consultants</SelectItem>
                 <SelectItem value="sas">SAS</SelectItem>
-                <SelectItem value="trainee">Trainees</SelectItem>
               </SelectContent>
             </Select>
           </div>

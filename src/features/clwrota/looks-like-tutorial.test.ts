@@ -5,6 +5,7 @@ describe("looksLikeTutorialLabel", () => {
   it("matches tutorial and tutorials tokens", () => {
     expect(looksLikeTutorialLabel(["Tutorial"])).toBe(true);
     expect(looksLikeTutorialLabel(["Consultant tutorials"])).toBe(true);
+    expect(looksLikeTutorialLabel(["Tutorial/SPA"])).toBe(true);
   });
 
   it("matches lectures and departmental teaching", () => {
