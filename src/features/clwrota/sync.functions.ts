@@ -1059,13 +1059,26 @@ export async function performRotaSync(
       const isTutorial =
         dutyType === "teaching" &&
         looksLikeTutorialLabel([roleRaw, theatreName, specialtyName, consultantName, extraTypeName]);
-      const notes = isTutorial
-        ? `Tutorial: ${(roleRaw ?? extraTypeName ?? "session").trim()}`
-        : NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
-          ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
-          : consultantName
-            ? `Surgeon: ${consultantName}`
-            : null;
+      // Trainees assigned to a tutorial slot ("Tutorial/SPA") are attending
+      // the tutorial, not delivering it. Only consultants and SAS doctors
+      // are recorded as tutorial deliverers ("Tutorial: …"); trainees get
+      // an "Tutorial (attending): …" note so the audit and the calendar's
+      // Tutorials row (which filter on `notes ilike 'Tutorial:%'`) do not
+      // count them as presenters.
+      const tutorialLabel = (roleRaw ?? extraTypeName ?? "session").trim();
+      const isTutorialDeliverer =
+        isTutorial && (prof?.grade === "consultant" || prof?.grade === "sas");
+      const isTutorialAttendee =
+        isTutorial && !isTutorialDeliverer;
+      const notes = isTutorialDeliverer
+        ? `Tutorial: ${tutorialLabel}`
+        : isTutorialAttendee
+          ? `Tutorial (attending): ${tutorialLabel}`
+          : NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
+            ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
+            : consultantName
+              ? `Surgeon: ${consultantName}`
+              : null;
 
       for (const half of coveredHalves) {
         // When we synthesise a second half from an all-day ME row the
