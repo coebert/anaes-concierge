@@ -18,6 +18,7 @@ import {
   normaliseSession,
   sessionsCoveredByTimeRange,
   looksLikeMedicalExaminerLabel,
+  looksLikeTutorialLabel,
   normaliseDate,
   normaliseRole,
   classifyDutyType,
