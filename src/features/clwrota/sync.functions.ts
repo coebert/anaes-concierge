@@ -1074,9 +1074,8 @@ export async function performRotaSync(
       // Trainees assigned to a tutorial slot ("Tutorial/SPA") are attending
       // the tutorial, not delivering it. Only consultants and SAS doctors
       // are recorded as tutorial deliverers ("Tutorial: …"); trainees get
-      // an "Tutorial (attending): …" note so the audit and the calendar's
-      // Tutorials row (which filter on `notes ilike 'Tutorial:%'`) do not
-      // count them as presenters.
+      // a "Tutorial (attending): …" note so the audit and the calendar's
+      // Tutorials row can exclude them from presenter counts.
       const tutorialLabel = (roleRaw ?? extraTypeName ?? "session").trim();
       const isTutorialDeliverer =
         isTutorial && (prof?.grade === "consultant" || prof?.grade === "sas");
