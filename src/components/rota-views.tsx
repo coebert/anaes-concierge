@@ -828,6 +828,7 @@ export function GlobalWeekGrid({
         { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
         { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
         { key: "medical_examiner", label: "Medical examiner", sub: "ME session", tint: "bg-violet-500/5" },
+        { key: "tutorial", label: "Tutorials", sub: "Tutorial / lecture delivery", tint: "bg-amber-500/5" },
       ] as const,
     [],
   );
