@@ -11,7 +11,7 @@
 export type SessionHalf = "am" | "pm";
 
 export interface CalendarSpaAdminAssignment {
-  duty_type: "spa" | "admin" | "medical_examiner";
+  duty_type: "spa" | "admin" | "medical_examiner" | "tutorial";
   session_date: string;
   session: SessionHalf;
 }
