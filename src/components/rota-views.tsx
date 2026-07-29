@@ -1082,22 +1082,6 @@ export function GlobalWeekGrid({
   return (
     <Card>
       <CardContent className="p-0 overflow-x-auto">
-        <table className="min-w-full text-xs">
-          <thead className="sticky top-0 bg-card">
-            <tr>
-              <th className="border-b border-r p-2 text-left font-medium w-28">Theatre</th>
-              {days.map((d) => (
-                <th key={iso(d)} colSpan={2} className="border-b border-r p-2 text-center font-medium">
-                  {fmt(d)}
-                </th>
-              ))}
-            </tr>
-            <tr className="text-muted-foreground">
-              <th className="border-b border-r p-1"></th>
-              {days.flatMap((d) => [
-  return (
-    <Card>
-      <CardContent className="p-0 overflow-x-auto">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
           <div className="text-xs text-muted-foreground">
             {tutorialHighlights.total > 0
