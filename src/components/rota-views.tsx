@@ -27,9 +27,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  GraduationCap,
   Info,
   User,
 } from "lucide-react";
+
 import { cn, parseDateLocal, toISODateLocal, formatDateGB, formatDateWithWeekdayGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
@@ -902,6 +904,25 @@ export function GlobalWeekGrid({
     });
   }, [spaAdminRowConfigs, days, spaAdmin, staffMap]);
 
+  // Tutorial overlay — counts of tutorial/lecture sessions delivered by
+  // consultants/SAS per day+half, so the calendar header can flag days at a
+  // glance without the reader having to scan the Tutorials row.
+  const [highlightTutorials, setHighlightTutorials] = useState(true);
+  const tutorialHighlights = useMemo(() => {
+    const perHalf = new Map<string, number>(); // key: `${dayIso}|${am|pm}`
+    const perDay = new Map<string, number>();
+    for (const a of spaAdmin ?? []) {
+      if (a.duty_type !== "tutorial") continue;
+      const grade = staffMap.get(a.staff_id)?.grade;
+      if (grade !== "consultant" && grade !== "sas") continue;
+      const halfKey = `${a.session_date}|${a.session}`;
+      perHalf.set(halfKey, (perHalf.get(halfKey) ?? 0) + 1);
+      perDay.set(a.session_date, (perDay.get(a.session_date) ?? 0) + 1);
+    }
+    return { perHalf, perDay, total: [...perDay.values()].reduce((s, n) => s + n, 0) };
+  }, [spaAdmin, staffMap]);
+
+
   const extraRowConfigs = useMemo(
     () =>
       [
@@ -1061,26 +1082,81 @@ export function GlobalWeekGrid({
   return (
     <Card>
       <CardContent className="p-0 overflow-x-auto">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+          <div className="text-xs text-muted-foreground">
+            {tutorialHighlights.total > 0
+              ? `${tutorialHighlights.total} tutorial session${tutorialHighlights.total === 1 ? "" : "s"} in view`
+              : "No tutorial sessions in this view"}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant={highlightTutorials ? "default" : "outline"}
+            onClick={() => setHighlightTutorials((v) => !v)}
+            className="h-7 gap-1.5"
+            aria-pressed={highlightTutorials}
+            data-testid="toggle-tutorial-highlight"
+          >
+            <GraduationCap className="h-3.5 w-3.5" />
+            {highlightTutorials ? "Tutorial overlay on" : "Tutorial overlay off"}
+          </Button>
+        </div>
         <table className="min-w-full text-xs">
           <thead className="sticky top-0 bg-card">
             <tr>
               <th className="border-b border-r p-2 text-left font-medium w-28">Theatre</th>
-              {days.map((d) => (
-                <th key={iso(d)} colSpan={2} className="border-b border-r p-2 text-center font-medium">
-                  {fmt(d)}
-                </th>
-              ))}
+              {days.map((d) => {
+                const dayIso = iso(d);
+                const dayCount = tutorialHighlights.perDay.get(dayIso) ?? 0;
+                const hit = highlightTutorials && dayCount > 0;
+                return (
+                  <th
+                    key={dayIso}
+                    colSpan={2}
+                    className={cn(
+                      "border-b border-r p-2 text-center font-medium",
+                      hit && "bg-amber-500/10 text-amber-900 dark:text-amber-100",
+                    )}
+                    data-testid={hit ? `tutorial-day-${dayIso}` : undefined}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {fmt(d)}
+                      {hit && (
+                        <Badge
+                          variant="outline"
+                          className="h-4 gap-1 border-amber-500/50 bg-amber-500/15 px-1 text-[10px] text-amber-900 dark:text-amber-100"
+                          title={`${dayCount} tutorial session${dayCount === 1 ? "" : "s"} on this day`}
+                        >
+                          <GraduationCap className="h-2.5 w-2.5" />
+                          {dayCount}
+                        </Badge>
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
             <tr className="text-muted-foreground">
               <th className="border-b border-r p-1"></th>
-              {days.flatMap((d) => [
-                <th key={iso(d) + "am"} className="border-b p-1 font-normal">
-                  <SessionChip half="am" />
-                </th>,
-                <th key={iso(d) + "pm"} className="border-b border-r p-1 font-normal">
-                  <SessionChip half="pm" />
-                </th>,
-              ])}
+              {days.flatMap((d) => {
+                const dayIso = iso(d);
+                const amHit = highlightTutorials && (tutorialHighlights.perHalf.get(`${dayIso}|am`) ?? 0) > 0;
+                const pmHit = highlightTutorials && (tutorialHighlights.perHalf.get(`${dayIso}|pm`) ?? 0) > 0;
+                return [
+                  <th
+                    key={dayIso + "am"}
+                    className={cn("border-b p-1 font-normal", amHit && "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40")}
+                  >
+                    <SessionChip half="am" />
+                  </th>,
+                  <th
+                    key={dayIso + "pm"}
+                    className={cn("border-b border-r p-1 font-normal", pmHit && "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40")}
+                  >
+                    <SessionChip half="pm" />
+                  </th>,
+                ];
+              })}
             </tr>
 
           </thead>
@@ -1088,6 +1164,7 @@ export function GlobalWeekGrid({
             {theatreRows.map(({ theatre: t, cells }) => (
               <tr key={t.id} className="align-top">
                 <td className="border-r p-2 font-medium whitespace-nowrap">
+
                   {t.name}
                   <div className="text-[10px] text-muted-foreground">
                     {t.kind === "main"
