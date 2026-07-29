@@ -78,6 +78,35 @@ export function ensureLeaveReportFields(rawUrl: string): string {
 }
 
 /**
+ * Ensure the CLWRota rota/assignments report URL requests the free-text
+ * `notes` field. Coordinators frequently configure the URL's `fields=`
+ * param with only the minimum identifiers (date, session, person, role)
+ * — so tutorial / lecture descriptions coordinators type into the "notes"
+ * column of a shift never reach the sync, and the tutorial audit + global
+ * calendar Tutorials row silently miss every such session.
+ *
+ * `notes` is a first-class field on CLWRota shift rows (see
+ * `ClwRotaRotaRowSchema`), so requesting it never 400s.
+ */
+export function ensureRotaReportFields(rawUrl: string): string {
+  if (!rawUrl) return rawUrl;
+  const required = ["notes"];
+  try {
+    const u = new URL(rawUrl);
+    const existing = u.searchParams.get("fields");
+    if (!existing) return rawUrl; // no fields= means "all fields" — notes already included
+    const set = new Set(
+      existing.split(",").map((s) => s.trim()).filter(Boolean),
+    );
+    for (const f of required) set.add(f);
+    u.searchParams.set("fields", Array.from(set).join(","));
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+/**
  * Force a CLWRota report URL's date window to a bounded operational range.
  *
  * The rota report can otherwise span 12+ months (every row of every
