@@ -86,7 +86,7 @@ function TutorialsAuditPage() {
       toast.success(
         dryRun
           ? `Preview: would promote ${res.promotedToTeaching}, rewrite ${res.notesUpdated} note(s).`
-          : `Backfill complete: promoted ${res.promotedToTeaching}, rewrote ${res.notesUpdated} note(s).`,
+          : `Backfill complete: refreshed ${res.sourceRowsRefreshed} CLWRota row(s), promoted ${res.promotedToTeaching}, rewrote ${res.notesUpdated} note(s).`,
       );
       if (!dryRun) {
         queryClient.invalidateQueries({ queryKey: ["tutorials"] });
@@ -208,6 +208,13 @@ function TutorialsAuditPage() {
                 Window {lastBackfill.windowStart} → {lastBackfill.windowEnd} ·
                 scanned {lastBackfill.scanned} consultant/SAS row(s)
               </div>
+              {!backfillMutation.variables && (
+                <div>
+                  CLWRota rows refreshed: <strong>{lastBackfill.sourceRowsRefreshed}</strong> ·
+                  assignments inserted: {lastBackfill.sourceAssignmentsInserted} ·
+                  assignments updated: {lastBackfill.sourceAssignmentsUpdated}
+                </div>
+              )}
               <div>
                 Promoted to teaching: <strong>{lastBackfill.promotedToTeaching}</strong> ·
                 notes rewritten: <strong>{lastBackfill.notesUpdated}</strong> ·
