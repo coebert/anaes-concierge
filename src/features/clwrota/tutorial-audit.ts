@@ -4,6 +4,7 @@ type TutorialAuditAssignment = {
   duty_type: string | null;
   notes: string | null;
   role_on_list: string | null;
+  extra_type?: string | null;
 };
 
 export function isTutorialAttendeeAssignment(
@@ -15,5 +16,5 @@ export function isTutorialAttendeeAssignment(
 export function isTutorialAuditCandidate(row: TutorialAuditAssignment): boolean {
   if (isTutorialAttendeeAssignment(row)) return false;
   if (row.duty_type === "teaching") return true;
-  return looksLikeTutorialLabel([row.notes, row.role_on_list]);
+  return looksLikeTutorialLabel([row.notes, row.role_on_list, row.extra_type ?? null]);
 }
