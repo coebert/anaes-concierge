@@ -25,6 +25,45 @@ export type MissedTutorialFixture = {
 
 export const MISSED_TUTORIAL_ROWS: MissedTutorialFixture[] = [
   {
+    name: "Central API row with tutorial label in `slot_titles`",
+    sourceField: "slot_titles",
+    expectedNoteContains: "Dr Hogan Tutorial",
+    role: "Consultant",
+    row: {
+      id: "clw-0998",
+      date: "2026-01-06",
+      person: { rota_name: "Dr A Hogan" },
+      place: { name: "Tutorial / SPA" },
+      slot_titles: "Dr Hogan Tutorial",
+    },
+  },
+  {
+    name: "Central API row with tutorial label in nested `place.name`",
+    sourceField: "place.name",
+    expectedNoteContains: "Tutorial / SPA",
+    role: "Consultant",
+    row: {
+      id: "clw-0999",
+      date: "2026-01-13",
+      person: { rota_name: "Dr A Consultant" },
+      place: { name: "Tutorial / SPA" },
+      slot_titles: "SPA",
+    },
+  },
+  {
+    name: "Central API row with tutorial topic in `slot_notes`",
+    sourceField: "slot_notes",
+    expectedNoteContains: "Airway tutorial",
+    role: "SPA",
+    row: {
+      id: "clw-1000",
+      date: "2026-04-28",
+      person: { rota_name: "Dr B Consultant" },
+      slot_titles: "SPA",
+      slot_notes: "Airway tutorial",
+    },
+  },
+  {
     name: "SPA row with tutorial topic in top-level `description`",
     sourceField: "description",
     expectedNoteContains: "Tutorial: airway management",
@@ -232,6 +271,8 @@ export const MISSED_TUTORIAL_ROWS: MissedTutorialFixture[] = [
 // sync's alias list is caught by the fixture test rather than silently
 // masked by importing the same array under test.
 export const TUTORIAL_TEXT_PICK_KEYS = [
+  "slot_titles", "slot_notes",
+  "place.name", "place.additional_info",
   "notes", "note", "comment", "comments",
   "session.notes", "session.note", "session.comment",
   "shift.notes", "shift.note", "shift.comment",
