@@ -8,6 +8,15 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+let devServerEntryReloadCount = 0;
+
+type StartServerCoreModule = {
+  createStartHandler: (handler: unknown) => ServerEntry["fetch"];
+};
+
+type ReactStartServerModule = {
+  defaultStreamHandler: unknown;
+};
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -16,6 +25,19 @@ async function getServerEntry(): Promise<ServerEntry> {
     );
   }
   return serverEntryPromise;
+}
+
+async function createFreshDevServerEntry(): Promise<ServerEntry> {
+  devServerEntryReloadCount += 1;
+  const cacheKey = `${Date.now()}-${devServerEntryReloadCount}`;
+  const [serverCore, reactStartServer] = await Promise.all([
+    import(`@tanstack/start-server-core?tanstack-router-retry=${cacheKey}`) as Promise<StartServerCoreModule>,
+    import(`@tanstack/react-start-server?tanstack-router-retry=${cacheKey}`) as Promise<ReactStartServerModule>,
+  ]);
+
+  return {
+    fetch: serverCore.createStartHandler(reactStartServer.defaultStreamHandler),
+  };
 }
 
 function brandedErrorResponse(): Response {
@@ -70,21 +92,9 @@ function isStaleRouterEntryError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   // After HMR of src/routeTree.gen.ts, TanStack Start's cached entriesPromise
   // may hold a stale routerEntry whose getRouter export has been stripped.
-  // Dropping our own cached server-entry module and flushing the dev HMR gate
-  // lets Vite hand back a fresh one with a fresh entriesPromise on retry.
+  // The cached entriesPromise lives inside @tanstack/start-server-core, so the
+  // retry must load a fresh dev-only copy of that module, not only our wrapper.
   return /routerEntry\.getRouter is not a function/.test(message);
-}
-
-async function flushHmrGateForRequest(request: Request): Promise<void> {
-  if (process.env.TSS_DEV_SERVER !== "true") return;
-
-  try {
-    const url = new URL("/__hmr_flush", request.url);
-    await fetch(url, { method: "POST" });
-  } catch {
-    // Best-effort dev-only recovery; the retry below will still either succeed
-    // or fall through to the normal logged error response.
-  }
 }
 
 export default {
@@ -96,8 +106,7 @@ export default {
         return await normalizeCatastrophicSsrResponse(response);
       } catch (error) {
         if (attempt === 0 && isStaleRouterEntryError(error)) {
-          serverEntryPromise = undefined;
-          await flushHmrGateForRequest(request);
+          serverEntryPromise = createFreshDevServerEntry();
           continue;
         }
         console.error(error);
