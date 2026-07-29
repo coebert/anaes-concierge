@@ -1,15 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listTutorialAuditSessions,
   type TutorialAuditSession,
 } from "@/features/clwrota/tutorial-audit.functions";
+import {
+  backfillTutorialDetection,
+  type TutorialBackfillResult,
+} from "@/features/clwrota/tutorial-backfill.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { formatDateWithWeekdayGB, parseDateLocal, toISODateLocal } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/tutorials")({
