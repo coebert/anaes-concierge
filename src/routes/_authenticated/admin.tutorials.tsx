@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { listActiveStaffSafe } from "@/features/staff/staff-directory.functions";
+import { listStaffByIdsSafe } from "@/features/staff/staff-directory.functions";
 import { isTutorialAuditCandidate } from "@/features/clwrota/tutorial-audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -75,13 +75,7 @@ function TutorialsAuditPage() {
     return toISODateLocal(d);
   }, []);
 
-  const listActive = useServerFn(listActiveStaffSafe);
-  const { data: staff } = useQuery({
-    queryKey: ["staff-active-tutorials"],
-    queryFn: () => listActive(),
-  });
-
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading: rowsLoading } = useQuery({
     queryKey: ["tutorials", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -110,6 +104,18 @@ function TutorialsAuditPage() {
       return ((data ?? []) as TutorialRow[]).filter(isTutorialAuditCandidate);
     },
   });
+
+  const staffIds = useMemo(
+    () => Array.from(new Set((rows ?? []).map((row) => row.staff_id))).sort(),
+    [rows],
+  );
+  const lookupStaff = useServerFn(listStaffByIdsSafe);
+  const { data: staff, isLoading: staffLoading } = useQuery({
+    queryKey: ["staff-tutorials", staffIds],
+    queryFn: () => lookupStaff({ data: { ids: staffIds } }),
+    enabled: staffIds.length > 0,
+  });
+  const isLoading = rowsLoading || staffLoading;
 
   const staffMap = useMemo(() => {
     const m = new Map<string, { full_name: string; grade: Grade }>();
