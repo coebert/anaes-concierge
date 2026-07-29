@@ -678,10 +678,11 @@ export async function performRotaSync(
     let sampleKeys: string[] = [];
     let parseError: string | null = null;
     try {
+      const withFields = ensureRotaReportFields(url);
       const windowedUrl =
         opts.from && opts.to
-          ? explicitDateWindow(url, opts.from, opts.to)
-          : clampDateWindow(url, { daysBack, daysAhead });
+          ? explicitDateWindow(withFields, opts.from, opts.to)
+          : clampDateWindow(withFields, { daysBack, daysAhead });
       const text = await fetchReportRaw(windowedUrl, apiKey);
 
 
