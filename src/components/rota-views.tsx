@@ -904,6 +904,25 @@ export function GlobalWeekGrid({
     });
   }, [spaAdminRowConfigs, days, spaAdmin, staffMap]);
 
+  // Tutorial overlay — counts of tutorial/lecture sessions delivered by
+  // consultants/SAS per day+half, so the calendar header can flag days at a
+  // glance without the reader having to scan the Tutorials row.
+  const [highlightTutorials, setHighlightTutorials] = useState(true);
+  const tutorialHighlights = useMemo(() => {
+    const perHalf = new Map<string, number>(); // key: `${dayIso}|${am|pm}`
+    const perDay = new Map<string, number>();
+    for (const a of spaAdmin ?? []) {
+      if (a.duty_type !== "tutorial") continue;
+      const grade = staffMap.get(a.staff_id)?.grade;
+      if (grade !== "consultant" && grade !== "sas") continue;
+      const halfKey = `${a.session_date}|${a.session}`;
+      perHalf.set(halfKey, (perHalf.get(halfKey) ?? 0) + 1);
+      perDay.set(a.session_date, (perDay.get(a.session_date) ?? 0) + 1);
+    }
+    return { perHalf, perDay, total: [...perDay.values()].reduce((s, n) => s + n, 0) };
+  }, [spaAdmin, staffMap]);
+
+
   const extraRowConfigs = useMemo(
     () =>
       [
