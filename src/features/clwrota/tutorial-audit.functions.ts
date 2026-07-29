@@ -59,21 +59,22 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
           "id,staff_id,session_date,session,duty_type,notes,role_on_list,extra_type,clwrota_external_id,source,locally_modified",
         )
         .in("duty_type", ["spa", "admin", "teaching"])
+        // Note: role_on_list is an enum (rota_role) — PostgREST rejects
+        // `ilike` against enum columns with "operator does not exist", which
+        // fails the ENTIRE .or() query and returns zero rows. Only apply
+        // ilike to text columns (notes, extra_type). Enum-valued teaching
+        // is covered by `duty_type.eq.teaching`.
         .or(
           [
             "duty_type.eq.teaching",
             "notes.ilike.%tutorial%",
             "extra_type.ilike.%tutorial%",
-            "role_on_list.ilike.%tutorial%",
             "notes.ilike.%tutor%",
             "extra_type.ilike.%tutor%",
-            "role_on_list.ilike.%tutor%",
             "notes.ilike.%lecture%",
             "extra_type.ilike.%lecture%",
-            "role_on_list.ilike.%lecture%",
             "notes.ilike.%departmental teaching%",
             "extra_type.ilike.%departmental teaching%",
-            "role_on_list.ilike.%departmental teaching%",
           ].join(","),
         )
         .gte("session_date", data.startIso)
