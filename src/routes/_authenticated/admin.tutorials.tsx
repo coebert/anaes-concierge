@@ -1,15 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listTutorialAuditSessions,
   type TutorialAuditSession,
 } from "@/features/clwrota/tutorial-audit.functions";
+import {
+  backfillTutorialDetection,
+  type TutorialBackfillResult,
+} from "@/features/clwrota/tutorial-backfill.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { formatDateWithWeekdayGB, parseDateLocal, toISODateLocal } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/tutorials")({
@@ -63,10 +69,33 @@ function TutorialsAuditPage() {
     return toISODateLocal(d);
   }, []);
   const lookupTutorials = useServerFn(listTutorialAuditSessions);
+  const runBackfill = useServerFn(backfillTutorialDetection);
+  const queryClient = useQueryClient();
+  const [lastBackfill, setLastBackfill] = useState<TutorialBackfillResult | null>(null);
 
   const { data: rows, isLoading, error } = useQuery({
     queryKey: ["tutorials", startIso, endIso],
     queryFn: () => lookupTutorials({ data: { startIso, endIso } }),
+  });
+
+  const backfillMutation = useMutation({
+    mutationFn: (dryRun: boolean) =>
+      runBackfill({ data: { startIso, endIso, dryRun } }),
+    onSuccess: (res, dryRun) => {
+      setLastBackfill(res);
+      toast.success(
+        dryRun
+          ? `Preview: would promote ${res.promotedToTeaching}, rewrite ${res.notesUpdated} note(s).`
+          : `Backfill complete: promoted ${res.promotedToTeaching}, rewrote ${res.notesUpdated} note(s).`,
+      );
+      if (!dryRun) {
+        queryClient.invalidateQueries({ queryKey: ["tutorials"] });
+      }
+    },
+    onError: (err) =>
+      toast.error(
+        `Backfill failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      ),
   });
 
   const filtered = useMemo(() => {
@@ -141,6 +170,75 @@ function TutorialsAuditPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Re-run detection on synced data</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Re-applies the current tutorial-detection rules to rota rows already
+            in the database for this window. Consultant/SAS SPA or admin rows
+            whose notes describe a tutorial are promoted to teaching and their
+            note is prefixed with <code>Tutorial:</code>. Locally-edited rows
+            and trainee attendee rows are left alone.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={backfillMutation.isPending}
+              onClick={() => backfillMutation.mutate(true)}
+            >
+              {backfillMutation.isPending && backfillMutation.variables === true
+                ? "Previewing…"
+                : "Preview changes"}
+            </Button>
+            <Button
+              disabled={backfillMutation.isPending}
+              onClick={() => backfillMutation.mutate(false)}
+            >
+              {backfillMutation.isPending && backfillMutation.variables === false
+                ? "Backfilling…"
+                : "Run backfill"}
+            </Button>
+          </div>
+          {lastBackfill && (
+            <div className="text-xs text-muted-foreground space-y-1 border-t pt-2">
+              <div>
+                Window {lastBackfill.windowStart} → {lastBackfill.windowEnd} ·
+                scanned {lastBackfill.scanned} consultant/SAS row(s)
+              </div>
+              <div>
+                Promoted to teaching: <strong>{lastBackfill.promotedToTeaching}</strong> ·
+                notes rewritten: <strong>{lastBackfill.notesUpdated}</strong> ·
+                skipped locally-modified: {lastBackfill.skippedLocallyModified} ·
+                skipped attendees: {lastBackfill.skippedAttendee}
+              </div>
+              {lastBackfill.sample.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer">
+                    Sample of {lastBackfill.sample.length} affected row(s)
+                  </summary>
+                  <ul className="mt-1 space-y-0.5 pl-4 list-disc">
+                    {lastBackfill.sample.map((s) => (
+                      <li key={s.id}>
+                        {s.session_date} {s.session.toUpperCase()}: {s.fromDutyType}
+                        {" → "}
+                        {s.toDutyType}
+                        {s.noteBefore !== s.noteAfter && (
+                          <> · note: “{s.noteBefore ?? "—"}” → “{s.noteAfter ?? "—"}”</>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       {error && (
         <Card>
