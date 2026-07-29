@@ -75,6 +75,13 @@ function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boole
 // h3 swallows in-handler throws into a normal 500 Response with body
 // {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+  return normalizeCatastrophicSsrResponseWithObservedError(response);
+}
+
+async function normalizeCatastrophicSsrResponseWithObservedError(
+  response: Response,
+  observedError?: unknown,
+): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return response;
@@ -84,7 +91,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  const capturedError = consumeLastCapturedError();
+  const capturedError = observedError ?? consumeLastCapturedError();
   if (isStaleRouterEntryError(capturedError)) {
     throw capturedError instanceof Error
       ? capturedError
@@ -95,13 +102,55 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+function stringifyErrorForMatching(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = "cause" in error ? (error as Error & { cause?: unknown }).cause : undefined;
+    return [error.name, error.message, error.stack, stringifyErrorForMatching(cause)]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown; stack?: unknown; cause?: unknown };
+    return [
+      typeof maybeError.message === "string" ? maybeError.message : undefined,
+      typeof maybeError.stack === "string" ? maybeError.stack : undefined,
+      stringifyErrorForMatching(maybeError.cause),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return error == null ? "" : String(error);
+}
+
 function isStaleRouterEntryError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
   // After HMR of src/routeTree.gen.ts, TanStack Start's cached entriesPromise
   // may hold a stale routerEntry whose getRouter export has been stripped.
   // The cached entriesPromise lives inside @tanstack/start-server-core, so the
   // retry must load a fresh dev-only copy of that module, not only our wrapper.
-  return /routerEntry\.getRouter is not a function/.test(message);
+  return /routerEntry\.getRouter is not a function/.test(stringifyErrorForMatching(error));
+}
+
+async function captureConsoleErrorDuring<T>(
+  callback: () => Promise<T> | T,
+): Promise<{ result: T; staleRouterEntryError?: unknown }> {
+  let staleRouterEntryError: unknown;
+  const originalConsoleError = console.error;
+  const wrappedConsoleError: typeof console.error = (...args: Parameters<typeof console.error>) => {
+    staleRouterEntryError ??= args.find(isStaleRouterEntryError);
+    originalConsoleError(...args);
+  };
+
+  console.error = wrappedConsoleError;
+  try {
+    const result = await callback();
+    return { result, staleRouterEntryError };
+  } finally {
+    if (console.error === wrappedConsoleError) {
+      console.error = originalConsoleError;
+    }
+  }
 }
 
 export default {
@@ -109,8 +158,13 @@ export default {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const handler = await getServerEntry();
-        const response = await handler.fetch(request, env, ctx);
-        return await normalizeCatastrophicSsrResponse(response);
+        const { result: response, staleRouterEntryError } = await captureConsoleErrorDuring(() =>
+          handler.fetch(request, env, ctx),
+        );
+        return await normalizeCatastrophicSsrResponseWithObservedError(
+          response,
+          staleRouterEntryError,
+        );
       } catch (error) {
         if (attempt === 0 && isStaleRouterEntryError(error)) {
           serverEntryPromise = createFreshDevServerEntry();
