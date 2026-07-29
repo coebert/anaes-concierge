@@ -920,7 +920,7 @@ export async function performRotaSync(
       if (!session)      { skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` }); continue; }
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
-      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName];
+      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName, rotaNotes];
       const tutorialLabels = [
         roleRaw,
         theatreName,
@@ -928,6 +928,7 @@ export async function performRotaSync(
         consultantName,
         extraTypeName,
         sessRaw,
+        rotaNotes,
       ];
       if (isNonWorkingRotaLabel(dutyLabels)) {
         if (externalId) nonWorkingExtIds.add(externalId);
