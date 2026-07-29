@@ -76,6 +76,7 @@ import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as AuthenticatedAdminAbsenceRouteImport } from './routes/_authenticated/admin.absence'
+import { Route as ApiPublicHooksTutorialBackfillRouteImport } from './routes/api/public/hooks/tutorial-backfill'
 import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
 import { Route as ApiPublicHooksRpcAccessAlertsRouteImport } from './routes/api/public/hooks/rpc-access-alerts'
 import { Route as ApiPublicHooksPushDispatchRouteImport } from './routes/api/public/hooks/push-dispatch'
@@ -469,6 +470,12 @@ const AuthenticatedAdminAbsenceRoute =
     path: '/admin/absence',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const ApiPublicHooksTutorialBackfillRoute =
+  ApiPublicHooksTutorialBackfillRouteImport.update({
+    id: '/api/public/hooks/tutorial-backfill',
+    path: '/api/public/hooks/tutorial-backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSeedClwrotaVaultRoute =
   ApiPublicHooksSeedClwrotaVaultRouteImport.update({
     id: '/api/public/hooks/seed-clwrota-vault',
@@ -641,6 +648,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/push-dispatch': typeof ApiPublicHooksPushDispatchRoute
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
+  '/api/public/hooks/tutorial-backfill': typeof ApiPublicHooksTutorialBackfillRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -723,6 +731,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/push-dispatch': typeof ApiPublicHooksPushDispatchRoute
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
+  '/api/public/hooks/tutorial-backfill': typeof ApiPublicHooksTutorialBackfillRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -808,6 +817,7 @@ export interface FileRoutesById {
   '/api/public/hooks/push-dispatch': typeof ApiPublicHooksPushDispatchRoute
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
+  '/api/public/hooks/tutorial-backfill': typeof ApiPublicHooksTutorialBackfillRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -893,6 +903,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/push-dispatch'
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
+    | '/api/public/hooks/tutorial-backfill'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -975,6 +986,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/push-dispatch'
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
+    | '/api/public/hooks/tutorial-backfill'
   id:
     | '__root__'
     | '/_authenticated'
@@ -1059,6 +1071,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/push-dispatch'
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
+    | '/api/public/hooks/tutorial-backfill'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1075,6 +1088,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPushDispatchRoute: typeof ApiPublicHooksPushDispatchRoute
   ApiPublicHooksRpcAccessAlertsRoute: typeof ApiPublicHooksRpcAccessAlertsRoute
   ApiPublicHooksSeedClwrotaVaultRoute: typeof ApiPublicHooksSeedClwrotaVaultRoute
+  ApiPublicHooksTutorialBackfillRoute: typeof ApiPublicHooksTutorialBackfillRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1548,6 +1562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAbsenceRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/tutorial-backfill': {
+      id: '/api/public/hooks/tutorial-backfill'
+      path: '/api/public/hooks/tutorial-backfill'
+      fullPath: '/api/public/hooks/tutorial-backfill'
+      preLoaderRoute: typeof ApiPublicHooksTutorialBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/seed-clwrota-vault': {
       id: '/api/public/hooks/seed-clwrota-vault'
       path: '/api/public/hooks/seed-clwrota-vault'
@@ -1899,6 +1920,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksPushDispatchRoute: ApiPublicHooksPushDispatchRoute,
   ApiPublicHooksRpcAccessAlertsRoute: ApiPublicHooksRpcAccessAlertsRoute,
   ApiPublicHooksSeedClwrotaVaultRoute: ApiPublicHooksSeedClwrotaVaultRoute,
+  ApiPublicHooksTutorialBackfillRoute: ApiPublicHooksTutorialBackfillRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
