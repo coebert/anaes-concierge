@@ -903,6 +903,12 @@ export async function performRotaSync(
       // reading these fields the tutorial audit and calendar overlay miss
       // every such session.
       const rotaNotesRaw = pick(row, [
+        // Real Central API assignment reports often store tutorial labels in
+        // slot_titles/place.name rather than notes. Examples observed in the
+        // live CLWRota payload include "Tutorial / SPA", "Dr Hogan Tutorial",
+        // "Airway tutorial:" and "IMT Teaching/ Outpatients".
+        "slot_titles", "slot_notes",
+        "place.name", "place.additional_info",
         "notes", "note", "comment", "comments",
         "session.notes", "session.note", "session.comment",
         "shift.notes", "shift.note", "shift.comment",
@@ -932,12 +938,22 @@ export async function performRotaSync(
       if (!session)      { skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` }); continue; }
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
-      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName, rotaNotes];
+      const rawTutorialLabel = looksLikeTutorialLabel([
+        rotaNotes,
+        consultantName,
+        theatreName,
+        specialtyName,
+        roleRaw,
+        extraTypeName,
+      ]);
+      const effectiveConsultantName = rawTutorialLabel ? null : consultantName;
+
+      const dutyLabels = [effectiveConsultantName, roleRaw, specialtyName, theatreName, rotaNotes];
       const tutorialLabels = [
         roleRaw,
         theatreName,
         specialtyName,
-        consultantName,
+        effectiveConsultantName,
         extraTypeName,
         sessRaw,
         rotaNotes,
@@ -993,7 +1009,7 @@ export async function performRotaSync(
       // "NHH T3" / "NHH 3" …) so fall back to keyword matching against the
       // free-text location and slot-title columns.
       if (!theatreId) {
-        const aliasText = `${theatreName ?? ""} ${consultantName ?? ""}`;
+        const aliasText = `${theatreName ?? ""} ${effectiveConsultantName ?? ""}`;
         theatreId = resolveOffsiteTheatreAlias(aliasText, theatreByName);
       }
 
@@ -1069,7 +1085,7 @@ export async function performRotaSync(
           session,
           specialty_id: specialtyId ?? prior?.specialty_id ?? null,
           specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
-          surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
+          surgical_consultant: effectiveConsultantName ?? prior?.surgical_consultant ?? null,
         });
       }
 
@@ -1120,8 +1136,8 @@ export async function performRotaSync(
             ? `Non-patient-facing: ${(rotaNotes ?? roleRaw ?? dutyType).trim()}`
             : rotaNotes
               ? rotaNotes
-              : consultantName
-                ? `Surgeon: ${consultantName}`
+              : effectiveConsultantName
+                ? `Surgeon: ${effectiveConsultantName}`
                 : null;
 
       for (const half of coveredHalves) {
