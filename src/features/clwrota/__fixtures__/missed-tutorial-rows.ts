@@ -116,6 +116,115 @@ export const MISSED_TUTORIAL_ROWS: MissedTutorialFixture[] = [
       extra_type: { description: "Tutorial: paediatric airway" },
     },
   },
+  // -------------------------------------------------------------------
+  // `notes` variants — the original, "obvious" field. Kept here so a
+  // regression that breaks the base case (not just the exotic nested
+  // aliases) is caught by the same suite.
+  // -------------------------------------------------------------------
+  {
+    name: "Consultant SPA row with tutorial phrase in top-level `notes`",
+    sourceField: "notes",
+    expectedNoteContains: "Tutorial: difficult airway",
+    role: "SPA",
+    row: {
+      id: "clw-1008",
+      date: "2026-02-11",
+      "person.rota_name": "Dr H Consultant",
+      slot_titles: "SPA",
+      notes: "Tutorial: difficult airway",
+    },
+  },
+  {
+    name: "SAS row with tutorial phrase in singular `note`",
+    sourceField: "note",
+    expectedNoteContains: "Departmental teaching",
+    role: "SPA",
+    row: {
+      id: "clw-1009",
+      date: "2026-02-12",
+      "person.rota_name": "Dr I SAS",
+      slot_titles: "SPA",
+      note: "Departmental teaching: ultrasound",
+    },
+  },
+  {
+    name: "Consultant row with tutorial phrase in `comment`",
+    sourceField: "comment",
+    expectedNoteContains: "Tutorial",
+    role: "Consultant",
+    row: {
+      id: "clw-1010",
+      date: "2026-02-13",
+      "person.rota_name": "Dr J Consultant",
+      slot_titles: "Consultant",
+      comment: "Tutorial delivery — trainee teaching",
+    },
+  },
+  {
+    name: "Consultant row with tutorial phrase in nested `session.notes`",
+    sourceField: "session.notes",
+    expectedNoteContains: "Tutorial: crisis management",
+    role: "Consultant",
+    row: {
+      id: "clw-1011",
+      date: "2026-02-14",
+      "person.rota_name": "Dr K Consultant",
+      slot_titles: "Consultant",
+      session: { notes: "Tutorial: crisis management" },
+    },
+  },
+  {
+    name: "Consultant row with tutorial phrase in nested `shift.notes`",
+    sourceField: "shift.notes",
+    expectedNoteContains: "Lecture",
+    role: "Consultant",
+    row: {
+      id: "clw-1012",
+      date: "2026-02-16",
+      "person.rota_name": "Dr L Consultant",
+      slot_titles: "Consultant",
+      shift: { notes: "Lecture: pharmacology refresher" },
+    },
+  },
+  {
+    name: "Consultant row with tutorial phrase in nested `assignment.notes`",
+    sourceField: "assignment.notes",
+    expectedNoteContains: "Tutorial",
+    role: "Consultant",
+    row: {
+      id: "clw-1013",
+      date: "2026-02-17",
+      "person.rota_name": "Dr M Consultant",
+      slot_titles: "Consultant",
+      assignment: { notes: "Tutorial: obstetric anaesthesia" },
+    },
+  },
+  {
+    name: "SPA row with `activity_name` carrying tutorial phrase",
+    sourceField: "activity_name",
+    expectedNoteContains: "Tutorial",
+    role: "SPA",
+    row: {
+      id: "clw-1014",
+      date: "2026-02-18",
+      "person.rota_name": "Dr N Consultant",
+      slot_titles: "SPA",
+      activity_name: "Tutorial delivery",
+    },
+  },
+  {
+    name: "Consultant row with `duty.description` carrying tutorial phrase",
+    sourceField: "duty.description",
+    expectedNoteContains: "Departmental teaching",
+    role: "Consultant",
+    row: {
+      id: "clw-1015",
+      date: "2026-02-19",
+      "person.rota_name": "Dr O Consultant",
+      slot_titles: "Consultant",
+      duty: { description: "Departmental teaching — grand round" },
+    },
+  },
 ];
 
 // The exact `pick` alias list the sync uses for free-text/tutorial
