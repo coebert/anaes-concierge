@@ -69,10 +69,33 @@ function TutorialsAuditPage() {
     return toISODateLocal(d);
   }, []);
   const lookupTutorials = useServerFn(listTutorialAuditSessions);
+  const runBackfill = useServerFn(backfillTutorialDetection);
+  const queryClient = useQueryClient();
+  const [lastBackfill, setLastBackfill] = useState<TutorialBackfillResult | null>(null);
 
   const { data: rows, isLoading, error } = useQuery({
     queryKey: ["tutorials", startIso, endIso],
     queryFn: () => lookupTutorials({ data: { startIso, endIso } }),
+  });
+
+  const backfillMutation = useMutation({
+    mutationFn: (dryRun: boolean) =>
+      runBackfill({ data: { startIso, endIso, dryRun } }),
+    onSuccess: (res, dryRun) => {
+      setLastBackfill(res);
+      toast.success(
+        dryRun
+          ? `Preview: would promote ${res.promotedToTeaching}, rewrite ${res.notesUpdated} note(s).`
+          : `Backfill complete: promoted ${res.promotedToTeaching}, rewrote ${res.notesUpdated} note(s).`,
+      );
+      if (!dryRun) {
+        queryClient.invalidateQueries({ queryKey: ["tutorials"] });
+      }
+    },
+    onError: (err) =>
+      toast.error(
+        `Backfill failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      ),
   });
 
   const filtered = useMemo(() => {
