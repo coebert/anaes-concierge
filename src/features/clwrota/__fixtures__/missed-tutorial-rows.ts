@@ -271,8 +271,9 @@ export const MISSED_TUTORIAL_ROWS: MissedTutorialFixture[] = [
 // sync's alias list is caught by the fixture test rather than silently
 // masked by importing the same array under test.
 export const TUTORIAL_TEXT_PICK_KEYS = [
-  "slot_titles", "slot_notes",
+  "slot_notes",
   "place.name", "place.additional_info",
+  "slot_titles",
   "notes", "note", "comment", "comments",
   "session.notes", "session.note", "session.comment",
   "shift.notes", "shift.note", "shift.comment",

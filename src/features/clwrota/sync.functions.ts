@@ -907,8 +907,9 @@ export async function performRotaSync(
         // slot_titles/place.name rather than notes. Examples observed in the
         // live CLWRota payload include "Tutorial / SPA", "Dr Hogan Tutorial",
         // "Airway tutorial:" and "IMT Teaching/ Outpatients".
-        "slot_titles", "slot_notes",
+        "slot_notes",
         "place.name", "place.additional_info",
+        "slot_titles",
         "notes", "note", "comment", "comments",
         "session.notes", "session.note", "session.comment",
         "shift.notes", "shift.note", "shift.comment",
@@ -924,6 +925,27 @@ export async function performRotaSync(
         "Notes", "Note", "Comment", "Description", "Activity", "Topic",
       ]);
       const rotaNotes = rotaNotesRaw ? String(rotaNotesRaw).trim() || null : null;
+      const tutorialNoteRaw = pick(row, [
+        "slot_notes",
+        "place.name", "place.additional_info",
+        "slot_titles",
+        "notes", "note", "comment", "comments",
+        "session.notes", "session.note", "session.comment",
+        "shift.notes", "shift.note", "shift.comment",
+        "assignment.notes", "assignment.note", "assignment.comment",
+        "activity", "activity.name", "activity_name",
+        "session.activity", "shift.activity", "assignment.activity",
+        "description", "session.description", "shift.description",
+        "assignment.description", "duty.description", "role.description",
+        "session_type.description", "assignment_type.description",
+        "extra_type.description",
+        "details", "session.details", "shift.details",
+        "topic", "subject", "title", "session.title", "shift.title",
+        "Notes", "Note", "Comment", "Description", "Activity", "Topic",
+      ]);
+      const tutorialNote = tutorialNoteRaw && looksLikeTutorialLabel([tutorialNoteRaw])
+        ? String(tutorialNoteRaw).trim() || null
+        : null;
       const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
       const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
       const externalId =
@@ -939,6 +961,7 @@ export async function performRotaSync(
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
       const rawTutorialLabel = looksLikeTutorialLabel([
+        tutorialNote,
         rotaNotes,
         consultantName,
         theatreName,
@@ -1123,7 +1146,7 @@ export async function performRotaSync(
       // Tutorials row can exclude them from presenter counts.
       // Prefer CLWRota's own free-text note (topic / activity) when it is
       // distinctive; otherwise fall back to the role / extra_type label.
-      const tutorialLabel = (rotaNotes ?? roleRaw ?? extraTypeName ?? "session").trim();
+      const tutorialLabel = (tutorialNote ?? rotaNotes ?? roleRaw ?? extraTypeName ?? "session").trim();
       const isTutorialDeliverer =
         isTutorial && (prof?.grade === "consultant" || prof?.grade === "sas");
       const isTutorialAttendee =
