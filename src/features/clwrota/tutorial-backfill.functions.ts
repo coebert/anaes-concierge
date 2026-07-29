@@ -7,6 +7,9 @@ import { isTutorialAttendeeAssignment } from "./tutorial-audit";
 export type TutorialBackfillResult = {
   windowStart: string;
   windowEnd: string;
+  sourceRowsRefreshed: number;
+  sourceAssignmentsInserted: number;
+  sourceAssignmentsUpdated: number;
   scanned: number;
   promotedToTeaching: number;
   notesUpdated: number;
@@ -68,6 +71,23 @@ export const backfillTutorialDetection = createServerFn({ method: "POST" })
       "@/integrations/supabase/client.server"
     );
 
+    let sourceRowsRefreshed = 0;
+    let sourceAssignmentsInserted = 0;
+    let sourceAssignmentsUpdated = 0;
+    if (!data.dryRun) {
+      const { performRotaSync } = await import("./sync.functions");
+      const syncResult = await performRotaSync({
+        from: data.startIso,
+        to: data.endIso,
+      });
+      if (!syncResult.ok) {
+        throw new Error(syncResult.message || "CLWRota refresh failed");
+      }
+      sourceRowsRefreshed = syncResult.total;
+      sourceAssignmentsInserted = syncResult.assignmentsInserted;
+      sourceAssignmentsUpdated = syncResult.assignmentsUpdated;
+    }
+
     // Consultant/SAS profiles we're prepared to promote.
     const profRes = await supabaseAdmin
       .from("profiles")
@@ -96,6 +116,9 @@ export const backfillTutorialDetection = createServerFn({ method: "POST" })
     const result: TutorialBackfillResult = {
       windowStart: data.startIso,
       windowEnd: data.endIso,
+      sourceRowsRefreshed,
+      sourceAssignmentsInserted,
+      sourceAssignmentsUpdated,
       scanned: 0,
       promotedToTeaching: 0,
       notesUpdated: 0,

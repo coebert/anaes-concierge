@@ -12,6 +12,7 @@ import {
   fetchReportRaw,
   parseRows,
   pick,
+  pickTutorialLabel,
   withRollingFutureWindow,
   clampDateWindow,
   explicitDateWindow,
@@ -903,6 +904,13 @@ export async function performRotaSync(
       // reading these fields the tutorial audit and calendar overlay miss
       // every such session.
       const rotaNotesRaw = pick(row, [
+        // Real Central API assignment reports often store tutorial labels in
+        // slot_titles/place.name rather than notes. Examples observed in the
+        // live CLWRota payload include "Tutorial / SPA", "Dr Hogan Tutorial",
+        // "Airway tutorial:" and "IMT Teaching/ Outpatients".
+        "slot_notes",
+        "place.name", "place.additional_info",
+        "slot_titles",
         "notes", "note", "comment", "comments",
         "session.notes", "session.note", "session.comment",
         "shift.notes", "shift.note", "shift.comment",
@@ -918,6 +926,25 @@ export async function performRotaSync(
         "Notes", "Note", "Comment", "Description", "Activity", "Topic",
       ]);
       const rotaNotes = rotaNotesRaw ? String(rotaNotesRaw).trim() || null : null;
+      const tutorialNoteRaw = pickTutorialLabel(row, [
+        "slot_notes",
+        "slot_titles",
+        "place.name", "place.additional_info",
+        "notes", "note", "comment", "comments",
+        "session.notes", "session.note", "session.comment",
+        "shift.notes", "shift.note", "shift.comment",
+        "assignment.notes", "assignment.note", "assignment.comment",
+        "activity", "activity.name", "activity_name",
+        "session.activity", "shift.activity", "assignment.activity",
+        "description", "session.description", "shift.description",
+        "assignment.description", "duty.description", "role.description",
+        "session_type.description", "assignment_type.description",
+        "extra_type.description",
+        "details", "session.details", "shift.details",
+        "topic", "subject", "title", "session.title", "shift.title",
+        "Notes", "Note", "Comment", "Description", "Activity", "Topic",
+      ]);
+      const tutorialNote = tutorialNoteRaw ? String(tutorialNoteRaw).trim() || null : null;
       const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
       const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
       const externalId =
@@ -932,12 +959,24 @@ export async function performRotaSync(
       if (!session)      { skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` }); continue; }
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
-      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName, rotaNotes];
+      const rawTutorialLabel = looksLikeTutorialLabel([
+        tutorialNote,
+        rotaNotes,
+        consultantName,
+        theatreName,
+        specialtyName,
+        roleRaw,
+        extraTypeName,
+      ]);
+      const effectiveConsultantName = rawTutorialLabel ? null : consultantName;
+
+      const dutyLabels = [effectiveConsultantName, roleRaw, specialtyName, theatreName, rotaNotes];
       const tutorialLabels = [
+        tutorialNote,
         roleRaw,
         theatreName,
         specialtyName,
-        consultantName,
+        effectiveConsultantName,
         extraTypeName,
         sessRaw,
         rotaNotes,
@@ -993,7 +1032,7 @@ export async function performRotaSync(
       // "NHH T3" / "NHH 3" …) so fall back to keyword matching against the
       // free-text location and slot-title columns.
       if (!theatreId) {
-        const aliasText = `${theatreName ?? ""} ${consultantName ?? ""}`;
+        const aliasText = `${theatreName ?? ""} ${effectiveConsultantName ?? ""}`;
         theatreId = resolveOffsiteTheatreAlias(aliasText, theatreByName);
       }
 
@@ -1069,7 +1108,7 @@ export async function performRotaSync(
           session,
           specialty_id: specialtyId ?? prior?.specialty_id ?? null,
           specialty_name_key: specialtyNameKey ?? prior?.specialty_name_key ?? null,
-          surgical_consultant: consultantName ?? prior?.surgical_consultant ?? null,
+          surgical_consultant: effectiveConsultantName ?? prior?.surgical_consultant ?? null,
         });
       }
 
@@ -1107,7 +1146,7 @@ export async function performRotaSync(
       // Tutorials row can exclude them from presenter counts.
       // Prefer CLWRota's own free-text note (topic / activity) when it is
       // distinctive; otherwise fall back to the role / extra_type label.
-      const tutorialLabel = (rotaNotes ?? roleRaw ?? extraTypeName ?? "session").trim();
+      const tutorialLabel = (tutorialNote ?? rotaNotes ?? roleRaw ?? extraTypeName ?? "session").trim();
       const isTutorialDeliverer =
         isTutorial && (prof?.grade === "consultant" || prof?.grade === "sas");
       const isTutorialAttendee =
@@ -1120,8 +1159,8 @@ export async function performRotaSync(
             ? `Non-patient-facing: ${(rotaNotes ?? roleRaw ?? dutyType).trim()}`
             : rotaNotes
               ? rotaNotes
-              : consultantName
-                ? `Surgeon: ${consultantName}`
+              : effectiveConsultantName
+                ? `Surgeon: ${effectiveConsultantName}`
                 : null;
 
       for (const half of coveredHalves) {
