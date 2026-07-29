@@ -153,7 +153,11 @@ export const backfillTutorialDetection = createServerFn({ method: "POST" })
 
       if (data.dryRun) continue;
 
-      const patch: Record<string, unknown> = {};
+      const patch: {
+        duty_type?: "teaching";
+        role_on_list?: "teaching";
+        notes?: string;
+      } = {};
       if (needsDutyChange) {
         patch.duty_type = "teaching";
         patch.role_on_list = "teaching";
