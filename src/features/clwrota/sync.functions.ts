@@ -33,6 +33,10 @@ import {
 } from "./parsing.server";
 import { getEnv } from "./settings.functions";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  assignmentNaturalKey,
+  dedupeAssignmentsBySyncKeys,
+} from "./assignment-dedupe";
 
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
@@ -1308,40 +1312,115 @@ export async function performRotaSync(
       }
     }
 
-    // --- Pass 4: bulk-upsert rota assignments (dedup external id). -----------
-    // Dedupe by external id keeping the last occurrence (latest in the feed).
-    const assignmentByExtId = new Map<string, AssignmentDraft>();
-    for (const a of assignmentDrafts) assignmentByExtId.set(a.clwrota_external_id, a);
+    // --- Pass 4: bulk-upsert rota assignments. ------------------------------
+    // The database intentionally allows only one row per staff member per
+    // half-day. CLWRota sometimes emits multiple rows for the same
+    // staff/date/session (for example a generic SPA row plus the tutorial row
+    // that explains it). Collapse those before the upsert so one duplicated
+    // upstream slot cannot abort the whole sync chunk and prevent newly
+    // detected tutorials from reaching the audit.
+    const dedupedAssignments = dedupeAssignmentsBySyncKeys(assignmentDrafts);
+    if (dedupedAssignments.dropped.length > 0) {
+      const duplicateExternalIds = dedupedAssignments.dropped.filter(
+        (row) => row.reason === "duplicate_external_id",
+      ).length;
+      const duplicateStaffSessions = dedupedAssignments.dropped.length - duplicateExternalIds;
+      skipped.push({
+        label: "duplicate CLWRota assignments collapsed",
+        reason: `${dedupedAssignments.dropped.length} duplicate row(s) ignored before upsert (${duplicateExternalIds} repeated external id, ${duplicateStaffSessions} repeated staff/session)`,
+      });
+    }
+    const dedupedDrafts = dedupedAssignments.assignments;
 
     // Skip rows the coordinator has locally edited — they are "locked" and
-    // must not be overwritten by upstream sync. Fetch all locked external IDs
-    // in a single query covering the date range we just parsed (avoids 70+
-    // chunked `.in()` lookups which blow past the Worker subrequest cap).
+    // must not be overwritten by upstream sync. Also remove stale CLWRota rows
+    // that have the same staff/date/session but an old external id; otherwise
+    // the natural UNIQUE constraint rejects the incoming row even though the
+    // source feed is simply replacing a prior assignment id.
     const lockedExtIds = new Set<string>();
-    const allDates = Array.from(assignmentByExtId.values()).map((a) => a.session_date);
+    const lockedNaturalKeys = new Set<string>();
+    const staleNaturalConflictIds = new Set<string>();
+    const incomingByNaturalKey = new Map(
+      dedupedDrafts.map((a) => [assignmentNaturalKey(a), a] as const),
+    );
+    const allDates = dedupedDrafts.map((a) => a.session_date);
     if (allDates.length > 0) {
       allDates.sort();
       const minDate = allDates[0];
       const maxDate = allDates[allDates.length - 1];
-      const { data: lockedRows, error: lockedErr } = await supabaseAdmin
-        .from("rota_assignments")
-        .select("clwrota_external_id")
-        .eq("locally_modified", true)
-        .gte("session_date", minDate)
-        .lte("session_date", maxDate);
-      if (lockedErr) {
-        errors.push({ label: "(locked-row lookup)", error: lockedErr.message });
-      } else {
-        for (const r of lockedRows ?? []) {
-          if (r.clwrota_external_id) lockedExtIds.add(r.clwrota_external_id);
+      const PAGE_SIZE = 1000;
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data: existingRows, error: existingErr } = await supabaseAdmin
+          .from("rota_assignments")
+          .select("id,clwrota_external_id,staff_id,session_date,session,locally_modified")
+          .eq("source", "clwrota")
+          .gte("session_date", minDate)
+          .lte("session_date", maxDate)
+          .order("session_date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (existingErr) {
+          errors.push({ label: "(existing-assignment lookup)", error: existingErr.message });
+          break;
         }
+        const page = existingRows ?? [];
+        for (const row of page) {
+          const existingKey = assignmentNaturalKey({
+            staff_id: row.staff_id,
+            session_date: row.session_date,
+            session: row.session,
+          });
+          if (row.locally_modified) {
+            if (row.clwrota_external_id) lockedExtIds.add(row.clwrota_external_id);
+            lockedNaturalKeys.add(existingKey);
+            continue;
+          }
+          const incoming = incomingByNaturalKey.get(existingKey);
+          if (
+            incoming &&
+            row.clwrota_external_id &&
+            row.clwrota_external_id !== incoming.clwrota_external_id
+          ) {
+            staleNaturalConflictIds.add(row.id);
+          }
+        }
+        if (page.length < PAGE_SIZE) break;
       }
     }
 
+    let staleConflictsReplaced = 0;
+    if (staleNaturalConflictIds.size > 0) {
+      const ids = Array.from(staleNaturalConflictIds);
+      for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK) {
+        const chunk = ids.slice(i, i + SUPABASE_IN_CHUNK);
+        const { error: deleteConflictErr, count } = await supabaseAdmin
+          .from("rota_assignments")
+          .delete({ count: "exact" })
+          .in("id", chunk)
+          .eq("source", "clwrota")
+          .eq("locally_modified", false);
+        if (deleteConflictErr) {
+          errors.push({
+            label: `(stale double-booking cleanup chunk ${i}-${i + chunk.length})`,
+            error: deleteConflictErr.message,
+          });
+          continue;
+        }
+        staleConflictsReplaced += count ?? 0;
+      }
+    }
+    if (staleConflictsReplaced > 0) {
+      skipped.push({
+        label: "stale CLWRota assignment ids replaced",
+        reason: `${staleConflictsReplaced} old row(s) removed because CLWRota supplied a newer row for the same staff/date/session`,
+      });
+    }
+
     let lockedSkipped = 0;
-    const uniqueAssignments = Array.from(assignmentByExtId.values())
+    const uniqueAssignments = dedupedDrafts
       .filter((a) => {
         if (lockedExtIds.has(a.clwrota_external_id)) { lockedSkipped++; return false; }
+        if (lockedNaturalKeys.has(assignmentNaturalKey(a))) { lockedSkipped++; return false; }
         return true;
       })
       .map((a) => ({
