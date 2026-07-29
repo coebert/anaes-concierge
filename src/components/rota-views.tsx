@@ -27,9 +27,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  GraduationCap,
   Info,
   User,
 } from "lucide-react";
+
 import { cn, parseDateLocal, toISODateLocal, formatDateGB, formatDateWithWeekdayGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
