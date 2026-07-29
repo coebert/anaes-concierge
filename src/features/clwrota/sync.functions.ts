@@ -890,6 +890,22 @@ export async function performRotaSync(
         "role.name", "assignment_type.name", "place_category.name",
         "role", "duty", "type", "Role", "Duty",
       ]);
+      // CLWRota free-text note / activity fields. Coordinators frequently
+      // record tutorial / lecture topics here ("Tutorial: airway management",
+      // "Departmental teaching — obs sim") on rows whose role_raw is just
+      // the generic "SPA" / "Consultant" / "Non-patient-facing". Without
+      // reading these fields the tutorial audit and calendar overlay miss
+      // every such session.
+      const rotaNotesRaw = pick(row, [
+        "notes", "note", "comment", "comments",
+        "session.notes", "session.note", "session.comment",
+        "shift.notes", "shift.note", "shift.comment",
+        "activity", "activity.name", "activity_name",
+        "description", "session.description", "shift.description",
+        "details", "session.details",
+        "Notes", "Note", "Comment", "Description",
+      ]);
+      const rotaNotes = rotaNotesRaw ? String(rotaNotesRaw).trim() || null : null;
       const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
       const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
       const externalId =
@@ -904,7 +920,7 @@ export async function performRotaSync(
       if (!session)      { skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` }); continue; }
       if (!externalId)   { skipped.push({ label, reason: "no stable external id (need person.local_id + date + session)" }); continue; }
 
-      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName];
+      const dutyLabels = [consultantName, roleRaw, specialtyName, theatreName, rotaNotes];
       const tutorialLabels = [
         roleRaw,
         theatreName,
@@ -912,6 +928,7 @@ export async function performRotaSync(
         consultantName,
         extraTypeName,
         sessRaw,
+        rotaNotes,
       ];
       if (isNonWorkingRotaLabel(dutyLabels)) {
         if (externalId) nonWorkingExtIds.add(externalId);
@@ -1076,7 +1093,9 @@ export async function performRotaSync(
       // are recorded as tutorial deliverers ("Tutorial: …"); trainees get
       // a "Tutorial (attending): …" note so the audit and the calendar's
       // Tutorials row can exclude them from presenter counts.
-      const tutorialLabel = (roleRaw ?? extraTypeName ?? "session").trim();
+      // Prefer CLWRota's own free-text note (topic / activity) when it is
+      // distinctive; otherwise fall back to the role / extra_type label.
+      const tutorialLabel = (rotaNotes ?? roleRaw ?? extraTypeName ?? "session").trim();
       const isTutorialDeliverer =
         isTutorial && (prof?.grade === "consultant" || prof?.grade === "sas");
       const isTutorialAttendee =
@@ -1086,10 +1105,12 @@ export async function performRotaSync(
         : isTutorialAttendee
           ? `Tutorial (attending): ${tutorialLabel}`
           : NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
-            ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
-            : consultantName
-              ? `Surgeon: ${consultantName}`
-              : null;
+            ? `Non-patient-facing: ${(rotaNotes ?? roleRaw ?? dutyType).trim()}`
+            : rotaNotes
+              ? rotaNotes
+              : consultantName
+                ? `Surgeon: ${consultantName}`
+                : null;
 
       for (const half of coveredHalves) {
         // When we synthesise a second half from an all-day ME row the

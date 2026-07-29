@@ -10,6 +10,16 @@ describe("looksLikeTutorialLabel", () => {
     expect(looksLikeTutorialLabel(["Tutorial"])).toBe(true);
     expect(looksLikeTutorialLabel(["Consultant tutorials"])).toBe(true);
     expect(looksLikeTutorialLabel(["Tutorial/SPA"])).toBe(true);
+    // Regression: CLWRota often records the topic in a free-text note on
+    // rows whose role/duty is just "SPA" / "Consultant" — the sync now
+    // includes the notes field in tutorial detection.
+    expect(
+      looksLikeTutorialLabel([
+        "SPA",
+        null,
+        "Tutorial: airway management",
+      ]),
+    ).toBe(true);
   });
 
   it("matches lectures and departmental teaching", () => {
