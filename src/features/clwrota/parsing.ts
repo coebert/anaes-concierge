@@ -86,19 +86,23 @@ export function ensureLeaveReportFields(rawUrl: string): string {
  */
 export function ensureRotaReportFields(rawUrl: string): string {
   if (!rawUrl) return rawUrl;
+  // Only free-text fields the CLWRota Central API actually accepts. Adding an
+  // unknown name (e.g. "notes", "activity", "description") makes the whole
+  // report request fail with 400 "'x' is not one of [...]".
   const required = [
-    "notes",
     "slot_notes",
     "slot_titles",
+    "slot_speciality",
     "place.name",
     "place.additional_info",
-    "activity",
-    "description",
-    "topic",
-    "title",
-    "session.title",
+    "session.name",
+    "session.rota_label",
+    "shift.name",
+    "shift.rota_label",
+    "extra_type.name",
     "extra_type.description",
   ];
+
   try {
     const u = new URL(rawUrl);
     const existing = u.searchParams.get("fields");
@@ -192,12 +196,41 @@ function isTransientUpstreamError(status: number, body: string, err?: unknown): 
   );
 }
 
+/**
+ * CLWRota rejects unknown `fields=` entries with
+ * `400 ... "'notes' is not one of ['start_time', ...]"`. Pull the offending
+ * name out so the caller can drop it and retry instead of failing the sync.
+ */
+export function extractRejectedField(body: string): string | null {
+  const m = /'([^']+)' is not one of/.exec(body);
+  return m ? m[1] : null;
+}
+
+export function dropReportField(url: string, field: string): string | null {
+  try {
+    const u = new URL(url);
+    const existing = u.searchParams.get("fields");
+    if (!existing) return null;
+    const kept = existing
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s && s !== field);
+    if (kept.length === existing.split(",").filter((s) => s.trim()).length) {
+      return null;
+    }
+    u.searchParams.set("fields", kept.join(","));
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchReportRaw(
   url: string,
   apiKey: string,
   { maxAttempts = 4, baseDelayMs = 1000 }: { maxAttempts?: number; baseDelayMs?: number } = {},
 ): Promise<string> {
-  const effectiveUrl = withRollingFutureWindow(url);
+  let effectiveUrl = withRollingFutureWindow(url);
   let lastErr: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -207,6 +240,18 @@ export async function fetchReportRaw(
       });
       const text = await res.text();
       if (res.ok) return text;
+
+      // Unknown field in `fields=` — drop it and retry immediately.
+      if (res.status === 400) {
+        const bad = extractRejectedField(text);
+        const pruned = bad ? dropReportField(effectiveUrl, bad) : null;
+        if (pruned) {
+          console.warn(`[clwrota] dropping unsupported report field "${bad}" and retrying`);
+          effectiveUrl = pruned;
+          continue;
+        }
+      }
+
 
       const transient = isTransientUpstreamError(res.status, text);
       const errMsg = `CLWRota report failed: ${res.status} ${text.slice(0, 200)}`;
