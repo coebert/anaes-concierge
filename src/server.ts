@@ -9,6 +9,7 @@ type ServerEntry = {
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 let devServerEntryReloadCount = 0;
+const DEV_SERVER_ENTRY_RETRY_SLOTS = 12;
 
 type StartServerCoreModule = {
   createStartHandler: (handler: unknown) => ServerEntry["fetch"];
@@ -29,15 +30,86 @@ async function getServerEntry(): Promise<ServerEntry> {
 
 async function createFreshDevServerEntry(): Promise<ServerEntry> {
   devServerEntryReloadCount += 1;
-  const cacheKey = `${Date.now()}-${devServerEntryReloadCount}`;
-  const [serverCore, reactStartServer] = await Promise.all([
-    import(`@tanstack/start-server-core?tanstack-router-retry=${cacheKey}`) as Promise<StartServerCoreModule>,
-    import(`@tanstack/react-start-server?tanstack-router-retry=${cacheKey}`) as Promise<ReactStartServerModule>,
-  ]);
+  const [serverCore, reactStartServer] = await loadFreshDevServerModules(
+    devServerEntryReloadCount % DEV_SERVER_ENTRY_RETRY_SLOTS,
+  );
 
   return {
     fetch: serverCore.createStartHandler(reactStartServer.defaultStreamHandler),
   };
+}
+
+function loadFreshDevServerModules(
+  slot: number,
+): Promise<[StartServerCoreModule, ReactStartServerModule]> {
+  // Vite cannot transform a variable package import like
+  // import(`@tanstack/start-server-core?retry=${Date.now()}`), so keep the
+  // cache-busting imports as static literals and rotate through them. Each
+  // slot gets its own copy of start-server-core, including its internal
+  // entriesPromise, which lets a stale router-entry cache recover without a
+  // full dev-server restart.
+  switch (slot) {
+    case 0:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=0") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=0") as Promise<ReactStartServerModule>,
+      ]);
+    case 1:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=1") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=1") as Promise<ReactStartServerModule>,
+      ]);
+    case 2:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=2") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=2") as Promise<ReactStartServerModule>,
+      ]);
+    case 3:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=3") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=3") as Promise<ReactStartServerModule>,
+      ]);
+    case 4:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=4") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=4") as Promise<ReactStartServerModule>,
+      ]);
+    case 5:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=5") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=5") as Promise<ReactStartServerModule>,
+      ]);
+    case 6:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=6") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=6") as Promise<ReactStartServerModule>,
+      ]);
+    case 7:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=7") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=7") as Promise<ReactStartServerModule>,
+      ]);
+    case 8:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=8") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=8") as Promise<ReactStartServerModule>,
+      ]);
+    case 9:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=9") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=9") as Promise<ReactStartServerModule>,
+      ]);
+    case 10:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=10") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=10") as Promise<ReactStartServerModule>,
+      ]);
+    default:
+      return Promise.all([
+        import("@tanstack/start-server-core?tanstack-router-retry=11") as Promise<StartServerCoreModule>,
+        import("@tanstack/react-start-server?tanstack-router-retry=11") as Promise<ReactStartServerModule>,
+      ]);
+  }
 }
 
 function brandedErrorResponse(): Response {
