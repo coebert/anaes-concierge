@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { buildSearchTokens, cellMatchesSearch } from "@/lib/calendar-search";
 import { filterAssignmentsForCell } from "@/features/clwrota/me-cell-visibility";
-import { looksLikeTutorialLabel } from "@/features/clwrota/parsing";
+import { isTutorialAuditCandidate } from "@/features/clwrota/tutorial-audit";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
@@ -640,6 +640,7 @@ export function GlobalWeekGrid({
         .or(
           [
             "duty_type.in.(spa,admin,medical_examiner)",
+            "duty_type.eq.teaching",
             "and(duty_type.eq.teaching,notes.ilike.%tutorial%)",
             "and(duty_type.eq.teaching,role_on_list.ilike.%tutorial%)",
             "and(duty_type.eq.teaching,notes.ilike.%tutor%)",
@@ -660,8 +661,7 @@ export function GlobalWeekGrid({
         // find them without leaking generic teaching blocks into the row.
         duty_type:
           r.duty_type !== "medical_examiner" &&
-          !/^\s*tutorial\s*\(attending\)/i.test(r.notes ?? "") &&
-          looksLikeTutorialLabel([r.notes, r.role_on_list])
+          isTutorialAuditCandidate(r)
             ? "tutorial"
             : r.duty_type,
       })) as Array<{
