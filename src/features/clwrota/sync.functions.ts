@@ -15,6 +15,7 @@ import {
   withRollingFutureWindow,
   clampDateWindow,
   explicitDateWindow,
+  ensureRotaReportFields,
   normaliseSession,
   sessionsCoveredByTimeRange,
   looksLikeMedicalExaminerLabel,
