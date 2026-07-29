@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { looksLikeTutorialLabel } from "./parsing";
+import {
+  isTutorialAttendeeAssignment,
+  isTutorialAuditCandidate,
+} from "./tutorial-audit";
 
 describe("looksLikeTutorialLabel", () => {
   it("matches tutorial and tutorials tokens", () => {
@@ -21,5 +25,37 @@ describe("looksLikeTutorialLabel", () => {
 
   it("ignores nullish or empty labels", () => {
     expect(looksLikeTutorialLabel([null, undefined, ""])).toBe(false);
+  });
+});
+
+describe("isTutorialAuditCandidate", () => {
+  it("treats CLWRota teaching assignments as tutorial audit candidates", () => {
+    expect(
+      isTutorialAuditCandidate({
+        duty_type: "teaching",
+        notes: "Non-patient-facing: Consultant",
+        role_on_list: "teaching",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps legacy SPA/admin tutorial-labelled assignments as candidates", () => {
+    expect(
+      isTutorialAuditCandidate({
+        duty_type: "spa",
+        notes: "Tutorial/SPA",
+        role_on_list: "admin_session",
+      }),
+    ).toBe(true);
+  });
+
+  it("excludes tutorial attendee assignments", () => {
+    const row = {
+      duty_type: "teaching",
+      notes: "Tutorial (attending): Tutorial/SPA",
+      role_on_list: "teaching",
+    };
+    expect(isTutorialAttendeeAssignment(row)).toBe(true);
+    expect(isTutorialAuditCandidate(row)).toBe(false);
   });
 });

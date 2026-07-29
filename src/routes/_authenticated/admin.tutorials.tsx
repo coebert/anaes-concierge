@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { listActiveStaffSafe } from "@/features/staff/staff-directory.functions";
-import { looksLikeTutorialLabel } from "@/features/clwrota/parsing";
+import { listStaffByIdsSafe } from "@/features/staff/staff-directory.functions";
+import { isTutorialAuditCandidate } from "@/features/clwrota/tutorial-audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,6 +49,12 @@ interface TutorialRow {
   locally_modified: boolean;
 }
 
+function tutorialDisplayLabel(row: Pick<TutorialRow, "duty_type" | "notes" | "role_on_list">): string {
+  if (row.notes?.trim()) return row.notes.trim();
+  if (row.duty_type === "teaching") return "CLWRota teaching session";
+  return row.role_on_list || "—";
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -56,7 +62,7 @@ function isoDaysAgo(days: number): string {
 }
 
 function TutorialsAuditPage() {
-  const [rangeDays, setRangeDays] = useState<number>(180);
+  const [rangeDays, setRangeDays] = useState<number>(365);
   const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas">(
     "all",
   );
@@ -69,13 +75,7 @@ function TutorialsAuditPage() {
     return toISODateLocal(d);
   }, []);
 
-  const listActive = useServerFn(listActiveStaffSafe);
-  const { data: staff } = useQuery({
-    queryKey: ["staff-active-tutorials"],
-    queryFn: () => listActive(),
-  });
-
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading: rowsLoading } = useQuery({
     queryKey: ["tutorials", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -86,6 +86,7 @@ function TutorialsAuditPage() {
         .in("duty_type", ["spa", "admin", "teaching"])
         .or(
           [
+            "duty_type.eq.teaching",
             "notes.ilike.%tutorial%",
             "role_on_list.ilike.%tutorial%",
             "notes.ilike.%tutor%",
@@ -100,15 +101,21 @@ function TutorialsAuditPage() {
         .lte("session_date", endIso)
         .order("session_date", { ascending: false });
       if (error) throw error;
-      return ((data ?? []) as TutorialRow[]).filter((row) => {
-        const notes = row.notes ?? "";
-        return (
-          !/^\s*tutorial\s*\(attending\)/i.test(notes) &&
-          looksLikeTutorialLabel([notes, row.role_on_list])
-        );
-      });
+      return ((data ?? []) as TutorialRow[]).filter(isTutorialAuditCandidate);
     },
   });
+
+  const staffIds = useMemo(
+    () => Array.from(new Set((rows ?? []).map((row) => row.staff_id))).sort(),
+    [rows],
+  );
+  const lookupStaff = useServerFn(listStaffByIdsSafe);
+  const { data: staff, isLoading: staffLoading } = useQuery({
+    queryKey: ["staff-tutorials", staffIds],
+    queryFn: () => lookupStaff({ data: { ids: staffIds } }),
+    enabled: staffIds.length > 0,
+  });
+  const isLoading = rowsLoading || staffLoading;
 
   const staffMap = useMemo(() => {
     const m = new Map<string, { full_name: string; grade: Grade }>();
@@ -124,7 +131,7 @@ function TutorialsAuditPage() {
       if (!isDelivererGrade) return false;
       if (gradeFilter !== "all" && sp?.grade !== gradeFilter) return false;
       if (!q) return true;
-      const hay = `${sp?.full_name ?? ""} ${r.notes ?? ""} ${r.session_date}`.toLowerCase();
+      const hay = `${sp?.full_name ?? ""} ${tutorialDisplayLabel(r)} ${r.session_date}`.toLowerCase();
       return hay.includes(q);
     });
   }, [rows, staffMap, gradeFilter, search]);
@@ -149,9 +156,7 @@ function TutorialsAuditPage() {
       <div>
         <h1 className="text-2xl font-bold">Tutorials audit</h1>
         <p className="text-muted-foreground text-sm">
-          Tutorial, lecture and departmental teaching sessions identified from CLWRota. Rows are
-          matched by the CLWRota role / label containing "tutorial", "tutor", "lecture" or
-          "departmental teaching".
+          Tutorial, lecture and consultant / SAS teaching sessions identified from CLWRota.
         </p>
       </div>
 
@@ -263,7 +268,7 @@ function TutorialsAuditPage() {
                     <td className="p-2 uppercase text-xs">{r.session}</td>
                     <td className="p-2 font-medium">{sp?.full_name ?? "—"}</td>
                     <td className="p-2 capitalize text-muted-foreground">{sp?.grade ?? "—"}</td>
-                    <td className="p-2">{r.notes ?? "—"}</td>
+                    <td className="p-2">{tutorialDisplayLabel(r)}</td>
                     <td className="p-2">
                       <Badge variant={r.locally_modified ? "outline" : "secondary"}>
                         {r.locally_modified ? "Locally edited" : r.source}
