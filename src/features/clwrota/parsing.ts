@@ -86,7 +86,19 @@ export function ensureLeaveReportFields(rawUrl: string): string {
  */
 export function ensureRotaReportFields(rawUrl: string): string {
   if (!rawUrl) return rawUrl;
-  const required = ["notes", "slot_notes", "slot_titles", "place.name"];
+  const required = [
+    "notes",
+    "slot_notes",
+    "slot_titles",
+    "place.name",
+    "place.additional_info",
+    "activity",
+    "description",
+    "topic",
+    "title",
+    "session.title",
+    "extra_type.description",
+  ];
   try {
     const u = new URL(rawUrl);
     const existing = u.searchParams.get("fields");
