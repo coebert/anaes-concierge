@@ -642,13 +642,9 @@ export function GlobalWeekGrid({
             "duty_type.in.(spa,admin,medical_examiner)",
             "duty_type.eq.teaching",
             "and(duty_type.eq.teaching,notes.ilike.%tutorial%)",
-            "and(duty_type.eq.teaching,role_on_list.ilike.%tutorial%)",
             "and(duty_type.eq.teaching,notes.ilike.%tutor%)",
-            "and(duty_type.eq.teaching,role_on_list.ilike.%tutor%)",
             "and(duty_type.eq.teaching,notes.ilike.%lecture%)",
-            "and(duty_type.eq.teaching,role_on_list.ilike.%lecture%)",
             "and(duty_type.eq.teaching,notes.ilike.%departmental teaching%)",
-            "and(duty_type.eq.teaching,role_on_list.ilike.%departmental teaching%)",
           ].join(","),
         )
         .in("session", ["am", "pm"])

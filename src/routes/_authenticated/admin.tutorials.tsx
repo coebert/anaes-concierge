@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
-import { listStaffByIdsSafe } from "@/features/staff/staff-directory.functions";
-import { isTutorialAuditCandidate } from "@/features/clwrota/tutorial-audit";
+import {
+  listTutorialAuditSessions,
+  type TutorialAuditSession,
+} from "@/features/clwrota/tutorial-audit.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,23 +35,10 @@ export const Route = createFileRoute("/_authenticated/admin/tutorials")({
 });
 
 type Grade = "consultant" | "sas" | "trainee" | null;
-type Session = "am" | "pm" | "eve" | "night";
 
-interface TutorialRow {
-  id: string;
-  staff_id: string;
-  session_date: string;
-  session: Session;
-  duty_type: "spa" | "admin" | "teaching";
-  notes: string | null;
-  role_on_list: string;
-  clwrota_external_id: string | null;
-  source: string;
-  locally_modified: boolean;
-}
-
-function tutorialDisplayLabel(row: Pick<TutorialRow, "duty_type" | "notes" | "role_on_list">): string {
+function tutorialDisplayLabel(row: Pick<TutorialAuditSession, "duty_type" | "notes" | "role_on_list" | "extra_type">): string {
   if (row.notes?.trim()) return row.notes.trim();
+  if (row.extra_type?.trim()) return row.extra_type.trim();
   if (row.duty_type === "teaching") return "CLWRota teaching session";
   return row.role_on_list || "—";
 }
@@ -74,82 +62,36 @@ function TutorialsAuditPage() {
     d.setDate(d.getDate() + 30);
     return toISODateLocal(d);
   }, []);
+  const lookupTutorials = useServerFn(listTutorialAuditSessions);
 
-  const { data: rows, isLoading: rowsLoading } = useQuery({
+  const { data: rows, isLoading, error } = useQuery({
     queryKey: ["tutorials", startIso, endIso],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("rota_assignments")
-        .select(
-          "id,staff_id,session_date,session,duty_type,notes,role_on_list,clwrota_external_id,source,locally_modified",
-        )
-        .in("duty_type", ["spa", "admin", "teaching"])
-        .or(
-          [
-            "duty_type.eq.teaching",
-            "notes.ilike.%tutorial%",
-            "role_on_list.ilike.%tutorial%",
-            "notes.ilike.%tutor%",
-            "role_on_list.ilike.%tutor%",
-            "notes.ilike.%lecture%",
-            "role_on_list.ilike.%lecture%",
-            "notes.ilike.%departmental teaching%",
-            "role_on_list.ilike.%departmental teaching%",
-          ].join(","),
-        )
-        .gte("session_date", startIso)
-        .lte("session_date", endIso)
-        .order("session_date", { ascending: false });
-      if (error) throw error;
-      return ((data ?? []) as TutorialRow[]).filter(isTutorialAuditCandidate);
-    },
+    queryFn: () => lookupTutorials({ data: { startIso, endIso } }),
   });
-
-  const staffIds = useMemo(
-    () => Array.from(new Set((rows ?? []).map((row) => row.staff_id))).sort(),
-    [rows],
-  );
-  const lookupStaff = useServerFn(listStaffByIdsSafe);
-  const { data: staff, isLoading: staffLoading } = useQuery({
-    queryKey: ["staff-tutorials", staffIds],
-    queryFn: () => lookupStaff({ data: { ids: staffIds } }),
-    enabled: staffIds.length > 0,
-  });
-  const isLoading = rowsLoading || staffLoading;
-
-  const staffMap = useMemo(() => {
-    const m = new Map<string, { full_name: string; grade: Grade }>();
-    for (const s of staff ?? []) m.set(s.id, { full_name: s.full_name ?? "—", grade: (s.grade ?? null) as Grade });
-    return m;
-  }, [staff]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (rows ?? []).filter((r) => {
-      const sp = staffMap.get(r.staff_id);
-      const isDelivererGrade = sp?.grade === "consultant" || sp?.grade === "sas";
-      if (!isDelivererGrade) return false;
-      if (gradeFilter !== "all" && sp?.grade !== gradeFilter) return false;
+      if (gradeFilter !== "all" && r.staffGrade !== gradeFilter) return false;
       if (!q) return true;
-      const hay = `${sp?.full_name ?? ""} ${tutorialDisplayLabel(r)} ${r.session_date}`.toLowerCase();
+      const hay = `${r.staffName} ${tutorialDisplayLabel(r)} ${r.session_date}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [rows, staffMap, gradeFilter, search]);
+  }, [rows, gradeFilter, search]);
 
   // Per-staff summary — count sessions delivered in the window.
   const perStaff = useMemo(() => {
     const m = new Map<string, { staff_id: string; name: string; grade: Grade; count: number }>();
     for (const r of filtered) {
-      const sp = staffMap.get(r.staff_id);
       const key = r.staff_id;
       const entry =
         m.get(key) ??
-        { staff_id: key, name: sp?.full_name ?? "—", grade: sp?.grade ?? null, count: 0 };
+        { staff_id: key, name: r.staffName, grade: r.staffGrade, count: 0 };
       entry.count += 1;
       m.set(key, entry);
     }
     return Array.from(m.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  }, [filtered, staffMap]);
+  }, [filtered]);
 
   return (
     <div className="p-6 space-y-6">
@@ -199,6 +141,14 @@ function TutorialsAuditPage() {
           </div>
         </CardContent>
       </Card>
+
+      {error && (
+        <Card>
+          <CardContent className="p-4 text-sm text-destructive">
+            Unable to load tutorial sessions: {error instanceof Error ? error.message : "Unknown error"}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
@@ -260,14 +210,13 @@ function TutorialsAuditPage() {
                 </tr>
               )}
               {filtered.map((r) => {
-                const sp = staffMap.get(r.staff_id);
                 const d = parseDateLocal(r.session_date);
                 return (
                   <tr key={r.id} className="border-t">
                     <td className="p-2 whitespace-nowrap">{d ? formatDateWithWeekdayGB(d) : r.session_date}</td>
                     <td className="p-2 uppercase text-xs">{r.session}</td>
-                    <td className="p-2 font-medium">{sp?.full_name ?? "—"}</td>
-                    <td className="p-2 capitalize text-muted-foreground">{sp?.grade ?? "—"}</td>
+                    <td className="p-2 font-medium">{r.staffName}</td>
+                    <td className="p-2 capitalize text-muted-foreground">{r.staffGrade}</td>
                     <td className="p-2">{tutorialDisplayLabel(r)}</td>
                     <td className="p-2">
                       <Badge variant={r.locally_modified ? "outline" : "secondary"}>
