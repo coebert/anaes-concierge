@@ -86,19 +86,23 @@ export function ensureLeaveReportFields(rawUrl: string): string {
  */
 export function ensureRotaReportFields(rawUrl: string): string {
   if (!rawUrl) return rawUrl;
+  // Only free-text fields the CLWRota Central API actually accepts. Adding an
+  // unknown name (e.g. "notes", "activity", "description") makes the whole
+  // report request fail with 400 "'x' is not one of [...]".
   const required = [
-    "notes",
     "slot_notes",
     "slot_titles",
+    "slot_speciality",
     "place.name",
     "place.additional_info",
-    "activity",
-    "description",
-    "topic",
-    "title",
-    "session.title",
+    "session.name",
+    "session.rota_label",
+    "shift.name",
+    "shift.rota_label",
+    "extra_type.name",
     "extra_type.description",
   ];
+
   try {
     const u = new URL(rawUrl);
     const existing = u.searchParams.get("fields");
