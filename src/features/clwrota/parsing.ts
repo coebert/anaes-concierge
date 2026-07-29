@@ -78,19 +78,15 @@ export function ensureLeaveReportFields(rawUrl: string): string {
 }
 
 /**
- * Ensure the CLWRota rota/assignments report URL requests the free-text
- * `notes` field. Coordinators frequently configure the URL's `fields=`
- * param with only the minimum identifiers (date, session, person, role)
- * — so tutorial / lecture descriptions coordinators type into the "notes"
- * column of a shift never reach the sync, and the tutorial audit + global
- * calendar Tutorials row silently miss every such session.
- *
- * `notes` is a first-class field on CLWRota shift rows (see
- * `ClwRotaRotaRowSchema`), so requesting it never 400s.
+ * Ensure the CLWRota rota/assignments report URL requests the fields that
+ * carry tutorial labels in real Central API payloads. The missing sessions
+ * were not in the generic `notes` field at all — they were mostly in
+ * `slot_titles` / `place.name` (for example "Tutorial / SPA") and sometimes
+ * `slot_notes`.
  */
 export function ensureRotaReportFields(rawUrl: string): string {
   if (!rawUrl) return rawUrl;
-  const required = ["notes"];
+  const required = ["notes", "slot_notes", "slot_titles", "place.name"];
   try {
     const u = new URL(rawUrl);
     const existing = u.searchParams.get("fields");
@@ -589,6 +585,8 @@ export function looksLikeTutorialLabel(
     if (/\btutor\b/.test(s) && !/college\s+tutor/.test(s)) return true;
     if (/\blectures?\b/.test(s)) return true;
     if (/departmental\s+teaching/.test(s)) return true;
+    if (/\bimt\s+teaching\b/.test(s)) return true;
+    if (/\bteaching\s*\/\s*outpatients?\b/.test(s)) return true;
   }
   return false;
 }
