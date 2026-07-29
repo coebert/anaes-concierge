@@ -654,7 +654,9 @@ export function GlobalWeekGrid({
         .in("session", ["am", "pm"])
         .gte("session_date", startIso).lte("session_date", endIso);
       if (error) throw error;
-      return (data ?? []).filter((r) => r.duty_type !== "teaching" || isTutorialAuditCandidate(r)).map((r) => ({
+      return (data ?? [])
+        .filter((r) => r.duty_type !== "teaching" || isTutorialAuditCandidate(r))
+        .map((r) => ({
         ...r,
         // Re-map teaching-tutorial rows onto a synthetic "tutorial" bucket
         // so the calendar row config filter (filterAssignmentsForCell) can
