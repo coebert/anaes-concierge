@@ -973,6 +973,7 @@ export async function performRotaSync(
 
       const dutyLabels = [effectiveConsultantName, roleRaw, specialtyName, theatreName, rotaNotes];
       const tutorialLabels = [
+        tutorialNote,
         roleRaw,
         theatreName,
         specialtyName,
