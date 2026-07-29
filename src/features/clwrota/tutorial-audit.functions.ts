@@ -63,16 +63,12 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
           [
             "duty_type.eq.teaching",
             "notes.ilike.%tutorial%",
-            "role_on_list.ilike.%tutorial%",
             "extra_type.ilike.%tutorial%",
             "notes.ilike.%tutor%",
-            "role_on_list.ilike.%tutor%",
             "extra_type.ilike.%tutor%",
             "notes.ilike.%lecture%",
-            "role_on_list.ilike.%lecture%",
             "extra_type.ilike.%lecture%",
             "notes.ilike.%departmental teaching%",
-            "role_on_list.ilike.%departmental teaching%",
             "extra_type.ilike.%departmental teaching%",
           ].join(","),
         )
