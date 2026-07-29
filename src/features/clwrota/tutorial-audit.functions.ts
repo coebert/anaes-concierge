@@ -64,12 +64,16 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
             "duty_type.eq.teaching",
             "notes.ilike.%tutorial%",
             "extra_type.ilike.%tutorial%",
+            "role_on_list.ilike.%tutorial%",
             "notes.ilike.%tutor%",
             "extra_type.ilike.%tutor%",
+            "role_on_list.ilike.%tutor%",
             "notes.ilike.%lecture%",
             "extra_type.ilike.%lecture%",
+            "role_on_list.ilike.%lecture%",
             "notes.ilike.%departmental teaching%",
             "extra_type.ilike.%departmental teaching%",
+            "role_on_list.ilike.%departmental teaching%",
           ].join(","),
         )
         .gte("session_date", data.startIso)
