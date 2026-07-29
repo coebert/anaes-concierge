@@ -906,10 +906,16 @@ export async function performRotaSync(
         "notes", "note", "comment", "comments",
         "session.notes", "session.note", "session.comment",
         "shift.notes", "shift.note", "shift.comment",
+        "assignment.notes", "assignment.note", "assignment.comment",
         "activity", "activity.name", "activity_name",
+        "session.activity", "shift.activity", "assignment.activity",
         "description", "session.description", "shift.description",
-        "details", "session.details",
-        "Notes", "Note", "Comment", "Description",
+        "assignment.description", "duty.description", "role.description",
+        "session_type.description", "assignment_type.description",
+        "extra_type.description",
+        "details", "session.details", "shift.details",
+        "topic", "subject", "title", "session.title", "shift.title",
+        "Notes", "Note", "Comment", "Description", "Activity", "Topic",
       ]);
       const rotaNotes = rotaNotesRaw ? String(rotaNotesRaw).trim() || null : null;
       const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
