@@ -272,8 +272,8 @@ export const MISSED_TUTORIAL_ROWS: MissedTutorialFixture[] = [
 // masked by importing the same array under test.
 export const TUTORIAL_TEXT_PICK_KEYS = [
   "slot_notes",
-  "place.name", "place.additional_info",
   "slot_titles",
+  "place.name", "place.additional_info",
   "notes", "note", "comment", "comments",
   "session.notes", "session.note", "session.comment",
   "shift.notes", "shift.note", "shift.comment",

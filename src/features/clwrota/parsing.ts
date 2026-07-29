@@ -608,6 +608,17 @@ export function looksLikeTutorialLabel(
   return false;
 }
 
+export function pickTutorialLabel(
+  row: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = pick(row, [key]);
+    if (value && looksLikeTutorialLabel([value])) return value;
+  }
+  return null;
+}
+
 export type DutyTypeMappingRow = {
   duty_type: ResolvedDutyType;
   pattern: string;

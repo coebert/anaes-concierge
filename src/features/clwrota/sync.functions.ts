@@ -12,6 +12,7 @@ import {
   fetchReportRaw,
   parseRows,
   pick,
+  pickTutorialLabel,
   withRollingFutureWindow,
   clampDateWindow,
   explicitDateWindow,
@@ -925,10 +926,10 @@ export async function performRotaSync(
         "Notes", "Note", "Comment", "Description", "Activity", "Topic",
       ]);
       const rotaNotes = rotaNotesRaw ? String(rotaNotesRaw).trim() || null : null;
-      const tutorialNoteRaw = pick(row, [
+      const tutorialNoteRaw = pickTutorialLabel(row, [
         "slot_notes",
-        "place.name", "place.additional_info",
         "slot_titles",
+        "place.name", "place.additional_info",
         "notes", "note", "comment", "comments",
         "session.notes", "session.note", "session.comment",
         "shift.notes", "shift.note", "shift.comment",
@@ -943,9 +944,7 @@ export async function performRotaSync(
         "topic", "subject", "title", "session.title", "shift.title",
         "Notes", "Note", "Comment", "Description", "Activity", "Topic",
       ]);
-      const tutorialNote = tutorialNoteRaw && looksLikeTutorialLabel([tutorialNoteRaw])
-        ? String(tutorialNoteRaw).trim() || null
-        : null;
+      const tutorialNote = tutorialNoteRaw ? String(tutorialNoteRaw).trim() || null : null;
       const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
       const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
       const externalId =
