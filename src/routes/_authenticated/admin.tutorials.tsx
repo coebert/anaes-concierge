@@ -62,7 +62,7 @@ function isoDaysAgo(days: number): string {
 }
 
 function TutorialsAuditPage() {
-  const [rangeDays, setRangeDays] = useState<number>(180);
+  const [rangeDays, setRangeDays] = useState<number>(365);
   const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas">(
     "all",
   );
@@ -150,9 +150,7 @@ function TutorialsAuditPage() {
       <div>
         <h1 className="text-2xl font-bold">Tutorials audit</h1>
         <p className="text-muted-foreground text-sm">
-          Tutorial, lecture and departmental teaching sessions identified from CLWRota. Rows are
-          matched by the CLWRota role / label containing "tutorial", "tutor", "lecture" or
-          "departmental teaching".
+          Tutorial, lecture and consultant / SAS teaching sessions identified from CLWRota.
         </p>
       </div>
 
