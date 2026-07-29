@@ -890,6 +890,22 @@ export async function performRotaSync(
         "role.name", "assignment_type.name", "place_category.name",
         "role", "duty", "type", "Role", "Duty",
       ]);
+      // CLWRota free-text note / activity fields. Coordinators frequently
+      // record tutorial / lecture topics here ("Tutorial: airway management",
+      // "Departmental teaching — obs sim") on rows whose role_raw is just
+      // the generic "SPA" / "Consultant" / "Non-patient-facing". Without
+      // reading these fields the tutorial audit and calendar overlay miss
+      // every such session.
+      const rotaNotesRaw = pick(row, [
+        "notes", "note", "comment", "comments",
+        "session.notes", "session.note", "session.comment",
+        "shift.notes", "shift.note", "shift.comment",
+        "activity", "activity.name", "activity_name",
+        "description", "session.description", "shift.description",
+        "details", "session.details",
+        "Notes", "Note", "Comment", "Description",
+      ]);
+      const rotaNotes = rotaNotesRaw ? String(rotaNotesRaw).trim() || null : null;
       const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
       const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
       const externalId =
