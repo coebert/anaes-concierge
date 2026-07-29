@@ -1093,7 +1093,9 @@ export async function performRotaSync(
       // are recorded as tutorial deliverers ("Tutorial: …"); trainees get
       // a "Tutorial (attending): …" note so the audit and the calendar's
       // Tutorials row can exclude them from presenter counts.
-      const tutorialLabel = (roleRaw ?? extraTypeName ?? "session").trim();
+      // Prefer CLWRota's own free-text note (topic / activity) when it is
+      // distinctive; otherwise fall back to the role / extra_type label.
+      const tutorialLabel = (rotaNotes ?? roleRaw ?? extraTypeName ?? "session").trim();
       const isTutorialDeliverer =
         isTutorial && (prof?.grade === "consultant" || prof?.grade === "sas");
       const isTutorialAttendee =
@@ -1103,10 +1105,12 @@ export async function performRotaSync(
         : isTutorialAttendee
           ? `Tutorial (attending): ${tutorialLabel}`
           : NON_PATIENT_FACING_DUTY_TYPES.has(dutyType)
-            ? `Non-patient-facing: ${(roleRaw ?? dutyType).trim()}`
-            : consultantName
-              ? `Surgeon: ${consultantName}`
-              : null;
+            ? `Non-patient-facing: ${(rotaNotes ?? roleRaw ?? dutyType).trim()}`
+            : rotaNotes
+              ? rotaNotes
+              : consultantName
+                ? `Surgeon: ${consultantName}`
+                : null;
 
       for (const half of coveredHalves) {
         // When we synthesise a second half from an all-day ME row the
