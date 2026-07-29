@@ -171,6 +171,75 @@ function TutorialsAuditPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Re-run detection on synced data</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Re-applies the current tutorial-detection rules to rota rows already
+            in the database for this window. Consultant/SAS SPA or admin rows
+            whose notes describe a tutorial are promoted to teaching and their
+            note is prefixed with <code>Tutorial:</code>. Locally-edited rows
+            and trainee attendee rows are left alone.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={backfillMutation.isPending}
+              onClick={() => backfillMutation.mutate(true)}
+            >
+              {backfillMutation.isPending && backfillMutation.variables === true
+                ? "Previewing…"
+                : "Preview changes"}
+            </Button>
+            <Button
+              disabled={backfillMutation.isPending}
+              onClick={() => backfillMutation.mutate(false)}
+            >
+              {backfillMutation.isPending && backfillMutation.variables === false
+                ? "Backfilling…"
+                : "Run backfill"}
+            </Button>
+          </div>
+          {lastBackfill && (
+            <div className="text-xs text-muted-foreground space-y-1 border-t pt-2">
+              <div>
+                Window {lastBackfill.windowStart} → {lastBackfill.windowEnd} ·
+                scanned {lastBackfill.scanned} consultant/SAS row(s)
+              </div>
+              <div>
+                Promoted to teaching: <strong>{lastBackfill.promotedToTeaching}</strong> ·
+                notes rewritten: <strong>{lastBackfill.notesUpdated}</strong> ·
+                skipped locally-modified: {lastBackfill.skippedLocallyModified} ·
+                skipped attendees: {lastBackfill.skippedAttendee}
+              </div>
+              {lastBackfill.sample.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer">
+                    Sample of {lastBackfill.sample.length} affected row(s)
+                  </summary>
+                  <ul className="mt-1 space-y-0.5 pl-4 list-disc">
+                    {lastBackfill.sample.map((s) => (
+                      <li key={s.id}>
+                        {s.session_date} {s.session.toUpperCase()}: {s.fromDutyType}
+                        {" → "}
+                        {s.toDutyType}
+                        {s.noteBefore !== s.noteAfter && (
+                          <> · note: “{s.noteBefore ?? "—"}” → “{s.noteAfter ?? "—"}”</>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
+
       {error && (
         <Card>
           <CardContent className="p-4 text-sm text-destructive">
