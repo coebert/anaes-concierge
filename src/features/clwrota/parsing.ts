@@ -381,6 +381,11 @@ export function parseRows(text: string): { rows: Record<string, unknown>[]; pars
 
 export function pick(row: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {
+    const direct = row[k];
+    if (typeof direct === "string" && direct.trim()) return direct.trim();
+    if (typeof direct === "number") return String(direct);
+    if (typeof direct === "boolean") return direct ? "true" : "false";
+
     // Support dotted paths like "person.email" → row.person.email
     const v = k.includes(".")
       ? k.split(".").reduce<unknown>((acc, part) => {
