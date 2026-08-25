@@ -1,7 +1,7 @@
 import { looksLikeTutorialLabel } from "./parsing";
 
 type TutorialAuditAssignment = {
-  duty_type: string | null;
+  duty_type?: string | null;
   notes: string | null;
   role_on_list: string | null;
   extra_type?: string | null;
