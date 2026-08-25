@@ -1,5 +1,77 @@
 import { looksLikeTutorialLabel } from "./parsing";
-import { isTutorialAttendeeAssignment } from "./tutorial-audit";
+import {
+  getTutorialEvidenceLabel,
+  isTutorialAttendeeAssignment,
+} from "./tutorial-audit";
+import { fetchAllPaged } from "@/lib/supabase-chunked";
+
+type BackfillAssignmentRow = {
+  id: string;
+  staff_id: string;
+  session_date: string;
+  session: string;
+  duty_type: string;
+  role_on_list: string;
+  notes: string | null;
+  extra_type: string | null;
+  locally_modified: boolean;
+  theatre_session_id: string | null;
+};
+
+type SyncSummary = {
+  total: number;
+  assignmentsInserted: number;
+  assignmentsUpdated: number;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function parseIsoDate(value: string): Date {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid date: ${value}`);
+  }
+  return date;
+}
+
+function formatIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+async function refreshSourceRowsInSlices(opts: {
+  startIso: string;
+  endIso: string;
+  sliceDays?: number;
+}): Promise<SyncSummary> {
+  const { performRotaSync } = await import("./sync.functions");
+  const sliceDays = Math.max(1, opts.sliceDays ?? 7);
+  const start = parseIsoDate(opts.startIso);
+  const end = parseIsoDate(opts.endIso);
+  const summary: SyncSummary = {
+    total: 0,
+    assignmentsInserted: 0,
+    assignmentsUpdated: 0,
+  };
+
+  for (let cursorMs = start.getTime(); cursorMs <= end.getTime(); ) {
+    const sliceStart = new Date(cursorMs);
+    const sliceEnd = new Date(
+      Math.min(end.getTime(), cursorMs + (sliceDays - 1) * DAY_MS),
+    );
+    const from = formatIsoDate(sliceStart);
+    const to = formatIsoDate(sliceEnd);
+    const syncResult = await performRotaSync({ from, to });
+    if (!syncResult.ok) {
+      throw new Error(syncResult.message || `CLWRota refresh failed for ${from}..${to}`);
+    }
+    summary.total += syncResult.total;
+    summary.assignmentsInserted += syncResult.assignmentsInserted;
+    summary.assignmentsUpdated += syncResult.assignmentsUpdated;
+    cursorMs = sliceEnd.getTime() + DAY_MS;
+  }
+
+  return summary;
+}
 
 export type TutorialBackfillResult = {
   windowStart: string;
@@ -43,14 +115,10 @@ export async function runTutorialBackfill(opts: {
   let sourceAssignmentsInserted = 0;
   let sourceAssignmentsUpdated = 0;
   if (!dryRun) {
-    const { performRotaSync } = await import("./sync.functions");
-    const syncResult = await performRotaSync({
-      from: opts.startIso,
-      to: opts.endIso,
+    const syncResult = await refreshSourceRowsInSlices({
+      startIso: opts.startIso,
+      endIso: opts.endIso,
     });
-    if (!syncResult.ok) {
-      throw new Error(syncResult.message || "CLWRota refresh failed");
-    }
     sourceRowsRefreshed = syncResult.total;
     sourceAssignmentsInserted = syncResult.assignmentsInserted;
     sourceAssignmentsUpdated = syncResult.assignmentsUpdated;
@@ -65,16 +133,40 @@ export async function runTutorialBackfill(opts: {
   if (profRes.error) throw new Error(profRes.error.message);
   const eligibleStaff = new Set((profRes.data ?? []).map((p) => p.id as string));
 
-  const rowsRes = await supabaseAdmin
-    .from("rota_assignments")
-    .select(
-      "id,staff_id,session_date,session,duty_type,role_on_list,notes,extra_type,locally_modified",
-    )
-    .in("duty_type", ["spa", "admin", "teaching"])
-    .gte("session_date", opts.startIso)
-    .lte("session_date", opts.endIso)
-    .range(0, 19999);
-  if (rowsRes.error) throw new Error(rowsRes.error.message);
+  const assignmentSelect: string =
+    "id,staff_id,session_date,session,duty_type,role_on_list,notes,extra_type,locally_modified,theatre_session_id";
+  const rows = await fetchAllPaged<BackfillAssignmentRow>(() =>
+    supabaseAdmin
+      .from("rota_assignments")
+      .select(assignmentSelect)
+      .in("duty_type", ["spa", "admin", "teaching"])
+      .gte("session_date", opts.startIso)
+      .lte("session_date", opts.endIso)
+      .order("session_date", { ascending: true })
+      .order("id", { ascending: true })
+      .returns<BackfillAssignmentRow[]>(),
+  );
+
+  const theatreSessionIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.theatre_session_id as string | null)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const theatreNames = new Map<string, string>();
+  for (let i = 0; i < theatreSessionIds.length; i += 500) {
+    const ids = theatreSessionIds.slice(i, i + 500);
+    const theatreRes = await supabaseAdmin
+      .from("theatre_sessions")
+      .select("id,theatres(name)")
+      .in("id", ids);
+    if (theatreRes.error) throw new Error(theatreRes.error.message);
+    for (const session of theatreRes.data ?? []) {
+      const joined = session.theatres as { name?: string | null } | null;
+      if (joined?.name) theatreNames.set(session.id as string, joined.name);
+    }
+  }
 
   const result: TutorialBackfillResult = {
     windowStart: opts.startIso,
@@ -90,11 +182,20 @@ export async function runTutorialBackfill(opts: {
     sample: [],
   };
 
-  for (const row of rowsRes.data ?? []) {
+  for (const row of rows) {
     if (!eligibleStaff.has(row.staff_id as string)) continue;
     result.scanned += 1;
 
-    if (!looksLikeTutorialLabel([row.notes, row.role_on_list, row.extra_type])) {
+    const theatreName = row.theatre_session_id
+      ? theatreNames.get(row.theatre_session_id as string) ?? null
+      : null;
+    const tutorialEvidence = getTutorialEvidenceLabel({
+      notes: row.notes,
+      role_on_list: row.role_on_list,
+      extra_type: row.extra_type,
+      theatreName,
+    });
+    if (!looksLikeTutorialLabel([tutorialEvidence])) {
       continue;
     }
     if (isTutorialAttendeeAssignment({ notes: row.notes })) {
@@ -111,8 +212,7 @@ export async function runTutorialBackfill(opts: {
     const hasTutorialPrefix = /^tutorial\s*:/i.test(currentNote);
     const labelSource =
       (row.notes && !hasTutorialPrefix ? row.notes : null) ??
-      row.extra_type ??
-      row.role_on_list ??
+      tutorialEvidence ??
       "session";
     const newNote = hasTutorialPrefix
       ? currentNote

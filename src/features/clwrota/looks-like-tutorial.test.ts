@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ensureRotaReportFields, looksLikeTutorialLabel } from "./parsing";
 import {
+  getTutorialEvidenceLabel,
   isTutorialAttendeeAssignment,
   isTutorialAuditCandidate,
 } from "./tutorial-audit";
@@ -46,10 +47,10 @@ describe("ensureRotaReportFields", () => {
     );
     const fields = new URL(url).searchParams.get("fields")?.split(",") ?? [];
 
-    expect(fields).toContain("notes");
     expect(fields).toContain("slot_notes");
     expect(fields).toContain("slot_titles");
     expect(fields).toContain("place.name");
+    expect(fields).toContain("place.additional_info");
   });
 });
 
@@ -72,6 +73,17 @@ describe("isTutorialAuditCandidate", () => {
         role_on_list: "admin_session",
       }),
     ).toBe(true);
+  });
+
+  it("uses stored theatre/location names as tutorial evidence", () => {
+    const row = {
+      duty_type: "spa",
+      notes: "Non-patient-facing: Consultant",
+      role_on_list: "admin_session",
+      theatreName: "Tutorial / SPA",
+    };
+    expect(getTutorialEvidenceLabel(row)).toBe("Tutorial / SPA");
+    expect(isTutorialAuditCandidate(row)).toBe(true);
   });
 
   it("excludes tutorial attendee assignments", () => {

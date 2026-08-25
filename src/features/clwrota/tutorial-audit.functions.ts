@@ -1,9 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchAllPaged } from "@/lib/supabase-chunked";
 import { isTutorialAuditCandidate } from "./tutorial-audit";
 
 type AuditGrade = "consultant" | "sas";
+
+type AuditAssignmentRow = {
+  id: string;
+  staff_id: string;
+  session_date: string;
+  session: "am" | "pm" | "eve" | "night";
+  duty_type: "spa" | "admin" | "teaching";
+  notes: string | null;
+  role_on_list: string;
+  extra_type: string | null;
+  clwrota_external_id: string | null;
+  source: string;
+  locally_modified: boolean;
+  theatre_session_id: string | null;
+};
 
 export type TutorialAuditSession = {
   id: string;
@@ -47,43 +63,27 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [profilesRes, assignmentsRes] = await Promise.all([
+    const assignmentSelect: string =
+      "id,staff_id,session_date,session,duty_type,notes,role_on_list,extra_type,clwrota_external_id,source,locally_modified,theatre_session_id";
+    const [profilesRes, assignments] = await Promise.all([
       supabaseAdmin
         .from("profiles")
         .select("id,full_name,grade,active")
         .in("grade", ["consultant", "sas"])
         .range(0, 9999),
-      supabaseAdmin
-        .from("rota_assignments")
-        .select(
-          "id,staff_id,session_date,session,duty_type,notes,role_on_list,extra_type,clwrota_external_id,source,locally_modified",
-        )
-        .in("duty_type", ["spa", "admin", "teaching"])
-        // Note: role_on_list is an enum (rota_role) — PostgREST rejects
-        // `ilike` against enum columns with "operator does not exist", which
-        // fails the ENTIRE .or() query and returns zero rows. Only apply
-        // ilike to text columns (notes, extra_type). Enum-valued teaching
-        // is covered by `duty_type.eq.teaching`.
-        .or(
-          [
-            "duty_type.eq.teaching",
-            "notes.ilike.%tutorial%",
-            "extra_type.ilike.%tutorial%",
-            "notes.ilike.%tutor%",
-            "extra_type.ilike.%tutor%",
-            "notes.ilike.%lecture%",
-            "extra_type.ilike.%lecture%",
-            "notes.ilike.%departmental teaching%",
-            "extra_type.ilike.%departmental teaching%",
-          ].join(","),
-        )
-        .gte("session_date", data.startIso)
-        .lte("session_date", data.endIso)
-        .order("session_date", { ascending: false })
-        .range(0, 9999),
+      fetchAllPaged<AuditAssignmentRow>(() =>
+        supabaseAdmin
+          .from("rota_assignments")
+          .select(assignmentSelect)
+          .in("duty_type", ["spa", "admin", "teaching"])
+          .gte("session_date", data.startIso)
+          .lte("session_date", data.endIso)
+          .order("session_date", { ascending: false })
+          .order("id", { ascending: true })
+          .returns<AuditAssignmentRow[]>(),
+      ),
     ]);
     if (profilesRes.error) throw new Error(profilesRes.error.message);
-    if (assignmentsRes.error) throw new Error(assignmentsRes.error.message);
 
     const staffMap = new Map<
       string,
@@ -99,23 +99,35 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
       }
     }
 
-    return ((assignmentsRes.data ?? []) as Array<{
-      id: string;
-      staff_id: string;
-      session_date: string;
-      session: "am" | "pm" | "eve" | "night";
-      duty_type: "spa" | "admin" | "teaching";
-      notes: string | null;
-      role_on_list: string;
-      extra_type: string | null;
-      clwrota_external_id: string | null;
-      source: string;
-      locally_modified: boolean;
-    }>)
+    const theatreSessionIds = Array.from(
+      new Set(
+        assignments
+          .map((row) => row.theatre_session_id as string | null)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const theatreNames = new Map<string, string>();
+    for (let i = 0; i < theatreSessionIds.length; i += 500) {
+      const ids = theatreSessionIds.slice(i, i + 500);
+      const theatreRes = await supabaseAdmin
+        .from("theatre_sessions")
+        .select("id,theatres(name)")
+        .in("id", ids);
+      if (theatreRes.error) throw new Error(theatreRes.error.message);
+      for (const session of theatreRes.data ?? []) {
+        const joined = session.theatres as { name?: string | null } | null;
+        if (joined?.name) theatreNames.set(session.id as string, joined.name);
+      }
+    }
+
+    return assignments
       .flatMap((row) => {
         const staff = staffMap.get(row.staff_id);
         if (!staff) return [];
-        if (!isTutorialAuditCandidate(row)) return [];
+        const theatreName = row.theatre_session_id
+          ? theatreNames.get(row.theatre_session_id) ?? null
+          : null;
+        if (!isTutorialAuditCandidate({ ...row, theatreName })) return [];
         return [
           {
             ...row,
