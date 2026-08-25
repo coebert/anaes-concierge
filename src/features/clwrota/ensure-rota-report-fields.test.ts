@@ -2,12 +2,15 @@ import { describe, it, expect } from "vitest";
 import { ensureRotaReportFields } from "./parsing";
 
 describe("ensureRotaReportFields", () => {
-  it("appends notes to an explicit fields= param so tutorial descriptions come through", () => {
+  it("appends accepted tutorial fields to an explicit fields= param", () => {
     const url =
       "https://central.example/api/rota.json?fields=date,session,person.email,role";
     const out = ensureRotaReportFields(url);
     const params = new URL(out).searchParams.get("fields")!.split(",");
-    expect(params).toContain("notes");
+    expect(params).toContain("slot_notes");
+    expect(params).toContain("slot_titles");
+    expect(params).toContain("place.name");
+    expect(params).toContain("place.additional_info");
     // keeps existing fields
     expect(params).toContain("date");
     expect(params).toContain("role");

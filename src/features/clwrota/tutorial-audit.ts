@@ -5,6 +5,8 @@ type TutorialAuditAssignment = {
   notes: string | null;
   role_on_list: string | null;
   extra_type?: string | null;
+  theatreName?: string | null;
+  locationName?: string | null;
 };
 
 export function isTutorialAttendeeAssignment(
@@ -16,5 +18,24 @@ export function isTutorialAttendeeAssignment(
 export function isTutorialAuditCandidate(row: TutorialAuditAssignment): boolean {
   if (isTutorialAttendeeAssignment(row)) return false;
   if (row.duty_type === "teaching") return true;
-  return looksLikeTutorialLabel([row.notes, row.role_on_list, row.extra_type ?? null]);
+  return looksLikeTutorialLabel(getTutorialEvidenceLabels(row));
+}
+
+export function getTutorialEvidenceLabel(row: TutorialAuditAssignment): string | null {
+  for (const label of getTutorialEvidenceLabels(row)) {
+    if (label && looksLikeTutorialLabel([label])) return label.trim();
+  }
+  return null;
+}
+
+function getTutorialEvidenceLabels(
+  row: TutorialAuditAssignment,
+): Array<string | null | undefined> {
+  return [
+    row.notes,
+    row.extra_type ?? null,
+    row.theatreName ?? null,
+    row.locationName ?? null,
+    row.role_on_list,
+  ];
 }
