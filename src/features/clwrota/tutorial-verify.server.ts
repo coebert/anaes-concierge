@@ -21,6 +21,21 @@ export type TutorialDeliveryKey = {
   label: string | null;
 };
 
+/** Traceability record: which CLWRota row produced a detected tutorial. */
+export type TutorialSourceEvidence = {
+  staffId: string;
+  session_date: string;
+  session: string;
+  clwrotaExternalId: string | null;
+  matchedField: string | null;
+  matchedValue: string | null;
+  placeName: string | null;
+  slotTitles: string | null;
+  roleLabel: string | null;
+  personLabel: string | null;
+  sourceRow: Record<string, unknown>;
+};
+
 export type TutorialVerifyResult = {
   windowStart: string;
   windowEnd: string;
@@ -114,6 +129,7 @@ export async function verifyTutorialWindow(opts: {
   }
 
   const source = new Map<string, TutorialDeliveryKey>();
+  const evidence = new Map<string, TutorialSourceEvidence>();
   for (const row of rows) {
     const session_date = normaliseDate(
       pick(row, ["date", "session_date", "Date", "rota_date", "day"]) ?? null,
@@ -165,6 +181,7 @@ export async function verifyTutorialWindow(opts: {
     if (!staffId) continue;
 
     const key = `${staffId}|${session_date}|${session}`;
+    const matchedIdx = labels.findIndex((l) => l && looksLikeTutorialLabel([l]));
     if (!source.has(key)) {
       source.set(key, {
         key,
@@ -172,7 +189,24 @@ export async function verifyTutorialWindow(opts: {
         staffName: nameById.get(staffId) ?? String(nameRaw ?? staffId),
         session_date,
         session,
-        label: labels.find((l) => l && looksLikeTutorialLabel([l])) ?? null,
+        label: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+      });
+      evidence.set(key, {
+        staffId,
+        session_date,
+        session,
+        // Same id derivation the sync uses, so the trace matches
+        // rota_assignments.clwrota_external_id.
+        clwrotaExternalId:
+          pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
+          (extId ? `${extId}|${pick(row, ["date", "session_date", "Date", "rota_date", "day"]) ?? ""}|${pick(row, ["session.rota_label", "shift.rota_label", "session", "session_half"]) ?? ""}` : null),
+        matchedField: matchedIdx >= 0 ? NOTE_KEYS[matchedIdx] ?? null : null,
+        matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+        placeName: pick(row, ["place.name"]) ?? null,
+        slotTitles: pick(row, ["slot_titles"]) ?? null,
+        roleLabel: pick(row, ["role.name", "assignment_type.name"]) ?? null,
+        personLabel: nameRaw ? String(nameRaw) : null,
+        sourceRow: row as Record<string, unknown>,
       });
     }
   }
@@ -220,6 +254,7 @@ export async function verifyTutorialWindow(opts: {
   }
 
   const audit = new Map<string, TutorialDeliveryKey>();
+  const assignmentIdByKey = new Map<string, string>();
   for (const row of auditRows) {
     if (!nameById.has(row.staff_id)) continue;
     const theatreName = row.theatre_session_id
@@ -238,6 +273,7 @@ export async function verifyTutorialWindow(opts: {
     }
     const key = `${row.staff_id}|${row.session_date}|${row.session}`;
     if (!audit.has(key)) {
+      assignmentIdByKey.set(key, row.id);
       audit.set(key, {
         key,
         staffId: row.staff_id,
@@ -251,6 +287,36 @@ export async function verifyTutorialWindow(opts: {
 
   const missingFromAudit = Array.from(source.values()).filter((v) => !audit.has(v.key));
   const extraInAudit = Array.from(audit.values()).filter((v) => !source.has(v.key));
+
+  // Persist traceability: which CLWRota row produced each detected tutorial.
+  const evidenceRows = Array.from(evidence.entries()).map(([key, e]) => ({
+    assignment_id: assignmentIdByKey.get(key) ?? null,
+    staff_id: e.staffId,
+    session_date: e.session_date,
+    session: e.session as "am" | "pm" | "eve" | "night",
+    clwrota_external_id: e.clwrotaExternalId,
+    matched_field: e.matchedField,
+    matched_value: e.matchedValue,
+    place_name: e.placeName,
+    slot_titles: e.slotTitles,
+    role_label: e.roleLabel,
+    person_label: e.personLabel,
+    source_row: e.sourceRow as never,
+    detected_by: "verify",
+    detected_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
+  for (let i = 0; i < evidenceRows.length; i += 200) {
+    const { error } = await supabaseAdmin
+      .from("tutorial_detection_matches")
+      .upsert(evidenceRows.slice(i, i + 200), {
+        onConflict: "staff_id,session_date,session",
+      });
+    if (error) {
+      console.error("tutorial evidence upsert failed:", error.message);
+      break;
+    }
+  }
 
   return {
     windowStart: opts.startIso,
