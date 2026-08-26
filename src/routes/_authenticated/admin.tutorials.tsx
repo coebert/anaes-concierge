@@ -318,7 +318,7 @@ function TutorialsAuditPage() {
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-4 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-4 text-center text-muted-foreground">
                     {isLoading ? "Loading…" : "No sessions match the current filters."}
                   </td>
                 </tr>
