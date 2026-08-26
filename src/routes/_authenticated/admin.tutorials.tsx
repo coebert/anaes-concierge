@@ -10,6 +10,10 @@ import {
   backfillTutorialDetection,
   type TutorialBackfillResult,
 } from "@/features/clwrota/tutorial-backfill.functions";
+import {
+  acknowledgeTutorialAuditAlert,
+  getTutorialAuditStatus,
+} from "@/features/clwrota/tutorial-audit-alerts.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -245,6 +249,10 @@ function TutorialsAuditPage() {
         </CardContent>
       </Card>
 
+      <WeeklyAuditStatusCard />
+
+
+
 
 
       {error && (
@@ -336,5 +344,134 @@ function TutorialsAuditPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function WeeklyAuditStatusCard() {
+  const loadStatus = useServerFn(getTutorialAuditStatus);
+  const ackAlert = useServerFn(acknowledgeTutorialAuditAlert);
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["tutorial-audit-status"],
+    queryFn: () => loadStatus({ data: undefined }),
+    refetchInterval: 60_000,
+  });
+
+  const ack = useMutation({
+    mutationFn: (id: string) => ackAlert({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Alert acknowledged.");
+      queryClient.invalidateQueries({ queryKey: ["tutorial-audit-status"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Could not acknowledge alert."),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Weekly automated backfill &amp; divergence alerts</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          A scheduled job re-syncs CLWRota and re-runs tutorial detection across the
+          next 12 months once a week, in bounded windows, then compares the audit
+          against the CLWRota source. Any mismatch raises an alert here.
+        </p>
+        {isLoading && <div className="text-muted-foreground">Loading job status…</div>}
+        {error && (
+          <div className="text-destructive">
+            Unable to load job status: {error instanceof Error ? error.message : "Unknown error"}
+          </div>
+        )}
+        {data && (
+          <>
+            <div className="flex flex-wrap gap-2 items-center">
+              <Badge variant={data.paused ? "destructive" : data.enabled ? "secondary" : "outline"}>
+                {data.paused ? "Paused" : data.enabled ? "Active" : "Disabled"}
+              </Badge>
+              {data.cursorStart && data.horizonEnd && (
+                <Badge variant="outline">
+                  Pass in progress · {data.cursorStart} → {data.horizonEnd}
+                </Badge>
+              )}
+              {data.nextPassAt && !data.cursorStart && (
+                <Badge variant="outline">
+                  Next pass {new Date(data.nextPassAt).toLocaleString("en-GB")}
+                </Badge>
+              )}
+              <Badge variant={data.openAlerts.length ? "destructive" : "secondary"}>
+                {data.openAlerts.length} open alert{data.openAlerts.length === 1 ? "" : "s"}
+              </Badge>
+            </div>
+            {data.pausedReason && (
+              <div className="text-destructive text-xs">Paused: {data.pausedReason}</div>
+            )}
+            {data.lastError && !data.pausedReason && (
+              <div className="text-xs text-muted-foreground">Last error: {data.lastError}</div>
+            )}
+
+            {data.openAlerts.length > 0 && (
+              <div className="space-y-2 border-t pt-2">
+                {data.openAlerts.map((a) => (
+                  <div key={a.id} className="rounded border border-destructive/40 p-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium">
+                        {a.window_start} → {a.window_end}: CLWRota {a.source_count} vs audit{" "}
+                        {a.audit_count}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={ack.isPending}
+                        onClick={() => ack.mutate(a.id)}
+                      >
+                        Acknowledge
+                      </Button>
+                    </div>
+                    {a.missingFromAudit.length > 0 && (
+                      <ul className="text-xs list-disc pl-4">
+                        {a.missingFromAudit.slice(0, 10).map((m, i) => (
+                          <li key={`m-${i}`}>
+                            Missing from audit: {m.staffName} · {m.session_date} {m.session.toUpperCase()}
+                            {m.label ? ` · ${m.label}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {a.extraInAudit.length > 0 && (
+                      <ul className="text-xs list-disc pl-4">
+                        {a.extraInAudit.slice(0, 10).map((m, i) => (
+                          <li key={`e-${i}`}>
+                            Not in CLWRota: {m.staffName} · {m.session_date} {m.session.toUpperCase()}
+                            {m.label ? ` · ${m.label}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {data.recentRuns.length > 0 && (
+              <details className="text-xs text-muted-foreground border-t pt-2">
+                <summary className="cursor-pointer">Recent audited windows</summary>
+                <ul className="mt-1 space-y-0.5 pl-4 list-disc">
+                  {data.recentRuns.map((r) => (
+                    <li key={r.id}>
+                      {r.window_start} → {r.window_end}: source {r.source_count} / audit{" "}
+                      {r.audit_count}
+                      {r.diverged ? " · diverged" : " · match"}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

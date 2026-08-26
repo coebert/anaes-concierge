@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -2612,6 +2612,149 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tutorial_audit_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          audit_count: number
+          created_at: string
+          details: Json
+          id: string
+          run_id: string | null
+          source_count: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          audit_count?: number
+          created_at?: string
+          details?: Json
+          id?: string
+          run_id?: string | null
+          source_count?: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          audit_count?: number
+          created_at?: string
+          details?: Json
+          id?: string
+          run_id?: string | null
+          source_count?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutorial_audit_alerts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tutorial_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tutorial_audit_job_state: {
+        Row: {
+          consecutive_failures: number
+          created_at: string
+          cursor_start: string | null
+          enabled: boolean
+          horizon_end: string | null
+          id: number
+          last_error: string | null
+          last_run_at: string | null
+          lease_until: string | null
+          next_pass_at: string
+          pass_started_at: string | null
+          paused: boolean
+          paused_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          created_at?: string
+          cursor_start?: string | null
+          enabled?: boolean
+          horizon_end?: string | null
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          next_pass_at?: string
+          pass_started_at?: string | null
+          paused?: boolean
+          paused_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          created_at?: string
+          cursor_start?: string | null
+          enabled?: boolean
+          horizon_end?: string | null
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          next_pass_at?: string
+          pass_started_at?: string | null
+          paused?: boolean
+          paused_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tutorial_audit_runs: {
+        Row: {
+          audit_count: number
+          created_at: string
+          details: Json
+          diverged: boolean
+          error: string | null
+          id: string
+          notes_updated: number
+          ok: boolean
+          promoted_to_teaching: number
+          source_count: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          audit_count?: number
+          created_at?: string
+          details?: Json
+          diverged?: boolean
+          error?: string | null
+          id?: string
+          notes_updated?: number
+          ok?: boolean
+          promoted_to_teaching?: number
+          source_count?: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          audit_count?: number
+          created_at?: string
+          details?: Json
+          diverged?: boolean
+          error?: string | null
+          id?: string
+          notes_updated?: number
+          ok?: boolean
+          promoted_to_teaching?: number
+          source_count?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
