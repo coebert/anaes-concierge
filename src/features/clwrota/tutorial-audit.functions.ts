@@ -50,6 +50,8 @@ export type TutorialAuditSession = {
   clwrota_external_id: string | null;
   source: string;
   locally_modified: boolean;
+  theatreName: string | null;
+  sourceTrace: TutorialSourceTrace | null;
 };
 
 export const listTutorialAuditSessions = createServerFn({ method: "POST" })
