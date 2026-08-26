@@ -136,6 +136,32 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
       }
     }
 
+    // Saved CLWRota row metadata for each detected tutorial (traceability).
+    const traceRes = await supabaseAdmin
+      .from("tutorial_detection_matches")
+      .select(
+        "staff_id,session_date,session,clwrota_external_id,matched_field,matched_value,place_name,slot_titles,role_label,person_label,detected_by,detected_at,source_row",
+      )
+      .gte("session_date", data.startIso)
+      .lte("session_date", data.endIso)
+      .range(0, 9999);
+    if (traceRes.error) throw new Error(traceRes.error.message);
+    const traceByKey = new Map<string, TutorialSourceTrace>();
+    for (const t of traceRes.data ?? []) {
+      traceByKey.set(`${t.staff_id}|${t.session_date}|${t.session}`, {
+        clwrota_external_id: t.clwrota_external_id,
+        matched_field: t.matched_field,
+        matched_value: t.matched_value,
+        place_name: t.place_name,
+        slot_titles: t.slot_titles,
+        role_label: t.role_label,
+        person_label: t.person_label,
+        detected_by: t.detected_by,
+        detected_at: t.detected_at,
+        source_row: t.source_row,
+      });
+    }
+
     return assignments
       .flatMap((row) => {
         const staff = staffMap.get(row.staff_id);
@@ -147,6 +173,9 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
         return [
           {
             ...row,
+            theatreName,
+            sourceTrace:
+              traceByKey.get(`${row.staff_id}|${row.session_date}|${row.session}`) ?? null,
             staffName: staff.full_name?.trim() || "Unknown staff member",
             staffGrade: staff.grade,
             staffActive: staff.active,
