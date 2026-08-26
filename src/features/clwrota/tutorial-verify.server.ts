@@ -21,6 +21,21 @@ export type TutorialDeliveryKey = {
   label: string | null;
 };
 
+/** Traceability record: which CLWRota row produced a detected tutorial. */
+export type TutorialSourceEvidence = {
+  staffId: string;
+  session_date: string;
+  session: string;
+  clwrotaExternalId: string | null;
+  matchedField: string | null;
+  matchedValue: string | null;
+  placeName: string | null;
+  slotTitles: string | null;
+  roleLabel: string | null;
+  personLabel: string | null;
+  sourceRow: Record<string, unknown>;
+};
+
 export type TutorialVerifyResult = {
   windowStart: string;
   windowEnd: string;
