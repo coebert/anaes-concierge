@@ -245,6 +245,10 @@ function TutorialsAuditPage() {
         </CardContent>
       </Card>
 
+      <WeeklyAuditStatusCard />
+
+
+
 
 
       {error && (
