@@ -312,6 +312,7 @@ function TutorialsAuditPage() {
                 <th className="p-2">Grade</th>
                 <th className="p-2">Label</th>
                 <th className="p-2">Source</th>
+                <th className="p-2">CLWRota record</th>
               </tr>
             </thead>
             <tbody>
