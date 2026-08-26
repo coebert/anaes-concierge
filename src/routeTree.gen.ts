@@ -92,6 +92,7 @@ import { Route as ApiPublicHooksPushDispatchRouteImport } from './routes/api/pub
 import { Route as ApiPublicHooksRpcAccessAlertsRouteImport } from './routes/api/public/hooks/rpc-access-alerts'
 import { Route as ApiPublicHooksSeedClwrotaVaultRouteImport } from './routes/api/public/hooks/seed-clwrota-vault'
 import { Route as ApiPublicHooksTutorialBackfillRouteImport } from './routes/api/public/hooks/tutorial-backfill'
+import { Route as ApiPublicHooksTutorialWeeklyAuditRouteImport } from './routes/api/public/hooks/tutorial-weekly-audit'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -565,6 +566,12 @@ const ApiPublicHooksTutorialBackfillRoute =
     path: '/api/public/hooks/tutorial-backfill',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksTutorialWeeklyAuditRoute =
+  ApiPublicHooksTutorialWeeklyAuditRouteImport.update({
+    id: '/api/public/hooks/tutorial-weekly-audit',
+    path: '/api/public/hooks/tutorial-weekly-audit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -649,6 +656,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
   '/api/public/hooks/tutorial-backfill': typeof ApiPublicHooksTutorialBackfillRoute
+  '/api/public/hooks/tutorial-weekly-audit': typeof ApiPublicHooksTutorialWeeklyAuditRoute
 }
 export interface FileRoutesByTo {
   '/health': typeof HealthRoute
@@ -732,6 +740,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
   '/api/public/hooks/tutorial-backfill': typeof ApiPublicHooksTutorialBackfillRoute
+  '/api/public/hooks/tutorial-weekly-audit': typeof ApiPublicHooksTutorialWeeklyAuditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -818,6 +827,7 @@ export interface FileRoutesById {
   '/api/public/hooks/rpc-access-alerts': typeof ApiPublicHooksRpcAccessAlertsRoute
   '/api/public/hooks/seed-clwrota-vault': typeof ApiPublicHooksSeedClwrotaVaultRoute
   '/api/public/hooks/tutorial-backfill': typeof ApiPublicHooksTutorialBackfillRoute
+  '/api/public/hooks/tutorial-weekly-audit': typeof ApiPublicHooksTutorialWeeklyAuditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -904,6 +914,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
     | '/api/public/hooks/tutorial-backfill'
+    | '/api/public/hooks/tutorial-weekly-audit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/health'
@@ -987,6 +998,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
     | '/api/public/hooks/tutorial-backfill'
+    | '/api/public/hooks/tutorial-weekly-audit'
   id:
     | '__root__'
     | '/_authenticated'
@@ -1072,6 +1084,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/rpc-access-alerts'
     | '/api/public/hooks/seed-clwrota-vault'
     | '/api/public/hooks/tutorial-backfill'
+    | '/api/public/hooks/tutorial-weekly-audit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1089,6 +1102,7 @@ export interface RootRouteChildren {
   ApiPublicHooksRpcAccessAlertsRoute: typeof ApiPublicHooksRpcAccessAlertsRoute
   ApiPublicHooksSeedClwrotaVaultRoute: typeof ApiPublicHooksSeedClwrotaVaultRoute
   ApiPublicHooksTutorialBackfillRoute: typeof ApiPublicHooksTutorialBackfillRoute
+  ApiPublicHooksTutorialWeeklyAuditRoute: typeof ApiPublicHooksTutorialWeeklyAuditRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1674,6 +1688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksTutorialBackfillRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/tutorial-weekly-audit': {
+      id: '/api/public/hooks/tutorial-weekly-audit'
+      path: '/api/public/hooks/tutorial-weekly-audit'
+      fullPath: '/api/public/hooks/tutorial-weekly-audit'
+      preLoaderRoute: typeof ApiPublicHooksTutorialWeeklyAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1921,6 +1942,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksRpcAccessAlertsRoute: ApiPublicHooksRpcAccessAlertsRoute,
   ApiPublicHooksSeedClwrotaVaultRoute: ApiPublicHooksSeedClwrotaVaultRoute,
   ApiPublicHooksTutorialBackfillRoute: ApiPublicHooksTutorialBackfillRoute,
+  ApiPublicHooksTutorialWeeklyAuditRoute:
+    ApiPublicHooksTutorialWeeklyAuditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
