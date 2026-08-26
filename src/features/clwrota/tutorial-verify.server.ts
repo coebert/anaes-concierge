@@ -251,6 +251,7 @@ export async function verifyTutorialWindow(opts: {
   }
 
   const audit = new Map<string, TutorialDeliveryKey>();
+  const assignmentIdByKey = new Map<string, string>();
   for (const row of auditRows) {
     if (!nameById.has(row.staff_id)) continue;
     const theatreName = row.theatre_session_id
