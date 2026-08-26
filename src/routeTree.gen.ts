@@ -54,6 +54,7 @@ import { Route as AuthenticatedAdminTcsAuditRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminTheatreAliasesRouteImport } from './routes/_authenticated/admin.theatre-aliases'
 import { Route as AuthenticatedAdminTheatreGridRouteImport } from './routes/_authenticated/admin.theatre-grid'
 import { Route as AuthenticatedAdminTheatresRouteImport } from './routes/_authenticated/admin.theatres'
+import { Route as AuthenticatedAdminTutorialDashboardRouteImport } from './routes/_authenticated/admin.tutorial-dashboard'
 import { Route as AuthenticatedAdminTutorialsRouteImport } from './routes/_authenticated/admin.tutorials'
 import { Route as AuthenticatedAdminWeekendWorkloadRouteImport } from './routes/_authenticated/admin.weekend-workload'
 import { Route as AuthenticatedAdminWellbeingRouteImport } from './routes/_authenticated/admin.wellbeing'
@@ -341,6 +342,12 @@ const AuthenticatedAdminTheatresRoute =
     path: '/admin/theatres',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminTutorialDashboardRoute =
+  AuthenticatedAdminTutorialDashboardRouteImport.update({
+    id: '/admin/tutorial-dashboard',
+    path: '/admin/tutorial-dashboard',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminTutorialsRoute =
   AuthenticatedAdminTutorialsRouteImport.update({
     id: '/admin/tutorials',
@@ -618,6 +625,7 @@ export interface FileRoutesByFullPath {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/tutorial-dashboard': typeof AuthenticatedAdminTutorialDashboardRoute
   '/admin/tutorials': typeof AuthenticatedAdminTutorialsRoute
   '/admin/weekend-workload': typeof AuthenticatedAdminWeekendWorkloadRoute
   '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
@@ -702,6 +710,7 @@ export interface FileRoutesByTo {
   '/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/admin/tutorial-dashboard': typeof AuthenticatedAdminTutorialDashboardRoute
   '/admin/tutorials': typeof AuthenticatedAdminTutorialsRoute
   '/admin/weekend-workload': typeof AuthenticatedAdminWeekendWorkloadRoute
   '/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
@@ -789,6 +798,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/theatre-aliases': typeof AuthenticatedAdminTheatreAliasesRoute
   '/_authenticated/admin/theatre-grid': typeof AuthenticatedAdminTheatreGridRoute
   '/_authenticated/admin/theatres': typeof AuthenticatedAdminTheatresRoute
+  '/_authenticated/admin/tutorial-dashboard': typeof AuthenticatedAdminTutorialDashboardRoute
   '/_authenticated/admin/tutorials': typeof AuthenticatedAdminTutorialsRoute
   '/_authenticated/admin/weekend-workload': typeof AuthenticatedAdminWeekendWorkloadRoute
   '/_authenticated/admin/wellbeing': typeof AuthenticatedAdminWellbeingRoute
@@ -876,6 +886,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/tutorial-dashboard'
     | '/admin/tutorials'
     | '/admin/weekend-workload'
     | '/admin/wellbeing'
@@ -960,6 +971,7 @@ export interface FileRouteTypes {
     | '/admin/theatre-aliases'
     | '/admin/theatre-grid'
     | '/admin/theatres'
+    | '/admin/tutorial-dashboard'
     | '/admin/tutorials'
     | '/admin/weekend-workload'
     | '/admin/wellbeing'
@@ -1046,6 +1058,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/theatre-aliases'
     | '/_authenticated/admin/theatre-grid'
     | '/_authenticated/admin/theatres'
+    | '/_authenticated/admin/tutorial-dashboard'
     | '/_authenticated/admin/tutorials'
     | '/_authenticated/admin/weekend-workload'
     | '/_authenticated/admin/wellbeing'
@@ -1420,6 +1433,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/theatres'
       fullPath: '/admin/theatres'
       preLoaderRoute: typeof AuthenticatedAdminTheatresRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/tutorial-dashboard': {
+      id: '/_authenticated/admin/tutorial-dashboard'
+      path: '/admin/tutorial-dashboard'
+      fullPath: '/admin/tutorial-dashboard'
+      preLoaderRoute: typeof AuthenticatedAdminTutorialDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/tutorials': {
@@ -1839,6 +1859,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminTheatreAliasesRoute: typeof AuthenticatedAdminTheatreAliasesRoute
   AuthenticatedAdminTheatreGridRoute: typeof AuthenticatedAdminTheatreGridRoute
   AuthenticatedAdminTheatresRoute: typeof AuthenticatedAdminTheatresRoute
+  AuthenticatedAdminTutorialDashboardRoute: typeof AuthenticatedAdminTutorialDashboardRoute
   AuthenticatedAdminTutorialsRoute: typeof AuthenticatedAdminTutorialsRoute
   AuthenticatedAdminWeekendWorkloadRoute: typeof AuthenticatedAdminWeekendWorkloadRoute
   AuthenticatedAdminWellbeingRoute: typeof AuthenticatedAdminWellbeingRoute
@@ -1899,6 +1920,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminTheatreAliasesRoute: AuthenticatedAdminTheatreAliasesRoute,
   AuthenticatedAdminTheatreGridRoute: AuthenticatedAdminTheatreGridRoute,
   AuthenticatedAdminTheatresRoute: AuthenticatedAdminTheatresRoute,
+  AuthenticatedAdminTutorialDashboardRoute:
+    AuthenticatedAdminTutorialDashboardRoute,
   AuthenticatedAdminTutorialsRoute: AuthenticatedAdminTutorialsRoute,
   AuthenticatedAdminWeekendWorkloadRoute:
     AuthenticatedAdminWeekendWorkloadRoute,
