@@ -2756,6 +2756,95 @@ export type Database = {
         }
         Relationships: []
       }
+      tutorial_detection_matches: {
+        Row: {
+          assignment_id: string | null
+          clwrota_external_id: string | null
+          created_at: string
+          detected_at: string
+          detected_by: string
+          id: string
+          matched_field: string | null
+          matched_value: string | null
+          person_label: string | null
+          place_name: string | null
+          role_label: string | null
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          slot_titles: string | null
+          source_row: Json
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id?: string | null
+          clwrota_external_id?: string | null
+          created_at?: string
+          detected_at?: string
+          detected_by?: string
+          id?: string
+          matched_field?: string | null
+          matched_value?: string | null
+          person_label?: string | null
+          place_name?: string | null
+          role_label?: string | null
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          slot_titles?: string | null
+          source_row?: Json
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string | null
+          clwrota_external_id?: string | null
+          created_at?: string
+          detected_at?: string
+          detected_by?: string
+          id?: string
+          matched_field?: string | null
+          matched_value?: string | null
+          person_label?: string | null
+          place_name?: string | null
+          role_label?: string | null
+          session?: Database["public"]["Enums"]["session_half"]
+          session_date?: string
+          slot_titles?: string | null
+          source_row?: Json
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutorial_detection_matches_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "rota_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutorial_detection_matches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutorial_detection_matches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutorial_detection_matches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
