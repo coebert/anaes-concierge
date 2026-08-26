@@ -285,6 +285,36 @@ export async function verifyTutorialWindow(opts: {
   const missingFromAudit = Array.from(source.values()).filter((v) => !audit.has(v.key));
   const extraInAudit = Array.from(audit.values()).filter((v) => !source.has(v.key));
 
+  // Persist traceability: which CLWRota row produced each detected tutorial.
+  const evidenceRows = Array.from(evidence.entries()).map(([key, e]) => ({
+    assignment_id: assignmentIdByKey.get(key) ?? null,
+    staff_id: e.staffId,
+    session_date: e.session_date,
+    session: e.session as "am" | "pm" | "eve" | "night",
+    clwrota_external_id: e.clwrotaExternalId,
+    matched_field: e.matchedField,
+    matched_value: e.matchedValue,
+    place_name: e.placeName,
+    slot_titles: e.slotTitles,
+    role_label: e.roleLabel,
+    person_label: e.personLabel,
+    source_row: e.sourceRow as never,
+    detected_by: "verify",
+    detected_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
+  for (let i = 0; i < evidenceRows.length; i += 200) {
+    const { error } = await supabaseAdmin
+      .from("tutorial_detection_matches")
+      .upsert(evidenceRows.slice(i, i + 200), {
+        onConflict: "staff_id,session_date,session",
+      });
+    if (error) {
+      console.error("tutorial evidence upsert failed:", error.message);
+      break;
+    }
+  }
+
   return {
     windowStart: opts.startIso,
     windowEnd: opts.endIso,
