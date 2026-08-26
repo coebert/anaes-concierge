@@ -53,6 +53,41 @@ function tutorialDisplayLabel(row: Pick<TutorialAuditSession, "duty_type" | "not
   return row.role_on_list || "—";
 }
 
+function SourceTraceCell({ row }: { row: TutorialAuditSession }) {
+  const t = row.sourceTrace;
+  if (!t) {
+    return (
+      <span className="text-xs text-muted-foreground" data-testid="tutorial-source-trace-missing">
+        {row.clwrota_external_id ? `id ${row.clwrota_external_id}` : "No saved source record"}
+      </span>
+    );
+  }
+  return (
+    <details className="text-xs" data-testid="tutorial-source-trace">
+      <summary className="cursor-pointer whitespace-nowrap">
+        {t.matched_field ? <code>{t.matched_field}</code> : "matched"}
+        {t.clwrota_external_id ? ` · id ${t.clwrota_external_id}` : ""}
+      </summary>
+      <dl className="mt-1 space-y-0.5 text-muted-foreground">
+        <div>Matched value: “{t.matched_value ?? "—"}”</div>
+        <div>Location: {t.place_name ?? "—"}</div>
+        <div>Slot titles: {t.slot_titles ?? "—"}</div>
+        <div>Role: {t.role_label ?? "—"}</div>
+        <div>CLWRota person: {t.person_label ?? "—"}</div>
+        <div>
+          Detected by {t.detected_by} at {t.detected_at}
+        </div>
+        <details>
+          <summary className="cursor-pointer">Raw CLWRota row</summary>
+          <pre className="mt-1 max-w-[36rem] overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2">
+            {JSON.stringify(t.source_row, null, 2)}
+          </pre>
+        </details>
+      </dl>
+    </details>
+  );
+}
+
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
