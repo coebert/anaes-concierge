@@ -337,6 +337,9 @@ function TutorialsAuditPage() {
                         {r.locally_modified ? "Locally edited" : r.source}
                       </Badge>
                     </td>
+                    <td className="p-2 align-top">
+                      <SourceTraceCell row={r} />
+                    </td>
                   </tr>
                 );
               })}
