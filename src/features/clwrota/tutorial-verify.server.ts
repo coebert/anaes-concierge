@@ -195,8 +195,11 @@ export async function verifyTutorialWindow(opts: {
         staffId,
         session_date,
         session,
+        // Same id derivation the sync uses, so the trace matches
+        // rota_assignments.clwrota_external_id.
         clwrotaExternalId:
-          pick(row, ["id", "slot_id", "assignment_id", "external_id", "uuid"]) ?? null,
+          pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
+          (extId ? `${extId}|${pick(row, ["date", "session_date", "Date", "rota_date", "day"]) ?? ""}|${pick(row, ["session.rota_label", "shift.rota_label", "session", "session_half"]) ?? ""}` : null),
         matchedField: matchedIdx >= 0 ? NOTE_KEYS[matchedIdx] ?? null : null,
         matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
         placeName: pick(row, ["place.name"]) ?? null,
