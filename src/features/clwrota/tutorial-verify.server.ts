@@ -129,6 +129,7 @@ export async function verifyTutorialWindow(opts: {
   }
 
   const source = new Map<string, TutorialDeliveryKey>();
+  const evidence = new Map<string, TutorialSourceEvidence>();
   for (const row of rows) {
     const session_date = normaliseDate(
       pick(row, ["date", "session_date", "Date", "rota_date", "day"]) ?? null,
