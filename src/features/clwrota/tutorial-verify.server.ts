@@ -270,6 +270,7 @@ export async function verifyTutorialWindow(opts: {
     }
     const key = `${row.staff_id}|${row.session_date}|${row.session}`;
     if (!audit.has(key)) {
+      assignmentIdByKey.set(key, row.id);
       audit.set(key, {
         key,
         staffId: row.staff_id,
