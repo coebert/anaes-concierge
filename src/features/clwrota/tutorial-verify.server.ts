@@ -181,6 +181,7 @@ export async function verifyTutorialWindow(opts: {
     if (!staffId) continue;
 
     const key = `${staffId}|${session_date}|${session}`;
+    const matchedIdx = labels.findIndex((l) => l && looksLikeTutorialLabel([l]));
     if (!source.has(key)) {
       source.set(key, {
         key,
@@ -188,7 +189,21 @@ export async function verifyTutorialWindow(opts: {
         staffName: nameById.get(staffId) ?? String(nameRaw ?? staffId),
         session_date,
         session,
-        label: labels.find((l) => l && looksLikeTutorialLabel([l])) ?? null,
+        label: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+      });
+      evidence.set(key, {
+        staffId,
+        session_date,
+        session,
+        clwrotaExternalId:
+          pick(row, ["id", "slot_id", "assignment_id", "external_id", "uuid"]) ?? null,
+        matchedField: matchedIdx >= 0 ? NOTE_KEYS[matchedIdx] ?? null : null,
+        matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+        placeName: pick(row, ["place.name"]) ?? null,
+        slotTitles: pick(row, ["slot_titles"]) ?? null,
+        roleLabel: pick(row, ["role.name", "assignment_type.name"]) ?? null,
+        personLabel: nameRaw ? String(nameRaw) : null,
+        sourceRow: row as Record<string, unknown>,
       });
     }
   }
