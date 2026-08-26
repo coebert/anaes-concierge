@@ -80,7 +80,7 @@ function SourceTraceCell({ row }: { row: TutorialAuditSession }) {
         <details>
           <summary className="cursor-pointer">Raw CLWRota row</summary>
           <pre className="mt-1 max-w-[36rem] overflow-x-auto whitespace-pre-wrap rounded bg-muted p-2">
-            {JSON.stringify(t.source_row, null, 2)}
+            {t.source_row_json}
           </pre>
         </details>
       </dl>

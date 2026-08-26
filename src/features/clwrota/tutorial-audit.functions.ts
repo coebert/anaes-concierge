@@ -32,7 +32,7 @@ export type TutorialSourceTrace = {
   person_label: string | null;
   detected_by: string;
   detected_at: string;
-  source_row: unknown;
+  source_row_json: string;
 };
 
 export type TutorialAuditSession = {
@@ -158,7 +158,7 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
         person_label: t.person_label,
         detected_by: t.detected_by,
         detected_at: t.detected_at,
-        source_row: t.source_row,
+        source_row_json: JSON.stringify(t.source_row ?? {}, null, 2),
       });
     }
 
