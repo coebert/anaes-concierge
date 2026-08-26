@@ -21,6 +21,20 @@ type AuditAssignmentRow = {
   theatre_session_id: string | null;
 };
 
+/** Saved CLWRota row metadata that produced a tutorial match. */
+export type TutorialSourceTrace = {
+  clwrota_external_id: string | null;
+  matched_field: string | null;
+  matched_value: string | null;
+  place_name: string | null;
+  slot_titles: string | null;
+  role_label: string | null;
+  person_label: string | null;
+  detected_by: string;
+  detected_at: string;
+  source_row: unknown;
+};
+
 export type TutorialAuditSession = {
   id: string;
   staff_id: string;
