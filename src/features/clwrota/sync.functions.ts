@@ -1997,6 +1997,13 @@ export async function performRotaSyncChunked(
   const unmatchedS = new Set<string>();
 
   for (let cursor = new Date(start); cursor <= end; ) {
+    if (agg.slices >= maxSlices) {
+      agg.truncated = true;
+      console.warn(
+        `[clwrota] chunked rota sync stopped at maxSlices=${maxSlices} (remaining window from ${fmt(cursor)})`,
+      );
+      break;
+    }
     const sliceEnd = new Date(cursor);
     sliceEnd.setUTCDate(sliceEnd.getUTCDate() + sliceDays - 1);
     if (sliceEnd > end) sliceEnd.setTime(end.getTime());
