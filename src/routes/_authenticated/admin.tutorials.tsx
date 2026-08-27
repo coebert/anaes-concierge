@@ -249,9 +249,19 @@ function TutorialsAuditPage() {
               </div>
               {!backfillMutation.variables && (
                 <div>
-                  CLWRota rows refreshed: <strong>{lastBackfill.sourceRowsRefreshed}</strong> ·
+                  CLWRota refreshed {lastBackfill.refreshWindowStart} →{" "}
+                  {lastBackfill.refreshWindowEnd} · rows refreshed:{" "}
+                  <strong>{lastBackfill.sourceRowsRefreshed}</strong> ·
                   assignments inserted: {lastBackfill.sourceAssignmentsInserted} ·
                   assignments updated: {lastBackfill.sourceAssignmentsUpdated}
+                  {lastBackfill.refreshTruncated && (
+                    <>
+                      {" "}
+                      — older dates in this window were re-scanned from data
+                      already in the database; run the backfill again with a
+                      shorter range to re-download them from CLWRota.
+                    </>
+                  )}
                 </div>
               )}
               <div>
