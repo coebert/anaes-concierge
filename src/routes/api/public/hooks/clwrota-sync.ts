@@ -74,20 +74,31 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
 
         const sliceParam = params.get("sliceDays");
         const sliceDays = sliceParam ? Math.max(1, Number(sliceParam) || 30) : undefined;
-        // `mode=incremental` re-syncs only the small window since the last
-        // successful run (default ~3d back, 14d ahead). Cheap enough to run
-        // on a sub-hourly cron. Ignored when an explicit from/to is given.
+        const maxSlicesParam = params.get("maxSlices");
+        const maxSlices = maxSlicesParam
+          ? Math.max(1, Math.min(6, Number(maxSlicesParam) || 3))
+          : undefined;
+        // Rota mode:
+        //   `mode=full`        — chunked pass over the whole configured window.
+        //                        Each slice re-fetches and re-parses the full
+        //                        upstream payload, so this is memory-heavy and
+        //                        is capped by `maxSlices`.
+        //   anything else      — incremental (default): a single small window
+        //                        since the last successful run. One upstream
+        //                        fetch, which keeps the Worker inside its
+        //                        memory budget on routine (hourly) runs.
+        // Ignored when an explicit from/to is given.
         const mode = (params.get("mode") ?? "").toLowerCase();
-        const incremental = mode === "incremental";
+        const full = mode === "full";
 
         const runners: Record<Step, () => Promise<unknown>> = {
           staff: performStaffSync,
           rota: () =>
             fromDate && toDate
               ? performRotaSync({ from: fromDate, to: toDate })
-              : incremental
-                ? performRotaSyncIncremental()
-                : performRotaSyncChunked({ sliceDays }),
+              : full
+                ? performRotaSyncChunked({ sliceDays, maxSlices })
+                : performRotaSyncIncremental(),
           leave: performLeaveSync,
         };
 
