@@ -1931,9 +1931,22 @@ export async function performRotaSync(
  * window. The aggregate `ok` flag is true only when every slice succeeded.
  */
 export async function performRotaSyncChunked(
-  opts: { daysBack?: number; daysAhead?: number; sliceDays?: number } = {},
-): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number }> {
+  opts: {
+    daysBack?: number;
+    daysAhead?: number;
+    sliceDays?: number;
+    /**
+     * Hard cap on the number of slices processed in a single invocation.
+     * Each slice re-fetches and re-parses the full upstream payload (CLWRota
+     * ignores the date window), so an unbounded loop repeatedly allocates a
+     * multi-megabyte string + row array and trips the Worker memory limit
+     * (502 "Worker exceeded memory limit"). Default 3.
+     */
+    maxSlices?: number;
+  } = {},
+): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number; truncated: boolean }> {
   const sliceDays = Math.max(1, opts.sliceDays ?? 30);
+  const maxSlices = Math.max(1, opts.maxSlices ?? 3);
 
   const { data: settings } = await supabaseAdmin
     .from("clwrota_sync_state")
