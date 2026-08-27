@@ -2038,7 +2038,7 @@ export async function performRotaSyncChunked(
 
   agg.unmatchedTheatres = Array.from(unmatchedT);
   agg.unmatchedStaff = Array.from(unmatchedS);
-  agg.message = `Chunked rota sync: ${agg.slices} slice(s) of ≤${sliceDays}d, ${agg.assignmentsUpserted} assignments upserted, ${agg.errors.length} error(s).`;
+  agg.message = `Chunked rota sync: ${agg.slices} slice(s) of ≤${sliceDays}d, ${agg.assignmentsUpserted} assignments upserted, ${agg.errors.length} error(s)${agg.truncated ? ", truncated at slice cap" : ""}.`;
   return agg;
 }
 
