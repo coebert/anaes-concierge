@@ -38,13 +38,26 @@ function formatIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Every slice re-downloads and re-parses the full CLWRota report (the
+ * upstream endpoint ignores the date params), so the number of slices per
+ * request must stay small — otherwise an admin-triggered backfill over a
+ * 12-month window fires ~57 full syncs inside one request and hangs or
+ * blows the Worker limits. Slices are wide (28d) and capped (`maxSlices`).
+ */
+const DEFAULT_REFRESH_SLICE_DAYS = 28;
+const DEFAULT_MAX_REFRESH_SLICES = 3;
+
 async function refreshSourceRowsInSlices(opts: {
   startIso: string;
   endIso: string;
   sliceDays?: number;
+  maxSlices?: number;
 }): Promise<SyncSummary> {
   const { performRotaSync } = await import("./sync.functions");
-  const sliceDays = Math.max(1, opts.sliceDays ?? 7);
+  const sliceDays = Math.max(1, opts.sliceDays ?? DEFAULT_REFRESH_SLICE_DAYS);
+  const maxSlices = Math.max(1, opts.maxSlices ?? DEFAULT_MAX_REFRESH_SLICES);
+  let slices = 0;
   const start = parseIsoDate(opts.startIso);
   const end = parseIsoDate(opts.endIso);
   const summary: SyncSummary = {
