@@ -131,6 +131,8 @@ export async function runTutorialBackfill(opts: {
   startIso: string;
   endIso: string;
   dryRun?: boolean;
+  sliceDays?: number;
+  maxSlices?: number;
 }): Promise<TutorialBackfillResult> {
   const dryRun = opts.dryRun ?? false;
   const { supabaseAdmin } = await import(
@@ -140,14 +142,36 @@ export async function runTutorialBackfill(opts: {
   let sourceRowsRefreshed = 0;
   let sourceAssignmentsInserted = 0;
   let sourceAssignmentsUpdated = 0;
+  let refreshWindowStart: string | null = null;
+  let refreshWindowEnd: string | null = null;
+  let refreshTruncated = false;
   if (!dryRun) {
+    // Re-fetching CLWRota is the expensive part (one full report download +
+    // parse per slice), so bound it to the most recent slice budget of the
+    // requested window. The detection re-scan below still covers the whole
+    // window using rows already in the database.
+    const sliceDays = Math.max(1, opts.sliceDays ?? DEFAULT_REFRESH_SLICE_DAYS);
+    const maxSlices = Math.max(1, opts.maxSlices ?? DEFAULT_MAX_REFRESH_SLICES);
+    const budgetDays = sliceDays * maxSlices;
+    const end = parseIsoDate(opts.endIso);
+    const earliest = parseIsoDate(opts.startIso);
+    const budgetStartMs = end.getTime() - (budgetDays - 1) * DAY_MS;
+    const refreshStart = new Date(
+      Math.max(earliest.getTime(), budgetStartMs),
+    );
+    refreshWindowStart = formatIsoDate(refreshStart);
+    refreshWindowEnd = opts.endIso;
     const syncResult = await refreshSourceRowsInSlices({
-      startIso: opts.startIso,
-      endIso: opts.endIso,
+      startIso: refreshWindowStart,
+      endIso: refreshWindowEnd,
+      sliceDays,
+      maxSlices,
     });
     sourceRowsRefreshed = syncResult.total;
     sourceAssignmentsInserted = syncResult.assignmentsInserted;
     sourceAssignmentsUpdated = syncResult.assignmentsUpdated;
+    refreshTruncated =
+      syncResult.truncated || refreshWindowStart > opts.startIso;
   }
 
   // Consultant/SAS profiles we're prepared to promote.
