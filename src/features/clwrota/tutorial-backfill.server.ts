@@ -65,7 +65,9 @@ async function refreshSourceRowsInSlices(opts: {
     total: 0,
     assignmentsInserted: 0,
     assignmentsUpdated: 0,
+    truncated: false,
   };
+
 
   for (let cursorMs = start.getTime(); cursorMs <= end.getTime(); ) {
     if (slices >= maxSlices) {
