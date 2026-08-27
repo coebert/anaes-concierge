@@ -22,6 +22,7 @@ type SyncSummary = {
   total: number;
   assignmentsInserted: number;
   assignmentsUpdated: number;
+  truncated: boolean;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
