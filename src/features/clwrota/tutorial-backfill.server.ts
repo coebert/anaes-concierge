@@ -67,6 +67,11 @@ async function refreshSourceRowsInSlices(opts: {
   };
 
   for (let cursorMs = start.getTime(); cursorMs <= end.getTime(); ) {
+    if (slices >= maxSlices) {
+      summary.truncated = true;
+      break;
+    }
+    slices += 1;
     const sliceStart = new Date(cursorMs);
     const sliceEnd = new Date(
       Math.min(end.getTime(), cursorMs + (sliceDays - 1) * DAY_MS),
