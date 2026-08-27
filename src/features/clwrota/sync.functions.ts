@@ -1931,9 +1931,22 @@ export async function performRotaSync(
  * window. The aggregate `ok` flag is true only when every slice succeeded.
  */
 export async function performRotaSyncChunked(
-  opts: { daysBack?: number; daysAhead?: number; sliceDays?: number } = {},
-): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number }> {
+  opts: {
+    daysBack?: number;
+    daysAhead?: number;
+    sliceDays?: number;
+    /**
+     * Hard cap on the number of slices processed in a single invocation.
+     * Each slice re-fetches and re-parses the full upstream payload (CLWRota
+     * ignores the date window), so an unbounded loop repeatedly allocates a
+     * multi-megabyte string + row array and trips the Worker memory limit
+     * (502 "Worker exceeded memory limit"). Default 3.
+     */
+    maxSlices?: number;
+  } = {},
+): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number; truncated: boolean }> {
   const sliceDays = Math.max(1, opts.sliceDays ?? 30);
+  const maxSlices = Math.max(1, opts.maxSlices ?? 3);
 
   const { data: settings } = await supabaseAdmin
     .from("clwrota_sync_state")
@@ -1952,7 +1965,8 @@ export async function performRotaSyncChunked(
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
   type RotaResult = Awaited<ReturnType<typeof performRotaSync>>;
-  const agg: RotaResult & { slices: number } = {
+  const agg: RotaResult & { slices: number; truncated: boolean } = {
+    truncated: false,
     ok: true,
     message: "",
     total: 0,
@@ -1983,6 +1997,13 @@ export async function performRotaSyncChunked(
   const unmatchedS = new Set<string>();
 
   for (let cursor = new Date(start); cursor <= end; ) {
+    if (agg.slices >= maxSlices) {
+      agg.truncated = true;
+      console.warn(
+        `[clwrota] chunked rota sync stopped at maxSlices=${maxSlices} (remaining window from ${fmt(cursor)})`,
+      );
+      break;
+    }
     const sliceEnd = new Date(cursor);
     sliceEnd.setUTCDate(sliceEnd.getUTCDate() + sliceDays - 1);
     if (sliceEnd > end) sliceEnd.setTime(end.getTime());
@@ -2017,7 +2038,7 @@ export async function performRotaSyncChunked(
 
   agg.unmatchedTheatres = Array.from(unmatchedT);
   agg.unmatchedStaff = Array.from(unmatchedS);
-  agg.message = `Chunked rota sync: ${agg.slices} slice(s) of ≤${sliceDays}d, ${agg.assignmentsUpserted} assignments upserted, ${agg.errors.length} error(s).`;
+  agg.message = `Chunked rota sync: ${agg.slices} slice(s) of ≤${sliceDays}d, ${agg.assignmentsUpserted} assignments upserted, ${agg.errors.length} error(s)${agg.truncated ? ", truncated at slice cap" : ""}.`;
   return agg;
 }
 

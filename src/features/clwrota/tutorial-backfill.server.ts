@@ -22,6 +22,7 @@ type SyncSummary = {
   total: number;
   assignmentsInserted: number;
   assignmentsUpdated: number;
+  truncated: boolean;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -38,22 +39,42 @@ function formatIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Every slice re-downloads and re-parses the full CLWRota report (the
+ * upstream endpoint ignores the date params), so the number of slices per
+ * request must stay small — otherwise an admin-triggered backfill over a
+ * 12-month window fires ~57 full syncs inside one request and hangs or
+ * blows the Worker limits. Slices are wide (28d) and capped (`maxSlices`).
+ */
+const DEFAULT_REFRESH_SLICE_DAYS = 28;
+const DEFAULT_MAX_REFRESH_SLICES = 3;
+
 async function refreshSourceRowsInSlices(opts: {
   startIso: string;
   endIso: string;
   sliceDays?: number;
+  maxSlices?: number;
 }): Promise<SyncSummary> {
   const { performRotaSync } = await import("./sync.functions");
-  const sliceDays = Math.max(1, opts.sliceDays ?? 7);
+  const sliceDays = Math.max(1, opts.sliceDays ?? DEFAULT_REFRESH_SLICE_DAYS);
+  const maxSlices = Math.max(1, opts.maxSlices ?? DEFAULT_MAX_REFRESH_SLICES);
+  let slices = 0;
   const start = parseIsoDate(opts.startIso);
   const end = parseIsoDate(opts.endIso);
   const summary: SyncSummary = {
     total: 0,
     assignmentsInserted: 0,
     assignmentsUpdated: 0,
+    truncated: false,
   };
 
+
   for (let cursorMs = start.getTime(); cursorMs <= end.getTime(); ) {
+    if (slices >= maxSlices) {
+      summary.truncated = true;
+      break;
+    }
+    slices += 1;
     const sliceStart = new Date(cursorMs);
     const sliceEnd = new Date(
       Math.min(end.getTime(), cursorMs + (sliceDays - 1) * DAY_MS),
@@ -76,6 +97,11 @@ async function refreshSourceRowsInSlices(opts: {
 export type TutorialBackfillResult = {
   windowStart: string;
   windowEnd: string;
+  /** Sub-window of [windowStart..windowEnd] that was re-fetched from CLWRota. */
+  refreshWindowStart: string | null;
+  refreshWindowEnd: string | null;
+  /** True when the CLWRota refresh was capped and did not cover the whole window. */
+  refreshTruncated: boolean;
   sourceRowsRefreshed: number;
   sourceAssignmentsInserted: number;
   sourceAssignmentsUpdated: number;
@@ -105,6 +131,8 @@ export async function runTutorialBackfill(opts: {
   startIso: string;
   endIso: string;
   dryRun?: boolean;
+  sliceDays?: number;
+  maxSlices?: number;
 }): Promise<TutorialBackfillResult> {
   const dryRun = opts.dryRun ?? false;
   const { supabaseAdmin } = await import(
@@ -114,14 +142,36 @@ export async function runTutorialBackfill(opts: {
   let sourceRowsRefreshed = 0;
   let sourceAssignmentsInserted = 0;
   let sourceAssignmentsUpdated = 0;
+  let refreshWindowStart: string | null = null;
+  let refreshWindowEnd: string | null = null;
+  let refreshTruncated = false;
   if (!dryRun) {
+    // Re-fetching CLWRota is the expensive part (one full report download +
+    // parse per slice), so bound it to the most recent slice budget of the
+    // requested window. The detection re-scan below still covers the whole
+    // window using rows already in the database.
+    const sliceDays = Math.max(1, opts.sliceDays ?? DEFAULT_REFRESH_SLICE_DAYS);
+    const maxSlices = Math.max(1, opts.maxSlices ?? DEFAULT_MAX_REFRESH_SLICES);
+    const budgetDays = sliceDays * maxSlices;
+    const end = parseIsoDate(opts.endIso);
+    const earliest = parseIsoDate(opts.startIso);
+    const budgetStartMs = end.getTime() - (budgetDays - 1) * DAY_MS;
+    const refreshStart = new Date(
+      Math.max(earliest.getTime(), budgetStartMs),
+    );
+    refreshWindowStart = formatIsoDate(refreshStart);
+    refreshWindowEnd = opts.endIso;
     const syncResult = await refreshSourceRowsInSlices({
-      startIso: opts.startIso,
-      endIso: opts.endIso,
+      startIso: refreshWindowStart,
+      endIso: refreshWindowEnd,
+      sliceDays,
+      maxSlices,
     });
     sourceRowsRefreshed = syncResult.total;
     sourceAssignmentsInserted = syncResult.assignmentsInserted;
     sourceAssignmentsUpdated = syncResult.assignmentsUpdated;
+    refreshTruncated =
+      syncResult.truncated || refreshWindowStart > opts.startIso;
   }
 
   // Consultant/SAS profiles we're prepared to promote.
@@ -171,6 +221,9 @@ export async function runTutorialBackfill(opts: {
   const result: TutorialBackfillResult = {
     windowStart: opts.startIso,
     windowEnd: opts.endIso,
+    refreshWindowStart,
+    refreshWindowEnd,
+    refreshTruncated,
     sourceRowsRefreshed,
     sourceAssignmentsInserted,
     sourceAssignmentsUpdated,
