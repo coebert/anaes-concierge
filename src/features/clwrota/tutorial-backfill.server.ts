@@ -221,6 +221,9 @@ export async function runTutorialBackfill(opts: {
   const result: TutorialBackfillResult = {
     windowStart: opts.startIso,
     windowEnd: opts.endIso,
+    refreshWindowStart,
+    refreshWindowEnd,
+    refreshTruncated,
     sourceRowsRefreshed,
     sourceAssignmentsInserted,
     sourceAssignmentsUpdated,
