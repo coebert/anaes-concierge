@@ -1965,7 +1965,8 @@ export async function performRotaSyncChunked(
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
   type RotaResult = Awaited<ReturnType<typeof performRotaSync>>;
-  const agg: RotaResult & { slices: number } = {
+  const agg: RotaResult & { slices: number; truncated: boolean } = {
+    truncated: false,
     ok: true,
     message: "",
     total: 0,
