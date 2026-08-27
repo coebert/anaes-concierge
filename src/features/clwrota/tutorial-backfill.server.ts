@@ -97,6 +97,11 @@ async function refreshSourceRowsInSlices(opts: {
 export type TutorialBackfillResult = {
   windowStart: string;
   windowEnd: string;
+  /** Sub-window of [windowStart..windowEnd] that was re-fetched from CLWRota. */
+  refreshWindowStart: string | null;
+  refreshWindowEnd: string | null;
+  /** True when the CLWRota refresh was capped and did not cover the whole window. */
+  refreshTruncated: boolean;
   sourceRowsRefreshed: number;
   sourceAssignmentsInserted: number;
   sourceAssignmentsUpdated: number;
