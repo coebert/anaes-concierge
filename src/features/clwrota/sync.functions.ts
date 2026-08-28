@@ -1946,7 +1946,13 @@ export async function performRotaSyncChunked(
   } = {},
 ): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number; truncated: boolean }> {
   const sliceDays = Math.max(1, opts.sliceDays ?? 30);
-  const maxSlices = Math.max(1, opts.maxSlices ?? 3);
+  // One upstream fetch per Worker invocation by default: every slice
+  // re-downloads and re-parses the full CLWRota payload, and doing several
+  // in one request trips the Worker memory guard (502 "Worker exceeded
+  // memory limit"). When the cap is smaller than the number of slices
+  // needed to cover the window, the starting slice rotates by UTC day so
+  // consecutive daily runs still walk the whole window.
+  const maxSlices = Math.max(1, opts.maxSlices ?? 1);
 
   const { data: settings } = await supabaseAdmin
     .from("clwrota_sync_state")
@@ -1996,7 +2002,17 @@ export async function performRotaSyncChunked(
   const unmatchedT = new Set<string>();
   const unmatchedS = new Set<string>();
 
-  for (let cursor = new Date(start); cursor <= end; ) {
+  const totalSlices = Math.max(
+    1,
+    Math.ceil((end.getTime() - start.getTime()) / (sliceDays * 86_400_000)) + 1,
+  );
+  const dayIndex = Math.floor(today.getTime() / 86_400_000);
+  const startSlice = maxSlices < totalSlices ? dayIndex % totalSlices : 0;
+  const rotatedStart = new Date(start);
+  rotatedStart.setUTCDate(rotatedStart.getUTCDate() + startSlice * sliceDays);
+  if (rotatedStart > end) rotatedStart.setTime(start.getTime());
+
+  for (let cursor = new Date(rotatedStart); cursor <= end; ) {
     if (agg.slices >= maxSlices) {
       agg.truncated = true;
       console.warn(

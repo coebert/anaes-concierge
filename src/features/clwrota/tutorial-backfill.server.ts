@@ -47,7 +47,7 @@ function formatIsoDate(date: Date): string {
  * blows the Worker limits. Slices are wide (28d) and capped (`maxSlices`).
  */
 const DEFAULT_REFRESH_SLICE_DAYS = 28;
-const DEFAULT_MAX_REFRESH_SLICES = 3;
+const DEFAULT_MAX_REFRESH_SLICES = 1;
 
 async function refreshSourceRowsInSlices(opts: {
   startIso: string;
