@@ -13,7 +13,7 @@ import { verifyTutorialWindow } from "./tutorial-verify.server";
 
 const DAY_MS = 86_400_000;
 const DEFAULT_SLICE_DAYS = 28;
-const DEFAULT_MAX_SLICES = 3;
+const DEFAULT_MAX_SLICES = 1;
 const LEASE_MINUTES = 20;
 const FAILURE_LIMIT = 3;
 const PASS_INTERVAL_DAYS = 7;
@@ -41,7 +41,7 @@ export async function runWeeklyTutorialAuditJob(opts?: {
   sliceDays?: number;
   force?: boolean;
 }): Promise<WeeklyTutorialJobResult> {
-  const maxSlices = Math.min(12, Math.max(1, opts?.maxSlices ?? DEFAULT_MAX_SLICES));
+  const maxSlices = Math.min(1, Math.max(1, opts?.maxSlices ?? DEFAULT_MAX_SLICES));
   const sliceDays = Math.min(90, Math.max(7, opts?.sliceDays ?? DEFAULT_SLICE_DAYS));
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -129,6 +129,11 @@ export async function runWeeklyTutorialAuditJob(opts?: {
       const backfill = await runTutorialBackfill({
         startIso: sliceStart,
         endIso: sliceEnd,
+        // One upstream CLWRota fetch per slice — nesting the backfill's own
+        // multi-slice refresh inside this loop is what blew the Worker
+        // memory budget (maxSlices x refresh slices full payloads).
+        sliceDays,
+        maxSlices: 1,
       });
       const verify = await verifyTutorialWindow({
         startIso: sliceStart,

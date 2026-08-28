@@ -43,11 +43,11 @@ export const Route = createFileRoute("/api/public/hooks/tutorial-backfill")({
 
         const days = Math.min(
           365,
-          Math.max(1, Number(params.get("days")) || 30),
+          Math.max(1, Number(params.get("days")) || 14),
         );
         const ahead = Math.min(
           365,
-          Math.max(0, Number(params.get("ahead")) || 30),
+          Math.max(0, Number(params.get("ahead")) || 14),
         );
         const startIso = from ?? isoOffsetDays(-days);
         const endIso = to ?? isoOffsetDays(ahead);
@@ -64,7 +64,15 @@ export const Route = createFileRoute("/api/public/hooks/tutorial-backfill")({
           const { runTutorialBackfill } = await import(
             "@/features/clwrota/tutorial-backfill.server"
           );
-          const result = await runTutorialBackfill({ startIso, endIso, dryRun });
+          // One upstream CLWRota download per invocation keeps the Worker
+          // inside its memory budget; the detection re-scan still covers the
+          // whole requested window from rows already in the database.
+          const result = await runTutorialBackfill({
+            startIso,
+            endIso,
+            dryRun,
+            maxSlices: 1,
+          });
           return new Response(JSON.stringify({ ok: true, ...result }), {
             headers: { "Content-Type": "application/json" },
           });

@@ -76,7 +76,7 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
         const sliceDays = sliceParam ? Math.max(1, Number(sliceParam) || 30) : undefined;
         const maxSlicesParam = params.get("maxSlices");
         const maxSlices = maxSlicesParam
-          ? Math.max(1, Math.min(6, Number(maxSlicesParam) || 3))
+          ? Math.max(1, Math.min(1, Number(maxSlicesParam) || 1))
           : undefined;
         // Rota mode:
         //   `mode=full`        — chunked pass over the whole configured window.
