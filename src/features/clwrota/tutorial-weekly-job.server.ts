@@ -41,7 +41,7 @@ export async function runWeeklyTutorialAuditJob(opts?: {
   sliceDays?: number;
   force?: boolean;
 }): Promise<WeeklyTutorialJobResult> {
-  const maxSlices = Math.min(2, Math.max(1, opts?.maxSlices ?? DEFAULT_MAX_SLICES));
+  const maxSlices = Math.min(1, Math.max(1, opts?.maxSlices ?? DEFAULT_MAX_SLICES));
   const sliceDays = Math.min(90, Math.max(7, opts?.sliceDays ?? DEFAULT_SLICE_DAYS));
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
