@@ -1105,6 +1105,23 @@ export async function performRotaSync(
       const isTutorial = looksLikeTutorialLabel(tutorialLabels);
       const dutyType: ResolvedDutyType = isTutorial ? "teaching" : classifiedDutyType;
 
+      // PA value recorded by CLWRota for this row (null → the ICU audit
+      // falls back to deriving PAs from the department rota rules), plus
+      // every consultant/SAS doctor named on the row. ICU rows frequently
+      // list several consultants in the slot text; storing all of them lets
+      // the audit credit each attending consultant accurately.
+      const paCredit = parsePaCredit(row);
+      const attendingIds = new Set<string>();
+      if (prof?.grade === "consultant" || prof?.grade === "sas") {
+        attendingIds.add(staffId);
+      }
+      for (const fragment of splitPersonNames(consultantName)) {
+        const match = matchConsultantName(fragment);
+        if (!match) continue;
+        const g = profById.get(match)?.grade;
+        if (g === "consultant" || g === "sas") attendingIds.add(match);
+      }
+
       // Validation: any CLWRota row whose free-text labels clearly describe
       // a Medical Examiner session ("medical examiner", "ME session") must
       // map to duty_type='medical_examiner'. If it didn't, the ME mapping
