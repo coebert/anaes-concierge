@@ -143,6 +143,25 @@ export async function verifyIcuWindow(opts: {
 
   const icuTypes = new Set<string>(ICU_DUTY_TYPES);
   const source = new Map<string, IcuSessionKey>();
+  // Traceability: the CLWRota record that produced each detected ICU session.
+  type Evidence = {
+    staffId: string;
+    session_date: string;
+    session: string;
+    dutyType: string;
+    clwrotaExternalId: string | null;
+    matchedField: string | null;
+    matchedValue: string | null;
+    placeName: string | null;
+    slotTitles: string | null;
+    roleLabel: string | null;
+    personLabel: string | null;
+    paCredit: number | null;
+    attendees: string[];
+    sourceRow: Record<string, unknown>;
+  };
+  const evidence = new Map<string, Evidence>();
+
 
   for (const row of rows) {
     const session_date = normaliseDate(
