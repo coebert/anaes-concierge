@@ -66,7 +66,6 @@ export interface ReportSection {
     labels: string[];
     datasets: Array<{ label: string; data: number[] }>;
   };
-  chartUrl?: string;
 }
 
 export interface ReportOutput {
@@ -208,14 +207,9 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
                 ))}
               </ul>
             )}
-            {s.chartUrl && (
-              <div className="mt-3 overflow-hidden rounded-md border bg-white p-2">
-                <img
-                  src={s.chartUrl}
-                  alt={s.chart?.title ?? s.heading}
-                  className="mx-auto block h-auto max-w-full"
-                  loading="lazy"
-                />
+            {s.chart && s.chart.labels.length > 0 && (
+              <div className="mt-3 overflow-hidden rounded-md border p-2">
+                <ReportChart chart={s.chart} />
               </div>
             )}
           </section>
@@ -249,22 +243,6 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
       </div>
     </div>
   );
-}
-
-async function fetchImageAsDataUrl(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
 }
 
 async function downloadReportPdf(report: ReportOutput) {
@@ -346,20 +324,20 @@ async function downloadReportPdf(report: ReportOutput) {
     writeHeading(s.heading, 3);
     if (s.prose) writeWrapped(s.prose);
     if (s.bullets && s.bullets.length) writeBullets(s.bullets);
-    if (s.chartUrl) {
-      const dataUrl = await fetchImageAsDataUrl(s.chartUrl);
-      if (dataUrl) {
-        // QuickChart returns 720x380 by default; preserve aspect ratio.
-        const imgWidth = contentWidth;
-        const imgHeight = imgWidth * (380 / 720);
-        ensureSpace(imgHeight + 8);
-        try {
-          doc.addImage(dataUrl, "PNG", marginX, y, imgWidth, imgHeight);
-          y += imgHeight + 10;
-        } catch {
-          writeWrapped("[Chart could not be embedded]", { size: 9, color: [180, 0, 0] });
-        }
+    if (s.chart && s.chart.labels.length > 0) {
+      // Charts are summarised as values in the PDF so no report data is sent
+      // to an external image-rendering service.
+      if (s.chart.title) {
+        writeWrapped(s.chart.title, { size: 10, bold: true, gap: 4 });
       }
+      const lines: string[] = [];
+      s.chart.labels.forEach((label, li) => {
+        const parts = s.chart!.datasets.map(
+          (ds) => `${ds.label}: ${ds.data[li] ?? "-"}`,
+        );
+        lines.push(`${label} — ${parts.join(", ")}`);
+      });
+      writeBullets(lines);
     }
   }
 
