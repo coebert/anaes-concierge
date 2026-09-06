@@ -781,6 +781,55 @@ export async function performRotaSync(
       nameByStaffId.set(p.id, p.full_name ?? p.email ?? p.id);
     }
 
+    // Relaxed name matching for the multi-consultant slot text CLWRota puts
+    // on ICU rows (e.g. "Dr Hogan & Dr Coe"). The slot rarely repeats the
+    // full stored name, so fall back to a normalised token match and finally
+    // to a surname-only match when that surname is unique in the department.
+    const normalisePersonToken = (raw: string) =>
+      raw
+        .toLowerCase()
+        .replace(/^(dr|mr|mrs|ms|miss|prof)\.?\s+/, "")
+        .replace(/[^a-z\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const profByNormalised = new Map<string, string>();
+    const profBySurname = new Map<string, string | null>(); // null = ambiguous
+    for (const p of profiles ?? []) {
+      if (!p.full_name) continue;
+      const norm = normalisePersonToken(p.full_name);
+      if (norm && !profByNormalised.has(norm)) profByNormalised.set(norm, p.id);
+      const parts = norm.split(" ").filter(Boolean);
+      const surname = parts[parts.length - 1];
+      if (surname) {
+        if (!profBySurname.has(surname)) profBySurname.set(surname, p.id);
+        else if (profBySurname.get(surname) !== p.id) profBySurname.set(surname, null);
+      }
+    }
+    const matchConsultantName = (raw: string): string | undefined => {
+      const direct = profByName.get(raw.toLowerCase().trim());
+      if (direct) return direct;
+      const norm = normalisePersonToken(raw);
+      if (!norm) return undefined;
+      const byNorm = profByNormalised.get(norm);
+      if (byNorm) return byNorm;
+      const parts = norm.split(" ").filter(Boolean);
+      const surname = parts[parts.length - 1];
+      if (!surname) return undefined;
+      // "J Hogan" style: surname + matching first initial wins over a bare
+      // surname when several people share it.
+      if (parts.length > 1) {
+        const initial = parts[0][0];
+        const candidates = (profiles ?? []).filter((p) => {
+          if (!p.full_name) return false;
+          const n = normalisePersonToken(p.full_name);
+          const np = n.split(" ").filter(Boolean);
+          return np[np.length - 1] === surname && np[0]?.startsWith(initial);
+        });
+        if (candidates.length === 1) return candidates[0].id;
+      }
+      return profBySurname.get(surname) ?? undefined;
+    };
+
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
     // Merge admin-configured aliases so the same lookup chain (exact match,
