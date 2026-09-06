@@ -66,7 +66,6 @@ export interface ReportSection {
     labels: string[];
     datasets: Array<{ label: string; data: number[] }>;
   };
-  chartUrl?: string;
 }
 
 export interface ReportOutput {
@@ -208,14 +207,9 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
                 ))}
               </ul>
             )}
-            {s.chartUrl && (
-              <div className="mt-3 overflow-hidden rounded-md border bg-white p-2">
-                <img
-                  src={s.chartUrl}
-                  alt={s.chart?.title ?? s.heading}
-                  className="mx-auto block h-auto max-w-full"
-                  loading="lazy"
-                />
+            {s.chart && s.chart.labels.length > 0 && (
+              <div className="mt-3 overflow-hidden rounded-md border p-2">
+                <ReportChart chart={s.chart} />
               </div>
             )}
           </section>
@@ -249,22 +243,6 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
       </div>
     </div>
   );
-}
-
-async function fetchImageAsDataUrl(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
 }
 
 async function downloadReportPdf(report: ReportOutput) {
@@ -346,20 +324,20 @@ async function downloadReportPdf(report: ReportOutput) {
     writeHeading(s.heading, 3);
     if (s.prose) writeWrapped(s.prose);
     if (s.bullets && s.bullets.length) writeBullets(s.bullets);
-    if (s.chartUrl) {
-      const dataUrl = await fetchImageAsDataUrl(s.chartUrl);
-      if (dataUrl) {
-        // QuickChart returns 720x380 by default; preserve aspect ratio.
-        const imgWidth = contentWidth;
-        const imgHeight = imgWidth * (380 / 720);
-        ensureSpace(imgHeight + 8);
-        try {
-          doc.addImage(dataUrl, "PNG", marginX, y, imgWidth, imgHeight);
-          y += imgHeight + 10;
-        } catch {
-          writeWrapped("[Chart could not be embedded]", { size: 9, color: [180, 0, 0] });
-        }
+    if (s.chart && s.chart.labels.length > 0) {
+      // Charts are summarised as values in the PDF so no report data is sent
+      // to an external image-rendering service.
+      if (s.chart.title) {
+        writeWrapped(s.chart.title, { size: 10, bold: true, gap: 4 });
       }
+      const lines: string[] = [];
+      s.chart.labels.forEach((label, li) => {
+        const parts = s.chart!.datasets.map(
+          (ds) => `${ds.label}: ${ds.data[li] ?? "-"}`,
+        );
+        lines.push(`${label} — ${parts.join(", ")}`);
+      });
+      writeBullets(lines);
     }
   }
 
@@ -870,4 +848,82 @@ export async function downloadAllPdf(reports: Array<{ id: string; output: RunSql
   });
 
   doc.save(`audit-reports-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+/**
+ * Renders a generated report chart entirely in the browser using the app's
+ * own charting components. No report data (staff names, workload or PA
+ * figures) is sent to any external chart-rendering service.
+ */
+function ReportChart({ chart }: { chart: NonNullable<ReportSection["chart"]> }) {
+  const rows = chart.labels.map((label, i) => {
+    const row: Record<string, unknown> = { label };
+    chart.datasets.forEach((ds) => {
+      row[ds.label] = ds.data[i] ?? 0;
+    });
+    return row;
+  });
+
+  const config = Object.fromEntries(
+    chart.datasets.map((ds, i) => [ds.label, { label: ds.label, color: colorAt(i) }]),
+  );
+
+  const isPie = chart.type === "pie" || chart.type === "doughnut";
+  const height = isPie ? 320 : 300;
+
+  return (
+    <div className="space-y-2">
+      {chart.title && (
+        <div className="text-sm font-medium text-foreground">{chart.title}</div>
+      )}
+      <ChartContainer config={config} className="w-full" style={{ height }}>
+        {isPie ? (
+          <PieChart>
+            <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
+            <Pie
+              data={rows}
+              dataKey={chart.datasets[0]?.label ?? "value"}
+              nameKey="label"
+              innerRadius={chart.type === "doughnut" ? 60 : 0}
+              outerRadius={110}
+            >
+              {rows.map((_, i) => (
+                <Cell key={i} fill={colorAt(i)} />
+              ))}
+            </Pie>
+            <Legend />
+          </PieChart>
+        ) : chart.type === "line" ? (
+          <AreaChart data={rows} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} />
+            <YAxis tickFormatter={formatTick} tickLine={false} axisLine={false} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            {chart.datasets.length > 1 && <Legend />}
+            {chart.datasets.map((ds, i) => (
+              <Area
+                key={ds.label}
+                type="monotone"
+                dataKey={ds.label}
+                stroke={colorAt(i)}
+                fill={colorAt(i)}
+                fillOpacity={0.2}
+              />
+            ))}
+          </AreaChart>
+        ) : (
+          <BarChart data={rows} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} />
+            <YAxis tickFormatter={formatTick} tickLine={false} axisLine={false} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            {chart.datasets.length > 1 && <Legend />}
+            {chart.datasets.map((ds, i) => (
+              <Bar key={ds.label} dataKey={ds.label} fill={colorAt(i)} radius={[4, 4, 0, 0]} />
+            ))}
+          </BarChart>
+        )}
+      </ChartContainer>
+    </div>
+  );
 }
