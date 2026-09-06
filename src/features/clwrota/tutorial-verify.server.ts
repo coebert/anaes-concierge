@@ -106,6 +106,7 @@ export async function verifyTutorialWindow(opts: {
   const text = await fetchReportRaw(
     windowedUrl || clampDateWindow(withFields, { daysBack: 0, daysAhead: 365 }),
     apiKey,
+    { extendFutureWindow: false },
   );
   const { rows } = parseRows(text);
 

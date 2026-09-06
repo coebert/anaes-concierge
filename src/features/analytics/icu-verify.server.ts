@@ -196,7 +196,7 @@ export async function verifyIcuWindow(opts: {
     opts.startIso,
     opts.endIso,
   );
-  const text = await fetchReportRaw(windowedUrl, apiKey);
+  const text = await fetchReportRaw(windowedUrl, apiKey, { extendFutureWindow: false });
   const { rows } = parseRows(text);
 
   const icuTypes = new Set<string>(ICU_DUTY_TYPES);

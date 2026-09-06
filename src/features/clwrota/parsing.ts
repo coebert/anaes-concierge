@@ -228,9 +228,16 @@ export function dropReportField(url: string, field: string): string | null {
 export async function fetchReportRaw(
   url: string,
   apiKey: string,
-  { maxAttempts = 4, baseDelayMs = 1000 }: { maxAttempts?: number; baseDelayMs?: number } = {},
+  {
+    maxAttempts = 4,
+    baseDelayMs = 1000,
+    extendFutureWindow = true,
+  }: { maxAttempts?: number; baseDelayMs?: number; extendFutureWindow?: boolean } = {},
 ): Promise<string> {
-  let effectiveUrl = withRollingFutureWindow(url);
+  // Callers that already asked for an explicit, bounded window (sliced syncs,
+  // audits) must opt out of the rolling extension — otherwise a 3-day slice is
+  // silently widened to 12 months and the worker runs out of memory.
+  let effectiveUrl = extendFutureWindow ? withRollingFutureWindow(url) : url;
   let lastErr: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
