@@ -1,0 +1,1 @@
+revoke all on function public.enforce_recognition_update_rules() from public, anon, authenticated;
