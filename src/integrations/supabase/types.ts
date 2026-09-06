@@ -912,6 +912,104 @@ export type Database = {
           },
         ]
       }
+      icu_detection_matches: {
+        Row: {
+          assignment_id: string | null
+          attending_consultant_ids: string[]
+          clwrota_external_id: string | null
+          created_at: string
+          detected_at: string
+          detected_by: string
+          duty_type: Database["public"]["Enums"]["duty_type"] | null
+          id: string
+          matched_field: string | null
+          matched_value: string | null
+          pa_credit: number | null
+          person_label: string | null
+          place_name: string | null
+          role_label: string | null
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          slot_titles: string | null
+          source_row: Json
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id?: string | null
+          attending_consultant_ids?: string[]
+          clwrota_external_id?: string | null
+          created_at?: string
+          detected_at?: string
+          detected_by?: string
+          duty_type?: Database["public"]["Enums"]["duty_type"] | null
+          id?: string
+          matched_field?: string | null
+          matched_value?: string | null
+          pa_credit?: number | null
+          person_label?: string | null
+          place_name?: string | null
+          role_label?: string | null
+          session: Database["public"]["Enums"]["session_half"]
+          session_date: string
+          slot_titles?: string | null
+          source_row?: Json
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string | null
+          attending_consultant_ids?: string[]
+          clwrota_external_id?: string | null
+          created_at?: string
+          detected_at?: string
+          detected_by?: string
+          duty_type?: Database["public"]["Enums"]["duty_type"] | null
+          id?: string
+          matched_field?: string | null
+          matched_value?: string | null
+          pa_credit?: number | null
+          person_label?: string | null
+          place_name?: string | null
+          role_label?: string | null
+          session?: Database["public"]["Enums"]["session_half"]
+          session_date?: string
+          slot_titles?: string | null
+          source_row?: Json
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icu_detection_matches_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "rota_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icu_detection_matches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icu_detection_matches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_admin_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "icu_detection_matches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_v"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbox_dismissals: {
         Row: {
           dismissed_at: string
