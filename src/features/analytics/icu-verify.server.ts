@@ -245,10 +245,11 @@ export async function verifyIcuWindow(opts: {
     session_date: string;
     session: string;
     duty_type: string;
+    attending_consultant_ids: string[] | null;
   }>(() =>
     supabaseAdmin
       .from("rota_assignments")
-      .select("staff_id,session_date,session,duty_type")
+      .select("staff_id,session_date,session,duty_type,attending_consultant_ids")
       .gte("session_date", opts.startIso)
       .lte("session_date", opts.endIso)
       .in("duty_type", [...ICU_DUTY_TYPES])
@@ -259,17 +260,26 @@ export async function verifyIcuWindow(opts: {
   const audit = new Map<string, IcuSessionKey>();
   for (const r of auditRows) {
     if (!nameById.has(r.staff_id)) continue; // non consultant/SAS — out of scope
-    const key = `${r.staff_id}|${r.session_date}|${r.session}`;
-    if (audit.has(key)) continue;
-    audit.set(key, {
-      key,
-      staffId: r.staff_id,
-      staffName: nameById.get(r.staff_id) ?? r.staff_id,
-      session_date: r.session_date,
-      session: r.session,
-      dutyType: r.duty_type,
-      label: null,
-    });
+    // Credit every attending consultant stored on the row, exactly as the
+    // ICU audit tally does, so the comparison is apples-to-apples.
+    const credited =
+      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
+        ? r.attending_consultant_ids
+        : [r.staff_id];
+    for (const id of credited) {
+      if (!nameById.has(id)) continue;
+      const key = `${id}|${r.session_date}|${r.session}`;
+      if (audit.has(key)) continue;
+      audit.set(key, {
+        key,
+        staffId: id,
+        staffName: nameById.get(id) ?? id,
+        session_date: r.session_date,
+        session: r.session,
+        dutyType: r.duty_type,
+        label: null,
+      });
+    }
   }
 
   const missingFromAudit = [...source.values()]
