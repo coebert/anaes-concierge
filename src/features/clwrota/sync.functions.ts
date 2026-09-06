@@ -1937,22 +1937,21 @@ export async function performRotaSyncChunked(
     sliceDays?: number;
     /**
      * Hard cap on the number of slices processed in a single invocation.
-     * Each slice re-fetches and re-parses the full upstream payload (CLWRota
-     * ignores the date window), so an unbounded loop repeatedly allocates a
-     * multi-megabyte string + row array and trips the Worker memory limit
-     * (502 "Worker exceeded memory limit"). Default 3.
+     * CLWRota honours `start_date`/`end_date`, so a short slice downloads a
+     * correspondingly small payload. Several short slices therefore fit in
+     * one Worker invocation where a single wide slice does not. Default 4
+     * slices of 7 days = 28 days per run.
      */
     maxSlices?: number;
   } = {},
 ): Promise<Awaited<ReturnType<typeof performRotaSync>> & { slices: number; truncated: boolean }> {
-  const sliceDays = Math.max(1, opts.sliceDays ?? 30);
-  // One upstream fetch per Worker invocation by default: every slice
-  // re-downloads and re-parses the full CLWRota payload, and doing several
-  // in one request trips the Worker memory guard (502 "Worker exceeded
-  // memory limit"). When the cap is smaller than the number of slices
-  // needed to cover the window, the starting slice rotates by UTC day so
-  // consecutive daily runs still walk the whole window.
-  const maxSlices = Math.max(1, opts.maxSlices ?? 1);
+  // Small daily-scale slices keep each upstream download (and the parsed row
+  // array it produces) well inside the Worker memory budget. The window is
+  // covered gradually: each run walks `maxSlices` consecutive slices and
+  // successive runs continue where the previous rotation left off.
+  const sliceDays = Math.max(1, Math.min(14, opts.sliceDays ?? 7));
+  const maxSlices = Math.max(1, Math.min(6, opts.maxSlices ?? 4));
+
 
   const { data: settings } = await supabaseAdmin
     .from("clwrota_sync_state")
@@ -2009,26 +2008,29 @@ export async function performRotaSyncChunked(
     Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
   const totalSlices = Math.max(1, Math.ceil(totalDays / sliceDays));
   const dayIndex = Math.floor(today.getTime() / 86_400_000);
-  const startSlice = maxSlices < totalSlices ? dayIndex % totalSlices : 0;
-  const rotatedStart = new Date(start);
-  rotatedStart.setUTCDate(rotatedStart.getUTCDate() + startSlice * sliceDays);
-  if (rotatedStart > end) rotatedStart.setTime(start.getTime());
+  // Each run consumes `maxSlices` consecutive slices, so the next run must
+  // start `maxSlices` further along — otherwise consecutive days re-sync
+  // overlapping ranges and the far end of the window is never reached.
+  const startSlice =
+    maxSlices < totalSlices ? (dayIndex * maxSlices) % totalSlices : 0;
 
 
-  for (let cursor = new Date(rotatedStart); cursor <= end; ) {
-    if (agg.slices >= maxSlices) {
-      agg.truncated = true;
-      console.warn(
-        `[clwrota] chunked rota sync stopped at maxSlices=${maxSlices} (remaining window from ${fmt(cursor)})`,
-      );
-      break;
-    }
+
+  // Walk `maxSlices` consecutive slices, wrapping back to the first slice
+  // when the run reaches the end of the window, so every invocation does a
+  // full slice budget of useful work.
+  for (let k = 0; k < maxSlices; k += 1) {
+    const sliceIndex = (startSlice + k) % totalSlices;
+    const cursor = new Date(start);
+    cursor.setUTCDate(cursor.getUTCDate() + sliceIndex * sliceDays);
+    if (cursor > end) break;
     const sliceEnd = new Date(cursor);
     sliceEnd.setUTCDate(sliceEnd.getUTCDate() + sliceDays - 1);
     if (sliceEnd > end) sliceEnd.setTime(end.getTime());
     const from = fmt(cursor);
     const to = fmt(sliceEnd);
     agg.slices += 1;
+
     try {
       const r = await performRotaSync({ from, to });
       agg.total += r.total;
@@ -2051,9 +2053,9 @@ export async function performRotaSyncChunked(
       agg.ok = false;
       console.error(`[clwrota] rota slice ${from}..${to} failed:`, msg);
     }
-    cursor = new Date(sliceEnd);
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
+  agg.truncated = agg.slices < totalSlices;
+
 
   agg.unmatchedTheatres = Array.from(unmatchedT);
   agg.unmatchedStaff = Array.from(unmatchedS);

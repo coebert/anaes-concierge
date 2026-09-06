@@ -72,12 +72,19 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           performLeaveSync,
         } = await import("@/features/clwrota/clwrota.functions");
 
+        // Slices are deliberately small (≤14 days) so each upstream download
+        // fits comfortably in the Worker's memory; several of them can then
+        // run per invocation and the full window builds up over successive
+        // runs.
         const sliceParam = params.get("sliceDays");
-        const sliceDays = sliceParam ? Math.max(1, Number(sliceParam) || 30) : undefined;
+        const sliceDays = sliceParam
+          ? Math.max(1, Math.min(14, Number(sliceParam) || 7))
+          : undefined;
         const maxSlicesParam = params.get("maxSlices");
         const maxSlices = maxSlicesParam
-          ? Math.max(1, Math.min(1, Number(maxSlicesParam) || 1))
+          ? Math.max(1, Math.min(6, Number(maxSlicesParam) || 4))
           : undefined;
+
         // Rota mode:
         //   `mode=full`        — chunked pass over the whole configured window.
         //                        Each slice re-fetches and re-parses the full
