@@ -31,6 +31,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedAdminAbsenceRouteImport } from './routes/_authenticated/admin.absence'
 import { Route as AuthenticatedAdminAccessRequestsRouteImport } from './routes/_authenticated/admin.access-requests'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
+import { Route as AuthenticatedAdminAppraisalYearRouteImport } from './routes/_authenticated/admin.appraisal-year'
 import { Route as AuthenticatedAdminAuditToolRouteImport } from './routes/_authenticated/admin.audit-tool'
 import { Route as AuthenticatedAdminClwrotaMetricsRouteImport } from './routes/_authenticated/admin.clwrota-metrics'
 import { Route as AuthenticatedAdminClwrotaStatusRouteImport } from './routes/_authenticated/admin.clwrota-status'
@@ -214,6 +215,12 @@ const AuthenticatedAdminAnalyticsRoute =
   AuthenticatedAdminAnalyticsRouteImport.update({
     id: '/admin/analytics',
     path: '/admin/analytics',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminAppraisalYearRoute =
+  AuthenticatedAdminAppraisalYearRouteImport.update({
+    id: '/admin/appraisal-year',
+    path: '/admin/appraisal-year',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminAuditToolRoute =
@@ -657,6 +664,7 @@ export interface FileRoutesByFullPath {
   '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRouteWithChildren
+  '/admin/appraisal-year': typeof AuthenticatedAdminAppraisalYearRoute
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
@@ -750,6 +758,7 @@ export interface FileRoutesByTo {
   '/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRouteWithChildren
+  '/admin/appraisal-year': typeof AuthenticatedAdminAppraisalYearRoute
   '/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
@@ -846,6 +855,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/absence': typeof AuthenticatedAdminAbsenceRoute
   '/_authenticated/admin/access-requests': typeof AuthenticatedAdminAccessRequestsRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRouteWithChildren
+  '/_authenticated/admin/appraisal-year': typeof AuthenticatedAdminAppraisalYearRoute
   '/_authenticated/admin/audit-tool': typeof AuthenticatedAdminAuditToolRoute
   '/_authenticated/admin/clwrota-metrics': typeof AuthenticatedAdminClwrotaMetricsRoute
   '/_authenticated/admin/clwrota-status': typeof AuthenticatedAdminClwrotaStatusRoute
@@ -942,6 +952,7 @@ export interface FileRouteTypes {
     | '/admin/absence'
     | '/admin/access-requests'
     | '/admin/analytics'
+    | '/admin/appraisal-year'
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
@@ -1035,6 +1046,7 @@ export interface FileRouteTypes {
     | '/admin/absence'
     | '/admin/access-requests'
     | '/admin/analytics'
+    | '/admin/appraisal-year'
     | '/admin/audit-tool'
     | '/admin/clwrota-metrics'
     | '/admin/clwrota-status'
@@ -1130,6 +1142,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/absence'
     | '/_authenticated/admin/access-requests'
     | '/_authenticated/admin/analytics'
+    | '/_authenticated/admin/appraisal-year'
     | '/_authenticated/admin/audit-tool'
     | '/_authenticated/admin/clwrota-metrics'
     | '/_authenticated/admin/clwrota-status'
@@ -1377,6 +1390,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/analytics'
       fullPath: '/admin/analytics'
       preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/appraisal-year': {
+      id: '/_authenticated/admin/appraisal-year'
+      path: '/admin/appraisal-year'
+      fullPath: '/admin/appraisal-year'
+      preLoaderRoute: typeof AuthenticatedAdminAppraisalYearRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/audit-tool': {
@@ -1997,6 +2017,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminAbsenceRoute: typeof AuthenticatedAdminAbsenceRoute
   AuthenticatedAdminAccessRequestsRoute: typeof AuthenticatedAdminAccessRequestsRoute
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRouteWithChildren
+  AuthenticatedAdminAppraisalYearRoute: typeof AuthenticatedAdminAppraisalYearRoute
   AuthenticatedAdminAuditToolRoute: typeof AuthenticatedAdminAuditToolRoute
   AuthenticatedAdminClwrotaMetricsRoute: typeof AuthenticatedAdminClwrotaMetricsRoute
   AuthenticatedAdminClwrotaStatusRoute: typeof AuthenticatedAdminClwrotaStatusRoute
@@ -2062,6 +2083,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminAccessRequestsRoute: AuthenticatedAdminAccessRequestsRoute,
   AuthenticatedAdminAnalyticsRoute:
     AuthenticatedAdminAnalyticsRouteWithChildren,
+  AuthenticatedAdminAppraisalYearRoute: AuthenticatedAdminAppraisalYearRoute,
   AuthenticatedAdminAuditToolRoute: AuthenticatedAdminAuditToolRoute,
   AuthenticatedAdminClwrotaMetricsRoute: AuthenticatedAdminClwrotaMetricsRoute,
   AuthenticatedAdminClwrotaStatusRoute: AuthenticatedAdminClwrotaStatusRoute,
