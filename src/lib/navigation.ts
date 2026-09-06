@@ -222,7 +222,12 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/icu-dashboard",
     icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
     keywords: ["icu", "intensive care", "critical care", "dashboard", "clwrota", "comparison", "count", "audit", "reconcile"] },
+  { id: "appraisal-year", label: "My appraisal year",
+    to: "/admin/appraisal-year",
+    icon: Activity, group: "analytics",
+    keywords: ["appraisal", "revalidation", "year", "april", "evidence", "icu", "intensive care", "specialty", "pa", "programmed activities", "gaps", "portfolio"] },
   { id: "icu-evidence", label: "My ICU evidence",
+
     to: "/admin/icu-evidence",
     icon: Activity, group: "analytics",
     keywords: ["icu", "intensive care", "my sessions", "evidence", "appraisal", "revalidation", "pa", "discrepancy", "consultant"] },
