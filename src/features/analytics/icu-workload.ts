@@ -115,6 +115,7 @@ export function tallyIcuWorkload(
     // rule-derived estimate below only covers rows without a stored value,
     // so a stored weekend PA is never double-counted by weekend_pa_credit.
     storedPa: number;
+    storedExtraPa: number;
     uAm: number;
     uPm: number;
     uOnCallDates: Set<string>;
@@ -136,6 +137,7 @@ export function tallyIcuWorkload(
         pm: 0,
         extraSessions: 0,
         storedPa: 0,
+        storedExtraPa: 0,
         uAm: 0,
         uPm: 0,
         uOnCallDates: new Set(),
@@ -167,7 +169,7 @@ export function tallyIcuWorkload(
       if (isExtraRow(r)) {
         a.extraDates.add(r.session_date);
         a.extraSessions += 1;
-        if (stored) a.storedPa += r.pa_credit as number;
+        if (stored) a.storedExtraPa += r.pa_credit as number;
         else a.uExtraSessions += 1;
         continue;
       }
@@ -206,9 +208,9 @@ export function tallyIcuWorkload(
         a.uOnCallDates.size * rules.oncall_pa_credit +
         a.uWeekendDates.size * rules.weekend_pa_credit,
     );
-    const extraPas = round2(a.uExtraSessions / sessionsPerPa);
+    const extraPas = round2(a.storedExtraPa + a.uExtraSessions / sessionsPerPa);
     const totalPas = round2(plannedPas + extraPas);
-    const clwrotaPas = round2(a.storedPa);
+    const clwrotaPas = round2(a.storedPa + a.storedExtraPa);
 
     out.push({
       staff_id,
