@@ -112,7 +112,7 @@ function IcuEvidencePage() {
   const { data: staffOptions } = useQuery({
     queryKey: ["icu-evidence-staff"],
     enabled: isCoordinator,
-    queryFn: () => staffFn({ data: {} }) as Promise<IcuEvidenceStaffOption[]>,
+    queryFn: () => staffFn() as Promise<IcuEvidenceStaffOption[]>,
   });
 
   const evidenceFn = useServerFn(getIcuConsultantEvidence);
