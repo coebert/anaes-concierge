@@ -68,6 +68,12 @@ function IcuDashboardPage() {
       compareFn({ data: r }) as Promise<IcuVerifyResult>,
   });
 
+  const tracesFn = useServerFn(listIcuTraces);
+  const traces = useMutation({
+    mutationFn: (r: { startIso: string; endIso: string }) =>
+      tracesFn({ data: r }) as Promise<IcuTraceRow[]>,
+  });
+
   const invalidRange = startIso > endIso;
   const result = compare.data;
 
@@ -76,7 +82,9 @@ function IcuDashboardPage() {
     setEndIso(to);
     setRange({ startIso: from, endIso: to });
     compare.reset();
+    traces.reset();
   };
+
 
   return (
     <div className="space-y-6 p-4 md:p-6" data-testid="icu-dashboard">
