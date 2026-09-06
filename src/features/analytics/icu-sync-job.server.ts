@@ -32,6 +32,7 @@ export type IcuSyncJobResult = {
   slicesProcessed: number;
   windows: { start: string; end: string; sourceCount: number; auditCount: number }[];
   cursor: string | null;
+  futureCursor: string | null;
   windowStart: string;
   windowEnd: string;
 };
@@ -68,6 +69,7 @@ export async function runIcuSyncJob(opts?: {
       slicesProcessed: 0,
       windows: [],
       cursor: state.cursor_start ?? null,
+      futureCursor: (state as { future_cursor_start?: string | null }).future_cursor_start ?? null,
       windowStart,
       windowEnd,
     };
@@ -76,16 +78,28 @@ export async function runIcuSyncJob(opts?: {
   let cursor = state.cursor_start as string | null;
   if (!cursor || cursor < windowStart || cursor > windowEnd) cursor = windowStart;
 
+  // A second, forward-only cursor sweeps today -> windowEnd continuously and
+  // wraps back to today. It gets the FIRST slice of every run, so upcoming
+  // dates are re-checked as soon as they land on CLWRota instead of waiting
+  // for the slow historical rotation to come round.
+  let futureCursor = (state as { future_cursor_start?: string | null })
+    .future_cursor_start as string | null;
+  if (!futureCursor || futureCursor < today || futureCursor > windowEnd) {
+    futureCursor = today;
+  }
+
   const { verifyIcuWindow } = await import("./icu-verify.server");
   const windows: IcuSyncJobResult["windows"] = [];
   let lastError: string | null = null;
 
   for (let i = 0; i < maxSlices; i++) {
-    const sliceStart = cursor;
+    const forward = i === 0;
+    const sliceStart = forward ? futureCursor : cursor;
     const remaining = daysBetween(sliceStart, windowEnd);
     if (remaining < 0) {
-      cursor = windowStart;
-      break;
+      if (forward) futureCursor = today;
+      else cursor = windowStart;
+      continue;
     }
     const sliceEnd = addDays(sliceStart, Math.min(sliceDays - 1, remaining));
     const startedAt = Date.now();
@@ -120,13 +134,18 @@ export async function runIcuSyncJob(opts?: {
       break;
     }
 
-    cursor = sliceEnd >= windowEnd ? windowStart : addDays(sliceEnd, 1);
+    if (forward) {
+      futureCursor = sliceEnd >= windowEnd ? today : addDays(sliceEnd, 1);
+    } else {
+      cursor = sliceEnd >= windowEnd ? windowStart : addDays(sliceEnd, 1);
+    }
   }
 
   await supabaseAdmin
     .from("icu_sync_state")
     .update({
       cursor_start: cursor,
+      future_cursor_start: futureCursor,
       slice_days: sliceDays,
       last_run_at: new Date().toISOString(),
       last_error: lastError,
@@ -134,6 +153,7 @@ export async function runIcuSyncJob(opts?: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
+
 
   if (lastError) {
     return {
@@ -145,6 +165,7 @@ export async function runIcuSyncJob(opts?: {
       slicesProcessed: windows.length,
       windows,
       cursor,
+      futureCursor,
       windowStart,
       windowEnd,
     };
@@ -156,6 +177,7 @@ export async function runIcuSyncJob(opts?: {
     slicesProcessed: windows.length,
     windows,
     cursor,
+    futureCursor,
     windowStart,
     windowEnd,
   };

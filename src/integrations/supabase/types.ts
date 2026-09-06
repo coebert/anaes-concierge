@@ -1161,6 +1161,7 @@ export type Database = {
           days_ahead: number
           days_back: number
           enabled: boolean
+          future_cursor_start: string | null
           id: number
           last_error: string | null
           last_run_at: string | null
@@ -1174,6 +1175,7 @@ export type Database = {
           days_ahead?: number
           days_back?: number
           enabled?: boolean
+          future_cursor_start?: string | null
           id?: number
           last_error?: string | null
           last_run_at?: string | null
@@ -1187,6 +1189,7 @@ export type Database = {
           days_ahead?: number
           days_back?: number
           enabled?: boolean
+          future_cursor_start?: string | null
           id?: number
           last_error?: string | null
           last_run_at?: string | null
