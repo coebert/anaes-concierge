@@ -174,22 +174,30 @@ export function tallyIcuWorkload(
         continue;
       }
 
+      const weekend = isWeekendISO(r.session_date);
       if (isDaytimeHalf(r.session)) {
         a.dayDates.add(r.session_date);
         if (r.session === "am") a.am += 1;
         else a.pm += 1;
         if (stored) a.storedPa += r.pa_credit as number;
-        else if (r.session === "am") a.uAm += 1;
-        else a.uPm += 1;
+        // On a weekend the weekend credit REPLACES the per-session credit
+        // (a weekend day is worth weekend_pa_credit, not sessions + weekend),
+        // so only weekday sessions feed the session-based estimate.
+        else if (!weekend) {
+          if (r.session === "am") a.uAm += 1;
+          else a.uPm += 1;
+        }
       } else if (isOnCallHalf(r.session)) {
         a.onCallDates.add(r.session_date);
         if (stored) a.storedPa += r.pa_credit as number;
-        else a.uOnCallDates.add(r.session_date);
+        // Likewise a weekend on-call is worth weekend_pa_credit only,
+        // not oncall_pa_credit + weekend_pa_credit.
+        else if (!weekend) a.uOnCallDates.add(r.session_date);
       } else {
         continue;
       }
 
-      if (isWeekendISO(r.session_date)) {
+      if (weekend) {
         a.weekendDates.add(r.session_date);
         if (!stored) a.uWeekendDates.add(r.session_date);
       }
