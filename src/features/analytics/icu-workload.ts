@@ -201,11 +201,14 @@ export function tallyIcuWorkload(
     const weekendDays = a.weekendDates.size;
 
     const plannedPas = round2(
-      sessions / sessionsPerPa +
-        onCalls * rules.oncall_pa_credit +
-        weekendDays * rules.weekend_pa_credit,
+      a.storedPa +
+        (a.uAm + a.uPm) / sessionsPerPa +
+        a.uOnCallDates.size * rules.oncall_pa_credit +
+        a.uWeekendDates.size * rules.weekend_pa_credit,
     );
-    const extraPas = round2(a.extraSessions / sessionsPerPa);
+    const extraPas = round2(a.uExtraSessions / sessionsPerPa);
+    const totalPas = round2(plannedPas + extraPas);
+    const clwrotaPas = round2(a.storedPa);
 
     out.push({
       staff_id,
@@ -219,7 +222,9 @@ export function tallyIcuWorkload(
       extraSessions: a.extraSessions,
       plannedPas,
       extraPas,
-      totalPas: round2(plannedPas + extraPas),
+      totalPas,
+      clwrotaPas,
+      estimatedPas: round2(totalPas - clwrotaPas),
       dates: Array.from(a.allDates).sort(),
     });
   }
