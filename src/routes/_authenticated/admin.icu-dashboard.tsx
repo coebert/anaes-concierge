@@ -96,6 +96,10 @@ function IcuDashboardPage() {
         </p>
       </header>
 
+      <IcuFeedCard startIso={range.startIso} endIso={range.endIso} />
+
+
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Date range</CardTitle>
