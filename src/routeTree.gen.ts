@@ -40,6 +40,7 @@ import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminDutyCategoriesRouteImport } from './routes/_authenticated/admin.duty-categories'
 import { Route as AuthenticatedAdminDutyMappingsRouteImport } from './routes/_authenticated/admin.duty-mappings'
 import { Route as AuthenticatedAdminExceptionsRouteImport } from './routes/_authenticated/admin.exceptions'
+import { Route as AuthenticatedAdminIcuDashboardRouteImport } from './routes/_authenticated/admin.icu-dashboard'
 import { Route as AuthenticatedAdminIcuWorkloadRouteImport } from './routes/_authenticated/admin.icu-workload'
 import { Route as AuthenticatedAdminInboxRouteImport } from './routes/_authenticated/admin.inbox'
 import { Route as AuthenticatedAdminJobPlansRouteImport } from './routes/_authenticated/admin.job-plans'
@@ -261,6 +262,12 @@ const AuthenticatedAdminExceptionsRoute =
   AuthenticatedAdminExceptionsRouteImport.update({
     id: '/admin/exceptions',
     path: '/admin/exceptions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminIcuDashboardRoute =
+  AuthenticatedAdminIcuDashboardRouteImport.update({
+    id: '/admin/icu-dashboard',
+    path: '/admin/icu-dashboard',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminIcuWorkloadRoute =
@@ -618,6 +625,7 @@ export interface FileRoutesByFullPath {
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
+  '/admin/icu-dashboard': typeof AuthenticatedAdminIcuDashboardRoute
   '/admin/icu-workload': typeof AuthenticatedAdminIcuWorkloadRoute
   '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
@@ -704,6 +712,7 @@ export interface FileRoutesByTo {
   '/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
+  '/admin/icu-dashboard': typeof AuthenticatedAdminIcuDashboardRoute
   '/admin/icu-workload': typeof AuthenticatedAdminIcuWorkloadRoute
   '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
@@ -793,6 +802,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/duty-categories': typeof AuthenticatedAdminDutyCategoriesRoute
   '/_authenticated/admin/duty-mappings': typeof AuthenticatedAdminDutyMappingsRoute
   '/_authenticated/admin/exceptions': typeof AuthenticatedAdminExceptionsRoute
+  '/_authenticated/admin/icu-dashboard': typeof AuthenticatedAdminIcuDashboardRoute
   '/_authenticated/admin/icu-workload': typeof AuthenticatedAdminIcuWorkloadRoute
   '/_authenticated/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/_authenticated/admin/job-plans': typeof AuthenticatedAdminJobPlansRoute
@@ -882,6 +892,7 @@ export interface FileRouteTypes {
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
     | '/admin/exceptions'
+    | '/admin/icu-dashboard'
     | '/admin/icu-workload'
     | '/admin/inbox'
     | '/admin/job-plans'
@@ -968,6 +979,7 @@ export interface FileRouteTypes {
     | '/admin/duty-categories'
     | '/admin/duty-mappings'
     | '/admin/exceptions'
+    | '/admin/icu-dashboard'
     | '/admin/icu-workload'
     | '/admin/inbox'
     | '/admin/job-plans'
@@ -1056,6 +1068,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/duty-categories'
     | '/_authenticated/admin/duty-mappings'
     | '/_authenticated/admin/exceptions'
+    | '/_authenticated/admin/icu-dashboard'
     | '/_authenticated/admin/icu-workload'
     | '/_authenticated/admin/inbox'
     | '/_authenticated/admin/job-plans'
@@ -1348,6 +1361,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/exceptions'
       fullPath: '/admin/exceptions'
       preLoaderRoute: typeof AuthenticatedAdminExceptionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/icu-dashboard': {
+      id: '/_authenticated/admin/icu-dashboard'
+      path: '/admin/icu-dashboard'
+      fullPath: '/admin/icu-dashboard'
+      preLoaderRoute: typeof AuthenticatedAdminIcuDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/icu-workload': {
@@ -1865,6 +1885,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminDutyCategoriesRoute: typeof AuthenticatedAdminDutyCategoriesRoute
   AuthenticatedAdminDutyMappingsRoute: typeof AuthenticatedAdminDutyMappingsRoute
   AuthenticatedAdminExceptionsRoute: typeof AuthenticatedAdminExceptionsRoute
+  AuthenticatedAdminIcuDashboardRoute: typeof AuthenticatedAdminIcuDashboardRoute
   AuthenticatedAdminIcuWorkloadRoute: typeof AuthenticatedAdminIcuWorkloadRoute
   AuthenticatedAdminInboxRoute: typeof AuthenticatedAdminInboxRoute
   AuthenticatedAdminJobPlansRoute: typeof AuthenticatedAdminJobPlansRoute
@@ -1926,6 +1947,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminDutyCategoriesRoute: AuthenticatedAdminDutyCategoriesRoute,
   AuthenticatedAdminDutyMappingsRoute: AuthenticatedAdminDutyMappingsRoute,
   AuthenticatedAdminExceptionsRoute: AuthenticatedAdminExceptionsRoute,
+  AuthenticatedAdminIcuDashboardRoute: AuthenticatedAdminIcuDashboardRoute,
   AuthenticatedAdminIcuWorkloadRoute: AuthenticatedAdminIcuWorkloadRoute,
   AuthenticatedAdminInboxRoute: AuthenticatedAdminInboxRoute,
   AuthenticatedAdminJobPlansRoute: AuthenticatedAdminJobPlansRoute,
