@@ -389,7 +389,7 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       data?.from && data?.to
         ? explicitDateWindow(url, data.from, data.to)
         : clampDateWindow(url, { daysBack, daysAhead });
-    const text = await fetchReportRaw(windowedUrl, apiKey);
+    const text = await fetchReportRaw(windowedUrl, apiKey, { extendFutureWindow: false });
     const parsed = parseRows(text);
     const rows = parsed.rows;
 

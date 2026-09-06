@@ -686,7 +686,7 @@ export async function performRotaSync(
         opts.from && opts.to
           ? explicitDateWindow(withFields, opts.from, opts.to)
           : clampDateWindow(withFields, { daysBack, daysAhead });
-      const text = await fetchReportRaw(windowedUrl, apiKey);
+      const text = await fetchReportRaw(windowedUrl, apiKey, { extendFutureWindow: false });
 
 
       rawPreview = text.slice(0, 500);
