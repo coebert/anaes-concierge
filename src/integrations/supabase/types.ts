@@ -1010,6 +1010,90 @@ export type Database = {
           },
         ]
       }
+      icu_sync_runs: {
+        Row: {
+          audit_count: number
+          created_at: string
+          diverged: boolean
+          duration_ms: number | null
+          error: string | null
+          id: string
+          ok: boolean
+          source_count: number
+          traces_written: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          audit_count?: number
+          created_at?: string
+          diverged?: boolean
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          ok?: boolean
+          source_count?: number
+          traces_written?: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          audit_count?: number
+          created_at?: string
+          diverged?: boolean
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          ok?: boolean
+          source_count?: number
+          traces_written?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      icu_sync_state: {
+        Row: {
+          consecutive_failures: number
+          created_at: string
+          cursor_start: string | null
+          days_ahead: number
+          days_back: number
+          enabled: boolean
+          id: number
+          last_error: string | null
+          last_run_at: string | null
+          slice_days: number
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          created_at?: string
+          cursor_start?: string | null
+          days_ahead?: number
+          days_back?: number
+          enabled?: boolean
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          slice_days?: number
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          created_at?: string
+          cursor_start?: string | null
+          days_ahead?: number
+          days_back?: number
+          enabled?: boolean
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          slice_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inbox_dismissals: {
         Row: {
           dismissed_at: string
