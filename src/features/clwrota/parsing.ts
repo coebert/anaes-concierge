@@ -458,6 +458,46 @@ export function pick(row: Record<string, unknown>, keys: string[]): string | nul
 }
 
 /**
+ * Extract the PA (programmed activity) value CLWRota records on a rota row,
+ * when present. Real Central API payloads expose this under a small set of
+ * numeric fields (`pa` / `pas` / `pa_value` on the row, duty or session
+ * objects). Returns null when no usable value exists so callers can fall
+ * back to deriving PAs from the department rota rules.
+ */
+export function parsePaCredit(row: Record<string, unknown>): number | null {
+  const raw = pick(row, [
+    "pa", "pas", "pa_value", "pa_values", "pa_count", "pa_credits",
+    "activity.pas", "activity.pa",
+    "duty.pas", "duty.pa",
+    "role.pas", "role.pa",
+    "session.pas", "session.pa",
+    "shift.pas", "shift.pa",
+    "slot.pas", "slot_pas", "slot.pa",
+    "assignment.pas", "assignment.pa",
+  ]);
+  if (!raw) return null;
+  // Tolerate text like "1.5 PA" or "0.5".
+  const m = raw.match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/**
+ * Split a free-text CLWRota consultant/slot field that may name several
+ * people ("Dr Hogan & Dr Coe", "A N Other / Dr Smith", "A, B and C") into
+ * individual name candidates. Non-name tokens never match profiles, so
+ * over-splitting is harmless — unmatched fragments are ignored by callers.
+ */
+export function splitPersonNames(text: string | null): string[] {
+  if (!text) return [];
+  return text
+    .split(/\s*(?:,|;|\/|\||\band\b|&|\+|\bwith\b)\s*/i)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 2);
+}
+
+/**
  * Pull staff from the configured CLWRota staff report URL and update existing
  * profiles in-place (matched by email, case-insensitive). New people that
  * aren't already in the app are listed as unmatched — they need to be invited
