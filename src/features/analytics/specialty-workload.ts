@@ -244,3 +244,95 @@ export function summariseByArea(tallies: readonly SpecialtyTally[]): AreaSummary
     .map(({ ids, ...rest }) => ({ ...rest, doctors: ids.size }))
     .sort((a, b) => b.totalPas - a.totalPas || a.area.localeCompare(b.area));
 }
+
+export type SpecialtySession = {
+  staff_id: string;
+  area: string;
+  date: string;
+  session: string;
+  isOnCall: boolean;
+  isWeekend: boolean;
+  extraType: string | null;
+  /** PA value recorded by CLWRota, or null when it has to be estimated. */
+  recordedPa: number | null;
+  /** PA credited for this row (recorded value, or the rules-derived estimate). */
+  creditedPa: number;
+  /** Other doctors named on the same CLWRota row. */
+  sharedWith: string[];
+};
+
+/**
+ * Session-level rows for the per-specialty audit, so every credited PA can be
+ * traced back to the date and half it came from.
+ *
+ * Weekend credit replaces session/on-call credit, and only the first on-call
+ * half of a weekend/weekday date carries the credit — matching the totals in
+ * `tallySpecialtyWorkload`.
+ */
+export function listSpecialtySessions(
+  rows: readonly SpecialtyRow[],
+  rules: SpecialtyPaRules,
+): SpecialtySession[] {
+  const sessionsPerPa = rules.sessions_per_pa > 0 ? rules.sessions_per_pa : 1;
+  const creditedOnCall = new Set<string>();
+  const creditedWeekend = new Set<string>();
+  const out: SpecialtySession[] = [];
+
+  const ordered = [...rows]
+    .filter((r) => r.staff_id && r.session_date)
+    .sort(
+      (a, b) =>
+        (a.session_date ?? "").localeCompare(b.session_date ?? "") ||
+        (a.session ?? "").localeCompare(b.session ?? ""),
+    );
+
+  for (const r of ordered) {
+    if (!isDaytimeHalf(r.session) && !isOnCallHalf(r.session)) continue;
+    const date = r.session_date as string;
+    const area = areaForRow(r);
+    const onCall = isOnCallHalf(r.session);
+    const weekend = isWeekendISO(date);
+    const extra = isExtraRow(r);
+    const stored =
+      typeof r.pa_credit === "number" && Number.isFinite(r.pa_credit) ? r.pa_credit : null;
+
+    const credited =
+      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
+        ? r.attending_consultant_ids
+        : [r.staff_id as string];
+
+    for (const id of credited) {
+      let creditedPa: number;
+      if (stored !== null) {
+        creditedPa = stored;
+      } else if (extra) {
+        creditedPa = 1 / sessionsPerPa;
+      } else if (weekend) {
+        const key = `${id}::${area}::${date}`;
+        creditedPa = creditedWeekend.has(key) ? 0 : rules.weekend_pa_credit;
+        creditedWeekend.add(key);
+      } else if (onCall) {
+        const key = `${id}::${area}::${date}`;
+        creditedPa = creditedOnCall.has(key) ? 0 : rules.oncall_pa_credit;
+        creditedOnCall.add(key);
+      } else {
+        creditedPa = 1 / sessionsPerPa;
+      }
+
+      out.push({
+        staff_id: id,
+        area,
+        date,
+        session: r.session ?? "",
+        isOnCall: onCall,
+        isWeekend: weekend,
+        extraType: r.extra_type ?? null,
+        recordedPa: stored,
+        creditedPa: round2(creditedPa),
+        sharedWith: credited.filter((other) => other !== id),
+      });
+    }
+  }
+
+  return out;
+}
