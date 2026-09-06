@@ -143,6 +143,25 @@ export async function verifyIcuWindow(opts: {
 
   const icuTypes = new Set<string>(ICU_DUTY_TYPES);
   const source = new Map<string, IcuSessionKey>();
+  // Traceability: the CLWRota record that produced each detected ICU session.
+  type Evidence = {
+    staffId: string;
+    session_date: string;
+    session: string;
+    dutyType: string;
+    clwrotaExternalId: string | null;
+    matchedField: string | null;
+    matchedValue: string | null;
+    placeName: string | null;
+    slotTitles: string | null;
+    roleLabel: string | null;
+    personLabel: string | null;
+    paCredit: number | null;
+    attendees: string[];
+    sourceRow: Record<string, unknown>;
+  };
+  const evidence = new Map<string, Evidence>();
+
 
   for (const row of rows) {
     const session_date = normaliseDate(
@@ -224,8 +243,35 @@ export async function verifyIcuWindow(opts: {
     const pa = parsePaCredit(row);
     const baseLabel = labels.find((l) => l && l.trim() !== "") ?? null;
     const label = pa != null ? `${baseLabel ?? "ICU"} (${pa} PA)` : baseLabel;
+    // Which field actually made this row read as intensive care.
+    const matchedIdx = labels.findIndex(
+      (l) =>
+        !!l &&
+        l.trim() !== "" &&
+        classifyDutyType([l], prof?.grade, prof?.training_level, dutyMappings) === dutyType,
+    );
+    const attendeeIds = [...attendees];
     for (const id of attendees) {
       const key = `${id}|${session_date}|${session}`;
+      if (!evidence.has(key)) {
+        evidence.set(key, {
+          staffId: id,
+          session_date,
+          session,
+          dutyType,
+          clwrotaExternalId:
+            pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ?? null,
+          matchedField: matchedIdx >= 0 ? LABEL_KEYS[matchedIdx] ?? null : null,
+          matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+          placeName: pick(row, ["place.name"]) ?? null,
+          slotTitles: pick(row, ["slot_titles"]) ?? null,
+          roleLabel: pick(row, ["role.name", "assignment_type.name"]) ?? null,
+          personLabel: nameRaw ? String(nameRaw) : null,
+          paCredit: pa,
+          attendees: attendeeIds,
+          sourceRow: row as Record<string, unknown>,
+        });
+      }
       if (source.has(key)) continue;
       source.set(key, {
         key,
@@ -239,8 +285,10 @@ export async function verifyIcuWindow(opts: {
     }
   }
 
+
   // Audit side: what the ICU audit page counts for the same window.
   const auditRows = await fetchAllPaged<{
+    id: string;
     staff_id: string;
     session_date: string;
     session: string;
@@ -249,7 +297,7 @@ export async function verifyIcuWindow(opts: {
   }>(() =>
     supabaseAdmin
       .from("rota_assignments")
-      .select("staff_id,session_date,session,duty_type,attending_consultant_ids")
+      .select("id,staff_id,session_date,session,duty_type,attending_consultant_ids")
       .gte("session_date", opts.startIso)
       .lte("session_date", opts.endIso)
       .in("duty_type", [...ICU_DUTY_TYPES])
@@ -258,6 +306,7 @@ export async function verifyIcuWindow(opts: {
   );
 
   const audit = new Map<string, IcuSessionKey>();
+  const assignmentIdByKey = new Map<string, string>();
   for (const r of auditRows) {
     if (!nameById.has(r.staff_id)) continue; // non consultant/SAS — out of scope
     // Credit every attending consultant stored on the row, exactly as the
@@ -270,6 +319,7 @@ export async function verifyIcuWindow(opts: {
       if (!nameById.has(id)) continue;
       const key = `${id}|${r.session_date}|${r.session}`;
       if (audit.has(key)) continue;
+      assignmentIdByKey.set(key, r.id);
       audit.set(key, {
         key,
         staffId: id,
@@ -281,6 +331,41 @@ export async function verifyIcuWindow(opts: {
       });
     }
   }
+
+  // Persist traceability: which CLWRota record produced each ICU session.
+  const nowIso = new Date().toISOString();
+  const evidenceRows = [...evidence.entries()].map(([key, e]) => ({
+    assignment_id: assignmentIdByKey.get(key) ?? null,
+    staff_id: e.staffId,
+    session_date: e.session_date,
+    session: e.session as "am" | "pm" | "eve" | "night",
+    duty_type: e.dutyType as never,
+    clwrota_external_id: e.clwrotaExternalId,
+    matched_field: e.matchedField,
+    matched_value: e.matchedValue,
+    place_name: e.placeName,
+    slot_titles: e.slotTitles,
+    role_label: e.roleLabel,
+    person_label: e.personLabel,
+    pa_credit: e.paCredit,
+    attending_consultant_ids: e.attendees,
+    source_row: e.sourceRow as never,
+    detected_by: "verify",
+    detected_at: nowIso,
+    updated_at: nowIso,
+  }));
+  for (let i = 0; i < evidenceRows.length; i += 200) {
+    const { error } = await supabaseAdmin
+      .from("icu_detection_matches")
+      .upsert(evidenceRows.slice(i, i + 200), {
+        onConflict: "staff_id,session_date,session",
+      });
+    if (error) {
+      console.error("ICU evidence upsert failed:", error.message);
+      break;
+    }
+  }
+
 
   const missingFromAudit = [...source.values()]
     .filter((s) => !audit.has(s.key))

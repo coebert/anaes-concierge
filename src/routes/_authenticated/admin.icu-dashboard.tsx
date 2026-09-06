@@ -4,8 +4,11 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   compareIcuSessions,
+  listIcuTraces,
+  type IcuTraceRow,
   type IcuVerifyResult,
 } from "@/features/analytics/icu-compare.functions";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -65,6 +68,12 @@ function IcuDashboardPage() {
       compareFn({ data: r }) as Promise<IcuVerifyResult>,
   });
 
+  const tracesFn = useServerFn(listIcuTraces);
+  const traces = useMutation({
+    mutationFn: (r: { startIso: string; endIso: string }) =>
+      tracesFn({ data: r }) as Promise<IcuTraceRow[]>,
+  });
+
   const invalidRange = startIso > endIso;
   const result = compare.data;
 
@@ -73,7 +82,9 @@ function IcuDashboardPage() {
     setEndIso(to);
     setRange({ startIso: from, endIso: to });
     compare.reset();
+    traces.reset();
   };
+
 
   return (
     <div className="space-y-6 p-4 md:p-6" data-testid="icu-dashboard">
@@ -256,6 +267,92 @@ function IcuDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <CardTitle className="text-base">Source records (traceability)</CardTitle>
+          <Button
+            variant="outline"
+            onClick={() => traces.mutate(range)}
+            disabled={traces.isPending}
+            data-testid="icu-traces-load"
+          >
+            {traces.isPending ? "Loading…" : "Show CLWRota source records"}
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {traces.isError && (
+            <p className="text-sm text-destructive">{(traces.error as Error).message}</p>
+          )}
+          {!traces.data && !traces.isPending && (
+            <p className="text-sm text-muted-foreground">
+              Every intensive care session found in CLWRota is saved with the record it came from.
+              Run the comparison first, then load the source records for {range.startIso} →{" "}
+              {range.endIso}.
+            </p>
+          )}
+          {traces.data && traces.data.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No saved source records for this range yet — run the comparison above first.
+            </p>
+          )}
+          {traces.data && traces.data.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="icu-traces-table">
+                <thead className="text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="py-2 pr-3">Date</th>
+                    <th className="py-2 pr-3">Session</th>
+                    <th className="py-2 pr-3">Doctor</th>
+                    <th className="py-2 pr-3">Matched on</th>
+                    <th className="py-2 pr-3">CLWRota ref</th>
+                    <th className="py-2 pr-3 text-right">PA</th>
+                    <th className="py-2 pr-3">Record</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {traces.data.map((t) => (
+                    <tr key={t.id} className="border-t align-top">
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {formatDateWithWeekdayGB(t.sessionDate)}
+                      </td>
+                      <td className="py-2 pr-3">{SESSION_LABEL[t.session] ?? t.session}</td>
+                      <td className="py-2 pr-3">{t.staffName}</td>
+                      <td className="py-2 pr-3">
+                        {t.matchedValue ? (
+                          <>
+                            <span className="text-muted-foreground">
+                              {t.matchedField ?? "text"}:
+                            </span>{" "}
+                            {t.matchedValue}
+                          </>
+                        ) : (
+                          (t.placeName ?? t.slotTitles ?? "—")
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-muted-foreground">
+                        {t.clwrotaExternalId ?? "—"}
+                      </td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{t.paCredit ?? "—"}</td>
+                      <td className="py-2 pr-3">
+                        <details>
+                          <summary className="cursor-pointer text-xs text-muted-foreground">
+                            View
+                          </summary>
+                          <pre className="mt-1 max-w-md overflow-x-auto rounded bg-muted p-2 text-xs">
+                            {t.sourceRow}
+                          </pre>
+                        </details>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
