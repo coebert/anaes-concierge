@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   areaForRow,
   summariseByArea,
+  listSpecialtySessions,
   tallySpecialtyWorkload,
   type SpecialtyPaRules,
   type SpecialtyRow,
@@ -122,5 +123,46 @@ describe("summariseByArea", () => {
     expect(summary[0]!.doctors).toBe(2);
     expect(summary[0]!.sessions).toBe(2);
     expect(summary[0]!.totalPas).toBe(2);
+  });
+});
+
+describe("listSpecialtySessions", () => {
+  it("returns one row per doctor per session half with its credited PA", () => {
+    const sessions = listSpecialtySessions(
+      [row({ specialty_name: "ENT", attending_consultant_ids: ["a", "b"] })],
+      rules,
+    );
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0]!.creditedPa).toBe(1);
+    expect(sessions[0]!.sharedWith).toEqual(["b"]);
+    expect(sessions[0]!.recordedPa).toBeNull();
+  });
+
+  it("keeps CLWRota's recorded PA value", () => {
+    const [s] = listSpecialtySessions([row({ specialty_name: "ENT", pa_credit: 0.75 })], rules);
+    expect(s!.recordedPa).toBe(0.75);
+    expect(s!.creditedPa).toBe(0.75);
+  });
+
+  it("credits an on-call only once across its halves", () => {
+    const sessions = listSpecialtySessions(
+      [
+        row({ duty_type: "general_consultant_oncall", session: "eve", specialty_name: null }),
+        row({ duty_type: "general_consultant_oncall", session: "night", specialty_name: null }),
+      ],
+      rules,
+    );
+    expect(sessions.map((s) => s.creditedPa)).toEqual([1.5, 0]);
+  });
+
+  it("credits a weekend day once, replacing session credit", () => {
+    const sessions = listSpecialtySessions(
+      [
+        row({ session_date: "2026-06-06", specialty_name: "ENT" }),
+        row({ session_date: "2026-06-06", session: "pm", specialty_name: "ENT" }),
+      ],
+      rules,
+    );
+    expect(sessions.map((s) => s.creditedPa)).toEqual([3, 0]);
   });
 });

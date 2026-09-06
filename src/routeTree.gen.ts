@@ -54,6 +54,7 @@ import { Route as AuthenticatedAdminPulseRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminRotaGapsRouteImport } from './routes/_authenticated/admin.rota-gaps'
 import { Route as AuthenticatedAdminRulesRouteImport } from './routes/_authenticated/admin.rules'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminSpecialtyAuditRouteImport } from './routes/_authenticated/admin.specialty-audit'
 import { Route as AuthenticatedAdminSpecialtyWorkloadRouteImport } from './routes/_authenticated/admin.specialty-workload'
 import { Route as AuthenticatedAdminStaffRouteImport } from './routes/_authenticated/admin.staff'
 import { Route as AuthenticatedAdminSupervisionRouteImport } from './routes/_authenticated/admin.supervision'
@@ -350,6 +351,12 @@ const AuthenticatedAdminSettingsRoute =
   AuthenticatedAdminSettingsRouteImport.update({
     id: '/admin/settings',
     path: '/admin/settings',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminSpecialtyAuditRoute =
+  AuthenticatedAdminSpecialtyAuditRouteImport.update({
+    id: '/admin/specialty-audit',
+    path: '/admin/specialty-audit',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminSpecialtyWorkloadRoute =
@@ -687,6 +694,7 @@ export interface FileRoutesByFullPath {
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/specialty-audit': typeof AuthenticatedAdminSpecialtyAuditRoute
   '/admin/specialty-workload': typeof AuthenticatedAdminSpecialtyWorkloadRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/supervision': typeof AuthenticatedAdminSupervisionRoute
@@ -781,6 +789,7 @@ export interface FileRoutesByTo {
   '/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/specialty-audit': typeof AuthenticatedAdminSpecialtyAuditRoute
   '/admin/specialty-workload': typeof AuthenticatedAdminSpecialtyWorkloadRoute
   '/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/admin/supervision': typeof AuthenticatedAdminSupervisionRoute
@@ -878,6 +887,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/rota-gaps': typeof AuthenticatedAdminRotaGapsRoute
   '/_authenticated/admin/rules': typeof AuthenticatedAdminRulesRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/specialty-audit': typeof AuthenticatedAdminSpecialtyAuditRoute
   '/_authenticated/admin/specialty-workload': typeof AuthenticatedAdminSpecialtyWorkloadRoute
   '/_authenticated/admin/staff': typeof AuthenticatedAdminStaffRoute
   '/_authenticated/admin/supervision': typeof AuthenticatedAdminSupervisionRoute
@@ -975,6 +985,7 @@ export interface FileRouteTypes {
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
+    | '/admin/specialty-audit'
     | '/admin/specialty-workload'
     | '/admin/staff'
     | '/admin/supervision'
@@ -1069,6 +1080,7 @@ export interface FileRouteTypes {
     | '/admin/rota-gaps'
     | '/admin/rules'
     | '/admin/settings'
+    | '/admin/specialty-audit'
     | '/admin/specialty-workload'
     | '/admin/staff'
     | '/admin/supervision'
@@ -1165,6 +1177,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/rota-gaps'
     | '/_authenticated/admin/rules'
     | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/specialty-audit'
     | '/_authenticated/admin/specialty-workload'
     | '/_authenticated/admin/staff'
     | '/_authenticated/admin/supervision'
@@ -1551,6 +1564,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/specialty-audit': {
+      id: '/_authenticated/admin/specialty-audit'
+      path: '/admin/specialty-audit'
+      fullPath: '/admin/specialty-audit'
+      preLoaderRoute: typeof AuthenticatedAdminSpecialtyAuditRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/specialty-workload': {
@@ -2040,6 +2060,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminRotaGapsRoute: typeof AuthenticatedAdminRotaGapsRoute
   AuthenticatedAdminRulesRoute: typeof AuthenticatedAdminRulesRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminSpecialtyAuditRoute: typeof AuthenticatedAdminSpecialtyAuditRoute
   AuthenticatedAdminSpecialtyWorkloadRoute: typeof AuthenticatedAdminSpecialtyWorkloadRoute
   AuthenticatedAdminStaffRoute: typeof AuthenticatedAdminStaffRoute
   AuthenticatedAdminSupervisionRoute: typeof AuthenticatedAdminSupervisionRoute
@@ -2108,6 +2129,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRotaGapsRoute: AuthenticatedAdminRotaGapsRoute,
   AuthenticatedAdminRulesRoute: AuthenticatedAdminRulesRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminSpecialtyAuditRoute: AuthenticatedAdminSpecialtyAuditRoute,
   AuthenticatedAdminSpecialtyWorkloadRoute:
     AuthenticatedAdminSpecialtyWorkloadRoute,
   AuthenticatedAdminStaffRoute: AuthenticatedAdminStaffRoute,
