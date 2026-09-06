@@ -2056,9 +2056,9 @@ export async function performRotaSyncChunked(
       agg.ok = false;
       console.error(`[clwrota] rota slice ${from}..${to} failed:`, msg);
     }
-    cursor = new Date(sliceEnd);
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
+  agg.truncated = agg.slices < totalSlices;
+
 
   agg.unmatchedTheatres = Array.from(unmatchedT);
   agg.unmatchedStaff = Array.from(unmatchedS);
