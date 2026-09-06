@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDateWithWeekdayGB, toISODateLocal } from "@/lib/utils";
+import { IcuFeedCard } from "./-icu-feed-card";
 
 export const Route = createFileRoute("/_authenticated/admin/icu-dashboard")({
   component: IcuDashboardPage,
