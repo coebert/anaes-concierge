@@ -1554,6 +1554,8 @@ export async function performRotaSync(
         notes: a.notes,
         is_non_sag: a.is_non_sag,
         extra_type: a.extra_type,
+        pa_credit: a.pa_credit,
+        attending_consultant_ids: a.attending_consultant_ids,
       }));
 
 
