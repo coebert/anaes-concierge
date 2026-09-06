@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -275,8 +275,8 @@ function IcuWorkloadPage() {
                     </TableRow>
                   ) : (
                     view.rows.map((r) => (
-                      <>
-                        <TableRow key={r.staff_id}>
+                      <Fragment key={r.staff_id}>
+                        <TableRow>
                           <TableCell className="font-medium">{r.name}</TableCell>
                           <TableCell>
                             {r.grade ? <Badge variant="outline">{r.grade}</Badge> : "—"}
@@ -305,7 +305,7 @@ function IcuWorkloadPage() {
                           </TableCell>
                         </TableRow>
                         {openStaff === r.staff_id ? (
-                          <TableRow key={`${r.staff_id}-dates`}>
+                          <TableRow>
                             <TableCell colSpan={10} className="bg-muted/40 text-xs">
                               <div className="flex flex-wrap gap-1.5 py-1">
                                 {r.dates.map((d) => (
@@ -317,7 +317,7 @@ function IcuWorkloadPage() {
                             </TableCell>
                           </TableRow>
                         ) : null}
-                      </>
+                      </Fragment>
                     ))
                   )}
                 </TableBody>
