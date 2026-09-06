@@ -50,20 +50,78 @@ export type IcuVerifyResult = {
   extraInAudit: IcuSessionKey[];
   byStaff: IcuStaffCompareRow[];
   diverged: boolean;
+  /** Stale traces removed so the stored feed matches CLWRota exactly. */
+  tracesDeleted: number;
+  /** Stale ICU rota rows removed so the audit tally matches CLWRota exactly. */
+  assignmentsDeleted: number;
+
 };
 
-const LABEL_KEYS = [
-  "slot_titles",
-  "slot_notes",
-  "place.name",
-  "role.name",
-  "assignment_type.name",
-  "specialty.name",
-  "notes",
-  "activity",
-  "activity.name",
-  "description",
+// Must mirror the CLWRota sync's `dutyLabels` exactly — same fields, same
+// order — so the comparison classifies every row the way the sync did. When
+// the two read different fields (or the same fields in a different order),
+// on-call halves show up as "extra in audit" even though CLWRota reports them.
+const LABEL_GROUPS: string[][] = [
+  ["slot_titles", "consultant", "surgeon", "surgical_consultant", "Consultant"],
+  [
+    "role.name",
+    "assignment_type.name",
+    "place_category.name",
+    "role",
+    "duty",
+    "type",
+    "Role",
+    "Duty",
+  ],
+  [
+    "slot_speciality",
+    "service.local_name",
+    "service.long_name",
+    "specialty",
+    "speciality",
+    "service",
+    "Specialty",
+    "Service",
+  ],
+  [
+    "place.name",
+    "place.external_code",
+    "theatre",
+    "location",
+    "room",
+    "Theatre",
+    "list",
+    "Location",
+  ],
+  [
+    "slot_notes",
+    "place.name",
+    "place.additional_info",
+    "slot_titles",
+    "notes",
+    "note",
+    "comment",
+    "comments",
+    "session.notes",
+    "shift.notes",
+    "assignment.notes",
+    "activity",
+    "activity.name",
+    "description",
+    "session.description",
+    "shift.description",
+    "role.description",
+    "assignment_type.description",
+    "extra_type.description",
+    "details",
+    "topic",
+    "subject",
+    "title",
+  ],
 ];
+const LABEL_KEYS = LABEL_GROUPS.map((g) => g[0]);
+
+
 
 function normaliseName(raw: string): string {
   return raw
@@ -215,7 +273,7 @@ export async function verifyIcuWindow(opts: {
       (nameRaw ? byName.get(normaliseName(String(nameRaw))) : undefined);
     if (!staffId) continue;
 
-    const labels = LABEL_KEYS.map((k) => pick(row, [k]));
+    const labels = LABEL_GROUPS.map((keys) => pick(row, keys));
     const prof = profById.get(staffId);
     const dutyType = classifyDutyType(
       labels,
@@ -294,10 +352,12 @@ export async function verifyIcuWindow(opts: {
     session: string;
     duty_type: string;
     attending_consultant_ids: string[] | null;
+    source: string;
+    locally_modified: boolean;
   }>(() =>
     supabaseAdmin
       .from("rota_assignments")
-      .select("id,staff_id,session_date,session,duty_type,attending_consultant_ids")
+      .select("id,staff_id,session_date,session,duty_type,attending_consultant_ids,source,locally_modified")
       .gte("session_date", opts.startIso)
       .lte("session_date", opts.endIso)
       .in("duty_type", [...ICU_DUTY_TYPES])
@@ -366,6 +426,72 @@ export async function verifyIcuWindow(opts: {
     }
   }
 
+  // Rebase the stored feed onto CLWRota: anything previously detected inside
+  // this window that CLWRota no longer reports as ICU is dropped, so the
+  // dashboard's session/PA totals always equal the source of truth.
+  let tracesDeleted = 0;
+  const existing = await fetchAllPaged<{
+    id: string;
+    staff_id: string;
+    session_date: string;
+    session: string;
+  }>(() =>
+    supabaseAdmin
+      .from("icu_detection_matches")
+      .select("id,staff_id,session_date,session")
+      .gte("session_date", opts.startIso)
+      .lte("session_date", opts.endIso)
+      .order("session_date", { ascending: true }),
+  );
+  const staleIds = existing
+    .filter((r) => !evidence.has(`${r.staff_id}|${r.session_date}|${r.session}`))
+    .map((r) => r.id);
+  for (let i = 0; i < staleIds.length; i += 200) {
+    const chunk = staleIds.slice(i, i + 200);
+    const { error } = await supabaseAdmin
+      .from("icu_detection_matches")
+      .delete()
+      .in("id", chunk);
+    if (error) {
+      console.error("ICU stale trace cleanup failed:", error.message);
+      break;
+    }
+    tracesDeleted += chunk.length;
+  }
+
+  // Rebase the audit side too: ICU rota rows that CLWRota no longer reports
+  // (typically halves left behind by an older classification — the sync only
+  // ever upserts, so it can never retire them) are removed, so the audit
+  // tally equals CLWRota's own count. Locally edited rows are left alone, and
+  // nothing is removed when the download came back empty.
+  let assignmentsDeleted = 0;
+  if (source.size > 0) {
+    const staleAssignmentIds = auditRows
+      .filter(
+        (r) =>
+          r.source === "clwrota" &&
+          !r.locally_modified &&
+          !source.has(`${r.staff_id}|${r.session_date}|${r.session}`),
+      )
+      .map((r) => r.id);
+    const staleSet = new Set(staleAssignmentIds);
+    for (let i = 0; i < staleAssignmentIds.length; i += 200) {
+      const chunk = staleAssignmentIds.slice(i, i + 200);
+      const { error } = await supabaseAdmin.from("rota_assignments").delete().in("id", chunk);
+      if (error) {
+        console.error("ICU stale assignment cleanup failed:", error.message);
+        break;
+      }
+      assignmentsDeleted += chunk.length;
+    }
+    if (assignmentsDeleted > 0) {
+      for (const [key] of audit) {
+        const id = assignmentIdByKey.get(key);
+        if (id && staleSet.has(id)) audit.delete(key);
+      }
+    }
+  }
+
 
   const missingFromAudit = [...source.values()]
     .filter((s) => !audit.has(s.key))
@@ -409,5 +535,8 @@ export async function verifyIcuWindow(opts: {
     extraInAudit,
     byStaff,
     diverged: missingFromAudit.length > 0 || extraInAudit.length > 0,
+    tracesDeleted,
+    assignmentsDeleted,
+
   };
 }
