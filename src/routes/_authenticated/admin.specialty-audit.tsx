@@ -375,9 +375,9 @@ function SpecialtyAuditPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Sessions" value={String(view.totalSessions)} icon={Layers} />
-            <StatCard title="On-calls" value={String(view.totalOnCalls)} icon={Moon} />
-            <StatCard title="Programmed activities" value={view.totalPas.toFixed(2)} icon={Activity} />
+            <StatCard label="Sessions" value={String(view.totalSessions)} icon={Layers} />
+            <StatCard label="On-calls" value={String(view.totalOnCalls)} icon={Moon} />
+            <StatCard label="Programmed activities" value={view.totalPas.toFixed(2)} icon={Activity} />
             <StatCard
               title="Without a recorded value"
               value={String(view.unrecorded)}
