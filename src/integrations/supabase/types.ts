@@ -912,6 +912,107 @@ export type Database = {
           },
         ]
       }
+      icu_audit_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          audit_count: number
+          created_at: string
+          details: Json
+          id: string
+          run_id: string | null
+          source_count: number
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          audit_count?: number
+          created_at?: string
+          details?: Json
+          id?: string
+          run_id?: string | null
+          source_count?: number
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          audit_count?: number
+          created_at?: string
+          details?: Json
+          id?: string
+          run_id?: string | null
+          source_count?: number
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "icu_audit_alerts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "icu_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      icu_audit_job_state: {
+        Row: {
+          consecutive_failures: number
+          created_at: string
+          cursor_start: string | null
+          enabled: boolean
+          horizon_end: string | null
+          id: number
+          last_error: string | null
+          last_run_at: string | null
+          lease_until: string | null
+          next_pass_at: string
+          pass_started_at: string | null
+          paused: boolean
+          paused_reason: string | null
+          slice_days: number
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          created_at?: string
+          cursor_start?: string | null
+          enabled?: boolean
+          horizon_end?: string | null
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          next_pass_at?: string
+          pass_started_at?: string | null
+          paused?: boolean
+          paused_reason?: string | null
+          slice_days?: number
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          created_at?: string
+          cursor_start?: string | null
+          enabled?: boolean
+          horizon_end?: string | null
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          next_pass_at?: string
+          pass_started_at?: string | null
+          paused?: boolean
+          paused_reason?: string | null
+          slice_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       icu_detection_matches: {
         Row: {
           assignment_id: string | null

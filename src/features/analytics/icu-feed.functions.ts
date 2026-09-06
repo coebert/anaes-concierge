@@ -32,6 +32,27 @@ export type IcuFeedSession = {
   clwrotaExternalId: string | null;
 };
 
+export type IcuAuditAlert = {
+  id: string;
+  windowStart: string;
+  windowEnd: string;
+  sourceCount: number;
+  auditCount: number;
+  createdAt: string;
+  acknowledgedAt: string | null;
+};
+
+export type IcuWeeklyStatus = {
+  enabled: boolean;
+  paused: boolean;
+  pausedReason: string | null;
+  cursor: string | null;
+  horizon: string | null;
+  nextPassAt: string | null;
+  lastRunAt: string | null;
+  lastError: string | null;
+};
+
 export type IcuFeedStatus = {
   enabled: boolean;
   cursor: string | null;
@@ -44,6 +65,8 @@ export type IcuFeedStatus = {
   totalSessions: number;
   runs: IcuFeedRun[];
   sessions: IcuFeedSession[];
+  weekly: IcuWeeklyStatus;
+  alerts: IcuAuditAlert[];
 };
 
 async function assertCoordinator(context: {
@@ -75,7 +98,7 @@ export const getIcuFeedStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<IcuFeedStatus> => {
     await assertCoordinator(context as never);
 
-    const [stateRes, runsRes, sessionsRes, countRes] = await Promise.all([
+    const [stateRes, runsRes, sessionsRes, countRes, weeklyRes, alertsRes] = await Promise.all([
       context.supabase.from("icu_sync_state").select("*").eq("id", 1).maybeSingle(),
       context.supabase
         .from("icu_sync_runs")
@@ -96,11 +119,19 @@ export const getIcuFeedStatus = createServerFn({ method: "POST" })
         .select("id", { count: "exact", head: true })
         .gte("session_date", data.startIso)
         .lte("session_date", data.endIso),
+      context.supabase.from("icu_audit_job_state").select("*").eq("id", 1).maybeSingle(),
+      context.supabase
+        .from("icu_audit_alerts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
 
     if (stateRes.error) throw new Error(stateRes.error.message);
     if (runsRes.error) throw new Error(runsRes.error.message);
     if (sessionsRes.error) throw new Error(sessionsRes.error.message);
+    if (weeklyRes.error) throw new Error(weeklyRes.error.message);
+    if (alertsRes.error) throw new Error(alertsRes.error.message);
 
     const rows = sessionsRes.data ?? [];
     const ids = [...new Set(rows.map((r: { staff_id: string }) => r.staff_id))];
@@ -149,5 +180,38 @@ export const getIcuFeedStatus = createServerFn({ method: "POST" })
         paCredit: (r.pa_credit as number | null) ?? null,
         clwrotaExternalId: (r.clwrota_external_id as string | null) ?? null,
       })),
+      weekly: {
+        enabled: weeklyRes.data?.enabled ?? true,
+        paused: weeklyRes.data?.paused ?? false,
+        pausedReason: weeklyRes.data?.paused_reason ?? null,
+        cursor: weeklyRes.data?.cursor_start ?? null,
+        horizon: weeklyRes.data?.horizon_end ?? null,
+        nextPassAt: weeklyRes.data?.next_pass_at ?? null,
+        lastRunAt: weeklyRes.data?.last_run_at ?? null,
+        lastError: weeklyRes.data?.last_error ?? null,
+      },
+      alerts: (alertsRes.data ?? []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        windowStart: r.window_start as string,
+        windowEnd: r.window_end as string,
+        sourceCount: (r.source_count as number) ?? 0,
+        auditCount: (r.audit_count as number) ?? 0,
+        createdAt: r.created_at as string,
+        acknowledgedAt: (r.acknowledged_at as string | null) ?? null,
+      })),
     };
+  });
+
+/** Mark an ICU divergence alert as seen. Admin / rota coordinator only. */
+export const acknowledgeIcuAuditAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await assertCoordinator(context as never);
+    const { error } = await context.supabase
+      .from("icu_audit_alerts")
+      .update({ acknowledged_at: new Date().toISOString(), acknowledged_by: context.userId })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

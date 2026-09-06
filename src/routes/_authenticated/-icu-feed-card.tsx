@@ -1,6 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getIcuFeedStatus, type IcuFeedStatus } from "@/features/analytics/icu-feed.functions";
+import {
+  acknowledgeIcuAuditAlert,
+  getIcuFeedStatus,
+  type IcuFeedStatus,
+} from "@/features/analytics/icu-feed.functions";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
@@ -18,9 +23,18 @@ const SESSION_LABEL: Record<string, string> = {
  */
 export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: string }) {
   const statusFn = useServerFn(getIcuFeedStatus);
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["icu-feed", startIso, endIso],
     queryFn: () => statusFn({ data: { startIso, endIso } }) as Promise<IcuFeedStatus>,
+  });
+
+  const ackFn = useServerFn(acknowledgeIcuAuditAlert);
+  const ack = useMutation({
+    mutationFn: (id: string) => ackFn({ data: { id } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["icu-feed"] });
+    },
   });
 
   return (
@@ -57,6 +71,66 @@ export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: st
             {data.lastError ? (
               <p className="text-sm text-destructive">Last error: {data.lastError}</p>
             ) : null}
+
+            <div className="rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-medium">Weekly re-check against CLWRota</h3>
+                <Badge variant={data.weekly.paused || !data.weekly.enabled ? "destructive" : "outline"}>
+                  {!data.weekly.enabled
+                    ? "Switched off"
+                    : data.weekly.paused
+                      ? "Paused"
+                      : "Running weekly"}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Every week the whole year is re-downloaded from CLWRota, one window at a time, and
+                re-checked against the audit.
+                {data.weekly.cursor
+                  ? ` This week's pass continues from ${formatDateWithWeekdayGB(data.weekly.cursor)}.`
+                  : " The current pass is complete."}
+                {data.weekly.nextPassAt
+                  ? ` Next pass due ${new Date(data.weekly.nextPassAt).toLocaleDateString("en-GB")}.`
+                  : ""}
+              </p>
+              {data.weekly.pausedReason ? (
+                <p className="mt-1 text-sm text-destructive">{data.weekly.pausedReason}</p>
+              ) : data.weekly.lastError ? (
+                <p className="mt-1 text-sm text-destructive">Last error: {data.weekly.lastError}</p>
+              ) : null}
+
+              {data.alerts.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No count differences have been flagged.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1" data-testid="icu-audit-alerts">
+                  {data.alerts.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1 text-sm"
+                    >
+                      <span className={a.acknowledgedAt ? "text-muted-foreground" : "text-amber-600"}>
+                        {a.windowStart} → {a.windowEnd}: CLWRota {a.sourceCount} vs audit{" "}
+                        {a.auditCount}
+                      </span>
+                      {a.acknowledgedAt ? (
+                        <span className="text-xs text-muted-foreground">Seen</span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={ack.isPending}
+                          onClick={() => ack.mutate(a.id)}
+                        >
+                          Mark as seen
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             {data.runs.length > 0 ? (
               <div className="overflow-x-auto">
