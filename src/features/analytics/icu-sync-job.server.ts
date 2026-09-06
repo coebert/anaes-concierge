@@ -41,6 +41,51 @@ export type IcuSyncJobResult = {
   windowEnd: string;
 };
 
+// A window counts as "closed" once a successful run found the same number of
+// ICU sessions as CLWRota. Closed windows are skipped so the rotation spends
+// its slices on the windows that still show blanks on Compare. Windows that
+// are still in the future (or only just past) are re-opened after this many
+// days, because CLWRota keeps publishing into them.
+const RECHECK_DAYS = 14;
+
+type SliceRun = { diverged: boolean; ranAt: number };
+
+/**
+ * Returns the start date of the next slice that still needs work: one that has
+ * never completed, one whose counts diverged from CLWRota, or one covering
+ * dates CLWRota may still be filling in. Returns null when every slice in the
+ * window is closed.
+ */
+export function pickGapSliceStart(args: {
+  windowStart: string;
+  windowEnd: string;
+  today: string;
+  sliceDays: number;
+  cursor: string | null;
+  runs: Map<string, SliceRun>;
+  now: number;
+}): string | null {
+  const { windowStart, windowEnd, today, sliceDays, cursor, runs, now } = args;
+  const total = Math.floor(daysBetween(windowStart, windowEnd) / sliceDays) + 1;
+  const startIndex =
+    cursor && cursor >= windowStart && cursor <= windowEnd
+      ? Math.max(0, Math.floor(daysBetween(windowStart, cursor) / sliceDays))
+      : 0;
+
+  for (let n = 0; n < total; n++) {
+    const index = (startIndex + n) % total;
+    const sliceStart = addDays(windowStart, index * sliceDays);
+    const sliceEnd = addDays(sliceStart, sliceDays - 1);
+    const run = runs.get(sliceStart);
+    if (!run) return sliceStart;
+    if (run.diverged) return sliceStart;
+    // Dates CLWRota may still publish into are re-checked periodically.
+    const stillMoving = sliceEnd >= addDays(today, -RECHECK_DAYS);
+    if (stillMoving && now - run.ranAt > RECHECK_DAYS * DAY_MS) return sliceStart;
+  }
+  return null;
+}
+
 export async function runIcuSyncJob(opts?: {
   maxSlices?: number;
   sliceDays?: number;
