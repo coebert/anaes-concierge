@@ -47,6 +47,8 @@ export type IcuSyncJobResult = {
 // are still in the future (or only just past) are re-opened after this many
 // days, because CLWRota keeps publishing into them.
 const RECHECK_DAYS = 14;
+// How often a still-moving window is re-checked once it already matched.
+const RECHECK_INTERVAL_DAYS = 3;
 
 type SliceRun = { diverged: boolean; ranAt: number };
 
@@ -81,7 +83,8 @@ export function pickGapSliceStart(args: {
     if (run.diverged) return sliceStart;
     // Dates CLWRota may still publish into are re-checked periodically.
     const stillMoving = sliceEnd >= addDays(today, -RECHECK_DAYS);
-    if (stillMoving && now - run.ranAt > RECHECK_DAYS * DAY_MS) return sliceStart;
+    if (stillMoving && now - run.ranAt > RECHECK_INTERVAL_DAYS * DAY_MS)
+      return sliceStart;
   }
   return null;
 }
