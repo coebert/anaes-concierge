@@ -187,17 +187,37 @@ export async function verifyIcuWindow(opts: {
     );
     if (!icuTypes.has(dutyType)) continue;
 
-    const key = `${staffId}|${session_date}|${session}`;
-    if (source.has(key)) continue;
-    source.set(key, {
-      key,
-      staffId,
-      staffName: nameById.get(staffId) ?? String(nameRaw ?? staffId),
-      session_date,
-      session,
-      dutyType,
-      label: labels.find((l) => l && l.trim() !== "") ?? null,
-    });
+    // ICU rows can name several consultants in the slot text ("Dr Hogan &
+    // Dr Coe"); the audit credits each of them, so the comparison keys must
+    // expand the same way. Mirror the sync's attendee extraction.
+    const slotText = pick(row, ["slot_titles", "consultant", "Consultant"]);
+    const attendees = new Set<string>([staffId]);
+    for (const fragment of splitPersonNames(slotText)) {
+      const norm = normaliseName(fragment);
+      if (!norm) continue;
+      const match =
+        byName.get(norm) ??
+        byName.get(`dr ${norm}`.replace(/\s+/g, " ").trim()) ??
+        bySurnameUnique(norm, byName);
+      if (match) attendees.add(match);
+    }
+
+    const pa = parsePaCredit(row);
+    const baseLabel = labels.find((l) => l && l.trim() !== "") ?? null;
+    const label = pa != null ? `${baseLabel ?? "ICU"} (${pa} PA)` : baseLabel;
+    for (const id of attendees) {
+      const key = `${id}|${session_date}|${session}`;
+      if (source.has(key)) continue;
+      source.set(key, {
+        key,
+        staffId: id,
+        staffName: nameById.get(id) ?? String(nameRaw ?? id),
+        session_date,
+        session,
+        dutyType,
+        label,
+      });
+    }
   }
 
   // Audit side: what the ICU audit page counts for the same window.
