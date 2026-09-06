@@ -213,6 +213,10 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/specialty-workload",
     icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
     keywords: ["specialty", "specialties", "theatre", "obstetrics", "clinical work", "pa", "programmed activities", "appraisal", "revalidation", "audit", "clwrota"] },
+  { id: "specialty-audit", label: "Specialty session audit",
+    to: "/admin/specialty-audit",
+    icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
+    keywords: ["specialty", "audit", "sessions", "pa credits", "programmed activities", "evidence", "appraisal", "clwrota", "doctor"] },
   { id: "icu-workload", label: "ICU sessions & PAs",
 
     to: "/admin/icu-workload",
