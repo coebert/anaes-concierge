@@ -243,8 +243,35 @@ export async function verifyIcuWindow(opts: {
     const pa = parsePaCredit(row);
     const baseLabel = labels.find((l) => l && l.trim() !== "") ?? null;
     const label = pa != null ? `${baseLabel ?? "ICU"} (${pa} PA)` : baseLabel;
+    // Which field actually made this row read as intensive care.
+    const matchedIdx = labels.findIndex(
+      (l) =>
+        !!l &&
+        l.trim() !== "" &&
+        classifyDutyType([l], prof?.grade, prof?.training_level, dutyMappings) === dutyType,
+    );
+    const attendeeIds = [...attendees];
     for (const id of attendees) {
       const key = `${id}|${session_date}|${session}`;
+      if (!evidence.has(key)) {
+        evidence.set(key, {
+          staffId: id,
+          session_date,
+          session,
+          dutyType,
+          clwrotaExternalId:
+            pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ?? null,
+          matchedField: matchedIdx >= 0 ? LABEL_KEYS[matchedIdx] ?? null : null,
+          matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+          placeName: pick(row, ["place.name"]) ?? null,
+          slotTitles: pick(row, ["slot_titles"]) ?? null,
+          roleLabel: pick(row, ["role.name", "assignment_type.name"]) ?? null,
+          personLabel: nameRaw ? String(nameRaw) : null,
+          paCredit: pa,
+          attendees: attendeeIds,
+          sourceRow: row as Record<string, unknown>,
+        });
+      }
       if (source.has(key)) continue;
       source.set(key, {
         key,
@@ -257,6 +284,7 @@ export async function verifyIcuWindow(opts: {
       });
     }
   }
+
 
   // Audit side: what the ICU audit page counts for the same window.
   const auditRows = await fetchAllPaged<{
