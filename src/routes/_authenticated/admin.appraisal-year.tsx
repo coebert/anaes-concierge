@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -255,7 +255,7 @@ function AppraisalYearPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-            </>
+            </Fragment>
           ))
         )}
       </TableBody>
