@@ -849,3 +849,81 @@ export async function downloadAllPdf(reports: Array<{ id: string; output: RunSql
 
   doc.save(`audit-reports-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
+
+/**
+ * Renders a generated report chart entirely in the browser using the app's
+ * own charting components. No report data (staff names, workload or PA
+ * figures) is sent to any external chart-rendering service.
+ */
+function ReportChart({ chart }: { chart: NonNullable<ReportSection["chart"]> }) {
+  const rows = chart.labels.map((label, i) => {
+    const row: Record<string, unknown> = { label };
+    chart.datasets.forEach((ds) => {
+      row[ds.label] = ds.data[i] ?? 0;
+    });
+    return row;
+  });
+
+  const config = Object.fromEntries(
+    chart.datasets.map((ds, i) => [ds.label, { label: ds.label, color: colorAt(i) }]),
+  );
+
+  const isPie = chart.type === "pie" || chart.type === "doughnut";
+  const height = isPie ? 320 : 300;
+
+  return (
+    <div className="space-y-2">
+      {chart.title && (
+        <div className="text-sm font-medium text-foreground">{chart.title}</div>
+      )}
+      <ChartContainer config={config} className="w-full" style={{ height }}>
+        {isPie ? (
+          <PieChart>
+            <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
+            <Pie
+              data={rows}
+              dataKey={chart.datasets[0]?.label ?? "value"}
+              nameKey="label"
+              innerRadius={chart.type === "doughnut" ? 60 : 0}
+              outerRadius={110}
+            >
+              {rows.map((_, i) => (
+                <Cell key={i} fill={colorAt(i)} />
+              ))}
+            </Pie>
+            <Legend />
+          </PieChart>
+        ) : chart.type === "line" ? (
+          <AreaChart data={rows} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} />
+            <YAxis tickFormatter={formatTick} tickLine={false} axisLine={false} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            {chart.datasets.length > 1 && <Legend />}
+            {chart.datasets.map((ds, i) => (
+              <Area
+                key={ds.label}
+                type="monotone"
+                dataKey={ds.label}
+                stroke={colorAt(i)}
+                fill={colorAt(i)}
+                fillOpacity={0.2}
+              />
+            ))}
+          </AreaChart>
+        ) : (
+          <BarChart data={rows} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} />
+            <YAxis tickFormatter={formatTick} tickLine={false} axisLine={false} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            {chart.datasets.length > 1 && <Legend />}
+            {chart.datasets.map((ds, i) => (
+              <Bar key={ds.label} dataKey={ds.label} fill={colorAt(i)} radius={[4, 4, 0, 0]} />
+            ))}
+          </BarChart>
+        )}
+      </ChartContainer>
+    </div>
+  );
+}
