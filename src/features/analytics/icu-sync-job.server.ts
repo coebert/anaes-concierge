@@ -227,6 +227,11 @@ export async function runIcuSyncJob(opts?: {
     if (forward) {
       futureCursor = sliceEnd >= forwardEnd ? today : addDays(sliceEnd, 1);
     } else {
+      const last = windows[windows.length - 1];
+      runs.set(sliceStart, {
+        diverged: !last || last.sourceCount !== last.auditCount,
+        ranAt: Date.now(),
+      });
       cursor = sliceEnd >= windowEnd ? windowStart : addDays(sliceEnd, 1);
     }
   }
