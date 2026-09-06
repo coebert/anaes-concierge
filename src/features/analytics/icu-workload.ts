@@ -19,6 +19,10 @@ export type IcuRow = {
   session: IcuSessionHalf | string | null;
   duty_type: string | null;
   extra_type: string | null;
+  /** PA value recorded by CLWRota for this row; null/undefined → derive from rules. */
+  pa_credit?: number | null;
+  /** Every consultant/SAS profile named on the row. Empty → credit staff_id only. */
+  attending_consultant_ids?: string[] | null;
 };
 
 export type IcuPaRules = {
@@ -76,6 +80,10 @@ export type IcuStaffTally = {
   /** PAs from extra / locum / WLI / SAG ICU work (daytime equivalent). */
   extraPas: number;
   totalPas: number;
+  /** Portion of totalPas taken from CLWRota's own recorded PA values. */
+  clwrotaPas: number;
+  /** Portion of totalPas estimated from the department rota rules. */
+  estimatedPas: number;
   /** Sorted list of every distinct ICU date behind these numbers. */
   dates: string[];
 };
@@ -103,6 +111,16 @@ export function tallyIcuWorkload(
     am: number;
     pm: number;
     extraSessions: number;
+    // Rows carrying CLWRota's own PA value are totalled directly; the
+    // rule-derived estimate below only covers rows without a stored value,
+    // so a stored weekend PA is never double-counted by weekend_pa_credit.
+    storedPa: number;
+    storedExtraPa: number;
+    uAm: number;
+    uPm: number;
+    uOnCallDates: Set<string>;
+    uWeekendDates: Set<string>;
+    uExtraSessions: number;
   };
   const byStaff = new Map<string, Acc>();
 
@@ -118,6 +136,13 @@ export function tallyIcuWorkload(
         am: 0,
         pm: 0,
         extraSessions: 0,
+        storedPa: 0,
+        storedExtraPa: 0,
+        uAm: 0,
+        uPm: 0,
+        uOnCallDates: new Set(),
+        uWeekendDates: new Set(),
+        uExtraSessions: 0,
       };
       byStaff.set(id, a);
     }
@@ -129,26 +154,46 @@ export function tallyIcuWorkload(
     if (!r.duty_type || !(ICU_DUTY_TYPES as readonly string[]).includes(r.duty_type)) {
       continue;
     }
-    const a = acc(r.staff_id);
-    a.allDates.add(r.session_date);
+    // A row naming several consultants (e.g. an ICU slot "Dr Hogan & Dr Coe")
+    // credits every attending consultant, not just the rostered person.
+    const credited =
+      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
+        ? r.attending_consultant_ids
+        : [r.staff_id];
+    const stored = typeof r.pa_credit === "number" && Number.isFinite(r.pa_credit);
 
-    if (isExtraRow(r)) {
-      a.extraDates.add(r.session_date);
-      a.extraSessions += 1;
-      continue;
+    for (const id of credited) {
+      const a = acc(id);
+      a.allDates.add(r.session_date);
+
+      if (isExtraRow(r)) {
+        a.extraDates.add(r.session_date);
+        a.extraSessions += 1;
+        if (stored) a.storedExtraPa += r.pa_credit as number;
+        else a.uExtraSessions += 1;
+        continue;
+      }
+
+      if (isDaytimeHalf(r.session)) {
+        a.dayDates.add(r.session_date);
+        if (r.session === "am") a.am += 1;
+        else a.pm += 1;
+        if (stored) a.storedPa += r.pa_credit as number;
+        else if (r.session === "am") a.uAm += 1;
+        else a.uPm += 1;
+      } else if (isOnCallHalf(r.session)) {
+        a.onCallDates.add(r.session_date);
+        if (stored) a.storedPa += r.pa_credit as number;
+        else a.uOnCallDates.add(r.session_date);
+      } else {
+        continue;
+      }
+
+      if (isWeekendISO(r.session_date)) {
+        a.weekendDates.add(r.session_date);
+        if (!stored) a.uWeekendDates.add(r.session_date);
+      }
     }
-
-    if (isDaytimeHalf(r.session)) {
-      a.dayDates.add(r.session_date);
-      if (r.session === "am") a.am += 1;
-      else a.pm += 1;
-    } else if (isOnCallHalf(r.session)) {
-      a.onCallDates.add(r.session_date);
-    } else {
-      continue;
-    }
-
-    if (isWeekendISO(r.session_date)) a.weekendDates.add(r.session_date);
   }
 
   const out: IcuStaffTally[] = [];
@@ -158,11 +203,14 @@ export function tallyIcuWorkload(
     const weekendDays = a.weekendDates.size;
 
     const plannedPas = round2(
-      sessions / sessionsPerPa +
-        onCalls * rules.oncall_pa_credit +
-        weekendDays * rules.weekend_pa_credit,
+      a.storedPa +
+        (a.uAm + a.uPm) / sessionsPerPa +
+        a.uOnCallDates.size * rules.oncall_pa_credit +
+        a.uWeekendDates.size * rules.weekend_pa_credit,
     );
-    const extraPas = round2(a.extraSessions / sessionsPerPa);
+    const extraPas = round2(a.storedExtraPa + a.uExtraSessions / sessionsPerPa);
+    const totalPas = round2(plannedPas + extraPas);
+    const clwrotaPas = round2(a.storedPa + a.storedExtraPa);
 
     out.push({
       staff_id,
@@ -176,7 +224,9 @@ export function tallyIcuWorkload(
       extraSessions: a.extraSessions,
       plannedPas,
       extraPas,
-      totalPas: round2(plannedPas + extraPas),
+      totalPas,
+      clwrotaPas,
+      estimatedPas: round2(totalPas - clwrotaPas),
       dates: Array.from(a.allDates).sort(),
     });
   }

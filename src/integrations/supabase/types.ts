@@ -1851,6 +1851,7 @@ export type Database = {
       }
       rota_assignments: {
         Row: {
+          attending_consultant_ids: string[]
           clwrota_external_id: string | null
           created_at: string
           duty_type: Database["public"]["Enums"]["duty_type"]
@@ -1859,6 +1860,7 @@ export type Database = {
           is_non_sag: boolean
           locally_modified: boolean
           notes: string | null
+          pa_credit: number | null
           role_on_list: Database["public"]["Enums"]["rota_role"]
           session: Database["public"]["Enums"]["session_half"]
           session_date: string
@@ -1869,6 +1871,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attending_consultant_ids?: string[]
           clwrota_external_id?: string | null
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
@@ -1877,6 +1880,7 @@ export type Database = {
           is_non_sag?: boolean
           locally_modified?: boolean
           notes?: string | null
+          pa_credit?: number | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
           session: Database["public"]["Enums"]["session_half"]
           session_date: string
@@ -1887,6 +1891,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attending_consultant_ids?: string[]
           clwrota_external_id?: string | null
           created_at?: string
           duty_type?: Database["public"]["Enums"]["duty_type"]
@@ -1895,6 +1900,7 @@ export type Database = {
           is_non_sag?: boolean
           locally_modified?: boolean
           notes?: string | null
+          pa_credit?: number | null
           role_on_list?: Database["public"]["Enums"]["rota_role"]
           session?: Database["public"]["Enums"]["session_half"]
           session_date?: string

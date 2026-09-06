@@ -10,8 +10,10 @@ import {
 import { evaluateHistoricalSafeguard } from "@/lib/clwrota-historical-safeguard";
 import {
   fetchReportRaw,
+  parsePaCredit,
   parseRows,
   pick,
+  splitPersonNames,
   pickTutorialLabel,
   withRollingFutureWindow,
   clampDateWindow,
@@ -779,6 +781,55 @@ export async function performRotaSync(
       nameByStaffId.set(p.id, p.full_name ?? p.email ?? p.id);
     }
 
+    // Relaxed name matching for the multi-consultant slot text CLWRota puts
+    // on ICU rows (e.g. "Dr Hogan & Dr Coe"). The slot rarely repeats the
+    // full stored name, so fall back to a normalised token match and finally
+    // to a surname-only match when that surname is unique in the department.
+    const normalisePersonToken = (raw: string) =>
+      raw
+        .toLowerCase()
+        .replace(/^(dr|mr|mrs|ms|miss|prof)\.?\s+/, "")
+        .replace(/[^a-z\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const profByNormalised = new Map<string, string>();
+    const profBySurname = new Map<string, string | null>(); // null = ambiguous
+    for (const p of profiles ?? []) {
+      if (!p.full_name) continue;
+      const norm = normalisePersonToken(p.full_name);
+      if (norm && !profByNormalised.has(norm)) profByNormalised.set(norm, p.id);
+      const parts = norm.split(" ").filter(Boolean);
+      const surname = parts[parts.length - 1];
+      if (surname) {
+        if (!profBySurname.has(surname)) profBySurname.set(surname, p.id);
+        else if (profBySurname.get(surname) !== p.id) profBySurname.set(surname, null);
+      }
+    }
+    const matchConsultantName = (raw: string): string | undefined => {
+      const direct = profByName.get(raw.toLowerCase().trim());
+      if (direct) return direct;
+      const norm = normalisePersonToken(raw);
+      if (!norm) return undefined;
+      const byNorm = profByNormalised.get(norm);
+      if (byNorm) return byNorm;
+      const parts = norm.split(" ").filter(Boolean);
+      const surname = parts[parts.length - 1];
+      if (!surname) return undefined;
+      // "J Hogan" style: surname + matching first initial wins over a bare
+      // surname when several people share it.
+      if (parts.length > 1) {
+        const initial = parts[0][0];
+        const candidates = (profiles ?? []).filter((p) => {
+          if (!p.full_name) return false;
+          const n = normalisePersonToken(p.full_name);
+          const np = n.split(" ").filter(Boolean);
+          return np[np.length - 1] === surname && np[0]?.startsWith(initial);
+        });
+        if (candidates.length === 1) return candidates[0].id;
+      }
+      return profBySurname.get(surname) ?? undefined;
+    };
+
     const theatreByName = new Map<string, string>();
     for (const t of theatres ?? []) theatreByName.set(t.name.toLowerCase().trim(), t.id);
     // Merge admin-configured aliases so the same lookup chain (exact match,
@@ -828,6 +879,8 @@ export async function performRotaSync(
       notes: string | null;
       is_non_sag: boolean;
       extra_type: string | null;
+      pa_credit: number | null;
+      attending_consultant_ids: string[];
     };
 
 
@@ -1052,6 +1105,23 @@ export async function performRotaSync(
       const isTutorial = looksLikeTutorialLabel(tutorialLabels);
       const dutyType: ResolvedDutyType = isTutorial ? "teaching" : classifiedDutyType;
 
+      // PA value recorded by CLWRota for this row (null → the ICU audit
+      // falls back to deriving PAs from the department rota rules), plus
+      // every consultant/SAS doctor named on the row. ICU rows frequently
+      // list several consultants in the slot text; storing all of them lets
+      // the audit credit each attending consultant accurately.
+      const paCredit = parsePaCredit(row);
+      const attendingIds = new Set<string>();
+      if (prof?.grade === "consultant" || prof?.grade === "sas") {
+        attendingIds.add(staffId);
+      }
+      for (const fragment of splitPersonNames(consultantName)) {
+        const match = matchConsultantName(fragment);
+        if (!match) continue;
+        const g = profById.get(match)?.grade;
+        if (g === "consultant" || g === "sas") attendingIds.add(match);
+      }
+
       // Validation: any CLWRota row whose free-text labels clearly describe
       // a Medical Examiner session ("medical examiner", "ME session") must
       // map to duty_type='medical_examiner'. If it didn't, the ME mapping
@@ -1178,6 +1248,8 @@ export async function performRotaSync(
           duty_type: dutyType,
           role_on_list: roleOnList,
           source: "clwrota",
+          pa_credit: paCredit,
+          attending_consultant_ids: Array.from(attendingIds),
           theatre_session_key: half === session ? theatreSessionKey : null,
           clwrota_external_id: extIdForHalf,
           notes,
@@ -1482,6 +1554,8 @@ export async function performRotaSync(
         notes: a.notes,
         is_non_sag: a.is_non_sag,
         extra_type: a.extra_type,
+        pa_credit: a.pa_credit,
+        attending_consultant_ids: a.attending_consultant_ids,
       }));
 
 

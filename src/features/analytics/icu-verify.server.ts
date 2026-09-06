@@ -14,8 +14,10 @@ import {
   fetchReportRaw,
   normaliseDate,
   normaliseSession,
+  parsePaCredit,
   parseRows,
   pick,
+  splitPersonNames,
 } from "@/features/clwrota/parsing";
 import { loadDutyTypeMappings } from "@/features/clwrota/parsing.server";
 import { fetchAllPaged } from "@/lib/supabase-chunked";
@@ -66,10 +68,27 @@ const LABEL_KEYS = [
 function normaliseName(raw: string): string {
   return raw
     .toLowerCase()
-    .replace(/^dr\.?\s+/, "")
+    .replace(/^(dr|mr|mrs|ms|miss|prof)\.?\s+/, "")
     .replace(/[^a-z\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Surname-only match against normalised profile names, used only when the
+ * surname belongs to exactly one consultant/SAS doctor. */
+function bySurnameUnique(norm: string, byName: Map<string, string>): string | undefined {
+  const parts = norm.split(" ").filter(Boolean);
+  const surname = parts[parts.length - 1];
+  if (!surname) return undefined;
+  const initial = parts.length > 1 ? parts[0][0] : null;
+  const matches: string[] = [];
+  for (const [name, id] of byName) {
+    const np = name.split(" ").filter(Boolean);
+    if (np[np.length - 1] !== surname) continue;
+    if (initial && !(np[0] ?? "").startsWith(initial)) continue;
+    matches.push(id);
+  }
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 export async function verifyIcuWindow(opts: {
@@ -187,17 +206,37 @@ export async function verifyIcuWindow(opts: {
     );
     if (!icuTypes.has(dutyType)) continue;
 
-    const key = `${staffId}|${session_date}|${session}`;
-    if (source.has(key)) continue;
-    source.set(key, {
-      key,
-      staffId,
-      staffName: nameById.get(staffId) ?? String(nameRaw ?? staffId),
-      session_date,
-      session,
-      dutyType,
-      label: labels.find((l) => l && l.trim() !== "") ?? null,
-    });
+    // ICU rows can name several consultants in the slot text ("Dr Hogan &
+    // Dr Coe"); the audit credits each of them, so the comparison keys must
+    // expand the same way. Mirror the sync's attendee extraction.
+    const slotText = pick(row, ["slot_titles", "consultant", "Consultant"]);
+    const attendees = new Set<string>([staffId]);
+    for (const fragment of splitPersonNames(slotText)) {
+      const norm = normaliseName(fragment);
+      if (!norm) continue;
+      const match =
+        byName.get(norm) ??
+        byName.get(`dr ${norm}`.replace(/\s+/g, " ").trim()) ??
+        bySurnameUnique(norm, byName);
+      if (match) attendees.add(match);
+    }
+
+    const pa = parsePaCredit(row);
+    const baseLabel = labels.find((l) => l && l.trim() !== "") ?? null;
+    const label = pa != null ? `${baseLabel ?? "ICU"} (${pa} PA)` : baseLabel;
+    for (const id of attendees) {
+      const key = `${id}|${session_date}|${session}`;
+      if (source.has(key)) continue;
+      source.set(key, {
+        key,
+        staffId: id,
+        staffName: nameById.get(id) ?? String(nameRaw ?? id),
+        session_date,
+        session,
+        dutyType,
+        label,
+      });
+    }
   }
 
   // Audit side: what the ICU audit page counts for the same window.
@@ -206,10 +245,11 @@ export async function verifyIcuWindow(opts: {
     session_date: string;
     session: string;
     duty_type: string;
+    attending_consultant_ids: string[] | null;
   }>(() =>
     supabaseAdmin
       .from("rota_assignments")
-      .select("staff_id,session_date,session,duty_type")
+      .select("staff_id,session_date,session,duty_type,attending_consultant_ids")
       .gte("session_date", opts.startIso)
       .lte("session_date", opts.endIso)
       .in("duty_type", [...ICU_DUTY_TYPES])
@@ -220,17 +260,26 @@ export async function verifyIcuWindow(opts: {
   const audit = new Map<string, IcuSessionKey>();
   for (const r of auditRows) {
     if (!nameById.has(r.staff_id)) continue; // non consultant/SAS — out of scope
-    const key = `${r.staff_id}|${r.session_date}|${r.session}`;
-    if (audit.has(key)) continue;
-    audit.set(key, {
-      key,
-      staffId: r.staff_id,
-      staffName: nameById.get(r.staff_id) ?? r.staff_id,
-      session_date: r.session_date,
-      session: r.session,
-      dutyType: r.duty_type,
-      label: null,
-    });
+    // Credit every attending consultant stored on the row, exactly as the
+    // ICU audit tally does, so the comparison is apples-to-apples.
+    const credited =
+      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
+        ? r.attending_consultant_ids
+        : [r.staff_id];
+    for (const id of credited) {
+      if (!nameById.has(id)) continue;
+      const key = `${id}|${r.session_date}|${r.session}`;
+      if (audit.has(key)) continue;
+      audit.set(key, {
+        key,
+        staffId: id,
+        staffName: nameById.get(id) ?? id,
+        session_date: r.session_date,
+        session: r.session,
+        dutyType: r.duty_type,
+        label: null,
+      });
+    }
   }
 
   const missingFromAudit = [...source.values()]

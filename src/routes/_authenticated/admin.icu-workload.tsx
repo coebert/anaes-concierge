@@ -129,7 +129,7 @@ function IcuWorkloadPage() {
       for (let from = 0; ; from += PAGE_SIZE) {
         const { data: page, error } = await supabase
           .from("rota_assignments")
-          .select("staff_id,session_date,session,duty_type,extra_type")
+          .select("staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids")
           .in("staff_id", staffIds)
           .in("duty_type", [...ICU_DUTY_TYPES])
           .gte("session_date", fromDate)
@@ -291,6 +291,11 @@ function IcuWorkloadPage() {
                           </TableCell>
                           <TableCell className="text-right tabular-nums font-semibold">
                             {r.totalPas.toFixed(1)}
+                            {r.clwrotaPas > 0 ? (
+                              <div className="text-[10px] font-normal text-muted-foreground">
+                                {r.clwrotaPas.toFixed(1)} recorded · {r.estimatedPas.toFixed(1)} est.
+                              </div>
+                            ) : null}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
@@ -324,7 +329,9 @@ function IcuWorkloadPage() {
               </Table>
 
               <p className="mt-3 text-xs text-muted-foreground">
-                PAs calculated from the department rota rules:{" "}
+                Where CLWRota records a PA value for a session it is used
+                directly (shown as “recorded”); remaining sessions are
+                estimated from the department rota rules:{" "}
                 {view.rules.sessions_per_pa} session(s) per PA,{" "}
                 {view.rules.oncall_pa_credit} PA per on-call,{" "}
                 {view.rules.weekend_pa_credit} PA per weekend day.
