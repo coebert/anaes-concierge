@@ -379,7 +379,7 @@ function SpecialtyAuditPage() {
             <StatCard label="On-calls" value={String(view.totalOnCalls)} icon={Moon} />
             <StatCard label="Programmed activities" value={view.totalPas.toFixed(2)} icon={Activity} />
             <StatCard
-              title="Without a recorded value"
+              label="Without a recorded value"
               value={String(view.unrecorded)}
               icon={CalendarClock}
             />
