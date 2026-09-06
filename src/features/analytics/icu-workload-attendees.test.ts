@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_RULES,
   tallyIcuWorkload,
+  type IcuPaRules,
   type IcuRow,
 } from "@/features/analytics/icu-workload";
+
+const DEFAULT_RULES: IcuPaRules = {
+  sessions_per_pa: 1,
+  oncall_pa_credit: 1,
+  weekend_pa_credit: 1,
+};
 
 const base: IcuRow = {
   staff_id: "a",

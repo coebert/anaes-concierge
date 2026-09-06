@@ -12,8 +12,11 @@ describe("parsePaCredit", () => {
   it("returns null when no PA field is present or parseable", () => {
     expect(parsePaCredit({})).toBeNull();
     expect(parsePaCredit({ pa: "n/a" })).toBeNull();
-    expect(parsePaCredit({ pa: 0 })).toBeNull();
     expect(parsePaCredit({ pa: -1 })).toBeNull();
+  });
+
+  it("treats a recorded 0 as a genuine CLWRota value, not missing data", () => {
+    expect(parsePaCredit({ pa: 0 })).toBe(0);
   });
 });
 
