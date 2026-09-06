@@ -1,63 +1,37 @@
-# Point 13 — Analyses HR would ask for tomorrow
+# ICU sessions & PAs audit
 
-Deliver the 8 analyses called out in the HR review as a coherent **Analytics pack** under `Audits & robustness`, plus per-trainee/per-consultant surfacing where it drops naturally into existing cards. All computation is pure-TS over data the app already holds; no new user-entered data streams are needed (leave-denial reasons re-use the existing `leave_requests.decision_reason`, curriculum targets re-use `trainee_targets`).
+A new audit tab that shows, for each consultant and SAS doctor doing intensive care work, how many ICU days, on-calls and PAs they worked over a period you choose — so it can be pasted straight into appraisal/revalidation evidence.
 
-## What gets built
+## What the page shows
 
-### 1. Allocation fairness index — `/admin/analytics/allocation-fairness`
-Per-doctor Gini coefficient across: list types (from `theatre_sessions.list_type` via `rota_assignments`), weekend sessions, on-call sessions, over rolling 12 months. Table sorted by Gini descending; each row drills into a per-doctor breakdown chart. Reuses `lib/leave-fairness.ts` Gini helper.
+Date range picker at the top: quick presets (last 3/6/12 months, this appraisal year) plus custom "from" and "to" boxes. The chosen range lives in the page address, so it can be bookmarked or shared.
 
-### 2. Short-notice change league table — `/admin/analytics/short-notice`
-From `rota_change_log` filtered to `hours_before_session <= 48`: count changes *received* per doctor over 12 months, split by direction (added to / removed from). Highlights top decile as "disproportionately absorbing last-minute swaps".
+Summary tiles: total ICU days, total ICU on-calls, total ICU PAs, and number of doctors with ICU activity in the window.
 
-### 3. Leave denial reasons — `/admin/analytics/leave-denials`
-Taxonomy inferred from `leave_requests` where `status = 'denied'`: bucket free-text `decision_reason` into fixed categories (staffing, notice, quota, conflict, other) via keyword rules; show category share + 12-month trend line. Cross-tab by grade and by month.
+One row per doctor with any ICU work in the window, showing:
 
-### 4. Trainee educational exposure — `/admin/analytics/trainee-exposure`
-Per trainee: sessions of each `list_type` delivered vs `trainee_targets` target, over the training year. Traffic-light: green ≥100%, amber 70–99%, red <70%. Under-exposure alert list for ARCP prep. Also embed a compact version on the trainee detail card.
+- ICU days worked (distinct dates with a daytime ICU session, so a morning + afternoon on the same day counts once)
+- Daytime ICU sessions (AM + PM counts)
+- ICU on-calls (evening and overnight duties, counted as distinct on-call dates)
+- ICU weekend days (Saturday/Sunday, shown separately)
+- Extra / locum / WLI ICU work, in its own column so job-planned work stays clean
+- PAs: job-planned PAs, extra PAs, and a total
 
-### 5. On-call frequency inequality — `/admin/analytics/oncall-inequality`
-Consultants only, banded by LTFT fraction: on-calls per WTE over 12 months, per-band histogram + Gini. Flags outliers >1.5× band median.
+Rows sort by total PAs, with a per-doctor expandable list of the individual ICU dates behind the numbers so any figure can be traced.
 
-### 6. Sickness seasonality — `/admin/analytics/sickness-seasonality`
-From `leave_requests` where `leave_type = 'sick'`: month-by-month absence-days heatmap over ≥24 months; overlay rota density (sessions/day) to expose correlation. Pearson r reported.
+## How PAs are worked out
 
-### 7. Handover-adjacency risk — `/admin/analytics/handover-risk`
-Detect consultants running two consecutive high-acuity lists without a break: from `rota_assignments` joined to `theatre_sessions.list_type`, find same-day back-to-back sessions where both are in a configurable high-acuity set (emergency, trauma, vascular, cardiac). Rolling 12-week count per consultant.
+Using the department's existing rota rules (the Rota rules page), not new hard-coded numbers:
 
-### 8. New-starter early-warning — `/admin/analytics/new-starters`
-Doctors with `profiles.start_date` within last 90 days: first-90-days sickness days, exception reports raised, unfilled mandatory competencies (from existing credentials data), short-notice changes received. Composite early-warning score with drill-in.
-
-### Shared infrastructure
-
-- New index route `/admin/analytics/index.tsx` — pack landing page with 8 cards linking out.
-- `src/lib/analytics-gini.ts` — extract the Gini helper into a shared util (currently duplicated in `leave-fairness.ts`); both callers switch to the shared one.
-- `src/features/analytics/*.ts` — one pure-TS module per analysis, each with a `compute*(input): result` shape and unit tests over fixtures.
-- Server functions per analysis under `src/features/analytics/*.functions.ts` returning already-aggregated shapes so the UI stays thin.
-- Nav: single **"HR analytics pack"** entry under `Audits & robustness` opening the index; individual reports reachable from there.
-
-### Non-goals (kept out of this point)
-
-- No new user-entered data (denial-reason taxonomy is inferred, not a form).
-- No PDF export — deferred; tables are copy-pasteable and CSV-downloadable via existing table helpers.
-- No scheduled email digests — deferred to a later iteration.
-
-## Sequencing
-
-1. Extract shared Gini util + tests.
-2. Build the 8 pure-TS analysis modules with fixtures (parallel).
-3. Server functions per analysis (`requireSupabaseAuth` + admin role check via `has_role`).
-4. Index route + 8 detail routes (shared table/chart primitives).
-5. Trainee-card embed for #4.
-6. Nav entry.
+- Daytime sessions: sessions divided by the sessions-per-PA setting
+- On-calls: the existing on-call PA credit per on-call
+- Weekend ICU days: the existing weekend PA credit
+- The rule values used are printed under the table so the calculation is auditable
 
 ## Technical notes
 
-- All aggregation server-side in the server function to keep payloads small; UI receives arrays of ~hundreds of rows max.
-- Reuse `recharts` (already a dep) for heatmaps and histograms; Gini rendered as a single number + a Lorenz-curve mini-chart.
-- No schema migration required — all inputs are existing tables. If curriculum targets are sparse we surface "no target set" instead of red.
-- Admin-gated: every server function checks `has_role(userId, 'admin')` and throws 403 otherwise; routes live under `_authenticated/admin.analytics.*`.
-
-## Open question
-
-Happy to build all 8, but if you want a faster first cut, tell me which 3–4 to prioritise (my pick would be #1, #2, #4, #8 — highest HR value, cleanest data). Otherwise I'll ship the full pack.
+- New route `src/routes/_authenticated/admin.icu-workload.tsx`, admin + rota coordinator, with its own head metadata.
+- Pure calculation module `src/features/analytics/icu-workload.ts` (counting, de-duplication, PA maths) plus `icu-workload.test.ts` unit tests covering: same-day AM+PM collapsing to one day, evening/night rows collapsing to one on-call, weekend split, extra/locum/WLI exclusion from job-planned totals, and PA arithmetic against sample rule values.
+- Data: paged `rota_assignments` query filtered to `duty_type in (icu_consultant_oncall, icu_ct2_plus, icu_trainee)` joined to `profiles` where grade is consultant or SAS and the date is in range; `extra_type` drives the extras columns. Rules read from `rota_rules`.
+- Navigation: new item `icu-workload` ("ICU sessions & PAs") added to the analytics/audits group in `src/lib/navigation.ts`; update the audits menu snapshot and navigation reference tests accordingly.
+- No schema changes.
