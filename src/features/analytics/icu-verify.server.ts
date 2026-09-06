@@ -288,6 +288,7 @@ export async function verifyIcuWindow(opts: {
 
   // Audit side: what the ICU audit page counts for the same window.
   const auditRows = await fetchAllPaged<{
+    id: string;
     staff_id: string;
     session_date: string;
     session: string;
@@ -296,7 +297,7 @@ export async function verifyIcuWindow(opts: {
   }>(() =>
     supabaseAdmin
       .from("rota_assignments")
-      .select("staff_id,session_date,session,duty_type,attending_consultant_ids")
+      .select("id,staff_id,session_date,session,duty_type,attending_consultant_ids")
       .gte("session_date", opts.startIso)
       .lte("session_date", opts.endIso)
       .in("duty_type", [...ICU_DUTY_TYPES])
@@ -305,6 +306,7 @@ export async function verifyIcuWindow(opts: {
   );
 
   const audit = new Map<string, IcuSessionKey>();
+  const assignmentIdByKey = new Map<string, string>();
   for (const r of auditRows) {
     if (!nameById.has(r.staff_id)) continue; // non consultant/SAS — out of scope
     // Credit every attending consultant stored on the row, exactly as the
@@ -317,6 +319,7 @@ export async function verifyIcuWindow(opts: {
       if (!nameById.has(id)) continue;
       const key = `${id}|${r.session_date}|${r.session}`;
       if (audit.has(key)) continue;
+      assignmentIdByKey.set(key, r.id);
       audit.set(key, {
         key,
         staffId: id,
@@ -328,6 +331,41 @@ export async function verifyIcuWindow(opts: {
       });
     }
   }
+
+  // Persist traceability: which CLWRota record produced each ICU session.
+  const nowIso = new Date().toISOString();
+  const evidenceRows = [...evidence.entries()].map(([key, e]) => ({
+    assignment_id: assignmentIdByKey.get(key) ?? null,
+    staff_id: e.staffId,
+    session_date: e.session_date,
+    session: e.session as "am" | "pm" | "eve" | "night",
+    duty_type: e.dutyType as never,
+    clwrota_external_id: e.clwrotaExternalId,
+    matched_field: e.matchedField,
+    matched_value: e.matchedValue,
+    place_name: e.placeName,
+    slot_titles: e.slotTitles,
+    role_label: e.roleLabel,
+    person_label: e.personLabel,
+    pa_credit: e.paCredit,
+    attending_consultant_ids: e.attendees,
+    source_row: e.sourceRow as never,
+    detected_by: "verify",
+    detected_at: nowIso,
+    updated_at: nowIso,
+  }));
+  for (let i = 0; i < evidenceRows.length; i += 200) {
+    const { error } = await supabaseAdmin
+      .from("icu_detection_matches")
+      .upsert(evidenceRows.slice(i, i + 200), {
+        onConflict: "staff_id,session_date,session",
+      });
+    if (error) {
+      console.error("ICU evidence upsert failed:", error.message);
+      break;
+    }
+  }
+
 
   const missingFromAudit = [...source.values()]
     .filter((s) => !audit.has(s.key))
