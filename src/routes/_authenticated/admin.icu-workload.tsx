@@ -131,7 +131,7 @@ function IcuWorkloadPage() {
           .from("rota_assignments")
           .select("staff_id,session_date,session,duty_type,extra_type")
           .in("staff_id", staffIds)
-          .in("duty_type", ICU_DUTY_TYPES as unknown as string[])
+          .in("duty_type", [...ICU_DUTY_TYPES])
           .gte("session_date", fromDate)
           .lte("session_date", toDate)
           .range(from, from + PAGE_SIZE - 1);
