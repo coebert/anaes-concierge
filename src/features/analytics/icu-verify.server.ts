@@ -14,8 +14,10 @@ import {
   fetchReportRaw,
   normaliseDate,
   normaliseSession,
+  parsePaCredit,
   parseRows,
   pick,
+  splitPersonNames,
 } from "@/features/clwrota/parsing";
 import { loadDutyTypeMappings } from "@/features/clwrota/parsing.server";
 import { fetchAllPaged } from "@/lib/supabase-chunked";
@@ -66,10 +68,27 @@ const LABEL_KEYS = [
 function normaliseName(raw: string): string {
   return raw
     .toLowerCase()
-    .replace(/^dr\.?\s+/, "")
+    .replace(/^(dr|mr|mrs|ms|miss|prof)\.?\s+/, "")
     .replace(/[^a-z\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Surname-only match against normalised profile names, used only when the
+ * surname belongs to exactly one consultant/SAS doctor. */
+function bySurnameUnique(norm: string, byName: Map<string, string>): string | undefined {
+  const parts = norm.split(" ").filter(Boolean);
+  const surname = parts[parts.length - 1];
+  if (!surname) return undefined;
+  const initial = parts.length > 1 ? parts[0][0] : null;
+  const matches: string[] = [];
+  for (const [name, id] of byName) {
+    const np = name.split(" ").filter(Boolean);
+    if (np[np.length - 1] !== surname) continue;
+    if (initial && !(np[0] ?? "").startsWith(initial)) continue;
+    matches.push(id);
+  }
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 export async function verifyIcuWindow(opts: {
