@@ -213,6 +213,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/icu-workload",
     icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
     keywords: ["icu", "intensive care", "critical care", "pa", "programmed activities", "appraisal", "revalidation", "on-call", "consultant", "sas"] },
+  { id: "icu-dashboard", label: "ICU audit vs CLWRota",
+    to: "/admin/icu-dashboard",
+    icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
+    keywords: ["icu", "intensive care", "critical care", "dashboard", "clwrota", "comparison", "count", "audit", "reconcile"] },
+
   { id: "pulse-admin", label: "Pulse surveys", to: "/admin/pulse",
     icon: MessageSquare, group: "analytics", roles: ["admin"],
     keywords: ["pulse", "survey", "wellbeing", "cycle"] },
