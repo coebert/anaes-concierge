@@ -19,6 +19,10 @@ export type IcuRow = {
   session: IcuSessionHalf | string | null;
   duty_type: string | null;
   extra_type: string | null;
+  /** PA value recorded by CLWRota for this row; null/undefined → derive from rules. */
+  pa_credit?: number | null;
+  /** Every consultant/SAS profile named on the row. Empty → credit staff_id only. */
+  attending_consultant_ids?: string[] | null;
 };
 
 export type IcuPaRules = {
