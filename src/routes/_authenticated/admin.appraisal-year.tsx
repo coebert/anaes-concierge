@@ -222,8 +222,8 @@ function AppraisalYearPage() {
           </TableRow>
         ) : (
           rows.map((t) => (
-            <>
-              <TableRow key={t.area}>
+            <Fragment key={t.area}>
+              <TableRow>
                 <TableCell className="font-medium">{t.area}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.days}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.sessions}</TableCell>
