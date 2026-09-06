@@ -243,7 +243,7 @@ function AppraisalYearPage() {
                 </TableCell>
               </TableRow>
               {openArea === t.area ? (
-                <TableRow key={`${t.area}-dates`}>
+                <TableRow>
                   <TableCell colSpan={7} className="bg-muted/40">
                     <div className="flex flex-wrap gap-1.5">
                       {t.dates.map((d) => (
