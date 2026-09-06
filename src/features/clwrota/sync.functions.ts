@@ -2013,9 +2013,6 @@ export async function performRotaSyncChunked(
   // overlapping ranges and the far end of the window is never reached.
   const startSlice =
     maxSlices < totalSlices ? (dayIndex * maxSlices) % totalSlices : 0;
-  const rotatedStart = new Date(start);
-  rotatedStart.setUTCDate(rotatedStart.getUTCDate() + startSlice * sliceDays);
-  if (rotatedStart > end) rotatedStart.setTime(start.getTime());
 
 
 
