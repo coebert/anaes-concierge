@@ -220,14 +220,14 @@ function IcuEvidencePage() {
       {data && !isLoading && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Days on ICU" value={String(totals.days)} icon={CalendarClock} />
-            <StatCard title="Daytime sessions" value={String(totals.sessions)} icon={Activity} />
-            <StatCard title="On-calls" value={String(totals.onCalls)} icon={Moon} />
+            <StatCard label="Days on ICU" value={String(totals.days)} icon={CalendarClock} />
+            <StatCard label="Daytime sessions" value={String(totals.sessions)} icon={Activity} />
+            <StatCard label="On-calls" value={String(totals.onCalls)} icon={Moon} />
             <StatCard
-              title="PAs credited"
+              label="PAs credited"
               value={totals.pas.toFixed(2)}
               icon={Activity}
-              description={`${totals.clwrotaPas.toFixed(2)} from CLWRota · ${totals.estimatedPas.toFixed(2)} estimated`}
+              hint={`${totals.clwrotaPas.toFixed(2)} from CLWRota · ${totals.estimatedPas.toFixed(2)} estimated`}
             />
           </div>
 

@@ -203,7 +203,8 @@ export const getIcuConsultantEvidence = createServerFn({ method: "POST" })
       (a, b) => a.session_date.localeCompare(b.session_date) || a.session.localeCompare(b.session),
     );
 
-    const traceByKey = new Map<string, (typeof traceRes.data extends (infer T)[] ? T : never)>();
+    type TraceRow = NonNullable<typeof traceRes.data>[number];
+    const traceByKey = new Map<string, TraceRow>();
     for (const t of traceRes.data ?? []) {
       traceByKey.set(`${t.session_date}|${t.session}`, t);
     }
