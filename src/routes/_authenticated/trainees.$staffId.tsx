@@ -261,6 +261,11 @@ function TraineeDetailPage() {
         staffName={data.profile.full_name || data.profile.email || null}
       />
 
+      {data.profile.grade === "consultant" || data.profile.grade === "sas" ? (
+        <IcuAppraisalCard staffId={staffId} />
+      ) : null}
+
+
 
 
 
