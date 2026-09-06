@@ -25,6 +25,7 @@ import {
 } from "@/features/absence/absence-summary";
 import { BAND_THRESHOLDS } from "@/lib/bradford-factor";
 import { RTWInterviewDialog } from "@/components/absence/RTWInterviewDialog";
+import { IcuAppraisalCard } from "./-icu-appraisal-card";
 import { useState } from "react";
 export const Route = createFileRoute("/_authenticated/trainees/$staffId")({
   head: () => ({ meta: [{ title: "Trainee — Salisbury Anaesthetics Rota" }] }),
@@ -260,6 +261,11 @@ function TraineeDetailPage() {
         staffId={staffId}
         staffName={data.profile.full_name || data.profile.email || null}
       />
+
+      {data.profile.grade === "consultant" || data.profile.grade === "sas" ? (
+        <IcuAppraisalCard staffId={staffId} />
+      ) : null}
+
 
 
 
