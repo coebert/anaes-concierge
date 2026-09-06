@@ -217,6 +217,11 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/icu-dashboard",
     icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
     keywords: ["icu", "intensive care", "critical care", "dashboard", "clwrota", "comparison", "count", "audit", "reconcile"] },
+  { id: "icu-traces", label: "ICU session traces",
+    to: "/admin/icu-traces",
+    icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
+    keywords: ["icu", "intensive care", "trace", "source", "evidence", "clwrota", "record", "provenance", "pa"] },
+
 
   { id: "pulse-admin", label: "Pulse surveys", to: "/admin/pulse",
     icon: MessageSquare, group: "analytics", roles: ["admin"],
