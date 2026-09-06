@@ -66,6 +66,7 @@ import { Route as AuthenticatedAdminTutorialDashboardRouteImport } from './route
 import { Route as AuthenticatedAdminTutorialsRouteImport } from './routes/_authenticated/admin.tutorials'
 import { Route as AuthenticatedAdminWeekendWorkloadRouteImport } from './routes/_authenticated/admin.weekend-workload'
 import { Route as AuthenticatedAdminWellbeingRouteImport } from './routes/_authenticated/admin.wellbeing'
+import { Route as AuthenticatedCalendarIndexRouteImport } from './routes/_authenticated/calendar.index'
 import { Route as AuthenticatedChatIndexRouteImport } from './routes/_authenticated/chat.index'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
@@ -424,6 +425,12 @@ const AuthenticatedAdminWellbeingRoute =
     path: '/admin/wellbeing',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCalendarIndexRoute =
+  AuthenticatedCalendarIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCalendarRoute,
+  } as any)
 const AuthenticatedChatIndexRoute = AuthenticatedChatIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -723,6 +730,7 @@ export interface FileRoutesByFullPath {
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/calendar/': typeof AuthenticatedCalendarIndexRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
@@ -751,7 +759,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/account': typeof AuthenticatedAccountRoute
-  '/calendar': typeof AuthenticatedCalendarRouteWithChildren
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/glossary': typeof AuthenticatedGlossaryRoute
   '/leave': typeof AuthenticatedLeaveRouteWithChildren
@@ -818,6 +825,7 @@ export interface FileRoutesByTo {
   '/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/calendar': typeof AuthenticatedCalendarIndexRoute
   '/chat': typeof AuthenticatedChatIndexRoute
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
   '/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
@@ -916,6 +924,7 @@ export interface FileRoutesById {
   '/_authenticated/trainees/$staffId': typeof AuthenticatedTraineesStaffIdRoute
   '/_authenticated/trainees/start-date-audit': typeof AuthenticatedTraineesStartDateAuditRoute
   '/api/public/health': typeof ApiPublicHealthRoute
+  '/_authenticated/calendar/': typeof AuthenticatedCalendarIndexRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
   '/_authenticated/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
@@ -1014,6 +1023,7 @@ export interface FileRouteTypes {
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
     | '/api/public/health'
+    | '/calendar/'
     | '/chat/'
     | '/robustness/'
     | '/admin/analytics/allocation-fairness'
@@ -1042,7 +1052,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/account'
-    | '/calendar'
     | '/exceptions'
     | '/glossary'
     | '/leave'
@@ -1109,6 +1118,7 @@ export interface FileRouteTypes {
     | '/trainees/$staffId'
     | '/trainees/start-date-audit'
     | '/api/public/health'
+    | '/calendar'
     | '/chat'
     | '/robustness'
     | '/admin/analytics/allocation-fairness'
@@ -1206,6 +1216,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trainees/$staffId'
     | '/_authenticated/trainees/start-date-audit'
     | '/api/public/health'
+    | '/_authenticated/calendar/'
     | '/_authenticated/chat/'
     | '/_authenticated/robustness/'
     | '/_authenticated/admin/analytics/allocation-fairness'
@@ -1650,6 +1661,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminWellbeingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/calendar/': {
+      id: '/_authenticated/calendar/'
+      path: '/'
+      fullPath: '/calendar/'
+      preLoaderRoute: typeof AuthenticatedCalendarIndexRouteImport
+      parentRoute: typeof AuthenticatedCalendarRoute
+    }
     '/_authenticated/chat/': {
       id: '/_authenticated/chat/'
       path: '/'
@@ -1920,10 +1938,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedCalendarRouteChildren {
+  AuthenticatedCalendarIndexRoute: typeof AuthenticatedCalendarIndexRoute
   AuthenticatedCalendarStaffStaffIdRoute: typeof AuthenticatedCalendarStaffStaffIdRoute
 }
 
 const AuthenticatedCalendarRouteChildren: AuthenticatedCalendarRouteChildren = {
+  AuthenticatedCalendarIndexRoute: AuthenticatedCalendarIndexRoute,
   AuthenticatedCalendarStaffStaffIdRoute:
     AuthenticatedCalendarStaffStaffIdRoute,
 }
