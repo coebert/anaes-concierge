@@ -141,13 +141,49 @@ export async function runIcuSyncJob(opts?: {
     futureCursor = today;
   }
 
+  // Coverage so far: which slice windows already matched CLWRota exactly.
+  const runsRes = await supabaseAdmin
+    .from("icu_sync_runs")
+    .select("window_start,diverged,ok,created_at")
+    .gte("window_start", windowStart)
+    .lte("window_start", windowEnd)
+    .eq("ok", true)
+    .order("created_at", { ascending: true })
+    .limit(1000);
+  const runs = new Map<string, SliceRun>();
+  for (const r of runsRes.data ?? []) {
+    runs.set(r.window_start as string, {
+      diverged: Boolean(r.diverged),
+      ranAt: Date.parse(r.created_at as string),
+    });
+  }
+
   const { verifyIcuWindow } = await import("./icu-verify.server");
   const windows: IcuSyncJobResult["windows"] = [];
   let lastError: string | null = null;
+  const now = Date.now();
 
   for (let i = 0; i < maxSlices; i++) {
     const forward = i === 0;
-    const sliceStart = forward ? futureCursor : cursor;
+    // Historical slices target the next window that still has blanks or a
+    // count mismatch; closed windows are skipped entirely.
+    const gapStart = forward
+      ? null
+      : pickGapSliceStart({
+          windowStart,
+          windowEnd,
+          today,
+          sliceDays,
+          cursor,
+          runs,
+          now,
+        });
+    if (!forward && !gapStart) {
+      // Every historical window matches CLWRota — nothing left to close.
+      cursor = windowStart;
+      continue;
+    }
+    const sliceStart = forward ? futureCursor : (gapStart as string);
     const sliceLimit = forward ? forwardEnd : windowEnd;
     const remaining = daysBetween(sliceStart, sliceLimit);
     if (remaining < 0) {
