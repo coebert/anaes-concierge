@@ -2019,20 +2019,21 @@ export async function performRotaSyncChunked(
 
 
 
-  for (let cursor = new Date(rotatedStart); cursor <= end; ) {
-    if (agg.slices >= maxSlices) {
-      agg.truncated = true;
-      console.warn(
-        `[clwrota] chunked rota sync stopped at maxSlices=${maxSlices} (remaining window from ${fmt(cursor)})`,
-      );
-      break;
-    }
+  // Walk `maxSlices` consecutive slices, wrapping back to the first slice
+  // when the run reaches the end of the window, so every invocation does a
+  // full slice budget of useful work.
+  for (let k = 0; k < maxSlices; k += 1) {
+    const sliceIndex = (startSlice + k) % totalSlices;
+    const cursor = new Date(start);
+    cursor.setUTCDate(cursor.getUTCDate() + sliceIndex * sliceDays);
+    if (cursor > end) break;
     const sliceEnd = new Date(cursor);
     sliceEnd.setUTCDate(sliceEnd.getUTCDate() + sliceDays - 1);
     if (sliceEnd > end) sliceEnd.setTime(end.getTime());
     const from = fmt(cursor);
     const to = fmt(sliceEnd);
     agg.slices += 1;
+
     try {
       const r = await performRotaSync({ from, to });
       agg.total += r.total;
