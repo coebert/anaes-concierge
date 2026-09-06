@@ -1248,6 +1248,8 @@ export async function performRotaSync(
           duty_type: dutyType,
           role_on_list: roleOnList,
           source: "clwrota",
+          pa_credit: paCredit,
+          attending_consultant_ids: Array.from(attendingIds),
           theatre_session_key: half === session ? theatreSessionKey : null,
           clwrota_external_id: extIdForHalf,
           notes,
