@@ -2008,10 +2008,15 @@ export async function performRotaSyncChunked(
     Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
   const totalSlices = Math.max(1, Math.ceil(totalDays / sliceDays));
   const dayIndex = Math.floor(today.getTime() / 86_400_000);
-  const startSlice = maxSlices < totalSlices ? dayIndex % totalSlices : 0;
+  // Each run consumes `maxSlices` consecutive slices, so the next run must
+  // start `maxSlices` further along — otherwise consecutive days re-sync
+  // overlapping ranges and the far end of the window is never reached.
+  const startSlice =
+    maxSlices < totalSlices ? (dayIndex * maxSlices) % totalSlices : 0;
   const rotatedStart = new Date(start);
   rotatedStart.setUTCDate(rotatedStart.getUTCDate() + startSlice * sliceDays);
   if (rotatedStart > end) rotatedStart.setTime(start.getTime());
+
 
 
   for (let cursor = new Date(rotatedStart); cursor <= end; ) {
