@@ -879,6 +879,8 @@ export async function performRotaSync(
       notes: string | null;
       is_non_sag: boolean;
       extra_type: string | null;
+      pa_credit: number | null;
+      attending_consultant_ids: string[];
     };
 
 
