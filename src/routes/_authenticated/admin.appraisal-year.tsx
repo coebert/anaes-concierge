@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -222,8 +222,8 @@ function AppraisalYearPage() {
           </TableRow>
         ) : (
           rows.map((t) => (
-            <>
-              <TableRow key={t.area}>
+            <Fragment key={t.area}>
+              <TableRow>
                 <TableCell className="font-medium">{t.area}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.days}</TableCell>
                 <TableCell className="text-right tabular-nums">{t.sessions}</TableCell>
@@ -243,7 +243,7 @@ function AppraisalYearPage() {
                 </TableCell>
               </TableRow>
               {openArea === t.area ? (
-                <TableRow key={`${t.area}-dates`}>
+                <TableRow>
                   <TableCell colSpan={7} className="bg-muted/40">
                     <div className="flex flex-wrap gap-1.5">
                       {t.dates.map((d) => (
@@ -255,7 +255,7 @@ function AppraisalYearPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-            </>
+            </Fragment>
           ))
         )}
       </TableBody>
