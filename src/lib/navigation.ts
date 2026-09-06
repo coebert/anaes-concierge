@@ -209,7 +209,12 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/weekend-workload",
     icon: CalendarClock, group: "analytics", roles: ["admin"],
     keywords: ["weekend", "saturday", "sunday", "job plan", "workload", "permanent", "consultant", "sas"] },
+  { id: "specialty-workload", label: "Clinical work by specialty",
+    to: "/admin/specialty-workload",
+    icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
+    keywords: ["specialty", "specialties", "theatre", "obstetrics", "clinical work", "pa", "programmed activities", "appraisal", "revalidation", "audit", "clwrota"] },
   { id: "icu-workload", label: "ICU sessions & PAs",
+
     to: "/admin/icu-workload",
     icon: Activity, group: "analytics", roles: ["admin", "rota_coordinator"],
     keywords: ["icu", "intensive care", "critical care", "pa", "programmed activities", "appraisal", "revalidation", "on-call", "consultant", "sas"] },
