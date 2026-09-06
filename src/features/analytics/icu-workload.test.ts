@@ -59,8 +59,20 @@ describe("icu-workload", () => {
       RULES,
     );
     expect(t.weekendDays).toBe(2);
-    // 1 session + 1 on-call + 2 weekend days
-    expect(t.plannedPas).toBe(1 + 1.5 + 6);
+    // Weekend credit REPLACES the session/on-call credit: each weekend day
+    // is worth weekend_pa_credit (3), not session/on-call + weekend.
+    expect(t.plannedPas).toBe(6);
+  });
+
+  it("weekend on-call is worth the weekend credit only, not on-call + weekend", () => {
+    // Sunday on-call: 3 PAs, not 1.5 + 3.
+    const [t] = tallyIcuWorkload(
+      [row({ session_date: "2026-06-07", session: "night" })],
+      RULES,
+    );
+    expect(t.onCalls).toBe(1);
+    expect(t.weekendDays).toBe(1);
+    expect(t.plannedPas).toBe(3);
   });
 
   it("keeps extra/locum/WLI/SAG work out of job-planned totals", () => {
