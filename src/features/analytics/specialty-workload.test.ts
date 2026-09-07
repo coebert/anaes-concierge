@@ -105,7 +105,9 @@ describe("tallySpecialtyWorkload", () => {
       [row({ specialty_name: "Paediatrics", attending_consultant_ids: ["a", "b"] })],
       rules,
     );
-    expect(out.map((t) => t.staff_id).sort()).toEqual(["a", "b"]);
+    // The rostered doctor (s1) is credited too — a trainee supervised by a
+    // named consultant still did the session.
+    expect(out.map((t) => t.staff_id).sort()).toEqual(["a", "b", "s1"]);
   });
 });
 
@@ -132,9 +134,10 @@ describe("listSpecialtySessions", () => {
       [row({ specialty_name: "ENT", attending_consultant_ids: ["a", "b"] })],
       rules,
     );
-    expect(sessions).toHaveLength(2);
+    expect(sessions).toHaveLength(3);
+    expect(sessions[0]!.staff_id).toBe("s1");
     expect(sessions[0]!.creditedPa).toBe(1);
-    expect(sessions[0]!.sharedWith).toEqual(["b"]);
+    expect(sessions[0]!.sharedWith).toEqual(["a", "b"]);
     expect(sessions[0]!.recordedPa).toBeNull();
   });
 
