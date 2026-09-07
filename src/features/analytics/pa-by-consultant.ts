@@ -1,3 +1,4 @@
+import { creditedStaffIds } from "./icu-workload";
 // Pure aggregation for the "PAs by consultant" page.
 //
 // Splits each consultant's ICU PAs into:
@@ -77,10 +78,7 @@ export function tallyPaByConsultant(
     if (!r.duty_type || !(ICU_DUTY_TYPES as readonly string[]).includes(r.duty_type)) {
       continue;
     }
-    const credited =
-      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
-        ? r.attending_consultant_ids
-        : [r.staff_id];
+    const credited = creditedStaffIds(r);
     const stored = typeof r.pa_credit === "number" && Number.isFinite(r.pa_credit);
     const weekend = isWeekendISO(r.session_date);
 

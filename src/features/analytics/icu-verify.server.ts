@@ -1,3 +1,4 @@
+import { creditedStaffIds } from "./icu-workload";
 // Server-only: live comparison of intensive-care (ICU) sessions between the
 // CLWRota source report and the rows the ICU audit reads from
 // `rota_assignments`.
@@ -371,10 +372,7 @@ export async function verifyIcuWindow(opts: {
     if (!nameById.has(r.staff_id)) continue; // non consultant/SAS — out of scope
     // Credit every attending consultant stored on the row, exactly as the
     // ICU audit tally does, so the comparison is apples-to-apples.
-    const credited =
-      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
-        ? r.attending_consultant_ids
-        : [r.staff_id];
+    const credited = creditedStaffIds(r);
     for (const id of credited) {
       if (!nameById.has(id)) continue;
       const key = `${id}|${r.session_date}|${r.session}`;
