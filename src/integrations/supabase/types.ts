@@ -516,6 +516,30 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_digest_log: {
+        Row: {
+          created_at: string
+          digest_date: string
+          id: string
+          staff_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          digest_date: string
+          id?: string
+          staff_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          digest_date?: string
+          id?: string
+          staff_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       duty_type_mappings: {
         Row: {
           active: boolean
