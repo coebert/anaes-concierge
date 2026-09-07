@@ -1112,9 +1112,10 @@ export async function performRotaSync(
       // the audit credit each attending consultant accurately.
       const paCredit = parsePaCredit(row);
       const attendingIds = new Set<string>();
-      if (prof?.grade === "consultant" || prof?.grade === "sas") {
-        attendingIds.add(staffId);
-      }
+      // The rostered person always did the session, whatever their grade —
+      // a trainee/registrar supervised by a named consultant must still be
+      // credited for their own work, alongside the consultant.
+      attendingIds.add(staffId);
       for (const fragment of splitPersonNames(consultantName)) {
         const match = matchConsultantName(fragment);
         if (!match) continue;
