@@ -59,6 +59,21 @@ export function isExtraRow(row: IcuRow): boolean {
   return Boolean(row.extra_type && row.extra_type.trim() !== "");
 }
 
+/**
+ * Everyone credited for a row: the rostered person (always — a trainee
+ * supervised by a named consultant still did the session) plus any other
+ * consultant/SAS doctor named on the CLWRota row.
+ */
+export function creditedStaffIds(row: {
+  staff_id: string | null;
+  attending_consultant_ids?: string[] | null;
+}): string[] {
+  const ids = new Set<string>();
+  if (row.staff_id) ids.add(row.staff_id);
+  for (const id of row.attending_consultant_ids ?? []) if (id) ids.add(id);
+  return Array.from(ids);
+}
+
 export type IcuStaffTally = {
   staff_id: string;
   /** Distinct dates with a job-planned daytime ICU session. */
