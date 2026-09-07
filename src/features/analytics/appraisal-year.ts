@@ -5,7 +5,13 @@
 // broken down by specialty/duty, month-by-month activity, and a list of
 // evidence gaps a doctor would need to explain at appraisal.
 
-import { ICU_DUTY_TYPES, isDaytimeHalf, isExtraRow, isOnCallHalf } from "./icu-workload";
+import {
+  creditedStaffIds,
+  ICU_DUTY_TYPES,
+  isDaytimeHalf,
+  isExtraRow,
+  isOnCallHalf,
+} from "./icu-workload";
 import {
   areaForRow,
   tallySpecialtyWorkload,
