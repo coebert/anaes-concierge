@@ -16,6 +16,7 @@
 //     estimated from the department rota rules.
 
 import {
+  creditedStaffIds,
   isDaytimeHalf,
   isExtraRow,
   isOnCallHalf,
@@ -135,10 +136,7 @@ export function tallySpecialtyWorkload(
     if (!isDaytimeHalf(r.session) && !isOnCallHalf(r.session)) continue;
 
     const area = areaForRow(r);
-    const credited =
-      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
-        ? r.attending_consultant_ids
-        : [r.staff_id];
+    const credited = creditedStaffIds(r);
     const stored = typeof r.pa_credit === "number" && Number.isFinite(r.pa_credit);
 
     for (const id of credited) {
@@ -296,10 +294,7 @@ export function listSpecialtySessions(
     const stored =
       typeof r.pa_credit === "number" && Number.isFinite(r.pa_credit) ? r.pa_credit : null;
 
-    const credited =
-      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
-        ? r.attending_consultant_ids
-        : [r.staff_id as string];
+    const credited = creditedStaffIds(r);
 
     for (const id of credited) {
       let creditedPa: number;
