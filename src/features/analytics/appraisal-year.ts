@@ -148,13 +148,7 @@ export function buildAppraisalYear(
 
   // Month-by-month activity, from the doctor's own credited rows.
   const mine = inRange.filter((r) => {
-    const credited =
-      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
-        ? r.attending_consultant_ids
-        : r.staff_id
-          ? [r.staff_id]
-          : [];
-    return credited.includes(staffId);
+    return creditedStaffIds(r).includes(staffId);
   });
 
   const monthMap = new Map<string, MonthActivity>();

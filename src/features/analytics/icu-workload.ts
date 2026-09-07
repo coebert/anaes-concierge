@@ -171,10 +171,7 @@ export function tallyIcuWorkload(
     }
     // A row naming several consultants (e.g. an ICU slot "Dr Hogan & Dr Coe")
     // credits every attending consultant, not just the rostered person.
-    const credited =
-      r.attending_consultant_ids && r.attending_consultant_ids.length > 0
-        ? r.attending_consultant_ids
-        : [r.staff_id];
+    const credited = creditedStaffIds(r);
     const stored = typeof r.pa_credit === "number" && Number.isFinite(r.pa_credit);
 
     for (const id of credited) {
