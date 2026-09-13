@@ -14,8 +14,8 @@ self.addEventListener("push", (event) => {
     body: payload.body || "",
     tag: payload.tag,
     data: { url: payload.url || "/coordinator/rota" },
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    icon: "/app-icon-192.png",
+    badge: "/app-icon-192.png",
     requireInteraction: false,
   };
   event.waitUntil(self.registration.showNotification(title, options));

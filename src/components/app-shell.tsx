@@ -1,9 +1,10 @@
 import { Link, useLocation, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Stethoscope, ChevronRight, Search, X } from "lucide-react";
+import { ChevronRight, Search, X } from "lucide-react";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AppLogo } from "@/components/app-logo";
 import {
   Sidebar,
   SidebarContent,
@@ -61,9 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar collapsible="icon">
         <SidebarHeader className="border-b">
           <div className="flex items-center gap-2 px-2 py-1">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Stethoscope className="h-4 w-4" />
-            </div>
+            <AppLogo className="h-8 w-8 rounded-md" />
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
               <div className="truncate text-sm font-semibold">Anaesthetics Audit</div>
               <div className="truncate text-xs text-muted-foreground">Salisbury DGH</div>

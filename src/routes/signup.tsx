@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Stethoscope } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -55,9 +55,7 @@ function RequestAccessPage() {
     <div className="flex min-h-dvh items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Stethoscope className="h-6 w-6" />
-          </div>
+          <AppLogo className="mx-auto h-14 w-14 rounded-xl" />
           <CardTitle className="text-2xl">Request access</CardTitle>
           <CardDescription>
             This app is invite-only. Tell us who you are and an admin will set up your account.

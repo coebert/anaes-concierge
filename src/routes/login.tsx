@@ -24,7 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Stethoscope } from "lucide-react";
+import { AppLogo } from "@/components/app-logo";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -99,9 +99,7 @@ function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Stethoscope className="h-6 w-6" />
-          </div>
+          <AppLogo className="mx-auto h-14 w-14 rounded-xl" />
           <CardTitle className="text-2xl">Salisbury Anaesthetics Rota</CardTitle>
           <CardDescription>
             Sign in to manage and view the department rota.
