@@ -114,7 +114,12 @@ export function PasskeyLoginButton({
       if (e instanceof Error && e.name === "NotAllowedError") {
         toast.error("Cancelled");
       } else {
-        toast.error(e instanceof Error ? e.message : "Passkey sign-in failed");
+        const raw = e instanceof Error ? e.message : "";
+        toast.error(
+          /signup|signups not allowed/i.test(raw)
+            ? "This account can't sign in with a passkey yet. Please sign in with your password, then re-add your passkey from Account."
+            : raw || "Passkey sign-in failed",
+        );
       }
     } finally {
       setBusy(false);

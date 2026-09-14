@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="border-b">
+        <SidebarHeader className="border-b pt-[env(safe-area-inset-top)]">
           <div className="flex items-center gap-2 px-2 py-1">
             <AppLogo className="h-8 w-8 rounded-md" />
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
