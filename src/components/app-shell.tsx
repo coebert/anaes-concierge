@@ -82,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <SidebarInset>
         <a href="#main-content" className="skip-to-content">Skip to content</a>
-        <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+        <header className="safe-top sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/70">
           <SidebarTrigger aria-label="Toggle navigation" />
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             <CommandPalette />
