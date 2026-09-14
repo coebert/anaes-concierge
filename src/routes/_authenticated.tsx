@@ -25,7 +25,7 @@ function AuthenticatedLayout() {
 
   if (loading || !isAuthenticated) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-muted/30">
+      <div className="safe-page flex min-h-dvh items-center justify-center bg-muted/30">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Stethoscope className="h-8 w-8 animate-pulse text-primary" />
           <p className="text-sm">Loading…</p>

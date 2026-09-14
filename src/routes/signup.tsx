@@ -52,7 +52,7 @@ function RequestAccessPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-muted/30 px-4">
+    <div className="safe-page flex min-h-dvh items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <AppLogo className="mx-auto h-14 w-14 rounded-xl" />
