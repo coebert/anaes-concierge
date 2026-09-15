@@ -271,6 +271,9 @@
 .safe-page {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  /* Keep a base 1rem side gutter; widen when the device inset is larger.
+     This class is unlayered, so it overrides px-* utilities — never pair
+     it with horizontal padding utilities. */
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 }
