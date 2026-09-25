@@ -506,9 +506,10 @@ export async function dispatchPendingLeavePushNotifications(): Promise<{
   }
 
   if (logEntries.length > 0) {
-    await supabaseAdmin
+    const { error: logErr } = await supabaseAdmin
       .from("push_notification_log")
       .upsert(logEntries, { onConflict: "leave_change_log_id,subscription_id" });
+    if (logErr) throw new Error(`Failed to record leave push log: ${logErr.message}`);
   }
 
   return { scanned: rows.length, sent, failed, pruned };
