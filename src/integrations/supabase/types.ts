@@ -3893,6 +3893,7 @@ export type Database = {
         Returns: boolean
       }
       hmac_text: { Args: { p_plain: string }; Returns: string }
+      is_app_member: { Args: { _user_id: string }; Returns: boolean }
       list_clwrota_cron_runs: {
         Args: { p_limit?: number }
         Returns: {
