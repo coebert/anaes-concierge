@@ -266,9 +266,10 @@ export async function dispatchPendingPushNotifications(): Promise<{
   }
 
   if (logEntries.length > 0) {
-    await supabaseAdmin
+    const { error: logErr } = await supabaseAdmin
       .from("push_notification_log")
       .upsert(logEntries, { onConflict: "change_log_id,subscription_id" });
+    if (logErr) throw new Error(`Failed to record rota push log: ${logErr.message}`);
   }
 
   return { scanned: rows.length, sent, failed, pruned };
