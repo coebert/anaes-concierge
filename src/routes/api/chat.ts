@@ -994,7 +994,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 
 const ChatMessage = z.object({
   id: z.string().optional(),
-  role: z.enum(["system", "user", "assistant"]),
+  role: z.enum(["user", "assistant"]),
   parts: z.array(z.record(z.any())).optional(),
   content: z.string().optional(),
 }).passthrough();
