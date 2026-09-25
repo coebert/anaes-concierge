@@ -129,8 +129,11 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
   )
   .handler(async ({ data, context }) => {
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
-    const canSeeEmail =
-      access.isAdmin || access.isCoordinator || context.userId === data.staffId;
+    const isPrivileged = access.isAdmin || access.isCoordinator;
+    if (!isPrivileged && context.userId !== data.staffId) {
+      throw new Error("Forbidden: you can only view your own profile.");
+    }
+    const canSeeEmail = isPrivileged || context.userId === data.staffId;
 
     const [profileRes, allRes] = await Promise.all([
       supabaseAdmin.rpc("get_profile_decrypted", { p_id: data.staffId }),
