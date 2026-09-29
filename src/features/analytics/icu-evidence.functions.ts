@@ -269,7 +269,9 @@ export const getIcuConsultantEvidence = createServerFn({ method: "POST" })
       session: r.session,
       duty_type: r.duty_type,
       extra_type: r.extra_type,
-      pa_credit: r.pa_credit,
+      // Same value the session list shows, so headline totals always equal
+      // the sum of the listed sessions.
+      pa_credit: r.pa_credit ?? traceByKey.get(`${r.session_date}|${r.session}`)?.pa_credit ?? null,
       attending_consultant_ids: r.attending_consultant_ids,
     }));
     const tally = tallyIcuWorkload(rows, rules).find((t) => t.staff_id === staffId) ?? null;

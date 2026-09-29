@@ -99,7 +99,11 @@ export const getPaByConsultant = createServerFn({ method: "POST" })
     }
 
     const tallies = tallyPaByConsultant((assignRes.data ?? []) as IcuRow[], rules);
-    const rows: PaByConsultantRow[] = tallies.map((t) => ({
+    // Only consultant/SAS doctors belong on this page; trainees rostered on
+    // ICU rows appeared as "Unknown".
+    const rows: PaByConsultantRow[] = tallies
+      .filter((t) => nameById.has(t.staffId))
+      .map((t) => ({
       ...t,
       name: nameById.get(t.staffId)?.name ?? "Unknown",
       grade: nameById.get(t.staffId)?.grade ?? null,

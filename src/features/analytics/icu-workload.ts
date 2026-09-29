@@ -222,15 +222,19 @@ export function tallyIcuWorkload(
     const onCalls = a.onCallDates.size;
     const weekendDays = a.weekendDates.size;
 
-    const plannedPas = round2(
+    // Round each figure once from the raw sums so the parts always add up
+    // (rounding sub-totals first produced totals like 35.52 vs 35.53 recorded).
+    const rawPlanned =
       a.storedPa +
-        (a.uAm + a.uPm) / sessionsPerPa +
-        a.uOnCallDates.size * rules.oncall_pa_credit +
-        a.uWeekendDates.size * rules.weekend_pa_credit,
-    );
-    const extraPas = round2(a.storedExtraPa + a.uExtraSessions / sessionsPerPa);
-    const totalPas = round2(plannedPas + extraPas);
-    const clwrotaPas = round2(a.storedPa + a.storedExtraPa);
+      (a.uAm + a.uPm) / sessionsPerPa +
+      a.uOnCallDates.size * rules.oncall_pa_credit +
+      a.uWeekendDates.size * rules.weekend_pa_credit;
+    const rawExtra = a.storedExtraPa + a.uExtraSessions / sessionsPerPa;
+    const rawStored = a.storedPa + a.storedExtraPa;
+    const plannedPas = round2(rawPlanned);
+    const extraPas = round2(rawExtra);
+    const totalPas = round2(rawPlanned + rawExtra);
+    const clwrotaPas = round2(rawStored);
 
     out.push({
       staff_id,
@@ -246,7 +250,7 @@ export function tallyIcuWorkload(
       extraPas,
       totalPas,
       clwrotaPas,
-      estimatedPas: round2(totalPas - clwrotaPas),
+      estimatedPas: Math.max(0, round2(rawPlanned + rawExtra - rawStored)),
       dates: Array.from(a.allDates).sort(),
     });
   }

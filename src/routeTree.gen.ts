@@ -24,7 +24,6 @@ import { Route as AuthenticatedLeaveRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
 import { Route as AuthenticatedPulseRouteImport } from './routes/_authenticated/pulse'
 import { Route as AuthenticatedRecognitionRouteImport } from './routes/_authenticated/recognition'
-import { Route as AuthenticatedTraineesRouteImport } from './routes/_authenticated/trainees'
 import { Route as AuthenticatedWellbeingRouteImport } from './routes/_authenticated/wellbeing'
 import { Route as ApiAuditToolRouteImport } from './routes/api/audit-tool'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -83,6 +82,7 @@ import { Route as AuthenticatedRobustnessListFeasibilityRouteImport } from './ro
 import { Route as AuthenticatedRobustnessPoacAuditRouteImport } from './routes/_authenticated/robustness.poac-audit'
 import { Route as AuthenticatedRobustnessSimulateRouteImport } from './routes/_authenticated/robustness.simulate'
 import { Route as AuthenticatedStaffWorkingPatternsRouteImport } from './routes/_authenticated/staff.working-patterns'
+import { Route as AuthenticatedTraineesIndexRouteImport } from './routes/_authenticated/trainees.index'
 import { Route as AuthenticatedTraineesStaffIdRouteImport } from './routes/_authenticated/trainees.$staffId'
 import { Route as AuthenticatedTraineesStartDateAuditRouteImport } from './routes/_authenticated/trainees.start-date-audit'
 import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
@@ -182,11 +182,6 @@ const AuthenticatedRecognitionRoute =
     path: '/recognition',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedTraineesRoute = AuthenticatedTraineesRouteImport.update({
-  id: '/trainees',
-  path: '/trainees',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedWellbeingRoute = AuthenticatedWellbeingRouteImport.update({
   id: '/wellbeing',
   path: '/wellbeing',
@@ -527,17 +522,23 @@ const AuthenticatedStaffWorkingPatternsRoute =
     path: '/staff/working-patterns',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedTraineesIndexRoute =
+  AuthenticatedTraineesIndexRouteImport.update({
+    id: '/trainees/',
+    path: '/trainees/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedTraineesStaffIdRoute =
   AuthenticatedTraineesStaffIdRouteImport.update({
-    id: '/$staffId',
-    path: '/$staffId',
-    getParentRoute: () => AuthenticatedTraineesRoute,
+    id: '/trainees/$staffId',
+    path: '/trainees/$staffId',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedTraineesStartDateAuditRoute =
   AuthenticatedTraineesStartDateAuditRouteImport.update({
-    id: '/start-date-audit',
-    path: '/start-date-audit',
-    getParentRoute: () => AuthenticatedTraineesRoute,
+    id: '/trainees/start-date-audit',
+    path: '/trainees/start-date-audit',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
   id: '/api/public/health',
@@ -678,7 +679,6 @@ export interface FileRoutesByFullPath {
   '/me': typeof AuthenticatedMeRouteWithChildren
   '/pulse': typeof AuthenticatedPulseRoute
   '/recognition': typeof AuthenticatedRecognitionRoute
-  '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
@@ -740,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/calendar/': typeof AuthenticatedCalendarIndexRoute
   '/chat/': typeof AuthenticatedChatIndexRoute
   '/robustness/': typeof AuthenticatedRobustnessIndexRoute
+  '/trainees/': typeof AuthenticatedTraineesIndexRoute
   '/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
   '/admin/analytics/handover-risk': typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
   '/admin/analytics/leave-denials': typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
@@ -773,7 +774,6 @@ export interface FileRoutesByTo {
   '/me': typeof AuthenticatedMeRouteWithChildren
   '/pulse': typeof AuthenticatedPulseRoute
   '/recognition': typeof AuthenticatedRecognitionRoute
-  '/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
@@ -836,6 +836,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedCalendarIndexRoute
   '/chat': typeof AuthenticatedChatIndexRoute
   '/robustness': typeof AuthenticatedRobustnessIndexRoute
+  '/trainees': typeof AuthenticatedTraineesIndexRoute
   '/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
   '/admin/analytics/handover-risk': typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
   '/admin/analytics/leave-denials': typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
@@ -873,7 +874,6 @@ export interface FileRoutesById {
   '/_authenticated/me': typeof AuthenticatedMeRouteWithChildren
   '/_authenticated/pulse': typeof AuthenticatedPulseRoute
   '/_authenticated/recognition': typeof AuthenticatedRecognitionRoute
-  '/_authenticated/trainees': typeof AuthenticatedTraineesRouteWithChildren
   '/_authenticated/wellbeing': typeof AuthenticatedWellbeingRoute
   '/api/audit-tool': typeof ApiAuditToolRoute
   '/api/chat': typeof ApiChatRoute
@@ -936,6 +936,7 @@ export interface FileRoutesById {
   '/_authenticated/calendar/': typeof AuthenticatedCalendarIndexRoute
   '/_authenticated/chat/': typeof AuthenticatedChatIndexRoute
   '/_authenticated/robustness/': typeof AuthenticatedRobustnessIndexRoute
+  '/_authenticated/trainees/': typeof AuthenticatedTraineesIndexRoute
   '/_authenticated/admin/analytics/allocation-fairness': typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
   '/_authenticated/admin/analytics/handover-risk': typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
   '/_authenticated/admin/analytics/leave-denials': typeof AuthenticatedAdminAnalyticsLeaveDenialsRoute
@@ -974,7 +975,6 @@ export interface FileRouteTypes {
     | '/me'
     | '/pulse'
     | '/recognition'
-    | '/trainees'
     | '/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
@@ -1036,6 +1036,7 @@ export interface FileRouteTypes {
     | '/calendar/'
     | '/chat/'
     | '/robustness/'
+    | '/trainees/'
     | '/admin/analytics/allocation-fairness'
     | '/admin/analytics/handover-risk'
     | '/admin/analytics/leave-denials'
@@ -1069,7 +1070,6 @@ export interface FileRouteTypes {
     | '/me'
     | '/pulse'
     | '/recognition'
-    | '/trainees'
     | '/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
@@ -1132,6 +1132,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/chat'
     | '/robustness'
+    | '/trainees'
     | '/admin/analytics/allocation-fairness'
     | '/admin/analytics/handover-risk'
     | '/admin/analytics/leave-denials'
@@ -1168,7 +1169,6 @@ export interface FileRouteTypes {
     | '/_authenticated/me'
     | '/_authenticated/pulse'
     | '/_authenticated/recognition'
-    | '/_authenticated/trainees'
     | '/_authenticated/wellbeing'
     | '/api/audit-tool'
     | '/api/chat'
@@ -1231,6 +1231,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calendar/'
     | '/_authenticated/chat/'
     | '/_authenticated/robustness/'
+    | '/_authenticated/trainees/'
     | '/_authenticated/admin/analytics/allocation-fairness'
     | '/_authenticated/admin/analytics/handover-risk'
     | '/_authenticated/admin/analytics/leave-denials'
@@ -1379,13 +1380,6 @@ declare module '@tanstack/react-router' {
       path: '/recognition'
       fullPath: '/recognition'
       preLoaderRoute: typeof AuthenticatedRecognitionRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/trainees': {
-      id: '/_authenticated/trainees'
-      path: '/trainees'
-      fullPath: '/trainees'
-      preLoaderRoute: typeof AuthenticatedTraineesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/wellbeing': {
@@ -1794,19 +1788,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffWorkingPatternsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/trainees/': {
+      id: '/_authenticated/trainees/'
+      path: '/trainees'
+      fullPath: '/trainees/'
+      preLoaderRoute: typeof AuthenticatedTraineesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/trainees/$staffId': {
       id: '/_authenticated/trainees/$staffId'
-      path: '/$staffId'
+      path: '/trainees/$staffId'
       fullPath: '/trainees/$staffId'
       preLoaderRoute: typeof AuthenticatedTraineesStaffIdRouteImport
-      parentRoute: typeof AuthenticatedTraineesRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/trainees/start-date-audit': {
       id: '/_authenticated/trainees/start-date-audit'
-      path: '/start-date-audit'
+      path: '/trainees/start-date-audit'
       fullPath: '/trainees/start-date-audit'
       preLoaderRoute: typeof AuthenticatedTraineesStartDateAuditRouteImport
-      parentRoute: typeof AuthenticatedTraineesRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/api/public/health': {
       id: '/api/public/health'
@@ -2010,22 +2011,6 @@ const AuthenticatedMeRouteWithChildren = AuthenticatedMeRoute._addFileChildren(
   AuthenticatedMeRouteChildren,
 )
 
-interface AuthenticatedTraineesRouteChildren {
-  AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
-  AuthenticatedTraineesStartDateAuditRoute: typeof AuthenticatedTraineesStartDateAuditRoute
-}
-
-const AuthenticatedTraineesRouteChildren: AuthenticatedTraineesRouteChildren = {
-  AuthenticatedTraineesStaffIdRoute: AuthenticatedTraineesStaffIdRoute,
-  AuthenticatedTraineesStartDateAuditRoute:
-    AuthenticatedTraineesStartDateAuditRoute,
-}
-
-const AuthenticatedTraineesRouteWithChildren =
-  AuthenticatedTraineesRoute._addFileChildren(
-    AuthenticatedTraineesRouteChildren,
-  )
-
 interface AuthenticatedAdminAnalyticsRouteChildren {
   AuthenticatedAdminAnalyticsAllocationFairnessRoute: typeof AuthenticatedAdminAnalyticsAllocationFairnessRoute
   AuthenticatedAdminAnalyticsHandoverRiskRoute: typeof AuthenticatedAdminAnalyticsHandoverRiskRoute
@@ -2072,7 +2057,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMeRoute: typeof AuthenticatedMeRouteWithChildren
   AuthenticatedPulseRoute: typeof AuthenticatedPulseRoute
   AuthenticatedRecognitionRoute: typeof AuthenticatedRecognitionRoute
-  AuthenticatedTraineesRoute: typeof AuthenticatedTraineesRouteWithChildren
   AuthenticatedWellbeingRoute: typeof AuthenticatedWellbeingRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminAbsenceRoute: typeof AuthenticatedAdminAbsenceRoute
@@ -2124,7 +2108,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedRobustnessPoacAuditRoute: typeof AuthenticatedRobustnessPoacAuditRoute
   AuthenticatedRobustnessSimulateRoute: typeof AuthenticatedRobustnessSimulateRoute
   AuthenticatedStaffWorkingPatternsRoute: typeof AuthenticatedStaffWorkingPatternsRoute
+  AuthenticatedTraineesStaffIdRoute: typeof AuthenticatedTraineesStaffIdRoute
+  AuthenticatedTraineesStartDateAuditRoute: typeof AuthenticatedTraineesStartDateAuditRoute
   AuthenticatedRobustnessIndexRoute: typeof AuthenticatedRobustnessIndexRoute
+  AuthenticatedTraineesIndexRoute: typeof AuthenticatedTraineesIndexRoute
   AuthenticatedRobustnessDayDateRoute: typeof AuthenticatedRobustnessDayDateRoute
 }
 
@@ -2138,7 +2125,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMeRoute: AuthenticatedMeRouteWithChildren,
   AuthenticatedPulseRoute: AuthenticatedPulseRoute,
   AuthenticatedRecognitionRoute: AuthenticatedRecognitionRoute,
-  AuthenticatedTraineesRoute: AuthenticatedTraineesRouteWithChildren,
   AuthenticatedWellbeingRoute: AuthenticatedWellbeingRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminAbsenceRoute: AuthenticatedAdminAbsenceRoute,
@@ -2201,7 +2187,11 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedRobustnessSimulateRoute: AuthenticatedRobustnessSimulateRoute,
   AuthenticatedStaffWorkingPatternsRoute:
     AuthenticatedStaffWorkingPatternsRoute,
+  AuthenticatedTraineesStaffIdRoute: AuthenticatedTraineesStaffIdRoute,
+  AuthenticatedTraineesStartDateAuditRoute:
+    AuthenticatedTraineesStartDateAuditRoute,
   AuthenticatedRobustnessIndexRoute: AuthenticatedRobustnessIndexRoute,
+  AuthenticatedTraineesIndexRoute: AuthenticatedTraineesIndexRoute,
   AuthenticatedRobustnessDayDateRoute: AuthenticatedRobustnessDayDateRoute,
 }
 
