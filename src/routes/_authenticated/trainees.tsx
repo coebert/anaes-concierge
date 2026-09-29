@@ -612,13 +612,17 @@ function TraineesPage() {
                 {rows.map(({ trainee, progress, overall, icuOnly, effectiveStartDate }) => (
                   <TableRow key={trainee.id} className={canOpenProfile(trainee.id) ? "cursor-pointer" : undefined}>
                     <TableCell>
-                      <Link
-                        to="/trainees/$staffId"
-                        params={{ staffId: trainee.id }}
-                        className="font-medium hover:underline"
-                      >
-                        {trainee.full_name || trainee.email}
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link
+                          to="/trainees/$staffId"
+                          params={{ staffId: trainee.id }}
+                          className="font-medium hover:underline"
+                        >
+                          {trainee.full_name || trainee.email}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{trainee.full_name || trainee.email}</span>
+                      )}
                       {isNotYetStarted(effectiveStartDate) ? (
                         <Badge variant="outline" className="ml-2 text-xs">
                           Not yet started · {format(new Date(effectiveStartDate), "d MMM yyyy")}
