@@ -137,13 +137,15 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         ) as string[];
         let tsMap = new Map<string, any>();
         if (tsIds.length) {
-          const { data: ts } = await sb
-            .from("theatre_sessions")
-            .select(
-              "id, theatre_id, specialty_id, surgical_consultant, notes, theatres(name), specialties(name)",
-            )
-            .in("id", tsIds);
-          (ts ?? []).forEach((row: any) => tsMap.set(row.id, row));
+          for (let i = 0; i < tsIds.length; i += 150) {
+            const { data: ts } = await sb
+              .from("theatre_sessions")
+              .select(
+                "id, theatre_id, specialty_id, surgical_consultant, notes, theatres(name), specialties(name)",
+              )
+              .in("id", tsIds.slice(i, i + 150));
+            (ts ?? []).forEach((row: any) => tsMap.set(row.id, row));
+          }
         }
         // Resolve supervisor names
         const supIds = Array.from(
