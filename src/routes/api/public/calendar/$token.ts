@@ -81,24 +81,41 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
 
         const staffId = profile.id as string;
 
-        // Pull a 12-month window: 60 days back, 305 days forward
+        // 60 days back, 13 months forward so a full year of on-calls shows.
         const today = new Date();
         const from = new Date(today);
         from.setUTCDate(from.getUTCDate() - 60);
         const to = new Date(today);
-        to.setUTCDate(to.getUTCDate() + 305);
+        to.setUTCDate(to.getUTCDate() + 400);
         const fromStr = from.toISOString().slice(0, 10);
         const toStr = to.toISOString().slice(0, 10);
 
+        // Page through rows — a year of AM/PM/on-call rows exceeds the
+        // default 1000-row response cap, which silently truncated the feed.
+        const fetchAllAssignments = async () => {
+          const all: any[] = [];
+          const PAGE = 1000;
+          for (let offset = 0; offset < 20000; offset += PAGE) {
+            const { data, error } = await sb
+              .from("rota_assignments")
+              .select(
+                "id, session_date, session, duty_type, role_on_list, notes, updated_at, supervisor_id, theatre_session_id",
+              )
+              .eq("staff_id", staffId)
+              .gte("session_date", fromStr)
+              .lte("session_date", toStr)
+              .order("session_date")
+              .order("id")
+              .range(offset, offset + PAGE - 1);
+            if (error) return { data: all, error };
+            all.push(...(data ?? []));
+            if (!data || data.length < PAGE) break;
+          }
+          return { data: all, error: null };
+        };
+
         const [assignmentsRes, leaveRes] = await Promise.all([
-          sb
-            .from("rota_assignments")
-            .select(
-              "id, session_date, session, duty_type, role_on_list, notes, updated_at, supervisor_id, theatre_session_id",
-            )
-            .eq("staff_id", staffId)
-            .gte("session_date", fromStr)
-            .lte("session_date", toStr),
+          fetchAllAssignments(),
           sb
             .from("leave_requests")
             .select(
@@ -120,13 +137,15 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         ) as string[];
         let tsMap = new Map<string, any>();
         if (tsIds.length) {
-          const { data: ts } = await sb
-            .from("theatre_sessions")
-            .select(
-              "id, theatre_id, specialty_id, surgical_consultant, notes, theatres(name), specialties(name)",
-            )
-            .in("id", tsIds);
-          (ts ?? []).forEach((row: any) => tsMap.set(row.id, row));
+          for (let i = 0; i < tsIds.length; i += 150) {
+            const { data: ts } = await sb
+              .from("theatre_sessions")
+              .select(
+                "id, theatre_id, specialty_id, surgical_consultant, notes, theatres(name), specialties(name)",
+              )
+              .in("id", tsIds.slice(i, i + 150));
+            (ts ?? []).forEach((row: any) => tsMap.set(row.id, row));
+          }
         }
         // Resolve supervisor names
         const supIds = Array.from(
