@@ -51,7 +51,11 @@ function TraineesGuard() {
 }
 
 function TraineesPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
+  // Profile pages are restricted to admins/coordinators and the trainee
+  // themselves — only render links the viewer is actually allowed to open.
+  const canOpenProfile = (staffId: string) =>
+    hasRole("admin") || hasRole("rota_coordinator") || user?.id === staffId;
   const [filter, setFilter] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
