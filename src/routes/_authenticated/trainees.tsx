@@ -610,7 +610,7 @@ function TraineesPage() {
               </TableHeader>
               <TableBody>
                 {rows.map(({ trainee, progress, overall, icuOnly, effectiveStartDate }) => (
-                  <TableRow key={trainee.id} className="cursor-pointer">
+                  <TableRow key={trainee.id} className={canOpenProfile(trainee.id) ? "cursor-pointer" : undefined}>
                     <TableCell>
                       <Link
                         to="/trainees/$staffId"
