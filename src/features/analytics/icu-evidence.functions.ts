@@ -124,6 +124,9 @@ export const getIcuConsultantEvidence = createServerFn({ method: "POST" })
     // one doctor and window.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const { fetchAllPages } = await import("./fetch-all-pages");
+    const cols =
+      "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids";
     const [profileRes, rulesRes, ownRes, attendedRes, traceRes, namesRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("id,full_name,grade").eq("id", staffId).maybeSingle(),
       supabaseAdmin
@@ -131,38 +134,43 @@ export const getIcuConsultantEvidence = createServerFn({ method: "POST" })
         .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
         .limit(1)
         .maybeSingle(),
-      supabaseAdmin
-        .from("rota_assignments")
-        .select(
-          "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids",
-        )
-        .eq("staff_id", staffId)
-        .in("duty_type", [...ICU_DUTY_TYPES])
-        .gte("session_date", data.startIso)
-        .lte("session_date", data.endIso)
-        .order("session_date", { ascending: true })
-        .range(0, 4999),
-      supabaseAdmin
-        .from("rota_assignments")
-        .select(
-          "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids",
-        )
-        .contains("attending_consultant_ids", [staffId])
-        .in("duty_type", [...ICU_DUTY_TYPES])
-        .gte("session_date", data.startIso)
-        .lte("session_date", data.endIso)
-        .order("session_date", { ascending: true })
-        .range(0, 4999),
-      supabaseAdmin
-        .from("icu_detection_matches")
-        .select(
-          "session_date,session,duty_type,clwrota_external_id,matched_field,matched_value,place_name,role_label,pa_credit",
-        )
-        .eq("staff_id", staffId)
-        .gte("session_date", data.startIso)
-        .lte("session_date", data.endIso)
-        .order("session_date", { ascending: true })
-        .range(0, 4999),
+      fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("rota_assignments")
+          .select(cols)
+          .eq("staff_id", staffId)
+          .in("duty_type", [...ICU_DUTY_TYPES])
+          .gte("session_date", data.startIso)
+          .lte("session_date", data.endIso)
+          .order("session_date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("rota_assignments")
+          .select(cols)
+          .contains("attending_consultant_ids", [staffId])
+          .in("duty_type", [...ICU_DUTY_TYPES])
+          .gte("session_date", data.startIso)
+          .lte("session_date", data.endIso)
+          .order("session_date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("icu_detection_matches")
+          .select(
+            "id,session_date,session,duty_type,clwrota_external_id,matched_field,matched_value,place_name,role_label,pa_credit",
+          )
+          .eq("staff_id", staffId)
+          .gte("session_date", data.startIso)
+          .lte("session_date", data.endIso)
+          .order("session_date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
       supabaseAdmin.from("profiles").select("id,full_name").in("grade", ["consultant", "sas"]),
     ]);
 

@@ -56,17 +56,21 @@ export const getPaByConsultant = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const { fetchAllPages } = await import("./fetch-all-pages");
     const [assignRes, profilesRes, rulesRes] = await Promise.all([
-      supabaseAdmin
-        .from("rota_assignments")
-        .select(
-          "staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids",
-        )
-        .in("duty_type", [...ICU_DUTY_TYPES])
-        .gte("session_date", data.startIso)
-        .lte("session_date", data.endIso)
-        .order("session_date", { ascending: true })
-        .range(0, 9999),
+      fetchAllPages((from, to) =>
+        supabaseAdmin
+          .from("rota_assignments")
+          .select(
+            "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids",
+          )
+          .in("duty_type", [...ICU_DUTY_TYPES])
+          .gte("session_date", data.startIso)
+          .lte("session_date", data.endIso)
+          .order("session_date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
       supabaseAdmin
         .from("profiles")
         .select("id,full_name,grade")

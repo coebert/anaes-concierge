@@ -145,11 +145,12 @@ function SpecialtyWorkloadPage() {
         const { data: page, error } = await supabase
           .from("rota_assignments")
           .select(
-            "staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids,theatre_session_id",
+            "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids,theatre_session_id",
           )
           .in("staff_id", staffIds)
           .gte("session_date", fromDate)
           .lte("session_date", toDate)
+          .order("id", { ascending: true })
           .range(from, from + PAGE_SIZE - 1);
         if (error) throw error;
         raw.push(...((page ?? []) as unknown as AssignmentRow[]));

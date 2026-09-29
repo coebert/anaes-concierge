@@ -139,11 +139,12 @@ function AppraisalYearPage() {
         const { data: page, error } = await supabase
           .from("rota_assignments")
           .select(
-            "staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids,theatre_session_id",
+            "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids,theatre_session_id",
           )
           .gte("session_date", from)
           .lte("session_date", to)
           .or(`staff_id.eq.${staffId},attending_consultant_ids.cs.{${staffId}}`)
+          .order("id", { ascending: true })
           .range(offset, offset + PAGE_SIZE - 1);
         if (error) throw error;
         raw.push(...((page ?? []) as unknown as AssignmentRow[]));
