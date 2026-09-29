@@ -36,7 +36,7 @@ function TraineeDetailPage() {
   const { staffId } = Route.useParams();
   const fetchProfile = useServerFn(getTraineeProfileWithSupervisors);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["trainee-detail", staffId],
     queryFn: async () => {
       const today = todayISO();
