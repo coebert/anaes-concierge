@@ -497,9 +497,11 @@ function TraineesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Link>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
