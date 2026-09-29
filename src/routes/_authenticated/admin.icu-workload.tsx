@@ -130,10 +130,13 @@ function IcuWorkloadPage() {
         const { data: page, error } = await supabase
           .from("rota_assignments")
           .select("staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids")
-          .in("staff_id", staffIds)
+          // No staff_id filter: a row rostered to a trainee can still name a
+          // consultant in attending_consultant_ids, and that consultant must be
+          // credited. Non-consultant tallies are dropped after tallying.
           .in("duty_type", [...ICU_DUTY_TYPES])
           .gte("session_date", fromDate)
           .lte("session_date", toDate)
+          .order("id", { ascending: true })
           .range(from, from + PAGE_SIZE - 1);
         if (error) throw error;
         rows.push(...((page ?? []) as unknown as IcuRow[]));
@@ -149,7 +152,9 @@ function IcuWorkloadPage() {
     const nameById = new Map(data.profiles.map((p) => [p.id, p.full_name || "Unknown"]));
     const gradeById = new Map(data.profiles.map((p) => [p.id, p.grade]));
 
-    const tallies = tallyIcuWorkload(data.rows, data.rules).map((t) => ({
+    const tallies = tallyIcuWorkload(data.rows, data.rules)
+      .filter((t) => nameById.has(t.staff_id))
+      .map((t) => ({
       ...t,
       name: nameById.get(t.staff_id) ?? "Unknown",
       grade: gradeById.get(t.staff_id) ?? null,
