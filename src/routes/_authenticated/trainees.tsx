@@ -51,7 +51,11 @@ function TraineesGuard() {
 }
 
 function TraineesPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
+  // Profile pages are restricted to admins/coordinators and the trainee
+  // themselves — only render links the viewer is actually allowed to open.
+  const canOpenProfile = (staffId: string) =>
+    hasRole("admin") || hasRole("rota_coordinator") || user?.id === staffId;
   const [filter, setFilter] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
@@ -466,13 +470,17 @@ function TraineesPage() {
                 {notYetStartedTrainees.map(({ trainee, effectiveStartDate }) => (
                   <TableRow key={trainee.id}>
                     <TableCell>
-                      <Link
-                        to="/trainees/$staffId"
-                        params={{ staffId: trainee.id }}
-                        className="font-medium hover:underline"
-                      >
-                        {trainee.full_name || trainee.email}
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link
+                          to="/trainees/$staffId"
+                          params={{ staffId: trainee.id }}
+                          className="font-medium hover:underline"
+                        >
+                          {trainee.full_name || trainee.email}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{trainee.full_name || trainee.email}</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {trainee.training_level ? (
@@ -489,9 +497,11 @@ function TraineesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Link>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -600,15 +610,19 @@ function TraineesPage() {
               </TableHeader>
               <TableBody>
                 {rows.map(({ trainee, progress, overall, icuOnly, effectiveStartDate }) => (
-                  <TableRow key={trainee.id} className="cursor-pointer">
+                  <TableRow key={trainee.id} className={canOpenProfile(trainee.id) ? "cursor-pointer" : undefined}>
                     <TableCell>
-                      <Link
-                        to="/trainees/$staffId"
-                        params={{ staffId: trainee.id }}
-                        className="font-medium hover:underline"
-                      >
-                        {trainee.full_name || trainee.email}
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link
+                          to="/trainees/$staffId"
+                          params={{ staffId: trainee.id }}
+                          className="font-medium hover:underline"
+                        >
+                          {trainee.full_name || trainee.email}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{trainee.full_name || trainee.email}</span>
+                      )}
                       {isNotYetStarted(effectiveStartDate) ? (
                         <Badge variant="outline" className="ml-2 text-xs">
                           Not yet started · {format(new Date(effectiveStartDate), "d MMM yyyy")}
@@ -660,9 +674,11 @@ function TraineesPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link to="/trainees/$staffId" params={{ staffId: trainee.id }}>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Link>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
