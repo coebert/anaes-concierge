@@ -470,13 +470,17 @@ function TraineesPage() {
                 {notYetStartedTrainees.map(({ trainee, effectiveStartDate }) => (
                   <TableRow key={trainee.id}>
                     <TableCell>
-                      <Link
-                        to="/trainees/$staffId"
-                        params={{ staffId: trainee.id }}
-                        className="font-medium hover:underline"
-                      >
-                        {trainee.full_name || trainee.email}
-                      </Link>
+                      {canOpenProfile(trainee.id) ? (
+                        <Link
+                          to="/trainees/$staffId"
+                          params={{ staffId: trainee.id }}
+                          className="font-medium hover:underline"
+                        >
+                          {trainee.full_name || trainee.email}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{trainee.full_name || trainee.email}</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {trainee.training_level ? (
