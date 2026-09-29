@@ -78,15 +78,19 @@ export const listIcuTraces = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data, context }): Promise<IcuTraceRow[]> => {
-    const { data: rows, error } = await context.supabase
-      .from("icu_detection_matches")
-      .select(
-        "id,staff_id,session_date,session,duty_type,clwrota_external_id,matched_field,matched_value,place_name,slot_titles,role_label,person_label,pa_credit,detected_at,source_row",
-      )
-      .gte("session_date", data.startIso)
-      .lte("session_date", data.endIso)
-      .order("session_date", { ascending: true })
-      .limit(1000);
+    const { fetchAllPages } = await import("./fetch-all-pages");
+    const { data: rows, error } = await fetchAllPages((from, to) =>
+      context.supabase
+        .from("icu_detection_matches")
+        .select(
+          "id,staff_id,session_date,session,duty_type,clwrota_external_id,matched_field,matched_value,place_name,slot_titles,role_label,person_label,pa_credit,detected_at,source_row",
+        )
+        .gte("session_date", data.startIso)
+        .lte("session_date", data.endIso)
+        .order("session_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    );
     if (error) throw new Error(error.message);
 
     const ids = [...new Set((rows ?? []).map((r) => r.staff_id))];
