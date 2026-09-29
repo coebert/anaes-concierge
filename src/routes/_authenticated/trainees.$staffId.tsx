@@ -210,6 +210,32 @@ function TraineeDetailPage() {
   }, [data]);
 
   if (isLoading) return <PageLoading />;
+  if (error) {
+    const restricted =
+      error instanceof Error && error.message.startsWith("Forbidden");
+    return (
+      <div className="space-y-6">
+        <Link
+          to="/trainees"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3 w-3" /> All trainees
+        </Link>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {restricted ? "Restricted profile" : "Couldn't load this trainee"}
+            </CardTitle>
+            <CardDescription>
+              {restricted
+                ? "You can only open your own trainee profile. Ask an administrator or rota coordinator if you need to see someone else's."
+                : "Something went wrong loading this profile. Please try again later."}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
   if (!data?.profile) return <p>Not found.</p>;
 
   const clinicalAssignments = data.assignments.filter((a) =>
