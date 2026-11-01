@@ -153,6 +153,9 @@ export function AdminSettingsPage() {
       .sort()
       .join("|");
 
+  // validateMut's auto-retry triggers rotaMut, whose success re-runs
+  // validation: break the declaration cycle through a ref set below.
+  const rotaMutRef = useRef<{ mutateAsync: () => Promise<unknown> } | null>(null);
   const validateMut = useMutation({
     mutationFn: () => validateMatches({ data: {} }),
     onSuccess: (res) => {
@@ -225,8 +228,7 @@ export function AdminSettingsPage() {
         );
         // Fire-and-forget; rotaMut.onSuccess short-circuits validation while
         // retryInFlight is true, then we kick a fresh validate ourselves.
-        rotaMut
-          .mutateAsync()
+        (rotaMutRef.current?.mutateAsync() ?? Promise.reject(new Error("Rota sync not ready")))
           .then(() => {
             setTimeout(() => validateMut.mutate(), 250);
           })
@@ -293,6 +295,8 @@ export function AdminSettingsPage() {
       return res;
     },
   });
+
+  rotaMutRef.current = rotaMut;
 
   const leaveMut = useMutation({
     mutationFn: () => syncLeave(),

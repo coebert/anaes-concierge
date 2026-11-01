@@ -40,6 +40,7 @@ function ChatLayout() {
     },
   });
 
+  const [listOpen, setListOpen] = useState(false);
   const createConv = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
@@ -76,7 +77,6 @@ function ChatLayout() {
   // Auto-create AT MOST ONCE per visit. A failed insert must not retry in a
   // loop — the user gets an error and an explicit retry button instead.
   const autoCreateTried = useRef(false);
-  const [listOpen, setListOpen] = useState(false);
   const { mutate: createMutate, isPending: creating, isError: createFailed } = createConv;
   useEffect(() => {
     if (autoCreateTried.current) return;

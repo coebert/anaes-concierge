@@ -146,13 +146,15 @@ export function londonDateISO(now: Date = new Date()): string {
 
 /** Current hour 0–23 in Europe/London. */
 export function londonHourOfDay(now: Date = new Date()): number {
-  return Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/London",
-      hour: "2-digit",
-      hour12: false,
-    }).format(now),
-  ) % 24;
+  return (
+    Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        hour: "2-digit",
+        hour12: false,
+      }).format(now),
+    ) % 24
+  );
 }
 
 /* ----------------------------------------------------------------------------

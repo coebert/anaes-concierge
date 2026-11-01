@@ -46,7 +46,10 @@ import {
   parseDateLocal,
   toISODateLocal,
   formatDateGB,
-  formatDateWithWeekdayGB, formatMonthYearGB, formatDateTimeGB } from "@/lib/utils";
+  formatDateWithWeekdayGB,
+  formatMonthYearGB,
+  formatDateTimeGB,
+} from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
@@ -191,8 +194,7 @@ export function PeriodNav({
     }
     // Month-only navigation label (e.g. "May 2026") — not a full date.
 
-    if (mode === "month")
-      return formatMonthYearGB(anchor);
+    if (mode === "month") return formatMonthYearGB(anchor);
     const ws = startOfWeek(anchor);
     return `Week of ${fmt(ws)}`;
   })();
@@ -384,53 +386,6 @@ const TheatreCellContent = memo(function TheatreCellContent({
   );
 });
 
-const StaffListCellContent = memo(function StaffListCellContent({
-  model,
-}: {
-  model: StaffListCellModel;
-}) {
-  if (model.assigns.length === 0) {
-    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
-  }
-  return (
-    <div className="space-y-1">
-      {model.assigns.map((a) => {
-        const isConsultant = a.grade === "consultant";
-        const isTrainee = a.grade === "trainee";
-        return (
-          <div key={a.id} className="flex items-center gap-1 min-w-0">
-            <Link
-              to="/calendar/staff/$staffId"
-              params={{ staffId: a.staffId }}
-              className={cn(
-                "block truncate text-[10px] hover:underline flex-1 min-w-0",
-                isConsultant && "font-bold",
-                isTrainee && "text-blue-600 dark:text-blue-400",
-              )}
-            >
-              {a.tag && (
-                <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
-                  {a.tag}
-                </Badge>
-              )}
-              {a.fullName}
-              {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
-            </Link>
-            {a.medicalExaminer && (
-              <MedicalExaminerDetailsDialog details={a.medicalExaminer} staffName={a.fullName} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-});
-
-const SESSION_TIMES: Record<SessionHalf, { start: string; end: string; label: string }> = {
-  am: { start: "08:00", end: "13:00", label: "AM (08:00–13:00)" },
-  pm: { start: "13:00", end: "18:00", label: "PM (13:00–18:00)" },
-};
-
 const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog({
   details,
   staffName,
@@ -505,14 +460,59 @@ const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog(
             </>
           )}
           <dt className="text-muted-foreground">Synced</dt>
-          <dd className="text-muted-foreground">
-            {formatDateTimeGB(details.updatedAt)}
-          </dd>
+          <dd className="text-muted-foreground">{formatDateTimeGB(details.updatedAt)}</dd>
         </dl>
       </DialogContent>
     </Dialog>
   );
 });
+
+const StaffListCellContent = memo(function StaffListCellContent({
+  model,
+}: {
+  model: StaffListCellModel;
+}) {
+  if (model.assigns.length === 0) {
+    return <div className="text-muted-foreground/40 text-[10px]">—</div>;
+  }
+  return (
+    <div className="space-y-1">
+      {model.assigns.map((a) => {
+        const isConsultant = a.grade === "consultant";
+        const isTrainee = a.grade === "trainee";
+        return (
+          <div key={a.id} className="flex items-center gap-1 min-w-0">
+            <Link
+              to="/calendar/staff/$staffId"
+              params={{ staffId: a.staffId }}
+              className={cn(
+                "block truncate text-[10px] hover:underline flex-1 min-w-0",
+                isConsultant && "font-bold",
+                isTrainee && "text-blue-600 dark:text-blue-400",
+              )}
+            >
+              {a.tag && (
+                <Badge variant="outline" className="mr-1 px-1 py-0 text-[9px]">
+                  {a.tag}
+                </Badge>
+              )}
+              {a.fullName}
+              {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
+            </Link>
+            {a.medicalExaminer && (
+              <MedicalExaminerDetailsDialog details={a.medicalExaminer} staffName={a.fullName} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+
+const SESSION_TIMES: Record<SessionHalf, { start: string; end: string; label: string }> = {
+  am: { start: "08:00", end: "13:00", label: "AM (08:00–13:00)" },
+  pm: { start: "13:00", end: "18:00", label: "PM (13:00–18:00)" },
+};
 
 const NhhCellContent = memo(function NhhCellContent({ model }: { model: NhhCellModel }) {
   if (model.staff.length === 0) {
