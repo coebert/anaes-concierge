@@ -132,25 +132,23 @@ c "comp: forged service claim denied"            forged-svc "$COMP" "err:42501|q
 c "comp: anonymous denied"                       anon     "$COMP" "err:42501|q=0"
 c "comp: scheduler session denied"               sched    "$COMP" "err:42501|q=0"
 c "comp: service_role allowed"                   service  "$COMP" "ok:6|q=0"
-# Sync variants: admin or service; scheduler only for the scheduled ones.
+# Sync triggers (closed by grant; bodies untouched because they read the
+# webhook secret): only service_role and the owner postgres (= pg_cron
+# identity) may execute. Admins trigger syncs through server code that checks
+# admin and then uses the service role.
 for f in "trigger_clwrota_sync('staff')" "trigger_clwrota_sync_with_query('rota','from=2026-01-01')" "trigger_clwrota_sync_rate_limited('leave')"; do
   n=${f%%(*}
-  for who in user:$A user:$B user:$C user:$E user:$R noclaims forged-svc pg-as-auth pg-as-svc pg-claims; do
+  for who in user:$A user:$B user:$C user:$DA user:$E user:$R noclaims forged-svc forged-sub authn-bare pg-as-auth anon; do
     c "sync: $n denied for $who" "$who" "public.$f IS NOT NULL" "err:42501|q=0"
   done
-  c "sync: $n denied for anon" anon "public.$f IS NOT NULL" "err:42501|q=0"
-  c "sync: $n admin enqueues 1 stub" user:$DA "public.$f IS NOT NULL" "ok:true|q=1"
-  c "sync: $n service enqueues 1 stub" service "public.$f IS NOT NULL" "ok:true|q=1"
+  c "sync: $n service enqueues 1 stub"   service "public.$f IS NOT NULL" "ok:true|q=1"
+  c "sync: $n scheduler enqueues 1 stub" sched   "public.$f IS NOT NULL" "ok:true|q=1"
 done
-c "sync: trigger_clwrota_sync scheduler enqueues 1"            sched "public.trigger_clwrota_sync('staff') IS NOT NULL" "ok:true|q=1"
-c "sync: with_query scheduler enqueues 1"                      sched "public.trigger_clwrota_sync_with_query('rota','from=2026-01-01') IS NOT NULL" "ok:true|q=1"
-c "sync: rate_limited NOT available to scheduler"              sched "public.trigger_clwrota_sync_rate_limited('leave') IS NOT NULL" "err:42501|q=0"
-c "sync: all_rate_limited denied for staffA"                   user:$A "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "err:42501|q=0"
-c "sync: all_rate_limited denied for coordinator"              user:$C "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "err:42501|q=0"
-c "sync: all_rate_limited denied for no-claims"                noclaims "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "err:42501|q=0"
-c "sync: all_rate_limited denied for scheduler"                sched "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "err:42501|q=0"
-c "sync: all_rate_limited admin enqueues 3"                    user:$DA "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "ok:true|q=3"
-c "sync: all_rate_limited service enqueues 3"                  service "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "ok:true|q=3"
+for who in user:$A user:$C user:$DA noclaims forged-svc pg-as-auth anon; do
+  c "sync: all_rate_limited denied for $who" "$who" "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "err:42501|q=0"
+done
+c "sync: all_rate_limited service enqueues 3"   service "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "ok:true|q=3"
+c "sync: all_rate_limited scheduler enqueues 3" sched   "public.trigger_clwrota_sync_all_rate_limited() IS NOT NULL" "ok:true|q=3"
 # Cron listing and anomaly detection: admin or service only.
 for who in user:$A user:$C user:$E noclaims forged-svc sched pg-as-auth anon; do
   c "cron: list denied for $who" "$who" "(SELECT count(*) FROM public.list_clwrota_cron_runs(5))" "err:42501|q=0"
@@ -169,8 +167,10 @@ AUD=$($H -U harness -At -c "SELECT string_agg(coalesce(called_by::text,'null') |
 $H -U harness -c "INSERT INTO results VALUES ('fixed','audit: caller rows', \$e\$$A/authenticated,null/service_role,null/scheduler:postgres\$e\$, \$v\$$AUD\$v\$)"
 BAD=$($H -U harness -At -c "SELECT count(*) FROM net.http_request_queue WHERE url !~ '/api/public/hooks/clwrota-sync\?step=(staff|rota|leave)(&from=2026-01-01)?$' OR headers->>'x-webhook-secret' <> 'dummy-harness-secret'")
 $H -U harness -c "INSERT INTO results VALUES ('fixed','queue: only expected stub rows (url+dummy secret)','0','$BAD')"
-DEFS=$($H -U harness -At -c "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prosecdef AND pg_get_functiondef(p.oid) ~* '(pg_has_role\(current_user|current_user\s*(=|<>))'")
-$H -U harness -c "INSERT INTO results VALUES ('fixed','metadata: no definer body tests current_user','0','$DEFS')"
+# Only the four grant-closed sync triggers may still contain the stale test,
+# and none of them may be executable by a request role.
+DEFS=$($H -U harness -At -c "SELECT string_agg(p.proname || ':' || has_function_privilege('authenticated',p.oid,'EXECUTE') || '/' || has_function_privilege('anon',p.oid,'EXECUTE'), ',' ORDER BY p.proname) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prosecdef AND pg_get_functiondef(p.oid) ~* '(pg_has_role\(current_user|current_user\s*(=|<>))'")
+$H -U harness -c "INSERT INTO results VALUES ('fixed','metadata: stale current_user test only in grant-closed sync triggers', 'trigger_clwrota_sync:false/false,trigger_clwrota_sync_all_rate_limited:false/false,trigger_clwrota_sync_rate_limited:false/false,trigger_clwrota_sync_with_query:false/false', '$DEFS')"
 
 # ---------- Phase 3: real PostgREST, synthetic JWTs ----------
 SECRET="harness-only-jwt-secret-0123456789abcdef"
@@ -213,7 +213,8 @@ h "POST staffA all_rate_limited denied"      POST "$TA" /rpc/trigger_clwrota_syn
 h "POST anon sync denied"                    POST ""    /rpc/trigger_clwrota_sync '{"p_step":"staff"}' 401 '42501' 0
 h "POST forged service JWT (bad signature)"  POST "$TBAD" /rpc/trigger_clwrota_sync '{"p_step":"staff"}' 401 'PGRST' 0
 h "POST alg=none admin JWT rejected"         POST "$TNONE" /rpc/trigger_clwrota_sync '{"p_step":"staff"}' 401 'PGRST' 0
-h "POST admin sync enqueues 1 stub"          POST "$TD" /rpc/trigger_clwrota_sync '{"p_step":"staff"}' 200 '^[0-9]+$' 1
+h "POST admin direct sync denied (server path only)" POST "$TD" /rpc/trigger_clwrota_sync '{"p_step":"staff"}' 403 '42501' 0
+h "POST service sync enqueues 1 stub"        POST "$TS" /rpc/trigger_clwrota_sync '{"p_step":"staff"}' 200 '^[0-9]+$' 1
 h "POST service all_rate_limited enqueues 3" POST "$TS" /rpc/trigger_clwrota_sync_all_rate_limited '{}' 200 'staff_request_id' 3
 h "GET staffA cron runs denied"              GET  "$TA" "/rpc/list_clwrota_cron_runs?p_limit=5" "" 403 '42501' 0
 h "GET admin cron runs"                      GET  "$TD" "/rpc/list_clwrota_cron_runs?p_limit=5" "" 200 'clwrota-sync-staff-daily' 0
