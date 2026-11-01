@@ -32,7 +32,8 @@ interface Rpc {
 const RPCS: Rpc[] = [
   {
     signature: "public.get_competency_eligibility(date)",
-    guardMatch: /_request_is_authenticated_user\(\)[\s\S]+is_app_member\(auth\.uid\(\)\)[\s\S]+insufficient_privilege/i,
+    guardMatch:
+      /_request_is_authenticated_user\(\)[\s\S]+is_app_member\(auth\.uid\(\)\)[\s\S]+insufficient_privilege/i,
     authenticatedAllowed: true, // any active signed-in member, anon rejected
   },
   {

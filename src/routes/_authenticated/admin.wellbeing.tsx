@@ -289,10 +289,10 @@ export function AdminWellbeingPage() {
         These are unvalidated operational signal scores, not predictions of who will leave. Use them
         only to prompt a supportive conversation — never for HR or performance decisions. The
         pulse-survey trend is not yet measured per person and is shown as not assessed. Scores are
-        based only on the records available in the app. The {MIN_ASSESSABLE_SESSIONS}-session minimum
-        is a conservative display threshold, not a validated measure of data sufficiency: a person with
-        just over {MIN_ASSESSABLE_SESSIONS} sparse sessions is shown with a score, but that does not
-        mean their full 90 days are covered.
+        based only on the records available in the app. The {MIN_ASSESSABLE_SESSIONS}-session
+        minimum is a conservative display threshold, not a validated measure of data sufficiency: a
+        person with just over {MIN_ASSESSABLE_SESSIONS} sparse sessions is shown with a score, but
+        that does not mean their full 90 days are covered.
       </p>
 
       <Card>
