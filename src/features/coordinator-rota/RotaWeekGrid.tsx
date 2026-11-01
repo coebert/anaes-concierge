@@ -120,7 +120,7 @@ export function RotaWeekGrid({
                         <button
                           type="button"
                           className="block h-full w-full p-1.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                          aria-label={`${t.name}, ${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}, ${s === "am" ? "morning" : "afternoon"} session${spec ? `, ${spec}` : ""} — ${assigns.length} assigned. Edit`}
+                          aria-label={`${t.name}, ${formatDateWithWeekdayGB(iso(d))}, ${s === "am" ? "morning" : "afternoon"} session${spec ? `, ${spec}` : ""} — ${assigns.length} assigned. Edit`}
                           onClick={() => onCellClick({ theatreId: t.id, date: iso(d), session: s })}
                         >
                         {ts ? (
