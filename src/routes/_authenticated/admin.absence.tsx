@@ -146,6 +146,9 @@ function AdminAbsencePage() {
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
+  // Never show 0 for a figure that has not loaded (pending) or failed.
+  const fig = (n: number): number | string => (data ? n : isLoading ? "…" : "—");
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -153,15 +156,23 @@ function AdminAbsencePage() {
         description="Rolling 12-month sickness scoring (S² × D). Highlights patterns that a single-metric view misses — e.g. many short spells that add up to a manageable day count but a high Bradford score."
       />
 
+      {isError && data ? (
+        <QueryErrorNotice
+          stale
+          error={error}
+          onRetry={() => void refetch()}
+          what="absence data (figures below may be out of date)"
+        />
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Staff with sickness (12m)" value={rows.length} icon={HeartPulse} />
+        <StatCard label="Staff with sickness (12m)" value={fig(rows.length)} icon={HeartPulse} />
         <StatCard
           label="Red / critical"
-          value={bandCounts.red + bandCounts.critical}
+          value={fig(bandCounts.red + bandCounts.critical)}
           icon={AlertTriangle}
         />
-        <StatCard label="Open RTW interviews" value={totalOpenRtw} icon={Clock} />
-        <StatCard label="Overdue RTW" value={totalOverdue} icon={AlertTriangle} />
+        <StatCard label="Open RTW interviews" value={fig(totalOpenRtw)} icon={Clock} />
+        <StatCard label="Overdue RTW" value={fig(totalOverdue)} icon={AlertTriangle} />
       </div>
 
       <BradfordExplainer />
