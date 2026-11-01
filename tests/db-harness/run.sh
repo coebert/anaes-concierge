@@ -6,6 +6,11 @@
 # synthetic fixture + the REAL migration SQL from drizzle/migrations, runs
 # allow/deny cases, prints a table, exits non-zero on any mismatch.
 set -euo pipefail
+# Cases generated from the real leave-status helper (needs bun; runs as caller).
+GEN=/tmp/pgharness-helper-cases.sql
+if [ "$(id -u)" = 0 ] || [ ! -f "$GEN" ]; then
+  bun "$(dirname "$(readlink -f "$0")")/gen-helper-cases.ts" > "$GEN"; chmod 644 "$GEN"
+fi
 if [ "$(id -u)" = 0 ]; then exec su nobody -s /bin/bash -c "PG=${PG:-} bash $(readlink -f "$0")"; fi
 PG=${PG:-$(nix build nixpkgs#postgresql_16 --no-link --print-out-paths | grep -v -- -man | head -1)}
 export PATH="$PG/bin:$PATH"
@@ -20,6 +25,7 @@ for m in "$ROOT"/drizzle/migrations/000[0-6]_*.sql; do
 done
 for f in "$HERE"/pending-*.sql; do [ -f "$f" ] && $P -f "$f" >/dev/null; done
 $P -f "$HERE/cases.sql" >/dev/null
+$P -f "$GEN" >/dev/null
 
 # 4. admin_run_readonly_sql: separate sessions so transaction mode is real.
 ro() { # name uid readonly(0/1) query expect

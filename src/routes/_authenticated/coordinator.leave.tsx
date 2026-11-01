@@ -286,8 +286,8 @@ function LeaveCard({
       id: row.id,
       status,
       reason: `leave.decide:${status}${reserveList ? "+reserve" : ""}`,
+      // decided_by/decided_at are stamped by the server trigger.
       extraPatch: {
-        decided_by: user.id,
         decision_notes: notes || null,
         ...(reserveList ? { reserve_listed_at: reserveListedAt } : {}),
       },
