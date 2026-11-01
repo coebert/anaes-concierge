@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header";
-import { pagedRows } from "@/lib/paged-select";
+import { pagedRows, pagedSelect } from "@/lib/paged-select";
+import { chunkIds } from "@/lib/supabase-chunked";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -123,13 +124,25 @@ function TcsAuditPage() {
       // Pull approved leave so the audit can (a) bridge "consecutive days"
       // runs across leave days and (b) exclude leave days from the WTD
       // averaging denominator. Pending / cancelled requests are ignored.
-      let leaveQ = pagedRows("leave_requests", "staff_id, start_date, end_date, status", {
-        filter: (q) => q.in("staff_id", ids).eq("status", "approved"),
-        order: ["start_date", "id"],
-      });
-      if (since) leaveQ = leaveQ.gte("end_date", since);
-      const { data: leaveRows, error: e3 } = await leaveQ;
-      if (e3) throw e3;
+      // Every page of approved leave, per ≤200-id chunk (URL-safe), stable order.
+      const leaveRows = (
+        await Promise.all(
+          chunkIds(ids).map((c) =>
+            pagedSelect<{ staff_id: string; start_date: string; end_date: string; status: string }>(
+              "leave_requests",
+              "id, staff_id, start_date, end_date, status",
+              {
+                filter: (q) => {
+                  const f = q.in("staff_id", c).eq("status", "approved");
+                  return since ? f.gte("end_date", since) : f;
+                },
+                order: ["start_date", "id"],
+                source: "tcs-audit.leave_requests",
+              },
+            ),
+          ),
+        )
+      ).flat();
       const leaveByStaff = new Map<string, Set<string>>();
       for (const lr of leaveRows ?? []) {
         let set = leaveByStaff.get(lr.staff_id);
