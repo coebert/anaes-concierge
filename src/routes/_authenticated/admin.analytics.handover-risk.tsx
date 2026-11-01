@@ -42,10 +42,16 @@ function HandoverRiskPage() {
       since.setUTCDate(since.getUTCDate() - 84); // 12 weeks
       const sinceIso = since.toISOString().slice(0, 10);
       const [rotaRes, tsRes, specRes, profRes] = await Promise.all([
-        pagedRows("rota_assignments", "staff_id,session_date,session,theatre_session_id", { filter: (q) => q.gte("session_date", sinceIso), order: ["session_date", "id"] }),
+        pagedRows("rota_assignments", "staff_id,session_date,session,theatre_session_id", {
+          filter: (q) => q.gte("session_date", sinceIso),
+          order: ["session_date", "id"],
+        }),
         pagedRows("theatre_sessions", "id,specialty_id", { order: ["session_date", "id"] }),
         pagedRows("specialties", "id,name", { order: ["id"] }),
-        pagedRows("profiles", "id,full_name,grade,active", { filter: (q) => q.eq("grade", "consultant").eq("active", true), order: ["id"] }),
+        pagedRows("profiles", "id,full_name,grade,active", {
+          filter: (q) => q.eq("grade", "consultant").eq("active", true),
+          order: ["id"],
+        }),
       ]);
       if (rotaRes.error) throw rotaRes.error;
       if (tsRes.error) throw tsRes.error;

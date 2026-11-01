@@ -78,9 +78,23 @@ function AdminAbsencePage() {
     queryKey: ["admin-absence"],
     queryFn: async () => {
       const [profilesRes, leaveRes, rtwRes] = await Promise.all([
-        pagedRows("profiles", "id,full_name,email,grade,active,left_at", { filter: (q) => q.eq("active", true), order: ["id"] }),
-        pagedRows("leave_requests", "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end", { filter: (q) => q.eq("type", "sick").eq("status", "approved"), order: ["start_date", "id"] }),
-        pagedRows("return_to_work_interviews", "leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date", { order: ["created_at", "id"] }),
+        pagedRows("profiles", "id,full_name,email,grade,active,left_at", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows(
+          "leave_requests",
+          "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end",
+          {
+            filter: (q) => q.eq("type", "sick").eq("status", "approved"),
+            order: ["start_date", "id"],
+          },
+        ),
+        pagedRows(
+          "return_to_work_interviews",
+          "leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date",
+          { order: ["created_at", "id"] },
+        ),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (leaveRes.error) throw leaveRes.error;

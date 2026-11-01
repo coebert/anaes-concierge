@@ -85,9 +85,19 @@ function AdminDashboardPage() {
     queryKey: ["admin-dashboard-overview", date],
     queryFn: async () => {
       const [profilesRes, assignmentsRes, leaveRes] = await Promise.all([
-        pagedRows("profiles", "id, full_name, grade, training_level, active, rotation_end_date", { filter: (q) => q.eq("active", true), order: ["id"] }),
-        pagedRows("rota_assignments", "id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type", { filter: (q) => q.eq("session_date", date), order: ["session_date", "id"] }),
-        pagedRows("leave_requests", "id, staff_id, type, status, start_date, end_date", { filter: (q) => q.eq("status", "approved").lte("start_date", date).gte("end_date", date), order: ["start_date", "id"] }),
+        pagedRows("profiles", "id, full_name, grade, training_level, active, rotation_end_date", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows(
+          "rota_assignments",
+          "id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type",
+          { filter: (q) => q.eq("session_date", date), order: ["session_date", "id"] },
+        ),
+        pagedRows("leave_requests", "id, staff_id, type, status, start_date, end_date", {
+          filter: (q) => q.eq("status", "approved").lte("start_date", date).gte("end_date", date),
+          order: ["start_date", "id"],
+        }),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (assignmentsRes.error) throw assignmentsRes.error;
@@ -153,9 +163,24 @@ function AdminDashboardPage() {
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
       const [profilesRes, allowRes, leaveRes] = await Promise.all([
-        pagedRows("profiles", "id, grade, active", { filter: (q) => q.in("grade", ["consultant", "trainee"]).eq("active", true), order: ["id"] }),
+        pagedRows("profiles", "id, grade, active", {
+          filter: (q) => q.in("grade", ["consultant", "trainee"]).eq("active", true),
+          order: ["id"],
+        }),
         pagedRows("leave_allowances", "staff_id, annual_days", { order: ["id"] }),
-        pagedRows("leave_requests", "staff_id, start_date, end_date, half_day_start, half_day_end", { filter: (q) => q.eq("status", "approved").eq("type", "annual").lte("start_date", endISO).gte("end_date", startISO), order: ["start_date", "id"] }),
+        pagedRows(
+          "leave_requests",
+          "staff_id, start_date, end_date, half_day_start, half_day_end",
+          {
+            filter: (q) =>
+              q
+                .eq("status", "approved")
+                .eq("type", "annual")
+                .lte("start_date", endISO)
+                .gte("end_date", startISO),
+            order: ["start_date", "id"],
+          },
+        ),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (allowRes.error) throw allowRes.error;
@@ -269,8 +294,24 @@ function AdminDashboardPage() {
       const [profilesRes, theatreRes, allRes] = await Promise.all([
         pagedRows("profiles", "id, full_name, grade, training_level", { order: ["id"] }),
         // 12-month theatre rows exceed the 1,000-row page cap: read every page.
-        pagedRows("rota_assignments", "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id", { filter: (q) => q.eq("duty_type", "theatre").in("session", ["am", "pm"]).not("theatre_session_id", "is", null).gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] }),
-        pagedRows("rota_assignments", "staff_id, duty_type, session_date", { filter: (q) => q.gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] }),
+        pagedRows(
+          "rota_assignments",
+          "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id",
+          {
+            filter: (q) =>
+              q
+                .eq("duty_type", "theatre")
+                .in("session", ["am", "pm"])
+                .not("theatre_session_id", "is", null)
+                .gte("session_date", startISO)
+                .lte("session_date", endISO),
+            order: ["session_date", "id"],
+          },
+        ),
+        pagedRows("rota_assignments", "staff_id, duty_type, session_date", {
+          filter: (q) => q.gte("session_date", startISO).lte("session_date", endISO),
+          order: ["session_date", "id"],
+        }),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (theatreRes.error) throw theatreRes.error;
@@ -294,7 +335,11 @@ function AdminDashboardPage() {
     queryKey: ["admin-dashboard-trainee-metrics"],
     queryFn: async () => {
       const today = todayISO();
-      const { data: trainees, error: e1 } = await pagedRows("profiles", "id, full_name, training_level, start_date, rotation_end_date", { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["full_name", "id"] });
+      const { data: trainees, error: e1 } = await pagedRows(
+        "profiles",
+        "id, full_name, training_level, start_date, rotation_end_date",
+        { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["full_name", "id"] },
+      );
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) {
@@ -315,9 +360,19 @@ function AdminDashboardPage() {
         { data: specs, error: e3 },
         { data: futureRows, error: eFuture },
       ] = await Promise.all([
-        pagedRows("rota_assignments", "staff_id, role_on_list, session, duty_type, theatre_session_id, session_date", { filter: (q) => q.in("staff_id", ids).lte("session_date", today), order: ["session_date", "id"] }),
+        pagedRows(
+          "rota_assignments",
+          "staff_id, role_on_list, session, duty_type, theatre_session_id, session_date",
+          {
+            filter: (q) => q.in("staff_id", ids).lte("session_date", today),
+            order: ["session_date", "id"],
+          },
+        ),
         pagedRows("specialties", "id, name", { order: ["id"] }),
-        pagedRows("rota_assignments", "staff_id, duty_type, session_date", { filter: (q) => q.in("staff_id", ids).gt("session_date", today), order: ["session_date", "id"] }),
+        pagedRows("rota_assignments", "staff_id, duty_type, session_date", {
+          filter: (q) => q.in("staff_id", ids).gt("session_date", today),
+          order: ["session_date", "id"],
+        }),
       ]);
       if (e2) throw e2;
       if (e3) throw e3;
@@ -339,7 +394,10 @@ function AdminDashboardPage() {
         // truncates and leaves sessions without a specialty.
         const results = await Promise.all(
           chunkIds(tsIds).map((c) =>
-            pagedRows("theatre_sessions", "id, specialty_id", { filter: (q) => q.in("id", c), order: ["session_date", "id"] }),
+            pagedRows("theatre_sessions", "id, specialty_id", {
+              filter: (q) => q.in("id", c),
+              order: ["session_date", "id"],
+            }),
           ),
         );
         for (const { data: ts, error: e4 } of results) {
@@ -348,7 +406,15 @@ function AdminDashboardPage() {
         }
         const supResults = await Promise.all(
           chunkIds(tsIds).map((c) =>
-            pagedRows("rota_assignments", "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)", { filter: (q) => q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]), order: ["session_date", "id"] }),
+            pagedRows(
+              "rota_assignments",
+              "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              {
+                filter: (q) =>
+                  q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]),
+                order: ["session_date", "id"],
+              },
+            ),
           ),
         );
         for (const { data: tsAssigns, error: e5 } of supResults) {

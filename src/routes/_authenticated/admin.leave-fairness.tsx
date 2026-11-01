@@ -55,8 +55,15 @@ function LeaveFairnessPage() {
     queryKey: ["admin-leave-fairness"],
     queryFn: async () => {
       const [profRes, leaveRes, allowRes] = await Promise.all([
-        pagedRows("profiles", "id,full_name,email,grade,active", { filter: (q) => q.eq("active", true), order: ["id"] }),
-        pagedRows("leave_requests", "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at", { order: ["start_date", "id"] }),
+        pagedRows("profiles", "id,full_name,email,grade,active", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows(
+          "leave_requests",
+          "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+          { order: ["start_date", "id"] },
+        ),
         pagedRows("leave_allowances", "staff_id,sla_target_days", { order: ["id"] }),
       ]);
       if (profRes.error) throw profRes.error;

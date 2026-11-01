@@ -38,11 +38,19 @@ function TraineeExposurePage() {
       const yearAgo = new Date();
       yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1);
       const [profRes, rotaRes, tsRes, specRes, targetRes] = await Promise.all([
-        pagedRows("profiles", "id,full_name,training_level,active,grade", { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["id"] }),
-        pagedRows("rota_assignments", "staff_id,theatre_session_id", { filter: (q) => q.gte("session_date", yearAgo.toISOString().slice(0, 10)), order: ["session_date", "id"] }),
+        pagedRows("profiles", "id,full_name,training_level,active,grade", {
+          filter: (q) => q.eq("grade", "trainee").eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows("rota_assignments", "staff_id,theatre_session_id", {
+          filter: (q) => q.gte("session_date", yearAgo.toISOString().slice(0, 10)),
+          order: ["session_date", "id"],
+        }),
         pagedRows("theatre_sessions", "id,specialty_id", { order: ["session_date", "id"] }),
         pagedRows("specialties", "id,name", { order: ["id"] }),
-        pagedRows("trainee_targets", "training_level,specialty_id,required_sessions", { order: ["id"] }),
+        pagedRows("trainee_targets", "training_level,specialty_id,required_sessions", {
+          order: ["id"],
+        }),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;

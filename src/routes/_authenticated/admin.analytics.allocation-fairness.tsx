@@ -43,8 +43,15 @@ function AllocationFairnessPage() {
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const sinceIso = since.toISOString().slice(0, 10);
       const [profRes, rotaRes, tsRes, specRes] = await Promise.all([
-        pagedRows("profiles", "id,full_name,grade,active", { filter: (q) => q.eq("active", true), order: ["id"] }),
-        pagedRows("rota_assignments", "staff_id,session_date,duty_type,role_on_list,theatre_session_id", { filter: (q) => q.gte("session_date", sinceIso), order: ["session_date", "id"] }),
+        pagedRows("profiles", "id,full_name,grade,active", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows(
+          "rota_assignments",
+          "staff_id,session_date,duty_type,role_on_list,theatre_session_id",
+          { filter: (q) => q.gte("session_date", sinceIso), order: ["session_date", "id"] },
+        ),
         pagedRows("theatre_sessions", "id,specialty_id", { order: ["session_date", "id"] }),
         pagedRows("specialties", "id,name", { order: ["id"] }),
       ]);

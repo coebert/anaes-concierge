@@ -33,8 +33,14 @@ function SicknessSeasonalityPage() {
       since.setUTCFullYear(since.getUTCFullYear() - 2);
       const sinceIso = since.toISOString().slice(0, 10);
       const [sickRes, rotaRes] = await Promise.all([
-        pagedRows("leave_requests", "start_date,end_date", { filter: (q) => q.eq("type", "sick").eq("status", "approved").gte("start_date", sinceIso), order: ["start_date", "id"] }),
-        pagedRows("rota_assignments", "session_date", { filter: (q) => q.gte("session_date", sinceIso), order: ["session_date", "id"] }),
+        pagedRows("leave_requests", "start_date,end_date", {
+          filter: (q) => q.eq("type", "sick").eq("status", "approved").gte("start_date", sinceIso),
+          order: ["start_date", "id"],
+        }),
+        pagedRows("rota_assignments", "session_date", {
+          filter: (q) => q.gte("session_date", sinceIso),
+          order: ["session_date", "id"],
+        }),
       ]);
       if (sickRes.error) throw sickRes.error;
       if (rotaRes.error) throw rotaRes.error;

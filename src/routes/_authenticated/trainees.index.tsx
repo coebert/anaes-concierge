@@ -120,7 +120,16 @@ function TraineesPage() {
           chunkIds(traineeIds).map((ids) =>
             fetchAllRowsPaged<(typeof allAssignments)[number]>(
               (from, to) =>
-                supabase.from("rota_assignments").select("id,staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified").in("staff_id", ids).order("staff_id", { ascending: true }).order("session_date", { ascending: true }).order("session", { ascending: true }).order("id", { ascending: true })
+                supabase
+                  .from("rota_assignments")
+                  .select(
+                    "id,staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
+                  )
+                  .in("staff_id", ids)
+                  .order("staff_id", { ascending: true })
+                  .order("session_date", { ascending: true })
+                  .order("session", { ascending: true })
+                  .order("id", { ascending: true })
                   .range(from, to),
               { rowKey: idKey, label: "trainees-overview-assignments" },
             ),
@@ -142,7 +151,10 @@ function TraineesPage() {
       if (tsIds.length) {
         const tsResults = await Promise.all(
           tsIdChunks.map((c) =>
-            supabase.from("theatre_sessions").select("id,specialty_id").in("id", c), order: ["session_date", "id"] }),
+            pagedRows("theatre_sessions", "id,specialty_id", {
+              filter: (q) => q.in("id", c),
+              order: ["session_date", "id"],
+            }),
           ),
         );
         for (const { data: ts, error: e5 } of tsResults) {
@@ -164,7 +176,15 @@ function TraineesPage() {
         // and the whole query errors out, leaving the page empty.
         const supResults = await Promise.all(
           tsIdChunks.map((c) =>
-            pagedRows("rota_assignments", "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)", { filter: (q) => q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]), order: ["session_date", "id"] }),
+            pagedRows(
+              "rota_assignments",
+              "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              {
+                filter: (q) =>
+                  q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]),
+                order: ["session_date", "id"],
+              },
+            ),
           ),
         );
         for (const { data: tsAssigns, error: e6 } of supResults) {
@@ -227,7 +247,14 @@ function TraineesPage() {
           chunkIds(traineeIds).map((ids) =>
             fetchAllRowsPaged<(typeof futureAssignments)[number]>(
               (from, to) =>
-                pagedRows("rota_assignments", "id,staff_id,duty_type,session_date", { filter: (q) => q.in("staff_id", ids).gt("session_date", todayIso).order("staff_id", { ascending: true }).order("session_date", { ascending: true }).order("id", { ascending: true })
+                supabase
+                  .from("rota_assignments")
+                  .select("id,staff_id,duty_type,session_date")
+                  .in("staff_id", ids)
+                  .gt("session_date", todayIso)
+                  .order("staff_id", { ascending: true })
+                  .order("session_date", { ascending: true })
+                  .order("id", { ascending: true })
                   .range(from, to),
               { rowKey: idKey, label: "trainees-overview-future-assignments" },
             ),

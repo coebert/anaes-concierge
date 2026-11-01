@@ -101,7 +101,11 @@ function CoordinatorInboxPage() {
   const dismissalsQuery = useQuery({
     queryKey: ["coordinator-inbox-dismissals"],
     queryFn: async () => {
-      const { data, error } = await pagedRows("inbox_dismissals", "item_id,kind,dismissed_at,dismissed_by", { order: ["id"] });
+      const { data, error } = await pagedRows(
+        "inbox_dismissals",
+        "item_id,kind,dismissed_at,dismissed_by",
+        { order: ["id"] },
+      );
       if (error) throw error;
       return data ?? [];
     },
@@ -154,11 +158,25 @@ function CoordinatorInboxPage() {
       const sixtyIso = sixtyDays.toISOString().slice(0, 10);
 
       const [leaveRes, excRes, sickRes, rtwRes, compRes, profRes, compDefRes] = await Promise.all([
-        pagedRows("leave_requests", "id,staff_id,type,status,start_date,end_date,created_at", { filter: (q) => q.eq("status", "pending"), order: ["start_date", "id"] }),
-        pagedRows("exception_reports", "id,trainee_id,status,due_by,immediate_safety_concern,description,category", { order: ["event_date", "id"] }),
-        pagedRows("leave_requests", "id,staff_id,start_date,end_date", { filter: (q) => q.eq("type", "sick").eq("status", "approved").lte("end_date", todayIso), order: ["start_date", "id"] }),
+        pagedRows("leave_requests", "id,staff_id,type,status,start_date,end_date,created_at", {
+          filter: (q) => q.eq("status", "pending"),
+          order: ["start_date", "id"],
+        }),
+        pagedRows(
+          "exception_reports",
+          "id,trainee_id,status,due_by,immediate_safety_concern,description,category",
+          { order: ["event_date", "id"] },
+        ),
+        pagedRows("leave_requests", "id,staff_id,start_date,end_date", {
+          filter: (q) => q.eq("type", "sick").eq("status", "approved").lte("end_date", todayIso),
+          order: ["start_date", "id"],
+        }),
         pagedRows("return_to_work_interviews", "leave_request_id", { order: ["created_at", "id"] }),
-        pagedRows("staff_competencies", "id,staff_id,competency_id,expires_at,revoked_at", { filter: (q) => q.not("expires_at", "is", null).is("revoked_at", null).lte("expires_at", sixtyIso), order: ["expires_at", "id"] }),
+        pagedRows("staff_competencies", "id,staff_id,competency_id,expires_at,revoked_at", {
+          filter: (q) =>
+            q.not("expires_at", "is", null).is("revoked_at", null).lte("expires_at", sixtyIso),
+          order: ["expires_at", "id"],
+        }),
         pagedRows("profiles", "id,full_name,email", { order: ["id"] }),
         pagedRows("competencies", "id,name", { order: ["id"] }),
       ]);

@@ -43,10 +43,22 @@ function NewStartersPage() {
       cutoff.setUTCDate(cutoff.getUTCDate() - 90);
       const cutoffIso = cutoff.toISOString().slice(0, 10);
       const [profRes, sickRes, exRes, changeRes] = await Promise.all([
-        pagedRows("profiles", "id,full_name,grade,start_date,active,training_level", { filter: (q) => q.gte("start_date", cutoffIso).eq("active", true), order: ["id"] }),
-        pagedRows("leave_requests", "staff_id,start_date,end_date", { filter: (q) => q.eq("type", "sick").eq("status", "approved").gte("start_date", cutoffIso), order: ["start_date", "id"] }),
-        pagedRows("exception_reports", "trainee_id,created_at", { filter: (q) => q.gte("created_at", cutoff.toISOString()), order: ["event_date", "id"] }),
-        pagedRows("rota_change_log", "staff_id,action,hours_before_session,changed_at", { filter: (q) => q.gte("changed_at", cutoff.toISOString()).lte("hours_before_session", 48), order: ["changed_at", "id"] }),
+        pagedRows("profiles", "id,full_name,grade,start_date,active,training_level", {
+          filter: (q) => q.gte("start_date", cutoffIso).eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows("leave_requests", "staff_id,start_date,end_date", {
+          filter: (q) => q.eq("type", "sick").eq("status", "approved").gte("start_date", cutoffIso),
+          order: ["start_date", "id"],
+        }),
+        pagedRows("exception_reports", "trainee_id,created_at", {
+          filter: (q) => q.gte("created_at", cutoff.toISOString()),
+          order: ["event_date", "id"],
+        }),
+        pagedRows("rota_change_log", "staff_id,action,hours_before_session,changed_at", {
+          filter: (q) => q.gte("changed_at", cutoff.toISOString()).lte("hours_before_session", 48),
+          order: ["changed_at", "id"],
+        }),
       ]);
       if (profRes.error) throw profRes.error;
       if (sickRes.error) throw sickRes.error;

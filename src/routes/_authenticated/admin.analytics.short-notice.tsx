@@ -42,8 +42,14 @@ function ShortNoticePage() {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [changeRes, profRes] = await Promise.all([
-        pagedRows("rota_change_log", "staff_id,action,hours_before_session,changed_at", { filter: (q) => q.gte("changed_at", since.toISOString()).lte("hours_before_session", 48), order: ["changed_at", "id"] }),
-        pagedRows("profiles", "id,full_name,grade,active", { filter: (q) => q.eq("active", true), order: ["id"] }),
+        pagedRows("rota_change_log", "staff_id,action,hours_before_session,changed_at", {
+          filter: (q) => q.gte("changed_at", since.toISOString()).lte("hours_before_session", 48),
+          order: ["changed_at", "id"],
+        }),
+        pagedRows("profiles", "id,full_name,grade,active", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
       ]);
       if (changeRes.error) throw changeRes.error;
       if (profRes.error) throw profRes.error;

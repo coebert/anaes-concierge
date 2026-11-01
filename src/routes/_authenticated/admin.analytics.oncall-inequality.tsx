@@ -43,8 +43,14 @@ function OnCallInequalityPage() {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [profRes, rotaRes] = await Promise.all([
-        pagedRows("profiles", "id,full_name,ltft_days_off,grade,active", { filter: (q) => q.eq("grade", "consultant").eq("active", true), order: ["id"] }),
-        pagedRows("rota_assignments", "staff_id,duty_type,role_on_list", { filter: (q) => q.gte("session_date", since.toISOString().slice(0, 10)), order: ["session_date", "id"] }),
+        pagedRows("profiles", "id,full_name,ltft_days_off,grade,active", {
+          filter: (q) => q.eq("grade", "consultant").eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows("rota_assignments", "staff_id,duty_type,role_on_list", {
+          filter: (q) => q.gte("session_date", since.toISOString().slice(0, 10)),
+          order: ["session_date", "id"],
+        }),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;
