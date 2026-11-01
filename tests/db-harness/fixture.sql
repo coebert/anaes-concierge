@@ -172,3 +172,4 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE TRIGGER leave_requests_v_insert INSTEAD OF INSERT ON leave_requests_v FOR EACH ROW EXECUTE FUNCTION _leave_requests_v_insert();
+UPDATE profiles SET calendar_feed_token = 'server-minted-token-for-S-000000000000000000' WHERE id = '00000000-0000-0000-0000-000000000051';
