@@ -54,9 +54,7 @@ function makeChain(table: string) {
     in: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     eq: () => chain,
@@ -90,48 +88,78 @@ const THU = "2026-06-04";
 const FRI = "2026-06-05";
 
 const CONS = (id: string) => ({
-  id, full_name: id, grade: "consultant",
-  training_level: null, ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "consultant",
+  training_level: null,
+  ltft_days_off: [],
+  active: true,
 });
 const SENIOR = (id: string) => ({
-  id, full_name: id, grade: "trainee",
-  training_level: "ST7", ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "trainee",
+  training_level: "ST7",
+  ltft_days_off: [],
+  active: true,
 });
 
 const ts = (date: string, session: "am" | "pm", suffix = "") => ({
   id: `ts-${date}-${session}${suffix}`,
-  session_date: date, session,
+  session_date: date,
+  session,
   theatre_id: `room-${session}${suffix}`,
   specialty_id: null,
 });
 
 const theatreAsn = (
-  staff_id: string, date: string, session: "am" | "pm",
+  staff_id: string,
+  date: string,
+  session: "am" | "pm",
   theatre_session_id: string,
   role_on_list: "solo" | "supervised" = "solo",
 ) => ({
-  staff_id, session_date: date, session,
-  duty_type: "theatre", theatre_session_id, role_on_list,
+  staff_id,
+  session_date: date,
+  session,
+  duty_type: "theatre",
+  theatre_session_id,
+  role_on_list,
 });
 
 const spaAsn = (staff_id: string, date: string, session: "am" | "pm") => ({
-  staff_id, session_date: date, session,
-  duty_type: "spa", theatre_session_id: null, role_on_list: null,
+  staff_id,
+  session_date: date,
+  session,
+  duty_type: "spa",
+  theatre_session_id: null,
+  role_on_list: null,
 });
 
 const onCallAsn = (
-  staff_id: string, date: string,
+  staff_id: string,
+  date: string,
   duty_type: "icu_consultant_oncall" | "general_consultant_oncall",
 ) => ({
-  staff_id, session_date: date, session: "am",
-  duty_type, theatre_session_id: null, role_on_list: null,
+  staff_id,
+  session_date: date,
+  session: "am",
+  duty_type,
+  theatre_session_id: null,
+  role_on_list: null,
 });
 
 const leave = (
-  staff_id: string, start: string, end: string,
+  staff_id: string,
+  start: string,
+  end: string,
   type: "annual" | "study" | "compassionate" = "annual",
 ) => ({
-  staff_id, type, start_date: start, end_date: end, status: "approved",
+  staff_id,
+  type,
+  start_date: start,
+  end_date: end,
+  status: "approved",
 });
 
 beforeEach(() => {
@@ -157,15 +185,11 @@ function assertInvariants(days: Awaited<ReturnType<typeof run>>["days"]) {
     for (const side of ["am", "pm"] as const) {
       const h = d[side];
       // Solo = consultants + senior trainees (definitional).
-      expect(h.soloCapable).toBe(
-        h.consultantsAvailable + h.seniorTraineesAvailable,
-      );
+      expect(h.soloCapable).toBe(h.consultantsAvailable + h.seniorTraineesAvailable);
       // headroom = solo - unfilled.
       expect(h.headroom).toBe(h.soloCapable - h.unfilled);
       // headroomWithSpa = solo + consultantsOnSpa - unfilled.
-      expect(h.headroomWithSpa).toBe(
-        h.soloCapable + h.consultantsOnSpa - h.unfilled,
-      );
+      expect(h.headroomWithSpa).toBe(h.soloCapable + h.consultantsOnSpa - h.unfilled);
       // No pool count can be negative.
       expect(h.consultantsAvailable).toBeGreaterThanOrEqual(0);
       expect(h.seniorTraineesAvailable).toBeGreaterThanOrEqual(0);
@@ -188,8 +212,11 @@ describe("Multi-day rota — headroom invariants across consecutive weekdays", (
   it("identical rota each day → identical headroom across the week", async () => {
     fixture.profiles = [CONS("c1"), CONS("c2"), CONS("c3"), SENIOR("st7")];
     fixture.theatre_sessions = [
-      ts(MON, "am"), ts(TUE, "am"), ts(WED, "am"),
-      ts(THU, "am"), ts(FRI, "am"),
+      ts(MON, "am"),
+      ts(TUE, "am"),
+      ts(WED, "am"),
+      ts(THU, "am"),
+      ts(FRI, "am"),
     ];
     fixture.rota_assignments = [
       theatreAsn("c1", MON, "am", "ts-2026-06-01-am"),
@@ -233,8 +260,11 @@ describe("Multi-day rota — headroom invariants across consecutive weekdays", (
   it("rolling theatre coverage: a consultant on a different list each day cannot redeploy that day", async () => {
     fixture.profiles = [CONS("c1"), CONS("c2"), SENIOR("st7")];
     fixture.theatre_sessions = [
-      ts(MON, "am"), ts(TUE, "am"), ts(WED, "am"),
-      ts(THU, "am"), ts(FRI, "am"),
+      ts(MON, "am"),
+      ts(TUE, "am"),
+      ts(WED, "am"),
+      ts(THU, "am"),
+      ts(FRI, "am"),
     ];
     // c1 covers a list every day, rotating through.
     fixture.rota_assignments = [
@@ -297,16 +327,24 @@ describe("Multi-day rota — headroom invariants across consecutive weekdays", (
 
   it("mixed week: leave + theatre + SPA + on-call all combine correctly day-by-day", async () => {
     // 4 consultants, 1 senior trainee.
-    fixture.profiles = [
-      CONS("c1"), CONS("c2"), CONS("c3"), CONS("c4"), SENIOR("st7"),
-    ];
+    fixture.profiles = [CONS("c1"), CONS("c2"), CONS("c3"), CONS("c4"), SENIOR("st7")];
     // 2 AM lists every day, 1 PM list every day.
     fixture.theatre_sessions = [
-      ts(MON, "am"), ts(MON, "am", "-b"), ts(MON, "pm"),
-      ts(TUE, "am"), ts(TUE, "am", "-b"), ts(TUE, "pm"),
-      ts(WED, "am"), ts(WED, "am", "-b"), ts(WED, "pm"),
-      ts(THU, "am"), ts(THU, "am", "-b"), ts(THU, "pm"),
-      ts(FRI, "am"), ts(FRI, "am", "-b"), ts(FRI, "pm"),
+      ts(MON, "am"),
+      ts(MON, "am", "-b"),
+      ts(MON, "pm"),
+      ts(TUE, "am"),
+      ts(TUE, "am", "-b"),
+      ts(TUE, "pm"),
+      ts(WED, "am"),
+      ts(WED, "am", "-b"),
+      ts(WED, "pm"),
+      ts(THU, "am"),
+      ts(THU, "am", "-b"),
+      ts(THU, "pm"),
+      ts(FRI, "am"),
+      ts(FRI, "am", "-b"),
+      ts(FRI, "pm"),
     ];
     fixture.rota_assignments = [
       // MON: c1+c2 cover AM lists, c3 on PM list, c4 SPA AM, st7 free.

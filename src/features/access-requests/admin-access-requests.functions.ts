@@ -3,7 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/require-admin";
 
-
 export const listAccessRequests = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
@@ -49,10 +48,9 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
     if (updErr) return { error: updErr.message };
 
     if (data.decision === "approved" && data.send_invite) {
-      const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-        req.email,
-        { data: { full_name: req.full_name } },
-      );
+      const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(req.email, {
+        data: { full_name: req.full_name },
+      });
       if (inviteErr) return { ok: true, inviteError: inviteErr.message };
     }
 

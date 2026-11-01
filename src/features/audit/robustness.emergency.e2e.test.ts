@@ -71,13 +71,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -370,5 +367,4 @@ describe("computeRobustness — emergency list detection (conflicts & missing si
     expect(am.unfilled).toBe(1);
     expect(am.risk).toBe("shortfall");
   });
-
 });

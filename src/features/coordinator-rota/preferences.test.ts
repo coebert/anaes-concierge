@@ -44,14 +44,16 @@ const setSpec = (ctx: Ctx, id: string, preference: PreferenceLevel) => {
   ctx.spec.set(id, { staff_id: id, specialty_id: ctx.specialtyId, preference });
 };
 
-const toInput = (ctx: Ctx) => (s: Staff): EvaluatePreferenceInput => ({
-  staffId: s.id,
-  grade: s.grade,
-  specialtyId: ctx.specialtyId,
-  specialtyName: ctx.specialtyName,
-  practicePref: ctx.practice.get(s.id),
-  specialtyPref: ctx.spec.get(s.id),
-});
+const toInput =
+  (ctx: Ctx) =>
+  (s: Staff): EvaluatePreferenceInput => ({
+    staffId: s.id,
+    grade: s.grade,
+    specialtyId: ctx.specialtyId,
+    specialtyName: ctx.specialtyName,
+    practicePref: ctx.practice.get(s.id),
+    specialtyPref: ctx.spec.get(s.id),
+  });
 
 const surname = (a: Staff, b: Staff) => a.full_name.localeCompare(b.full_name);
 
@@ -73,12 +75,7 @@ describe("compareStaffByPreference — dropdown ordering", () => {
     setSpec(ctx, carol.id, "willing"); // matching
     // dave: no rows → default willing → matching
 
-    expect(sortNames([alice, bob, carol, dave], ctx)).toEqual([
-      "Bob",
-      "Carol",
-      "Dave",
-      "Alice",
-    ]);
+    expect(sortNames([alice, bob, carol, dave], ctx)).toEqual(["Bob", "Carol", "Dave", "Alice"]);
   });
 
   it("puts multiple preferred first (alphabetical tiebreak)", () => {
@@ -87,11 +84,7 @@ describe("compareStaffByPreference — dropdown ordering", () => {
     setSpec(ctx, alice.id, "preferred");
     setSpec(ctx, bob.id, "willing");
 
-    expect(sortNames([bob, carol, alice], ctx)).toEqual([
-      "Alice",
-      "Carol",
-      "Bob",
-    ]);
+    expect(sortNames([bob, carol, alice], ctx)).toEqual(["Alice", "Carol", "Bob"]);
   });
 
   it("keeps preferred at the top even when a required coverage flag is missing", () => {
@@ -104,11 +97,7 @@ describe("compareStaffByPreference — dropdown ordering", () => {
     setPractice(ctx, bob.id, { covers_obstetrics: true }); // matching
     setSpec(ctx, carol.id, "willing"); // non-matching (no obs flag)
 
-    expect(sortNames([carol, bob, alice], ctx)).toEqual([
-      "Alice",
-      "Bob",
-      "Carol",
-    ]);
+    expect(sortNames([carol, bob, alice], ctx)).toEqual(["Alice", "Bob", "Carol"]);
   });
 
   it("reorders when the specialty changes coverage requirements", () => {

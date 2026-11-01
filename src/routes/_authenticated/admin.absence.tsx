@@ -89,7 +89,9 @@ function AdminAbsencePage() {
           .range(0, 9999),
         supabase
           .from("return_to_work_interviews")
-          .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
+          .select(
+            "leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date",
+          )
           .range(0, 9999),
       ]);
       if (profilesRes.error) throw profilesRes.error;
@@ -332,8 +334,8 @@ function AbsenceRow({
                     className="flex flex-wrap items-center justify-between gap-2 rounded border bg-background px-3 py-2"
                   >
                     <span>
-                      {formatDateWithWeekdayGB(s.start_date)} → {formatDateWithWeekdayGB(s.end_date)}{" "}
-                      · {s.days}d
+                      {formatDateWithWeekdayGB(s.start_date)} →{" "}
+                      {formatDateWithWeekdayGB(s.end_date)} · {s.days}d
                       {s.postWeekend ? (
                         <Badge variant="outline" className="ml-2 text-xs">
                           Post-weekend

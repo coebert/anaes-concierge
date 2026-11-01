@@ -120,9 +120,7 @@ function ConversationPage() {
             <div className="p-8 text-sm text-muted-foreground">Loading…</div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-start gap-3 p-6">
-              <div className="text-sm text-muted-foreground">
-                Try one of these to get started:
-              </div>
+              <div className="text-sm text-muted-foreground">Try one of these to get started:</div>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
                   <button
@@ -193,9 +191,7 @@ function MessageBubble({ message }: { message: UIMessage }) {
                 <Badge variant="outline" className="font-mono text-[10px]">
                   {toolName}
                 </Badge>
-                {state && state !== "output-available" && (
-                  <span className="italic">{state}</span>
-                )}
+                {state && state !== "output-available" && <span className="italic">{state}</span>}
               </div>
             );
           }

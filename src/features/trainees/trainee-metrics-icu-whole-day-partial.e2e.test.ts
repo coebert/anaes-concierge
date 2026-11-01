@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  computeTraineeMetrics,
-  type MetricAssignment,
-} from "./trainee-metrics";
+import { computeTraineeMetrics, type MetricAssignment } from "./trainee-metrics";
 
 /**
  * End-to-end regression: when CLWRota syncs only a subset of the half-day
@@ -35,7 +32,12 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("AM only on a date counts as one ICU shift", () => {
     const m = computeTraineeMetrics(
       [icu("am", "2026-06-15")],
-      WINDOW_START, new Map(), new Map(), ASOF, null, false,
+      WINDOW_START,
+      new Map(),
+      new Map(),
+      ASOF,
+      null,
+      false,
     );
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
@@ -44,7 +46,12 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("PM only on a date counts as one ICU shift", () => {
     const m = computeTraineeMetrics(
       [icu("pm", "2026-06-15")],
-      WINDOW_START, new Map(), new Map(), ASOF, null, false,
+      WINDOW_START,
+      new Map(),
+      new Map(),
+      ASOF,
+      null,
+      false,
     );
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
@@ -53,7 +60,12 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("evening only on a date counts as one ICU shift", () => {
     const m = computeTraineeMetrics(
       [icu("eve", "2026-06-15")],
-      WINDOW_START, new Map(), new Map(), ASOF, null, false,
+      WINDOW_START,
+      new Map(),
+      new Map(),
+      ASOF,
+      null,
+      false,
     );
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
@@ -62,7 +74,12 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("AM + evening (no PM) collapses to one ICU shift", () => {
     const m = computeTraineeMetrics(
       [icu("am", "2026-06-15"), icu("eve", "2026-06-15")],
-      WINDOW_START, new Map(), new Map(), ASOF, null, false,
+      WINDOW_START,
+      new Map(),
+      new Map(),
+      ASOF,
+      null,
+      false,
     );
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
@@ -72,7 +89,12 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("PM + evening (no AM) collapses to one ICU shift", () => {
     const m = computeTraineeMetrics(
       [icu("pm", "2026-06-15"), icu("eve", "2026-06-15")],
-      WINDOW_START, new Map(), new Map(), ASOF, null, false,
+      WINDOW_START,
+      new Map(),
+      new Map(),
+      ASOF,
+      null,
+      false,
     );
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
@@ -81,7 +103,12 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("AM + PM (no evening) collapses to one ICU shift", () => {
     const m = computeTraineeMetrics(
       [icu("am", "2026-06-15"), icu("pm", "2026-06-15")],
-      WINDOW_START, new Map(), new Map(), ASOF, null, false,
+      WINDOW_START,
+      new Map(),
+      new Map(),
+      ASOF,
+      null,
+      false,
     );
     expect(m.icuLists).toBe(1);
     expect(m.onCallLists).toBe(1);
@@ -91,8 +118,11 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
     // Date A: AM only. Date B: PM + eve. Date C: full AM+PM+eve. Date D: eve only.
     const a: MetricAssignment[] = [
       icu("am", "2026-06-10"),
-      icu("pm", "2026-06-11"), icu("eve", "2026-06-11"),
-      icu("am", "2026-06-12"), icu("pm", "2026-06-12"), icu("eve", "2026-06-12"),
+      icu("pm", "2026-06-11"),
+      icu("eve", "2026-06-11"),
+      icu("am", "2026-06-12"),
+      icu("pm", "2026-06-12"),
+      icu("eve", "2026-06-12"),
       icu("eve", "2026-06-13"),
     ];
     const m = computeTraineeMetrics(a, WINDOW_START, new Map(), new Map(), ASOF, null, false);
@@ -116,8 +146,13 @@ describe("trainee-metrics — ICU whole-day partial-presence regression (e2e)", 
   it("a partial ICU date alongside a non-ICU on-call keeps them separate", () => {
     const a: MetricAssignment[] = [
       icu("am", "2026-06-15"), // partial ICU day → 1 ICU shift
-      { role_on_list: "solo", session: "eve", duty_type: "registrar_oncall",
-        theatre_session_id: null, session_date: "2026-06-16" },
+      {
+        role_on_list: "solo",
+        session: "eve",
+        duty_type: "registrar_oncall",
+        theatre_session_id: null,
+        session_date: "2026-06-16",
+      },
     ];
     const m = computeTraineeMetrics(a, WINDOW_START, new Map(), new Map(), ASOF, null, false);
     expect(m.icuLists).toBe(1);

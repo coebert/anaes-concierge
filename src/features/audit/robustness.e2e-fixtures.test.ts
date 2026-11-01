@@ -64,13 +64,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -155,17 +152,13 @@ const fixtures: E2EFixture[] = [
   {
     name: "single AM theatre per day, one specialty, fully staffed",
     consultants: 2,
-    sessions: [
-      { half: "am", theatreId: THEATRES.t1, specialtyId: SPEC.ortho, staff: true },
-    ],
+    sessions: [{ half: "am", theatreId: THEATRES.t1, specialtyId: SPEC.ortho, staff: true }],
     expected: { am: 1, pm: 0 },
   },
   {
     name: "single PM theatre per day, one specialty, fully staffed",
     consultants: 2,
-    sessions: [
-      { half: "pm", theatreId: THEATRES.t1, specialtyId: SPEC.general, staff: true },
-    ],
+    sessions: [{ half: "pm", theatreId: THEATRES.t1, specialtyId: SPEC.general, staff: true }],
     expected: { am: 0, pm: 1 },
   },
   {
@@ -360,9 +353,7 @@ describe("computeRobustness — extended end-to-end fixtures", () => {
       for (const day of days) {
         for (const half of ["am", "pm"] as const) {
           const cap = day[half];
-          expect(cap.required, `${day.date} ${half} required`).toBe(
-            f.expected[half],
-          );
+          expect(cap.required, `${day.date} ${half} required`).toBe(f.expected[half]);
           expect(cap.unfilled, `${day.date} ${half} unfilled`).toBe(0);
           expect(cap.risk, `${day.date} ${half} risk`).not.toBe("shortfall");
           expect(cap.risk, `${day.date} ${half} risk`).not.toBe("spa_required");

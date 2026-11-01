@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthIdentityGuard } from "@/lib/auth-identity";
 import type { Session, User } from "@supabase/supabase-js";
@@ -61,10 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFullName(null);
       return;
     }
-    const [{ data: roleRows, error: rolesErr }, { data: profile, error: profErr }] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase.from("profiles").select("grade, full_name").eq("id", userId).maybeSingle(),
-    ]);
+    const [{ data: roleRows, error: rolesErr }, { data: profile, error: profErr }] =
+      await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("profiles").select("grade, full_name").eq("id", userId).maybeSingle(),
+      ]);
     // Identity moved on while we were fetching: never install stale roles.
     if (!guard.isCurrent(token)) return;
     if (rolesErr) console.error("Failed to load roles", rolesErr);

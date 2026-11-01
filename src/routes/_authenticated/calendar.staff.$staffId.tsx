@@ -105,8 +105,11 @@ function currentMonth() {
 }
 
 function friendlyMonth(month: string) {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })
-    .format(new Date(`${month}-01T12:00:00Z`));
+  return new Intl.DateTimeFormat("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${month}-01T12:00:00Z`));
 }
 
 function friendlyDay(iso: string) {
@@ -135,14 +138,15 @@ function StaffCalendarPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["staff-rota-calendar", staffId, start, end],
     queryFn: async () => {
-      const [{ data: profiles, error: profilesError }, { data: rulesRow, error: rulesError }] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,grade").order("full_name"),
-        supabase
-          .from("rota_rules")
-          .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      const [{ data: profiles, error: profilesError }, { data: rulesRow, error: rulesError }] =
+        await Promise.all([
+          supabase.from("profiles").select("id,full_name,grade").order("full_name"),
+          supabase
+            .from("rota_rules")
+            .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
+            .limit(1)
+            .maybeSingle(),
+        ]);
       if (profilesError) throw profilesError;
       // Never silently substitute default PA rates when the settings read fails.
       if (rulesError) throw new Error(`PA settings could not be loaded: ${rulesError.message}`);
@@ -196,7 +200,7 @@ function StaffCalendarPage() {
         pa_credit: r.pa_credit,
         attending_consultant_ids: r.attending_consultant_ids,
         specialty_name: r.theatre_session_id
-          ? specialtyBySession.get(r.theatre_session_id) ?? null
+          ? (specialtyBySession.get(r.theatre_session_id) ?? null)
           : null,
       }));
 
@@ -241,7 +245,8 @@ function StaffCalendarPage() {
     const cells: Array<{ iso: string; inMonth: boolean }> = [];
     for (let i = leading; i > 0; i--) cells.push({ iso: addDaysIso(start, -i), inMonth: false });
     for (let d = start; d <= end; d = addDaysIso(d, 1)) cells.push({ iso: d, inMonth: true });
-    while (cells.length % 7 !== 0) cells.push({ iso: addDaysIso(cells[cells.length - 1].iso, 1), inMonth: false });
+    while (cells.length % 7 !== 0)
+      cells.push({ iso: addDaysIso(cells[cells.length - 1].iso, 1), inMonth: false });
 
     return {
       selected,
@@ -281,8 +286,8 @@ function StaffCalendarPage() {
                 {view?.selected?.full_name ?? "Staff member"} — rota calendar
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Sessions, on-calls and weekend dates for {friendlyMonth(month)}, with CLWRota-recorded
-                PAs separated from rule estimates.
+                Sessions, on-calls and weekend dates for {friendlyMonth(month)}, with
+                CLWRota-recorded PAs separated from rule estimates.
               </p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
@@ -358,7 +363,9 @@ function StaffCalendarPage() {
                 {view.cells.map((cell) => {
                   const entries = view.byDate.get(cell.iso) ?? [];
                   const dayTotal = round2(entries.reduce((sum, s) => sum + s.creditedPa, 0));
-                  const isWeekend = entries.some((s) => s.isWeekend) || [0, 6].includes(new Date(`${cell.iso}T12:00:00Z`).getUTCDay());
+                  const isWeekend =
+                    entries.some((s) => s.isWeekend) ||
+                    [0, 6].includes(new Date(`${cell.iso}T12:00:00Z`).getUTCDay());
                   return (
                     <div
                       key={cell.iso}
@@ -370,13 +377,18 @@ function StaffCalendarPage() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="text-sm font-semibold">{Number(cell.iso.slice(8, 10))}</div>
+                          <div className="text-sm font-semibold">
+                            {Number(cell.iso.slice(8, 10))}
+                          </div>
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                             {friendlyDay(cell.iso).split(" ")[0]}
                           </div>
                         </div>
                         {entries.length > 0 ? (
-                          <Badge variant={isWeekend ? "secondary" : "outline"} className="px-1.5 py-0 text-[10px]">
+                          <Badge
+                            variant={isWeekend ? "secondary" : "outline"}
+                            className="px-1.5 py-0 text-[10px]"
+                          >
                             {dayTotal} PA
                           </Badge>
                         ) : null}
@@ -387,19 +399,29 @@ function StaffCalendarPage() {
                           <div className="text-xs text-muted-foreground">No rota work</div>
                         ) : null}
                         {entries.map((entry, index) => (
-                          <div key={`${entry.date}-${entry.session}-${entry.area}-${index}`} className="rounded-md border bg-background p-1.5">
+                          <div
+                            key={`${entry.date}-${entry.session}-${entry.area}-${index}`}
+                            className="rounded-md border bg-background p-1.5"
+                          >
                             <div className="flex flex-wrap items-center gap-1">
-                              <Badge variant={entry.isOnCall ? "secondary" : "outline"} className="px-1 py-0 text-[10px]">
+                              <Badge
+                                variant={entry.isOnCall ? "secondary" : "outline"}
+                                className="px-1 py-0 text-[10px]"
+                              >
                                 {sessionLabel(entry.session)}
                               </Badge>
-                              {entry.isOnCall ? <Badge className="px-1 py-0 text-[10px]">On-call</Badge> : null}
+                              {entry.isOnCall ? (
+                                <Badge className="px-1 py-0 text-[10px]">On-call</Badge>
+                              ) : null}
                               {entry.extraType ? (
                                 <Badge variant="destructive" className="px-1 py-0 text-[10px]">
                                   {entry.extraType}
                                 </Badge>
                               ) : null}
                             </div>
-                            <div className="mt-1 line-clamp-2 text-xs font-medium leading-tight">{entry.area}</div>
+                            <div className="mt-1 line-clamp-2 text-xs font-medium leading-tight">
+                              {entry.area}
+                            </div>
                             <div className="mt-1 text-[11px] text-muted-foreground">
                               {entry.recordedPa !== null
                                 ? `CLWRota ${entry.recordedPa} PA`
@@ -409,7 +431,10 @@ function StaffCalendarPage() {
                             </div>
                             {entry.sharedWith.length > 0 ? (
                               <div className="mt-1 text-[11px] text-muted-foreground">
-                                with {entry.sharedWith.map((id) => view.nameById.get(id) ?? "Unknown").join(", ")}
+                                with{" "}
+                                {entry.sharedWith
+                                  .map((id) => view.nameById.get(id) ?? "Unknown")
+                                  .join(", ")}
                               </div>
                             ) : null}
                           </div>
@@ -421,9 +446,9 @@ function StaffCalendarPage() {
               </div>
 
               <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                “CLWRota PA” means the PA value stored on the imported CLWRota row. “Estimated” means
-                CLWRota did not store a value, so the department rota rules were used. Weekend credit
-                replaces the session or on-call credit rather than stacking on top of it.
+                “CLWRota PA” means the PA value stored on the imported CLWRota row. “Estimated”
+                means CLWRota did not store a value, so the department rota rules were used. Weekend
+                credit replaces the session or on-call credit rather than stacking on top of it.
               </div>
             </>
           ) : null}

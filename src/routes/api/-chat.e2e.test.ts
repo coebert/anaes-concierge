@@ -195,9 +195,7 @@ function makeAdminClient() {
 function dataFor(state: QueryState): unknown {
   switch (state.table) {
     case "ai_conversations":
-      return state.single
-        ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" }
-        : [];
+      return state.single ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" } : [];
     case "ai_messages":
       return [];
     case "user_roles":
@@ -239,7 +237,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 
 vi.mock("@/lib/gmail.server", () => ({

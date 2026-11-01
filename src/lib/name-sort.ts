@@ -82,8 +82,6 @@ export function compareBySurname(
   const bSurname = getSurname(b).toLowerCase();
   const bySurname = aSurname.localeCompare(bSurname);
   const diff =
-    bySurname !== 0
-      ? bySurname
-      : (a ?? "").toLowerCase().localeCompare((b ?? "").toLowerCase());
+    bySurname !== 0 ? bySurname : (a ?? "").toLowerCase().localeCompare((b ?? "").toLowerCase());
   return current === "desc" ? -diff : diff;
 }

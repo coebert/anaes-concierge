@@ -59,7 +59,7 @@ export function RotaWeekGrid({
 
   const cellAssignments = (theatreSessionId: string | undefined) => {
     const list = theatreSessionId
-      ? assignments?.filter((a) => a.theatre_session_id === theatreSessionId) ?? []
+      ? (assignments?.filter((a) => a.theatre_session_id === theatreSessionId) ?? [])
       : [];
     return [...list].sort(
       (a, b) => gradeRank(staffById(a.staff_id)?.grade) - gradeRank(staffById(b.staff_id)?.grade),
@@ -74,7 +74,11 @@ export function RotaWeekGrid({
             <tr>
               <th className="border-b border-r p-2 text-left font-medium w-28">Theatre</th>
               {days.map((d) => (
-                <th key={iso(d)} colSpan={2} className="border-b border-r p-2 text-center font-medium">
+                <th
+                  key={iso(d)}
+                  colSpan={2}
+                  className="border-b border-r p-2 text-center font-medium"
+                >
                   {fmt(d)}
                 </th>
               ))}
@@ -123,67 +127,70 @@ export function RotaWeekGrid({
                           aria-label={`${t.name}, ${formatDateWithWeekdayGB(iso(d))}, ${s === "am" ? "morning" : "afternoon"} session${spec ? `, ${spec}` : ""} — ${assigns.length} assigned. Edit`}
                           onClick={() => onCellClick({ theatreId: t.id, date: iso(d), session: s })}
                         >
-                        {ts ? (
-                          <div className="space-y-1">
-                            {ts.is_non_sag && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] border-amber-500/60 bg-warning-muted text-warning"
-                                title="NHH list covered as part of NHS job plan (non-SAG)"
-                              >
-                                Non-SAG
-                              </Badge>
-                            )}
-                            {spec && (
-                              <div className={cn("font-medium truncate", tone.label)}>{spec}</div>
-                            )}
-                            {ts.surgical_consultant && (
-                              <div className="text-[10px] text-muted-foreground truncate">
-                                {ts.surgical_consultant}
-                              </div>
-                            )}
-                            {(() => {
-                              const hasSeniorCover = assigns.some((x) => {
-                                const g = staffById(x.staff_id)?.grade;
-                                return g === "consultant" || g === "sas";
-                              });
-                              return assigns.map((a) => {
-                                const sp = staffById(a.staff_id);
-                                const isConsultant = sp?.grade === "consultant";
-                                const isTrainee = sp?.grade === "trainee";
-                                const isSoloTrainee =
-                                  isTrainee &&
-                                  a.role_on_list === "solo" &&
-                                  !hasSeniorCover;
-                                const showRoleBadge =
-                                  a.role_on_list !== "solo" || isSoloTrainee;
-                                return (
-                                  <div
-                                    key={a.id}
-                                    className={cn(
-                                      "truncate text-[10px]",
-                                      isConsultant && "font-bold",
-                                      isSoloTrainee && "text-blue-600 dark:text-blue-400",
-                                    )}
-                                  >
-                                    {showRoleBadge && (
-                                      <Badge
-                                        variant={a.role_on_list === "supervising" ? "default" : "outline"}
-                                        className="mr-1 px-1 py-0 text-[9px]"
-                                      >
-                                        {a.role_on_list}
-                                      </Badge>
-                                    )}
-                                    {staffName(a.staff_id)}
-                                    {isTrainee ? ` (${sp?.training_level || "Level unknown"})` : ""}
-                                  </div>
-                                );
-                              });
-                            })()}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground/60 text-[10px]" aria-hidden>+ add</div>
-                        )}
+                          {ts ? (
+                            <div className="space-y-1">
+                              {ts.is_non_sag && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] border-amber-500/60 bg-warning-muted text-warning"
+                                  title="NHH list covered as part of NHS job plan (non-SAG)"
+                                >
+                                  Non-SAG
+                                </Badge>
+                              )}
+                              {spec && (
+                                <div className={cn("font-medium truncate", tone.label)}>{spec}</div>
+                              )}
+                              {ts.surgical_consultant && (
+                                <div className="text-[10px] text-muted-foreground truncate">
+                                  {ts.surgical_consultant}
+                                </div>
+                              )}
+                              {(() => {
+                                const hasSeniorCover = assigns.some((x) => {
+                                  const g = staffById(x.staff_id)?.grade;
+                                  return g === "consultant" || g === "sas";
+                                });
+                                return assigns.map((a) => {
+                                  const sp = staffById(a.staff_id);
+                                  const isConsultant = sp?.grade === "consultant";
+                                  const isTrainee = sp?.grade === "trainee";
+                                  const isSoloTrainee =
+                                    isTrainee && a.role_on_list === "solo" && !hasSeniorCover;
+                                  const showRoleBadge = a.role_on_list !== "solo" || isSoloTrainee;
+                                  return (
+                                    <div
+                                      key={a.id}
+                                      className={cn(
+                                        "truncate text-[10px]",
+                                        isConsultant && "font-bold",
+                                        isSoloTrainee && "text-blue-600 dark:text-blue-400",
+                                      )}
+                                    >
+                                      {showRoleBadge && (
+                                        <Badge
+                                          variant={
+                                            a.role_on_list === "supervising" ? "default" : "outline"
+                                          }
+                                          className="mr-1 px-1 py-0 text-[9px]"
+                                        >
+                                          {a.role_on_list}
+                                        </Badge>
+                                      )}
+                                      {staffName(a.staff_id)}
+                                      {isTrainee
+                                        ? ` (${sp?.training_level || "Level unknown"})`
+                                        : ""}
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          ) : (
+                            <div className="text-muted-foreground/60 text-[10px]" aria-hidden>
+                              + add
+                            </div>
+                          )}
                         </button>
                       </td>
                     );

@@ -41,8 +41,20 @@ const WEEKS = [
 
 const rotaAssignments = WEEKS.flatMap((w) =>
   [w.mon, w.tue, w.wed, w.thu, w.fri].flatMap((d) => [
-    { staff_id: USER_ID, duty_type: "theatre", session_date: d, session: "am", theatre_session_id: SESSION_ID },
-    { staff_id: USER_ID, duty_type: "theatre", session_date: d, session: "pm", theatre_session_id: SESSION_ID },
+    {
+      staff_id: USER_ID,
+      duty_type: "theatre",
+      session_date: d,
+      session: "am",
+      theatre_session_id: SESSION_ID,
+    },
+    {
+      staff_id: USER_ID,
+      duty_type: "theatre",
+      session_date: d,
+      session: "pm",
+      theatre_session_id: SESSION_ID,
+    },
   ]),
 );
 
@@ -183,7 +195,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 
 vi.mock("@/lib/gmail.server", () => ({

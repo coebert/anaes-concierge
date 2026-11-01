@@ -16,7 +16,13 @@ import {
 } from "@/features/clwrota/tutorial-audit-alerts.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -46,7 +52,9 @@ export const Route = createFileRoute("/_authenticated/admin/tutorials")({
 
 type Grade = "consultant" | "sas" | "trainee" | null;
 
-function tutorialDisplayLabel(row: Pick<TutorialAuditSession, "duty_type" | "notes" | "role_on_list" | "extra_type">): string {
+function tutorialDisplayLabel(
+  row: Pick<TutorialAuditSession, "duty_type" | "notes" | "role_on_list" | "extra_type">,
+): string {
   if (row.notes?.trim()) return row.notes.trim();
   if (row.extra_type?.trim()) return row.extra_type.trim();
   if (row.duty_type === "teaching") return "CLWRota teaching session";
@@ -96,9 +104,7 @@ function isoDaysAgo(days: number): string {
 
 function TutorialsAuditPage() {
   const [rangeDays, setRangeDays] = useState<number>(365);
-  const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas">(
-    "all",
-  );
+  const [gradeFilter, setGradeFilter] = useState<"all" | "consultant" | "sas">("all");
   const [search, setSearch] = useState("");
 
   const startIso = useMemo(() => isoDaysAgo(rangeDays), [rangeDays]);
@@ -112,14 +118,17 @@ function TutorialsAuditPage() {
   const queryClient = useQueryClient();
   const [lastBackfill, setLastBackfill] = useState<TutorialBackfillResult | null>(null);
 
-  const { data: rows, isLoading, error } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["tutorials", startIso, endIso],
     queryFn: () => lookupTutorials({ data: { startIso, endIso } }),
   });
 
   const backfillMutation = useMutation({
-    mutationFn: (dryRun: boolean) =>
-      runBackfill({ data: { startIso, endIso, dryRun } }),
+    mutationFn: (dryRun: boolean) => runBackfill({ data: { startIso, endIso, dryRun } }),
     onSuccess: (res, dryRun) => {
       setLastBackfill(res);
       toast.success(
@@ -132,9 +141,7 @@ function TutorialsAuditPage() {
       }
     },
     onError: (err) =>
-      toast.error(
-        `Backfill failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-      ),
+      toast.error(`Backfill failed: ${err instanceof Error ? err.message : "Unknown error"}`),
   });
 
   const filtered = useMemo(() => {
@@ -152,9 +159,12 @@ function TutorialsAuditPage() {
     const m = new Map<string, { staff_id: string; name: string; grade: Grade; count: number }>();
     for (const r of filtered) {
       const key = r.staff_id;
-      const entry =
-        m.get(key) ??
-        { staff_id: key, name: r.staffName, grade: r.staffGrade, count: 0 };
+      const entry = m.get(key) ?? {
+        staff_id: key,
+        name: r.staffName,
+        grade: r.staffGrade,
+        count: 0,
+      };
       entry.count += 1;
       m.set(key, entry);
     }
@@ -178,7 +188,9 @@ function TutorialsAuditPage() {
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Time window</label>
             <Select value={String(rangeDays)} onValueChange={(v) => setRangeDays(Number(v))}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="30">Last 30 days</SelectItem>
                 <SelectItem value="90">Last 90 days</SelectItem>
@@ -190,8 +202,13 @@ function TutorialsAuditPage() {
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Grade</label>
-            <Select value={gradeFilter} onValueChange={(v) => setGradeFilter(v as typeof gradeFilter)}>
-              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <Select
+              value={gradeFilter}
+              onValueChange={(v) => setGradeFilter(v as typeof gradeFilter)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All grades</SelectItem>
                 <SelectItem value="consultant">Consultants</SelectItem>
@@ -216,11 +233,10 @@ function TutorialsAuditPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Re-applies the current tutorial-detection rules to rota rows already
-            in the database for this window. Consultant/SAS SPA or admin rows
-            whose notes describe a tutorial are promoted to teaching and their
-            note is prefixed with <code>Tutorial:</code>. Locally-edited rows
-            and trainee attendee rows are left alone.
+            Re-applies the current tutorial-detection rules to rota rows already in the database for
+            this window. Consultant/SAS SPA or admin rows whose notes describe a tutorial are
+            promoted to teaching and their note is prefixed with <code>Tutorial:</code>.
+            Locally-edited rows and trainee attendee rows are left alone.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -244,31 +260,31 @@ function TutorialsAuditPage() {
           {lastBackfill && (
             <div className="text-xs text-muted-foreground space-y-1 border-t pt-2">
               <div>
-                Window {lastBackfill.windowStart} → {lastBackfill.windowEnd} ·
-                scanned {lastBackfill.scanned} consultant/SAS row(s)
+                Window {lastBackfill.windowStart} → {lastBackfill.windowEnd} · scanned{" "}
+                {lastBackfill.scanned} consultant/SAS row(s)
               </div>
               {!backfillMutation.variables && (
                 <div>
                   CLWRota refreshed {lastBackfill.refreshWindowStart} →{" "}
                   {lastBackfill.refreshWindowEnd} · rows refreshed:{" "}
-                  <strong>{lastBackfill.sourceRowsRefreshed}</strong> ·
-                  assignments inserted: {lastBackfill.sourceAssignmentsInserted} ·
-                  assignments updated: {lastBackfill.sourceAssignmentsUpdated}
+                  <strong>{lastBackfill.sourceRowsRefreshed}</strong> · assignments inserted:{" "}
+                  {lastBackfill.sourceAssignmentsInserted} · assignments updated:{" "}
+                  {lastBackfill.sourceAssignmentsUpdated}
                   {lastBackfill.refreshTruncated && (
                     <>
                       {" "}
-                      — older dates in this window were re-scanned from data
-                      already in the database; run the backfill again with a
-                      shorter range to re-download them from CLWRota.
+                      — older dates in this window were re-scanned from data already in the
+                      database; run the backfill again with a shorter range to re-download them from
+                      CLWRota.
                     </>
                   )}
                 </div>
               )}
               <div>
-                Promoted to teaching: <strong>{lastBackfill.promotedToTeaching}</strong> ·
-                notes rewritten: <strong>{lastBackfill.notesUpdated}</strong> ·
-                skipped locally-modified: {lastBackfill.skippedLocallyModified} ·
-                skipped attendees: {lastBackfill.skippedAttendee}
+                Promoted to teaching: <strong>{lastBackfill.promotedToTeaching}</strong> · notes
+                rewritten: <strong>{lastBackfill.notesUpdated}</strong> · skipped locally-modified:{" "}
+                {lastBackfill.skippedLocallyModified} · skipped attendees:{" "}
+                {lastBackfill.skippedAttendee}
               </div>
               {lastBackfill.sample.length > 0 && (
                 <details>
@@ -282,7 +298,10 @@ function TutorialsAuditPage() {
                         {" → "}
                         {s.toDutyType}
                         {s.noteBefore !== s.noteAfter && (
-                          <> · note: “{s.noteBefore ?? "—"}” → “{s.noteAfter ?? "—"}”</>
+                          <>
+                            {" "}
+                            · note: “{s.noteBefore ?? "—"}” → “{s.noteAfter ?? "—"}”
+                          </>
                         )}
                       </li>
                     ))}
@@ -296,14 +315,11 @@ function TutorialsAuditPage() {
 
       <WeeklyAuditStatusCard />
 
-
-
-
-
       {error && (
         <Card>
           <CardContent className="p-4 text-sm text-destructive">
-            Unable to load tutorial sessions: {error instanceof Error ? error.message : "Unknown error"}
+            Unable to load tutorial sessions:{" "}
+            {error instanceof Error ? error.message : "Unknown error"}
           </CardContent>
         </Card>
       )}
@@ -372,7 +388,9 @@ function TutorialsAuditPage() {
                 const d = parseDateLocal(r.session_date);
                 return (
                   <tr key={r.id} className="border-t">
-                    <td className="p-2 whitespace-nowrap">{d ? formatDateWithWeekdayGB(d) : r.session_date}</td>
+                    <td className="p-2 whitespace-nowrap">
+                      {d ? formatDateWithWeekdayGB(d) : r.session_date}
+                    </td>
                     <td className="p-2 uppercase text-xs">{r.session}</td>
                     <td className="p-2 font-medium">{r.staffName}</td>
                     <td className="p-2 capitalize text-muted-foreground">{r.staffGrade}</td>
@@ -420,13 +438,15 @@ function WeeklyAuditStatusCard() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Weekly automated backfill &amp; divergence alerts</CardTitle>
+        <CardTitle className="text-base">
+          Weekly automated backfill &amp; divergence alerts
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <p className="text-muted-foreground">
-          A scheduled job re-syncs CLWRota and re-runs tutorial detection across the
-          next 12 months once a week, in bounded windows, then compares the audit
-          against the CLWRota source. Any mismatch raises an alert here.
+          A scheduled job re-syncs CLWRota and re-runs tutorial detection across the next 12 months
+          once a week, in bounded windows, then compares the audit against the CLWRota source. Any
+          mismatch raises an alert here.
         </p>
         {isLoading && <div className="text-muted-foreground">Loading job status…</div>}
         {error && (
@@ -483,7 +503,8 @@ function WeeklyAuditStatusCard() {
                       <ul className="text-xs list-disc pl-4">
                         {a.missingFromAudit.slice(0, 10).map((m, i) => (
                           <li key={`m-${i}`}>
-                            Missing from audit: {m.staffName} · {m.session_date} {m.session.toUpperCase()}
+                            Missing from audit: {m.staffName} · {m.session_date}{" "}
+                            {m.session.toUpperCase()}
                             {m.label ? ` · ${m.label}` : ""}
                           </li>
                         ))}
@@ -493,7 +514,8 @@ function WeeklyAuditStatusCard() {
                       <ul className="text-xs list-disc pl-4">
                         {a.extraInAudit.slice(0, 10).map((m, i) => (
                           <li key={`e-${i}`}>
-                            Not in CLWRota: {m.staffName} · {m.session_date} {m.session.toUpperCase()}
+                            Not in CLWRota: {m.staffName} · {m.session_date}{" "}
+                            {m.session.toUpperCase()}
                             {m.label ? ` · ${m.label}` : ""}
                           </li>
                         ))}

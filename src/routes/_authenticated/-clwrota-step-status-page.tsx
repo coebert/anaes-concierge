@@ -15,13 +15,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -120,9 +114,7 @@ export function ClwRotaStepStatusPage() {
     mutationFn: (step) => runStep({ data: { step } }),
     onSuccess: (result) => {
       if (result.fired) {
-        toast.success(
-          `${result.step} sync dispatched (request #${result.requestId}).`,
-        );
+        toast.success(`${result.step} sync dispatched (request #${result.requestId}).`);
       } else {
         toast.info(
           `${result.step} sync skipped — rate-limiter says it ran too recently (or another run is in flight).`,
@@ -148,9 +140,7 @@ export function ClwRotaStepStatusPage() {
       <div className="p-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-destructive">
-              Couldn't load CLWRota step status
-            </CardTitle>
+            <CardTitle className="text-destructive">Couldn't load CLWRota step status</CardTitle>
             <CardDescription>{(error as Error).message}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -172,19 +162,11 @@ export function ClwRotaStepStatusPage() {
         <div>
           <h1 className="text-2xl font-semibold">CLWRota step status</h1>
           <p className="text-sm text-muted-foreground">
-            Last run, success state, and rate-limiter decisions for each
-            sync step.
+            Last run, success state, and rate-limiter decisions for each sync step.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-          />
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>
@@ -199,9 +181,7 @@ export function ClwRotaStepStatusPage() {
             <Card key={step}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="capitalize text-base">
-                    {step} sync
-                  </CardTitle>
+                  <CardTitle className="capitalize text-base">{step} sync</CardTitle>
                   {latest ? (
                     latest.ok ? (
                       <Badge variant="secondary" className="gap-1">
@@ -226,9 +206,7 @@ export function ClwRotaStepStatusPage() {
                     size="sm"
                     variant={ready ? "default" : "outline"}
                     onClick={() => runMutation.mutate(step)}
-                    disabled={
-                      runMutation.isPending && runMutation.variables === step
-                    }
+                    disabled={runMutation.isPending && runMutation.variables === step}
                     title={
                       ready
                         ? `Run ${step} sync now`
@@ -260,32 +238,24 @@ export function ClwRotaStepStatusPage() {
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">Pulled</dt>
-                    <dd className="font-medium tabular-nums">
-                      {latest?.rows_pulled ?? "—"}
-                    </dd>
+                    <dd className="font-medium tabular-nums">{latest?.rows_pulled ?? "—"}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">Upserted</dt>
-                    <dd className="font-medium tabular-nums">
-                      {latest?.rows_upserted ?? "—"}
-                    </dd>
+                    <dd className="font-medium tabular-nums">{latest?.rows_upserted ?? "—"}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-muted-foreground">Failed</dt>
                     <dd
                       className={`font-medium tabular-nums ${
-                        latest && latest.rows_failed > 0
-                          ? "text-destructive"
-                          : ""
+                        latest && latest.rows_failed > 0 ? "text-destructive" : ""
                       }`}
                     >
                       {latest?.rows_failed ?? "—"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-muted-foreground">
-                      Skipped (validation)
-                    </dt>
+                    <dt className="text-xs text-muted-foreground">Skipped (validation)</dt>
                     <dd className="font-medium tabular-nums">
                       {latest?.rows_skipped_validation ?? "—"}
                     </dd>
@@ -294,9 +264,7 @@ export function ClwRotaStepStatusPage() {
 
                 {latest?.notes ? (
                   <div className="rounded border border-border bg-muted/30 p-2">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      Notes
-                    </div>
+                    <div className="text-xs font-medium text-muted-foreground">Notes</div>
                     <pre className="mt-1 whitespace-pre-wrap break-words text-xs">
                       {latest.notes}
                     </pre>
@@ -308,9 +276,7 @@ export function ClwRotaStepStatusPage() {
                     <div className="text-xs font-medium text-destructive">
                       Last run failed
                       {latest.errors_count > 0
-                        ? ` — ${latest.errors_count} error${
-                            latest.errors_count === 1 ? "" : "s"
-                          }`
+                        ? ` — ${latest.errors_count} error${latest.errors_count === 1 ? "" : "s"}`
                         : ""}
                     </div>
                   </div>
@@ -324,9 +290,7 @@ export function ClwRotaStepStatusPage() {
                   {rateLimit ? (
                     <dl className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <dt className="text-muted-foreground">
-                          Minimum interval
-                        </dt>
+                        <dt className="text-muted-foreground">Minimum interval</dt>
                         <dd className="font-medium">
                           {fmtInterval(rateLimit.min_interval_seconds)}
                         </dd>
@@ -341,11 +305,7 @@ export function ClwRotaStepStatusPage() {
                       </div>
                       <div>
                         <dt className="text-muted-foreground">Next allowed</dt>
-                        <dd
-                          className={`font-medium ${
-                            ready ? "text-success" : ""
-                          }`}
-                        >
+                        <dd className={`font-medium ${ready ? "text-success" : ""}`}>
                           {ready
                             ? "now"
                             : next
@@ -356,9 +316,7 @@ export function ClwRotaStepStatusPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">
-                          Last request id
-                        </dt>
+                        <dt className="text-muted-foreground">Last request id</dt>
                         <dd className="font-medium tabular-nums">
                           {rateLimit.last_request_id ?? "—"}
                         </dd>
@@ -381,9 +339,9 @@ export function ClwRotaStepStatusPage() {
         <CardHeader>
           <CardTitle>Rate-limiter decisions</CardTitle>
           <CardDescription>
-            Recent runs of <code className="text-xs">clwrota-sync-hourly-all</code>.
-            Each row shows which steps the shared rate-limiter fired and which
-            it skipped (interval not yet elapsed, or another sync in flight).
+            Recent runs of <code className="text-xs">clwrota-sync-hourly-all</code>. Each row shows
+            which steps the shared rate-limiter fired and which it skipped (interval not yet
+            elapsed, or another sync in flight).
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -410,25 +368,19 @@ export function ClwRotaStepStatusPage() {
                   <TableRow key={r.runid ?? `${r.start_time}`}>
                     <TableCell className="whitespace-nowrap text-xs">
                       <div>{fmtDate(r.start_time)}</div>
-                      <div className="text-muted-foreground">
-                        {relativeFrom(r.start_time)}
-                      </div>
+                      <div className="text-muted-foreground">{relativeFrom(r.start_time)}</div>
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant={
-                          (r.status ?? "").toLowerCase() === "succeeded"
-                            ? "secondary"
-                            : "outline"
+                          (r.status ?? "").toLowerCase() === "succeeded" ? "secondary" : "outline"
                         }
                       >
                         {r.status ?? "—"}
                       </Badge>
                     </TableCell>
                     {(["staff", "rota", "leave"] as SyncStep[]).map((s) => (
-                      <TableCell key={s}>
-                        {decisionBadge(r.decisions[s])}
-                      </TableCell>
+                      <TableCell key={s}>{decisionBadge(r.decisions[s])}</TableCell>
                     ))}
                     <TableCell className="max-w-[320px]">
                       <div

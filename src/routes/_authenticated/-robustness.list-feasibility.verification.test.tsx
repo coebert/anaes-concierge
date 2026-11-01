@@ -21,8 +21,7 @@ import type { DiagnosedReport } from "@/features/audit/list-feasibility-diagnosi
 // --- Mocks ---------------------------------------------------------------
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tanstack/react-router")>();
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
     createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({
@@ -41,9 +40,9 @@ const { computeListFeasibility } = vi.hoisted(() => ({
   computeListFeasibility: vi.fn(),
 }));
 vi.mock("@/features/audit/list-feasibility", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/features/audit/list-feasibility")
-  >("@/features/audit/list-feasibility");
+  const actual = await vi.importActual<typeof import("@/features/audit/list-feasibility")>(
+    "@/features/audit/list-feasibility",
+  );
   return { ...actual, computeListFeasibility };
 });
 
@@ -270,10 +269,9 @@ describe("verification step: recomputes counts from updated labels", () => {
     expect(supabaseState.selectCalls).toBeGreaterThanOrEqual(1);
 
     // The model was recomputed with the freshly fetched tokens.
-    const lastCall =
-      computeListFeasibility.mock.calls[
-        computeListFeasibility.mock.calls.length - 1
-      ]![0] as { extraNonWorkingTokens?: string[] };
+    const lastCall = computeListFeasibility.mock.calls[
+      computeListFeasibility.mock.calls.length - 1
+    ]![0] as { extraNonWorkingTokens?: string[] };
     expect(lastCall.extraNonWorkingTokens).toEqual(["Study Leave"]);
 
     // The banner reflects the *recomputed* counts (3 feasible / 0 not feasible),
@@ -307,10 +305,9 @@ describe("verification step: recomputes counts from updated labels", () => {
       expect(screen.getByText(/Verification complete/i)).toBeTruthy();
     });
 
-    const lastCall =
-      computeListFeasibility.mock.calls[
-        computeListFeasibility.mock.calls.length - 1
-      ]![0] as { extraNonWorkingTokens?: string[] };
+    const lastCall = computeListFeasibility.mock.calls[
+      computeListFeasibility.mock.calls.length - 1
+    ]![0] as { extraNonWorkingTokens?: string[] };
 
     // Verification recomputed using EVERY token now stored in the DB —
     // both the pre-existing one and the just-applied remediation token.

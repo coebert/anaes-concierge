@@ -7,7 +7,10 @@ export const BUCKET_LABEL: Record<TraineeBucket, string> = {
 
 export function traineeBucket(level: string | null | undefined): TraineeBucket | null {
   if (!level) return null;
-  const m = level.trim().toUpperCase().match(/^(CT|ST)(\d+)/);
+  const m = level
+    .trim()
+    .toUpperCase()
+    .match(/^(CT|ST)(\d+)/);
   if (!m) return null;
   const prefix = m[1];
   const n = parseInt(m[2], 10);
@@ -26,8 +29,15 @@ export const GRADE_LABEL: Record<Grade, string> = {
   trainee: "Trainees",
 };
 
-export const LEAVE_TYPES = ["annual", "sick", "parental", "study", "compassionate", "other"] as const;
-export type LeaveType = typeof LEAVE_TYPES[number];
+export const LEAVE_TYPES = [
+  "annual",
+  "sick",
+  "parental",
+  "study",
+  "compassionate",
+  "other",
+] as const;
+export type LeaveType = (typeof LEAVE_TYPES)[number];
 export const LEAVE_LABEL: Record<LeaveType, string> = {
   annual: "Annual leave",
   sick: "Sick leave",

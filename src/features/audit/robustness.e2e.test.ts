@@ -67,13 +67,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -118,9 +115,7 @@ function seedBaselineFixture() {
     { id: T_ACTIVE_3, active: true },
     { id: T_LEGACY, active: false },
   ];
-  fixture.specialties = [
-    { id: SPEC_EMERGENCY, name: "Emergency / CEPOD" },
-  ];
+  fixture.specialties = [{ id: SPEC_EMERGENCY, name: "Emergency / CEPOD" }];
 
   // Staff pool — plenty of solo-capable clinicians plus support grades.
   fixture.profiles = [
@@ -167,8 +162,7 @@ function seedBaselineFixture() {
         });
         // Rotate solo-capable staff (5 consultants on-rota + 2 seniors).
         const soloPool = ["c1", "c2", "c3", "c4", "c5", "st6-1", "st7-1"];
-        const staffId =
-          soloPool[(dayIdx * 6 + halfIdx * 3 + tIdx) % soloPool.length];
+        const staffId = soloPool[(dayIdx * 6 + halfIdx * 3 + tIdx) % soloPool.length];
         assignments.push({
           staff_id: staffId,
           session_date: date,
@@ -201,8 +195,20 @@ function seedBaselineFixture() {
 
     // Add some non-list duties to exercise the duty_type_pool_rules filters.
     assignments.push(
-      { staff_id: "sas-1", session_date: date, session: "am", duty_type: "spa", theatre_session_id: null },
-      { staff_id: "sas-2", session_date: date, session: "pm", duty_type: "admin", theatre_session_id: null },
+      {
+        staff_id: "sas-1",
+        session_date: date,
+        session: "am",
+        duty_type: "spa",
+        theatre_session_id: null,
+      },
+      {
+        staff_id: "sas-2",
+        session_date: date,
+        session: "pm",
+        duty_type: "admin",
+        theatre_session_id: null,
+      },
     );
   });
 
@@ -214,10 +220,7 @@ describe("computeRobustness — end-to-end pipeline", () => {
   it("reports zero consultant shortfall for every half-day across the week when all active lists are staffed", async () => {
     seedBaselineFixture();
 
-    const { days, totalStaffByGrade } = await computeRobustness(
-      RANGE_START,
-      RANGE_END,
-    );
+    const { days, totalStaffByGrade } = await computeRobustness(RANGE_START, RANGE_END);
 
     // Sanity: pipeline produced one DayCapacity per weekday in range.
     expect(days.map((d) => d.date)).toEqual(WEEK);
@@ -235,10 +238,7 @@ describe("computeRobustness — end-to-end pipeline", () => {
         expect(cap.unfilled, `${day.date} ${half} unfilled`).toBe(0);
 
         // Headroom is non-negative and risk is never a shortfall.
-        expect(
-          cap.headroom,
-          `${day.date} ${half} headroom`,
-        ).toBeGreaterThanOrEqual(0);
+        expect(cap.headroom, `${day.date} ${half} headroom`).toBeGreaterThanOrEqual(0);
         expect(cap.risk, `${day.date} ${half} risk`).not.toBe("shortfall");
         expect(cap.risk, `${day.date} ${half} risk`).not.toBe("spa_required");
       }
@@ -267,8 +267,20 @@ describe("computeRobustness — end-to-end pipeline", () => {
       (a) => !(a.session_date === wed && a.session === "am"),
     );
     fixture.rota_assignments.push(
-      { staff_id: "c1", session_date: wed, session: "am", duty_type: "theatre", theatre_session_id: `ts-${wed}-am-0` },
-      { staff_id: "c2", session_date: wed, session: "am", duty_type: "theatre", theatre_session_id: `ts-${wed}-am-2` },
+      {
+        staff_id: "c1",
+        session_date: wed,
+        session: "am",
+        duty_type: "theatre",
+        theatre_session_id: `ts-${wed}-am-0`,
+      },
+      {
+        staff_id: "c2",
+        session_date: wed,
+        session: "am",
+        duty_type: "theatre",
+        theatre_session_id: `ts-${wed}-am-2`,
+      },
     );
 
     const { days } = await computeRobustness(RANGE_START, RANGE_END);

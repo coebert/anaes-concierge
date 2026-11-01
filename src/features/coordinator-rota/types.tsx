@@ -2,7 +2,13 @@ import { AlertTriangle, Info, ShieldAlert } from "lucide-react";
 
 export type SessionHalf = "am" | "pm";
 export type RotaRole =
-  | "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session";
+  | "solo"
+  | "supervised"
+  | "supervising"
+  | "on_call"
+  | "non_clinical"
+  | "teaching"
+  | "admin_session";
 
 export type WeekAssignment = {
   id: string;

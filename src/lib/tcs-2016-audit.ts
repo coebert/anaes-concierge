@@ -32,7 +32,7 @@ export type AuditAssignment = {
 export type RuleStatus = "pass" | "fail" | "warn" | "indeterminate";
 
 export type ShiftSummary = {
-  date: string;          // session_date (night shifts: the day it starts)
+  date: string; // session_date (night shifts: the day it starts)
   session: Session;
   /** All constituent half-day sessions merged into this shift (chronological). */
   sessions: Session[];
@@ -95,16 +95,17 @@ export type AuditResult = {
 const SESSION_HOURS: Record<Session, number> = { am: 5, pm: 5, eve: 3, night: 11 };
 
 // Local-time start/end offsets relative to session_date (in hours from midnight).
-const SESSION_WINDOW: Record<Session, { startH: number; endH: number; crossesMidnight: boolean }> = {
-  am:    { startH: 8,  endH: 13, crossesMidnight: false },
-  pm:    { startH: 13, endH: 18, crossesMidnight: false },
-  eve:   { startH: 18, endH: 21, crossesMidnight: false },
-  night: { startH: 21, endH: 8,  crossesMidnight: true },
-};
+const SESSION_WINDOW: Record<Session, { startH: number; endH: number; crossesMidnight: boolean }> =
+  {
+    am: { startH: 8, endH: 13, crossesMidnight: false },
+    pm: { startH: 13, endH: 18, crossesMidnight: false },
+    eve: { startH: 18, endH: 21, crossesMidnight: false },
+    night: { startH: 21, endH: 8, crossesMidnight: true },
+  };
 
 type Shift = {
-  date: string;          // session_date (for night shifts: the day it starts)
-  startMs: number;       // UTC ms of approximate start
+  date: string; // session_date (for night shifts: the day it starts)
+  startMs: number; // UTC ms of approximate start
   endMs: number;
   hours: number;
   session: Session;
@@ -112,8 +113,8 @@ type Shift = {
   sessions: Session[];
   duty_type: string;
   isNight: boolean;
-  isLong: boolean;       // >= 10h
-  isWeekend: boolean;    // Sat/Sun (start day)
+  isLong: boolean; // >= 10h
+  isWeekend: boolean; // Sat/Sun (start day)
 };
 
 function dateAtHour(dateISO: string, hour: number, addDays = 0): number {
@@ -126,7 +127,9 @@ function toShift(a: AuditAssignment): Shift {
   const w = SESSION_WINDOW[a.session];
   const hours = SESSION_HOURS[a.session];
   const startMs = dateAtHour(a.session_date, w.startH);
-  const endMs = w.crossesMidnight ? dateAtHour(a.session_date, w.endH, 1) : dateAtHour(a.session_date, w.endH);
+  const endMs = w.crossesMidnight
+    ? dateAtHour(a.session_date, w.endH, 1)
+    : dateAtHour(a.session_date, w.endH);
   const dayOfWeek = new Date(startMs).getUTCDay(); // 0=Sun..6=Sat
   return {
     date: a.session_date,
@@ -153,7 +156,15 @@ function isWeekendDow(d: number): boolean {
 /** Saturday keys (YYYY-MM-DD) of every weekend a shift touches, incl. cross-midnight. */
 function weekendKeysTouched(startMs: number, endMs: number): string[] {
   const keys = new Set<string>();
-  for (let t = Date.UTC(new Date(startMs).getUTCFullYear(), new Date(startMs).getUTCMonth(), new Date(startMs).getUTCDate()); t < endMs; t += 86_400_000) {
+  for (
+    let t = Date.UTC(
+      new Date(startMs).getUTCFullYear(),
+      new Date(startMs).getUTCMonth(),
+      new Date(startMs).getUTCDate(),
+    );
+    t < endMs;
+    t += 86_400_000
+  ) {
     const dow = new Date(t).getUTCDay();
     if (dow === 6) keys.add(new Date(t).toISOString().slice(0, 10));
     else if (dow === 0) keys.add(new Date(t - 86_400_000).toISOString().slice(0, 10));
@@ -359,14 +370,8 @@ export function auditTcs2016(
       : "";
   rules.push({
     id: "avg_48h",
-    label:
-      "Average ≤ 48h / week (estimated, reference period up to 26 weeks)",
-    status:
-      spanWeeks < 4
-        ? "indeterminate"
-        : avgWeekly <= ltftThreshold
-          ? "pass"
-          : "fail",
+    label: "Average ≤ 48h / week (estimated, reference period up to 26 weeks)",
+    status: spanWeeks < 4 ? "indeterminate" : avgWeekly <= ltftThreshold ? "pass" : "fail",
     detail:
       spanWeeks < 4
         ? `Only ${spanWeeks.toFixed(1)} weeks of data — need ≥4 weeks to average meaningfully (${totalHours} h logged)${ltftNote}`
@@ -380,8 +385,6 @@ export function auditTcs2016(
       ],
     },
   });
-
-
 
   // R2 — Max 72h in any rolling 7 consecutive days
   let max72 = 0;
@@ -398,7 +401,10 @@ export function auditTcs2016(
       peak72Start = i;
     }
     if (hSum > 72) {
-      max72Breaches.push({ date: shifts[i].date, note: `${hSum} h in 7-day window starting ${shifts[i].date}` });
+      max72Breaches.push({
+        date: shifts[i].date,
+        note: `${hSum} h in 7-day window starting ${shifts[i].date}`,
+      });
     }
   }
   const peak72WindowStart = shifts[peak72Start].date;
@@ -431,7 +437,10 @@ export function auditTcs2016(
     evidence:
       long13.length === 0
         ? undefined
-        : { shifts: long13.map(summarise), notes: long13.map((s) => `${s.date} ${s.session}: ${s.hours} h`) },
+        : {
+            shifts: long13.map(summarise),
+            notes: long13.map((s) => `${s.date} ${s.session}: ${s.hours} h`),
+          },
   });
 
   // R4 — Max 5 consecutive long shifts (>10h)
@@ -465,9 +474,7 @@ export function auditTcs2016(
     lastLongIdx = k;
   }
   const longRunRaw =
-    bestRunStart >= 0
-      ? shifts.slice(bestRunStart, bestRunEnd + 1).filter((s) => s.isLong)
-      : [];
+    bestRunStart >= 0 ? shifts.slice(bestRunStart, bestRunEnd + 1).filter((s) => s.isLong) : [];
   const longRunShifts = longRunRaw.map(summarise);
   // Cross-night evidence: flag night → next-day-long transitions inside the
   // run that also breach the 11 h rest rule. These shouldn't just read as
@@ -494,7 +501,9 @@ export function auditTcs2016(
     status: maxRunLong <= longMax ? "pass" : "fail",
     detail:
       `Longest run of consecutive long shifts (estimated lengths): ${maxRunLong}` +
-      (options.agreedFiveLongShifts ? "" : " · limit is 4 unless an explicit mutual agreement for 5 is recorded"),
+      (options.agreedFiveLongShifts
+        ? ""
+        : " · limit is 4 unless an explicit mutual agreement for 5 is recorded"),
     evidence:
       longRunShifts.length === 0
         ? undefined
@@ -536,7 +545,10 @@ export function auditTcs2016(
   }
   const nightRunShifts =
     bestNightStart >= 0
-      ? shifts.slice(bestNightStart, bestNightEnd + 1).filter((s) => s.isNight).map(summarise)
+      ? shifts
+          .slice(bestNightStart, bestNightEnd + 1)
+          .filter((s) => s.isNight)
+          .map(summarise)
       : [];
   rules.push({
     id: "max_4_nights",
@@ -685,19 +697,20 @@ export function auditTcs2016(
     evidence: rest46Shifts.length === 0 ? undefined : { shifts: rest46Shifts, notes: rest46Notes },
   });
 
-
   // R9 — Weekend frequency (max 1 in 2) is measured across the FULL rota
   // cycle. Shifts that cross into Saturday/Sunday count. Without a known
   // cycle length this is reported as not assessed rather than inferred
   // from back-to-back weekends (which is not the contractual test).
   const weekendsWorked = new Set<string>();
-  for (const s of shifts) for (const k of weekendKeysTouched(s.startMs, s.endMs)) weekendsWorked.add(k);
+  for (const s of shifts)
+    for (const k of weekendKeysTouched(s.startMs, s.endMs)) weekendsWorked.add(k);
   const sortedWE = Array.from(weekendsWorked).sort();
   const weekendShifts = shifts.filter((s) => s.isWeekend).map(summarise);
   const cycle = options.rotaCycleWeeks;
   const refWeeks = Math.max(1, Math.round(refSpanDaysRaw / 7));
   // Needs a known cycle AND a window covering at least one whole cycle.
-  const cycleKnown = typeof cycle === "number" && Number.isInteger(cycle) && cycle > 0 && refWeeks >= cycle;
+  const cycleKnown =
+    typeof cycle === "number" && Number.isInteger(cycle) && cycle > 0 && refWeeks >= cycle;
   const weekendFreq = weekendsWorked.size / refWeeks;
   rules.push({
     id: "weekend_freq",
@@ -709,7 +722,12 @@ export function auditTcs2016(
     evidence:
       weekendShifts.length === 0
         ? undefined
-        : { shifts: weekendShifts, notes: [`Worked weekends (Sat keys, incl. shifts crossing into Sat/Sun): ${sortedWE.join(", ")}`] },
+        : {
+            shifts: weekendShifts,
+            notes: [
+              `Worked weekends (Sat keys, incl. shifts crossing into Sat/Sun): ${sortedWE.join(", ")}`,
+            ],
+          },
   });
 
   // (The former "max 8 days in any 14" rule was removed: it is not a 2016
@@ -717,11 +735,19 @@ export function auditTcs2016(
 
   const hasFail = rules.some((r) => r.status === "fail");
   const hasIndeterminate = rules.some((r) => r.status === "indeterminate");
-  const overall: AuditOverall = hasFail ? "possible_breach" : hasIndeterminate ? "incomplete" : "no_flags_estimated";
+  const overall: AuditOverall = hasFail
+    ? "possible_breach"
+    : hasIndeterminate
+      ? "incomplete"
+      : "no_flags_estimated";
   const caveats = [...BASE_CAVEATS];
-  if (!options.agreedFiveLongShifts) caveats.push("No recorded agreement for 5 consecutive long shifts, so the default limit of 4 was applied.");
+  if (!options.agreedFiveLongShifts)
+    caveats.push(
+      "No recorded agreement for 5 consecutive long shifts, so the default limit of 4 was applied.",
+    );
   if (!cycleKnown) caveats.push("Rota cycle length unknown — weekend frequency not assessed.");
-  for (const r of rules) if (r.status === "indeterminate") caveats.push(`Not assessed: ${r.label}.`);
+  for (const r of rules)
+    if (r.status === "indeterminate") caveats.push(`Not assessed: ${r.label}.`);
 
   return {
     overall,

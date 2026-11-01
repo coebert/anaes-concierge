@@ -68,8 +68,7 @@ export interface DiagnosedCell extends ValidationCell {
   diagnoses: Diagnosis[];
 }
 
-export interface DiagnosedConsultant
-  extends Omit<ValidationConsultant, "cells"> {
+export interface DiagnosedConsultant extends Omit<ValidationConsultant, "cells"> {
   cells: DiagnosedCell[];
   topDiagnosis: Diagnosis | null;
 }
@@ -144,10 +143,7 @@ function findClinicalLookingOtherDuties(cell: ValidationCell): Array<{
     const hasClinicalHint =
       CLINICAL_HINT_WORDS.some((w) => norm.includes(w)) ||
       // duty_type itself might already be a clinical-ish bucket.
-      (s.dutyType &&
-        CLINICAL_HINT_WORDS.some((w) =>
-          (s.dutyType ?? "").toLowerCase().includes(w),
-        ));
+      (s.dutyType && CLINICAL_HINT_WORDS.some((w) => (s.dutyType ?? "").toLowerCase().includes(w)));
     if (!hasClinicalHint) continue;
     const key = `${s.dutyType ?? "?"}|${norm}`;
     if (seen.has(key)) continue;
@@ -212,9 +208,7 @@ export function diagnoseValidationCell(cell: ValidationCell): Diagnosis[] {
       severity: "warn",
       summary:
         "Some sampled rows look like non-working markers (study leave, annual leave, etc.) but are not recognised as such by the off-day filter.",
-      evidence: missedOff
-        .slice(0, 4)
-        .map((label) => `Unrecognised label: "${label}"`),
+      evidence: missedOff.slice(0, 4).map((label) => `Unrecognised label: "${label}"`),
       remediation: {
         kind: "extend-non-working-labels",
         summary:
@@ -232,9 +226,9 @@ export function diagnoseValidationCell(cell: ValidationCell): Diagnosis[] {
       severity: "warn",
       summary:
         "Some 'other_duty' rows have clinical-sounding labels (theatre / list / endoscopy / obstetrics). They are probably mis-mapped duty types.",
-      evidence: clinicalLooking.slice(0, 4).map(
-        (r) => `duty_type="${r.dutyType}" notes="${r.notes.slice(0, 60)}"`,
-      ),
+      evidence: clinicalLooking
+        .slice(0, 4)
+        .map((r) => `duty_type="${r.dutyType}" notes="${r.notes.slice(0, 60)}"`),
       remediation: {
         kind: "review-duty-mapping",
         summary:
@@ -269,8 +263,7 @@ export function diagnoseValidationCell(cell: ValidationCell): Diagnosis[] {
       });
     } else if (cell.delta < 0) {
       // Many "other_duty" rows (SPA / admin / on-call) push sampled% down.
-      const otherShare =
-        usableSample > 0 ? cell.otherDuty / usableSample : 0;
+      const otherShare = usableSample > 0 ? cell.otherDuty / usableSample : 0;
       if (otherShare >= 0.5) {
         diagnoses.push({
           code: "excess_other_duty",
@@ -279,12 +272,12 @@ export function diagnoseValidationCell(cell: ValidationCell): Diagnosis[] {
             "Most sampled rows are non-theatre duties (SPA, admin, on-call, leave). The model is over-treating this slot as theatre-bearing.",
           evidence: [
             `${cell.otherDuty}/${usableSample} usable rows are non-theatre duty types.`,
-            `Top duty types: ${uniqueNoteTokens(
-              cell.samples.filter((s) => s.classification === "other_duty"),
-            )
-              .slice(0, 3)
-              .map((t) => `"${t}"`)
-              .join(", ") || "—"}.`,
+            `Top duty types: ${
+              uniqueNoteTokens(cell.samples.filter((s) => s.classification === "other_duty"))
+                .slice(0, 3)
+                .map((t) => `"${t}"`)
+                .join(", ") || "—"
+            }.`,
           ],
           remediation: {
             kind: "review-duty-mapping",
@@ -297,8 +290,7 @@ export function diagnoseValidationCell(cell: ValidationCell): Diagnosis[] {
         diagnoses.push({
           code: "model_overcounts_clinical",
           severity: "warn",
-          summary:
-            "The model rates this slot as more clinical than the sample supports.",
+          summary: "The model rates this slot as more clinical than the sample supports.",
           evidence: [
             `Model ${cell.modelPct}% vs sampled ${cell.sampledPct}% (Δ ${cell.delta}).`,
             `Clinical observations: ${cell.clinical}/${usableSample} usable rows.`,
@@ -340,9 +332,7 @@ const CAUSE_LABELS: Record<DiagnosisCode, string> = {
   excess_other_duty: "Mostly SPA / admin / on-call duties",
 };
 
-export function diagnoseValidationReport(
-  report: ValidationReport,
-): DiagnosedReport {
+export function diagnoseValidationReport(report: ValidationReport): DiagnosedReport {
   const tally = new Map<DiagnosisCode, number>();
 
   const consultants: DiagnosedConsultant[] = report.consultants.map((c) => {

@@ -45,7 +45,10 @@ function makeFakeLeaveTable(rows: Row[]) {
         const dir = ascending ? 1 : -1;
         source = source
           .slice()
-          .sort((a, b) => (((a[k] ?? "") < (b[k] ?? "")) ? -1 : ((a[k] ?? "") > (b[k] ?? "")) ? 1 : 0) * dir);
+          .sort(
+            (a, b) =>
+              ((a[k] ?? "") < (b[k] ?? "") ? -1 : (a[k] ?? "") > (b[k] ?? "") ? 1 : 0) * dir,
+          );
       }
       const cappedTo = Math.min(to, from + DB_MAX_ROWS - 1);
       return { data: source.slice(from, cappedTo + 1), error: null };
@@ -58,12 +61,7 @@ function isoDaysAgo(days: number): string {
   return new Date(NOW.getTime() - days * 86_400_000).toISOString().slice(0, 10);
 }
 
-function padRows(
-  count: number,
-  staffId: string,
-  startId: number,
-  daysAgoStart: number,
-): Row[] {
+function padRows(count: number, staffId: string, startId: number, daysAgoStart: number): Row[] {
   // Padding rows well outside the wellbeing window so they never influence
   // the score directly, but do force the underlying fetch to cross the
   // 1000-row PostgREST cap.
@@ -178,9 +176,7 @@ describe("wellbeing score — study & compassionate leave", () => {
     const leave = await fetchLeaveForStaff(rows, staffId);
     // Both approved rows must survive pagination.
     expect(leave.some((l) => l.type === "study" && l.status === "approved")).toBe(true);
-    expect(
-      leave.some((l) => l.type === "compassionate" && l.status === "approved"),
-    ).toBe(true);
+    expect(leave.some((l) => l.type === "compassionate" && l.status === "approved")).toBe(true);
 
     const result = computeWellbeing({
       staffId,

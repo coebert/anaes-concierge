@@ -19,7 +19,10 @@ export const Route = createFileRoute("/_authenticated/admin/pulse")({
   head: () => ({
     meta: [
       { title: "Pulse survey admin — Salisbury Anaesthetics" },
-      { name: "description", content: "Manage wellbeing pulse cycles and review aggregated results." },
+      {
+        name: "description",
+        content: "Manage wellbeing pulse cycles and review aggregated results.",
+      },
     ],
   }),
   component: AdminPulsePage,
@@ -60,10 +63,7 @@ function AdminPulsePage() {
     queryKey: ["admin-pulse-cycles"],
     queryFn: async () => {
       const [cyclesRes, aggRes] = await Promise.all([
-        supabase
-          .from("pulse_survey_cycles")
-          .select("*")
-          .order("opens_at", { ascending: false }),
+        supabase.from("pulse_survey_cycles").select("*").order("opens_at", { ascending: false }),
         supabase.rpc("get_pulse_aggregate"),
       ]);
       if (cyclesRes.error) throw cyclesRes.error;
@@ -159,9 +159,7 @@ function AdminPulsePage() {
           {isLoading ? (
             <PageLoading />
           ) : data && data.cycles.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              No cycles yet.
-            </p>
+            <p className="py-4 text-center text-sm text-muted-foreground">No cycles yet.</p>
           ) : (
             <div className="space-y-3">
               {data?.cycles.map((c) => {

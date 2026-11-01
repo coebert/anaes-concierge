@@ -12,11 +12,7 @@ import { NAV_ITEMS } from "./navigation";
  */
 describe("audits/robustness menu snapshot", () => {
   const FORBIDDEN_IDS = ["absence", "leave-fairness", "wellbeing-admin"] as const;
-  const FORBIDDEN_ROUTES = [
-    "/admin/absence",
-    "/admin/leave-fairness",
-    "/admin/wellbeing",
-  ] as const;
+  const FORBIDDEN_ROUTES = ["/admin/absence", "/admin/leave-fairness", "/admin/wellbeing"] as const;
   const FORBIDDEN_LABELS = [
     "Absence (Bradford)",
     "Leave fairness",

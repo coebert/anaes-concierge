@@ -34,16 +34,23 @@ describe("auditTcs2016", () => {
   });
 
   it("flags 5 consecutive nights", () => {
-    const a = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"]
-      .map((d) => mk(d, "night", "sho_oncall", "on_call"));
+    const a = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"].map((d) =>
+      mk(d, "night", "sho_oncall", "on_call"),
+    );
     const r = auditTcs2016(a);
     expect(r.rules.find((x) => x.id === "max_4_nights")?.status).toBe("fail");
   });
 
   it("flags >7 consecutive working days", () => {
     const a = [
-      "2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28",
-      "2026-05-29", "2026-05-30", "2026-05-31", "2026-06-01",
+      "2026-05-25",
+      "2026-05-26",
+      "2026-05-27",
+      "2026-05-28",
+      "2026-05-29",
+      "2026-05-30",
+      "2026-05-31",
+      "2026-06-01",
     ].map((d) => mk(d, "am"));
     const r = auditTcs2016(a);
     expect(r.rules.find((x) => x.id === "max_7_consec_days")?.status).toBe("fail");
@@ -51,11 +58,19 @@ describe("auditTcs2016", () => {
 
   it("weekend frequency: not assessed without the rota cycle; flagged over a known cycle", () => {
     const a = [
-      mk("2026-05-23", "am"), mk("2026-05-24", "am"),
-      mk("2026-05-30", "am"), mk("2026-05-31", "am"),
+      mk("2026-05-23", "am"),
+      mk("2026-05-24", "am"),
+      mk("2026-05-30", "am"),
+      mk("2026-05-31", "am"),
     ];
-    expect(auditTcs2016(a).rules.find((x) => x.id === "weekend_freq")?.status).toBe("indeterminate");
-    const r = auditTcs2016(a, { windowStartISO: "2026-05-18", windowEndISO: "2026-05-31", rotaCycleWeeks: 2 });
+    expect(auditTcs2016(a).rules.find((x) => x.id === "weekend_freq")?.status).toBe(
+      "indeterminate",
+    );
+    const r = auditTcs2016(a, {
+      windowStartISO: "2026-05-18",
+      windowEndISO: "2026-05-31",
+      rotaCycleWeeks: 2,
+    });
     expect(r.rules.find((x) => x.id === "weekend_freq")?.status).toBe("fail");
   });
 
@@ -93,9 +108,7 @@ describe("auditTcs2016", () => {
     const start = new Date(Date.UTC(2026, 0, 5)); // Mon 5 Jan 2026
     for (let w = 0; w < 8; w++) {
       for (let d = 0; d < 5; d++) {
-        const day = new Date(start.getTime() + (w * 7 + d) * 86_400_000)
-          .toISOString()
-          .slice(0, 10);
+        const day = new Date(start.getTime() + (w * 7 + d) * 86_400_000).toISOString().slice(0, 10);
         a.push(mk(day, "am"), mk(day, "pm"), mk(day, "eve"));
       }
     }
@@ -114,11 +127,15 @@ describe("auditTcs2016", () => {
   // read as 8 consecutive nights.
   it("resets consecutive-nights run on a non-night day", () => {
     const a = [
-      mk("2026-05-25", "night"), mk("2026-05-26", "night"),
-      mk("2026-05-27", "night"), mk("2026-05-28", "night"),
+      mk("2026-05-25", "night"),
+      mk("2026-05-26", "night"),
+      mk("2026-05-27", "night"),
+      mk("2026-05-28", "night"),
       // gap day 29 May
-      mk("2026-05-30", "night"), mk("2026-05-31", "night"),
-      mk("2026-06-01", "night"), mk("2026-06-02", "night"),
+      mk("2026-05-30", "night"),
+      mk("2026-05-31", "night"),
+      mk("2026-06-01", "night"),
+      mk("2026-06-02", "night"),
     ];
     const r = auditTcs2016(a);
     expect(r.rules.find((x) => x.id === "max_4_nights")?.status).toBe("pass");
@@ -143,18 +160,23 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
       mk("2026-05-25", "night", "sho_oncall", "on_call"),
       mk("2026-05-28", "am"),
     ]);
-    expect(
-      r.rules.find((x) => x.id === "rest_46h_post_nights")?.status,
-    ).toBe("pass");
+    expect(r.rules.find((x) => x.id === "rest_46h_post_nights")?.status).toBe("pass");
   });
 
   it("R6 bridges a single leave day in the middle of a stretch", () => {
     // Worked Sat 23 May → Mon 1 Jun, with a leave day on Wed 27 May.
     // Without leave-bridging the run breaks; with bridging it's 10 days.
     const days = [
-      "2026-05-23", "2026-05-24", "2026-05-25", "2026-05-26",
+      "2026-05-23",
+      "2026-05-24",
+      "2026-05-25",
+      "2026-05-26",
       // "2026-05-27" leave
-      "2026-05-28", "2026-05-29", "2026-05-30", "2026-05-31", "2026-06-01",
+      "2026-05-28",
+      "2026-05-29",
+      "2026-05-30",
+      "2026-05-31",
+      "2026-06-01",
     ];
     const a = days.map((d) => mk(d, "am"));
     const r = auditTcs2016(a, { leaveDates: new Set(["2026-05-27"]) });
@@ -168,11 +190,10 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     // 5 of which are leave → denominator = 23 days ≈ 3.29 weeks → still
     // under 4 weeks of contracted time, so this is indeterminate (the
     // safer outcome) rather than spuriously passing as ~12.5 h/week.
-    const a = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"]
-      .flatMap((d) => [mk(d, "am"), mk(d, "pm")]);
-    const leave = new Set([
-      "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
-    ]);
+    const a = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"].flatMap(
+      (d) => [mk(d, "am"), mk(d, "pm")],
+    );
+    const leave = new Set(["2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"]);
     const r = auditTcs2016(a, {
       windowStartISO: "2026-05-25",
       windowEndISO: "2026-07-19", // ~8 weeks
@@ -209,10 +230,15 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     // Trainee LTFT with Wednesdays off. Mon, Tue, Thu, Fri, Sat, Sun, Mon, Tue
     // worked → run = 8 (because Wed bridges), should FAIL R6.
     const dates = [
-      "2026-05-25", "2026-05-26",              // Mon, Tue
+      "2026-05-25",
+      "2026-05-26", // Mon, Tue
       // Wed 27 is LTFT off → bridged
-      "2026-05-28", "2026-05-29", "2026-05-30", "2026-05-31", // Thu-Sun
-      "2026-06-01", "2026-06-02",              // Mon, Tue
+      "2026-05-28",
+      "2026-05-29",
+      "2026-05-30",
+      "2026-05-31", // Thu-Sun
+      "2026-06-01",
+      "2026-06-02", // Mon, Tue
     ];
     const asgs = dates.map((d) => mk(d, "am"));
     const r = auditTcs2016(asgs, { ltftDaysOff: [3] }); // Wed
@@ -225,8 +251,10 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     // Single night Mon, then long PM Tue. Both isLong (night=11h, PM not
     // long unless merged with AM, so use a long all-day stretch on Tue).
     const asgs = [
-      mk("2026-05-25", "night"),                  // Mon night
-      mk("2026-05-26", "am"), mk("2026-05-26", "pm"), mk("2026-05-26", "eve"), // Tue AM+PM+eve = 13h
+      mk("2026-05-25", "night"), // Mon night
+      mk("2026-05-26", "am"),
+      mk("2026-05-26", "pm"),
+      mk("2026-05-26", "eve"), // Tue AM+PM+eve = 13h
     ];
     const r = auditTcs2016(asgs);
     const rule = r.rules.find((x) => x.id === "max_consecutive_long");
@@ -237,8 +265,16 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
   it("DST: rotation spanning a UK clock change still produces stable dates", () => {
     // UK DST started Sun 2026-03-29. Cover 14 days Mon-Sun across it.
     const dates = [
-      "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27",
-      "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03",
+      "2026-03-23",
+      "2026-03-24",
+      "2026-03-25",
+      "2026-03-26",
+      "2026-03-27",
+      "2026-03-30",
+      "2026-03-31",
+      "2026-04-01",
+      "2026-04-02",
+      "2026-04-03",
     ];
     const asgs = dates.flatMap((d) => [mk(d, "am"), mk(d, "pm")]);
     const r = auditTcs2016(asgs, {
@@ -271,8 +307,18 @@ describe("auditTcs2016 — honesty regressions (reproduced review cases)", () =>
     expect(r.overall).toBe("possible_breach");
   });
   it("3: Mon–Fri for two weeks is not flagged (no '8 in 14' rule exists)", () => {
-    const days = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29",
-      "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"];
+    const days = [
+      "2026-05-25",
+      "2026-05-26",
+      "2026-05-27",
+      "2026-05-28",
+      "2026-05-29",
+      "2026-06-01",
+      "2026-06-02",
+      "2026-06-03",
+      "2026-06-04",
+      "2026-06-05",
+    ];
     const r = auditTcs2016(days.flatMap((d) => [mk(d, "am"), mk(d, "pm")]));
     expect(r.rules.find((x) => x.id === "max_8_in_14")).toBeUndefined();
     expect(r.rules.find((x) => x.id === "max_7_consec_days")?.status).toBe("pass");
@@ -289,8 +335,13 @@ describe("auditTcs2016 — honesty regressions (reproduced review cases)", () =>
       const d = new Date(Date.UTC(2026, 0, 5) + i * 86_400_000);
       if (d.getUTCDay() >= 1 && d.getUTCDay() <= 4) days.push(d.toISOString().slice(0, 10));
     }
-    const r = auditTcs2016(days.map((d) => mk(d, "am")), { rotaCycleWeeks: 4 });
-    expect(["no_flags_estimated", "incomplete", "possible_breach", "insufficient_data"]).toContain(r.overall);
+    const r = auditTcs2016(
+      days.map((d) => mk(d, "am")),
+      { rotaCycleWeeks: 4 },
+    );
+    expect(["no_flags_estimated", "incomplete", "possible_breach", "insufficient_data"]).toContain(
+      r.overall,
+    );
     expect(r.overall).not.toBe("compliant" as never);
   });
 });

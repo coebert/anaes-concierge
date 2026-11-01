@@ -1,11 +1,6 @@
 import { compareBySurname } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  fetchAllRowsPaged,
-  idKey,
-  rotaAssignmentKey,
-  type PaginateOptions,
-} from "./paginate";
+import { fetchAllRowsPaged, idKey, rotaAssignmentKey, type PaginateOptions } from "./paginate";
 
 /**
  * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
@@ -16,10 +11,7 @@ import {
  * across page boundaries.
  */
 function fetchAllRows<T>(
-  build: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
   opts: PaginateOptions<T> = {},
 ): Promise<T[]> {
   return fetchAllRowsPaged<T>(build, opts);
@@ -134,9 +126,7 @@ export interface DutyPoolSets {
 }
 
 async function loadDutyPoolSets(): Promise<DutyPoolSets> {
-  const { data } = await supabase
-    .from("duty_type_pool_rules")
-    .select("duty_type, category");
+  const { data } = await supabase.from("duty_type_pool_rules").select("duty_type, category");
   const rows = (data ?? []) as Array<{ duty_type: string; category: string }>;
   if (rows.length === 0) {
     return {
@@ -158,7 +148,6 @@ async function loadDutyPoolSets(): Promise<DutyPoolSets> {
   return sets;
 }
 
-
 /**
  * Pure risk classifier. Exported for unit testing.
  *
@@ -167,10 +156,7 @@ async function loadDutyPoolSets(): Promise<DutyPoolSets> {
  * - tight: covered but headroom is at or below RISK_TIGHT
  * - ok: comfortable headroom
  */
-export function classifyRisk(
-  headroom: number,
-  headroomWithSpa: number,
-): HalfDayCapacity["risk"] {
+export function classifyRisk(headroom: number, headroomWithSpa: number): HalfDayCapacity["risk"] {
   if (headroom < 0 && headroomWithSpa >= 0) return "spa_required";
   if (headroom < 0) return "shortfall";
   if (headroom <= RISK_TIGHT) return "tight";
@@ -238,7 +224,6 @@ export function computeHalfDayCapacity(i: HalfDayInputs): HalfDayCapacity {
   };
 }
 
-
 export interface RobustnessOptions {
   /**
    * When true (default), staff are only counted toward availability if they
@@ -260,29 +245,29 @@ export async function computeRobustness(
   const requireRosterEvidence = options.requireRosterEvidence ?? true;
   const poolSets = await loadDutyPoolSets();
 
-
-  const [profiles, leave, theatreSessionsRaw, assignments, specialtiesAll] =
-    await Promise.all([
-      fetchAllRows<{
-        id: string;
-        grade: string | null;
-        training_level: string | null;
-        ltft_days_off: number[] | null;
-      }>((from, to) =>
+  const [profiles, leave, theatreSessionsRaw, assignments, specialtiesAll] = await Promise.all([
+    fetchAllRows<{
+      id: string;
+      grade: string | null;
+      training_level: string | null;
+      ltft_days_off: number[] | null;
+    }>(
+      (from, to) =>
         supabase
           .from("profiles")
           .select("id, grade, training_level, ltft_days_off")
           .eq("active", true)
           .order("id", { ascending: true })
           .range(from, to),
-        { rowKey: idKey, label: "robustness.profiles" },
-      ),
-      fetchAllRows<{
-        staff_id: string;
-        start_date: string;
-        end_date: string;
-        status: string;
-      }>((from, to) =>
+      { rowKey: idKey, label: "robustness.profiles" },
+    ),
+    fetchAllRows<{
+      staff_id: string;
+      start_date: string;
+      end_date: string;
+      status: string;
+    }>(
+      (from, to) =>
         supabase
           .from("leave_requests")
           .select("staff_id, start_date, end_date, status")
@@ -293,19 +278,20 @@ export async function computeRobustness(
           .order("start_date", { ascending: true })
           .order("end_date", { ascending: true })
           .range(from, to),
-        {
-          rowKey: (r) => `${r.staff_id}|${r.start_date}|${r.end_date}`,
-          label: "robustness.leave_requests",
-        },
-      ),
-      fetchAllRows<{
-        id: string;
-        session_date: string;
-        session: string;
-        specialty_id: string | null;
-        surgical_consultant: string | null;
-        theatre_id: string | null;
-      }>((from, to) =>
+      {
+        rowKey: (r) => `${r.staff_id}|${r.start_date}|${r.end_date}`,
+        label: "robustness.leave_requests",
+      },
+    ),
+    fetchAllRows<{
+      id: string;
+      session_date: string;
+      session: string;
+      specialty_id: string | null;
+      surgical_consultant: string | null;
+      theatre_id: string | null;
+    }>(
+      (from, to) =>
         supabase
           .from("theatre_sessions")
           .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
@@ -313,37 +299,37 @@ export async function computeRobustness(
           .lte("session_date", rangeEnd)
           .order("id", { ascending: true })
           .range(from, to),
-        { rowKey: idKey, label: "robustness.theatre_sessions" },
-      ),
-      fetchAllRows<{
-        staff_id: string;
-        session_date: string;
-        session: string;
-        duty_type: string;
-        theatre_session_id: string | null;
-      }>((from, to) =>
+      { rowKey: idKey, label: "robustness.theatre_sessions" },
+    ),
+    fetchAllRows<{
+      staff_id: string;
+      session_date: string;
+      session: string;
+      duty_type: string;
+      theatre_session_id: string | null;
+    }>(
+      (from, to) =>
         supabase
           .from("rota_assignments")
-          .select(
-            "staff_id, session_date, session, duty_type, theatre_session_id",
-          )
+          .select("staff_id, session_date, session, duty_type, theatre_session_id")
           .gte("session_date", rangeStart)
           .lte("session_date", rangeEnd)
           .order("session_date", { ascending: true })
           .order("staff_id", { ascending: true })
           .order("session", { ascending: true })
           .range(from, to),
-        { rowKey: rotaAssignmentKey, label: "robustness.rota_assignments" },
-      ),
-      fetchAllRows<{ id: string; name: string }>((from, to) =>
+      { rowKey: rotaAssignmentKey, label: "robustness.rota_assignments" },
+    ),
+    fetchAllRows<{ id: string; name: string }>(
+      (from, to) =>
         supabase
           .from("specialties")
           .select("id, name")
           .order("id", { ascending: true })
           .range(from, to),
-        { rowKey: idKey, label: "robustness.specialties" },
-      ),
-    ]);
+      { rowKey: idKey, label: "robustness.specialties" },
+    ),
+  ]);
 
   // Theatres marked inactive (e.g. "NHH (legacy)") may still have stale
   // theatre_sessions rows from earlier syncs. Those phantom lists inflate
@@ -354,15 +340,10 @@ export async function computeRobustness(
     .from("theatres")
     .select("id")
     .eq("active", false);
-  const inactiveTheatreIds = new Set(
-    (inactiveTheatreRows ?? []).map((t) => t.id as string),
-  );
-
+  const inactiveTheatreIds = new Set((inactiveTheatreRows ?? []).map((t) => t.id as string));
 
   const emergencySpecialtyIds = new Set(
-    specialtiesAll
-      .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
-      .map((s) => s.id),
+    specialtiesAll.filter((s) => /emergenc|cepod/i.test(s.name ?? "")).map((s) => s.id),
   );
 
   // Drop emergency / CEPOD sessions from the planned-list demand model,
@@ -381,9 +362,11 @@ export async function computeRobustness(
 
   const staff = profiles;
 
-
   const totalStaffByGrade: Record<Grade, number> = {
-    consultant: 0, sas: 0, trainee: 0, unknown: 0,
+    consultant: 0,
+    sas: 0,
+    trainee: 0,
+    unknown: 0,
   };
   for (const s of staff) {
     const g = (s.grade as Grade) ?? "unknown";
@@ -426,7 +409,6 @@ export async function computeRobustness(
   // non-working day was counted as "available" and inflated headroom.
   const workingToday = new Map<string, Set<string>>();
 
-
   for (const a of assignments) {
     const date = a.session_date;
     const sess = a.session; // am/pm/eve/night
@@ -449,9 +431,7 @@ export async function computeRobustness(
       const cur = filledMap.get(date) ?? { am: new Set<string>(), pm: new Set<string>() };
       (sess === "am" ? cur.am : cur.pm).add(a.theatre_session_id);
       filledMap.set(date, cur);
-
     }
-
 
     // Anyone on a configured clinical-list duty (e.g. theatre, POAC, pain
     // clinic, future activities) for a specific half-day is removed from
@@ -490,7 +470,10 @@ export async function computeRobustness(
   // Hypothetical absences
   const extraStaffOff = new Set<string>();
   const extraByGrade: Record<Grade, number> = {
-    consultant: 0, sas: 0, trainee: 0, unknown: 0,
+    consultant: 0,
+    sas: 0,
+    trainee: 0,
+    unknown: 0,
   };
   for (const x of extraAbsences) {
     if (x.staffId) extraStaffOff.add(x.staffId);
@@ -508,7 +491,10 @@ export async function computeRobustness(
       const halfKey = `${date}|${half}`;
       const spaThisHalf = dailySpa.get(halfKey) ?? new Set<string>();
       const stateThisHalf = staffStateByDateSession.get(halfKey) ?? new Map<string, AsnState>();
-      let consultants = 0, seniorTrainees = 0, juniorTrainees = 0, sas = 0;
+      let consultants = 0,
+        seniorTrainees = 0,
+        juniorTrainees = 0,
+        sas = 0;
       let consultantsOnSpa = 0;
       const extraRemainingByGrade: Record<Grade, number> = { ...extraByGrade };
 
@@ -521,8 +507,6 @@ export async function computeRobustness(
         // CLWRota records a row for every working slot, so no rows = not on
         // duty (e.g. day off in a rolling rota, between rotations, etc.).
         if (requireRosterEvidence && !rosteredToday.has(s.id)) continue;
-
-
 
         const grade = (s.grade as Grade) ?? "unknown";
         const isSpa = spaThisHalf.has(s.id);
@@ -552,8 +536,8 @@ export async function computeRobustness(
       juniorTrainees -= fromJuniors;
       seniorTrainees = sub(seniorTrainees, traineeKnockdown - fromJuniors);
 
-      const onLeaveCount = offToday.size + extraStaffOff.size
-        + Object.values(extraByGrade).reduce((a, b) => a + b, 0);
+      const onLeaveCount =
+        offToday.size + extraStaffOff.size + Object.values(extraByGrade).reduce((a, b) => a + b, 0);
 
       const filledCount = filledMap.get(date)?.[half]?.size ?? 0;
       const unfilled = Math.max(0, req - filledCount);
@@ -569,7 +553,6 @@ export async function computeRobustness(
         onOtherDuty: otherDutyToday.size,
         unfilled,
       });
-
     };
 
     const required = requiredMap.get(date) ?? { am: 0, pm: 0 };
@@ -612,7 +595,6 @@ export async function computeListCoverage(
   rangeEnd: string,
   options: RobustnessOptions = {},
 ): Promise<DayListCoverage[]> {
-
   const [sessionsRaw, specialtiesAll, inactiveTheatreRows] = await Promise.all([
     fetchAllRows<{
       id: string;
@@ -621,32 +603,35 @@ export async function computeListCoverage(
       specialty_id: string | null;
       surgical_consultant: string | null;
       theatre_id: string | null;
-    }>((from, to) =>
-      supabase
-        .from("theatre_sessions")
-        .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
-        .gte("session_date", rangeStart)
-        .lte("session_date", rangeEnd)
-        .order("id", { ascending: true })
-        .range(from, to),
+    }>(
+      (from, to) =>
+        supabase
+          .from("theatre_sessions")
+          .select("id, session_date, session, specialty_id, surgical_consultant, theatre_id")
+          .gte("session_date", rangeStart)
+          .lte("session_date", rangeEnd)
+          .order("id", { ascending: true })
+          .range(from, to),
       { rowKey: idKey, label: "list-coverage.theatre_sessions" },
     ),
-    fetchAllRows<{ id: string; name: string }>((from, to) =>
-      supabase
-        .from("specialties")
-        .select("id, name")
-        .order("id", { ascending: true })
-        .range(from, to),
+    fetchAllRows<{ id: string; name: string }>(
+      (from, to) =>
+        supabase
+          .from("specialties")
+          .select("id, name")
+          .order("id", { ascending: true })
+          .range(from, to),
       { rowKey: idKey, label: "list-coverage.specialties" },
     ),
-    supabase.from("theatres").select("id").eq("active", false).then((r) => r.data ?? []),
+    supabase
+      .from("theatres")
+      .select("id")
+      .eq("active", false)
+      .then((r) => r.data ?? []),
   ]);
 
-
   const emergencySpecialtyIds = new Set(
-    specialtiesAll
-      .filter((s) => /emergenc|cepod/i.test(s.name ?? ""))
-      .map((s) => s.id),
+    specialtiesAll.filter((s) => /emergenc|cepod/i.test(s.name ?? "")).map((s) => s.id),
   );
   const inactiveTheatreIds = new Set(
     (inactiveTheatreRows as Array<{ id: string }>).map((t) => t.id),
@@ -659,7 +644,7 @@ export async function computeListCoverage(
 
   const tsIds = sessions.map((s) => s.id);
 
-  let asns: Array<{
+  const asns: Array<{
     theatre_session_id: string;
     session_date: string;
     session: string;
@@ -688,15 +673,10 @@ export async function computeListCoverage(
       );
       asns.push(...rows);
     }
-
   }
 
-
   // Map theatre_session_id -> set of assigned staff grades/levels
-  const coverageBySession = new Map<
-    string,
-    { hasSolo: boolean; hasSupervised: boolean }
-  >();
+  const coverageBySession = new Map<string, { hasSolo: boolean; hasSupervised: boolean }>();
   for (const a of asns) {
     const tsId = a.theatre_session_id;
     const cur = coverageBySession.get(tsId) ?? {
@@ -866,7 +846,6 @@ export interface DayDetail {
   pmBreakdown: HalfBreakdown;
 }
 
-
 export async function loadDayDetail(date: string): Promise<DayDetail> {
   const { days } = await computeRobustness(date, date);
   const day = days[0];
@@ -900,7 +879,9 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
       .eq("session_date", date),
     supabase
       .from("trainee_targets")
-      .select("training_level, specialty_id, required_sessions, required_solo, required_supervised"),
+      .select(
+        "training_level, specialty_id, required_sessions, required_solo, required_supervised",
+      ),
   ]);
 
   const tsAll = theatreSessions ?? [];
@@ -979,26 +960,36 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     }
   }
 
-  const sessions: DayDetailSession[] = ts.map((t) => {
-    const asns = asnByTheatreSession.get(t.id as string) ?? [];
-    return {
-      id: t.id as string,
-      session: t.session as SessionHalf,
-      theatreName: theatreNameById.get(t.theatre_id as string) ?? "—",
-      specialty: t.specialty_id ? specialtyNameById.get(t.specialty_id as string) ?? null : null,
-      surgicalConsultant: (t.surgical_consultant as string | null) ?? null,
-      assignments: asns,
-      unfilled: asns.length === 0,
-    };
-  }).sort((a, b) =>
-    a.session === b.session ? a.theatreName.localeCompare(b.theatreName) : a.session === "am" ? -1 : 1,
-  );
+  const sessions: DayDetailSession[] = ts
+    .map((t) => {
+      const asns = asnByTheatreSession.get(t.id as string) ?? [];
+      return {
+        id: t.id as string,
+        session: t.session as SessionHalf,
+        theatreName: theatreNameById.get(t.theatre_id as string) ?? "—",
+        specialty: t.specialty_id
+          ? (specialtyNameById.get(t.specialty_id as string) ?? null)
+          : null,
+        surgicalConsultant: (t.surgical_consultant as string | null) ?? null,
+        assignments: asns,
+        unfilled: asns.length === 0,
+      };
+    })
+    .sort((a, b) =>
+      a.session === b.session
+        ? a.theatreName.localeCompare(b.theatreName)
+        : a.session === "am"
+          ? -1
+          : 1,
+    );
 
-  const onLeave: LeaveDetail[] = (leave ?? []).map((l) => ({
-    ...mkRef(l.staff_id as string),
-    type: l.type as string,
-    status: l.status as string,
-  })).sort((a, b) => compareBySurname(a.staffName, b.staffName));
+  const onLeave: LeaveDetail[] = (leave ?? [])
+    .map((l) => ({
+      ...mkRef(l.staff_id as string),
+      type: l.type as string,
+      status: l.status as string,
+    }))
+    .sort((a, b) => compareBySurname(a.staffName, b.staffName));
 
   const dow = new Date(date + "T00:00:00Z").getUTCDay();
   const ltftOff: PersonRef[] = [...profById.entries()]
@@ -1006,13 +997,24 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     .map(([id]) => mkRef(id))
     .sort((a, b) => compareBySurname(a.staffName, b.staffName));
 
-  const onOtherDuty = [...otherDutyMap.values()]
-    .sort((a, b) => compareBySurname(a.staffName, b.staffName));
+  const onOtherDuty = [...otherDutyMap.values()].sort((a, b) =>
+    compareBySurname(a.staffName, b.staffName),
+  );
 
   const empty: HalfDayCapacity = {
-    required: 0, soloCapable: 0, consultantsAvailable: 0, seniorTraineesAvailable: 0,
-    juniorTraineesAvailable: 0, sasAvailable: 0, consultantsOnSpa: 0, onLeave: 0,
-    onOtherDuty: 0, headroom: 0, headroomWithSpa: 0, risk: "ok", unfilled: 0,
+    required: 0,
+    soloCapable: 0,
+    consultantsAvailable: 0,
+    seniorTraineesAvailable: 0,
+    juniorTraineesAvailable: 0,
+    sasAvailable: 0,
+    consultantsOnSpa: 0,
+    onLeave: 0,
+    onOtherDuty: 0,
+    headroom: 0,
+    headroomWithSpa: 0,
+    risk: "ok",
+    unfilled: 0,
   };
 
   // ----- Per-half-day per-staff breakdown -----
@@ -1023,7 +1025,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   for (const t of ts) {
     tsInfoById.set(t.id as string, {
       theatreName: theatreNameById.get(t.theatre_id as string) ?? "—",
-      specialty: t.specialty_id ? specialtyNameById.get(t.specialty_id as string) ?? null : null,
+      specialty: t.specialty_id ? (specialtyNameById.get(t.specialty_id as string) ?? null) : null,
       specialtyId: (t.specialty_id as string | null) ?? null,
     });
   }
@@ -1084,13 +1086,18 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   const traineeNote = (
     ref: PersonRef,
     state:
-      | { kind: "theatre"; specialtyId: string | null; specialtyName: string | null; role: string | null }
+      | {
+          kind: "theatre";
+          specialtyId: string | null;
+          specialtyName: string | null;
+          role: string | null;
+        }
       | { kind: "free" }
       | { kind: "excluded"; reason: string },
   ): StaffStatusEntry["trainingNote"] => {
     if (ref.grade !== "trainee") return undefined;
     const lvl = (ref.trainingLevel ?? "").trim().toUpperCase();
-    const targets = lvl ? targetsByLevel.get(lvl) ?? [] : [];
+    const targets = lvl ? (targetsByLevel.get(lvl) ?? []) : [];
 
     if (state.kind === "free") {
       return {
@@ -1141,7 +1148,8 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     const isSupervised = role === "supervised" || role === "supervisee" || role === "trainee";
     const counts: string[] = [`session (target ${match.required_sessions})`];
     if (isSolo && match.required_solo > 0) counts.push(`solo (target ${match.required_solo})`);
-    if (isSupervised && match.required_supervised > 0) counts.push(`supervised (target ${match.required_supervised})`);
+    if (isSupervised && match.required_supervised > 0)
+      counts.push(`supervised (target ${match.required_supervised})`);
     return {
       tone: "good",
       label: `Counts toward ${specName}: ${isSolo ? "solo" : isSupervised ? "supervised" : "session"}`,
@@ -1168,7 +1176,12 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         continue;
       }
       if (p.ltft_days_off.includes(dow)) {
-        entries.push({ ...ref, category: "ltft_off", reason: "LTFT non-working day", countsToSolo: false });
+        entries.push({
+          ...ref,
+          category: "ltft_off",
+          reason: "LTFT non-working day",
+          countsToSolo: false,
+        });
         continue;
       }
       const exDuty = excludedAllDay.get(id);
@@ -1239,18 +1252,43 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
 
 function freeEntry(ref: PersonRef): StaffStatusEntry {
   if (ref.grade === "consultant") {
-    return { ...ref, category: "free_consultant", reason: "Free — no leave, duty, or list assignment", countsToSolo: true };
+    return {
+      ...ref,
+      category: "free_consultant",
+      reason: "Free — no leave, duty, or list assignment",
+      countsToSolo: true,
+    };
   }
   if (ref.grade === "trainee") {
     if (isSeniorTrainee(ref.trainingLevel)) {
-      return { ...ref, category: "free_senior_trainee", reason: `Free senior trainee (${ref.trainingLevel}) — solo-capable`, countsToSolo: true };
+      return {
+        ...ref,
+        category: "free_senior_trainee",
+        reason: `Free senior trainee (${ref.trainingLevel}) — solo-capable`,
+        countsToSolo: true,
+      };
     }
-    return { ...ref, category: "free_junior_trainee", reason: `Free junior trainee (${ref.trainingLevel ?? "—"}) — needs supervision`, countsToSolo: false };
+    return {
+      ...ref,
+      category: "free_junior_trainee",
+      reason: `Free junior trainee (${ref.trainingLevel ?? "—"}) — needs supervision`,
+      countsToSolo: false,
+    };
   }
   if (ref.grade === "sas") {
-    return { ...ref, category: "free_sas", reason: "Free SAS — pairs with a consultant", countsToSolo: false };
+    return {
+      ...ref,
+      category: "free_sas",
+      reason: "Free SAS — pairs with a consultant",
+      countsToSolo: false,
+    };
   }
-  return { ...ref, category: "free_consultant", reason: "Free (grade unknown)", countsToSolo: false };
+  return {
+    ...ref,
+    category: "free_consultant",
+    reason: "Free (grade unknown)",
+    countsToSolo: false,
+  };
 }
 
 function formatDutyLabel(dt: string): string {

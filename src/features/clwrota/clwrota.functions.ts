@@ -36,10 +36,7 @@ export {
   performRotaSyncIncremental,
 } from "./sync.functions";
 
-export {
-  syncClwRotaLeave,
-  performLeaveSync,
-} from "./leave.functions";
+export { syncClwRotaLeave, performLeaveSync } from "./leave.functions";
 
 export {
   getClwRotaSyncStatus,

@@ -21,11 +21,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
   filterNavForUser,
@@ -46,14 +42,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const roleLabel = isAdmin
     ? "Admin"
     : roles.includes("rota_coordinator")
-    ? "Coordinator"
-    : grade === "trainee"
-    ? "Trainee"
-    : grade === "consultant"
-    ? "Consultant"
-    : grade === "sas"
-    ? "SAS"
-    : "Staff";
+      ? "Coordinator"
+      : grade === "trainee"
+        ? "Trainee"
+        : grade === "consultant"
+          ? "Consultant"
+          : grade === "sas"
+            ? "SAS"
+            : "Staff";
 
   const identityLine = fullName || user?.email || "Signed in";
 
@@ -81,7 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Sidebar>
 
       <SidebarInset>
-        <a href="#main-content" className="skip-to-content">Skip to content</a>
+        <a href="#main-content" className="skip-to-content">
+          Skip to content
+        </a>
         <header className="safe-top sticky top-0 z-30 flex items-center gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/70">
           <SidebarTrigger aria-label="Toggle navigation" />
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -248,10 +246,7 @@ function RareItems({
     <Collapsible defaultOpen={expandedByDefault} className="group/rare">
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton
-            tooltip="More"
-            className="text-muted-foreground"
-          >
+          <SidebarMenuButton tooltip="More" className="text-muted-foreground">
             <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/rare:rotate-90" />
             <span>More</span>
           </SidebarMenuButton>
@@ -300,7 +295,7 @@ function Breadcrumbs({ pathname, items }: { pathname: string; items: NavItem[] }
   // rather than "Admin · Analytics"); the top-level Home already anchors
   // the trail.
   const groupLabel = match
-    ? NAV_GROUPS.find((g) => g.id === match.group)?.label.replace(/^Admin\s·\s/, "") ?? null
+    ? (NAV_GROUPS.find((g) => g.id === match.group)?.label.replace(/^Admin\s·\s/, "") ?? null)
     : null;
 
   const itemLabel = match?.label ?? prettifySegment(pathname);
@@ -321,7 +316,9 @@ function Breadcrumbs({ pathname, items }: { pathname: string; items: NavItem[] }
       aria-label="Breadcrumb"
       className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground md:mb-4"
     >
-      <Link to="/" className="hover:text-foreground">Home</Link>
+      <Link to="/" className="hover:text-foreground">
+        Home
+      </Link>
       {groupLabel ? (
         <>
           <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />

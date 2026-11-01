@@ -25,13 +25,7 @@ export interface PulseCycle {
 
 const OPTIONS = [1, 2, 3, 4, 5];
 
-function ScorePicker({
-  value,
-  onChange,
-}: {
-  value: number | null;
-  onChange: (v: number) => void;
-}) {
+function ScorePicker({ value, onChange }: { value: number | null; onChange: (v: number) => void }) {
   return (
     <div className="flex gap-2">
       {OPTIONS.map((n) => (
@@ -75,19 +69,17 @@ export function PulseSurveyDialog({
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("pulse_survey_responses")
-      .upsert(
-        {
-          cycle_id: cycle.id,
-          staff_id: user.id,
-          score_1: s1,
-          score_2: s2,
-          score_3: s3,
-          comment: comment || null,
-        },
-        { onConflict: "cycle_id,staff_id" },
-      );
+    const { error } = await supabase.from("pulse_survey_responses").upsert(
+      {
+        cycle_id: cycle.id,
+        staff_id: user.id,
+        score_1: s1,
+        score_2: s2,
+        score_3: s3,
+        comment: comment || null,
+      },
+      { onConflict: "cycle_id,staff_id" },
+    );
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -108,8 +100,8 @@ export function PulseSurveyDialog({
         <DialogHeader>
           <DialogTitle>Wellbeing pulse</DialogTitle>
           <DialogDescription>
-            1 = strongly disagree · 5 = strongly agree. Only admins see individual
-            responses; coordinators see aggregated scores only.
+            1 = strongly disagree · 5 = strongly agree. Only admins see individual responses;
+            coordinators see aggregated scores only.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,9 +131,7 @@ export function PulseSurveyDialog({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            No open pulse survey right now.
-          </p>
+          <p className="text-sm text-muted-foreground">No open pulse survey right now.</p>
         )}
 
         <DialogFooter>

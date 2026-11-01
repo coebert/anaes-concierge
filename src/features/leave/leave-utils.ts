@@ -30,7 +30,12 @@ function* eachDate(start: string, end: string): Generator<string> {
  * means it ends after the morning of its end date (UI convention).
  */
 export function leaveHalvesOn(
-  l: { start_date: string; end_date: string; half_day_start?: string | null; half_day_end?: string | null },
+  l: {
+    start_date: string;
+    end_date: string;
+    half_day_start?: string | null;
+    half_day_end?: string | null;
+  },
   date: string,
 ): Set<"am" | "pm"> {
   if (date < l.start_date || date > l.end_date) return new Set();
@@ -52,7 +57,10 @@ export async function computeLeaveConflicts(
 ): Promise<LeaveConflict[]> {
   const conflicts: LeaveConflict[] = [];
   // Every query is checked: a failed lookup must never read as "no conflicts".
-  const must = <T,>(label: string, res: { data: T | null; error: { message: string } | null }): T => {
+  const must = <T>(
+    label: string,
+    res: { data: T | null; error: { message: string } | null },
+  ): T => {
     if (res.error) throw new Error(`Could not check ${label}: ${res.error.message}`);
     return (res.data ?? []) as T;
   };
@@ -68,22 +76,41 @@ export async function computeLeaveConflicts(
       .lte("session_date", endDate)
       .order("session_date")
       .range(0, 999),
-  ) as Array<{ session_date: string; session: string; role_on_list: string; theatre_session_id: string | null }>;
-  if (assignments.length >= 1000) throw new Error("Could not check rota assignments: too many rows for this range.");
+  ) as Array<{
+    session_date: string;
+    session: string;
+    role_on_list: string;
+    theatre_session_id: string | null;
+  }>;
+  if (assignments.length >= 1000)
+    throw new Error("Could not check rota assignments: too many rows for this range.");
 
-  const theatreSessionIds = [...new Set(assignments.map((a) => a.theatre_session_id).filter((x): x is string => !!x))];
+  const theatreSessionIds = [
+    ...new Set(assignments.map((a) => a.theatre_session_id).filter((x): x is string => !!x)),
+  ];
   const theatreMap = new Map<string, string>();
   if (theatreSessionIds.length) {
-    const ts = must("theatre sessions", await supabase.from("theatre_sessions").select("id, theatre_id").in("id", theatreSessionIds)) as Array<{ id: string; theatre_id: string }>;
+    const ts = must(
+      "theatre sessions",
+      await supabase.from("theatre_sessions").select("id, theatre_id").in("id", theatreSessionIds),
+    ) as Array<{ id: string; theatre_id: string }>;
     const theatreIds = [...new Set(ts.map((t) => t.theatre_id))];
     const theatres = theatreIds.length
-      ? (must("theatres", await supabase.from("theatres").select("id, name").in("id", theatreIds)) as Array<{ id: string; name: string }>)
+      ? (must(
+          "theatres",
+          await supabase.from("theatres").select("id, name").in("id", theatreIds),
+        ) as Array<{ id: string; name: string }>)
       : [];
     const nameById = new Map(theatres.map((t) => [t.id, t.name]));
     ts.forEach((t) => theatreMap.set(t.id, nameById.get(t.theatre_id) ?? ""));
   }
 
-  const ours = { start_date: startDate, end_date: endDate, half_day_start: halfDayStart ?? null, half_day_end: halfDayEnd ?? null };
+  const ours = {
+    start_date: startDate,
+    end_date: endDate,
+    half_day_start: halfDayStart ?? null,
+    half_day_end: halfDayEnd ?? null,
+  };
   for (const a of assignments) {
     if (a.session === "am" || a.session === "pm") {
       if (!leaveHalvesOn(ours, a.session_date).has(a.session)) continue;
@@ -112,16 +139,30 @@ export async function computeLeaveConflicts(
       .lte("start_date", endDate)
       .gte("end_date", startDate)
       .range(0, 999),
-  ) as Array<{ id: string; staff_id: string; start_date: string; end_date: string; half_day_start: string | null; half_day_end: string | null }>;
-  if (otherLeave.length >= 1000) throw new Error("Could not check colleagues' leave: too many rows for this range.");
+  ) as Array<{
+    id: string;
+    staff_id: string;
+    start_date: string;
+    end_date: string;
+    half_day_start: string | null;
+    half_day_end: string | null;
+  }>;
+  if (otherLeave.length >= 1000)
+    throw new Error("Could not check colleagues' leave: too many rows for this range.");
 
   const filteredOther = otherLeave.filter((l) => l.id !== excludeLeaveId);
   if (filteredOther.length) {
     const staffIds = [...new Set(filteredOther.map((l) => l.staff_id))];
-    const profs = must("staff names", await supabase.from("profiles").select("id, full_name").in("id", staffIds)) as Array<{ id: string; full_name: string }>;
+    const profs = must(
+      "staff names",
+      await supabase.from("profiles").select("id, full_name").in("id", staffIds),
+    ) as Array<{ id: string; full_name: string }>;
     const nameById = new Map(profs.map((p) => [p.id, p.full_name]));
     for (const l of filteredOther) {
-      for (const d of eachDate(l.start_date > startDate ? l.start_date : startDate, l.end_date < endDate ? l.end_date : endDate)) {
+      for (const d of eachDate(
+        l.start_date > startDate ? l.start_date : startDate,
+        l.end_date < endDate ? l.end_date : endDate,
+      )) {
         const mine = leaveHalvesOn(ours, d);
         const theirs = leaveHalvesOn(l, d);
         const both = (["am", "pm"] as const).filter((h) => mine.has(h) && theirs.has(h));

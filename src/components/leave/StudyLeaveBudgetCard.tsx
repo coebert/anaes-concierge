@@ -53,8 +53,7 @@ export function StudyLeaveBudgetCard({
 
         {noBudget && (
           <p className="text-xs text-muted-foreground">
-            No study-leave allowance recorded for this staff member. Set one in
-            Leave → Allowances.
+            No study-leave allowance recorded for this staff member. Set one in Leave → Allowances.
           </p>
         )}
 
@@ -85,8 +84,9 @@ export function StudyLeaveBudgetCard({
 
         {base.crossYearCostRequestIds.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {base.crossYearCostRequestIds.length} study request(s) with a course cost span two leave years. Their days are split by date,
-            but the £ cost is not split — it is counted only in the year the course starts. Check these manually if the cost should be shared.
+            {base.crossYearCostRequestIds.length} study request(s) with a course cost span two leave
+            years. Their days are split by date, but the £ cost is not split — it is counted only in
+            the year the course starts. Check these manually if the cost should be shared.
           </p>
         )}
 
@@ -131,10 +131,7 @@ function BudgetRow({
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-muted-foreground">{label}</span>
         <span
-          className={cn(
-            "text-sm font-semibold tabular-nums",
-            over && "text-destructive",
-          )}
+          className={cn("text-sm font-semibold tabular-nums", over && "text-destructive")}
           aria-label={`${format(remainingAfter)} remaining after this decision`}
         >
           {format(remainingAfter)} left
@@ -146,17 +143,25 @@ function BudgetRow({
       />
       <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
         <div className="flex justify-between">
-          <dt>Allowance</dt><dd className="tabular-nums text-foreground/80">{format(allowance)}</dd>
+          <dt>Allowance</dt>
+          <dd className="tabular-nums text-foreground/80">{format(allowance)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt>Taken</dt><dd className="tabular-nums text-foreground/80">{format(taken)}</dd>
+          <dt>Taken</dt>
+          <dd className="tabular-nums text-foreground/80">{format(taken)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt>Pending</dt><dd className="tabular-nums text-foreground/80">{format(pending)}</dd>
+          <dt>Pending</dt>
+          <dd className="tabular-nums text-foreground/80">{format(pending)}</dd>
         </div>
         <div className="flex justify-between">
           <dt>This request</dt>
-          <dd className={cn("tabular-nums", requestAmount > remainingBase ? "text-destructive" : "text-foreground/80")}>
+          <dd
+            className={cn(
+              "tabular-nums",
+              requestAmount > remainingBase ? "text-destructive" : "text-foreground/80",
+            )}
+          >
             {format(requestAmount)}
           </dd>
         </div>

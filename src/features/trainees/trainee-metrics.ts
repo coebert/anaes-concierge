@@ -102,11 +102,7 @@ export function computeTraineeMetrics(
   //     the row). Without this, the overview's solo counts disagree with
   //     the per-trainee detail page, which already applies the same rule.
   const effectiveRole = (a: MetricAssignment): string => {
-    if (
-      a.role_on_list !== "solo" ||
-      a.duty_type !== "theatre" ||
-      a.theatre_session_id == null
-    ) {
+    if (a.role_on_list !== "solo" || a.duty_type !== "theatre" || a.theatre_session_id == null) {
       return a.role_on_list;
     }
     if (juniorTrainee) return "supervised";
@@ -131,15 +127,11 @@ export function computeTraineeMetrics(
   );
   const daytimeLists = daytimeAssignments.length;
   const soloLists = assignments.filter(
-    (a) =>
-      effectiveRole(a) === "solo" &&
-      a.duty_type === "theatre" &&
-      a.theatre_session_id != null,
+    (a) => effectiveRole(a) === "solo" && a.duty_type === "theatre" && a.theatre_session_id != null,
   ).length;
   const soloDaytimeLists = daytimeAssignments.filter((a) => effectiveRole(a) === "solo").length;
-  const soloDaytimePct = daytimeLists > 0
-    ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10
-    : null;
+  const soloDaytimePct =
+    daytimeLists > 0 ? Math.round((soloDaytimeLists / daytimeLists) * 1000) / 10 : null;
   const supervisedLists = assignments.filter((a) => effectiveRole(a) === "supervised").length;
   // On-call = any duty type that represents an on-call/resident-on-call
   // commitment. The previous "anything that isn't theatre" rule wrongly
@@ -165,11 +157,8 @@ export function computeTraineeMetrics(
   // ICU load. Collapse ICU rows to one shift per (trainee, date). Rows
   // missing a session_date fall back to row identity so we never silently
   // merge unrelated entries.
-  const icuRows = assignments.filter(
-    (a) => a.duty_type != null && ICU_DUTY_TYPES.has(a.duty_type),
-  );
-  const icuShiftKey = (a: MetricAssignment, idx: number) =>
-    a.session_date ?? `__no-date-${idx}`;
+  const icuRows = assignments.filter((a) => a.duty_type != null && ICU_DUTY_TYPES.has(a.duty_type));
+  const icuShiftKey = (a: MetricAssignment, idx: number) => a.session_date ?? `__no-date-${idx}`;
   const icuLists = new Set(icuRows.map((a, i) => icuShiftKey(a, i))).size;
 
   // Same logic for on-call counting: ICU days collapse to one shift per
@@ -178,9 +167,7 @@ export function computeTraineeMetrics(
   // is a distinct commitment from a daytime on-call on the same date).
   const nonIcuOnCall = assignments.filter(
     (a) =>
-      a.duty_type != null &&
-      ONCALL_DUTY_TYPES.has(a.duty_type) &&
-      !ICU_DUTY_TYPES.has(a.duty_type),
+      a.duty_type != null && ONCALL_DUTY_TYPES.has(a.duty_type) && !ICU_DUTY_TYPES.has(a.duty_type),
   ).length;
   const onCallLists = nonIcuOnCall + icuLists;
   const obstetricsLists = assignments.filter(
@@ -202,9 +189,8 @@ export function computeTraineeMetrics(
     (a) => a.duty_type != null && ONCALL_DUTY_TYPES.has(a.duty_type),
   ).length;
   // No sessions → unavailable (null), never a made-up 0%.
-  const onCallPct = sessionDenominator > 0
-    ? Math.round((onCallSessions / sessionDenominator) * 1000) / 10
-    : null;
+  const onCallPct =
+    sessionDenominator > 0 ? Math.round((onCallSessions / sessionDenominator) * 1000) / 10 : null;
   void onCallLists;
 
   // Only real lists (matched to a theatre_session) count toward the clinical
@@ -218,9 +204,9 @@ export function computeTraineeMetrics(
   const counts = new Map<string, number>();
   for (const a of clinical) {
     const specId = a.theatre_session_id
-      ? specialtyIdBySession.get(a.theatre_session_id) ?? null
+      ? (specialtyIdBySession.get(a.theatre_session_id) ?? null)
       : null;
-    const name = specId ? specialtyNameById.get(specId) ?? "Unknown" : "Unknown";
+    const name = specId ? (specialtyNameById.get(specId) ?? "Unknown") : "Unknown";
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const totalClinical = clinical.length;
@@ -334,4 +320,3 @@ export function computeTraineeMetrics(
     specialtyBreakdown,
   };
 }
-

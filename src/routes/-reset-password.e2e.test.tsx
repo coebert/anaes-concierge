@@ -87,9 +87,8 @@ vi.mock("sonner", () => ({
 
 import { Route } from "./reset-password";
 
-const ResetPasswordPage = (
-  Route as unknown as { options: { component: React.ComponentType } }
-).options.component;
+const ResetPasswordPage = (Route as unknown as { options: { component: React.ComponentType } })
+  .options.component;
 
 function setLocation(href: string): void {
   window.history.replaceState({}, "", href);
@@ -101,7 +100,9 @@ beforeEach(() => {
   updateUser.mockReset().mockResolvedValue({ error: null });
   setSession.mockReset().mockResolvedValue({ error: null });
   verifyOtp.mockReset().mockResolvedValue({ error: null });
-  getSession.mockReset().mockResolvedValue({ data: { session: { user: { id: "user-1" } } }, error: null });
+  getSession
+    .mockReset()
+    .mockResolvedValue({ data: { session: { user: { id: "user-1" } } }, error: null });
   signOut.mockReset().mockResolvedValue({ error: null });
   navigateMock.mockReset();
   toastSuccess.mockReset();
@@ -124,19 +125,14 @@ describe("reset password journey", () => {
       render(<ResetPasswordPage />);
     });
 
-    await waitFor(() =>
-      expect(screen.getByText(/^reset password$/i)).toBeDefined(),
-    );
+    await waitFor(() => expect(screen.getByText(/^reset password$/i)).toBeDefined());
     expect(screen.getByLabelText(/email/i)).toBeDefined();
 
     await user.type(screen.getByLabelText(/email/i), "robert.coe1@nhs.net");
     await user.click(screen.getByRole("button", { name: /send reset link/i }));
 
     await waitFor(() => expect(resetPasswordForEmail).toHaveBeenCalledTimes(1));
-    const [email, opts] = resetPasswordForEmail.mock.calls[0] as [
-      string,
-      { redirectTo: string },
-    ];
+    const [email, opts] = resetPasswordForEmail.mock.calls[0] as [string, { redirectTo: string }];
     expect(email).toBe("robert.coe1@nhs.net");
     expect(opts.redirectTo).toMatch(/\/reset-password$/);
     expect(opts.redirectTo.startsWith(window.location.origin)).toBe(true);
@@ -151,21 +147,13 @@ describe("reset password journey", () => {
     });
 
     // Code is exchanged for a session.
-    await waitFor(() =>
-      expect(exchangeCodeForSession).toHaveBeenCalledWith("pkce-abc-123"),
-    );
+    await waitFor(() => expect(exchangeCodeForSession).toHaveBeenCalledWith("pkce-abc-123"));
 
     // ?code= is stripped so a refresh can't re-use the one-time code.
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("code="),
-    );
+    await waitFor(() => expect(window.location.search).not.toContain("code="));
 
     // View switches to the new-password form.
-    await waitFor(() =>
-      expect(
-        screen.getByText(/set a new password/i),
-      ).toBeDefined(),
-    );
+    await waitFor(() => expect(screen.getByText(/set a new password/i)).toBeDefined());
 
     const strong = "Correct-Horse-Battery-Staple-9";
     await user.type(screen.getByLabelText(/^new password$/i), strong);
@@ -231,19 +219,13 @@ describe("reset password journey", () => {
     render(<ResetPasswordPage />);
 
     // Initially in request mode (no ?code, no recovery hash).
-    expect(
-      screen.getByText(/^reset password$/i),
-    ).toBeDefined();
+    expect(screen.getByText(/^reset password$/i)).toBeDefined();
 
     await act(async () => {
       handler?.("PASSWORD_RECOVERY");
     });
 
-    await waitFor(() =>
-      expect(
-        screen.getByText(/set a new password/i),
-      ).toBeDefined(),
-    );
+    await waitFor(() => expect(screen.getByText(/set a new password/i)).toBeDefined());
   });
 
   it("shows an inline expired-link error and lets the user request a new link", async () => {
@@ -281,9 +263,7 @@ describe("reset password journey", () => {
 
     const alert = await screen.findByTestId("reset-link-error");
     expect(alert.textContent ?? "").toMatch(/no longer valid|invalid/i);
-    expect(
-      screen.getByRole("button", { name: /request a new reset link/i }),
-    ).toBeDefined();
+    expect(screen.getByRole("button", { name: /request a new reset link/i })).toBeDefined();
     // The new-password form must NOT appear when the exchange failed.
     expect(screen.queryByLabelText(/new password/i)).toBeNull();
   });
@@ -294,9 +274,7 @@ describe("reset password journey", () => {
       await act(async () => {
         render(<ResetPasswordPage />);
       });
-      await waitFor(() =>
-        expect(screen.getByLabelText(/^new password$/i)).toBeDefined(),
-      );
+      await waitFor(() => expect(screen.getByLabelText(/^new password$/i)).toBeDefined());
     }
 
     it("disables submit until the password is strong AND confirmation matches", async () => {
@@ -339,8 +317,7 @@ describe("reset password journey", () => {
       const user = userEvent.setup();
       await renderUpdateMode();
 
-      const status = (id: string) =>
-        screen.getByTestId(`pw-check-${id}`).getAttribute("data-ok");
+      const status = (id: string) => screen.getByTestId(`pw-check-${id}`).getAttribute("data-ok");
 
       // Empty: every rule fails.
       expect(status("len")).toBe("false");
@@ -365,7 +342,7 @@ describe("reset password journey", () => {
       await user.type(pw, "weakpass{Enter}");
 
       expect(updateUser).not.toHaveBeenCalled();
-  });
+    });
   });
 
   describe("post-update redirect", () => {
@@ -374,9 +351,7 @@ describe("reset password journey", () => {
       await act(async () => {
         render(<ResetPasswordPage />);
       });
-      await waitFor(() =>
-        expect(screen.getByLabelText(/^new password$/i)).toBeDefined(),
-      );
+      await waitFor(() => expect(screen.getByLabelText(/^new password$/i)).toBeDefined());
     }
 
     it("on successful update: shows a success toast, signs out the recovery session, and redirects to /login", async () => {

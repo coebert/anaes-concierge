@@ -9,7 +9,10 @@ import { createHash, timingSafeEqual } from "crypto";
  * - Callers return the same generic 401 for "not configured" and "wrong
  *   secret", so probes cannot learn configuration state.
  */
-export function secretsMatch(provided: string | null | undefined, expected: string | null | undefined): boolean {
+export function secretsMatch(
+  provided: string | null | undefined,
+  expected: string | null | undefined,
+): boolean {
   if (!expected || !provided) return false;
   const a = createHash("sha256").update(provided, "utf8").digest();
   const b = createHash("sha256").update(expected, "utf8").digest();

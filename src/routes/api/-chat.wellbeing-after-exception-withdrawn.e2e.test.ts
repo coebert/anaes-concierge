@@ -29,24 +29,60 @@ const EXC_EVENT_DATE = "2026-07-13";
 const EXC_EVENT_SESSION = "am";
 
 const rotaAssignments = [
-  { staff_id: USER_ID, duty_type: null, session_date: "2026-06-01", session: "am",
-    theatre_session_id: SESSION_ID, role_on_list: null, notes: null, supervisor_id: null },
-  { staff_id: USER_ID, duty_type: null, session_date: "2026-06-08", session: "am",
-    theatre_session_id: SESSION_ID, role_on_list: null, notes: null, supervisor_id: null },
-  { staff_id: USER_ID, duty_type: null, session_date: EXC_EVENT_DATE, session: EXC_EVENT_SESSION,
-    theatre_session_id: SESSION_ID, role_on_list: null, notes: null, supervisor_id: null },
+  {
+    staff_id: USER_ID,
+    duty_type: null,
+    session_date: "2026-06-01",
+    session: "am",
+    theatre_session_id: SESSION_ID,
+    role_on_list: null,
+    notes: null,
+    supervisor_id: null,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: null,
+    session_date: "2026-06-08",
+    session: "am",
+    theatre_session_id: SESSION_ID,
+    role_on_list: null,
+    notes: null,
+    supervisor_id: null,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: null,
+    session_date: EXC_EVENT_DATE,
+    session: EXC_EVENT_SESSION,
+    theatre_session_id: SESSION_ID,
+    role_on_list: null,
+    notes: null,
+    supervisor_id: null,
+  },
 ];
 const theatreSessions = [
-  { id: SESSION_ID, theatre_id: THEATRE_ID, specialty_id: SPECIALTY_ID, is_non_sag: false,
-    surgical_consultant: "Mx Surgeon" },
+  {
+    id: SESSION_ID,
+    theatre_id: THEATRE_ID,
+    specialty_id: SPECIALTY_ID,
+    is_non_sag: false,
+    surgical_consultant: "Mx Surgeon",
+  },
 ];
 const theatres = [{ id: THEATRE_ID, name: "Theatre 1", kind: "main" }];
 const specialties = [{ id: SPECIALTY_ID, name: "Orthopaedics" }];
 
 const leaveRows = [
-  { type: "annual", start_date: "2026-07-20", end_date: "2026-07-24",
-    status: "approved", half_day_start: null, half_day_end: null,
-    reason: null, decision_notes: null },
+  {
+    type: "annual",
+    start_date: "2026-07-20",
+    end_date: "2026-07-24",
+    status: "approved",
+    half_day_start: null,
+    half_day_end: null,
+    reason: null,
+    decision_notes: null,
+  },
 ];
 
 type ExcRow = {
@@ -76,7 +112,12 @@ interface QueryState {
 function makeAdminClient() {
   const build = (table: string) => {
     const state: QueryState = {
-      table, eqCols: {}, neqCols: {}, gteCols: {}, lteCols: {}, single: false,
+      table,
+      eqCols: {},
+      neqCols: {},
+      gteCols: {},
+      lteCols: {},
+      single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
     const b: any = {};
@@ -90,13 +131,22 @@ function makeAdminClient() {
       return b;
     };
     b.in = () => b;
-    b.gte = (col: string, val: string) => { state.gteCols[col] = val; return b; };
-    b.lte = (col: string, val: string) => { state.lteCols[col] = val; return b; };
+    b.gte = (col: string, val: string) => {
+      state.gteCols[col] = val;
+      return b;
+    };
+    b.lte = (col: string, val: string) => {
+      state.lteCols[col] = val;
+      return b;
+    };
     b.range = () => b;
     b.limit = () => b;
     b.order = () => b;
     b.or = () => b;
-    b.maybeSingle = () => { state.single = true; return b; };
+    b.maybeSingle = () => {
+      state.single = true;
+      return b;
+    };
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({
@@ -121,16 +171,22 @@ function dataFor(state: QueryState): unknown {
   switch (state.table) {
     case "ai_conversations":
       return state.single ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" } : [];
-    case "ai_messages": return [];
-    case "user_roles": return state.single ? null : [];
+    case "ai_messages":
+      return [];
+    case "user_roles":
+      return state.single ? null : [];
     case "profiles":
       return state.single
         ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
-    case "theatres": return theatres;
-    case "specialties": return specialties;
-    case "rota_assignments": return rotaAssignments;
-    case "theatre_sessions": return theatreSessions;
+    case "theatres":
+      return theatres;
+    case "specialties":
+      return specialties;
+    case "rota_assignments":
+      return rotaAssignments;
+    case "theatre_sessions":
+      return theatreSessions;
     case "leave_requests": {
       const approvedOnly = (state.eqCols.status ?? []).includes("approved");
       if (approvedOnly) return leaveRows.filter((r) => r.status === "approved");
@@ -140,17 +196,15 @@ function dataFor(state: QueryState): unknown {
       return state.single
         ? { annual_days: 32, study_days: 10, leave_year_start: "2026-04-01" }
         : [];
-    case "custom_rota_rules": return [];
+    case "custom_rota_rules":
+      return [];
     case "exception_reports": {
       // Honour the .neq("status", "withdrawn") filter the tools apply.
-      const excludeStatuses = new Set(
-        (state.neqCols.status ?? []) as string[],
-      );
-      return exceptionReportsFixture.filter(
-        (r) => !excludeStatuses.has(r.status),
-      );
+      const excludeStatuses = new Set((state.neqCols.status ?? []) as string[]);
+      return exceptionReportsFixture.filter((r) => !excludeStatuses.has(r.status));
     }
-    default: return state.single ? null : [];
+    default:
+      return state.single ? null : [];
   }
 }
 
@@ -158,7 +212,7 @@ function dataFor(state: QueryState): unknown {
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => makeAdminClient() }));
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 vi.mock("@/lib/gmail.server", () => ({ sendGmail: vi.fn(async () => ({ ok: true })) }));
 
@@ -237,9 +291,7 @@ async function runAndCapture(): Promise<{
   captured.leaveSummary = null;
   captured.currentPattern = null;
   captured.upcomingRota = null;
-  await invokeChat(
-    "How does my recent exception report affect my wellbeing and rota?",
-  );
+  await invokeChat("How does my recent exception report affect my wellbeing and rota?");
   return {
     leaveSummary: captured.leaveSummary,
     currentPattern: captured.currentPattern,
@@ -251,90 +303,87 @@ function annotatedAssignment(rota: any) {
   return rota.assignments.find((a: any) => a.date === EXC_EVENT_DATE);
 }
 
-describe(
-  "/api/chat e2e — withdrawing an exception recalculates upcoming-rota and current-pattern",
-  () => {
-    it(
-      "active exception annotates the matching upcoming-rota assignment and " +
-        "appears on current-pattern; flipping status to withdrawn drops both",
-      async () => {
-        // Run A — active exception.
-        exceptionReportsFixture = [
-          {
-            id: "ex-1",
-            trainee_id: USER_ID,
-            status: "submitted",
-            event_date: EXC_EVENT_DATE,
-            event_session: EXC_EVENT_SESSION,
-            category: "rest",
-            immediate_safety_concern: false,
-            due_by: "2026-07-20",
-          },
-        ];
-        const active = await runAndCapture();
-
-        const activeAssignment = annotatedAssignment(active.upcomingRota);
-        expect(activeAssignment).toBeDefined();
-        expect(activeAssignment.exceptions).toHaveLength(1);
-        expect(activeAssignment.exceptions[0]).toMatchObject({
+describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota and current-pattern", () => {
+  it(
+    "active exception annotates the matching upcoming-rota assignment and " +
+      "appears on current-pattern; flipping status to withdrawn drops both",
+    async () => {
+      // Run A — active exception.
+      exceptionReportsFixture = [
+        {
           id: "ex-1",
+          trainee_id: USER_ID,
           status: "submitted",
+          event_date: EXC_EVENT_DATE,
+          event_session: EXC_EVENT_SESSION,
           category: "rest",
-        });
-        expect((active.currentPattern as any).exceptions).toHaveLength(1);
-        expect((active.currentPattern as any).exceptions[0].id).toBe("ex-1");
+          immediate_safety_concern: false,
+          due_by: "2026-07-20",
+        },
+      ];
+      const active = await runAndCapture();
 
-        // Run B — same report, withdrawn.
-        exceptionReportsFixture = [
-          {
-            id: "ex-1",
-            trainee_id: USER_ID,
-            status: "withdrawn",
-            event_date: EXC_EVENT_DATE,
-            event_session: EXC_EVENT_SESSION,
-            category: "rest",
-            immediate_safety_concern: false,
-            due_by: "2026-07-20",
-          },
-        ];
-        const withdrawn = await runAndCapture();
+      const activeAssignment = annotatedAssignment(active.upcomingRota);
+      expect(activeAssignment).toBeDefined();
+      expect(activeAssignment.exceptions).toHaveLength(1);
+      expect(activeAssignment.exceptions[0]).toMatchObject({
+        id: "ex-1",
+        status: "submitted",
+        category: "rest",
+      });
+      expect((active.currentPattern as any).exceptions).toHaveLength(1);
+      expect((active.currentPattern as any).exceptions[0].id).toBe("ex-1");
 
-        const withdrawnAssignment = annotatedAssignment(withdrawn.upcomingRota);
-        expect(withdrawnAssignment).toBeDefined();
-        expect(withdrawnAssignment.exceptions).toEqual([]);
-        expect((withdrawn.currentPattern as any).exceptions).toEqual([]);
+      // Run B — same report, withdrawn.
+      exceptionReportsFixture = [
+        {
+          id: "ex-1",
+          trainee_id: USER_ID,
+          status: "withdrawn",
+          event_date: EXC_EVENT_DATE,
+          event_session: EXC_EVENT_SESSION,
+          category: "rest",
+          immediate_safety_concern: false,
+          due_by: "2026-07-20",
+        },
+      ];
+      const withdrawn = await runAndCapture();
 
-        // Leave summary does not read exceptions and must be unchanged.
-        expect(withdrawn.leaveSummary).toEqual(active.leaveSummary);
-      },
-    );
+      const withdrawnAssignment = annotatedAssignment(withdrawn.upcomingRota);
+      expect(withdrawnAssignment).toBeDefined();
+      expect(withdrawnAssignment.exceptions).toEqual([]);
+      expect((withdrawn.currentPattern as any).exceptions).toEqual([]);
 
-    it(
-      "hard-deleting the exception is equivalent to a status flip: the " +
-        "annotations disappear from both rota tools",
-      async () => {
-        exceptionReportsFixture = [
-          {
-            id: "ex-2",
-            trainee_id: USER_ID,
-            status: "submitted",
-            event_date: EXC_EVENT_DATE,
-            event_session: EXC_EVENT_SESSION,
-            category: "workload",
-            immediate_safety_concern: true,
-            due_by: "2026-07-20",
-          },
-        ];
-        const active = await runAndCapture();
-        expect(annotatedAssignment(active.upcomingRota).exceptions).toHaveLength(1);
-        expect((active.currentPattern as any).exceptions).toHaveLength(1);
+      // Leave summary does not read exceptions and must be unchanged.
+      expect(withdrawn.leaveSummary).toEqual(active.leaveSummary);
+    },
+  );
 
-        exceptionReportsFixture = [];
-        const gone = await runAndCapture();
-        expect(annotatedAssignment(gone.upcomingRota).exceptions).toEqual([]);
-        expect((gone.currentPattern as any).exceptions).toEqual([]);
-        expect(gone.leaveSummary).toEqual(active.leaveSummary);
-      },
-    );
-  },
-);
+  it(
+    "hard-deleting the exception is equivalent to a status flip: the " +
+      "annotations disappear from both rota tools",
+    async () => {
+      exceptionReportsFixture = [
+        {
+          id: "ex-2",
+          trainee_id: USER_ID,
+          status: "submitted",
+          event_date: EXC_EVENT_DATE,
+          event_session: EXC_EVENT_SESSION,
+          category: "workload",
+          immediate_safety_concern: true,
+          due_by: "2026-07-20",
+        },
+      ];
+      const active = await runAndCapture();
+      expect(annotatedAssignment(active.upcomingRota).exceptions).toHaveLength(1);
+      expect((active.currentPattern as any).exceptions).toHaveLength(1);
+
+      exceptionReportsFixture = [];
+      const gone = await runAndCapture();
+      expect(annotatedAssignment(gone.upcomingRota).exceptions).toEqual([]);
+      expect((gone.currentPattern as any).exceptions).toEqual([]);
+      expect(gone.leaveSummary).toEqual(active.leaveSummary);
+    },
+  );
+});

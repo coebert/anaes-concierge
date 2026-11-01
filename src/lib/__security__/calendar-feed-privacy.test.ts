@@ -4,7 +4,16 @@ import { readFileSync } from "node:fs";
 
 describe("calendar feed least disclosure", () => {
   it("hides health/family leave types", () => {
-    for (const t of ["sick", "compassionate", "parental", "carers", "other", "jury", "industrial", null]) {
+    for (const t of [
+      "sick",
+      "compassionate",
+      "parental",
+      "carers",
+      "other",
+      "jury",
+      "industrial",
+      null,
+    ]) {
       expect(calendarLeaveLabel(t)).toBe("Leave (approved)");
     }
   });

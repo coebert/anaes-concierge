@@ -5,19 +5,35 @@ const insert = vi.fn();
 const sendGmail = vi.fn(async () => ({ ok: true }));
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
-    const b: any = { inputValidator: (v: any) => ((b.v = v), b), handler: (h: any) => (d: any) => h({ data: b.v(d.data) }) };
+    const b: any = {
+      inputValidator: (v: any) => ((b.v = v), b),
+      handler: (h: any) => (d: any) => h({ data: b.v(d.data) }),
+    };
     return b;
   },
 }));
-vi.mock("@tanstack/react-start/server", () => ({ getRequest: () => new Request("http://x", { headers: { "cf-connecting-ip": "203.0.113.9" } }) }));
+vi.mock("@tanstack/react-start/server", () => ({
+  getRequest: () => new Request("http://x", { headers: { "cf-connecting-ip": "203.0.113.9" } }),
+}));
 vi.mock("@/lib/gmail.server", () => ({ sendGmail }));
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     rpc,
     from: (t: string) => {
-      if (t === "access_requests") return { insert: (r: unknown) => (insert(r), { select: () => ({ single: async () => ({ data: { id: "1" }, error: null }) }) }) };
-      if (t === "user_roles") return { select: () => ({ eq: async () => ({ data: [{ user_id: "a" }], error: null }) }) };
-      return { select: () => ({ in: async () => ({ data: [{ email: "admin@example.invalid" }], error: null }) }) };
+      if (t === "access_requests")
+        return {
+          insert: (r: unknown) => (
+            insert(r),
+            { select: () => ({ single: async () => ({ data: { id: "1" }, error: null }) }) }
+          ),
+        };
+      if (t === "user_roles")
+        return { select: () => ({ eq: async () => ({ data: [{ user_id: "a" }], error: null }) }) };
+      return {
+        select: () => ({
+          in: async () => ({ data: [{ email: "admin@example.invalid" }], error: null }),
+        }),
+      };
     },
   },
 }));
@@ -56,6 +72,8 @@ describe("public access requests", () => {
   });
   it("rejects oversized input", async () => {
     const { submitAccessRequest } = await import("./access-requests.functions");
-    expect(() => (submitAccessRequest as any)({ data: { ...input, message: "x".repeat(1001) } })).toThrow();
+    expect(() =>
+      (submitAccessRequest as any)({ data: { ...input, message: "x".repeat(1001) } }),
+    ).toThrow();
   });
 });

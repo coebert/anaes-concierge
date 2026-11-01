@@ -229,7 +229,15 @@ export function summariseByArea(tallies: readonly SpecialtyTally[]): AreaSummary
   for (const t of tallies) {
     let s = byArea.get(t.area);
     if (!s) {
-      s = { area: t.area, doctors: 0, days: 0, sessions: 0, onCalls: 0, totalPas: 0, ids: new Set() };
+      s = {
+        area: t.area,
+        doctors: 0,
+        days: 0,
+        sessions: 0,
+        onCalls: 0,
+        totalPas: 0,
+        ids: new Set(),
+      };
       byArea.set(t.area, s);
     }
     s.ids.add(t.staff_id);

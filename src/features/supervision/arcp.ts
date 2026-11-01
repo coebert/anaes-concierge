@@ -15,12 +15,7 @@
 // the pace increases. "behind" when it is materially off-target and the
 // window is short. "complete" when actual ≥ target.
 
-export type ReadinessStatus =
-  | "complete"
-  | "on_track"
-  | "at_risk"
-  | "behind"
-  | "unknown";
+export type ReadinessStatus = "complete" | "on_track" | "at_risk" | "behind" | "unknown";
 
 export interface ArcpRequirement {
   id: string;
@@ -132,7 +127,11 @@ export interface TraineeReadiness {
 }
 
 const STATUS_RANK: Record<ReadinessStatus, number> = {
-  behind: 0, at_risk: 1, on_track: 2, unknown: 3, complete: 4,
+  behind: 0,
+  at_risk: 1,
+  on_track: 2,
+  unknown: 3,
+  complete: 4,
 };
 
 /** Combine per-requirement readiness into a trainee summary. */
@@ -157,13 +156,8 @@ export function summariseTraineeReadiness(args: {
     }),
   );
   const totalTarget = items.reduce((s, i) => s + i.target, 0);
-  const totalCurrent = items.reduce(
-    (s, i) => s + Math.min(i.current, i.target),
-    0,
-  );
-  const percentComplete = totalTarget > 0
-    ? Math.round((totalCurrent / totalTarget) * 100)
-    : 0;
+  const totalCurrent = items.reduce((s, i) => s + Math.min(i.current, i.target), 0);
+  const percentComplete = totalTarget > 0 ? Math.round((totalCurrent / totalTarget) * 100) : 0;
   const worstStatus = items.length
     ? items.reduce<ReadinessStatus>(
         (worst, i) => (STATUS_RANK[i.status] < STATUS_RANK[worst] ? i.status : worst),
@@ -190,16 +184,22 @@ export function summariseTraineeReadiness(args: {
 
 export function readinessStatusLabel(s: ReadinessStatus): string {
   switch (s) {
-    case "complete": return "Complete";
-    case "on_track": return "On track";
-    case "at_risk": return "At risk";
-    case "behind": return "Behind";
-    case "unknown": return "—";
+    case "complete":
+      return "Complete";
+    case "on_track":
+      return "On track";
+    case "at_risk":
+      return "At risk";
+    case "behind":
+      return "Behind";
+    case "unknown":
+      return "—";
   }
 }
 
-export function readinessStatusTone(s: ReadinessStatus):
-  "success" | "warning" | "danger" | "muted" {
+export function readinessStatusTone(
+  s: ReadinessStatus,
+): "success" | "warning" | "danger" | "muted" {
   switch (s) {
     case "complete":
     case "on_track":

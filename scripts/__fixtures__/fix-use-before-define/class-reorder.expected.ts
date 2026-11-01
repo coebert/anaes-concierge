@@ -1,5 +1,3 @@
-
-
 export class Widget {
   render() {
     return "ok";

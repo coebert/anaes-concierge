@@ -1,5 +1,10 @@
 // Pure TS entitlement engine — no DB deps.
-import { countLeaveWorkingDays, leaveYearWindow, prorationFraction, rangeOverlapsWindow } from "./leave-count";
+import {
+  countLeaveWorkingDays,
+  leaveYearWindow,
+  prorationFraction,
+  rangeOverlapsWindow,
+} from "./leave-count";
 // Computes per-staff, per-leave-year entitlement, taken, pending and remaining
 // with pro-rating for LTFT fraction and mid-year start/leaver dates.
 
@@ -16,12 +21,7 @@ export type LeaveType =
   | "toil"
   | "other";
 
-export type LeaveStatus =
-  | "pending"
-  | "approved"
-  | "denied"
-  | "cancelled"
-  | "reserve";
+export type LeaveStatus = "pending" | "approved" | "denied" | "cancelled" | "reserve";
 
 export interface AllowanceRow {
   leave_year_start: string; // ISO date
@@ -66,7 +66,7 @@ export interface EntitlementLine {
   label: string;
   unit: EntitlementUnit;
   entitlement: number; // raw before pro-rating
-  prorated: number;    // after LTFT / mid-year
+  prorated: number; // after LTFT / mid-year
   carryOver: number;
   taken: number;
   pending: number;
@@ -86,10 +86,7 @@ export function leaveDayCount(row: LeaveRow, yearStartISO?: string): number {
  * LTFT fraction × (days in post within [yearStart, next anniversary) ÷ year
  * length). `left_at` is treated as the last day in post (inclusive).
  */
-export function proratingFraction(
-  allowance: AllowanceRow,
-  profile: ProfileForProrating,
-): number {
+export function proratingFraction(allowance: AllowanceRow, profile: ProfileForProrating): number {
   return prorationFraction(allowance.leave_year_start, {
     employmentStart: profile.start_date ?? null,
     leftAt: profile.left_at ?? null,
@@ -119,13 +116,20 @@ const TYPE_LABEL: Record<LeaveType, string> = {
 
 function entitlementFor(type: LeaveType, a: AllowanceRow): number {
   switch (type) {
-    case "annual": return a.annual_days;
-    case "study": return a.study_days;
-    case "professional": return a.professional_days;
-    case "carers": return a.carers_days;
-    case "parental": return a.parental_days;
-    case "compassionate": return a.compassionate_days;
-    default: return 0;
+    case "annual":
+      return a.annual_days;
+    case "study":
+      return a.study_days;
+    case "professional":
+      return a.professional_days;
+    case "carers":
+      return a.carers_days;
+    case "parental":
+      return a.parental_days;
+    case "compassionate":
+      return a.compassionate_days;
+    default:
+      return 0;
   }
 }
 
@@ -158,8 +162,7 @@ export function computeEntitlementLedger(
     const pending = rowsThisYear
       .filter((r) => r.type === type && r.status === "pending")
       .reduce((s, r) => s + leaveDayCount(r, allowance.leave_year_start), 0);
-    const remaining =
-      Math.round((prorated + carryOver - taken - pending) * 100) / 100;
+    const remaining = Math.round((prorated + carryOver - taken - pending) * 100) / 100;
     return {
       type,
       label: TYPE_LABEL[type],

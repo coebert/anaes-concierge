@@ -55,9 +55,7 @@ export interface Specialty {
 function daysBetween(a: string, b: string): number {
   const [ay, am, ad] = a.split("-").map(Number);
   const [by, bm, bd] = b.split("-").map(Number);
-  return Math.round(
-    (Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000,
-  );
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
 }
 
 function statusForHolding(
@@ -92,9 +90,7 @@ export interface ComputeTraineeProgressArgs {
 }
 
 /** Per-specialty required-and-recommended progress for one trainee. */
-export function computeTraineeProgress(
-  args: ComputeTraineeProgressArgs,
-): SpecialtyProgress[] {
+export function computeTraineeProgress(args: ComputeTraineeProgressArgs): SpecialtyProgress[] {
   const compById = new Map(args.competencies.map((c) => [c.id, c]));
   const heldByComp = new Map<string, StaffCompetency>();
   for (const h of args.staffCompetencies) {
@@ -152,9 +148,7 @@ export function computeTraineeProgress(
     items.sort((a, b) => {
       const score = (i: ProgressItem) =>
         (i.requirement === "required" ? 0 : 10) +
-        (i.status === "missing" || i.status === "expired" || i.status === "revoked"
-          ? 0
-          : 1);
+        (i.status === "missing" || i.status === "expired" || i.status === "revoked" ? 0 : 1);
       const s = score(a) - score(b);
       if (s !== 0) return s;
       return a.competencyName.localeCompare(b.competencyName);
@@ -211,9 +205,7 @@ export interface ComputeEligibilityArgs {
  * matching the role, the staff has an active holding. For solo, any
  * "supervised"-only holding disqualifies.
  */
-export function computeEligibility(
-  args: ComputeEligibilityArgs,
-): SpecialtyEligibility[] {
+export function computeEligibility(args: ComputeEligibilityArgs): SpecialtyEligibility[] {
   // Pre-index active holdings per staff.
   const heldByStaff = new Map<string, Map<string, StaffCompetency>>();
   for (const h of args.staffCompetencies) {

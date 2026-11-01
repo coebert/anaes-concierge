@@ -3,13 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { investigateAndFixTraineeSolo } from "@/features/clwrota/clwrota.functions";
@@ -47,10 +41,10 @@ export function InvestigateSoloCard() {
       <CardHeader>
         <CardTitle className="text-base">Investigate suspicious solo lists</CardTitle>
         <CardDescription>
-          Re-evaluate every trainee "solo" rota row in the last 60 / next 60 days. Rows
-          where a consultant or SAS doctor is on the same theatre session are corrected
-          automatically; review-only categories (unmatched labels, off-day placeholders)
-          are surfaced for manual cleanup. Locally-modified rows are never touched.
+          Re-evaluate every trainee "solo" rota row in the last 60 / next 60 days. Rows where a
+          consultant or SAS doctor is on the same theatre session are corrected automatically;
+          review-only categories (unmatched labels, off-day placeholders) are surfaced for manual
+          cleanup. Locally-modified rows are never touched.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -61,9 +55,7 @@ export function InvestigateSoloCard() {
             disabled={isPending}
             onClick={() => previewMut.mutate()}
           >
-            {previewMut.isPending ? (
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-            ) : null}
+            {previewMut.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
             Preview findings
           </Button>
           <Button
@@ -79,9 +71,7 @@ export function InvestigateSoloCard() {
               }
             }}
           >
-            {applyMut.isPending ? (
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-            ) : null}
+            {applyMut.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
             Investigate &amp; fix now
           </Button>
         </div>

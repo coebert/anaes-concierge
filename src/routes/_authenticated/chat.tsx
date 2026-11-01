@@ -23,7 +23,11 @@ function ChatLayout() {
   const params = useParams({ strict: false }) as { conversationId?: string };
   const activeId = params.conversationId;
 
-  const { data: conversations, error: convError, refetch: refetchConvs } = useQuery({
+  const {
+    data: conversations,
+    error: convError,
+    refetch: refetchConvs,
+  } = useQuery({
     queryKey: ["ai-conversations"],
     enabled: !!user,
     queryFn: async () => {
@@ -52,7 +56,8 @@ function ChatLayout() {
       await qc.invalidateQueries({ queryKey: ["ai-conversations"] });
       void navigate({ to: "/chat/$conversationId", params: { conversationId: id } });
     },
-    onError: (e) => toast.error(`Couldn't start a conversation: ${e instanceof Error ? e.message : String(e)}`),
+    onError: (e) =>
+      toast.error(`Couldn't start a conversation: ${e instanceof Error ? e.message : String(e)}`),
   });
 
   const deleteConv = useMutation({
@@ -102,68 +107,79 @@ function ChatLayout() {
       {createFailed && (
         <div role="alert" className="border-b px-3 py-2 text-xs text-destructive">
           Couldn't start a conversation.{" "}
-          <button type="button" className="underline" onClick={() => createMutate()} disabled={creating}>Try again</button>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => createMutate()}
+            disabled={creating}
+          >
+            Try again
+          </button>
         </div>
       )}
-        <ScrollArea className="flex-1">
-          <ul className="space-y-0.5 p-2">
-            {(conversations ?? []).map((c) => {
-              const active = c.id === activeId;
-              return (
-                <li key={c.id} className="group relative">
-                  <Link
-                    onClick={() => setListOpen(false)}
-                    to="/chat/$conversationId"
-                    params={{ conversationId: c.id }}
-                    className={cn(
-                      "flex flex-col gap-0.5 rounded-md px-2 py-2 pr-8 text-sm transition-colors",
-                      active
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                    )}
-                  >
-                    <span className="flex items-center gap-1.5 truncate font-medium">
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{c.title || "Untitled"}</span>
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    aria-label={`Delete conversation ${c.title || "Untitled"}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (confirm("Delete this conversation?")) deleteConv.mutate(c.id);
-                    }}
-                    className="absolute right-1 top-1.5 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              );
-            })}
-            {convError && (
-              <li role="alert" className="px-2 py-3 text-xs text-destructive">
-                Couldn't load conversations.{" "}
-                <button type="button" className="underline" onClick={() => void refetchConvs()}>Retry</button>
+      <ScrollArea className="flex-1">
+        <ul className="space-y-0.5 p-2">
+          {(conversations ?? []).map((c) => {
+            const active = c.id === activeId;
+            return (
+              <li key={c.id} className="group relative">
+                <Link
+                  onClick={() => setListOpen(false)}
+                  to="/chat/$conversationId"
+                  params={{ conversationId: c.id }}
+                  className={cn(
+                    "flex flex-col gap-0.5 rounded-md px-2 py-2 pr-8 text-sm transition-colors",
+                    active
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 truncate font-medium">
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{c.title || "Untitled"}</span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true })}
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  aria-label={`Delete conversation ${c.title || "Untitled"}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (confirm("Delete this conversation?")) deleteConv.mutate(c.id);
+                  }}
+                  className="absolute right-1 top-1.5 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </li>
-            )}
-            {conversations?.length === 0 && (
-              <li className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No conversations yet.
-              </li>
-            )}
-          </ul>
-        </ScrollArea>
+            );
+          })}
+          {convError && (
+            <li role="alert" className="px-2 py-3 text-xs text-destructive">
+              Couldn't load conversations.{" "}
+              <button type="button" className="underline" onClick={() => void refetchConvs()}>
+                Retry
+              </button>
+            </li>
+          )}
+          {conversations?.length === 0 && (
+            <li className="px-2 py-4 text-center text-xs text-muted-foreground">
+              No conversations yet.
+            </li>
+          )}
+        </ul>
+      </ScrollArea>
     </div>
   );
 
   return (
     <div className="-m-4 flex h-[calc(100dvh-5rem)] min-w-0 flex-col gap-2 md:-m-8 md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-4 md:p-4">
-      <aside className="hidden min-h-0 rounded-lg border bg-card md:flex md:flex-col">{sidebar}</aside>
+      <aside className="hidden min-h-0 rounded-lg border bg-card md:flex md:flex-col">
+        {sidebar}
+      </aside>
 
       {/* Mobile: conversations live in a drawer so the chat keeps full width. */}
       <div className="flex items-center gap-2 px-2 pt-2 md:hidden">

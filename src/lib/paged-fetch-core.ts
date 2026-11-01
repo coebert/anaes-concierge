@@ -17,7 +17,9 @@ export class IncompleteResultError extends Error {
     readonly rowsFetched: number,
     readonly cap: number,
   ) {
-    super(`${label}: more than ${cap} rows — results would be incomplete, so they were not shown. Narrow the date range.`);
+    super(
+      `${label}: more than ${cap} rows — results would be incomplete, so they were not shown. Narrow the date range.`,
+    );
     this.name = "IncompleteResultError";
   }
 }
@@ -44,13 +46,16 @@ export interface DrainOptions {
 }
 
 function errMessage(e: unknown): string {
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
+  if (e && typeof e === "object" && "message" in e)
+    return String((e as { message: unknown }).message);
   return String(e);
 }
 
 export function validatePaging(pageSize: number, maxRows: number): void {
-  if (!Number.isInteger(pageSize) || pageSize <= 0) throw new RangeError(`pageSize must be a positive integer (got ${pageSize})`);
-  if (!Number.isInteger(maxRows) || maxRows <= 0) throw new RangeError(`maxRows must be a positive integer (got ${maxRows})`);
+  if (!Number.isInteger(pageSize) || pageSize <= 0)
+    throw new RangeError(`pageSize must be a positive integer (got ${pageSize})`);
+  if (!Number.isInteger(maxRows) || maxRows <= 0)
+    throw new RangeError(`maxRows must be a positive integer (got ${maxRows})`);
 }
 
 export async function drainPages<T>(

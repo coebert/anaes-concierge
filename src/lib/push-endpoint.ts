@@ -19,7 +19,11 @@ const ALLOWED_HOSTS = [
 const MAX_ENDPOINT_LENGTH = 1024;
 
 export function isAllowedPushEndpoint(endpoint: unknown): boolean {
-  if (typeof endpoint !== "string" || endpoint.length === 0 || endpoint.length > MAX_ENDPOINT_LENGTH) {
+  if (
+    typeof endpoint !== "string" ||
+    endpoint.length === 0 ||
+    endpoint.length > MAX_ENDPOINT_LENGTH
+  ) {
     return false;
   }
   // Raw-string guard: authority must be exactly a host (no userinfo/port).
@@ -48,7 +52,11 @@ export function isValidPushKeys(p256dh: unknown, auth: unknown): boolean {
   );
 }
 
-export function isDeliverableSubscription(sub: { endpoint: unknown; p256dh: unknown; auth: unknown }): boolean {
+export function isDeliverableSubscription(sub: {
+  endpoint: unknown;
+  p256dh: unknown;
+  auth: unknown;
+}): boolean {
   return isAllowedPushEndpoint(sub.endpoint) && isValidPushKeys(sub.p256dh, sub.auth);
 }
 

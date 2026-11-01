@@ -12,13 +12,7 @@ import {
 import { detectDeviceName } from "@/lib/passkey-device-name";
 import { formatDateGB } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,8 +98,8 @@ export function PasskeyManager() {
           <Fingerprint className="h-5 w-5" /> Biometric sign-in (passkeys)
         </CardTitle>
         <CardDescription>
-          Use Face ID, Touch ID, Windows Hello, or a hardware key to sign in
-          without a password on this device.
+          Use Face ID, Touch ID, Windows Hello, or a hardware key to sign in without a password on
+          this device.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -116,22 +110,16 @@ export function PasskeyManager() {
           {isLoading ? (
             <PageLoading />
           ) : !passkeys || passkeys.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No passkeys registered yet.
-            </p>
+            <p className="text-sm text-muted-foreground">No passkeys registered yet.</p>
           ) : (
             <ul className="divide-y rounded-md border">
               {passkeys.map((p) => (
                 <li key={p.id} className="flex items-center justify-between p-3">
                   <div>
-                    <p className="text-sm font-medium">
-                      {p.device_name ?? "Unnamed device"}
-                    </p>
+                    <p className="text-sm font-medium">{p.device_name ?? "Unnamed device"}</p>
                     <p className="text-xs text-muted-foreground">
                       Added {formatDateGB(p.created_at)}
-                      {p.last_used_at
-                        ? ` · Last used ${formatDateGB(p.last_used_at)}`
-                        : ""}
+                      {p.last_used_at ? ` · Last used ${formatDateGB(p.last_used_at)}` : ""}
                     </p>
                   </div>
                   <Button
@@ -160,16 +148,12 @@ export function PasskeyManager() {
             <AlertDialogTitle>Remove this passkey?</AlertDialogTitle>
             <AlertDialogDescription>
               You&apos;ll no longer be able to sign in with{" "}
-              <span className="font-medium">
-                {pendingDelete?.device_name ?? "this device"}
-              </span>
-              . You can register it again later.
+              <span className="font-medium">{pendingDelete?.device_name ?? "this device"}</span>.
+              You can register it again later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={remove.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={remove.isPending}
               onClick={(e) => {

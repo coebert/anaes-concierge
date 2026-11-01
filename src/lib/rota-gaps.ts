@@ -78,8 +78,7 @@ export function computeRotaGaps(
         startISO: toISO(curStart),
         endISO: toISO(curEnd),
         missingDays: curMissing,
-        spanDays:
-          Math.round((curEnd.getTime() - curStart.getTime()) / MS_DAY) + 1,
+        spanDays: Math.round((curEnd.getTime() - curStart.getTime()) / MS_DAY) + 1,
       });
     }
     curStart = null;
@@ -134,11 +133,7 @@ export function computeRotaGaps(
  * - `sync_missing`     – a weekday inside the rotation window that the
  *                        trainee should be working: a real CLWRota sync gap
  */
-export type GapKind =
-  | "pre_rotation"
-  | "rotation_ended"
-  | "ltft_off"
-  | "sync_missing";
+export type GapKind = "pre_rotation" | "rotation_ended" | "ltft_off" | "sync_missing";
 
 export interface ClassifiedGapRange {
   kind: GapKind;
@@ -183,7 +178,10 @@ export function classifyRotaGaps(
   const offSet = new Set<number>([0, 6, ...ltftDaysOff]);
 
   const counts: Record<GapKind, number> = {
-    pre_rotation: 0, rotation_ended: 0, ltft_off: 0, sync_missing: 0,
+    pre_rotation: 0,
+    rotation_ended: 0,
+    ltft_off: 0,
+    sync_missing: 0,
   };
   const ranges: ClassifiedGapRange[] = [];
   let curKind: GapKind | null = null;

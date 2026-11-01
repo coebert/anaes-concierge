@@ -23,9 +23,6 @@ export function filterAssignmentsForCell<T extends CalendarSpaAdminAssignment>(
   half: SessionHalf,
 ): T[] {
   return (assignments ?? []).filter(
-    (a) =>
-      a.duty_type === dutyType &&
-      a.session_date === dayIso &&
-      a.session === half,
+    (a) => a.duty_type === dutyType && a.session_date === dayIso && a.session === half,
   );
 }

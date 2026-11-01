@@ -15,8 +15,11 @@ export async function getActiveMembership(
     supabase.from("user_roles").select("role").eq("user_id", userId),
     supabase.from("profiles").select("grade, active").eq("id", userId).maybeSingle(),
   ]);
-  if (rolesRes.error || profRes.error) throw new Error("Could not verify your access. Please try again.");
-  const roles = new Set<string>(((rolesRes.data ?? []) as Array<{ role: string }>).map((r) => r.role));
+  if (rolesRes.error || profRes.error)
+    throw new Error("Could not verify your access. Please try again.");
+  const roles = new Set<string>(
+    ((rolesRes.data ?? []) as Array<{ role: string }>).map((r) => r.role),
+  );
   const prof = profRes.data as { grade: string | null; active: boolean | null } | null;
   if (roles.size === 0 || !prof || prof.active !== true) {
     throw new Error("Forbidden: your account does not have access to the staff directory.");

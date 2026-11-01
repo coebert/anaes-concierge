@@ -12,11 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import {
-  computeRotaGaps, classifyRotaGaps,
-} from "@/lib/rota-gaps";
+import { computeRotaGaps, classifyRotaGaps } from "@/lib/rota-gaps";
 import { fetchAllRowsPaged, rotaAssignmentKey } from "@/features/audit/paginate";
 import {
   syncClwRotaRota,
@@ -26,7 +28,14 @@ import {
 } from "@/features/clwrota/clwrota.functions";
 import { formatDateGB, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { AlertTriangle, CheckCircle2, CalendarX, RefreshCw, Plug, ExternalLink } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CalendarX,
+  RefreshCw,
+  Plug,
+  ExternalLink,
+} from "lucide-react";
 import {
   WINDOW_LABEL,
   PRIORITY_LABEL,
@@ -44,11 +53,7 @@ import {
   type TraineeDiagnosticStatus,
   type GapSnapshot,
 } from "@/features/admin-rota-gaps/helpers";
-import {
-  GapRangeRow,
-  Stat,
-  ClassifiedSection,
-} from "@/features/admin-rota-gaps/components";
+import { GapRangeRow, Stat, ClassifiedSection } from "@/features/admin-rota-gaps/components";
 import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/rota-gaps")({
@@ -98,7 +103,8 @@ function RotaGapsPage() {
           sync_days_back: s?.sync_days_back ?? 30,
           sync_days_ahead: s?.sync_days_ahead ?? 120,
           auto_reclassify_trainee_solo: Boolean(
-            (s as { auto_reclassify_trainee_solo?: boolean } | null | undefined)?.auto_reclassify_trainee_solo,
+            (s as { auto_reclassify_trainee_solo?: boolean } | null | undefined)
+              ?.auto_reclassify_trainee_solo,
           ),
         },
       });
@@ -123,14 +129,13 @@ function RotaGapsPage() {
     queryKey: ["rota-gaps", windowChoice],
     queryFn: async () => {
       const today = todayISO();
-      const since =
-        windowChoice === "rotation"
-          ? null
-          : addDaysISO(today, -parseInt(windowChoice));
+      const since = windowChoice === "rotation" ? null : addDaysISO(today, -parseInt(windowChoice));
 
       const { data: trainees, error: e1 } = await supabase
         .from("profiles")
-        .select("id, full_name, grade, training_level, start_date, rotation_end_date, ltft_days_off")
+        .select(
+          "id, full_name, grade, training_level, start_date, rotation_end_date, ltft_days_off",
+        )
         .eq("active", true)
         .order("full_name");
       if (e1) throw e1;
@@ -160,7 +165,6 @@ function RotaGapsPage() {
         { rowKey: rotaAssignmentKey, label: "rota-gaps.rota_assignments" },
       );
 
-
       const datesByStaff = new Map<string, Set<string>>();
       for (const r of all) {
         let set = datesByStaff.get(r.staff_id);
@@ -182,9 +186,7 @@ function RotaGapsPage() {
         const dates = data.datesByStaff.get(t.id) ?? new Set<string>();
         // Window = max(rotation start, lookback start) → min(rotation end, today)
         const lookbackStart = data.since ?? t.start_date ?? today;
-        const startISO = [t.start_date ?? lookbackStart, lookbackStart]
-          .sort()
-          .reverse()[0]; // later of the two
+        const startISO = [t.start_date ?? lookbackStart, lookbackStart].sort().reverse()[0]; // later of the two
         const endISO = [t.rotation_end_date ?? today, today].sort()[0]; // earlier of the two
         const ltft = (t.ltft_days_off ?? []) as number[];
         const report = computeRotaGaps(dates, startISO, endISO, ltft);
@@ -297,10 +299,7 @@ function RotaGapsPage() {
       // we can compute a "gaps filled" delta once the post-sync refetch
       // lands. The current query cache already reflects every prior range
       // in this run because we await the invalidation below.
-      const beforeSnap = queryClient.getQueryData<GapSnapshot>([
-        "rota-gaps",
-        windowChoice,
-      ]);
+      const beforeSnap = queryClient.getQueryData<GapSnapshot>(["rota-gaps", windowChoice]);
       const gapsBefore = beforeSnap
         ? countSyncMissingInSpan(beforeSnap, startISO, endISO)
         : undefined;
@@ -317,22 +316,36 @@ function RotaGapsPage() {
       }
 
       let entry: SyncProgress["perRange"][number];
-      let coverageByStaff = new Map<string, {
-        datesCovered: number;
-        insertedDates: number;
-        existingDates: number;
-        firstDate: string;
-        lastDate: string;
-      }>();
+      const coverageByStaff = new Map<
+        string,
+        {
+          datesCovered: number;
+          insertedDates: number;
+          existingDates: number;
+          firstDate: string;
+          lastDate: string;
+        }
+      >();
       try {
         const res: SyncResult = await syncRota({
           data: { from: startISO, to: endISO },
         });
-        const cov = (res as SyncResult & { coverage?: {
-          rowsInWindow: number;
-          staffCoverage: Array<{ staffId: string; datesCovered: number; insertedDates: number; existingDates: number; firstDate: string; lastDate: string }>;
-          skippedReasonCounts: Record<string, number>;
-        } }).coverage;
+        const cov = (
+          res as SyncResult & {
+            coverage?: {
+              rowsInWindow: number;
+              staffCoverage: Array<{
+                staffId: string;
+                datesCovered: number;
+                insertedDates: number;
+                existingDates: number;
+                firstDate: string;
+                lastDate: string;
+              }>;
+              skippedReasonCounts: Record<string, number>;
+            };
+          }
+        ).coverage;
         if (cov) {
           for (const sc of cov.staffCoverage) {
             coverageByStaff.set(sc.staffId, {
@@ -386,10 +399,7 @@ function RotaGapsPage() {
         queryKey: ["rota-gaps", windowChoice],
         type: "active",
       });
-      const afterSnap = queryClient.getQueryData<GapSnapshot>([
-        "rota-gaps",
-        windowChoice,
-      ]);
+      const afterSnap = queryClient.getQueryData<GapSnapshot>(["rota-gaps", windowChoice]);
       if (afterSnap && gapsBefore != null) {
         const gapsAfter = countSyncMissingInSpan(afterSnap, startISO, endISO);
         entry.gapsAfter = gapsAfter;
@@ -400,37 +410,39 @@ function RotaGapsPage() {
       // upstream coverage so admins can see exactly why each trainee was
       // (or wasn't) helped by this sync.
       if (afterSnap && beforeSnap) {
-        const diag: TraineeDiagnostic[] = traineeIds.map((tid) => {
-          const trainee = beforeSnap.trainees.find((x) => x.id === tid);
-          const name = data?.trainees.find((x) => x.id === tid)?.full_name ?? tid;
-          const before = perTraineeBefore.get(tid) ?? 0;
-          const after = countSyncMissingForTraineeInSpan(afterSnap, tid, startISO, endISO);
-          const filled = Math.max(0, before - after);
-          const cov = coverageByStaff.get(tid);
-          const upstreamDatesCovered = cov?.datesCovered ?? 0;
-          const upstreamInsertedDates = cov?.insertedDates ?? 0;
-          const upstreamExistingDates = cov?.existingDates ?? 0;
-          let status: TraineeDiagnosticStatus;
-          if (before === 0) status = "no_gap_in_range";
-          else if (upstreamDatesCovered === 0) status = "no_upstream_coverage";
-          else if (filled === 0) status = "covered_no_new_dates";
-          else if (after === 0) status = "fully_filled";
-          else status = "partially_filled";
-          void trainee;
-          return {
-            traineeId: tid,
-            name,
-            gapsBefore: before,
-            gapsAfter: after,
-            gapsFilled: filled,
-            upstreamDatesCovered,
-            upstreamInsertedDates,
-            upstreamExistingDates,
-            firstUpstreamDate: cov?.firstDate ?? null,
-            lastUpstreamDate: cov?.lastDate ?? null,
-            status,
-          };
-        }).sort((a, b) => b.gapsBefore - a.gapsBefore);
+        const diag: TraineeDiagnostic[] = traineeIds
+          .map((tid) => {
+            const trainee = beforeSnap.trainees.find((x) => x.id === tid);
+            const name = data?.trainees.find((x) => x.id === tid)?.full_name ?? tid;
+            const before = perTraineeBefore.get(tid) ?? 0;
+            const after = countSyncMissingForTraineeInSpan(afterSnap, tid, startISO, endISO);
+            const filled = Math.max(0, before - after);
+            const cov = coverageByStaff.get(tid);
+            const upstreamDatesCovered = cov?.datesCovered ?? 0;
+            const upstreamInsertedDates = cov?.insertedDates ?? 0;
+            const upstreamExistingDates = cov?.existingDates ?? 0;
+            let status: TraineeDiagnosticStatus;
+            if (before === 0) status = "no_gap_in_range";
+            else if (upstreamDatesCovered === 0) status = "no_upstream_coverage";
+            else if (filled === 0) status = "covered_no_new_dates";
+            else if (after === 0) status = "fully_filled";
+            else status = "partially_filled";
+            void trainee;
+            return {
+              traineeId: tid,
+              name,
+              gapsBefore: before,
+              gapsAfter: after,
+              gapsFilled: filled,
+              upstreamDatesCovered,
+              upstreamInsertedDates,
+              upstreamExistingDates,
+              firstUpstreamDate: cov?.firstDate ?? null,
+              lastUpstreamDate: cov?.lastDate ?? null,
+              status,
+            };
+          })
+          .sort((a, b) => b.gapsBefore - a.gapsBefore);
         entry.traineeDiagnostics = diag;
 
         // Compact console summary so the troubleshooting trail is also
@@ -438,7 +450,13 @@ function RotaGapsPage() {
         // report.
         const summary = diag.reduce<Record<TraineeDiagnosticStatus, number>>(
           (acc, d) => ({ ...acc, [d.status]: (acc[d.status] ?? 0) + 1 }),
-          { fully_filled: 0, partially_filled: 0, no_upstream_coverage: 0, covered_no_new_dates: 0, no_gap_in_range: 0 },
+          {
+            fully_filled: 0,
+            partially_filled: 0,
+            no_upstream_coverage: 0,
+            covered_no_new_dates: 0,
+            no_gap_in_range: 0,
+          },
         );
         console.info(
           `[rota-gaps] ${startISO}..${endISO}: filled ${entry.gapsFilled ?? 0}/${entry.gapsBefore ?? 0} day(s); trainees:`,
@@ -466,11 +484,18 @@ function RotaGapsPage() {
           <>
             <div className="w-44">
               <label className="mb-1 block text-xs text-muted-foreground">Window</label>
-              <Select value={windowChoice} onValueChange={(v) => setWindowChoice(v as WindowChoice)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={windowChoice}
+                onValueChange={(v) => setWindowChoice(v as WindowChoice)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(WINDOW_LABEL) as WindowChoice[]).map((k) => (
-                    <SelectItem key={k} value={k}>{WINDOW_LABEL[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {WINDOW_LABEL[k]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -498,7 +523,12 @@ function RotaGapsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Stat icon={AlertTriangle} tone="bad" label="Staff with gaps" value={traineesWithGaps} />
+            <Stat
+              icon={AlertTriangle}
+              tone="bad"
+              label="Staff with gaps"
+              value={traineesWithGaps}
+            />
             <Stat icon={CalendarX} tone="bad" label="Missing weekdays" value={totalGapDays} />
             <Stat icon={CalendarX} tone="muted" label="Distinct gap ranges" value={totalRanges} />
           </div>
@@ -510,9 +540,9 @@ function RotaGapsPage() {
                   <Plug className="h-4 w-4" /> CLWRota source
                 </CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Swap the rota report URL or refresh the auth key when CLWRota returns
-                  no rows for trainees that still appear as gaps. After saving, re-run
-                  the targeted sync below to fill the newly-covered dates.
+                  Swap the rota report URL or refresh the auth key when CLWRota returns no rows for
+                  trainees that still appear as gaps. After saving, re-run the targeted sync below
+                  to fill the newly-covered dates.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs">
@@ -525,11 +555,7 @@ function RotaGapsPage() {
                 <Badge variant={currentRotaUrl ? "default" : "destructive"}>
                   Rota URL {currentRotaUrl ? "set" : "missing"}
                 </Badge>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSourceOpen((v) => !v)}
-                >
+                <Button size="sm" variant="outline" onClick={() => setSourceOpen((v) => !v)}>
                   {sourceOpen ? "Hide" : "Edit"}
                 </Button>
               </div>
@@ -548,9 +574,9 @@ function RotaGapsPage() {
                     className="font-mono text-xs"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Tip: copy the report URL from CLWRota's "Reports" page. Targeted
-                    syncs replace the URL's <code>start_date</code> / <code>end_date</code>{" "}
-                    per range, so the date params here are just defaults.
+                    Tip: copy the report URL from CLWRota's "Reports" page. Targeted syncs replace
+                    the URL's <code>start_date</code> / <code>end_date</code> per range, so the date
+                    params here are just defaults.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -558,8 +584,7 @@ function RotaGapsPage() {
                     size="sm"
                     onClick={() => saveSourceMut.mutate()}
                     disabled={
-                      saveSourceMut.isPending ||
-                      rotaUrlDraft.trim() === currentRotaUrl.trim()
+                      saveSourceMut.isPending || rotaUrlDraft.trim() === currentRotaUrl.trim()
                     }
                   >
                     {saveSourceMut.isPending ? "Saving…" : "Save URL"}
@@ -571,8 +596,7 @@ function RotaGapsPage() {
                       setRotaUrlDraft(currentRotaUrl);
                     }}
                     disabled={
-                      saveSourceMut.isPending ||
-                      rotaUrlDraft.trim() === currentRotaUrl.trim()
+                      saveSourceMut.isPending || rotaUrlDraft.trim() === currentRotaUrl.trim()
                     }
                   >
                     Revert
@@ -593,9 +617,9 @@ function RotaGapsPage() {
                   </Link>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  The CLWRota auth key (<code>CLWROTA_API_KEY</code>) and base URL
-                  (<code>CLWROTA_BASE_URL</code>) are stored as backend secrets and
-                  rotated from Settings → CLWRota.
+                  The CLWRota auth key (<code>CLWROTA_API_KEY</code>) and base URL (
+                  <code>CLWROTA_BASE_URL</code>) are stored as backend secrets and rotated from
+                  Settings → CLWRota.
                 </p>
               </CardContent>
             )}
@@ -622,18 +646,20 @@ function RotaGapsPage() {
                     }}
                     disabled={progress?.running}
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {(Object.keys(PRIORITY_LABEL) as SyncPriority[]).map((k) => (
-                        <SelectItem key={k} value={k}>{PRIORITY_LABEL[k]}</SelectItem>
+                        <SelectItem key={k} value={k}>
+                          {PRIORITY_LABEL[k]}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="w-32">
-                  <label className="mb-1 block text-xs text-muted-foreground">
-                    Run top
-                  </label>
+                  <label className="mb-1 block text-xs text-muted-foreground">Run top</label>
                   <Input
                     type="number"
                     min={1}
@@ -666,30 +692,36 @@ function RotaGapsPage() {
                     Planned ranges (in run order)
                   </span>
                   <span className="flex flex-wrap items-center gap-3 text-muted-foreground">
-                    {progress && progress.perRange.length > 0 && (() => {
-                      const verified = progress.perRange.filter(
-                        (p) => p.ok && p.gapsBefore != null && p.gapsAfter != null,
-                      );
-                      if (verified.length === 0) return null;
-                      const filled = verified.reduce((n, p) => n + (p.gapsFilled ?? 0), 0);
-                      const before = verified.reduce((n, p) => n + (p.gapsBefore ?? 0), 0);
-                      const tone = before === 0
-                        ? "text-muted-foreground"
-                        : filled === 0
-                          ? "text-destructive"
-                          : "text-success dark:text-emerald-400";
-                      return (
-                        <span title="Sum of sync-missing weekdays closed across every completed range — measured by re-querying rota_assignments after each sync.">
-                          Verified fill: <span className={`font-medium ${tone}`}>{filled} / {before} gaps</span>
-                          {progress.running ? " (so far)" : ""}
-                        </span>
-                      );
-                    })()}
+                    {progress &&
+                      progress.perRange.length > 0 &&
+                      (() => {
+                        const verified = progress.perRange.filter(
+                          (p) => p.ok && p.gapsBefore != null && p.gapsAfter != null,
+                        );
+                        if (verified.length === 0) return null;
+                        const filled = verified.reduce((n, p) => n + (p.gapsFilled ?? 0), 0);
+                        const before = verified.reduce((n, p) => n + (p.gapsBefore ?? 0), 0);
+                        const tone =
+                          before === 0
+                            ? "text-muted-foreground"
+                            : filled === 0
+                              ? "text-destructive"
+                              : "text-success dark:text-emerald-400";
+                        return (
+                          <span title="Sum of sync-missing weekdays closed across every completed range — measured by re-querying rota_assignments after each sync.">
+                            Verified fill:{" "}
+                            <span className={`font-medium ${tone}`}>
+                              {filled} / {before} gaps
+                            </span>
+                            {progress.running ? " (so far)" : ""}
+                          </span>
+                        );
+                      })()}
                     <span>
                       Projected coverage of top {effectiveLimit}:{" "}
                       <span className="font-medium text-foreground">
-                        {plannedCoverage.cumulativeDays} / {syncableDays} days
-                        {" "}({Math.round(plannedCoverage.cumulativePct * 100)}%)
+                        {plannedCoverage.cumulativeDays} / {syncableDays} days (
+                        {Math.round(plannedCoverage.cumulativePct * 100)}%)
                       </span>
                     </span>
                   </span>
@@ -708,106 +740,123 @@ function RotaGapsPage() {
                         className={`flex flex-col gap-1 px-3 py-2 ${included ? "" : "opacity-60"}`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="flex items-center gap-2">
-                          <Badge variant="outline" className="px-1 py-0 text-[10px]">
-                            #{i + 1}
-                          </Badge>
-                          <span className="font-mono text-xs">
-                            {formatDateGB(t.startISO)} → {formatDateGB(t.endISO)}
-                          </span>
-                          {!included && (
+                          <span className="flex items-center gap-2">
                             <Badge variant="outline" className="px-1 py-0 text-[10px]">
-                              skipped
+                              #{i + 1}
                             </Badge>
-                          )}
-                        </span>
-                        <span className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground">
-                            +{proj.gainDays} day{proj.gainDays === 1 ? "" : "s"}
-                            {" "}({Math.round(proj.gainPct * 100)}%) · {t.trainees} staff
+                            <span className="font-mono text-xs">
+                              {formatDateGB(t.startISO)} → {formatDateGB(t.endISO)}
+                            </span>
+                            {!included && (
+                              <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                                skipped
+                              </Badge>
+                            )}
                           </span>
-                          <Badge variant="outline" className="px-1 py-0 text-[10px]" title="Cumulative projected coverage if you run through this range">
-                            cum {Math.round(proj.cumulativePct * 100)}%
-                          </Badge>
-                          {done ? (
-                            done.ok ? (
-                              <>
-                                <Badge
-                                  className="bg-emerald-600 hover:bg-emerald-600"
-                                  title={`Total rows touched by this sync call (inserted + updated). ${
-                                    done.inserted != null ? `${done.inserted} new row(s), ${done.updated ?? 0} existing row(s) updated.` : ""
-                                  }`}
-                                >
-                                  {done.upserted ?? 0} upserted
-                                </Badge>
-                                {done.inserted != null && (
+                          <span className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground">
+                              +{proj.gainDays} day{proj.gainDays === 1 ? "" : "s"} (
+                              {Math.round(proj.gainPct * 100)}%) · {t.trainees} staff
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="px-1 py-0 text-[10px]"
+                              title="Cumulative projected coverage if you run through this range"
+                            >
+                              cum {Math.round(proj.cumulativePct * 100)}%
+                            </Badge>
+                            {done ? (
+                              done.ok ? (
+                                <>
                                   <Badge
-                                    variant={done.inserted > 0 ? "default" : "outline"}
-                                    title="Truly new rota_assignment rows created by this sync — these are what actually fill gaps. The remaining 'upserted' rows are existing rows that were merely refreshed."
+                                    className="bg-emerald-600 hover:bg-emerald-600"
+                                    title={`Total rows touched by this sync call (inserted + updated). ${
+                                      done.inserted != null
+                                        ? `${done.inserted} new row(s), ${done.updated ?? 0} existing row(s) updated.`
+                                        : ""
+                                    }`}
                                   >
-                                    {done.inserted} new
+                                    {done.upserted ?? 0} upserted
                                   </Badge>
-                                )}
-                                {done.rowsInWindow != null && (
-                                  <Badge
-                                    variant="outline"
-                                    title={`Raw rows CLWRota returned for this date window. Compare with 'upserted' to see how many rows survived parsing/filtering. ${done.staffCovered ?? 0} distinct staff appeared in the feed.`}
-                                  >
-                                    {done.rowsInWindow} rows · {done.staffCovered ?? 0} staff
-                                  </Badge>
-                                )}
-                                {done.gapsFilled != null && done.gapsBefore != null ? (
-                                  done.gapsFilled > 0 ? (
+                                  {done.inserted != null && (
                                     <Badge
-                                      className="bg-emerald-600/80 hover:bg-emerald-600/80"
-                                      title={`Sync-missing weekdays in this range: ${done.gapsBefore} before → ${done.gapsAfter} after`}
+                                      variant={done.inserted > 0 ? "default" : "outline"}
+                                      title="Truly new rota_assignment rows created by this sync — these are what actually fill gaps. The remaining 'upserted' rows are existing rows that were merely refreshed."
                                     >
-                                      {done.gapsFilled} / {done.gapsBefore} gaps filled
+                                      {done.inserted} new
                                     </Badge>
-                                  ) : done.gapsBefore === 0 ? (
+                                  )}
+                                  {done.rowsInWindow != null && (
                                     <Badge
                                       variant="outline"
-                                      title="No sync-missing weekdays in this range when the sync started"
+                                      title={`Raw rows CLWRota returned for this date window. Compare with 'upserted' to see how many rows survived parsing/filtering. ${done.staffCovered ?? 0} distinct staff appeared in the feed.`}
                                     >
-                                      no gaps to fill
+                                      {done.rowsInWindow} rows · {done.staffCovered ?? 0} staff
                                     </Badge>
-                                  ) : (
-                                    <Badge
-                                      variant="destructive"
-                                      title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing. Expand for per-trainee reasons.`}
-                                    >
-                                      0 / {done.gapsBefore} gaps filled
-                                    </Badge>
-                                  )
-                                ) : null}
-                                {done.unmatchedStaffCount != null && done.unmatchedStaffCount > 0 && (
-                                  <Badge
-                                    variant="outline"
-                                    title="CLWRota rows whose person.local_id / email / name didn't match any active profile. These rows are silently dropped. Fix by linking the missing profile's clwrota_external_id."
-                                  >
-                                    {done.unmatchedStaffCount} unmatched staff
-                                  </Badge>
-                                )}
-                              </>
-                            ) : (
-                              <Badge variant="destructive" title={done.message}>Failed</Badge>
-                            )
-                          ) : active ? (
-                            <Badge variant="secondary">Running…</Badge>
-                          ) : progress?.running && included ? (
-                            <Badge variant="outline">Queued</Badge>
-                          ) : null}
-                        </span>
+                                  )}
+                                  {done.gapsFilled != null && done.gapsBefore != null ? (
+                                    done.gapsFilled > 0 ? (
+                                      <Badge
+                                        className="bg-emerald-600/80 hover:bg-emerald-600/80"
+                                        title={`Sync-missing weekdays in this range: ${done.gapsBefore} before → ${done.gapsAfter} after`}
+                                      >
+                                        {done.gapsFilled} / {done.gapsBefore} gaps filled
+                                      </Badge>
+                                    ) : done.gapsBefore === 0 ? (
+                                      <Badge
+                                        variant="outline"
+                                        title="No sync-missing weekdays in this range when the sync started"
+                                      >
+                                        no gaps to fill
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="destructive"
+                                        title={`Sync ran but ${done.gapsAfter} of ${done.gapsBefore} weekdays in this range are still missing. Expand for per-trainee reasons.`}
+                                      >
+                                        0 / {done.gapsBefore} gaps filled
+                                      </Badge>
+                                    )
+                                  ) : null}
+                                  {done.unmatchedStaffCount != null &&
+                                    done.unmatchedStaffCount > 0 && (
+                                      <Badge
+                                        variant="outline"
+                                        title="CLWRota rows whose person.local_id / email / name didn't match any active profile. These rows are silently dropped. Fix by linking the missing profile's clwrota_external_id."
+                                      >
+                                        {done.unmatchedStaffCount} unmatched staff
+                                      </Badge>
+                                    )}
+                                </>
+                              ) : (
+                                <Badge variant="destructive" title={done.message}>
+                                  Failed
+                                </Badge>
+                              )
+                            ) : active ? (
+                              <Badge variant="secondary">Running…</Badge>
+                            ) : progress?.running && included ? (
+                              <Badge variant="outline">Queued</Badge>
+                            ) : null}
+                          </span>
                         </div>
                         {done?.traineeDiagnostics && done.traineeDiagnostics.length > 0 && (
                           <details className="mt-1 rounded-md border bg-muted/30 px-2 py-1 text-xs">
                             <summary className="cursor-pointer select-none text-muted-foreground">
                               Per-trainee diagnostics ({done.traineeDiagnostics.length})
                               {(() => {
-                                const noCov = done.traineeDiagnostics!.filter((d) => d.status === "no_upstream_coverage").length;
-                                const stale = done.traineeDiagnostics!.filter((d) => d.status === "covered_no_new_dates").length;
-                                const partial = done.traineeDiagnostics!.filter((d) => d.status === "partially_filled").length;
-                                const full = done.traineeDiagnostics!.filter((d) => d.status === "fully_filled").length;
+                                const noCov = done.traineeDiagnostics!.filter(
+                                  (d) => d.status === "no_upstream_coverage",
+                                ).length;
+                                const stale = done.traineeDiagnostics!.filter(
+                                  (d) => d.status === "covered_no_new_dates",
+                                ).length;
+                                const partial = done.traineeDiagnostics!.filter(
+                                  (d) => d.status === "partially_filled",
+                                ).length;
+                                const full = done.traineeDiagnostics!.filter(
+                                  (d) => d.status === "fully_filled",
+                                ).length;
                                 const parts = [
                                   full ? `${full} fully` : null,
                                   partial ? `${partial} partial` : null,
@@ -824,8 +873,18 @@ function RotaGapsPage() {
                                   <th className="py-1 pr-2 font-normal">Before</th>
                                   <th className="py-1 pr-2 font-normal">After</th>
                                   <th className="py-1 pr-2 font-normal">Filled</th>
-                                  <th className="py-1 pr-2 font-normal" title="Distinct upstream session_dates returned for this trainee in the request window">Upstream dates</th>
-                                  <th className="py-1 pr-2 font-normal" title="Of those upstream dates, how many were new rows vs. already-known existing rows">New / Existing</th>
+                                  <th
+                                    className="py-1 pr-2 font-normal"
+                                    title="Distinct upstream session_dates returned for this trainee in the request window"
+                                  >
+                                    Upstream dates
+                                  </th>
+                                  <th
+                                    className="py-1 pr-2 font-normal"
+                                    title="Of those upstream dates, how many were new rows vs. already-known existing rows"
+                                  >
+                                    New / Existing
+                                  </th>
                                   <th className="py-1 pr-2 font-normal">Upstream window</th>
                                   <th className="py-1 pr-2 font-normal">Why</th>
                                 </tr>
@@ -836,32 +895,38 @@ function RotaGapsPage() {
                                     d.status === "fully_filled"
                                       ? "All gaps closed."
                                       : d.status === "partially_filled"
-                                      ? "Upstream covered some but not all gap dates in this range."
-                                      : d.status === "covered_no_new_dates"
-                                      ? "Upstream returned rows for this trainee, but every returned date was already on file — no new dates to add. Likely a duty-type / classification mismatch, or the gap dates fall outside what CLWRota holds for this trainee."
-                                      : d.status === "no_upstream_coverage"
-                                      ? "CLWRota returned NO rows for this trainee in this window — they may have rotated off the service, be on long-term leave, or their CLWRota record stops before this date range."
-                                      : "No sync-missing weekdays in range.";
+                                        ? "Upstream covered some but not all gap dates in this range."
+                                        : d.status === "covered_no_new_dates"
+                                          ? "Upstream returned rows for this trainee, but every returned date was already on file — no new dates to add. Likely a duty-type / classification mismatch, or the gap dates fall outside what CLWRota holds for this trainee."
+                                          : d.status === "no_upstream_coverage"
+                                            ? "CLWRota returned NO rows for this trainee in this window — they may have rotated off the service, be on long-term leave, or their CLWRota record stops before this date range."
+                                            : "No sync-missing weekdays in range.";
                                   const statusTone =
                                     d.status === "fully_filled"
                                       ? "text-success dark:text-emerald-400"
                                       : d.status === "partially_filled"
-                                      ? "text-warning dark:text-amber-400"
-                                      : d.status === "covered_no_new_dates"
-                                      ? "text-warning dark:text-amber-400"
-                                      : d.status === "no_upstream_coverage"
-                                      ? "text-red-700 dark:text-red-400"
-                                      : "text-muted-foreground";
+                                        ? "text-warning dark:text-amber-400"
+                                        : d.status === "covered_no_new_dates"
+                                          ? "text-warning dark:text-amber-400"
+                                          : d.status === "no_upstream_coverage"
+                                            ? "text-red-700 dark:text-red-400"
+                                            : "text-muted-foreground";
                                   return (
                                     <tr key={d.traineeId} className="border-t border-border/40">
                                       <td className="py-1 pr-2 font-medium">{d.name}</td>
                                       <td className="py-1 pr-2 tabular-nums">{d.gapsBefore}</td>
                                       <td className="py-1 pr-2 tabular-nums">{d.gapsAfter}</td>
                                       <td className="py-1 pr-2 tabular-nums">{d.gapsFilled}</td>
-                                      <td className="py-1 pr-2 tabular-nums">{d.upstreamDatesCovered}</td>
-                                      <td className="py-1 pr-2 tabular-nums">{d.upstreamInsertedDates} / {d.upstreamExistingDates}</td>
+                                      <td className="py-1 pr-2 tabular-nums">
+                                        {d.upstreamDatesCovered}
+                                      </td>
+                                      <td className="py-1 pr-2 tabular-nums">
+                                        {d.upstreamInsertedDates} / {d.upstreamExistingDates}
+                                      </td>
                                       <td className="py-1 pr-2 font-mono text-[10px]">
-                                        {d.firstUpstreamDate ? `${d.firstUpstreamDate} → ${d.lastUpstreamDate}` : "—"}
+                                        {d.firstUpstreamDate
+                                          ? `${d.firstUpstreamDate} → ${d.lastUpstreamDate}`
+                                          : "—"}
                                       </td>
                                       <td className={`py-1 pr-2 ${statusTone}`}>{reason}</td>
                                     </tr>
@@ -885,13 +950,10 @@ function RotaGapsPage() {
                       </li>
                     );
                   })}
-
                 </ul>
               </CardContent>
             )}
           </Card>
-
-
 
           {rows.length === 0 ? (
             <Card>
@@ -921,10 +983,14 @@ function RotaGapsPage() {
                           <span>{trainee.full_name || "—"}</span>
                         )}
                         {trainee.grade && trainee.grade !== "trainee" && (
-                          <Badge variant="outline" className="ml-2 capitalize">{trainee.grade}</Badge>
+                          <Badge variant="outline" className="ml-2 capitalize">
+                            {trainee.grade}
+                          </Badge>
                         )}
                         {trainee.training_level && (
-                          <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
+                          <Badge variant="secondary" className="ml-2">
+                            {trainee.training_level}
+                          </Badge>
                         )}
                       </CardTitle>
                       <div className="flex items-center gap-2 text-sm">
@@ -938,7 +1004,8 @@ function RotaGapsPage() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Window {formatDateGB(report.windowStartISO)} → {formatDateGB(report.windowEndISO)}
+                      Window {formatDateGB(report.windowStartISO)} →{" "}
+                      {formatDateGB(report.windowEndISO)}
                     </p>
                   </CardHeader>
                   {report.ranges.length > 0 && (

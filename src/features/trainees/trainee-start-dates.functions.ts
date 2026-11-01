@@ -93,9 +93,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
   );
 
   // First future rota assignment per trainee (for prediction).
-  const candidates = (trainees ?? []).filter(
-    (t) => !hasActivity.has(t.id) && !hasLeave.has(t.id),
-  );
+  const candidates = (trainees ?? []).filter((t) => !hasActivity.has(t.id) && !hasLeave.has(t.id));
   const candidateIds = candidates.map((c) => c.id);
 
   const futureFirstByStaff = new Map<string, string>();

@@ -16,11 +16,7 @@
  * NHH 1st On-call.
  */
 import { describe, it, expect } from "vitest";
-import {
-  buildSearchTokens,
-  cellMatchesSearch,
-  shouldDimCell,
-} from "@/lib/calendar-search";
+import { buildSearchTokens, cellMatchesSearch, shouldDimCell } from "@/lib/calendar-search";
 
 type RowFixture = {
   row: string;
@@ -95,28 +91,22 @@ describe("calendar search — row-type checklist", () => {
     }
   });
 
-  it.each(FIXTURES)(
-    "$row: matches specialty/consultant/staff hits and dims on miss",
-    (f) => {
-      for (const [kind, query] of Object.entries(f.hits) as Array<
-        [string, string]
-      >) {
-        const tokens = buildSearchTokens(query);
-        expect(
-          cellMatchesSearch(tokens, f.parts),
-          `${f.row} should match by ${kind} ("${query}")`,
-        ).toBe(true);
-        expect(shouldDimCell(tokens, true, f.parts)).toBe(false);
-      }
-
-      const missTokens = buildSearchTokens(f.miss);
+  it.each(FIXTURES)("$row: matches specialty/consultant/staff hits and dims on miss", (f) => {
+    for (const [kind, query] of Object.entries(f.hits) as Array<[string, string]>) {
+      const tokens = buildSearchTokens(query);
       expect(
-        cellMatchesSearch(missTokens, f.parts),
-        `${f.row} should NOT match "${f.miss}"`,
-      ).toBe(false);
-      expect(shouldDimCell(missTokens, true, f.parts)).toBe(true);
-    },
-  );
+        cellMatchesSearch(tokens, f.parts),
+        `${f.row} should match by ${kind} ("${query}")`,
+      ).toBe(true);
+      expect(shouldDimCell(tokens, true, f.parts)).toBe(false);
+    }
+
+    const missTokens = buildSearchTokens(f.miss);
+    expect(cellMatchesSearch(missTokens, f.parts), `${f.row} should NOT match "${f.miss}"`).toBe(
+      false,
+    );
+    expect(shouldDimCell(missTokens, true, f.parts)).toBe(true);
+  });
 
   it("multi-token queries require every token to match (AND, not OR)", () => {
     const tokens = buildSearchTokens("ortho patel");
@@ -124,7 +114,10 @@ describe("calendar search — row-type checklist", () => {
     expect(cellMatchesSearch(tokens, theatre.parts)).toBe(true);
     // Drop the consultant — query no longer matches.
     expect(
-      cellMatchesSearch(tokens, theatre.parts.filter((p) => p !== "Mr. Patel")),
+      cellMatchesSearch(
+        tokens,
+        theatre.parts.filter((p) => p !== "Mr. Patel"),
+      ),
     ).toBe(false);
   });
 

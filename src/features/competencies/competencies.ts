@@ -110,8 +110,7 @@ export function evaluateCompetency(args: EvaluateCompetencyArgs): Issue[] {
 
   const relevant = args.requirements.filter(
     (r) =>
-      r.specialty_id === args.specialtyId &&
-      roleMatchesRequirement(args.role, r.applies_to_role),
+      r.specialty_id === args.specialtyId && roleMatchesRequirement(args.role, r.applies_to_role),
   );
   if (relevant.length === 0) return issues;
 

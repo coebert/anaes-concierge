@@ -11,10 +11,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import React from "react";
 
-import {
-  SpaStrip,
-  WeekdayStrip,
-} from "@/components/working-pattern-strips";
+import { SpaStrip, WeekdayStrip } from "@/components/working-pattern-strips";
 
 afterEach(() => cleanup());
 
@@ -84,9 +81,7 @@ describe("WeekdayStrip percentage rendering (on-call)", () => {
 
   it("suppresses the percentage when countsByWeekday is omitted entirely", () => {
     // Private/SAG-style call site: highlighted-only, no counts wired in.
-    render(
-      <WeekdayStrip label="Private / SAG" highlighted={[2, 4]} tone="primary" />,
-    );
+    render(<WeekdayStrip label="Private / SAG" highlighted={[2, 4]} tone="primary" />);
     expect(screen.queryByText(/%/)).toBeNull();
     for (const d of [1, 2, 3, 4, 5]) {
       expect(screen.queryByTestId(`weekday-pct-${d}`)).toBeNull();

@@ -37,11 +37,7 @@ import {
 } from "./list-feasibility";
 import type { Grade } from "./robustness";
 
-export type SampleClassification =
-  | "clinical"
-  | "off_day_label"
-  | "other_duty"
-  | "no_record";
+export type SampleClassification = "clinical" | "off_day_label" | "other_duty" | "no_record";
 
 export interface ValidationSample {
   date: string;
@@ -111,7 +107,6 @@ export interface ValidationOptions {
 
 import { fetchAllRowsPaged, idKey, rotaAssignmentKey } from "./paginate";
 
-
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -180,7 +175,14 @@ export async function validateConsultantPatterns(
           .range(from, to),
       { rowKey: idKey, label: "validation.profiles" },
     ),
-    fetchAllRowsPaged<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string; notes: string | null }>(
+    fetchAllRowsPaged<{
+      staff_id: string;
+      session_date: string;
+      session: string;
+      duty_type: string;
+      role_on_list: string;
+      notes: string | null;
+    }>(
       (from, to) =>
         supabase
           .from("rota_assignments")
@@ -194,7 +196,6 @@ export async function validateConsultantPatterns(
       { rowKey: rotaAssignmentKey, label: "validation.rota_assignments" },
     ),
   ]);
-
 
   const consultantIds = new Set<string>();
   for (const p of profiles ?? []) {
@@ -301,8 +302,7 @@ export async function validateConsultantPatterns(
       const samples: ValidationSample[] = [];
 
       for (const date of sampled) {
-        const rows =
-          asnIndex.get(`${pat.id}|${date}|${modelCell.session}`) ?? [];
+        const rows = asnIndex.get(`${pat.id}|${date}|${modelCell.session}`) ?? [];
         const c = classify(rows);
         if (c.classification === "clinical") clinical += 1;
         else if (c.classification === "off_day_label") offDayLabel += 1;
@@ -318,8 +318,7 @@ export async function validateConsultantPatterns(
       }
 
       const denom = Math.max(1, sampled.length - offDayLabel);
-      const sampledPct =
-        sampled.length === 0 ? 0 : Math.round((clinical / denom) * 100);
+      const sampledPct = sampled.length === 0 ? 0 : Math.round((clinical / denom) * 100);
       // If the model marks this as a regular day off, compare against 0%
       // rather than the (always-zero) modelPct — the validator should
       // independently verify the day-off classification.

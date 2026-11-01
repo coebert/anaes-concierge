@@ -58,9 +58,7 @@ function seedThreeOpenExceptions() {
 }
 
 function withdraw(id: string) {
-  exceptionRows = exceptionRows.map((r) =>
-    r.id === id ? { ...r, withdrawn: true } : r,
-  );
+  exceptionRows = exceptionRows.map((r) => (r.id === id ? { ...r, withdrawn: true } : r));
 }
 
 function activeExceptions(): ExceptionReportLite[] {
@@ -123,9 +121,7 @@ async function waitFor(
     await new Promise((res) => setTimeout(res, 5));
   }
   const final = read();
-  throw new Error(
-    `wellbeing predicate never satisfied; last value: ${JSON.stringify(final)}`,
-  );
+  throw new Error(`wellbeing predicate never satisfied; last value: ${JSON.stringify(final)}`);
 }
 
 function exceptionsDriverValue(r: WellbeingResult): number {

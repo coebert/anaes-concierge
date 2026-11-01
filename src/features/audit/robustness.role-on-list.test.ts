@@ -54,9 +54,7 @@ function makeChain(table: string) {
     in: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     eq: () => chain,
@@ -85,21 +83,36 @@ import { computeRobustness } from "./robustness";
 const DATE = "2026-06-01";
 
 const CONS = (id: string) => ({
-  id, full_name: id, grade: "consultant",
-  training_level: null, ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "consultant",
+  training_level: null,
+  ltft_days_off: [],
+  active: true,
 });
 const SENIOR = (id: string) => ({
-  id, full_name: id, grade: "trainee",
-  training_level: "ST7", ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "trainee",
+  training_level: "ST7",
+  ltft_days_off: [],
+  active: true,
 });
 const JUNIOR = (id: string) => ({
-  id, full_name: id, grade: "trainee",
-  training_level: "CT2", ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "trainee",
+  training_level: "CT2",
+  ltft_days_off: [],
+  active: true,
 });
 
 const ts = (id: string, session: "am" | "pm") => ({
-  id, session_date: DATE, session,
-  theatre_id: `theatre-${id}`, specialty_id: null,
+  id,
+  session_date: DATE,
+  session,
+  theatre_id: `theatre-${id}`,
+  specialty_id: null,
 });
 
 const theatreAsn = (
@@ -194,10 +207,7 @@ describe("Headroom pool exclusion by role_on_list", () => {
   it("supervisor + supervisee on the SAME list: both excluded, list counts as 1 filled", async () => {
     // c-sup supervises st7-train on the same theatre_session.
     // Both come off the pool; the underlying list is filled once.
-    fixture.profiles = [
-      CONS("c-sup"), CONS("c-free"),
-      SENIOR("st7-train"), SENIOR("st7-free"),
-    ];
+    fixture.profiles = [CONS("c-sup"), CONS("c-free"), SENIOR("st7-train"), SENIOR("st7-free")];
     fixture.theatre_sessions = [ts("t-am", "am")];
     fixture.rota_assignments = [
       theatreAsn("c-sup", "am", "t-am", "supervised", null),

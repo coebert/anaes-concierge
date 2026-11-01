@@ -97,9 +97,10 @@ describe("classifyLeaveOverlap — full status matrix snapshot", () => {
       ["something-new", false],
     ];
     for (const [status, expected] of matrix) {
-      expect(
-        { status, counted: classifyLeaveOverlap(status).counted },
-      ).toEqual({ status, counted: expected });
+      expect({ status, counted: classifyLeaveOverlap(status).counted }).toEqual({
+        status,
+        counted: expected,
+      });
     }
   });
 });

@@ -12,7 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -84,7 +89,8 @@ function PaByConsultantPage() {
   const fn = useServerFn(getPaByConsultant);
   const { data, isLoading, error } = useQuery({
     queryKey: ["pa-by-consultant", fromDate, toDate],
-    queryFn: () => fn({ data: { startIso: fromDate, endIso: toDate } }) as Promise<PaByConsultantResult>,
+    queryFn: () =>
+      fn({ data: { startIso: fromDate, endIso: toDate } }) as Promise<PaByConsultantResult>,
   });
 
   const totals = data
@@ -136,7 +142,10 @@ function PaByConsultantPage() {
           <Button variant="outline" onClick={appraisalYear}>
             Appraisal year
           </Button>
-          <Button variant="outline" onClick={() => apply({ from: isoDaysAgo(365), to: todayIso() })}>
+          <Button
+            variant="outline"
+            onClick={() => apply({ from: isoDaysAgo(365), to: todayIso() })}
+          >
             Last 12 months
           </Button>
         </CardContent>

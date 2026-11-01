@@ -19,9 +19,7 @@ export function monthsAgo(now: Date, months: number): Date {
   return d;
 }
 
-export function ltftFraction(
-  daysOff: readonly (string | number)[] | null | undefined,
-): number {
+export function ltftFraction(daysOff: readonly (string | number)[] | null | undefined): number {
   // profiles.ltft_days_off is an array of weekday indices (0..5 items).
   // 10 half-day sessions/week is 1.0 WTE. Each recorded day off = 0.2 WTE.
   const n = daysOff?.length ?? 0;
@@ -58,9 +56,7 @@ const ONCALL_DUTY = new Set([
   "nhh_oncall",
 ]);
 
-export function computeAllocationFairness(
-  rows: AllocRotaRow[],
-): AllocationFairnessRow[] {
+export function computeAllocationFairness(rows: AllocRotaRow[]): AllocationFairnessRow[] {
   const byStaff = new Map<string, AllocRotaRow[]>();
   for (const r of rows) {
     const arr = byStaff.get(r.staff_id);
@@ -75,11 +71,7 @@ export function computeAllocationFairness(
     for (const r of rs) {
       listCounts.set(r.specialty_id, (listCounts.get(r.specialty_id) ?? 0) + 1);
       if (isoWeekendDay(r.session_date)) weekend++;
-      if (
-        r.role_on_list === "on_call" ||
-        (r.duty_type && ONCALL_DUTY.has(r.duty_type))
-      )
-        oncall++;
+      if (r.role_on_list === "on_call" || (r.duty_type && ONCALL_DUTY.has(r.duty_type))) oncall++;
     }
     const byListType = [...listCounts.entries()]
       .map(([specialty_id, count]) => ({ specialty_id, count }))
@@ -128,9 +120,7 @@ export function computeShortNotice(rows: ShortNoticeRow[]): ShortNoticeAgg[] {
   }
   const out: ShortNoticeAgg[] = [];
   for (const [staff_id, rs] of byStaff) {
-    const hours = rs
-      .map((r) => r.hours_before_session!)
-      .sort((a, b) => a - b);
+    const hours = rs.map((r) => r.hours_before_session!).sort((a, b) => a - b);
     const m = hours.length
       ? hours.length % 2
         ? hours[(hours.length - 1) / 2]
@@ -139,10 +129,8 @@ export function computeShortNotice(rows: ShortNoticeRow[]): ShortNoticeAgg[] {
     out.push({
       staff_id,
       totalShortNotice: rs.length,
-      added: rs.filter((r) => r.action === "insert" || r.action === "create")
-        .length,
-      removed: rs.filter((r) => r.action === "delete" || r.action === "remove")
-        .length,
+      added: rs.filter((r) => r.action === "insert" || r.action === "create").length,
+      removed: rs.filter((r) => r.action === "delete" || r.action === "remove").length,
       medianHoursBefore: m,
     });
   }
@@ -243,17 +231,13 @@ export function computeTraineeExposure(input: {
 }): TraineeExposureRow[] {
   const targetsByLevel = new Map<string, Map<string, number>>();
   for (const t of input.targets) {
-    if (!targetsByLevel.has(t.training_level))
-      targetsByLevel.set(t.training_level, new Map());
-    targetsByLevel
-      .get(t.training_level)!
-      .set(t.specialty_id, t.required_sessions);
+    if (!targetsByLevel.has(t.training_level)) targetsByLevel.set(t.training_level, new Map());
+    targetsByLevel.get(t.training_level)!.set(t.specialty_id, t.required_sessions);
   }
   const deliveredByStaff = new Map<string, Map<string, number>>();
   for (const a of input.assignments) {
     if (!a.specialty_id) continue;
-    if (!deliveredByStaff.has(a.staff_id))
-      deliveredByStaff.set(a.staff_id, new Map());
+    if (!deliveredByStaff.has(a.staff_id)) deliveredByStaff.set(a.staff_id, new Map());
     const m = deliveredByStaff.get(a.staff_id)!;
     m.set(a.specialty_id, (m.get(a.specialty_id) ?? 0) + 1);
   }
@@ -261,7 +245,7 @@ export function computeTraineeExposure(input: {
   for (const t of input.trainees) {
     const delivered = deliveredByStaff.get(t.id) ?? new Map();
     const targets = t.training_level
-      ? targetsByLevel.get(t.training_level) ?? new Map()
+      ? (targetsByLevel.get(t.training_level) ?? new Map())
       : new Map();
     const specialties = new Set([...delivered.keys(), ...targets.keys()]);
     const bySpecialty: TraineeExposureRow["bySpecialty"] = [];
@@ -316,10 +300,13 @@ export interface OnCallInequalityRow {
 export function computeOnCallInequality(input: {
   consultants: Array<{ id: string; ltft_days_off: readonly (string | number)[] | null }>;
   onCallRows: Array<{ staff_id: string }>;
-}): { rows: OnCallInequalityRow[]; giniOverall: number; byBand: Record<string, { median: number; count: number }> } {
+}): {
+  rows: OnCallInequalityRow[];
+  giniOverall: number;
+  byBand: Record<string, { median: number; count: number }>;
+} {
   const counts = new Map<string, number>();
-  for (const r of input.onCallRows)
-    counts.set(r.staff_id, (counts.get(r.staff_id) ?? 0) + 1);
+  for (const r of input.onCallRows) counts.set(r.staff_id, (counts.get(r.staff_id) ?? 0) + 1);
 
   const bandOf = (f: number): OnCallInequalityRow["band"] => {
     if (f >= 0.95) return "full-time";
@@ -441,12 +428,14 @@ export interface HandoverRiskRow {
   sessions: Array<{ date: string; from: string; to: string }>;
 }
 
-export function computeHandoverRisk(rows: {
-  staff_id: string;
-  session_date: string;
-  session: string; // am/pm/eve/night
-  specialty_name: string | null;
-}[]): HandoverRiskRow[] {
+export function computeHandoverRisk(
+  rows: {
+    staff_id: string;
+    session_date: string;
+    session: string; // am/pm/eve/night
+    specialty_name: string | null;
+  }[],
+): HandoverRiskRow[] {
   const order: Record<string, number> = { am: 0, pm: 1, eve: 2, night: 3 };
   const byStaff = new Map<string, typeof rows>();
   for (const r of rows) {
@@ -478,8 +467,7 @@ export function computeHandoverRisk(rows: {
         });
       }
     }
-    if (evs.length)
-      out.push({ staff_id, events: evs.length, sessions: evs });
+    if (evs.length) out.push({ staff_id, events: evs.length, sessions: evs });
   }
   return out.sort((a, b) => b.events - a.events);
 }
@@ -532,8 +520,7 @@ export function computeNewStarterWarnings(input: {
           new Date(r.changed_at).getTime() <= cap &&
           (r.hours_before_session ?? Infinity) <= 48,
       ).length;
-      const score =
-        sickness * 3 + exceptions * 4 + Math.min(shortNotice, 10) * 1;
+      const score = sickness * 3 + exceptions * 4 + Math.min(shortNotice, 10) * 1;
       return {
         staff_id: s.id,
         start_date: s.start_date,

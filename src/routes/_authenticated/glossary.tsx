@@ -11,7 +11,8 @@ export const Route = createFileRoute("/_authenticated/glossary")({
       { title: "Glossary — Salisbury Anaesthetics Rota" },
       {
         name: "description",
-        content: "Glossary of rota and anaesthetic terms used in the Salisbury DGH anaesthetics department.",
+        content:
+          "Glossary of rota and anaesthetic terms used in the Salisbury DGH anaesthetics department.",
       },
     ],
   }),
@@ -39,7 +40,7 @@ function GlossaryPage() {
       map.set(entry.category, arr);
       return map;
     },
-    new Map()
+    new Map(),
   );
 
   return (
@@ -49,7 +50,8 @@ function GlossaryPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Glossary</h1>
           <p className="text-sm text-muted-foreground">
-            Terms and abbreviations used throughout the rota and anaesthetic services at Salisbury DGH.
+            Terms and abbreviations used throughout the rota and anaesthetic services at Salisbury
+            DGH.
           </p>
         </div>
       </div>

@@ -16,9 +16,7 @@ describe("pickGapSliceStart", () => {
   });
 
   it("skips windows that already match CLWRota", () => {
-    const runs = new Map([
-      ["2026-01-01", { diverged: false, ranAt: base.now }],
-    ]);
+    const runs = new Map([["2026-01-01", { diverged: false, ranAt: base.now }]]);
     expect(pickGapSliceStart({ ...base, runs })).toBe("2026-01-08");
   });
 

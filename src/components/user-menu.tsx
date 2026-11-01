@@ -28,14 +28,14 @@ export function UserMenu() {
   const roleLabel = isAdmin
     ? "Admin"
     : roles.includes("rota_coordinator")
-    ? "Coordinator"
-    : grade === "trainee"
-    ? "Trainee"
-    : grade === "consultant"
-    ? "Consultant"
-    : grade === "sas"
-    ? "SAS"
-    : "Staff";
+      ? "Coordinator"
+      : grade === "trainee"
+        ? "Trainee"
+        : grade === "consultant"
+          ? "Consultant"
+          : grade === "sas"
+            ? "SAS"
+            : "Staff";
 
   const initials = initialsFrom(fullName, user?.email);
   const displayName = fullName || user?.email || "Signed in";
@@ -68,9 +68,7 @@ export function UserMenu() {
         <DropdownMenuLabel className="space-y-0.5">
           <div className="truncate text-sm font-medium text-foreground">{displayName}</div>
           {user?.email && fullName ? (
-            <div className="truncate text-xs font-normal text-muted-foreground">
-              {user.email}
-            </div>
+            <div className="truncate text-xs font-normal text-muted-foreground">{user.email}</div>
           ) : null}
           <div className="pt-1 text-[11px] font-normal uppercase tracking-wide text-muted-foreground">
             {roleLabel}

@@ -49,7 +49,9 @@ function theatre(date: string, half: "am" | "pm"): AssignmentLite {
   };
 }
 
-function leave(over: Partial<LeaveRowLite> & Pick<LeaveRowLite, "start_date" | "end_date">): LeaveRowLite {
+function leave(
+  over: Partial<LeaveRowLite> & Pick<LeaveRowLite, "start_date" | "end_date">,
+): LeaveRowLite {
   return {
     type: "annual",
     status: "approved",
@@ -98,12 +100,7 @@ describe("half-day leave spanning a week boundary — overlay", () => {
         half_day_end: "am",
       }),
     ];
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      rows,
-      "2026-01-01",
-      "2026-01-10",
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, rows, "2026-01-01", "2026-01-10");
     const keys = overlay.map((a) => `${a.session_date}|${a.session}`).sort();
     expect(keys).toEqual(["2026-01-09|pm", "2026-01-10|am", "2026-01-10|pm"]);
   });
@@ -121,12 +118,7 @@ describe("half-day leave spanning a week boundary — overlay", () => {
         half_day_end: "am",
       }),
     ];
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      rows,
-      "2026-01-11",
-      "2026-01-31",
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, rows, "2026-01-11", "2026-01-31");
     const keys = overlay.map((a) => `${a.session_date}|${a.session}`).sort();
     expect(keys).toEqual([
       "2026-01-11|am", // Sun (fully in-window)
@@ -156,9 +148,7 @@ describe("half-day leave spanning a week boundary — overlay", () => {
       ],
       overlay,
     );
-    const map = new Map(
-      merged.map((a) => [`${a.session_date}|${a.session}`, a.duty_type]),
-    );
+    const map = new Map(merged.map((a) => [`${a.session_date}|${a.session}`, a.duty_type]));
     expect(map.get("2026-01-09|am")).toBe("theatre");
     expect(map.get("2026-01-09|pm")).toBe("leave");
     expect(map.get("2026-01-12|am")).toBe("leave");

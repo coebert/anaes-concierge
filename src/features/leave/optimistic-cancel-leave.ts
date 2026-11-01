@@ -97,9 +97,7 @@ export interface OptimisticUpdateLeaveStatusOptions {
   now?: () => Date;
 }
 
-export type OptimisticUpdateLeaveStatusResult =
-  | { ok: true }
-  | { ok: false; error: Error };
+export type OptimisticUpdateLeaveStatusResult = { ok: true } | { ok: false; error: Error };
 
 export async function optimisticUpdateLeaveStatus(
   opts: OptimisticUpdateLeaveStatusOptions,
@@ -141,7 +139,8 @@ export async function optimisticUpdateLeaveStatus(
   // Snapshot each matching query by its EXACT key so rollback restores
   // the right cache entry even when the key includes extra segments
   // (e.g. `["my-wellbeing", staffId]`).
-  const cacheSnapshots: Array<{ key: readonly unknown[]; prev: CachedWellbeingData | undefined }> = [];
+  const cacheSnapshots: Array<{ key: readonly unknown[]; prev: CachedWellbeingData | undefined }> =
+    [];
   const cache = qc.getQueryCache();
   for (const keyPrefix of [["my-wellbeing"], ["admin-wellbeing"]]) {
     const matches = cache.findAll({ queryKey: keyPrefix });
@@ -151,31 +150,22 @@ export async function optimisticUpdateLeaveStatus(
         prev: q.state.data as CachedWellbeingData | undefined,
       });
     }
-    qc.setQueriesData<CachedWellbeingData>(
-      { queryKey: keyPrefix },
-      (old) => {
-        if (!old || !Array.isArray(old.leave)) return old;
-        return {
-          ...old,
-          leave: old.leave.map((l) =>
-            l.id === id ? { ...l, ...rowPatch } : l,
-          ),
-        };
-      },
-    );
+    qc.setQueriesData<CachedWellbeingData>({ queryKey: keyPrefix }, (old) => {
+      if (!old || !Array.isArray(old.leave)) return old;
+      return {
+        ...old,
+        leave: old.leave.map((l) => (l.id === id ? { ...l, ...rowPatch } : l)),
+      };
+    });
   }
 
   // -- 3. Server round-trip --------------------------------------------
-  const { error } = await supabase
-    .from("leave_requests")
-    .update(rowPatch)
-    .eq("id", id);
+  const { error } = await supabase.from("leave_requests").update(rowPatch).eq("id", id);
 
   if (error) {
     // -- 5. Roll back everything ---------------------------------------
     if (rowsSnapshot !== null && patchRows) patchRows(() => rowsSnapshot as LeaveRow[]);
-    if (myLeaveSnapshot !== null && patchMyLeave)
-      patchMyLeave(() => myLeaveSnapshot as LeaveRow[]);
+    if (myLeaveSnapshot !== null && patchMyLeave) patchMyLeave(() => myLeaveSnapshot as LeaveRow[]);
     // Restore the exact prior cache values — including `undefined` if the
     // key wasn't in the cache before we patched it.
     for (const snap of cacheSnapshots) {

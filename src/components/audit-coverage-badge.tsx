@@ -44,9 +44,7 @@ export function AuditCoverageBadge({ coverage }: { coverage: AuditCoverage | nul
           )}
           Data coverage
           {allComplete ? (
-            <Badge className="bg-success-muted text-success hover:bg-success-muted">
-              COMPLETE
-            </Badge>
+            <Badge className="bg-success-muted text-success hover:bg-success-muted">COMPLETE</Badge>
           ) : (
             <Badge className="bg-warning-muted text-warning hover:bg-warning-muted">
               POSSIBLE TRUNCATION

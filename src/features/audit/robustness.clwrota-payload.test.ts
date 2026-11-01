@@ -58,9 +58,7 @@ function makeChain(table: string) {
     in: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     eq: () => chain,
@@ -137,19 +135,123 @@ interface ClwRotaRow {
 
 /** Production-equivalent default mappings (mirrors the seed data). */
 const PROD_MAPPINGS: DutyTypeMappingRow[] = [
-  { duty_type: "icu_consultant_oncall", pattern: "icu consultant", match_type: "substring", grade_filter: "consultant", trainee_seniority_filter: null, priority: 10, active: true },
-  { duty_type: "general_consultant_oncall", pattern: "on call", match_type: "substring", grade_filter: "consultant", trainee_seniority_filter: null, priority: 20, active: true },
-  { duty_type: "registrar_oncall", pattern: "on call", match_type: "substring", grade_filter: "trainee", trainee_seniority_filter: "senior", priority: 30, active: true },
-  { duty_type: "sho_oncall", pattern: "on call", match_type: "substring", grade_filter: "trainee", trainee_seniority_filter: "junior", priority: 40, active: true },
-  { duty_type: "icu_trainee", pattern: "icu", match_type: "substring", grade_filter: "trainee", trainee_seniority_filter: "junior", priority: 50, active: true },
-  { duty_type: "icu_ct2_plus", pattern: "icu", match_type: "substring", grade_filter: "trainee", trainee_seniority_filter: "senior", priority: 55, active: true },
-  { duty_type: "obstetrics_2nd", pattern: "obs 2nd", match_type: "substring", grade_filter: null, trainee_seniority_filter: null, priority: 60, active: true },
-  { duty_type: "obstetrics", pattern: "obstetric", match_type: "substring", grade_filter: null, trainee_seniority_filter: null, priority: 70, active: true },
-  { duty_type: "consultant_in_charge", pattern: "in charge", match_type: "substring", grade_filter: "consultant", trainee_seniority_filter: null, priority: 80, active: true },
-  { duty_type: "teaching", pattern: "teaching", match_type: "substring", grade_filter: null, trainee_seniority_filter: null, priority: 90, active: true },
-  { duty_type: "spa", pattern: "spa", match_type: "word", grade_filter: null, trainee_seniority_filter: null, priority: 100, active: true },
-  { duty_type: "non_clinical", pattern: "non-clinical", match_type: "substring", grade_filter: null, trainee_seniority_filter: null, priority: 110, active: true },
-  { duty_type: "admin", pattern: "admin", match_type: "substring", grade_filter: null, trainee_seniority_filter: null, priority: 120, active: true },
+  {
+    duty_type: "icu_consultant_oncall",
+    pattern: "icu consultant",
+    match_type: "substring",
+    grade_filter: "consultant",
+    trainee_seniority_filter: null,
+    priority: 10,
+    active: true,
+  },
+  {
+    duty_type: "general_consultant_oncall",
+    pattern: "on call",
+    match_type: "substring",
+    grade_filter: "consultant",
+    trainee_seniority_filter: null,
+    priority: 20,
+    active: true,
+  },
+  {
+    duty_type: "registrar_oncall",
+    pattern: "on call",
+    match_type: "substring",
+    grade_filter: "trainee",
+    trainee_seniority_filter: "senior",
+    priority: 30,
+    active: true,
+  },
+  {
+    duty_type: "sho_oncall",
+    pattern: "on call",
+    match_type: "substring",
+    grade_filter: "trainee",
+    trainee_seniority_filter: "junior",
+    priority: 40,
+    active: true,
+  },
+  {
+    duty_type: "icu_trainee",
+    pattern: "icu",
+    match_type: "substring",
+    grade_filter: "trainee",
+    trainee_seniority_filter: "junior",
+    priority: 50,
+    active: true,
+  },
+  {
+    duty_type: "icu_ct2_plus",
+    pattern: "icu",
+    match_type: "substring",
+    grade_filter: "trainee",
+    trainee_seniority_filter: "senior",
+    priority: 55,
+    active: true,
+  },
+  {
+    duty_type: "obstetrics_2nd",
+    pattern: "obs 2nd",
+    match_type: "substring",
+    grade_filter: null,
+    trainee_seniority_filter: null,
+    priority: 60,
+    active: true,
+  },
+  {
+    duty_type: "obstetrics",
+    pattern: "obstetric",
+    match_type: "substring",
+    grade_filter: null,
+    trainee_seniority_filter: null,
+    priority: 70,
+    active: true,
+  },
+  {
+    duty_type: "consultant_in_charge",
+    pattern: "in charge",
+    match_type: "substring",
+    grade_filter: "consultant",
+    trainee_seniority_filter: null,
+    priority: 80,
+    active: true,
+  },
+  {
+    duty_type: "teaching",
+    pattern: "teaching",
+    match_type: "substring",
+    grade_filter: null,
+    trainee_seniority_filter: null,
+    priority: 90,
+    active: true,
+  },
+  {
+    duty_type: "spa",
+    pattern: "spa",
+    match_type: "word",
+    grade_filter: null,
+    trainee_seniority_filter: null,
+    priority: 100,
+    active: true,
+  },
+  {
+    duty_type: "non_clinical",
+    pattern: "non-clinical",
+    match_type: "substring",
+    grade_filter: null,
+    trainee_seniority_filter: null,
+    priority: 110,
+    active: true,
+  },
+  {
+    duty_type: "admin",
+    pattern: "admin",
+    match_type: "substring",
+    grade_filter: null,
+    trainee_seniority_filter: null,
+    priority: 120,
+    active: true,
+  },
 ];
 
 /**
@@ -172,8 +274,11 @@ function ingestClwRota(rows: ClwRotaRow[]) {
     }
 
     const labels = [
-      row.shift?.rota_label, row.shift?.name,
-      row.rota?.name, row.rota?.activity, row.rota?.location,
+      row.shift?.rota_label,
+      row.shift?.name,
+      row.rota?.name,
+      row.rota?.activity,
+      row.rota?.location,
     ];
     const duty: ResolvedDutyType = classifyDutyType(
       labels,
@@ -191,7 +296,10 @@ function ingestClwRota(rows: ClwRotaRow[]) {
       if (!sessionsByKey.has(key)) {
         sessionsByKey.set(key, {
           id: `ts-${sessionsByKey.size + 1}`,
-          session_date, session, theatre_id, specialty_id: null,
+          session_date,
+          session,
+          theatre_id,
+          specialty_id: null,
         });
       }
       theatre_session_id = sessionsByKey.get(key)!.id as string;
@@ -199,12 +307,12 @@ function ingestClwRota(rows: ClwRotaRow[]) {
 
     assignments.push({
       staff_id: row.person.local_id,
-      session_date, session,
+      session_date,
+      session,
       duty_type: duty,
       theatre_session_id,
-      role_on_list: role === "supervising" ? "supervised"
-        : role === "supervised" ? "supervisee"
-        : "solo",
+      role_on_list:
+        role === "supervising" ? "supervised" : role === "supervised" ? "supervisee" : "solo",
     });
   }
 
@@ -215,9 +323,30 @@ function ingestClwRota(rows: ClwRotaRow[]) {
 const DATE = "2026-06-01";
 
 const profiles = {
-  cons: (id: string) => ({ id, full_name: id, grade: "consultant", training_level: null, ltft_days_off: [], active: true }),
-  senior: (id: string) => ({ id, full_name: id, grade: "trainee", training_level: "ST7", ltft_days_off: [], active: true }),
-  junior: (id: string) => ({ id, full_name: id, grade: "trainee", training_level: "CT2", ltft_days_off: [], active: true }),
+  cons: (id: string) => ({
+    id,
+    full_name: id,
+    grade: "consultant",
+    training_level: null,
+    ltft_days_off: [],
+    active: true,
+  }),
+  senior: (id: string) => ({
+    id,
+    full_name: id,
+    grade: "trainee",
+    training_level: "ST7",
+    ltft_days_off: [],
+    active: true,
+  }),
+  junior: (id: string) => ({
+    id,
+    full_name: id,
+    grade: "trainee",
+    training_level: "CT2",
+    ltft_days_off: [],
+    active: true,
+  }),
 };
 
 beforeEach(() => {
@@ -278,29 +407,22 @@ describe("CLWRota payload field mapping helpers", () => {
   });
 
   it("classifyDutyType uses the configured mappings (priority order)", () => {
-    expect(classifyDutyType(["ICU Consultant On Call"], "consultant", null, PROD_MAPPINGS))
-      .toBe("icu_consultant_oncall");
-    expect(classifyDutyType(["General On Call"], "consultant", null, PROD_MAPPINGS))
-      .toBe("general_consultant_oncall");
-    expect(classifyDutyType(["On Call"], "trainee", "ST7", PROD_MAPPINGS))
-      .toBe("registrar_oncall");
-    expect(classifyDutyType(["On Call"], "trainee", "CT2", PROD_MAPPINGS))
-      .toBe("sho_oncall");
-    expect(classifyDutyType(["Obstetrics"], "consultant", null, PROD_MAPPINGS))
-      .toBe("obstetrics");
-    expect(classifyDutyType(["Obs 2nd"], "consultant", null, PROD_MAPPINGS))
-      .toBe("obstetrics_2nd");
-    expect(classifyDutyType(["SPA"], "consultant", null, PROD_MAPPINGS))
-      .toBe("spa");
-    expect(classifyDutyType(["Teaching"], "consultant", null, PROD_MAPPINGS))
-      .toBe("teaching");
+    expect(classifyDutyType(["ICU Consultant On Call"], "consultant", null, PROD_MAPPINGS)).toBe(
+      "icu_consultant_oncall",
+    );
+    expect(classifyDutyType(["General On Call"], "consultant", null, PROD_MAPPINGS)).toBe(
+      "general_consultant_oncall",
+    );
+    expect(classifyDutyType(["On Call"], "trainee", "ST7", PROD_MAPPINGS)).toBe("registrar_oncall");
+    expect(classifyDutyType(["On Call"], "trainee", "CT2", PROD_MAPPINGS)).toBe("sho_oncall");
+    expect(classifyDutyType(["Obstetrics"], "consultant", null, PROD_MAPPINGS)).toBe("obstetrics");
+    expect(classifyDutyType(["Obs 2nd"], "consultant", null, PROD_MAPPINGS)).toBe("obstetrics_2nd");
+    expect(classifyDutyType(["SPA"], "consultant", null, PROD_MAPPINGS)).toBe("spa");
+    expect(classifyDutyType(["Teaching"], "consultant", null, PROD_MAPPINGS)).toBe("teaching");
     // Default fall-through.
-    expect(classifyDutyType(["Theatre 3"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
-    expect(classifyDutyType(["POAC clinic"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
-    expect(classifyDutyType(["Pain clinic"], "consultant", null, PROD_MAPPINGS))
-      .toBe("theatre");
+    expect(classifyDutyType(["Theatre 3"], "consultant", null, PROD_MAPPINGS)).toBe("theatre");
+    expect(classifyDutyType(["POAC clinic"], "consultant", null, PROD_MAPPINGS)).toBe("theatre");
+    expect(classifyDutyType(["Pain clinic"], "consultant", null, PROD_MAPPINGS)).toBe("theatre");
   });
 
   it("detects CLWRota off/day-off placeholders as non-working labels", () => {
@@ -318,9 +440,11 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2")];
     ingestClwRota([
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "c1", grade: "consultant" },
-        rota: { name: "Theatre 3", location: "T3" }, role: "Solo",
+        rota: { name: "Theatre 3", location: "T3" },
+        role: "Solo",
       },
     ]);
 
@@ -338,7 +462,8 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
         date: "2026-06-01T13:30:00+01:00",
         session: "2026-06-01T13:30:00+01:00",
         person: { local_id: "c1", grade: "consultant" },
-        rota: { name: "Theatre 5", location: "T5" }, role: "Solo",
+        rota: { name: "Theatre 5", location: "T5" },
+        role: "Solo",
       },
     ]);
 
@@ -350,28 +475,32 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2")];
     ingestClwRota([
       {
-        date: "01/06/2026", session: "AM",
+        date: "01/06/2026",
+        session: "AM",
         person: { local_id: "c1", grade: "consultant" },
-        rota: { name: "Theatre 1", location: "T1" }, role: "Solo",
+        rota: { name: "Theatre 1", location: "T1" },
+        role: "Solo",
       },
     ]);
     expect((await half("am")).consultantsAvailable).toBe(1);
   });
 
   it("POAC and pain-clinic CLWRota rows behave as theatre (no headroom for those staff)", async () => {
-    fixture.profiles = [
-      profiles.cons("c-poac"), profiles.cons("c-pain"), profiles.cons("c-free"),
-    ];
+    fixture.profiles = [profiles.cons("c-poac"), profiles.cons("c-pain"), profiles.cons("c-free")];
     ingestClwRota([
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "c-poac", grade: "consultant" },
-        rota: { name: "POAC clinic", location: "POAC" }, role: "Solo",
+        rota: { name: "POAC clinic", location: "POAC" },
+        role: "Solo",
       },
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "c-pain", grade: "consultant" },
-        rota: { name: "Pain clinic", location: "Pain-1" }, role: "Solo",
+        rota: { name: "Pain clinic", location: "Pain-1" },
+        role: "Solo",
       },
     ]);
     const am = await half("am");
@@ -382,19 +511,25 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
 
   it("Rotamap 'Trainer' + 'Supervised' rows on the same list: both excluded, list filled once", async () => {
     fixture.profiles = [
-      profiles.cons("c-sup"), profiles.cons("c-free"),
-      profiles.senior("st7-train"), profiles.senior("st7-free"),
+      profiles.cons("c-sup"),
+      profiles.cons("c-free"),
+      profiles.senior("st7-train"),
+      profiles.senior("st7-free"),
     ];
     ingestClwRota([
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "c-sup", grade: "consultant" },
-        rota: { name: "Theatre 2", location: "T2" }, role: "Trainer",
+        rota: { name: "Theatre 2", location: "T2" },
+        role: "Trainer",
       },
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "st7-train", grade: "trainee", training_level: "ST7" },
-        rota: { name: "Theatre 2", location: "T2" }, role: "Supervised",
+        rota: { name: "Theatre 2", location: "T2" },
+        role: "Supervised",
       },
     ]);
     const am = await half("am");
@@ -410,9 +545,11 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2")];
     ingestClwRota([
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "c1", grade: "consultant" },
-        rota: { name: "SPA", location: "Office" }, role: "Solo",
+        rota: { name: "SPA", location: "Office" },
+        role: "Solo",
       },
     ]);
     const am = await half("am");
@@ -424,7 +561,8 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
     fixture.profiles = [profiles.cons("c1"), profiles.cons("c2")];
     ingestClwRota([
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "c1", grade: "consultant" },
         rota: { name: "ICU Consultant On Call", location: "ICU" },
         role: "On Call",
@@ -440,9 +578,11 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
     fixture.profiles = [profiles.senior("st7-a"), profiles.senior("st7-b")];
     ingestClwRota([
       {
-        date: DATE, session: "AM",
+        date: DATE,
+        session: "AM",
         person: { local_id: "st7-a", grade: "trainee", training_level: "ST7" },
-        rota: { name: "On Call" }, role: "On Call",
+        rota: { name: "On Call" },
+        role: "On Call",
       },
     ]);
     expect((await half("am")).seniorTraineesAvailable).toBe(1);
@@ -451,25 +591,59 @@ describe("CLWRota payload → robustness no-headroom-for-theatre invariant", () 
 
   it("Mixed realistic payload: theatre + SPA + on-call composes to correct headroom", async () => {
     fixture.profiles = [
-      profiles.cons("c1"), profiles.cons("c2"), profiles.cons("c3"),
-      profiles.cons("c4"), profiles.senior("st7"), profiles.junior("ct2"),
+      profiles.cons("c1"),
+      profiles.cons("c2"),
+      profiles.cons("c3"),
+      profiles.cons("c4"),
+      profiles.senior("st7"),
+      profiles.junior("ct2"),
     ];
     ingestClwRota([
       // 3 AM theatre lists in different rooms.
-      { date: DATE, session: "AM", person: { local_id: "c1", grade: "consultant" },
-        rota: { name: "Theatre 1", location: "T1" }, role: "Solo" },
-      { date: DATE, session: "AM", person: { local_id: "c2", grade: "consultant" },
-        rota: { name: "Theatre 2", location: "T2" }, role: "Trainer" },
-      { date: DATE, session: "AM", person: { local_id: "ct2", grade: "trainee", training_level: "CT2" },
-        rota: { name: "Theatre 2", location: "T2" }, role: "Supervised" },
-      { date: DATE, session: "AM", person: { local_id: "st7", grade: "trainee", training_level: "ST7" },
-        rota: { name: "POAC clinic", location: "POAC" }, role: "Solo" },
+      {
+        date: DATE,
+        session: "AM",
+        person: { local_id: "c1", grade: "consultant" },
+        rota: { name: "Theatre 1", location: "T1" },
+        role: "Solo",
+      },
+      {
+        date: DATE,
+        session: "AM",
+        person: { local_id: "c2", grade: "consultant" },
+        rota: { name: "Theatre 2", location: "T2" },
+        role: "Trainer",
+      },
+      {
+        date: DATE,
+        session: "AM",
+        person: { local_id: "ct2", grade: "trainee", training_level: "CT2" },
+        rota: { name: "Theatre 2", location: "T2" },
+        role: "Supervised",
+      },
+      {
+        date: DATE,
+        session: "AM",
+        person: { local_id: "st7", grade: "trainee", training_level: "ST7" },
+        rota: { name: "POAC clinic", location: "POAC" },
+        role: "Solo",
+      },
       // c3 on SPA AM.
-      { date: DATE, session: "AM", person: { local_id: "c3", grade: "consultant" },
-        rota: { name: "SPA" }, role: "Solo" },
+      {
+        date: DATE,
+        session: "AM",
+        person: { local_id: "c3", grade: "consultant" },
+        rota: { name: "SPA" },
+        role: "Solo",
+      },
       // c4 ICU consultant on-call (whole day).
-      { date: DATE, session: "AM", person: { local_id: "c4", grade: "consultant" },
-        rota: { name: "ICU Consultant On Call" }, role: "On Call" },
+      {
+        date: DATE,
+        session: "AM",
+        person: { local_id: "c4", grade: "consultant" },
+        rota: { name: "ICU Consultant On Call" },
+        role: "On Call",
+      },
     ]);
 
     const am = await half("am");

@@ -47,10 +47,13 @@ export const Route = createFileRoute("/_authenticated/admin/inbox")({
 
 type KindFilter = InboxItemKind | "all";
 
-const KIND_META: Record<InboxItemKind, {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}> = {
+const KIND_META: Record<
+  InboxItemKind,
+  {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
   leave: { label: "Leave", icon: CalendarClock },
   exception: { label: "Exception", icon: ShieldAlert },
   rtw: { label: "RTW", icon: HeartPulse },
@@ -131,10 +134,7 @@ function CoordinatorInboxPage() {
 
   const restoreMutation = useMutation({
     mutationFn: async (itemId: string) => {
-      const { error } = await supabase
-        .from("inbox_dismissals")
-        .delete()
-        .eq("item_id", itemId);
+      const { error } = await supabase.from("inbox_dismissals").delete().eq("item_id", itemId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -146,7 +146,6 @@ function CoordinatorInboxPage() {
     },
   });
 
-
   const { data, isLoading } = useQuery({
     queryKey: ["coordinator-inbox"],
     queryFn: async () => {
@@ -155,38 +154,34 @@ function CoordinatorInboxPage() {
       sixtyDays.setUTCDate(sixtyDays.getUTCDate() + 60);
       const sixtyIso = sixtyDays.toISOString().slice(0, 10);
 
-      const [leaveRes, excRes, sickRes, rtwRes, compRes, profRes, compDefRes] =
-        await Promise.all([
-          supabase
-            .from("leave_requests")
-            .select("id,staff_id,type,status,start_date,end_date,created_at")
-            .eq("status", "pending")
-            .range(0, 999),
-          supabase
-            .from("exception_reports")
-            .select("id,trainee_id,status,due_by,immediate_safety_concern,description,category")
-            .range(0, 999),
-          supabase
-            .from("leave_requests")
-            .select("id,staff_id,start_date,end_date")
-            .eq("type", "sick")
-            .eq("status", "approved")
-            .lte("end_date", todayIso)
-            .range(0, 999),
-          supabase
-            .from("return_to_work_interviews")
-            .select("leave_request_id")
-            .range(0, 9999),
-          supabase
-            .from("staff_competencies")
-            .select("id,staff_id,competency_id,expires_at,revoked_at")
-            .not("expires_at", "is", null)
-            .is("revoked_at", null)
-            .lte("expires_at", sixtyIso)
-            .range(0, 999),
-          supabase.from("profiles").select("id,full_name,email"),
-          supabase.from("competencies").select("id,name"),
-        ]);
+      const [leaveRes, excRes, sickRes, rtwRes, compRes, profRes, compDefRes] = await Promise.all([
+        supabase
+          .from("leave_requests")
+          .select("id,staff_id,type,status,start_date,end_date,created_at")
+          .eq("status", "pending")
+          .range(0, 999),
+        supabase
+          .from("exception_reports")
+          .select("id,trainee_id,status,due_by,immediate_safety_concern,description,category")
+          .range(0, 999),
+        supabase
+          .from("leave_requests")
+          .select("id,staff_id,start_date,end_date")
+          .eq("type", "sick")
+          .eq("status", "approved")
+          .lte("end_date", todayIso)
+          .range(0, 999),
+        supabase.from("return_to_work_interviews").select("leave_request_id").range(0, 9999),
+        supabase
+          .from("staff_competencies")
+          .select("id,staff_id,competency_id,expires_at,revoked_at")
+          .not("expires_at", "is", null)
+          .is("revoked_at", null)
+          .lte("expires_at", sixtyIso)
+          .range(0, 999),
+        supabase.from("profiles").select("id,full_name,email"),
+        supabase.from("competencies").select("id,name"),
+      ]);
 
       if (leaveRes.error) throw leaveRes.error;
       if (excRes.error) throw excRes.error;
@@ -205,9 +200,9 @@ function CoordinatorInboxPage() {
 
       // Compute overdue RTW rows client-side (mirrors absence-summary logic).
       const today = new Date();
-      const todayUtc = new Date(Date.UTC(
-        today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
-      ));
+      const todayUtc = new Date(
+        Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+      );
       const rtwSet = new Set<string>();
       for (const r of rtwRes.data ?? []) rtwSet.add(r.leave_request_id);
 
@@ -270,7 +265,6 @@ function CoordinatorInboxPage() {
   };
   const criticalCount = pendingItems.filter((i) => i.severity === "critical").length;
 
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -296,11 +290,7 @@ function CoordinatorInboxPage() {
           All ({items.length})
         </FilterChip>
         {(Object.keys(KIND_META) as InboxItemKind[]).map((k) => (
-          <FilterChip
-            key={k}
-            active={filter === k}
-            onClick={() => setFilter(k)}
-          >
+          <FilterChip key={k} active={filter === k} onClick={() => setFilter(k)}>
             {KIND_META[k].label} ({counts[k]})
           </FilterChip>
         ))}
@@ -357,7 +347,6 @@ function CoordinatorInboxPage() {
   );
 }
 
-
 function FilterChip({
   active,
   onClick,
@@ -368,12 +357,7 @@ function FilterChip({
   children: React.ReactNode;
 }) {
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant={active ? "default" : "outline"}
-      onClick={onClick}
-    >
+    <Button type="button" size="sm" variant={active ? "default" : "outline"} onClick={onClick}>
       {children}
     </Button>
   );
@@ -405,11 +389,18 @@ function InboxRow({
             <div className="flex flex-wrap items-center gap-2">
               <div className="truncate font-medium">{item.title}</div>
               <Badge className={SEVERITY_BADGE[item.severity]} variant="secondary">
-                {item.severity === "critical" ? "Urgent" : item.severity === "warning" ? "Soon" : "Upcoming"}
+                {item.severity === "critical"
+                  ? "Urgent"
+                  : item.severity === "warning"
+                    ? "Soon"
+                    : "Upcoming"}
               </Badge>
               <Badge variant="outline">{meta.label}</Badge>
               {addressed ? (
-                <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400"
+                >
                   Addressed
                 </Badge>
               ) : null}
@@ -422,24 +413,12 @@ function InboxRow({
             <Link to={item.href}>Open</Link>
           </Button>
           {addressed ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={onRestore}
-              disabled={busy}
-            >
+            <Button type="button" size="sm" variant="ghost" onClick={onRestore} disabled={busy}>
               <Undo2 className="mr-1 h-4 w-4" />
               Restore
             </Button>
           ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={onDismiss}
-              disabled={busy}
-            >
+            <Button type="button" size="sm" variant="secondary" onClick={onDismiss} disabled={busy}>
               <Check className="mr-1 h-4 w-4" />
               Mark addressed
             </Button>
@@ -449,4 +428,3 @@ function InboxRow({
     </Card>
   );
 }
-

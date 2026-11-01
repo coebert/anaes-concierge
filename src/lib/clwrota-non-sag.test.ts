@@ -36,13 +36,7 @@ describe("isNonSagRotaLabel — positive matches", () => {
 
   it("matches when only one field of many carries the tag", () => {
     expect(
-      isNonSagRotaLabel([
-        "Mr Smith",
-        "Consultant",
-        "Trauma",
-        "Theatre 4 [Non-SAG]",
-        "General",
-      ]),
+      isNonSagRotaLabel(["Mr Smith", "Consultant", "Trauma", "Theatre 4 [Non-SAG]", "General"]),
     ).toBe(true);
   });
 

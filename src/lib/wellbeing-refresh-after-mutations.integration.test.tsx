@@ -243,9 +243,11 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
     // the invalidation contract).
     const { supabase } = await import("@/integrations/supabase/client");
     const cancelLeave = async (id: string) => {
-      const { error } = await (supabase.from("leave_requests") as unknown as {
-        update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-      })
+      const { error } = await (
+        supabase.from("leave_requests") as unknown as {
+          update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
+        }
+      )
         .update({ status: "cancelled" })
         .eq("id", id);
       if (error) throw error;
@@ -284,19 +286,12 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
       await primeWellbeingQueries(qc);
 
     // ExceptionCard's `withdraw` calls window.confirm; auto-confirm.
-    const confirmSpy = vi
-      .spyOn(window, "confirm")
-      .mockImplementation(() => true);
+    const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
 
     const onChange = vi.fn();
-    render(
-      <ExceptionCard
-        report={makeReport()}
-        canRespond={false}
-        onChange={onChange}
-      />,
-      { wrapper: wrap(qc) },
-    );
+    render(<ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />, {
+      wrapper: wrap(qc),
+    });
 
     // Open the card, then click Withdraw. Both are real buttons the
     // trainee would use, so this exercises the same DOM path as the app.
@@ -374,14 +369,8 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
       // "scoped invalidation" — independent of the observer/refetch plumbing
       // asserted above.
       const qc = makeQueryClient();
-      const {
-        adminSpy,
-        mineSpy,
-        rotaSpy,
-        profilesSpy,
-        myWellbeingHistorySpy,
-        dispose,
-      } = await primeWellbeingQueries(qc);
+      const { adminSpy, mineSpy, rotaSpy, profilesSpy, myWellbeingHistorySpy, dispose } =
+        await primeWellbeingQueries(qc);
 
       invalidateWellbeing(qc, "test.scoped-keys");
 
@@ -448,19 +437,14 @@ describe("wellbeing dashboards refresh after cancel-leave & exception-status mut
       // for the refresh so a regression that relies on the 10-minute
       // `refetchInterval` fails fast instead of hanging.
       const qc = makeQueryClient();
-      const {
-        adminSpy,
-        mineSpy,
-        expectUnrelatedUntouched,
-        dispose,
-      } = await primeWellbeingQueries(qc);
+      const { adminSpy, mineSpy, expectUnrelatedUntouched, dispose } =
+        await primeWellbeingQueries(qc);
 
       const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
       const onChange = vi.fn();
-      render(
-        <ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />,
-        { wrapper: wrap(qc) },
-      );
+      render(<ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />, {
+        wrapper: wrap(qc),
+      });
 
       const user = userEvent.setup();
       await user.click(screen.getByRole("button", { name: /Hours of work/i }));

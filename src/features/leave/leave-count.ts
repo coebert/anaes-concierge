@@ -94,7 +94,10 @@ export function leaveYearStartFor(dateISO: string, anchorISO: string): string {
   return candidate;
 }
 
-export function rangeOverlapsWindow(r: Pick<LeaveRange, "start_date" | "end_date">, w: DateWindow): boolean {
+export function rangeOverlapsWindow(
+  r: Pick<LeaveRange, "start_date" | "end_date">,
+  w: DateWindow,
+): boolean {
   return r.start_date < w.endExclusive && r.end_date >= w.start;
 }
 
@@ -141,10 +144,17 @@ export function prorationFraction(
   const w = leaveYearWindow(yearStartISO);
   const yearStart = toUtc(w.start);
   const yearEndExcl = toUtc(w.endExclusive);
-  const start = opts.employmentStart && isValidIsoDate(opts.employmentStart) ? Math.max(yearStart, toUtc(opts.employmentStart)) : yearStart;
-  const endExcl = opts.leftAt && isValidIsoDate(opts.leftAt) ? Math.min(yearEndExcl, toUtc(opts.leftAt) + DAY_MS) : yearEndExcl;
+  const start =
+    opts.employmentStart && isValidIsoDate(opts.employmentStart)
+      ? Math.max(yearStart, toUtc(opts.employmentStart))
+      : yearStart;
+  const endExcl =
+    opts.leftAt && isValidIsoDate(opts.leftAt)
+      ? Math.min(yearEndExcl, toUtc(opts.leftAt) + DAY_MS)
+      : yearEndExcl;
   const inPost = Math.max(0, Math.round((endExcl - start) / DAY_MS));
   const yearLen = Math.round((yearEndExcl - yearStart) / DAY_MS);
-  const ltft = opts.ltft == null || !Number.isFinite(opts.ltft) ? 1 : Math.min(1, Math.max(0, opts.ltft));
+  const ltft =
+    opts.ltft == null || !Number.isFinite(opts.ltft) ? 1 : Math.min(1, Math.max(0, opts.ltft));
   return Math.round((inPost / yearLen) * ltft * 1000) / 1000;
 }

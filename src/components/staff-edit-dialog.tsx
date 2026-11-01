@@ -48,9 +48,7 @@ export function StaffEditDialog({ staffId, open, onOpenChange }: Props) {
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit staff member</DialogTitle>
-          <DialogDescription>
-            Profile, roles, job plan and fixed weekly sessions.
-          </DialogDescription>
+          <DialogDescription>Profile, roles, job plan and fixed weekly sessions.</DialogDescription>
         </DialogHeader>
         {staffId && (
           <Tabs defaultValue="profile" className="w-full">
@@ -96,7 +94,9 @@ function ProfileTab({ staffId }: { staffId: string }) {
         getProfileGmcNumber({ data: { staffId } }).catch(() => ({ gmc_number: null })),
       ]);
       if (error) throw error;
-      return { ...prof, gmc_number: gmcRes.gmc_number } as typeof prof & { gmc_number: string | null };
+      return { ...prof, gmc_number: gmcRes.gmc_number } as typeof prof & {
+        gmc_number: string | null;
+      };
     },
   });
 
@@ -195,11 +195,10 @@ function ProfileTab({ staffId }: { staffId: string }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Grade">
-          <Select
-            value={form.grade}
-            onValueChange={(v) => setForm({ ...form, grade: v as Grade })}
-          >
-            <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
+          <Select value={form.grade} onValueChange={(v) => setForm({ ...form, grade: v as Grade })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select grade" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="consultant">Consultant</SelectItem>
               <SelectItem value="sas">SAS</SelectItem>
@@ -268,7 +267,8 @@ function ProfileTab({ staffId }: { staffId: string }) {
           })}
         </div>
         <p className="pt-1 text-xs text-muted-foreground">
-          Weekdays this person is contractually off. They will not be assignable to activity on these days.
+          Weekdays this person is contractually off. They will not be assignable to activity on
+          these days.
         </p>
       </Field>
       <Button onClick={() => save.mutate()} disabled={save.isPending}>
@@ -297,9 +297,7 @@ function RolesTab({ staffId }: { staffId: string }) {
   const toggle = useMutation({
     mutationFn: async ({ role, on }: { role: AppRole; on: boolean }) => {
       if (on) {
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: staffId, role });
+        const { error } = await supabase.from("user_roles").insert({ user_id: staffId, role });
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -417,7 +415,10 @@ function JobPlanTab({ staffId }: { staffId: string }) {
         valid_from: form.valid_from,
       };
       if (data?.jobPlan) {
-        const { error } = await supabase.from("job_plans").update(payload).eq("id", data.jobPlan.id);
+        const { error } = await supabase
+          .from("job_plans")
+          .update(payload)
+          .eq("id", data.jobPlan.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("job_plans").insert(payload);
@@ -440,21 +441,24 @@ function JobPlanTab({ staffId }: { staffId: string }) {
           <>
             <Field label="Total PAs / week">
               <Input
-                type="number" step="0.5"
+                type="number"
+                step="0.5"
                 value={form.total_pas}
                 onChange={(e) => setForm({ ...form, total_pas: Number(e.target.value) })}
               />
             </Field>
             <Field label="DCC PAs">
               <Input
-                type="number" step="0.5"
+                type="number"
+                step="0.5"
                 value={form.dcc_pas}
                 onChange={(e) => setForm({ ...form, dcc_pas: Number(e.target.value) })}
               />
             </Field>
             <Field label="SPA PAs">
               <Input
-                type="number" step="0.5"
+                type="number"
+                step="0.5"
                 value={form.spa_pas}
                 onChange={(e) => setForm({ ...form, spa_pas: Number(e.target.value) })}
               />
@@ -463,10 +467,7 @@ function JobPlanTab({ staffId }: { staffId: string }) {
         )}
         <Field label="LTFT">
           <div className="flex h-10 items-center">
-            <Switch
-              checked={form.ltft}
-              onCheckedChange={(v) => setForm({ ...form, ltft: v })}
-            />
+            <Switch checked={form.ltft} onCheckedChange={(v) => setForm({ ...form, ltft: v })} />
           </div>
         </Field>
         <Field label="LTFT %">
@@ -537,7 +538,10 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
   });
 
   const [draft, setDraft] = useState<{
-    day_of_week: number; session: SessionHalf; theatre_id: string; description: string;
+    day_of_week: number;
+    session: SessionHalf;
+    theatre_id: string;
+    description: string;
   }>({ day_of_week: 1, session: "am", theatre_id: "", description: "" });
 
   const add = useMutation({
@@ -581,7 +585,9 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
             {sessions.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-2 p-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{DAYS[s.day_of_week]} {s.session.toUpperCase()}</Badge>
+                  <Badge variant="outline">
+                    {DAYS[s.day_of_week]} {s.session.toUpperCase()}
+                  </Badge>
                   <span>{theatres?.find((t) => t.id === s.theatre_id)?.name ?? "—"}</span>
                   {s.description && (
                     <span className="text-xs text-muted-foreground">· {s.description}</span>
@@ -605,10 +611,14 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
             value={String(draft.day_of_week)}
             onValueChange={(v) => setDraft({ ...draft, day_of_week: Number(v) })}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {DAYS.map((d, i) => (
-                <SelectItem key={d} value={String(i)}>{d}</SelectItem>
+                <SelectItem key={d} value={String(i)}>
+                  {d}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -616,7 +626,9 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
             value={draft.session}
             onValueChange={(v) => setDraft({ ...draft, session: v as SessionHalf })}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="am">AM</SelectItem>
               <SelectItem value="pm">PM</SelectItem>
@@ -626,10 +638,14 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
             value={draft.theatre_id}
             onValueChange={(v) => setDraft({ ...draft, theatre_id: v })}
           >
-            <SelectTrigger><SelectValue placeholder="Theatre" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Theatre" />
+            </SelectTrigger>
             <SelectContent>
               {theatres?.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -639,7 +655,8 @@ function FixedSessionsTab({ staffId }: { staffId: string }) {
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           />
           <Button onClick={() => add.mutate()} disabled={add.isPending}>
-            <Plus className="mr-1 h-4 w-4" />Add
+            <Plus className="mr-1 h-4 w-4" />
+            Add
           </Button>
         </div>
       </div>

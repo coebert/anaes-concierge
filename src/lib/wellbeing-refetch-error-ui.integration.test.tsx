@@ -130,9 +130,7 @@ function renderWith(component: React.ReactElement) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
   });
-  const utils = render(
-    <QueryClientProvider client={qc}>{component}</QueryClientProvider>,
-  );
+  const utils = render(<QueryClientProvider client={qc}>{component}</QueryClientProvider>);
   return { qc, ...utils };
 }
 
@@ -182,9 +180,7 @@ describe("wellbeing pages — refetch loading state + mutation error banner", ()
       await waitFor(() => {
         expect(screen.getByTestId("wellbeing-refetching")).toBeTruthy();
       });
-      expect(screen.getByTestId("wellbeing-refetching").textContent).toMatch(
-        /Refreshing/i,
-      );
+      expect(screen.getByTestId("wellbeing-refetching").textContent).toMatch(/Refreshing/i);
 
       // Recovery: the mutation's refetch eventually completes → banner clears.
       control.mode = "success";

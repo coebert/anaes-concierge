@@ -24,7 +24,10 @@ import type {
  * Only renders when there is at least one blocker.
  */
 export function CompetencyBlockersPanel({
-  assignments, theatreSessions, theatres, staff,
+  assignments,
+  theatreSessions,
+  theatres,
+  staff,
   onSelectCell,
 }: {
   assignments: WeekAssignmentLike[];
@@ -68,8 +71,13 @@ export function CompetencyBlockersPanel({
   const groups = useMemo(() => {
     if (!competencies || !requirements || !holdings) return [];
     return computeWeekBlockingCompetencyIssues({
-      assignments, theatreSessions, theatres, staff,
-      competencies, requirements, staffCompetencies: holdings,
+      assignments,
+      theatreSessions,
+      theatres,
+      staff,
+      competencies,
+      requirements,
+      staffCompetencies: holdings,
     });
   }, [assignments, theatreSessions, theatres, staff, competencies, requirements, holdings]);
 
@@ -84,7 +92,9 @@ export function CompetencyBlockersPanel({
         <CardTitle className="text-base flex items-center gap-2 text-destructive">
           <ShieldAlert className="h-4 w-4" />
           Blocking competency issues
-          <Badge variant="destructive" className="ml-1">{total}</Badge>
+          <Badge variant="destructive" className="ml-1">
+            {total}
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -118,11 +128,12 @@ export function CompetencyBlockersPanel({
                       }
                       onClick={
                         clickable
-                          ? () => onSelectCell!({
-                              theatreId: it.theatreId!,
-                              date: it.date,
-                              session: it.session as "am" | "pm",
-                            })
+                          ? () =>
+                              onSelectCell!({
+                                theatreId: it.theatreId!,
+                                date: it.date,
+                                session: it.session as "am" | "pm",
+                              })
                           : undefined
                       }
                     >
@@ -142,7 +153,9 @@ export function CompetencyBlockersPanel({
                         )}
                       </div>
                       <ul className="mt-1 ml-1 list-disc list-inside text-destructive">
-                        {it.messages.map((m, i) => <li key={i}>{m}</li>)}
+                        {it.messages.map((m, i) => (
+                          <li key={i}>{m}</li>
+                        ))}
                       </ul>
                     </li>
                   );

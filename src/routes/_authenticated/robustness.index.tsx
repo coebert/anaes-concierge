@@ -1,15 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ShieldAlert, AlertTriangle, Activity, ChevronLeft, ChevronRight, Info, Coffee } from "lucide-react";
+  ShieldAlert,
+  AlertTriangle,
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Info,
+  Coffee,
+} from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robustness";
 import { PageLoading } from "@/components/loading";
@@ -24,10 +28,13 @@ const WEEKS_VISIBLE = 12;
 function RobustnessPage() {
   const [offsetWeeks, setOffsetWeeks] = useState(0);
 
-  const { rangeStart, rangeEnd } = useMemo(() => ({
-    rangeStart: addDaysISO(offsetWeeks * 7),
-    rangeEnd: addDaysISO(offsetWeeks * 7 + WEEKS_VISIBLE * 7 - 1),
-  }), [offsetWeeks]);
+  const { rangeStart, rangeEnd } = useMemo(
+    () => ({
+      rangeStart: addDaysISO(offsetWeeks * 7),
+      rangeEnd: addDaysISO(offsetWeeks * 7 + WEEKS_VISIBLE * 7 - 1),
+    }),
+    [offsetWeeks],
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ["robustness", rangeStart, rangeEnd],
@@ -52,20 +59,32 @@ function RobustnessPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Rota robustness</h1>
             <p className="text-sm text-muted-foreground">
-              Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks.
-              Headroom = consultants + ST6/7 trainees available, minus theatre lists.
-              On-call, ICU, obstetrics, teaching, admin, leave and LTFT days are excluded.
+              Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks. Headroom =
+              consultants + ST6/7 trainees available, minus theatre lists. On-call, ICU, obstetrics,
+              teaching, admin, leave and LTFT days are excluded.
             </p>
           </div>
-          <Badge variant="secondary">{formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}</Badge>
+          <Badge variant="secondary">
+            {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
+          </Badge>
         </header>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}
+          >
             <ChevronLeft className="mr-1 h-4 w-4" /> Earlier
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setOffsetWeeks(0)}>Today</Button>
-          <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}>
+          <Button variant="outline" size="sm" onClick={() => setOffsetWeeks(0)}>
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}
+          >
             Later <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
           <div className="ml-auto flex flex-wrap gap-2">
@@ -83,18 +102,16 @@ function RobustnessPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Days flagged" value={flagged.length} icon={AlertTriangle} tone="amber" />
-          <Stat label="Days with shortfall" value={shortfalls.length} icon={ShieldAlert} tone="red" />
           <Stat
-            label="SPA half-days (separate)"
-            value={spaHalfDays}
-            icon={Coffee}
-            tone="orange"
+            label="Days with shortfall"
+            value={shortfalls.length}
+            icon={ShieldAlert}
+            tone="red"
           />
+          <Stat label="SPA half-days (separate)" value={spaHalfDays} icon={Coffee} tone="orange" />
           <Stat
             label="Workforce (active)"
-            value={data
-              ? Object.values(data.totalStaffByGrade).reduce((a, b) => a + b, 0)
-              : "—"}
+            value={data ? Object.values(data.totalStaffByGrade).reduce((a, b) => a + b, 0) : "—"}
             icon={Activity}
             tone="emerald"
           />
@@ -110,16 +127,38 @@ function RobustnessPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex flex-wrap gap-3">
-              <LegendItem color="bg-emerald-300/50" label="OK" description="Enough solo-capable staff to cover all lists." />
-              <LegendItem color="bg-amber-400/80" label="Tight" description="Headroom ≤ 1 — little buffer for unexpected absence." />
-              <LegendItem color="bg-orange-400/80 text-white" label="SPA needed" description="Not enough solo-capable staff; a consultant on SPA would need to be pulled onto a list." />
-              <LegendItem color="bg-red-500/80 text-white" label="Shortfall" description="Even with all SPA consultants redeployed, there are not enough staff to cover lists." />
+              <LegendItem
+                color="bg-emerald-300/50"
+                label="OK"
+                description="Enough solo-capable staff to cover all lists."
+              />
+              <LegendItem
+                color="bg-amber-400/80"
+                label="Tight"
+                description="Headroom ≤ 1 — little buffer for unexpected absence."
+              />
+              <LegendItem
+                color="bg-orange-400/80 text-white"
+                label="SPA needed"
+                description="Not enough solo-capable staff; a consultant on SPA would need to be pulled onto a list."
+              />
+              <LegendItem
+                color="bg-red-500/80 text-white"
+                label="Shortfall"
+                description="Even with all SPA consultants redeployed, there are not enough staff to cover lists."
+              />
             </div>
             <div className="rounded-md bg-muted/40 p-2.5 text-muted-foreground">
-              <strong className="text-foreground">Who is counted as available?</strong>{" "}
-              Consultants and trainees who have at least one rota entry that day (evidence they are actually rostered to work) and who are <em>not</em> on approved leave, LTFT day off, on-call, ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em> already covering a clinical list (theatre, POAC, pain clinic or any other theatre_session). Staff with no entry on a date are treated as off-duty, not as spare capacity. ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors are shown for context but do <em>not</em> count toward headroom. Consultants on SPA are reported separately — they only close the gap as flexible cover.
+              <strong className="text-foreground">Who is counted as available?</strong> Consultants
+              and trainees who have at least one rota entry that day (evidence they are actually
+              rostered to work) and who are <em>not</em> on approved leave, LTFT day off, on-call,
+              ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em>{" "}
+              already covering a clinical list (theatre, POAC, pain clinic or any other
+              theatre_session). Staff with no entry on a date are treated as off-duty, not as spare
+              capacity. ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors
+              are shown for context but do <em>not</em> count toward headroom. Consultants on SPA
+              are reported separately — they only close the gap as flexible cover.
             </div>
-
           </CardContent>
         </Card>
 
@@ -127,7 +166,11 @@ function RobustnessPage() {
           <CardHeader>
             <CardTitle className="text-base">Daily coverage headroom</CardTitle>
             <CardDescription>
-              Each cell shows the spare solo-capable headroom (SPA NOT included), with a separate SPA count and a breakdown underneath: <span className="font-mono">consultants · senior trainees</span> for headroom, then <span className="font-mono text-orange-700">SPA</span> shown distinctly. Click a date to see the full breakdown.
+              Each cell shows the spare solo-capable headroom (SPA NOT included), with a separate
+              SPA count and a breakdown underneath:{" "}
+              <span className="font-mono">consultants · senior trainees</span> for headroom, then{" "}
+              <span className="font-mono text-orange-700">SPA</span> shown distinctly. Click a date
+              to see the full breakdown.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -141,16 +184,40 @@ function RobustnessPage() {
                   <thead className="text-muted-foreground">
                     <tr>
                       <th className="px-2 py-1 text-left font-medium">Date</th>
-                      <ThTooltip label="Off" tooltip="Staff on approved leave (annual, study, sick) — excluded from availability." />
-                      <ThTooltip label="Other duties" tooltip="Staff on on-call, ICU, obstetrics, teaching, admin or CIC — excluded from availability." />
+                      <ThTooltip
+                        label="Off"
+                        tooltip="Staff on approved leave (annual, study, sick) — excluded from availability."
+                      />
+                      <ThTooltip
+                        label="Other duties"
+                        tooltip="Staff on on-call, ICU, obstetrics, teaching, admin or CIC — excluded from availability."
+                      />
                       <th className="px-2 py-1 text-center font-medium">AM lists</th>
-                      <ThTooltip label="AM unfilled" tooltip="Theatre lists with no anaesthetist assigned (AM)." />
-                      <ThTooltip label="AM headroom" tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in." />
-                      <ThTooltip label="AM SPA" tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom." />
+                      <ThTooltip
+                        label="AM unfilled"
+                        tooltip="Theatre lists with no anaesthetist assigned (AM)."
+                      />
+                      <ThTooltip
+                        label="AM headroom"
+                        tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in."
+                      />
+                      <ThTooltip
+                        label="AM SPA"
+                        tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom."
+                      />
                       <th className="px-2 py-1 text-center font-medium">PM lists</th>
-                      <ThTooltip label="PM unfilled" tooltip="Theatre lists with no anaesthetist assigned (PM)." />
-                      <ThTooltip label="PM headroom" tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in." />
-                      <ThTooltip label="PM SPA" tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom." />
+                      <ThTooltip
+                        label="PM unfilled"
+                        tooltip="Theatre lists with no anaesthetist assigned (PM)."
+                      />
+                      <ThTooltip
+                        label="PM headroom"
+                        tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in."
+                      />
+                      <ThTooltip
+                        label="PM SPA"
+                        tooltip="Consultants on SPA time this half-day. Reported as a separate metric — never added into headroom."
+                      />
                       <th className="px-2 py-1 text-left font-medium">Notes</th>
                     </tr>
                   </thead>
@@ -169,7 +236,12 @@ function RobustnessPage() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="inline-flex flex-col items-center gap-0.5 cursor-help">
-                              <span className={cn("inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium", riskColor(h.risk))}>
+                              <span
+                                className={cn(
+                                  "inline-block min-w-[2.5rem] rounded px-2 py-0.5 font-medium",
+                                  riskColor(h.risk),
+                                )}
+                              >
                                 {h.headroom}
                               </span>
                               <span className="text-[10px] leading-none text-muted-foreground tabular-nums">
@@ -179,15 +251,18 @@ function RobustnessPage() {
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="max-w-[18rem]">
-                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs {h.unfilled} unfilled list(s). SPA is reported separately and NOT included in this number.
+                              {riskLabel(h.risk)} — {h.soloCapable} solo-capable free vs{" "}
+                              {h.unfilled} unfilled list(s). SPA is reported separately and NOT
+                              included in this number.
                               <br />
                               <span className="text-muted-foreground">
-                                Free consultants: {h.consultantsAvailable} ·
-                                Free senior trainees: {h.seniorTraineesAvailable} ·
-                                Junior trainees: {h.juniorTraineesAvailable} ·
-                                SAS: {h.sasAvailable}
+                                Free consultants: {h.consultantsAvailable} · Free senior trainees:{" "}
+                                {h.seniorTraineesAvailable} · Junior trainees:{" "}
+                                {h.juniorTraineesAvailable} · SAS: {h.sasAvailable}
                                 <br />
-                                Staff already covering theatre, POAC, pain clinic or any other clinical activity — and anyone on ICU, obstetrics, on-call, teaching, admin or CIC — are excluded from these counts.
+                                Staff already covering theatre, POAC, pain clinic or any other
+                                clinical activity — and anyone on ICU, obstetrics, on-call,
+                                teaching, admin or CIC — are excluded from these counts.
                               </span>
                             </p>
                           </TooltipContent>
@@ -196,18 +271,22 @@ function RobustnessPage() {
                       const renderSpa = (h: typeof d.am) => (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className={cn(
-                              "inline-block min-w-[2rem] rounded border px-2 py-0.5 text-xs font-medium tabular-nums cursor-help",
-                              h.consultantsOnSpa > 0
-                                ? "border-orange-400/60 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
-                                : "border-transparent text-muted-foreground",
-                            )}>
+                            <span
+                              className={cn(
+                                "inline-block min-w-[2rem] rounded border px-2 py-0.5 text-xs font-medium tabular-nums cursor-help",
+                                h.consultantsOnSpa > 0
+                                  ? "border-orange-400/60 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
+                                  : "border-transparent text-muted-foreground",
+                              )}
+                            >
                               {h.consultantsOnSpa}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="max-w-[18rem]">
-                              {h.consultantsOnSpa} consultant(s) on SPA this half-day. Separate metric — never folded into headroom. Pulling someone off SPA to cover a list disrupts their job-plan time and is flagged distinctly.
+                              {h.consultantsOnSpa} consultant(s) on SPA this half-day. Separate
+                              metric — never folded into headroom. Pulling someone off SPA to cover
+                              a list disrupts their job-plan time and is flagged distinctly.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -223,8 +302,12 @@ function RobustnessPage() {
                               {formatDateGB(d.date)}
                             </Link>
                           </td>
-                          <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onLeave}</td>
-                          <td className="px-2 py-1.5 text-center text-muted-foreground">{d.am.onOtherDuty}</td>
+                          <td className="px-2 py-1.5 text-center text-muted-foreground">
+                            {d.am.onLeave}
+                          </td>
+                          <td className="px-2 py-1.5 text-center text-muted-foreground">
+                            {d.am.onOtherDuty}
+                          </td>
                           <td className="px-2 py-1.5 text-center">{d.am.required}</td>
                           <td className="px-2 py-1.5 text-center">
                             <UnfilledBadge count={d.am.unfilled} />
@@ -251,9 +334,8 @@ function RobustnessPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground">
-          This is a first-pass model: available = active staff minus approved leave
-          and LTFT days off. Fixed commitments, on-call rest, and SPA reallocation
-          will refine future versions.
+          This is a first-pass model: available = active staff minus approved leave and LTFT days
+          off. Fixed commitments, on-call rest, and SPA reallocation will refine future versions.
         </p>
       </div>
     </TooltipProvider>
@@ -278,7 +360,15 @@ function ThTooltip({ label, tooltip }: { label: string; tooltip: string }) {
   );
 }
 
-function LegendItem({ color, label, description }: { color: string; label: string; description: string }) {
+function LegendItem({
+  color,
+  label,
+  description,
+}: {
+  color: string;
+  label: string;
+  description: string;
+}) {
   return (
     <div className="flex items-center gap-2">
       <span className={cn("inline-block h-3 w-3 rounded-sm", color)} />
@@ -307,13 +397,14 @@ function UnfilledBadge({ count }: { count: number }) {
 function Stat(props: StatProps) {
   const { label, value, tone } = props;
   const Icon = props.icon;
-  const toneClass = tone === "red"
-    ? "bg-red-500/10 text-red-600"
-    : tone === "amber"
-    ? "bg-warning-muted text-warning"
-    : tone === "orange"
-    ? "bg-orange-500/10 text-orange-600"
-    : "bg-success-muted text-success";
+  const toneClass =
+    tone === "red"
+      ? "bg-red-500/10 text-red-600"
+      : tone === "amber"
+        ? "bg-warning-muted text-warning"
+        : tone === "orange"
+          ? "bg-orange-500/10 text-orange-600"
+          : "bg-success-muted text-success";
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">

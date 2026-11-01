@@ -2,13 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Users, CalendarRange, Stethoscope } from "lucide-react";
 import { splitName } from "@/lib/utils";
 import {
@@ -188,7 +192,8 @@ function WorkingPatternsPage() {
           gradeOrder(a.grade) - gradeOrder(b.grade) ||
           (splitName(a.full_name).surname ?? "").localeCompare(
             splitName(b.full_name).surname ?? "",
-          ) || a.full_name.localeCompare(b.full_name)
+          ) ||
+          a.full_name.localeCompare(b.full_name)
         );
       });
   }, [data, filter, gradeFilter]);
@@ -196,16 +201,12 @@ function WorkingPatternsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Working patterns
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Working patterns</h1>
         <p className="text-sm text-muted-foreground max-w-3xl">
-          For each anaesthetic staff member, a summary of the lists they
-          cover — split by day surgery, main theatres, NHH (private/SAG),
-          obstetrics and ICU — plus the specialties they most often work
-          with. For consultants, we derive the normal weekly working
-          pattern, private (SAG) days and on-call profile from the recent
-          rota history.
+          For each anaesthetic staff member, a summary of the lists they cover — split by day
+          surgery, main theatres, NHH (private/SAG), obstetrics and ICU — plus the specialties they
+          most often work with. For consultants, we derive the normal weekly working pattern,
+          private (SAG) days and on-call profile from the recent rota history.
         </p>
       </div>
 
@@ -213,18 +214,14 @@ function WorkingPatternsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Filters</CardTitle>
           <CardDescription>
-            Regularity threshold auto-adjusts to the window (roughly one
-            session per four weeks).
+            Regularity threshold auto-adjusts to the window (roughly one session per four weeks).
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
               <Label htmlFor="window">Window</Label>
-              <Select
-                value={String(windowDays)}
-                onValueChange={(v) => setWindowDays(Number(v))}
-              >
+              <Select value={String(windowDays)} onValueChange={(v) => setWindowDays(Number(v))}>
                 <SelectTrigger id="window" className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -237,10 +234,7 @@ function WorkingPatternsPage() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="grade">Grade</Label>
-              <Select
-                value={gradeFilter}
-                onValueChange={(v) => setGradeFilter(v as GradeFilter)}
-              >
+              <Select value={gradeFilter} onValueChange={(v) => setGradeFilter(v as GradeFilter)}>
                 <SelectTrigger id="grade" className="w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -326,14 +320,10 @@ function PatternLegend({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">
-          How SPA &amp; on-call figures are calculated
-        </CardTitle>
+        <CardTitle className="text-sm">How SPA &amp; on-call figures are calculated</CardTitle>
         <CardDescription className="text-xs">
           Applies to every consultant card below. Currently showing{" "}
-          <strong>
-            {displayMode === "percent" ? "percentage shares" : "raw session counts"}
-          </strong>{" "}
+          <strong>{displayMode === "percent" ? "percentage shares" : "raw session counts"}</strong>{" "}
           over the last <strong>{windowDays} days</strong>.
         </CardDescription>
       </CardHeader>
@@ -345,19 +335,16 @@ function PatternLegend({
               SPA cells
             </div>
             <p>
-              Denominator = <strong>every SPA half-session</strong> the
-              consultant did in the window (AM and PM each count as one
-              session). It is <em>not</em> a per-week average.
+              Denominator = <strong>every SPA half-session</strong> the consultant did in the window
+              (AM and PM each count as one session). It is <em>not</em> a per-week average.
             </p>
             <p className="font-mono text-[11px] text-foreground/80">
-              share(day) = SPA sessions on that weekday ÷ total SPA sessions
-              in window
+              share(day) = SPA sessions on that weekday ÷ total SPA sessions in window
             </p>
             <p>
-              Example: 12 Wed-AM SPAs + 6 Fri-PM SPAs = 18 total → Wed shows
-              12/18 = <strong>67%</strong>, Fri shows 6/18 ={" "}
-              <strong>33%</strong>. Shares across all five weekdays sum to
-              100%.
+              Example: 12 Wed-AM SPAs + 6 Fri-PM SPAs = 18 total → Wed shows 12/18 ={" "}
+              <strong>67%</strong>, Fri shows 6/18 = <strong>33%</strong>. Shares across all five
+              weekdays sum to 100%.
             </p>
           </div>
           <div className="space-y-1">
@@ -366,29 +353,25 @@ function PatternLegend({
               On-call cells
             </div>
             <p>
-              Denominator = <strong>every on-call duty</strong> recorded in
-              the window (each dated on-call assignment counts once,
-              regardless of AM/PM). Weekend on-calls are included in the
-              total but do not populate the Mon–Fri strip.
+              Denominator = <strong>every on-call duty</strong> recorded in the window (each dated
+              on-call assignment counts once, regardless of AM/PM). Weekend on-calls are included in
+              the total but do not populate the Mon–Fri strip.
             </p>
             <p className="font-mono text-[11px] text-foreground/80">
-              share(day) = on-call duties on that weekday ÷ total on-call
-              duties in window
+              share(day) = on-call duties on that weekday ÷ total on-call duties in window
             </p>
           </div>
         </div>
         <div className="border-t pt-2 space-y-1">
           <p>
-            <strong>Highlighted (coloured) cells</strong> are weekdays that
-            meet the regularity threshold for the selected window — roughly
-            one occurrence per four weeks. <strong>Faded cells</strong> also
-            show a share when that weekday had any activity, so you can see
-            occasional shifts that don't meet the "regular" bar.
+            <strong>Highlighted (coloured) cells</strong> are weekdays that meet the regularity
+            threshold for the selected window — roughly one occurrence per four weeks.{" "}
+            <strong>Faded cells</strong> also show a share when that weekday had any activity, so
+            you can see occasional shifts that don't meet the "regular" bar.
           </p>
           <p>
-            <strong>Toggle "% ↔ #"</strong> above swaps every cell between
-            the percentage share and the raw session/duty count. Hover a
-            cell for the exact "N of M" breakdown.
+            <strong>Toggle "% ↔ #"</strong> above swaps every cell between the percentage share and
+            the raw session/duty count. Hover a cell for the exact "N of M" breakdown.
           </p>
         </div>
       </CardContent>
@@ -405,10 +388,7 @@ function StaffCard({
   windowDays: number;
   displayMode: StripDisplayMode;
 }) {
-  const totalByLoc = LOCATION_ORDER.reduce(
-    (acc, k) => acc + summary.byLocation[k],
-    0,
-  );
+  const totalByLoc = LOCATION_ORDER.reduce((acc, k) => acc + summary.byLocation[k], 0);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -422,9 +402,7 @@ function StaffCard({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-base leading-tight truncate">
-              {summary.full_name}
-            </CardTitle>
+            <CardTitle className="text-base leading-tight truncate">{summary.full_name}</CardTitle>
             <CardDescription className="text-xs capitalize">
               {summary.grade ?? "unknown"} · {summary.totalSessions} session
               {summary.totalSessions === 1 ? "" : "s"} in last {windowDays}d
@@ -436,10 +414,7 @@ function StaffCard({
         <LocationBreakdown byLocation={summary.byLocation} total={totalByLoc} />
         <SpecialtyList bySpecialty={summary.bySpecialty} />
         {summary.consultantPattern && (
-          <ConsultantPatternBlock
-            pattern={summary.consultantPattern}
-            displayMode={displayMode}
-          />
+          <ConsultantPatternBlock pattern={summary.consultantPattern} displayMode={displayMode} />
         )}
       </CardContent>
     </Card>
@@ -455,17 +430,11 @@ function LocationBreakdown({
 }) {
   const rows = LOCATION_ORDER.filter((k) => byLocation[k] > 0);
   if (!rows.length) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        No rota sessions in this window.
-      </p>
-    );
+    return <p className="text-xs text-muted-foreground">No rota sessions in this window.</p>;
   }
   return (
     <div>
-      <div className="text-xs font-medium text-muted-foreground mb-1">
-        Lists by location
-      </div>
+      <div className="text-xs font-medium text-muted-foreground mb-1">Lists by location</div>
       <div className="space-y-1">
         {rows.map((k) => {
           const count = byLocation[k];
@@ -474,10 +443,7 @@ function LocationBreakdown({
             <div key={k} className="flex items-center gap-2 text-xs">
               <div className="w-40 shrink-0 truncate">{LOCATION_LABELS[k]}</div>
               <div className="flex-1 h-1.5 rounded bg-muted overflow-hidden">
-                <div
-                  className="h-full bg-primary/70"
-                  style={{ width: `${pct}%` }}
-                />
+                <div className="h-full bg-primary/70" style={{ width: `${pct}%` }} />
               </div>
               <div className="w-16 text-right tabular-nums text-muted-foreground">
                 {count} ({pct}%)
@@ -500,9 +466,7 @@ function SpecialtyList({
   const rest = bySpecialty.length - top.length;
   return (
     <div>
-      <div className="text-xs font-medium text-muted-foreground mb-1">
-        Top specialties
-      </div>
+      <div className="text-xs font-medium text-muted-foreground mb-1">Top specialties</div>
       <div className="flex flex-wrap gap-1">
         {top.map((s) => (
           <Badge key={s.specialty} variant="secondary" className="text-[11px]">
@@ -537,8 +501,7 @@ function ConsultantPatternBlock({
 
   const amSet = new Set(pattern.amWorkingWeekdays);
   const pmSet = new Set(pattern.pmWorkingWeekdays);
-  const hasAnySpa =
-    pattern.spaAmWeekdays.length > 0 || pattern.spaPmWeekdays.length > 0;
+  const hasAnySpa = pattern.spaAmWeekdays.length > 0 || pattern.spaPmWeekdays.length > 0;
 
   return (
     <div className="border-t pt-3 space-y-1.5">
@@ -549,11 +512,7 @@ function ConsultantPatternBlock({
       <PatternStripsScroll>
         <WeekdayHeader />
         <AmPmStrip amSet={amSet} pmSet={pmSet} />
-        <WeekdayStrip
-          label="Private / SAG"
-          highlighted={pattern.privateWeekdays}
-          tone="primary"
-        />
+        <WeekdayStrip label="Private / SAG" highlighted={pattern.privateWeekdays} tone="primary" />
         <SpaStrip
           amDays={pattern.spaAmWeekdays}
           pmDays={pattern.spaPmWeekdays}
@@ -582,10 +541,9 @@ function ConsultantPatternBlock({
         </Badge>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Weekdays counted as regular when they appear on at least{" "}
-        {pattern.regularityThreshold} distinct dates in the window. AM/PM
-        shading shows whether the consultant typically works the morning,
-        afternoon, or both.
+        Weekdays counted as regular when they appear on at least {pattern.regularityThreshold}{" "}
+        distinct dates in the window. AM/PM shading shows whether the consultant typically works the
+        morning, afternoon, or both.
       </p>
     </div>
   );
@@ -618,13 +576,7 @@ function WeekdayHeader() {
   );
 }
 
-function AmPmStrip({
-  amSet,
-  pmSet,
-}: {
-  amSet: Set<number>;
-  pmSet: Set<number>;
-}) {
+function AmPmStrip({ amSet, pmSet }: { amSet: Set<number>; pmSet: Set<number> }) {
   const halfCell =
     "flex h-4 sm:h-5 items-center justify-center text-[9px] leading-none sm:text-[10px] md:text-[11px] font-medium border";
   const CELL_FOCUS =
@@ -688,6 +640,4 @@ function AmPmStrip({
   );
 }
 
-
 // SpaStrip and WeekdayStrip live in `@/components/working-pattern-strips`.
-

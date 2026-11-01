@@ -59,7 +59,10 @@ function makeFakeLeaveTable(rows: Row[]) {
         const dir = ascending ? 1 : -1;
         source = source
           .slice()
-          .sort((a, b) => (((a[k] ?? "") < (b[k] ?? "")) ? -1 : ((a[k] ?? "") > (b[k] ?? "")) ? 1 : 0) * dir);
+          .sort(
+            (a, b) =>
+              ((a[k] ?? "") < (b[k] ?? "") ? -1 : (a[k] ?? "") > (b[k] ?? "") ? 1 : 0) * dir,
+          );
       }
       const cappedTo = Math.min(to, from + DB_MAX_ROWS - 1);
       return { data: source.slice(from, cappedTo + 1), error: null };
@@ -91,9 +94,7 @@ function buildDataset(focusType: LeaveType) {
     // 90-day wellbeing window (200+ days ago), used purely to inflate
     // the table past db-max-rows.
     for (let i = 0; i < oldPerStaff; i++) {
-      const type: LeaveType = (["annual", "study", "compassionate"] as const)[
-        i % 3
-      ]!;
+      const type: LeaveType = (["annual", "study", "compassionate"] as const)[i % 3]!;
       const daysAgo = 200 + s * 3 + i * 7;
       rows.push({
         id: `${staffId}-old-${i}`,
@@ -186,9 +187,7 @@ describe.each(LEAVE_TYPES)(
       // filler i=39). Comparing the entire sequence — not just this
       // endpoint — is what catches any date-string drift.
       const maxDaysAgo = 200 + 199 * 3 + 39 * 7;
-      const oldestExpected = new Date(
-        NOW.getTime() - maxDaysAgo * DAY_MS,
-      )
+      const oldestExpected = new Date(NOW.getTime() - maxDaysAgo * DAY_MS)
         .toISOString()
         .slice(0, 10);
       expect(out[out.length - 1]!.end_date).toBe(oldestExpected);
@@ -196,8 +195,7 @@ describe.each(LEAVE_TYPES)(
       // Query budget: exactly ceil(n / pageSize), plus one empty stop
       // page when n is a multiple of pageSize.
       const expectedCalls =
-        Math.ceil(rows.length / PAGE_SIZE) +
-        (rows.length % PAGE_SIZE === 0 ? 1 : 0);
+        Math.ceil(rows.length / PAGE_SIZE) + (rows.length % PAGE_SIZE === 0 ? 1 : 0);
       expect(table.rangeCalls).toBe(expectedCalls);
       expect(table.rangeCalls).toBeLessThan(rows.length);
     });
@@ -210,8 +208,7 @@ describe.each(LEAVE_TYPES)(
 
       const table = makeFakeLeaveTable(rows);
       const out = await fetchAllPaged<Row>(
-        () =>
-          table.eq("staff_id", staffId).order("end_date", { ascending: false }),
+        () => table.eq("staff_id", staffId).order("end_date", { ascending: false }),
         PAGE_SIZE,
       );
 
@@ -249,8 +246,7 @@ describe.each(LEAVE_TYPES)(
 
       expect(out).toHaveLength(rows.length);
       const expectedCalls =
-        Math.ceil(rows.length / PAGE_SIZE) +
-        (rows.length % PAGE_SIZE === 0 ? 1 : 0);
+        Math.ceil(rows.length / PAGE_SIZE) + (rows.length % PAGE_SIZE === 0 ? 1 : 0);
       expect(table.rangeCalls).toBe(expectedCalls);
       // Generous ceiling — real regression (O(n^2)) blows past this by
       // orders of magnitude. On CI hardware this runs in well under 1s.
@@ -315,8 +311,8 @@ describe("paginated leave read — cross-type correctness at scale", () => {
           staff_id: staffId,
           type,
           status: type === "annual" ? "approved" : "rejected",
-          start_date: isoDaysAgo(15 + s % 30),
-          end_date: isoDaysAgo(12 + s % 30),
+          start_date: isoDaysAgo(15 + (s % 30)),
+          end_date: isoDaysAgo(12 + (s % 30)),
         });
       }
     }
@@ -351,8 +347,7 @@ describe("paginated leave read — cross-type correctness at scale", () => {
 
     // Query-count budget still holds across the mixed workload.
     const expectedCalls =
-      Math.ceil(rows.length / PAGE_SIZE) +
-      (rows.length % PAGE_SIZE === 0 ? 1 : 0);
+      Math.ceil(rows.length / PAGE_SIZE) + (rows.length % PAGE_SIZE === 0 ? 1 : 0);
     expect(table.rangeCalls).toBe(expectedCalls);
   });
 });

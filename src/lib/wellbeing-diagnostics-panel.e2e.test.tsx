@@ -179,9 +179,11 @@ describe("Wellbeing diagnostics panel updates on cancel-leave / withdraw-excepti
       // Same inline replica used by the other e2e tests.
       const { supabase } = await import("@/integrations/supabase/client");
       const cancelLeave = async (id: string) => {
-        const { error } = await (supabase.from("leave_requests") as unknown as {
-          update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-        })
+        const { error } = await (
+          supabase.from("leave_requests") as unknown as {
+            update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
+          }
+        )
           .update({ status: "cancelled" })
           .eq("id", id);
         if (error) throw error;
@@ -211,9 +213,7 @@ describe("Wellbeing diagnostics panel updates on cancel-leave / withdraw-excepti
       }
 
       // Header count matches ring-buffer size.
-      expect(
-        screen.getByText(/Wellbeing invalidations/).textContent,
-      ).toContain("(2)");
+      expect(screen.getByText(/Wellbeing invalidations/).textContent).toContain("(2)");
     },
   );
 
@@ -225,10 +225,9 @@ describe("Wellbeing diagnostics panel updates on cancel-leave / withdraw-excepti
       const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
       const onChange = vi.fn();
 
-      render(
-        <ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />,
-        { wrapper: wrap(qc) },
-      );
+      render(<ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />, {
+        wrapper: wrap(qc),
+      });
 
       // Seed one prior invalidation from a DIFFERENT reason so we can
       // prove the withdraw entries land at the TOP of the list and do
@@ -270,9 +269,7 @@ describe("Wellbeing diagnostics panel updates on cancel-leave / withdraw-excepti
         expect(entry.at <= beforeWithdraw).toBe(true);
       }
 
-      expect(
-        screen.getByText(/Wellbeing invalidations/).textContent,
-      ).toContain("(4)");
+      expect(screen.getByText(/Wellbeing invalidations/).textContent).toContain("(4)");
 
       confirmSpy.mockRestore();
     },
@@ -296,8 +293,6 @@ describe("Wellbeing diagnostics panel updates on cancel-leave / withdraw-excepti
       expect(screen.queryAllByTestId("wellbeing-diagnostics-entry")).toHaveLength(0);
     });
     expect(screen.getByText(/No invalidations yet\./)).toBeTruthy();
-    expect(
-      screen.getByText(/Wellbeing invalidations/).textContent,
-    ).toContain("(0)");
+    expect(screen.getByText(/Wellbeing invalidations/).textContent).toContain("(0)");
   });
 });

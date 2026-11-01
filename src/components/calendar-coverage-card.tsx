@@ -40,10 +40,11 @@ export function CalendarCoverageCard() {
     return { first, noData };
   }, [data]);
 
-  const ok = data
-    && data.unresolvedTotal === 0
-    && data.inactiveTotal === 0
-    && data.datesWithMissingNames.length === 0;
+  const ok =
+    data &&
+    data.unresolvedTotal === 0 &&
+    data.inactiveTotal === 0 &&
+    data.datesWithMissingNames.length === 0;
 
   return (
     <Card>
@@ -52,18 +53,34 @@ export function CalendarCoverageCard() {
           <div>
             <CardTitle className="text-base">Calendar name coverage check</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Verifies /calendar can resolve a staff name for every assignment
-              in the visible range. Missing dates listed below.
+              Verifies /calendar can resolve a staff name for every assignment in the visible range.
+              Missing dates listed below.
             </p>
           </div>
           <div className="flex items-end gap-2">
             <div>
-              <Label htmlFor="cov-start" className="mb-1 block text-xs text-muted-foreground">Start</Label>
-              <Input id="cov-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} className="w-40" />
+              <Label htmlFor="cov-start" className="mb-1 block text-xs text-muted-foreground">
+                Start
+              </Label>
+              <Input
+                id="cov-start"
+                type="date"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                className="w-40"
+              />
             </div>
             <div>
-              <Label htmlFor="cov-end" className="mb-1 block text-xs text-muted-foreground">End</Label>
-              <Input id="cov-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="w-40" />
+              <Label htmlFor="cov-end" className="mb-1 block text-xs text-muted-foreground">
+                End
+              </Label>
+              <Input
+                id="cov-end"
+                type="date"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+                className="w-40"
+              />
             </div>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={"mr-1 h-3.5 w-3.5" + (isFetching ? " animate-spin" : "")} />
@@ -122,9 +139,7 @@ export function CalendarCoverageCard() {
                             </Badge>
                           )}
                           {d.inactiveStaffIds.length > 0 && (
-                            <Badge variant="secondary">
-                              {d.inactiveStaffIds.length} inactive
-                            </Badge>
+                            <Badge variant="secondary">{d.inactiveStaffIds.length} inactive</Badge>
                           )}
                         </span>
                       </li>

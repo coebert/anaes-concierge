@@ -2,14 +2,16 @@
 
 /** Escape TEXT values; CR/LF of any form become a literal "\n". */
 export function escapeIcsText(s: string): string {
-  return s
-    .replace(/\\/g, "\\\\")
-    .replace(/\r\n|\r|\n/g, "\\n")
-    .replace(/,/g, "\\,")
-    .replace(/;/g, "\\;")
-    // Strip remaining control chars (except TAB) which are invalid in TEXT.
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "");
+  return (
+    s
+      .replace(/\\/g, "\\\\")
+      .replace(/\r\n|\r|\n/g, "\\n")
+      .replace(/,/g, "\\,")
+      .replace(/;/g, "\\;")
+      // Strip remaining control chars (except TAB) which are invalid in TEXT.
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
+  );
 }
 
 const enc = new TextEncoder();

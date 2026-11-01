@@ -19,10 +19,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import React from "react";
 
-import {
-  SpaStrip,
-  WeekdayStrip,
-} from "@/components/working-pattern-strips";
+import { SpaStrip, WeekdayStrip } from "@/components/working-pattern-strips";
 import {
   computeConsultantPattern,
   type AssignmentLite,
@@ -147,7 +144,7 @@ describe("staff working-patterns e2e — SPA/on-call weekday share", () => {
     expect(pattern.totalSpaSessions).toBe(18);
     expect(pattern.totalOnCallSessions).toBe(10);
     expect(pattern.spaCountsByWeekday[3]).toBe(12); // Wed
-    expect(pattern.spaCountsByWeekday[5]).toBe(6);  // Fri
+    expect(pattern.spaCountsByWeekday[5]).toBe(6); // Fri
     expect(pattern.onCallCountsByWeekday[1]).toBe(6); // Mon
     expect(pattern.onCallCountsByWeekday[4]).toBe(4); // Thu
   });
@@ -232,8 +229,6 @@ describe("staff working-patterns e2e — SPA/on-call weekday share", () => {
       "Thu · 4 of 10 on-call sessions (40%)",
     );
     // Non-highlighted weekday: tooltip is just the day label.
-    expect(screen.getByTestId("weekday-cell-3").getAttribute("title")).toBe(
-      "Wed",
-    );
+    expect(screen.getByTestId("weekday-cell-3").getAttribute("title")).toBe("Wed");
   });
 });

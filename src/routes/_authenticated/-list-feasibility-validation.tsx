@@ -3,13 +3,7 @@ import { Fragment, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,9 +169,7 @@ export function ValidationCard({
         await runVerification(effectiveMonthsBack);
       } catch (err) {
         toast.error(
-          err instanceof Error
-            ? `Verification failed: ${err.message}`
-            : "Verification failed",
+          err instanceof Error ? `Verification failed: ${err.message}` : "Verification failed",
         );
       }
       await refetch();
@@ -194,9 +186,7 @@ export function ValidationCard({
   const eligibleRemediations: Remediation[] = data
     ? data.consultants.flatMap((c) =>
         c.cells.flatMap((cell) =>
-          cell.diagnoses
-            .map((d) => d.remediation)
-            .filter((r) => isApplicable(r.kind)),
+          cell.diagnoses.map((d) => d.remediation).filter((r) => isApplicable(r.kind)),
         ),
       )
     : [];
@@ -209,9 +199,7 @@ export function ValidationCard({
         .filter(Boolean),
     ),
   );
-  const wantsWiden = eligibleRemediations.some(
-    (r) => r.kind === "widen-validation-window",
-  );
+  const wantsWiden = eligibleRemediations.some((r) => r.kind === "widen-validation-window");
   const canWiden = wantsWiden && effectiveMonthsBack < 24;
   const totalEligibleFixes = aggregateTokens.length + (canWiden ? 1 : 0);
 
@@ -246,16 +234,12 @@ export function ValidationCard({
         description: `${result.message} Verifying updated tokens and re-running validation…`,
       });
       await queryClient.invalidateQueries({ queryKey: ["list-feasibility-validation"] });
-      const nextMonths = canWiden
-        ? Math.min(24, effectiveMonthsBack + 3)
-        : effectiveMonthsBack;
+      const nextMonths = canWiden ? Math.min(24, effectiveMonthsBack + 3) : effectiveMonthsBack;
       try {
         await runVerification(nextMonths);
       } catch (err) {
         toast.error(
-          err instanceof Error
-            ? `Verification failed: ${err.message}`
-            : "Verification failed",
+          err instanceof Error ? `Verification failed: ${err.message}` : "Verification failed",
         );
       }
       await refetch();
@@ -270,13 +254,11 @@ export function ValidationCard({
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Working-pattern validation</CardTitle>
         <CardDescription>
-          One-click sanity check: for each consultant × (day-of-week,
-          session) cell, this pulls a sample of actual rota_assignments
-          rows from the same window and recomputes a sampled working %
-          independently of the model. Cells whose sampled % differs from
-          the model by more than the mismatch threshold are flagged, and
-          each flagged cell shows an auto-investigation diagnosis with a
-          one-click apply button where the fix can be made in-app.
+          One-click sanity check: for each consultant × (day-of-week, session) cell, this pulls a
+          sample of actual rota_assignments rows from the same window and recomputes a sampled
+          working % independently of the model. Cells whose sampled % differs from the model by more
+          than the mismatch threshold are flagged, and each flagged cell shows an auto-investigation
+          diagnosis with a one-click apply button where the fix can be made in-app.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -289,9 +271,7 @@ export function ValidationCard({
               min={3}
               max={50}
               value={sampleCap}
-              onChange={(e) =>
-                setSampleCap(Math.max(3, Number(e.target.value) || 10))
-              }
+              onChange={(e) => setSampleCap(Math.max(3, Number(e.target.value) || 10))}
             />
           </div>
           <div className="space-y-1">
@@ -303,9 +283,7 @@ export function ValidationCard({
               max={50}
               step={5}
               value={mismatchThreshold}
-              onChange={(e) =>
-                setMismatchThreshold(Math.max(5, Number(e.target.value) || 15))
-              }
+              onChange={(e) => setMismatchThreshold(Math.max(5, Number(e.target.value) || 15))}
             />
           </div>
           <div className="space-y-1">
@@ -345,20 +323,14 @@ export function ValidationCard({
             </Label>
           </div>
           <Button size="sm" onClick={run} disabled={isFetching}>
-            {isFetching
-              ? "Validating…"
-              : enabled
-                ? "Re-run validation"
-                : "Run validation"}
+            {isFetching ? "Validating…" : enabled ? "Re-run validation" : "Run validation"}
           </Button>
           {enabled && data && totalEligibleFixes > 0 && (
             <Button
               size="sm"
               variant="secondary"
               onClick={() => applyAllMutation.mutate()}
-              disabled={
-                applyAllMutation.isPending || applyMutation.isPending || isFetching
-              }
+              disabled={applyAllMutation.isPending || applyMutation.isPending || isFetching}
             >
               {applyAllMutation.isPending
                 ? "Applying all fixes…"
@@ -371,31 +343,26 @@ export function ValidationCard({
           <div className="rounded-md border border-sky-300/60 bg-sky-50 px-3 py-2 text-xs text-sky-900 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-200">
             {verifying ? (
               <span>
-                <strong>Verifying…</strong> re-reading non-working labels from
-                the database and recomputing the feasibility model before
-                refreshing the validation report.
+                <strong>Verifying…</strong> re-reading non-working labels from the database and
+                recomputing the feasibility model before refreshing the validation report.
               </span>
             ) : verification ? (
               <div className="space-y-1">
                 <div>
-                  <strong>Verification complete</strong> — recomputed model
-                  with{" "}
-                  <span className="font-mono">{verification.tokenCount}</span>{" "}
-                  non-working label token(s) over a{" "}
-                  <span className="font-mono">{verification.monthsBack}</span>
-                  -month window at{" "}
-                  {new Date(verification.at).toLocaleTimeString()}.
+                  <strong>Verification complete</strong> — recomputed model with{" "}
+                  <span className="font-mono">{verification.tokenCount}</span> non-working label
+                  token(s) over a <span className="font-mono">{verification.monthsBack}</span>
+                  -month window at {new Date(verification.at).toLocaleTimeString()}.
                 </div>
                 <div className="text-[11px]">
                   Recomputed list verdicts: feasible{" "}
-                  <span className="font-mono">{verification.feasible}</span>,
-                  borderline{" "}
-                  <span className="font-mono">{verification.borderline}</span>,
-                  not feasible{" "}
+                  <span className="font-mono">{verification.feasible}</span>, borderline{" "}
+                  <span className="font-mono">{verification.borderline}</span>, not feasible{" "}
                   <span className="font-mono">{verification.notFeasible}</span>.
                   {verification.tokensSample.length > 0 && (
                     <>
-                      {" "}Tokens in effect:{" "}
+                      {" "}
+                      Tokens in effect:{" "}
                       <span className="font-mono">
                         {verification.tokensSample.join(", ")}
                         {verification.tokenCount > verification.tokensSample.length
@@ -413,9 +380,8 @@ export function ValidationCard({
 
         {!enabled ? (
           <p className="text-xs text-muted-foreground">
-            Validation hasn't been run yet. Press <strong>Run validation</strong> to
-            independently re-derive consultant working patterns from raw
-            CLWRota records.
+            Validation hasn't been run yet. Press <strong>Run validation</strong> to independently
+            re-derive consultant working patterns from raw CLWRota records.
           </p>
         ) : isFetching && !data ? (
           <p className="text-sm text-muted-foreground">Sampling raw rota records…</p>
@@ -456,14 +422,8 @@ function ValidationResults({
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-4 text-xs">
-        <SummaryPill
-          label="Consultants checked"
-          value={report.consultants.length}
-        />
-        <SummaryPill
-          label="Cells checked"
-          value={report.totalCells}
-        />
+        <SummaryPill label="Consultants checked" value={report.consultants.length} />
+        <SummaryPill label="Cells checked" value={report.totalCells} />
         <SummaryPill
           label="Cells flagged"
           value={report.cellsWithMismatch}
@@ -478,9 +438,7 @@ function ValidationResults({
 
       {report.causeTally.length > 0 && (
         <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-          <div className="text-xs font-medium">
-            Auto-investigation: most common causes
-          </div>
+          <div className="text-xs font-medium">Auto-investigation: most common causes</div>
           <ul className="text-xs space-y-1">
             {report.causeTally.map((c) => (
               <li key={c.code} className="flex items-center gap-2">
@@ -492,16 +450,15 @@ function ValidationResults({
             ))}
           </ul>
           <p className="text-[11px] text-muted-foreground">
-            Expand any flagged consultant below to see per-cell diagnoses and
-            recommended fixes.
+            Expand any flagged consultant below to see per-cell diagnoses and recommended fixes.
           </p>
         </div>
       )}
 
       {consultants.length === 0 ? (
         <p className="text-xs text-success">
-          No mismatches detected at the current threshold (±{report.mismatchThresholdPct}{" "}
-          percentage points). All sampled cells agree with the model.
+          No mismatches detected at the current threshold (±{report.mismatchThresholdPct} percentage
+          points). All sampled cells agree with the model.
         </p>
       ) : (
         <div className="space-y-2">
@@ -616,18 +573,12 @@ function ValidationCellTable({
               >
                 <td className="px-2 py-1.5 whitespace-nowrap font-medium">
                   {DOW_LABEL[cell.dow]}{" "}
-                  <span className="uppercase text-muted-foreground">
-                    {cell.session}
-                  </span>
+                  <span className="uppercase text-muted-foreground">{cell.session}</span>
                   {cell.modelRegularDayOff && (
-                    <span className="ml-1 text-[10px] italic text-muted-foreground">
-                      (off)
-                    </span>
+                    <span className="ml-1 text-[10px] italic text-muted-foreground">(off)</span>
                   )}
                 </td>
-                <td className="px-2 py-1.5 text-center font-mono">
-                  {cell.modelPct}%
-                </td>
+                <td className="px-2 py-1.5 text-center font-mono">{cell.modelPct}%</td>
                 <td className="px-2 py-1.5 text-center font-mono">
                   {cell.sampleSize === 0 ? "—" : `${cell.sampledPct}%`}
                 </td>
@@ -727,9 +678,7 @@ function DiagnosisList({
                   </ul>
                 )}
                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                  <span className="text-muted-foreground">
-                    → {d.remediation.summary}
-                  </span>
+                  <span className="text-muted-foreground">→ {d.remediation.summary}</span>
                   {isApplicable(d.remediation.kind) && (
                     <Button
                       size="sm"
@@ -759,11 +708,7 @@ function DiagnosisList({
   );
 }
 
-function ClassificationBadge({
-  classification,
-}: {
-  classification: SampleClassification;
-}) {
+function ClassificationBadge({ classification }: { classification: SampleClassification }) {
   const map: Record<SampleClassification, { label: string; cls: string }> = {
     clinical: { label: "clin", cls: "bg-emerald-100 text-emerald-800" },
     off_day_label: { label: "off-lbl", cls: "bg-slate-200 text-slate-700" },
@@ -800,9 +745,7 @@ function SummaryPill({
         tone === "emerald" && "border-emerald-300 bg-emerald-50 text-emerald-900",
       )}
     >
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
     </div>
   );

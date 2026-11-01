@@ -34,12 +34,13 @@ export type BradfordResult = {
   windowEnd: string;
 };
 
-export const BAND_THRESHOLDS: Record<BradfordBand, { min: number; label: string; action: string }> = {
-  green:    { min: 0,   label: "Green",    action: "No action required" },
-  amber:    { min: 51,  label: "Amber",    action: "Informal review with line manager" },
-  red:      { min: 201, label: "Red",      action: "Formal attendance review" },
-  critical: { min: 451, label: "Critical", action: "Final review / capability" },
-};
+export const BAND_THRESHOLDS: Record<BradfordBand, { min: number; label: string; action: string }> =
+  {
+    green: { min: 0, label: "Green", action: "No action required" },
+    amber: { min: 51, label: "Amber", action: "Informal review with line manager" },
+    red: { min: 201, label: "Red", action: "Formal attendance review" },
+    critical: { min: 451, label: "Critical", action: "Final review / capability" },
+  };
 
 export function bandFor(score: number): BradfordBand {
   if (score >= BAND_THRESHOLDS.critical.min) return "critical";
@@ -71,7 +72,8 @@ function overlapDays(spell: BradfordSpell, windowStart: Date, windowEnd: Date): 
   let days = dayDiff(lo, hi) + 1;
   // Apply half-day flags only if the actual boundary date lies inside the window.
   if (spell.half_day_start && s >= windowStart && s <= windowEnd) days -= 0.5;
-  if (spell.half_day_end && e >= windowStart && e <= windowEnd && s.getTime() !== e.getTime()) days -= 0.5;
+  if (spell.half_day_end && e >= windowStart && e <= windowEnd && s.getTime() !== e.getTime())
+    days -= 0.5;
   // A single-day spell can be marked half-day-start OR half-day-end (0.5 total),
   // not both — clamp.
   return Math.max(0, days);
@@ -81,22 +83,19 @@ export function computeBradfordFactor(
   spells: BradfordSpell[],
   referenceDate: Date = new Date(),
 ): BradfordResult {
-  const windowEnd = new Date(Date.UTC(
-    referenceDate.getUTCFullYear(),
-    referenceDate.getUTCMonth(),
-    referenceDate.getUTCDate(),
-  ));
+  const windowEnd = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate(),
+    ),
+  );
   const windowStart = new Date(windowEnd);
   windowStart.setUTCFullYear(windowStart.getUTCFullYear() - 1);
   windowStart.setUTCDate(windowStart.getUTCDate() + 1); // 12 months rolling, inclusive
 
-  const inWindow = spells.filter(
-    (sp) => overlapDays(sp, windowStart, windowEnd) > 0,
-  );
-  const totalDays = inWindow.reduce(
-    (sum, sp) => sum + overlapDays(sp, windowStart, windowEnd),
-    0,
-  );
+  const inWindow = spells.filter((sp) => overlapDays(sp, windowStart, windowEnd) > 0);
+  const totalDays = inWindow.reduce((sum, sp) => sum + overlapDays(sp, windowStart, windowEnd), 0);
   const spellCount = inWindow.length;
   const score = spellCount * spellCount * totalDays;
 

@@ -45,9 +45,7 @@ function makeChain(table: string) {
     in: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     eq: () => chain,
@@ -76,21 +74,36 @@ import { computeRobustness, computeListCoverage } from "./robustness";
 const DATE = "2026-06-01"; // Monday
 
 const CONS = (id: string) => ({
-  id, full_name: id, grade: "consultant",
-  training_level: null, ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "consultant",
+  training_level: null,
+  ltft_days_off: [],
+  active: true,
 });
 const SENIOR = (id: string) => ({
-  id, full_name: id, grade: "trainee",
-  training_level: "ST7", ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "trainee",
+  training_level: "ST7",
+  ltft_days_off: [],
+  active: true,
 });
 const JUNIOR = (id: string) => ({
-  id, full_name: id, grade: "trainee",
-  training_level: "CT2", ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "trainee",
+  training_level: "CT2",
+  ltft_days_off: [],
+  active: true,
 });
 
 const ts = (id: string, session: "am" | "pm", date = DATE) => ({
-  id, session_date: date, session,
-  theatre_id: `theatre-${id}`, specialty_id: null,
+  id,
+  session_date: date,
+  session,
+  theatre_id: `theatre-${id}`,
+  specialty_id: null,
 });
 
 const theatreAsn = (
@@ -195,7 +208,8 @@ describe("Regression — solo counting change does not break robustness", () => 
     fixture.theatre_sessions = [ts("t1", "am"), ts("t2", "am")];
     fixture.rota_assignments = [];
 
-    const am = (await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false })).days[0].am;
+    const am = (await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false })).days[0]
+      .am;
     expect(am.unfilled).toBe(2);
     expect(am.soloCapable).toBe(1);
     expect(am.headroom).toBe(-1);
@@ -207,11 +221,18 @@ describe("Regression — solo counting change does not break robustness", () => 
     fixture.profiles = [CONS("c1"), CONS("c-spa")];
     fixture.theatre_sessions = [ts("t1", "am"), ts("t2", "am")];
     fixture.rota_assignments = [
-      { staff_id: "c-spa", session_date: DATE, session: "am",
-        duty_type: "spa", theatre_session_id: null, role_on_list: "solo" },
+      {
+        staff_id: "c-spa",
+        session_date: DATE,
+        session: "am",
+        duty_type: "spa",
+        theatre_session_id: null,
+        role_on_list: "solo",
+      },
     ];
 
-    const am = (await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false })).days[0].am;
+    const am = (await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false })).days[0]
+      .am;
     expect(am.unfilled).toBe(2);
     expect(am.soloCapable).toBe(1);
     expect(am.consultantsOnSpa).toBe(1);
@@ -223,9 +244,7 @@ describe("Regression — solo counting change does not break robustness", () => 
   it("AM and PM are independent: PM trainee on a solo list does not affect AM headroom", async () => {
     fixture.profiles = [CONS("c1"), SENIOR("st7-a")];
     fixture.theatre_sessions = [ts("t-am", "am"), ts("t-pm", "pm")];
-    fixture.rota_assignments = [
-      theatreAsn("st7-a", "pm", "t-pm", "solo"),
-    ];
+    fixture.rota_assignments = [theatreAsn("st7-a", "pm", "t-pm", "solo")];
 
     const { days } = await computeRobustness(DATE, DATE, [], { requireRosterEvidence: false });
     const am = days[0].am;
@@ -295,14 +314,11 @@ describe("Regression — solo counting change does not break per-day list covera
 
   it("AM/PM totals reported independently", async () => {
     fixture.profiles = [CONS("c1"), SENIOR("st7-a"), JUNIOR("ct2-a")];
-    fixture.theatre_sessions = [
-      ts("t-am-1", "am"), ts("t-am-2", "am"),
-      ts("t-pm-1", "pm"),
-    ];
+    fixture.theatre_sessions = [ts("t-am-1", "am"), ts("t-am-2", "am"), ts("t-pm-1", "pm")];
     fixture.rota_assignments = [
-      theatreAsn("c1", "am", "t-am-1", "solo"),     // solo-capable AM
-      theatreAsn("ct2-a", "am", "t-am-2", "solo"),  // supervised AM (junior only)
-      theatreAsn("st7-a", "pm", "t-pm-1", "solo"),  // solo-capable PM
+      theatreAsn("c1", "am", "t-am-1", "solo"), // solo-capable AM
+      theatreAsn("ct2-a", "am", "t-am-2", "solo"), // supervised AM (junior only)
+      theatreAsn("st7-a", "pm", "t-pm-1", "solo"), // solo-capable PM
     ];
 
     const day = (await computeListCoverage(DATE, DATE, { requireRosterEvidence: false }))[0];
@@ -313,20 +329,29 @@ describe("Regression — solo counting change does not break per-day list covera
   it("7-day strip: counts only weekdays and preserves spaNeeded flag", async () => {
     // Build a tiny 7-day fixture: only Mon has a list, others empty.
     fixture.profiles = [CONS("c1"), CONS("c-spa")];
-    fixture.theatre_sessions = [
-      ts("t1", "am", "2026-06-01"),
-      ts("t2", "am", "2026-06-01"),
-    ];
+    fixture.theatre_sessions = [ts("t1", "am", "2026-06-01"), ts("t2", "am", "2026-06-01")];
     fixture.rota_assignments = [
-      { staff_id: "c-spa", session_date: "2026-06-01", session: "am",
-        duty_type: "spa", theatre_session_id: null, role_on_list: "solo",
-        profiles: profileOf("c-spa") },
+      {
+        staff_id: "c-spa",
+        session_date: "2026-06-01",
+        session: "am",
+        duty_type: "spa",
+        theatre_session_id: null,
+        role_on_list: "solo",
+        profiles: profileOf("c-spa"),
+      },
     ];
 
-    const cov = await computeListCoverage("2026-06-01", "2026-06-07", { requireRosterEvidence: false });
+    const cov = await computeListCoverage("2026-06-01", "2026-06-07", {
+      requireRosterEvidence: false,
+    });
     // 2026-06-01 Mon … 2026-06-05 Fri → 5 weekdays.
     expect(cov.map((d) => d.date)).toEqual([
-      "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
+      "2026-06-01",
+      "2026-06-02",
+      "2026-06-03",
+      "2026-06-04",
+      "2026-06-05",
     ]);
     expect(cov[0].am.total).toBe(2);
     expect(cov[0].am.unfilled).toBe(2);

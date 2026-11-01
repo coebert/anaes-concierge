@@ -14,10 +14,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Activity, AlertTriangle, CalendarDays, HeartPulse, Moon } from "lucide-react";
 import {
@@ -70,7 +79,20 @@ const DEFAULT_RULES: SpecialtyPaRules = {
 
 const MONTH_LABEL = (m: string) => {
   const [y, mm] = m.split("-");
-  const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const names = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
   return `${names[Number(mm) - 1]} ${y?.slice(2)}`;
 };
 
@@ -181,7 +203,7 @@ function AppraisalYearPage() {
         pa_credit: r.pa_credit,
         attending_consultant_ids: r.attending_consultant_ids,
         specialty_name: r.theatre_session_id
-          ? specialtyBySession.get(r.theatre_session_id) ?? null
+          ? (specialtyBySession.get(r.theatre_session_id) ?? null)
           : null,
       }));
 
@@ -197,9 +219,7 @@ function AppraisalYearPage() {
   if (loading) return <PageLoading />;
   if (!isCoordinator && grade !== "consultant" && grade !== "sas") return <Navigate to="/" />;
 
-  const maxMonth = summary
-    ? Math.max(1, ...summary.months.map((m) => m.sessions + m.onCalls))
-    : 1;
+  const maxMonth = summary ? Math.max(1, ...summary.months.map((m) => m.sessions + m.onCalls)) : 1;
 
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
@@ -397,8 +417,8 @@ function AppraisalYearPage() {
                   </dd>
                 </dl>
                 <p className="text-xs text-muted-foreground">
-                  Job-planned {summary.other.plannedPas.toFixed(1)} · extra / locum /
-                  WLI / SAG {summary.other.extraPas.toFixed(1)}
+                  Job-planned {summary.other.plannedPas.toFixed(1)} · extra / locum / WLI / SAG{" "}
+                  {summary.other.extraPas.toFixed(1)}
                 </p>
               </CardContent>
             </Card>
@@ -478,8 +498,8 @@ function AppraisalYearPage() {
                 PAs use CLWRota's own recorded value where there is one, otherwise the department
                 rota rules ({data?.rules.sessions_per_pa} session(s) per PA,{" "}
                 {data?.rules.oncall_pa_credit} PA per on-call, {data?.rules.weekend_pa_credit} PA
-                per weekend day). A weekend day counts once — weekend credit replaces the session
-                or on-call credit.
+                per weekend day). A weekend day counts once — weekend credit replaces the session or
+                on-call credit.
               </p>
             </CardContent>
           </Card>

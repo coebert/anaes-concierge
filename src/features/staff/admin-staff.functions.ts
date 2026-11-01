@@ -7,7 +7,20 @@ const CreateStaffSchema = z.object({
   full_name: z.string().trim().min(1).max(200),
   grade: z.enum(["consultant", "sas", "trainee"]).nullable().optional(),
   training_level: z
-    .enum(["CT1", "CT2", "CT3", "ACCS1", "ACCS2", "ACCS3", "ST4", "ST5", "ST6", "ST7", "ST8", "ST8+"])
+    .enum([
+      "CT1",
+      "CT2",
+      "CT3",
+      "ACCS1",
+      "ACCS2",
+      "ACCS3",
+      "ST4",
+      "ST5",
+      "ST6",
+      "ST7",
+      "ST8",
+      "ST8+",
+    ])
     .nullable()
     .optional(),
   role: z.enum(["admin", "rota_coordinator", "staff"]).default("staff"),
@@ -108,4 +121,3 @@ export const listStaffForAdmin = createServerFn({ method: "GET" })
     rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
     return rows;
   });
-

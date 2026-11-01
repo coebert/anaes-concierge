@@ -12,7 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
@@ -36,12 +41,14 @@ function loadAcutePainSettings(): { lookbackDays: number; specialtyName: string 
     const raw = window.localStorage.getItem(ACUTE_PAIN_SETTINGS_KEY);
     if (!raw) return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
     const parsed = JSON.parse(raw) as { lookbackDays?: unknown; specialtyName?: unknown };
-    const lookbackDays = typeof parsed.lookbackDays === "number" && parsed.lookbackDays > 0
-      ? Math.floor(parsed.lookbackDays)
-      : DEFAULT_LOOKBACK_DAYS;
-    const specialtyName = typeof parsed.specialtyName === "string" && parsed.specialtyName.trim()
-      ? parsed.specialtyName.trim()
-      : DEFAULT_SPECIALTY_NAME;
+    const lookbackDays =
+      typeof parsed.lookbackDays === "number" && parsed.lookbackDays > 0
+        ? Math.floor(parsed.lookbackDays)
+        : DEFAULT_LOOKBACK_DAYS;
+    const specialtyName =
+      typeof parsed.specialtyName === "string" && parsed.specialtyName.trim()
+        ? parsed.specialtyName.trim()
+        : DEFAULT_SPECIALTY_NAME;
     return { lookbackDays, specialtyName };
   } catch {
     return { lookbackDays: DEFAULT_LOOKBACK_DAYS, specialtyName: DEFAULT_SPECIALTY_NAME };
@@ -99,58 +106,58 @@ function StaffGroup({
           {sorted.map((p) => {
             const notYetStarted = !!p.start_date && p.start_date > todayISO();
             return (
-            <TableRow key={p.id}>
-              <TableCell className="font-medium">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span>{p.full_name || "—"}</span>
-                  {notYetStarted ? (
-                    <Badge variant="secondary" title={`Starts ${p.start_date}`}>
-                      Not yet started
-                    </Badge>
-                  ) : null}
-                </div>
-              </TableCell>
-              <TableCell className="text-muted-foreground">{p.email}</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {p.grade === "consultant" ? (
-                    <Badge variant="default">Consultant</Badge>
-                  ) : p.grade === "sas" ? (
-                    <Badge variant="default">SAS</Badge>
-                  ) : p.grade === "trainee" ? (
-                    <Badge variant="default">Trainee</Badge>
-                  ) : null}
-                  {p.training_level && p.training_level !== "Consultant" ? (
-                    <Badge variant="secondary">{p.training_level}</Badge>
-                  ) : null}
-                  {p.grade === "consultant" && p.job_plan ? (
-                    <span className="text-sm text-muted-foreground">
-                      {p.job_plan.total_pas} PAs
-                    </span>
-                  ) : null}
-                  {!p.grade && !p.training_level ? <span>—</span> : null}
-                </div>
-              </TableCell>
-              <TableCell>
-                {p.job_plan?.ltft ? (
-                  <Badge>{p.job_plan.ltft_percentage ?? ""}%</Badge>
-                ) : (
-                  <span className="text-sm text-muted-foreground">Full time</span>
-                )}
-              </TableCell>
-              <TableCell>
-                {p.active ? (
-                  <Badge variant="default">active</Badge>
-                ) : (
-                  <Badge variant="destructive">inactive</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <Button size="icon" variant="ghost" onClick={() => onEdit(p.id)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
+              <TableRow key={p.id}>
+                <TableCell className="font-medium">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>{p.full_name || "—"}</span>
+                    {notYetStarted ? (
+                      <Badge variant="secondary" title={`Starts ${p.start_date}`}>
+                        Not yet started
+                      </Badge>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{p.email}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {p.grade === "consultant" ? (
+                      <Badge variant="default">Consultant</Badge>
+                    ) : p.grade === "sas" ? (
+                      <Badge variant="default">SAS</Badge>
+                    ) : p.grade === "trainee" ? (
+                      <Badge variant="default">Trainee</Badge>
+                    ) : null}
+                    {p.training_level && p.training_level !== "Consultant" ? (
+                      <Badge variant="secondary">{p.training_level}</Badge>
+                    ) : null}
+                    {p.grade === "consultant" && p.job_plan ? (
+                      <span className="text-sm text-muted-foreground">
+                        {p.job_plan.total_pas} PAs
+                      </span>
+                    ) : null}
+                    {!p.grade && !p.training_level ? <span>—</span> : null}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {p.job_plan?.ltft ? (
+                    <Badge>{p.job_plan.ltft_percentage ?? ""}%</Badge>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Full time</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {p.active ? (
+                    <Badge variant="default">active</Badge>
+                  ) : (
+                    <Badge variant="destructive">inactive</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button size="icon" variant="ghost" onClick={() => onEdit(p.id)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
             );
           })}
         </TableBody>
@@ -195,11 +202,14 @@ function AcutePainSettingsPopover({
         <div>
           <h4 className="text-sm font-semibold">Acute Pain grouping</h4>
           <p className="text-xs text-muted-foreground">
-            Controls which consultants appear under “Consultants - Acute Pain”. Stored in this browser.
+            Controls which consultants appear under “Consultants - Acute Pain”. Stored in this
+            browser.
           </p>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="ap-lookback" className="text-xs">Lookback window (days)</Label>
+          <Label htmlFor="ap-lookback" className="text-xs">
+            Lookback window (days)
+          </Label>
           <Input
             id="ap-lookback"
             type="number"
@@ -209,7 +219,9 @@ function AcutePainSettingsPopover({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="ap-specialty" className="text-xs">Specialty name (exact match)</Label>
+          <Label htmlFor="ap-specialty" className="text-xs">
+            Specialty name (exact match)
+          </Label>
           <Input
             id="ap-specialty"
             value={name}
@@ -218,8 +230,12 @@ function AcutePainSettingsPopover({
           />
         </div>
         <div className="flex justify-between gap-2">
-          <Button variant="ghost" size="sm" onClick={reset}>Reset</Button>
-          <Button size="sm" onClick={apply}>Apply</Button>
+          <Button variant="ghost" size="sm" onClick={reset}>
+            Reset
+          </Button>
+          <Button size="sm" onClick={apply}>
+            Apply
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
@@ -248,7 +264,10 @@ function AdminStaffPage() {
         .from("job_plans")
         .select("staff_id,total_pas,ltft,ltft_percentage,valid_from,valid_to");
       const now = todayISO();
-      const jobPlanMap = new Map<string, { total_pas: number; ltft: boolean; ltft_percentage: number | null }>();
+      const jobPlanMap = new Map<
+        string,
+        { total_pas: number; ltft: boolean; ltft_percentage: number | null }
+      >();
       for (const jp of jps ?? []) {
         if (jp.valid_from <= now && (!jp.valid_to || jp.valid_to >= now)) {
           jobPlanMap.set(jp.staff_id, {
@@ -342,11 +361,7 @@ function AdminStaffPage() {
         actions={
           <>
             <div className="flex items-center gap-2">
-              <Switch
-                id="show-inactive"
-                checked={showInactive}
-                onCheckedChange={setShowInactive}
-              />
+              <Switch id="show-inactive" checked={showInactive} onCheckedChange={setShowInactive} />
               <Label htmlFor="show-inactive" className="cursor-pointer text-sm">
                 Show inactive
               </Label>
@@ -358,10 +373,7 @@ function AdminStaffPage() {
               className="max-w-xs"
             />
             {isAdmin && (
-              <AcutePainSettingsPopover
-                value={acutePainSettings}
-                onChange={setAcutePainSettings}
-              />
+              <AcutePainSettingsPopover value={acutePainSettings} onChange={setAcutePainSettings} />
             )}
             {isAdmin && (
               <Button onClick={() => setAddOpen(true)}>
@@ -390,7 +402,10 @@ function AdminStaffPage() {
                 <div className="space-y-6">
                   <StaffGroup
                     title="Consultants"
-                    staff={filtered.filter((p) => p.grade === "consultant" && !icuIds.has(p.id) && !acutePainIds.has(p.id))}
+                    staff={filtered.filter(
+                      (p) =>
+                        p.grade === "consultant" && !icuIds.has(p.id) && !acutePainIds.has(p.id),
+                    )}
                     onEdit={(id) => setEditingId(id)}
                   />
                   <StaffGroup
@@ -400,7 +415,9 @@ function AdminStaffPage() {
                   />
                   <StaffGroup
                     title="Consultants - Acute Pain"
-                    staff={filtered.filter((p) => p.grade === "consultant" && acutePainIds.has(p.id))}
+                    staff={filtered.filter(
+                      (p) => p.grade === "consultant" && acutePainIds.has(p.id),
+                    )}
                     onEdit={(id) => setEditingId(id)}
                   />
                   <StaffGroup
@@ -415,13 +432,16 @@ function AdminStaffPage() {
                   />
                   <StaffGroup
                     title="Other"
-                    staff={filtered.filter((p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade))}
+                    staff={filtered.filter(
+                      (p) => !p.grade || !["consultant", "sas", "trainee"].includes(p.grade),
+                    )}
                     onEdit={(id) => setEditingId(id)}
                   />
                 </div>
               )}
               <p className="mt-4 text-xs text-muted-foreground">
-                New users appear here automatically when they sign up. Future joiners are shown with a “Not yet started” badge until their start date.
+                New users appear here automatically when they sign up. Future joiners are shown with
+                a “Not yet started” badge until their start date.
               </p>
             </CardContent>
           </Card>

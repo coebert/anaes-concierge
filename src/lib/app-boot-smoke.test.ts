@@ -31,9 +31,7 @@ describe("app boot smoke", { timeout: 30_000 }, () => {
   });
 
   it("imports the admin settings page component without throwing", async () => {
-    const mod = await import(
-      "@/routes/_authenticated/-admin-settings-page"
-    );
+    const mod = await import("@/routes/_authenticated/-admin-settings-page");
     // The page module should expose at least one export (the component).
     expect(Object.keys(mod).length).toBeGreaterThan(0);
   });

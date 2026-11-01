@@ -88,7 +88,14 @@ const PALETTE: Record<string, SpecialtyTone> = {
 };
 
 const FALLBACK_ORDER: (keyof typeof PALETTE)[] = [
-  "cyan", "pink", "lime", "teal", "indigo", "fuchsia", "violet", "amber",
+  "cyan",
+  "pink",
+  "lime",
+  "teal",
+  "indigo",
+  "fuchsia",
+  "violet",
+  "amber",
 ];
 
 /**
@@ -136,7 +143,9 @@ export function specialtyTone(name: string | null | undefined): SpecialtyTone {
  * Return the palette key for a specialty name, or undefined if unrecognised
  * (neutral). Useful for grouping specialties by colour in legends.
  */
-export function specialtyColorKey(name: string | null | undefined): keyof typeof PALETTE | undefined {
+export function specialtyColorKey(
+  name: string | null | undefined,
+): keyof typeof PALETTE | undefined {
   if (!name) return undefined;
   for (const [re, key] of KEYWORD_MAP) {
     if (re.test(name)) return key;

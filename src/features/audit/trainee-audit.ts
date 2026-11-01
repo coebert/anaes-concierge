@@ -9,12 +9,7 @@
  * from Supabase without extra mapping.
  */
 
-export type RoleOnList =
-  | "solo"
-  | "supervised"
-  | "supervising"
-  | "observer"
-  | string;
+export type RoleOnList = "solo" | "supervised" | "supervising" | "observer" | string;
 
 export interface AuditAssignment {
   id?: string;
@@ -45,9 +40,9 @@ export interface AuditTarget {
 export interface BreadthRow {
   specialty_id: string;
   specialty_name: string;
-  done: number;          // total clinical sessions in this specialty
-  target: number;        // required_sessions for trainee's level
-  percent: number;       // 0-100, capped at 200 (over-exposure is still relevant)
+  done: number; // total clinical sessions in this specialty
+  target: number; // required_sessions for trainee's level
+  percent: number; // 0-100, capped at 200 (over-exposure is still relevant)
   status: "deficit" | "ontrack" | "over";
 }
 
@@ -76,7 +71,7 @@ export function computeBreadth(args: {
   return targetsForLevel
     .map((t) => {
       const done = doneBySpec.get(t.specialty_id) ?? 0;
-      const target = t.required_sessions || (t.required_solo + t.required_supervised) || 0;
+      const target = t.required_sessions || t.required_solo + t.required_supervised || 0;
       const percent = target > 0 ? Math.min(200, Math.round((done / target) * 100)) : 0;
       const status: BreadthRow["status"] =
         percent < 75 ? "deficit" : percent <= 125 ? "ontrack" : "over";
@@ -98,9 +93,9 @@ export interface SoloMixRow {
   solo: number;
   supervised: number;
   totalClinical: number;
-  soloRatio: number;       // 0..1
+  soloRatio: number; // 0..1
   targetSoloRatio: number; // derived from sum of targets at level
-  gap: number;             // soloRatio - targetSoloRatio (negative = under-soloing)
+  gap: number; // soloRatio - targetSoloRatio (negative = under-soloing)
 }
 
 export function computeSoloMix(args: {
@@ -211,9 +206,7 @@ export interface DisplacementSummary {
   }>;
 }
 
-export function computeDisplacement(args: {
-  assignments: AuditAssignment[];
-}): DisplacementSummary {
+export function computeDisplacement(args: { assignments: AuditAssignment[] }): DisplacementSummary {
   const { assignments } = args;
   const displaced = assignments.filter(
     (a) => a.role_on_list === "solo" && a.locally_modified === true,

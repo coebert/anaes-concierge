@@ -3,18 +3,25 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
@@ -138,8 +145,8 @@ function TheatreAliasesPage() {
         title="Theatre name aliases"
         description={
           <>
-            Map imported rota theatre labels (e.g. from CLWRota) to the canonical AM/PM theatre
-            list they belong to. The exact theatre name is always matched first; aliases are only
+            Map imported rota theatre labels (e.g. from CLWRota) to the canonical AM/PM theatre list
+            they belong to. The exact theatre name is always matched first; aliases are only
             consulted when an imported label does not match any real theatre name. Changes take
             effect on the next sync. See{" "}
             <Link to="/admin/settings" className="underline">
@@ -154,9 +161,8 @@ function TheatreAliasesPage() {
         <CardHeader>
           <CardTitle className="text-base">Add alias</CardTitle>
           <CardDescription>
-            Enter the label exactly as it appears in the imported rota (case and
-            surrounding whitespace are ignored), and pick which app theatre it should map
-            to.
+            Enter the label exactly as it appears in the imported rota (case and surrounding
+            whitespace are ignored), and pick which app theatre it should map to.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-7">
@@ -206,13 +212,11 @@ function TheatreAliasesPage() {
         <CardHeader>
           <CardTitle className="text-base">
             Current aliases{" "}
-            {aliases ? (
-              <span className="text-muted-foreground">· {aliases.length}</span>
-            ) : null}
+            {aliases ? <span className="text-muted-foreground">· {aliases.length}</span> : null}
           </CardTitle>
           <CardDescription>
-            Toggle <em>Active</em> to disable an alias without deleting it. Real theatre
-            names always take precedence over aliases.
+            Toggle <em>Active</em> to disable an alias without deleting it. Real theatre names
+            always take precedence over aliases.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -239,18 +243,14 @@ function TheatreAliasesPage() {
                         <TableCell>
                           <Select
                             value={a.theatre_id}
-                            onValueChange={(v) =>
-                              update.mutate({ id: a.id, theatre_id: v })
-                            }
+                            onValueChange={(v) => update.mutate({ id: a.id, theatre_id: v })}
                           >
                             <SelectTrigger className="h-8 w-[220px]">
                               <SelectValue>
                                 {theatre ? (
                                   <Badge variant="secondary">{theatre.name}</Badge>
                                 ) : (
-                                  <span className="text-destructive">
-                                    Theatre missing
-                                  </span>
+                                  <span className="text-destructive">Theatre missing</span>
                                 )}
                               </SelectValue>
                             </SelectTrigger>
@@ -269,9 +269,7 @@ function TheatreAliasesPage() {
                         <TableCell>
                           <Switch
                             checked={a.active}
-                            onCheckedChange={(v) =>
-                              update.mutate({ id: a.id, active: v })
-                            }
+                            onCheckedChange={(v) => update.mutate({ id: a.id, active: v })}
                           />
                         </TableCell>
                         <TableCell>
@@ -279,11 +277,7 @@ function TheatreAliasesPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                              if (
-                                confirm(
-                                  `Delete alias "${a.alias}" → ${theatre?.name ?? "?"}?`,
-                                )
-                              ) {
+                              if (confirm(`Delete alias "${a.alias}" → ${theatre?.name ?? "?"}?`)) {
                                 del.mutate(a.id);
                               }
                             }}
@@ -296,10 +290,7 @@ function TheatreAliasesPage() {
                   })}
                   {(aliases ?? []).length === 0 && (
                     <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-center text-sm text-muted-foreground"
-                      >
+                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
                         No aliases yet — only exact theatre-name matches will be made.
                       </TableCell>
                     </TableRow>

@@ -8,14 +8,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { formatDateGB } from "@/lib/utils";
 import { isoDate, weekdayShort } from "@/lib/theatre-grid-dates";
 import {
-  ViewModeToggle, PeriodNav, buildDays, SessionChip, type ViewMode,
+  ViewModeToggle,
+  PeriodNav,
+  buildDays,
+  SessionChip,
+  type ViewMode,
 } from "@/components/rota-views";
 import { PageLoading } from "@/components/loading";
 
@@ -48,10 +56,12 @@ function TheatreGridPage() {
   // Default to including weekends — some theatre lists (incl. private hospital) run on Sat/Sun.
   const [includeWeekend, setIncludeWeekend] = useState(true);
 
-  const days = useMemo(() => buildDays(anchor, mode, includeWeekend), [anchor, mode, includeWeekend]);
+  const days = useMemo(
+    () => buildDays(anchor, mode, includeWeekend),
+    [anchor, mode, includeWeekend],
+  );
   const startISO = isoDate(days[0]);
   const endISO = isoDate(days[days.length - 1]);
-
 
   const qc = useQueryClient();
 
@@ -73,10 +83,7 @@ function TheatreGridPage() {
     queryKey: ["specialties"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties")
-        .select("id,name")
-        .order("name");
+      const { data, error } = await supabase.from("specialties").select("id,name").order("name");
       if (error) throw error;
       return data;
     },
@@ -89,7 +96,9 @@ function TheatreGridPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("theatre_sessions")
-        .select("id,theatre_id,session_date,session,specialty_id,surgical_consultant,is_non_sag,non_sag_override")
+        .select(
+          "id,theatre_id,session_date,session,specialty_id,surgical_consultant,is_non_sag,non_sag_override",
+        )
         .gte("session_date", startISO)
         .lte("session_date", endISO);
       if (error) throw error;
@@ -132,7 +141,8 @@ function TheatreGridPage() {
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["theatre-sessions-grid", startISO, endISO] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["theatre-sessions-grid", startISO, endISO] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -141,7 +151,8 @@ function TheatreGridPage() {
       const { error } = await supabase.from("theatre_sessions").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["theatre-sessions-grid", startISO, endISO] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["theatre-sessions-grid", startISO, endISO] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -154,11 +165,7 @@ function TheatreGridPage() {
           <>
             <ViewModeToggle mode={mode} onChange={setMode} />
             <PeriodNav anchor={anchor} mode={mode} onChange={setAnchor} />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIncludeWeekend((v) => !v)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setIncludeWeekend((v) => !v)}>
               {includeWeekend ? "Hide weekend" : "Include weekend"}
             </Button>
           </>
@@ -167,7 +174,9 @@ function TheatreGridPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{startISO} – {endISO}</CardTitle>
+          <CardTitle className="text-base">
+            {startISO} – {endISO}
+          </CardTitle>
           <CardDescription>
             Empty cells become new sessions when you choose a specialty or type a consultant.
           </CardDescription>
@@ -202,13 +211,24 @@ type Theatre = { id: string; name: string; kind: "main" | "day_surgery" | "priva
 const DAY_COL_PX = 280; // ~140px per am/pm session cell
 
 function VirtualGrid({
-  theatres, days, cellIndex, specialties, onUpsert, onRemove,
+  theatres,
+  days,
+  cellIndex,
+  specialties,
+  onUpsert,
+  onRemove,
 }: {
   theatres: Theatre[];
   days: Date[];
   cellIndex: Map<string, SessionRow>;
   specialties: { id: string; name: string }[];
-  onUpsert: (theatreId: string, date: string, session: Sess, cell: SessionRow | undefined, patch: SessionPatch) => void;
+  onUpsert: (
+    theatreId: string,
+    date: string,
+    session: Sess,
+    cell: SessionRow | undefined,
+    patch: SessionPatch,
+  ) => void;
   onRemove: (id: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -257,13 +277,26 @@ function VirtualGrid({
       <table className="border-collapse text-xs" style={{ width: 160 + colTotal }}>
         <thead className="sticky top-0 z-20 bg-card shadow-[0_1px_0_0_hsl(var(--border))]">
           <tr>
-            <th className="sticky left-0 z-30 bg-card p-2 text-left font-medium" style={{ width: 160 }}>Theatre</th>
+            <th
+              className="sticky left-0 z-30 bg-card p-2 text-left font-medium"
+              style={{ width: 160 }}
+            >
+              Theatre
+            </th>
             {paddingLeft > 0 && <th aria-hidden style={{ width: paddingLeft }} />}
             {colItems.map((c) => {
               const d = days[c.index];
               return (
-                <th key={c.key} colSpan={2} className="border-l p-2 text-center font-medium" style={{ width: c.size }}>
-                  {weekdayShort(d)} <span className="text-muted-foreground">{formatDateGB(isoDate(d)).slice(0, 5)}</span>
+                <th
+                  key={c.key}
+                  colSpan={2}
+                  className="border-l p-2 text-center font-medium"
+                  style={{ width: c.size }}
+                >
+                  {weekdayShort(d)}{" "}
+                  <span className="text-muted-foreground">
+                    {formatDateGB(isoDate(d)).slice(0, 5)}
+                  </span>
                 </th>
               );
             })}
@@ -274,14 +307,17 @@ function VirtualGrid({
             {paddingLeft > 0 && <th aria-hidden style={{ width: paddingLeft }} />}
             {colItems.flatMap((c) =>
               SESSIONS.map((s) => (
-                <th key={`${c.key}-${s}`} className="border-l p-1 text-center font-medium" style={{ width: c.size / 2 }}>
+                <th
+                  key={`${c.key}-${s}`}
+                  className="border-l p-1 text-center font-medium"
+                  style={{ width: c.size / 2 }}
+                >
                   <SessionChip half={s} />
                 </th>
               )),
             )}
             {paddingRight > 0 && <th aria-hidden style={{ width: paddingRight }} />}
           </tr>
-
         </thead>
         <tbody>
           {paddingTop > 0 && (
@@ -292,12 +328,11 @@ function VirtualGrid({
           {rowItems.map((v) => {
             const t = theatres[v.index];
             return (
-              <tr
-                key={t.id}
-                data-index={v.index}
-                className="border-t align-top"
-              >
-                <td className="sticky left-0 z-10 bg-card p-2 align-top font-medium" style={{ width: 160 }}>
+              <tr key={t.id} data-index={v.index} className="border-t align-top">
+                <td
+                  className="sticky left-0 z-10 bg-card p-2 align-top font-medium"
+                  style={{ width: 160 }}
+                >
                   {t.name}
                   <div className="text-[10px] uppercase text-muted-foreground">{t.kind}</div>
                 </td>
@@ -307,7 +342,11 @@ function VirtualGrid({
                   return SESSIONS.map((s) => {
                     const cell = cellIndex.get(`${t.id}|${date}|${s}`);
                     return (
-                      <td key={`${date}-${s}`} className="border-l p-1 align-top" style={{ width: c.size / 2 }}>
+                      <td
+                        key={`${date}-${s}`}
+                        className="border-l p-1 align-top"
+                        style={{ width: c.size / 2 }}
+                      >
                         <Cell
                           cell={cell}
                           theatreId={t.id}
@@ -337,9 +376,15 @@ function VirtualGrid({
   );
 }
 
-
 function Cell({
-  cell, theatreId, date, session, theatreKind, specialties, onChange, onClear,
+  cell,
+  theatreId,
+  date,
+  session,
+  theatreKind,
+  specialties,
+  onChange,
+  onClear,
 }: {
   cell: SessionRow | undefined;
   theatreId: string;
@@ -371,7 +416,9 @@ function Cell({
         <SelectContent>
           <SelectItem value="__none">— none —</SelectItem>
           {specialties.map((sp) => (
-            <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+            <SelectItem key={sp.id} value={sp.id}>
+              {sp.name}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -417,12 +464,9 @@ function Cell({
             }
           />
 
-          <span className={cell?.is_non_sag ? "font-medium text-warning" : ""}>
-            Non-SAG
-          </span>
+          <span className={cell?.is_non_sag ? "font-medium text-warning" : ""}>Non-SAG</span>
         </label>
       )}
-
     </div>
   );
 }

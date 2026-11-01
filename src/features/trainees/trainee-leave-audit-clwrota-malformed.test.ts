@@ -137,8 +137,9 @@ async function fetchAndExtractStatusesSafe(
 
 const originalFetch = globalThis.fetch;
 function mockFetchOnceWith(body: string) {
-  globalThis.fetch = vi.fn(async () =>
-    new Response(body, { status: 200, headers: { "Content-Type": "application/json" } }),
+  globalThis.fetch = vi.fn(
+    async () =>
+      new Response(body, { status: 200, headers: { "Content-Type": "application/json" } }),
   ) as unknown as typeof fetch;
 }
 afterEach(() => {
@@ -162,21 +163,27 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
   describe("invalid JSON / non-JSON bodies", () => {
     it("handles an HTML error page (CLWRota login redirect) without crashing", async () => {
       mockFetchOnceWith("<!DOCTYPE html><html><body>Session expired</body></html>");
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeTruthy(); // JSON.parse fails — caught, not thrown
       expect(statuses).toEqual([]);
     });
 
     it("handles an empty response body without crashing", async () => {
       mockFetchOnceWith("");
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeTruthy();
       expect(statuses).toEqual([]);
     });
 
     it("handles truncated JSON without crashing", async () => {
       mockFetchOnceWith('[{"leave_request": {"state":');
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeTruthy();
       expect(statuses).toEqual([]);
     });
@@ -190,7 +197,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           // rows: missing entirely
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
@@ -201,21 +210,27 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           rows: [["approved"], ["pending"]],
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
 
     it("wrapper object missing `data` array entirely → 0 rows, no crash", async () => {
       mockFetchOnceWith(JSON.stringify({ meta: { count: 0 } }));
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
 
     it("completely empty object {} → 0 rows, no crash", async () => {
       mockFetchOnceWith("{}");
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
@@ -229,7 +244,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           rows: [["approved", "a@x"]],
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
@@ -241,35 +258,45 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           rows: { "0": ["approved"] },
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
 
     it("`data` is a number instead of an array → 0 rows, no crash", async () => {
       mockFetchOnceWith(JSON.stringify({ data: 42 }));
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
 
     it("top-level is a JSON number → 0 rows, no crash", async () => {
       mockFetchOnceWith("12345");
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
 
     it("top-level is a JSON string → 0 rows, no crash", async () => {
       mockFetchOnceWith(JSON.stringify("approved"));
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
 
     it("top-level is JSON null → 0 rows, no crash", async () => {
       mockFetchOnceWith("null");
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([]);
     });
@@ -283,7 +310,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           { leave_request: { state: null } }, // real row with null status
         ]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       // Only the one real object survives; its status is null → unknown.
       expect(statuses).toEqual([null]);
@@ -299,7 +328,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           rows: [["approved", "a@x"]],
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       // Row decoded as { "": "a@x" } — no status keys match → null → unknown.
       expect(statuses).toHaveLength(1);
@@ -313,7 +344,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           rows: [["approved", "a@x"]],
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toHaveLength(1);
       // Cells map to "" key (no field_name extractable) → no status match → unknown.
@@ -323,17 +356,16 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
     it("row arrays shorter than columns → undefined cells, no crash, status unknown", async () => {
       mockFetchOnceWith(
         JSON.stringify({
-          columns: [
-            { field_name: "leave_request.state" },
-            { field_name: "person.email" },
-          ],
+          columns: [{ field_name: "leave_request.state" }, { field_name: "person.email" }],
           rows: [
             [], // empty row
             ["approved"], // missing email cell
           ],
         }),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toHaveLength(2);
       // First row: no cells at all → status undefined → null → unknown.
@@ -353,7 +385,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           },
         ]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([null]);
       expectAllUnknown(statuses);
@@ -366,7 +400,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           { leave_request: "pending" },
         ]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([null, null]);
       expectAllUnknown(statuses);
@@ -374,12 +410,11 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
 
     it("leave_request is an ARRAY instead of an object → traversal returns null, classified as unknown", async () => {
       mockFetchOnceWith(
-        JSON.stringify([
-          { leave_request: ["approved", "pending"] },
-          { leave_request: [] },
-        ]),
+        JSON.stringify([{ leave_request: ["approved", "pending"] }, { leave_request: [] }]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([null, null]);
       expectAllUnknown(statuses);
@@ -392,7 +427,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           { status: { name: { localized: "approved" } } }, // status.name is an object, not string
         ]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       // pick() only accepts string/number/boolean leaves → both return null.
       expect(statuses).toEqual([null, null]);
@@ -406,7 +443,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           { leave_request: { state: ["approved"] } },
         ]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([null, null]);
       expectAllUnknown(statuses);
@@ -416,7 +455,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
       mockFetchOnceWith(
         JSON.stringify([{ person: null, leave_request: null, leave_submittal: null }]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       expect(statuses).toEqual([null]);
       expectAllUnknown(statuses);
@@ -436,7 +477,9 @@ describe("CLWRota malformed payloads → no crash, missing status → unknown", 
           {}, // empty → unknown
         ]),
       );
-      const { statuses, parseError } = await fetchAndExtractStatusesSafe("https://clwrota.test/leave");
+      const { statuses, parseError } = await fetchAndExtractStatusesSafe(
+        "https://clwrota.test/leave",
+      );
       expect(parseError).toBeNull();
       // Non-object entries are filtered; 5 object rows remain.
       expect(statuses).toHaveLength(5);

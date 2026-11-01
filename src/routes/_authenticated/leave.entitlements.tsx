@@ -59,7 +59,9 @@ function EntitlementsPage() {
           (from, to) =>
             supabase
               .from("leave_requests")
-              .select("id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at")
+              .select(
+                "id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+              )
               .eq("staff_id", user!.id)
               .order("start_date")
               .order("id")
@@ -67,7 +69,14 @@ function EntitlementsPage() {
           { label: "Leave history" },
         ),
         // TOIL balance sums EVERY ledger entry — a 500-row cap made it wrong.
-        fetchAllRowsPaged<{ entry_date: string; kind: "accrual" | "spend" | "adjustment"; hours: number; reason: string | null; created_at: string; id: string }>(
+        fetchAllRowsPaged<{
+          entry_date: string;
+          kind: "accrual" | "spend" | "adjustment";
+          hours: number;
+          reason: string | null;
+          created_at: string;
+          id: string;
+        }>(
           (from, to) =>
             supabase
               .from("leave_ledger_entries")
@@ -92,9 +101,7 @@ function EntitlementsPage() {
 
   const years = useMemo(
     () =>
-      (data?.allowances ?? [])
-        .map((a) => a.leave_year_start)
-        .sort((a, b) => b.localeCompare(a)),
+      (data?.allowances ?? []).map((a) => a.leave_year_start).sort((a, b) => b.localeCompare(a)),
     [data],
   );
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -108,7 +115,11 @@ function EntitlementsPage() {
       allowance,
       { start_date: data.profile?.start_date, left_at: data.profile?.left_at },
       data.leave,
-      (data.ledger as { entry_date: string; kind: "accrual" | "spend" | "adjustment"; hours: number }[]) ?? [],
+      (data.ledger as {
+        entry_date: string;
+        kind: "accrual" | "spend" | "adjustment";
+        hours: number;
+      }[]) ?? [],
     );
   }, [allowance, data]);
 
@@ -122,9 +133,17 @@ function EntitlementsPage() {
   if (isLoading) return <PageLoading />;
   if (error) {
     return (
-      <div role="alert" className="space-y-3 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-        <p>Your entitlements could not be loaded, so no totals are shown: {error instanceof Error ? error.message : String(error)}</p>
-        <button type="button" className="underline" onClick={() => void refetch()}>Retry</button>
+      <div
+        role="alert"
+        className="space-y-3 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
+      >
+        <p>
+          Your entitlements could not be loaded, so no totals are shown:{" "}
+          {error instanceof Error ? error.message : String(error)}
+        </p>
+        <button type="button" className="underline" onClick={() => void refetch()}>
+          Retry
+        </button>
       </div>
     );
   }
@@ -139,18 +158,15 @@ function EntitlementsPage() {
       {!allowance ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No leave allowance has been recorded for you yet. Ask an admin to set
-            up an allowance record so entitlements can be shown.
+            No leave allowance has been recorded for you yet. Ask an admin to set up an allowance
+            record so entitlements can be shown.
           </CardContent>
         </Card>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-sm text-muted-foreground">Leave year starting</div>
-            <Select
-              value={activeYear ?? undefined}
-              onValueChange={(v) => setSelectedYear(v)}
-            >
+            <Select value={activeYear ?? undefined} onValueChange={(v) => setSelectedYear(v)}>
               <SelectTrigger className="w-[220px]">
                 <SelectValue />
               </SelectTrigger>
@@ -184,9 +200,7 @@ function EntitlementsPage() {
               <CardContent className="space-y-2">
                 {pendingRequests.map((r) => {
                   const ageDays = r.created_at
-                    ? Math.floor(
-                        (Date.now() - new Date(r.created_at).getTime()) / 86_400_000,
-                      )
+                    ? Math.floor((Date.now() - new Date(r.created_at).getTime()) / 86_400_000)
                     : 0;
                   const breached = ageDays > slaTarget;
                   return (
@@ -231,7 +245,9 @@ function EntitlementsPage() {
                       <div className="w-28 shrink-0 text-xs text-muted-foreground">
                         {formatDateWithWeekdayGB(l.entry_date)}
                       </div>
-                      <Badge variant="outline" className="capitalize">{l.kind}</Badge>
+                      <Badge variant="outline" className="capitalize">
+                        {l.kind}
+                      </Badge>
                       <div className={l.kind === "spend" ? "text-destructive" : ""}>
                         {l.kind === "spend" ? "−" : "+"}
                         {Number(l.hours).toFixed(2)} h

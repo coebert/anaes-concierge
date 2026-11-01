@@ -56,8 +56,8 @@ function rowsFromCentralApi(parsed: unknown): Record<string, unknown>[] {
     const cols = obj["columns"];
     const rowsRaw = obj["rows"];
     if (Array.isArray(cols) && Array.isArray(rowsRaw)) {
-      const fieldNames = (cols as Array<Record<string, unknown>>).map(
-        (c) => String(c.field_name ?? ""),
+      const fieldNames = (cols as Array<Record<string, unknown>>).map((c) =>
+        String(c.field_name ?? ""),
       );
       // Already keyed objects.
       if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
@@ -91,8 +91,9 @@ async function fetchAndExtractStatuses(url: string): Promise<Array<string | null
 
 const originalFetch = globalThis.fetch;
 function mockFetchOnceWith(body: string) {
-  globalThis.fetch = vi.fn(async () =>
-    new Response(body, { status: 200, headers: { "Content-Type": "application/json" } }),
+  globalThis.fetch = vi.fn(
+    async () =>
+      new Response(body, { status: 200, headers: { "Content-Type": "application/json" } }),
   ) as unknown as typeof fetch;
 }
 
@@ -267,7 +268,6 @@ describe("CLWRota integration → classifyLeaveOverlap (missing/null status → 
     expectUnknown(statuses[1]);
     expectUnknown(statuses[2]);
   });
-
 
   it("treats non-string status types (number, boolean) sanely — numbers stringify, but booleans/missing remain unknown", async () => {
     // Defensive: if an upstream change ever leaks a non-string status, we

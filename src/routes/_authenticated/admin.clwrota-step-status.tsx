@@ -15,10 +15,10 @@ export const Route = createFileRoute("/_authenticated/admin/clwrota-step-status"
   component: ClwRotaStepStatusPage,
   errorComponent: ({ error }) => (
     <div className="p-6">
-      <h1 className="text-lg font-semibold text-destructive">
-        Could not load CLWRota step status
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
+      <h1 className="text-lg font-semibold text-destructive">Could not load CLWRota step status</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {error instanceof Error ? error.message : String(error)}
+      </p>
     </div>
   ),
   notFoundComponent: () => <div className="p-6">Page not found.</div>,

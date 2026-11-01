@@ -66,7 +66,8 @@ export function createQueryBudget(label: string, max: number): QueryBudget {
  */
 export function reportQueryBudget(budget: QueryBudget): void {
   const isTest =
-    (typeof import.meta !== "undefined" && (import.meta as { env?: { MODE?: string } }).env?.MODE === "test") ||
+    (typeof import.meta !== "undefined" &&
+      (import.meta as { env?: { MODE?: string } }).env?.MODE === "test") ||
     (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
     (typeof process !== "undefined" && !!process.env?.VITEST);
   const isDev =
@@ -89,20 +90,16 @@ export function reportQueryBudget(budget: QueryBudget): void {
 
 export async function fetchAllPaged<T>(
   build: () => {
-    range: (
-      from: number,
-      to: number,
-    ) => PromiseLike<{ data: T[] | null; error: unknown }>;
+    range: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>;
   },
-  pageSizeOrOpts: number | { pageSize?: number; budget?: QueryBudget; source?: string; maxRows?: number } = 1000,
+  pageSizeOrOpts:
+    | number
+    | { pageSize?: number; budget?: QueryBudget; source?: string; maxRows?: number } = 1000,
   maybeOpts?: { budget?: QueryBudget; source?: string; maxRows?: number },
 ): Promise<T[]> {
   const pageSize =
-    typeof pageSizeOrOpts === "number"
-      ? pageSizeOrOpts
-      : pageSizeOrOpts.pageSize ?? 1000;
-  const opts =
-    typeof pageSizeOrOpts === "number" ? maybeOpts : pageSizeOrOpts;
+    typeof pageSizeOrOpts === "number" ? pageSizeOrOpts : (pageSizeOrOpts.pageSize ?? 1000);
+  const opts = typeof pageSizeOrOpts === "number" ? maybeOpts : pageSizeOrOpts;
   const budget = opts?.budget;
   const source = opts?.source ?? "unnamed";
 

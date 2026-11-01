@@ -42,8 +42,5 @@ export function leaveOverlapsWindow(
   leave: { start_date: string; end_date: string },
   window: LeaveWindow,
 ): boolean {
-  return (
-    leave.start_date <= window.window_end &&
-    leave.end_date >= window.window_start
-  );
+  return leave.start_date <= window.window_end && leave.end_date >= window.window_start;
 }

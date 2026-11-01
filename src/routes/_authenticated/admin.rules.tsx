@@ -88,8 +88,12 @@ function RulesPage() {
         honour_fixed_sessions: data.honour_fixed_sessions,
         allow_back_to_back_oncall: data.allow_back_to_back_oncall,
         post_nights_off_days: Number(data.post_nights_off_days),
-        trainee_at_risk_pct: Number((data as { trainee_at_risk_pct?: number }).trainee_at_risk_pct ?? 50),
-        trainee_behind_pct: Number((data as { trainee_behind_pct?: number }).trainee_behind_pct ?? 75),
+        trainee_at_risk_pct: Number(
+          (data as { trainee_at_risk_pct?: number }).trainee_at_risk_pct ?? 50,
+        ),
+        trainee_behind_pct: Number(
+          (data as { trainee_behind_pct?: number }).trainee_behind_pct ?? 75,
+        ),
         notes: data.notes ?? "",
       });
     }
@@ -159,7 +163,8 @@ function RulesPage() {
         <CardHeader>
           <CardTitle className="text-base">Trainee progress thresholds</CardTitle>
           <CardDescription>
-            Overall % against curriculum targets at which trainees are flagged on the admin dashboard.
+            Overall % against curriculum targets at which trainees are flagged on the admin
+            dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -268,10 +273,7 @@ function CustomRulesCard() {
 
   const toggle = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      const { error } = await supabase
-        .from("custom_rota_rules")
-        .update({ active })
-        .eq("id", id);
+      const { error } = await supabase.from("custom_rota_rules").update({ active }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["custom-rota-rules"] }),
@@ -283,23 +285,19 @@ function CustomRulesCard() {
       <CardHeader>
         <CardTitle className="text-base">Custom rules taught to the AI assistant</CardTitle>
         <CardDescription>
-          Plain-English working-pattern rules the AI remembers and factors into rota writing.
-          Create new rules by chatting with the assistant (e.g. "Dr Smith always has the morning
-          off after an overnight on-call").
+          Plain-English working-pattern rules the AI remembers and factors into rota writing. Create
+          new rules by chatting with the assistant (e.g. "Dr Smith always has the morning off after
+          an overnight on-call").
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {(!rules || rules.length === 0) && (
           <p className="text-sm text-muted-foreground">
-            No custom rules yet. Open the assistant and tell it about a working pattern to
-            remember.
+            No custom rules yet. Open the assistant and tell it about a working pattern to remember.
           </p>
         )}
         {rules?.map((r) => (
-          <div
-            key={r.id}
-            className="flex items-start justify-between gap-3 rounded-md border p-3"
-          >
+          <div key={r.id} className="flex items-start justify-between gap-3 rounded-md border p-3">
             <div className="space-y-1">
               <div className="text-sm font-medium flex items-center gap-2">
                 {r.summary}
@@ -339,7 +337,6 @@ function CustomRulesCard() {
   );
 }
 
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -350,8 +347,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ToggleRow({
-  label, description, checked, onChange,
-}: { label: string; description: string; checked: boolean; onChange: (v: boolean) => void }) {
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <div className="flex items-start justify-between gap-3 rounded-md border p-3">
       <div>

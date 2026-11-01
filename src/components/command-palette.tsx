@@ -49,9 +49,7 @@ export function CommandPalette() {
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left">Search tools…</span>
-        <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] sm:inline">
-          ⌘K
-        </kbd>
+        <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] sm:inline">⌘K</kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen} filter={commandPaletteFilter}>
         <CommandInput placeholder="Jump to a tool or view…" />

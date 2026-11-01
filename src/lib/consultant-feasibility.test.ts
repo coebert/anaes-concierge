@@ -5,8 +5,7 @@ import {
   type FeasibilityInputs,
 } from "./consultant-feasibility";
 
-const close = (a: number, b: number, eps = 1e-6) =>
-  Math.abs(a - b) < eps;
+const close = (a: number, b: number, eps = 1e-6) => Math.abs(a - b) < eps;
 
 describe("calculateFeasibility — capacity breakdown", () => {
   it("derives the capacity waterfall consistently from gross to residual", () => {
@@ -15,8 +14,7 @@ describe("calculateFeasibility — capacity breakdown", () => {
     // gross - leaveLost === afterLeave
     expect(
       close(
-        r.grossAnnualSessionsPerConsultant -
-          r.leaveLostAnnualSessionsPerConsultant,
+        r.grossAnnualSessionsPerConsultant - r.leaveLostAnnualSessionsPerConsultant,
         r.afterLeaveAnnualSessionsPerConsultant,
       ),
     ).toBe(true);
@@ -24,8 +22,7 @@ describe("calculateFeasibility — capacity breakdown", () => {
     // afterLeave - sicknessLost === net (annualSessionsPerConsultant)
     expect(
       close(
-        r.afterLeaveAnnualSessionsPerConsultant -
-          r.sicknessLostAnnualSessionsPerConsultant,
+        r.afterLeaveAnnualSessionsPerConsultant - r.sicknessLostAnnualSessionsPerConsultant,
         r.annualSessionsPerConsultant,
       ),
     ).toBe(true);
@@ -52,10 +49,7 @@ describe("calculateFeasibility — capacity breakdown", () => {
     expect(base.sicknessFactor).toBe(1);
     expect(sick.sicknessFactor).toBeCloseTo(0.9, 10);
     // 10% derating → 90% of base capacity
-    expect(sick.annualSessionsPerConsultant).toBeCloseTo(
-      base.annualSessionsPerConsultant * 0.9,
-      6,
-    );
+    expect(sick.annualSessionsPerConsultant).toBeCloseTo(base.annualSessionsPerConsultant * 0.9, 6);
     // 0% sickness → no sickness loss
     expect(base.sicknessLostAnnualSessionsPerConsultant).toBe(0);
   });
@@ -99,10 +93,7 @@ describe("calculateFeasibility — capacity breakdown", () => {
 
   it("FTE × per-consultant capacity covers total annual demand", () => {
     const r = calculateFeasibility(FEASIBILITY_DEFAULTS);
-    expect(r.fteNeeded * r.annualSessionsPerConsultant).toBeCloseTo(
-      r.annualDemand,
-      4,
-    );
+    expect(r.fteNeeded * r.annualSessionsPerConsultant).toBeCloseTo(r.annualDemand, 4);
   });
 
   it("ICU subgroup: residual = net per-consultant capacity − ICU demand share", () => {
@@ -126,10 +117,7 @@ describe("calculateFeasibility — capacity breakdown", () => {
       ...FEASIBILITY_DEFAULTS,
       sicknessRatePct: 20,
     });
-    expect(sick.icuPoolAnnualCapacity).toBeCloseTo(
-      noSick.icuPoolAnnualCapacity * 0.8,
-      6,
-    );
+    expect(sick.icuPoolAnnualCapacity).toBeCloseTo(noSick.icuPoolAnnualCapacity * 0.8, 6);
     // Same demand, smaller capacity → higher utilisation
     expect(sick.icuPoolUtilisation).toBeGreaterThan(noSick.icuPoolUtilisation);
   });
@@ -193,15 +181,14 @@ describe("calculateFeasibility — capacity breakdown", () => {
       nonClinicalPAsPerWeek: 5,
     });
     // 5 PAs/wk × 1 session/PA = 5 sessions/wk more demand
-    expect(
-      withNonClinical.weeklySessionDemand - base.weeklySessionDemand,
-    ).toBeCloseTo(5 * FEASIBILITY_DEFAULTS.sessionsPerPa, 10);
+    expect(withNonClinical.weeklySessionDemand - base.weeklySessionDemand).toBeCloseTo(
+      5 * FEASIBILITY_DEFAULTS.sessionsPerPa,
+      10,
+    );
     // Higher demand → higher FTE needed
     expect(withNonClinical.fteNeeded).toBeGreaterThan(base.fteNeeded);
     // Exact annual increment
-    expect(
-      withNonClinical.annualDemand - base.annualDemand,
-    ).toBeCloseTo(
+    expect(withNonClinical.annualDemand - base.annualDemand).toBeCloseTo(
       5 * FEASIBILITY_DEFAULTS.sessionsPerPa * FEASIBILITY_DEFAULTS.weeksPerYear,
       6,
     );

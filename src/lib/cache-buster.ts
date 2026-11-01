@@ -67,7 +67,8 @@ export function installCacheBuster(): void {
   }, 10_000);
 
   window.addEventListener("error", (event) => {
-    const msg = event?.message || (event?.error && String(event.error.message || event.error)) || "";
+    const msg =
+      event?.message || (event?.error && String(event.error.message || event.error)) || "";
     if (isStaleArtifactError(msg)) {
       hardReload();
     }
@@ -89,12 +90,7 @@ export function installCacheBuster(): void {
 
 /** Exposed for the error boundary — checks an error and reloads if it looks stale. */
 export function maybeCacheBust(error: unknown): boolean {
-  const msg =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "";
+  const msg = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   if (isStaleArtifactError(msg)) {
     hardReload();
     return true;

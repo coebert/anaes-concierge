@@ -137,4 +137,3 @@ export function compareStaffByPreference<T>(
   if (at !== bt) return at - bt;
   return tiebreak(a, b);
 }
-

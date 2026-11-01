@@ -106,8 +106,11 @@ export function formatDateTimeGB(value: Date | string | null | undefined): strin
   const d = value instanceof Date ? value : new Date(value);
   if (isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -116,8 +119,22 @@ export function formatDateTimeGB(value: Date | string | null | undefined): strin
  * -------------------------------------------------------------------------- */
 
 const TITLE_TOKENS = new Set([
-  "dr", "dr.", "mr", "mr.", "mrs", "mrs.", "ms", "ms.", "miss",
-  "prof", "prof.", "professor", "mx", "mx.", "sir", "dame",
+  "dr",
+  "dr.",
+  "mr",
+  "mr.",
+  "mrs",
+  "mrs.",
+  "ms",
+  "ms.",
+  "miss",
+  "prof",
+  "prof.",
+  "professor",
+  "mx",
+  "mx.",
+  "sir",
+  "dame",
 ]);
 
 /** Split a single "full name" string into title / first name / surname. */
@@ -182,4 +199,3 @@ export function compareBySurnameAsc(
   if (bySurname !== 0) return bySurname;
   return (a ?? "").toLowerCase().localeCompare((b ?? "").toLowerCase());
 }
-

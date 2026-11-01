@@ -48,7 +48,6 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     maybeCacheBust(error);
   }, [error]);
 
-
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -98,14 +97,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:site_name", content: "Salisbury Anaesthetics Rota" },
       { property: "og:title", content: "Salisbury Anaesthetics Rota" },
-      { property: "og:description", content: "AI-powered app for anaesthetics rota coordination, leave management, and trainee progress tracking." },
+      {
+        property: "og:description",
+        content:
+          "AI-powered app for anaesthetics rota coordination, leave management, and trainee progress tracking.",
+      },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://anaes-concierge.lovable.app/" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a38815ca-90eb-4f35-9a59-81ae8d025628/id-preview-d6e2de1d--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app-1779799577646.png" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a38815ca-90eb-4f35-9a59-81ae8d025628/id-preview-d6e2de1d--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app-1779799577646.png",
+      },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Salisbury Anaesthetics Rota" },
-      { name: "twitter:description", content: "AI-powered app for anaesthetics rota coordination, leave management, and trainee progress tracking." },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a38815ca-90eb-4f35-9a59-81ae8d025628/id-preview-d6e2de1d--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app-1779799577646.png" },
+      {
+        name: "twitter:description",
+        content:
+          "AI-powered app for anaesthetics rota coordination, leave management, and trainee progress tracking.",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a38815ca-90eb-4f35-9a59-81ae8d025628/id-preview-d6e2de1d--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app-1779799577646.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

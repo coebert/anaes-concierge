@@ -79,7 +79,9 @@ function CalendarPage() {
           <span>= Solo trainee</span>
         </span>
         <span className="inline-flex items-center gap-1">
-          <Badge variant="outline" className="px-1 py-0 text-[9px]">solo</Badge>
+          <Badge variant="outline" className="px-1 py-0 text-[9px]">
+            solo
+          </Badge>
           <span>+ blue</span>
         </span>
         <span className="inline-flex items-center gap-1">

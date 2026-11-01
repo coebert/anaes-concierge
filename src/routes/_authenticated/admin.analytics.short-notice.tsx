@@ -9,18 +9,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Clock } from "lucide-react";
 import { computeShortNotice, type ShortNoticeRow } from "@/features/analytics/analyses";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/short-notice",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/short-notice")({
   head: () => ({
     meta: [
       { title: "Short-notice changes league — HR analytics" },
-      { name: "description", content: "Who is disproportionately absorbing rota changes made within 48 hours of a session." },
+      {
+        name: "description",
+        content:
+          "Who is disproportionately absorbing rota changes made within 48 hours of a session.",
+      },
     ],
   }),
   component: ShortNoticePage,
@@ -64,7 +71,9 @@ function ShortNoticePage() {
       }));
   }, [data]);
 
-  const p90 = view.length ? sortNums(view.map((r) => r.totalShortNotice))[Math.floor(view.length * 0.9)] : 0;
+  const p90 = view.length
+    ? sortNums(view.map((r) => r.totalShortNotice))[Math.floor(view.length * 0.9)]
+    : 0;
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
@@ -78,8 +87,11 @@ function ShortNoticePage() {
       />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Doctors affected" value={view.length} icon={Clock} />
-        <StatCard label="Total short-notice events"
-          value={view.reduce((a, r) => a + r.totalShortNotice, 0)} icon={Clock} />
+        <StatCard
+          label="Total short-notice events"
+          value={view.reduce((a, r) => a + r.totalShortNotice, 0)}
+          icon={Clock}
+        />
         <StatCard label="Top-decile threshold" value={p90 ?? 0} icon={Clock} />
       </div>
       <Card>
@@ -100,7 +112,9 @@ function ShortNoticePage() {
               {view.map((r) => (
                 <TableRow key={r.staff_id}>
                   <TableCell>{r.name}</TableCell>
-                  <TableCell><Badge variant="outline">{r.grade ?? "—"}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.grade ?? "—"}</Badge>
+                  </TableCell>
                   <TableCell className="text-right font-medium">{r.totalShortNotice}</TableCell>
                   <TableCell className="text-right">{r.added}</TableCell>
                   <TableCell className="text-right">{r.removed}</TableCell>
@@ -122,4 +136,6 @@ function ShortNoticePage() {
   );
 }
 
-function sortNums(xs: number[]): number[] { return [...xs].sort((a, b) => a - b); }
+function sortNums(xs: number[]): number[] {
+  return [...xs].sort((a, b) => a - b);
+}

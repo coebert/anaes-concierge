@@ -55,8 +55,7 @@ export interface FeasibilityResult {
 
 export function calculateFeasibility(inp: FeasibilityInputs): FeasibilityResult {
   const theatreSessions =
-    (inp.mainTheatres + inp.daySurgeryTheatres) *
-    inp.sessionsPerTheatrePerWeek;
+    (inp.mainTheatres + inp.daySurgeryTheatres) * inp.sessionsPerTheatrePerWeek;
   const weeklySessionDemand =
     theatreSessions +
     inp.labourWardSessionsPerWeek +
@@ -67,65 +66,47 @@ export function calculateFeasibility(inp: FeasibilityInputs): FeasibilityResult 
     inp.icuSessionsPerWeek;
   const annualSessionDemand = weeklySessionDemand * inp.weeksPerYear;
 
-  const weeklyOnCallPAs =
-    inp.theatreOnCallPAsPerWeek + inp.icuOnCallPAsPerWeek;
-  const annualOnCallSessionEquiv =
-    weeklyOnCallPAs * inp.sessionsPerPa * inp.weeksPerYear;
+  const weeklyOnCallPAs = inp.theatreOnCallPAsPerWeek + inp.icuOnCallPAsPerWeek;
+  const annualOnCallSessionEquiv = weeklyOnCallPAs * inp.sessionsPerPa * inp.weeksPerYear;
 
-  const weeklyDemand =
-    weeklySessionDemand + weeklyOnCallPAs * inp.sessionsPerPa;
+  const weeklyDemand = weeklySessionDemand + weeklyOnCallPAs * inp.sessionsPerPa;
   const annualDemand = annualSessionDemand + annualOnCallSessionEquiv;
 
-  const leaveDays =
-    inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays;
+  const leaveDays = inp.annualLeaveDays + inp.studyLeaveDays + inp.bankHolidayDays;
   const leaveWeeks = leaveDays / inp.workingDaysPerWeek;
   const workingWeeks = Math.max(0, inp.weeksPerYear - leaveWeeks);
 
   const weeklyClinicalSessions = inp.dccPasPerConsultant * inp.sessionsPerPa;
   const sicknessFactor = 1 - inp.sicknessRatePct / 100;
-  const annualSessionsPerConsultant =
-    weeklyClinicalSessions * workingWeeks * sicknessFactor;
+  const annualSessionsPerConsultant = weeklyClinicalSessions * workingWeeks * sicknessFactor;
 
   const fteNeeded =
-    annualSessionsPerConsultant > 0
-      ? annualDemand / annualSessionsPerConsultant
-      : Infinity;
+    annualSessionsPerConsultant > 0 ? annualDemand / annualSessionsPerConsultant : Infinity;
 
   const icuAnnualSessionDemand = inp.icuSessionsPerWeek * inp.weeksPerYear;
-  const icuAnnualOnCallEquiv =
-    inp.icuOnCallPAsPerWeek * inp.sessionsPerPa * inp.weeksPerYear;
+  const icuAnnualOnCallEquiv = inp.icuOnCallPAsPerWeek * inp.sessionsPerPa * inp.weeksPerYear;
   const icuAnnualDemand = icuAnnualSessionDemand + icuAnnualOnCallEquiv;
-  const icuPoolAnnualCapacity =
-    inp.icuTrainedPoolSize * annualSessionsPerConsultant;
+  const icuPoolAnnualCapacity = inp.icuTrainedPoolSize * annualSessionsPerConsultant;
   const icuPoolUtilisation =
-    icuPoolAnnualCapacity > 0
-      ? icuAnnualDemand / icuPoolAnnualCapacity
-      : Infinity;
-  const icuWeeklyLoad =
-    inp.icuSessionsPerWeek + inp.icuOnCallPAsPerWeek * inp.sessionsPerPa;
+    icuPoolAnnualCapacity > 0 ? icuAnnualDemand / icuPoolAnnualCapacity : Infinity;
+  const icuWeeklyLoad = inp.icuSessionsPerWeek + inp.icuOnCallPAsPerWeek * inp.sessionsPerPa;
   const icuSharePerConsultant =
     inp.icuTrainedPoolSize > 0 && weeklyClinicalSessions > 0
       ? icuWeeklyLoad / inp.icuTrainedPoolSize / weeklyClinicalSessions
       : Infinity;
 
-  const grossAnnualSessionsPerConsultant =
-    weeklyClinicalSessions * inp.weeksPerYear;
-  const leaveLostAnnualSessionsPerConsultant =
-    weeklyClinicalSessions * leaveWeeks;
-  const afterLeaveAnnualSessionsPerConsultant =
-    weeklyClinicalSessions * workingWeeks;
+  const grossAnnualSessionsPerConsultant = weeklyClinicalSessions * inp.weeksPerYear;
+  const leaveLostAnnualSessionsPerConsultant = weeklyClinicalSessions * leaveWeeks;
+  const afterLeaveAnnualSessionsPerConsultant = weeklyClinicalSessions * workingWeeks;
   const sicknessLostAnnualSessionsPerConsultant =
     afterLeaveAnnualSessionsPerConsultant - annualSessionsPerConsultant;
   const annualOnCallBurdenPerConsultant =
-    fteNeeded > 0 && Number.isFinite(fteNeeded)
-      ? annualOnCallSessionEquiv / fteNeeded
-      : 0;
+    fteNeeded > 0 && Number.isFinite(fteNeeded) ? annualOnCallSessionEquiv / fteNeeded : 0;
   const residualListCapacityPerConsultant =
     annualSessionsPerConsultant - annualOnCallBurdenPerConsultant;
   const icuDemandPerConsultant =
     inp.icuTrainedPoolSize > 0 ? icuAnnualDemand / inp.icuTrainedPoolSize : 0;
-  const icuResidualCapacityPerConsultant =
-    annualSessionsPerConsultant - icuDemandPerConsultant;
+  const icuResidualCapacityPerConsultant = annualSessionsPerConsultant - icuDemandPerConsultant;
 
   return {
     theatreSessions,

@@ -113,8 +113,8 @@ export function RecognitionDialog({
         <DialogHeader>
           <DialogTitle>Send a kudos</DialogTitle>
           <DialogDescription>
-            Recognise a colleague. Public kudos appear on the recognition feed;
-            private kudos are visible only to the recipient and admins.
+            Recognise a colleague. Public kudos appear on the recognition feed; private kudos are
+            visible only to the recipient and admins.
           </DialogDescription>
         </DialogHeader>
 
@@ -163,10 +163,7 @@ export function RecognitionDialog({
           </div>
 
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={isPublic}
-              onCheckedChange={(v) => setIsPublic(!!v)}
-            />
+            <Checkbox checked={isPublic} onCheckedChange={(v) => setIsPublic(!!v)} />
             Share on the public recognition feed
           </label>
         </div>

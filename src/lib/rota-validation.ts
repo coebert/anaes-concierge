@@ -73,9 +73,7 @@ function dayIndexMonFirst(iso: string): number {
 function jobPlanFor(plans: JobPlan[], staffId: string, dateISO: string): JobPlan | undefined {
   const candidates = plans.filter(
     (p) =>
-      p.staff_id === staffId &&
-      p.valid_from <= dateISO &&
-      (!p.valid_to || p.valid_to >= dateISO),
+      p.staff_id === staffId && p.valid_from <= dateISO && (!p.valid_to || p.valid_to >= dateISO),
   );
   if (!candidates.length) return undefined;
   candidates.sort((a, b) => (a.valid_from < b.valid_from ? 1 : -1));
@@ -99,8 +97,18 @@ export function validateAssignment(args: {
   rules: RotaRules;
 }): Issue[] {
   const {
-    candidateStaffId, role, date, session, weekDates,
-    weekAssignments, contextAssignments, profiles, jobPlans, leave, fixedSessions, rules,
+    candidateStaffId,
+    role,
+    date,
+    session,
+    weekDates,
+    weekAssignments,
+    contextAssignments,
+    profiles,
+    jobPlans,
+    leave,
+    fixedSessions,
+    rules,
   } = args;
   const issues: Issue[] = [];
   const profile = profiles.find((p) => p.id === candidateStaffId);
@@ -129,7 +137,11 @@ export function validateAssignment(args: {
   }
 
   // 2b. Trainee rotation end date — block any assignment after their last day at Salisbury.
-  if (profile?.grade === "trainee" && profile.rotation_end_date && date > profile.rotation_end_date) {
+  if (
+    profile?.grade === "trainee" &&
+    profile.rotation_end_date &&
+    date > profile.rotation_end_date
+  ) {
     issues.push({
       severity: "error",
       message: `After trainee's rotation end date (${formatDateGB(profile.rotation_end_date)}).`,
@@ -205,7 +217,8 @@ export function validateAssignment(args: {
   // 5. Max consecutive days
   const daysWorked = new Set(staffWeek.map((a) => a.session_date));
   const sortedWeek = [...weekDates].sort();
-  let run = 0, maxRun = 0;
+  let run = 0,
+    maxRun = 0;
   for (const d of sortedWeek) {
     if (daysWorked.has(d)) {
       run += 1;
@@ -223,8 +236,10 @@ export function validateAssignment(args: {
 
   // 6. Back-to-back on-call
   if (role === "on_call" && !rules.allow_back_to_back_oncall) {
-    const prev = new Date(date); prev.setDate(prev.getDate() - 1);
-    const next = new Date(date); next.setDate(next.getDate() + 1);
+    const prev = new Date(date);
+    prev.setDate(prev.getDate() - 1);
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
     const prevISO = prev.toISOString().slice(0, 10);
     const nextISO = next.toISOString().slice(0, 10);
     const adj = weekAssignments.find(
@@ -283,8 +298,12 @@ export function validateAssignment(args: {
     );
     // Include the candidate.
     const candidate: Assignment = {
-      id: "candidate", staff_id: candidateStaffId,
-      session, session_date: date, theatre_session_id: null, role_on_list: role,
+      id: "candidate",
+      staff_id: candidateStaffId,
+      session,
+      session_date: date,
+      theatre_session_id: null,
+      role_on_list: role,
     };
     const all = [...ctx, candidate];
 
@@ -297,15 +316,19 @@ export function validateAssignment(args: {
 
     // TCS §14: max 7 consecutive working days.
     const workedDays = Array.from(new Set(all.map((a) => a.session_date))).sort();
-    let run = 1, maxRun = 1;
+    let run = 1,
+      maxRun = 1;
     for (let i = 1; i < workedDays.length; i++) {
       if (dateMs(workedDays[i]) - dateMs(workedDays[i - 1]) === DAY) {
-        run += 1; maxRun = Math.max(maxRun, run);
+        run += 1;
+        maxRun = Math.max(maxRun, run);
       } else run = 1;
     }
     if (maxRun > 7) {
-      issues.push({ severity: "error",
-        message: `TCS §14: trainee rostered ${maxRun} consecutive days (max 7).` });
+      issues.push({
+        severity: "error",
+        message: `TCS §14: trainee rostered ${maxRun} consecutive days (max 7).`,
+      });
     } else if (maxRun === 7) {
       // §14 also requires a 48h rest after 7 consecutive shifts.
       const lastDay = workedDays[workedDays.length - 1];
@@ -315,11 +338,15 @@ export function validateAssignment(args: {
         return t > dateMs(lastDay) && t <= restEnd;
       });
       if (restViolation) {
-        issues.push({ severity: "error",
-          message: "TCS §14: 48h rest required after 7 consecutive working days." });
+        issues.push({
+          severity: "error",
+          message: "TCS §14: 48h rest required after 7 consecutive working days.",
+        });
       } else {
-        issues.push({ severity: "warning",
-          message: "TCS §14: at 7 consecutive days — next 48h must be free of duty." });
+        issues.push({
+          severity: "warning",
+          message: "TCS §14: at 7 consecutive days — next 48h must be free of duty.",
+        });
       }
     }
 
@@ -330,15 +357,19 @@ export function validateAssignment(args: {
       return d >= -6 * DAY && d <= 0;
     }).length;
     if (rolling7 > 18) {
-      issues.push({ severity: "warning",
-        message: `TCS §8: ~${rolling7 * 4}h rostered in the previous 7 days (limit 72h).` });
+      issues.push({
+        severity: "warning",
+        message: `TCS §8: ~${rolling7 * 4}h rostered in the previous 7 days (limit 72h).`,
+      });
     }
 
     // TCS §7 proxy: max 48h average per week — flag if this week ≥ 13 sessions (~52h).
     const sessionsThisWeek = all.filter((a) => weekDates.includes(a.session_date)).length;
     if (sessionsThisWeek > 12) {
-      issues.push({ severity: "warning",
-        message: `TCS §7: ${sessionsThisWeek} sessions this week exceeds 48h weekly average.` });
+      issues.push({
+        severity: "warning",
+        message: `TCS §7: ${sessionsThisWeek} sessions this week exceeds 48h weekly average.`,
+      });
     }
 
     // TCS §16: no more than 1 weekend in 3 (rostered).
@@ -357,24 +388,29 @@ export function validateAssignment(args: {
       }
       // Look at a 3-week window centred on this date — flag if >1 weekend.
       if (weekendsWorked.size > 1) {
-        issues.push({ severity: "warning",
-          message: `TCS §16: rostered ${weekendsWorked.size} weekends in a 3-week window (max 1 in 3).` });
+        issues.push({
+          severity: "warning",
+          message: `TCS §16: rostered ${weekendsWorked.size} weekends in a 3-week window (max 1 in 3).`,
+        });
       }
     }
 
     // TCS §10–13 proxy: max 4 consecutive on-call assignments → 48h rest.
-    const onCallDays = Array.from(new Set(
-      all.filter((a) => a.role_on_list === "on_call").map((a) => a.session_date),
-    )).sort();
-    let oncRun = 0, oncMax = 0;
+    const onCallDays = Array.from(
+      new Set(all.filter((a) => a.role_on_list === "on_call").map((a) => a.session_date)),
+    ).sort();
+    let oncRun = 0,
+      oncMax = 0;
     for (let i = 0; i < onCallDays.length; i++) {
       if (i === 0 || dateMs(onCallDays[i]) - dateMs(onCallDays[i - 1]) === DAY) oncRun += 1;
       else oncRun = 1;
       oncMax = Math.max(oncMax, oncRun);
     }
     if (oncMax > 4) {
-      issues.push({ severity: "error",
-        message: `TCS §10–13: ${oncMax} consecutive on-call shifts (max 4).` });
+      issues.push({
+        severity: "error",
+        message: `TCS §10–13: ${oncMax} consecutive on-call shifts (max 4).`,
+      });
     } else if (oncMax === 4) {
       const lastOnc = onCallDays[onCallDays.length - 1];
       const restEnd = dateMs(lastOnc) + 2 * DAY;
@@ -383,8 +419,10 @@ export function validateAssignment(args: {
         return t > dateMs(lastOnc) && t <= restEnd;
       });
       if (violation) {
-        issues.push({ severity: "error",
-          message: "TCS §10–13: 46–48h rest required after 4 consecutive on-call shifts." });
+        issues.push({
+          severity: "error",
+          message: "TCS §10–13: 46–48h rest required after 4 consecutive on-call shifts.",
+        });
       }
     }
 
@@ -396,8 +434,10 @@ export function validateAssignment(args: {
         (a) => a.session_date === prevISO && a.session === "pm" && a.role_on_list === "on_call",
       );
       if (prevPm) {
-        issues.push({ severity: "warning",
-          message: "TCS §18/19: <11h rest likely — on-call PM yesterday, AM today." });
+        issues.push({
+          severity: "warning",
+          message: "TCS §18/19: <11h rest likely — on-call PM yesterday, AM today.",
+        });
       }
     }
   }
@@ -411,5 +451,6 @@ export function severityRank(s: Severity): number {
 
 export function worstSeverity(issues: Issue[]): Severity | null {
   if (!issues.length) return null;
-  return issues.slice().sort((a, b) => severityRank(a.severity) - severityRank(b.severity))[0].severity;
+  return issues.slice().sort((a, b) => severityRank(a.severity) - severityRank(b.severity))[0]
+    .severity;
 }

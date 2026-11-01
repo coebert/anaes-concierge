@@ -104,10 +104,10 @@ export const getPaByConsultant = createServerFn({ method: "POST" })
     const rows: PaByConsultantRow[] = tallies
       .filter((t) => nameById.has(t.staffId))
       .map((t) => ({
-      ...t,
-      name: nameById.get(t.staffId)?.name ?? "Unknown",
-      grade: nameById.get(t.staffId)?.grade ?? null,
-    }));
+        ...t,
+        name: nameById.get(t.staffId)?.name ?? "Unknown",
+        grade: nameById.get(t.staffId)?.grade ?? null,
+      }));
 
     return { windowStart: data.startIso, windowEnd: data.endIso, rules, rows };
   });

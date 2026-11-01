@@ -14,10 +14,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Activity, CalendarClock, Layers, Moon } from "lucide-react";
 import {
@@ -46,8 +55,7 @@ export const Route = createFileRoute("/_authenticated/admin/specialty-workload")
       { property: "og:title", content: "Clinical work by specialty audit" },
       {
         property: "og:description",
-        content:
-          "Per-specialty days, sessions, on-calls and PAs from CLWRota over any date range.",
+        content: "Per-specialty days, sessions, on-calls and PAs from CLWRota over any date range.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -189,7 +197,7 @@ function SpecialtyWorkloadPage() {
         pa_credit: r.pa_credit,
         attending_consultant_ids: r.attending_consultant_ids,
         specialty_name: r.theatre_session_id
-          ? specialtyBySession.get(r.theatre_session_id) ?? null
+          ? (specialtyBySession.get(r.theatre_session_id) ?? null)
           : null,
       }));
 
@@ -313,7 +321,12 @@ function SpecialtyWorkloadPage() {
             <StatCard label="Specialties & duties" value={view.areas.length} icon={Layers} />
             <StatCard label="Sessions" value={view.totalSessions} icon={CalendarClock} />
             <StatCard label="On-calls" value={view.totalOnCalls} icon={Moon} />
-            <StatCard label="Total PAs" value={view.totalPas.toFixed(1)} icon={Activity} tone="info" />
+            <StatCard
+              label="Total PAs"
+              value={view.totalPas.toFixed(1)}
+              icon={Activity}
+              tone="info"
+            />
           </div>
 
           <Card>
@@ -383,10 +396,18 @@ function SpecialtyWorkloadPage() {
                                       <TableCell>
                                         {view.nameById.get(t.staff_id) ?? "Unknown"}
                                       </TableCell>
-                                      <TableCell className="text-right tabular-nums">{t.days}</TableCell>
-                                      <TableCell className="text-right tabular-nums">{t.sessions}</TableCell>
-                                      <TableCell className="text-right tabular-nums">{t.onCalls}</TableCell>
-                                      <TableCell className="text-right tabular-nums">{t.weekendDays}</TableCell>
+                                      <TableCell className="text-right tabular-nums">
+                                        {t.days}
+                                      </TableCell>
+                                      <TableCell className="text-right tabular-nums">
+                                        {t.sessions}
+                                      </TableCell>
+                                      <TableCell className="text-right tabular-nums">
+                                        {t.onCalls}
+                                      </TableCell>
+                                      <TableCell className="text-right tabular-nums">
+                                        {t.weekendDays}
+                                      </TableCell>
                                       <TableCell className="text-right tabular-nums">
                                         {t.plannedPas.toFixed(1)}
                                       </TableCell>
@@ -427,11 +448,11 @@ function SpecialtyWorkloadPage() {
               </Table>
 
               <p className="mt-3 text-xs text-muted-foreground">
-                Where CLWRota records a PA value for a session it is used directly
-                (“recorded”); the rest are estimated from the department rota rules:{" "}
-                {view.rules.sessions_per_pa} session(s) per PA, {view.rules.oncall_pa_credit} PA
-                per on-call, {view.rules.weekend_pa_credit} PA per weekend day. A weekend day
-                counts once — weekend credit replaces the session or on-call credit.
+                Where CLWRota records a PA value for a session it is used directly (“recorded”); the
+                rest are estimated from the department rota rules: {view.rules.sessions_per_pa}{" "}
+                session(s) per PA, {view.rules.oncall_pa_credit} PA per on-call,{" "}
+                {view.rules.weekend_pa_credit} PA per weekend day. A weekend day counts once —
+                weekend credit replaces the session or on-call credit.
               </p>
             </CardContent>
           </Card>

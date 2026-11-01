@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  classifyConsultantAssignment,
-  type SagMark,
-} from "./consultant-non-sag-classify";
+import { classifyConsultantAssignment, type SagMark } from "./consultant-non-sag-classify";
 
 /**
  * Integration-level tests for the consultant-audits non-SAG counter.

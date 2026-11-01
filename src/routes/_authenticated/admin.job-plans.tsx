@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { StaffEditDialog } from "@/components/staff-edit-dialog";
 import { Pencil } from "lucide-react";
@@ -50,15 +55,18 @@ function JobPlansPage() {
         fixedCount.set(f.staff_id, (fixedCount.get(f.staff_id) ?? 0) + 1);
       }
 
-      return (profiles ?? []).map((p) => ({
-        ...p,
-        ...splitName(p.full_name),
-        jp: latestJp.get(p.id) ?? null,
-        fixed: fixedCount.get(p.id) ?? 0,
-      })).sort((a, b) =>
-        (a.surname || a.email || "").localeCompare(b.surname || b.email || "") ||
-        (a.firstName || "").localeCompare(b.firstName || ""),
-      );
+      return (profiles ?? [])
+        .map((p) => ({
+          ...p,
+          ...splitName(p.full_name),
+          jp: latestJp.get(p.id) ?? null,
+          fixed: fixedCount.get(p.id) ?? 0,
+        }))
+        .sort(
+          (a, b) =>
+            (a.surname || a.email || "").localeCompare(b.surname || b.email || "") ||
+            (a.firstName || "").localeCompare(b.firstName || ""),
+        );
     },
   });
 
@@ -119,23 +127,27 @@ function JobPlansPage() {
               <TableBody>
                 {filtered.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="text-muted-foreground">
-                      {p.title || "—"}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{p.title || "—"}</TableCell>
                     <TableCell className="font-medium">
                       {p.surname || (!p.firstName ? p.email : "—")}
                     </TableCell>
                     <TableCell>
                       {p.firstName || "—"}
                       {p.training_level && (
-                        <Badge variant="secondary" className="ml-2">{p.training_level}</Badge>
+                        <Badge variant="secondary" className="ml-2">
+                          {p.training_level}
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
                       {p.grade ? <Badge variant="outline">{p.grade}</Badge> : "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {p.jp ? Number(p.jp.total_pas) : <span className="text-muted-foreground">—</span>}
+                      {p.jp ? (
+                        Number(p.jp.total_pas)
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {p.jp ? Number(p.jp.dcc_pas) : "—"}

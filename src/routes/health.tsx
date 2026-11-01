@@ -19,7 +19,11 @@ import {
 } from "lucide-react";
 import { formatDateTimeGB } from "@/lib/utils";
 
-import { parseHealthResponse, type ParsedHealth, type ParsedHealthCheck } from "@/lib/health-response";
+import {
+  parseHealthResponse,
+  type ParsedHealth,
+  type ParsedHealthCheck,
+} from "@/lib/health-response";
 
 type HealthCheck = ParsedHealthCheck;
 type HealthResponse = ParsedHealth;
@@ -73,12 +77,7 @@ function HealthPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={`mr-1 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
@@ -102,11 +101,13 @@ function HealthPage() {
                   : `The app reported: ${health.status} (HTTP ${health.httpStatus}).`}
               </p>
               <p className="text-muted-foreground">
-                Dependency checks (database, AI, CLWRota) were not run for this request.
-                Detailed readiness is only available to authorised monitoring.
+                Dependency checks (database, AI, CLWRota) were not run for this request. Detailed
+                readiness is only available to authorised monitoring.
               </p>
               {health.timestamp && (
-                <p className="text-xs text-muted-foreground">Checked: {formatDateTimeGB(health.timestamp)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Checked: {formatDateTimeGB(health.timestamp)}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -159,9 +160,18 @@ function HealthPage() {
 function OverallBadge({ status }: { status: HealthResponse["status"] }) {
   const variants: Record<string, { label: string; className: string }> = {
     alive: { label: "Alive", className: "bg-success-muted text-success hover:bg-success-muted" },
-    unknown: { label: "Unknown", className: "bg-warning-muted text-warning hover:bg-warning-muted" },
-    healthy: { label: "Healthy", className: "bg-success-muted text-success hover:bg-success-muted" },
-    degraded: { label: "Degraded", className: "bg-warning-muted text-warning hover:bg-warning-muted" },
+    unknown: {
+      label: "Unknown",
+      className: "bg-warning-muted text-warning hover:bg-warning-muted",
+    },
+    healthy: {
+      label: "Healthy",
+      className: "bg-success-muted text-success hover:bg-success-muted",
+    },
+    degraded: {
+      label: "Degraded",
+      className: "bg-warning-muted text-warning hover:bg-warning-muted",
+    },
     unhealthy: { label: "Unhealthy", className: "bg-red-100 text-red-700 hover:bg-red-100" },
   };
   const v = variants[status] ?? variants.unhealthy;
@@ -231,9 +241,7 @@ function CheckCard({ check }: { check: HealthCheck }) {
             )}
           </div>
           {check.message && (
-            <p className="mt-1 text-xs text-muted-foreground break-words">
-              {check.message}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground break-words">{check.message}</p>
           )}
         </div>
       </CardContent>
@@ -277,9 +285,7 @@ function ErrorState({ error, onRetry }: { error: Error; onRetry: () => void }) {
         <XCircle className="h-8 w-8" />
       </div>
       <h2 className="mt-4 text-lg font-semibold">Health check failed</h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">
-        {error.message}
-      </p>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">{error.message}</p>
       <Button className="mt-6" onClick={onRetry}>
         <RefreshCw className="mr-2 h-4 w-4" />
         Try again

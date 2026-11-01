@@ -18,13 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageLoading } from "@/components/loading";
-import {
-  Scale,
-  AlertTriangle,
-  Clock,
-  Star,
-  Plus,
-} from "lucide-react";
+import { Scale, AlertTriangle, Clock, Star, Plus } from "lucide-react";
 import { computeFairnessMetrics, gini } from "@/lib/leave-fairness";
 import type { LeaveRow } from "@/features/leave/entitlement-ledger";
 import { ToilLedgerDialog } from "@/components/leave/ToilLedgerDialog";
@@ -54,18 +48,13 @@ interface ProfileRow {
 function LeaveFairnessPage() {
   const { hasRole, loading } = useAuth();
   const [q, setQ] = useState("");
-  const [toilFor, setToilFor] = useState<{ id: string; name: string | null } | null>(
-    null,
-  );
+  const [toilFor, setToilFor] = useState<{ id: string; name: string | null } | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-leave-fairness"],
     queryFn: async () => {
       const [profRes, leaveRes, allowRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,email,grade,active")
-          .eq("active", true),
+        supabase.from("profiles").select("id,full_name,email,grade,active").eq("active", true),
         supabase
           .from("leave_requests")
           .select(
@@ -106,13 +95,7 @@ function LeaveFairnessPage() {
           metrics,
         };
       })
-      .filter(
-        (r) =>
-          r.metrics.approvedCount +
-            r.metrics.deniedCount +
-            r.metrics.pendingCount >
-          0,
-      )
+      .filter((r) => r.metrics.approvedCount + r.metrics.deniedCount + r.metrics.pendingCount > 0)
       .sort((a, b) => b.metrics.denialRate - a.metrics.denialRate);
   }, [data]);
 
@@ -149,11 +132,7 @@ function LeaveFairnessPage() {
         <StatCard label="Staff with leave activity" value={rows.length} icon={Scale} />
         <StatCard label="Denials (12m)" value={totalDenied} icon={AlertTriangle} />
         <StatCard label="SLA breaches" value={totalBreaches} icon={Clock} />
-        <StatCard
-          label="Prime-date Gini"
-          value={primeGini.toFixed(2)}
-          icon={Star}
-        />
+        <StatCard label="Prime-date Gini" value={primeGini.toFixed(2)} icon={Star} />
       </div>
 
       {denialReasonTotals.length > 0 && (

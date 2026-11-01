@@ -64,9 +64,7 @@ function makeStore() {
       );
     }
     // UNIQUE (clwrota_external_id) — upsert
-    const existing = rows.findIndex(
-      (r) => r.clwrota_external_id === incoming.clwrota_external_id,
-    );
+    const existing = rows.findIndex((r) => r.clwrota_external_id === incoming.clwrota_external_id);
     if (existing >= 0) rows[existing] = { ...incoming };
     else rows.push({ ...incoming });
   };
@@ -99,11 +97,7 @@ function buildMeDrafts(input: {
   return { drafts, splitParents };
 }
 
-function runSync(
-  store: ReturnType<typeof makeStore>,
-  drafts: Row[],
-  splitParents: Set<string>,
-) {
+function runSync(store: ReturnType<typeof makeStore>, drafts: Row[], splitParents: Set<string>) {
   store.purgeSplitParents(splitParents);
   for (const d of drafts) store.upsert(d);
 }
@@ -200,15 +194,11 @@ describe("medical_examiner AM/PM sync idempotence", () => {
       store.upsert(d);
     }
 
-    const legacyAm = store.rows.find(
-      (r) => r.clwrota_external_id === INPUT.externalId,
-    );
+    const legacyAm = store.rows.find((r) => r.clwrota_external_id === INPUT.externalId);
     expect(legacyAm).toBeDefined();
     expect(legacyAm?.locally_modified).toBe(true);
     // The PM half still lands as a suffixed row
-    expect(
-      store.rows.some((r) => r.clwrota_external_id === `${INPUT.externalId}|pm`),
-    ).toBe(true);
+    expect(store.rows.some((r) => r.clwrota_external_id === `${INPUT.externalId}|pm`)).toBe(true);
   });
 
   it("does not touch un-related ME rows on re-sync", () => {
@@ -227,8 +217,6 @@ describe("medical_examiner AM/PM sync idempotence", () => {
     const { drafts, splitParents } = buildMeDrafts(INPUT);
     runSync(store, drafts, splitParents);
 
-    expect(
-      store.rows.find((r) => r.clwrota_external_id === "clwrota-me-other|am"),
-    ).toEqual(other);
+    expect(store.rows.find((r) => r.clwrota_external_id === "clwrota-me-other|am")).toEqual(other);
   });
 });

@@ -13,11 +13,7 @@
  *     decision doesn't double-count it.
  */
 
-import {
-  leaveOverlapsYear,
-  leaveWorkingDays,
-  type LeaveRowLike,
-} from "./leave-allowances";
+import { leaveOverlapsYear, leaveWorkingDays, type LeaveRowLike } from "./leave-allowances";
 import { leaveYearWindow } from "./leave-count";
 
 export interface StudyLeaveRow extends LeaveRowLike {

@@ -42,15 +42,12 @@ function fmtDatePlus(yyyy_mm_dd: string, days: number) {
   const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + days);
-  return (
-    dt.getUTCFullYear() + pad(dt.getUTCMonth() + 1) + pad(dt.getUTCDate())
-  );
+  return dt.getUTCFullYear() + pad(dt.getUTCMonth() + 1) + pad(dt.getUTCDate());
 }
 const escapeText = escapeIcsText;
 const fold = foldIcsLine;
 
-const TITLE_CASE = (s: string) =>
-  s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const TITLE_CASE = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const Route = createFileRoute("/api/public/calendar/$token")({
   server: {
@@ -136,12 +133,10 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         // Resolve theatre sessions in batch
         const tsIds = Array.from(
           new Set(
-            (assignmentsRes.data ?? [])
-              .map((a: any) => a.theatre_session_id)
-              .filter(Boolean),
+            (assignmentsRes.data ?? []).map((a: any) => a.theatre_session_id).filter(Boolean),
           ),
         ) as string[];
-        let tsMap = new Map<string, any>();
+        const tsMap = new Map<string, any>();
         if (tsIds.length) {
           for (let i = 0; i < tsIds.length; i += 150) {
             const { data: ts, error: tsErr } = await sb
@@ -156,13 +151,9 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         }
         // Resolve supervisor names
         const supIds = Array.from(
-          new Set(
-            (assignmentsRes.data ?? [])
-              .map((a: any) => a.supervisor_id)
-              .filter(Boolean),
-          ),
+          new Set((assignmentsRes.data ?? []).map((a: any) => a.supervisor_id).filter(Boolean)),
         ) as string[];
-        let supMap = new Map<string, string>();
+        const supMap = new Map<string, string>();
         if (supIds.length) {
           const { data: sups, error: supErr } = await sb
             .from("profiles")
@@ -178,11 +169,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         lines.push("PRODID:-//Anaes Concierge//Rota Feed//EN");
         lines.push("CALSCALE:GREGORIAN");
         lines.push("METHOD:PUBLISH");
-        lines.push(
-          fold(
-            `X-WR-CALNAME:${escapeText(profile.full_name ?? "My")} – Rota`,
-          ),
-        );
+        lines.push(fold(`X-WR-CALNAME:${escapeText(profile.full_name ?? "My")} – Rota`));
         lines.push("X-WR-TIMEZONE:Europe/London");
         // 15-minute hint — Apple Calendar uses this to pick a poll cadence.
         lines.push("REFRESH-INTERVAL;VALUE=DURATION:PT15M");

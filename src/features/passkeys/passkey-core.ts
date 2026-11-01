@@ -19,7 +19,11 @@ export type CredentialRow = {
 };
 
 export interface PasskeyDeps {
-  insertChallenge(row: { user_id: string | null; challenge: string; purpose: string }): Promise<string>;
+  insertChallenge(row: {
+    user_id: string | null;
+    challenge: string;
+    purpose: string;
+  }): Promise<string>;
   consumeChallenge(id: string, purpose: string): Promise<ChallengeRow | null>;
   findCredential(credentialId: string): Promise<CredentialRow | null>;
   findProfileIdByEmail(email: string): Promise<string | null>;

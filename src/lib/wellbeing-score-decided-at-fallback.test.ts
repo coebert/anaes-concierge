@@ -65,7 +65,9 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
   describe.each(["rejected", "cancelled"] as const)("%s row", (status) => {
     it("null decided_at + in-window start_date → counts via start_date", () => {
       expect(
-        leaveValue([makeRow(status, { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY })]),
+        leaveValue([
+          makeRow(status, { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
+        ]),
       ).toBe(1);
     });
 
@@ -73,7 +75,13 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
       // Prove the fallback path still honours the window filter — it is
       // not a "count whenever decided_at is null" free pass.
       expect(
-        leaveValue([makeRow(status, { decided_at: null, start_date: OUT_WINDOW_DAY, end_date: OUT_WINDOW_DAY })]),
+        leaveValue([
+          makeRow(status, {
+            decided_at: null,
+            start_date: OUT_WINDOW_DAY,
+            end_date: OUT_WINDOW_DAY,
+          }),
+        ]),
       ).toBe(0);
     });
 
@@ -92,7 +100,7 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
       ).toBe(0);
     });
 
-    it('empty-string decided_at is falsy → falls back to start_date', () => {
+    it("empty-string decided_at is falsy → falls back to start_date", () => {
       // The engine uses truthiness (`l.decided_at ? ... : l.start_date`),
       // so `""` must behave the same as null/undefined. A refactor to
       // `l.decided_at ?? l.start_date` would break this — `""` is not
@@ -204,10 +212,22 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
     // Three in-window fallback rows, one out-of-window fallback row.
     // Only the three in-window should count.
     const rows: LeaveLite[] = [
-      makeRow("cancelled", { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
+      makeRow("cancelled", {
+        decided_at: null,
+        start_date: IN_WINDOW_DAY,
+        end_date: IN_WINDOW_DAY,
+      }),
       makeRow("rejected", { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
-      makeRow("cancelled", { decided_at: null, start_date: WINDOW_START_DAY, end_date: WINDOW_START_DAY }),
-      makeRow("rejected", { decided_at: null, start_date: OUT_WINDOW_DAY, end_date: OUT_WINDOW_DAY }),
+      makeRow("cancelled", {
+        decided_at: null,
+        start_date: WINDOW_START_DAY,
+        end_date: WINDOW_START_DAY,
+      }),
+      makeRow("rejected", {
+        decided_at: null,
+        start_date: OUT_WINDOW_DAY,
+        end_date: OUT_WINDOW_DAY,
+      }),
     ];
     expect(leaveValue(rows)).toBe(3);
   });
@@ -217,7 +237,11 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
     // regression that split "rejected/cancelled leave" across two
     // separate drivers would surface here.
     const d = driver([
-      makeRow("cancelled", { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
+      makeRow("cancelled", {
+        decided_at: null,
+        start_date: IN_WINDOW_DAY,
+        end_date: IN_WINDOW_DAY,
+      }),
       makeRow("rejected", { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
     ]);
     expect(d.label).toBe("2 rejected/cancelled leave");
@@ -240,7 +264,11 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
         end_date: OUT_WINDOW_DAY,
         decided_at: `${IN_WINDOW_DAY}T09:00:00Z`,
       }),
-      makeRow("cancelled", { decided_at: null, start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
+      makeRow("cancelled", {
+        decided_at: null,
+        start_date: IN_WINDOW_DAY,
+        end_date: IN_WINDOW_DAY,
+      }),
       makeRow("cancelled", { start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
       makeRow("rejected", {
         decided_at: "" as unknown as string,
@@ -252,7 +280,11 @@ describe("computeWellbeing — decided_at fallback (null / missing / falsy)", ()
         end_date: IN_WINDOW_DAY,
         decided_at: `${OUT_WINDOW_DAY}T09:00:00Z`,
       }),
-      makeRow("rejected", { decided_at: null, start_date: OUT_WINDOW_DAY, end_date: OUT_WINDOW_DAY }),
+      makeRow("rejected", {
+        decided_at: null,
+        start_date: OUT_WINDOW_DAY,
+        end_date: OUT_WINDOW_DAY,
+      }),
       makeRow("approved", {
         decided_at: `${IN_WINDOW_DAY}T09:00:00Z`,
       }),

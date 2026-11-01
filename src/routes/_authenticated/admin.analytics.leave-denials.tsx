@@ -11,13 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { XCircle } from "lucide-react";
 import { computeDenials } from "@/features/analytics/analyses";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/leave-denials",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/leave-denials")({
   head: () => ({
     meta: [
       { title: "Leave denials — HR analytics" },
-      { name: "description", content: "Denial-reason taxonomy inferred from decision notes, by month and grade." },
+      {
+        name: "description",
+        content: "Denial-reason taxonomy inferred from decision notes, by month and grade.",
+      },
     ],
   }),
   component: DenialsPage,
@@ -46,12 +47,12 @@ function DenialsPage() {
         status: r.status,
         decided_at: r.decided_at,
         decision_notes: r.decision_notes,
-        grade: r.staff_id ? gradeById.get(r.staff_id) ?? null : null,
+        grade: r.staff_id ? (gradeById.get(r.staff_id) ?? null) : null,
       }));
     },
   });
 
-  const agg = useMemo(() => data ? computeDenials(data) : null, [data]);
+  const agg = useMemo(() => (data ? computeDenials(data) : null), [data]);
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
@@ -70,7 +71,9 @@ function DenialsPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">By reason</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">By reason</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {agg.byCategory.map((c) => (
             <Badge key={c.category} variant="secondary" className="capitalize">
@@ -84,7 +87,9 @@ function DenialsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">By month</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">By month</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="flex items-end gap-1 h-24">
             {agg.byMonth.map((m) => {
@@ -100,15 +105,15 @@ function DenialsPage() {
                 </div>
               );
             })}
-            {agg.byMonth.length === 0 && (
-              <span className="text-sm text-muted-foreground">—</span>
-            )}
+            {agg.byMonth.length === 0 && <span className="text-sm text-muted-foreground">—</span>}
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">By grade × reason</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">By grade × reason</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {agg.byGradeCategory.map((r) => (
             <Badge key={`${r.grade}-${r.category}`} variant="outline" className="capitalize">

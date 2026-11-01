@@ -184,7 +184,12 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
     );
     const theatreSessionsById = new Map<
       string,
-      { id: string; specialty_name?: string | null; surgical_consultant?: string | null; notes?: string | null }
+      {
+        id: string;
+        specialty_name?: string | null;
+        surgical_consultant?: string | null;
+        notes?: string | null;
+      }
     >();
     if (tsIds.length > 0) {
       // UUIDs in the URL — cap at SUPABASE_IN_CHUNK (200) so the request
@@ -242,9 +247,7 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
       consultant_or_sas_on_session: corrections.filter(
         (c) => c.category === "consultant_or_sas_on_session",
       ),
-      unmatched_theatre_solo: corrections.filter(
-        (c) => c.category === "unmatched_theatre_solo",
-      ),
+      unmatched_theatre_solo: corrections.filter((c) => c.category === "unmatched_theatre_solo"),
       non_training_label: corrections.filter((c) => c.category === "non_training_label"),
     };
 
@@ -274,20 +277,18 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
             .update(update)
             .in("id", idChunk);
           if (updErr) throw new Error(updErr.message);
-          const { error: logErr } = await supabaseAdmin
-            .from("rota_reclassification_log")
-            .insert(
-              idChunk.map((id) => ({
-                sync_run_id: sync_run_id!,
-                assignment_id: id,
-                from_role: "solo" as const,
-                to_role: "supervised" as const,
-                reason:
-                  sup !== "__none__"
-                    ? "manual investigation: consultant/SAS on same session (supervisor set)"
-                    : "manual investigation: consultant/SAS on same session",
-              })),
-            );
+          const { error: logErr } = await supabaseAdmin.from("rota_reclassification_log").insert(
+            idChunk.map((id) => ({
+              sync_run_id: sync_run_id!,
+              assignment_id: id,
+              from_role: "solo" as const,
+              to_role: "supervised" as const,
+              reason:
+                sup !== "__none__"
+                  ? "manual investigation: consultant/SAS on same session (supervisor set)"
+                  : "manual investigation: consultant/SAS on same session",
+            })),
+          );
           if (logErr) throw new Error(logErr.message);
           applied += idChunk.length;
         }
@@ -315,10 +316,12 @@ export const investigateAndFixTraineeSolo = createServerFn({ method: "POST" })
 export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input) =>
-    z.object({
-      days: z.coerce.number().int().min(1).max(365).default(30),
-      sync_kind: z.enum(["leave", "rota", "staff", "all"]).default("all"),
-    }).parse(input ?? {}),
+    z
+      .object({
+        days: z.coerce.number().int().min(1).max(365).default(30),
+        sync_kind: z.enum(["leave", "rota", "staff", "all"]).default("all"),
+      })
+      .parse(input ?? {}),
   )
   .handler(async ({ context, data }): Promise<ListClwRotaSyncMetricsResponse> => {
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
@@ -340,10 +343,6 @@ export const listClwRotaSyncMetrics = createServerFn({ method: "POST" })
       sync_kind: data.sync_kind,
     });
   });
-
-
-
-
 
 /**
  * Re-fetch the CLWRota rota report, identify every row tagged "[Non-SAG]"
@@ -417,36 +416,82 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
     for (const row of rows) {
       const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
       const sessRaw = pick(row, [
-        "session.rota_label", "shift.rota_label",
-        "session.name", "shift.name",
-        "session", "session_half", "half", "Session", "period", "shift", "time",
+        "session.rota_label",
+        "shift.rota_label",
+        "session.name",
+        "shift.name",
+        "session",
+        "session_half",
+        "half",
+        "Session",
+        "period",
+        "shift",
+        "time",
         "start_time",
       ]);
       const theatreName = pick(row, [
-        "place.name", "place.external_code",
-        "theatre", "location", "room", "Theatre", "list", "Location",
+        "place.name",
+        "place.external_code",
+        "theatre",
+        "location",
+        "room",
+        "Theatre",
+        "list",
+        "Location",
       ]);
       const specialtyName = pick(row, [
-        "slot_speciality", "service.local_name", "service.long_name",
-        "specialty", "speciality", "service", "Specialty", "Service",
+        "slot_speciality",
+        "service.local_name",
+        "service.long_name",
+        "specialty",
+        "speciality",
+        "service",
+        "Specialty",
+        "Service",
       ]);
       const consultantName = pick(row, [
-        "slot_titles", "consultant", "surgeon", "surgical_consultant", "Consultant",
+        "slot_titles",
+        "consultant",
+        "surgeon",
+        "surgical_consultant",
+        "Consultant",
       ]);
       const extraTypeName = pick(row, [
-        "extra_type.name", "extra_type.description", "extra_type.local_id",
-        "extra_type_name", "extra_type", "Extra type", "Extra Type",
+        "extra_type.name",
+        "extra_type.description",
+        "extra_type.local_id",
+        "extra_type_name",
+        "extra_type",
+        "Extra type",
+        "Extra Type",
       ]);
       const personName = pick(row, [
-        "person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name",
+        "person.rota_name",
+        "person",
+        "person_name",
+        "name",
+        "staff",
+        "Name",
+        "full_name",
       ]);
       const personExtId = pick(row, [
-        "person.local_id", "person.esr_employee_number", "person.assignment_number",
-        "person_id", "local_id", "staff_id", "user_id",
+        "person.local_id",
+        "person.esr_employee_number",
+        "person.assignment_number",
+        "person_id",
+        "local_id",
+        "staff_id",
+        "user_id",
       ]);
       const roleRaw = pick(row, [
-        "role.name", "assignment_type.name", "place_category.name",
-        "role", "duty", "type", "Role", "Duty",
+        "role.name",
+        "assignment_type.name",
+        "place_category.name",
+        "role",
+        "duty",
+        "type",
+        "Role",
+        "Duty",
       ]);
 
       const isNonSag = isNonSagRotaLabel([
@@ -493,7 +538,6 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
 
       taggedKeys.add(`${theatreId}|${session_date}|${session}`);
     }
-
 
     // Flag matching rota_assignments rows so the per-assignment is_non_sag
     // marker is in sync with the feed. Runs even when no theatre-keyed
@@ -549,7 +593,10 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       const key = `${s.theatre_id}|${s.session_date}|${s.session}`;
       if (!taggedKeys.has(key)) continue;
       sessionsMatched++;
-      if (s.non_sag_override) { sessionsSkippedOverride++; continue; }
+      if (s.non_sag_override) {
+        sessionsSkippedOverride++;
+        continue;
+      }
       if (s.is_non_sag) continue;
       toUpdate.push(s.id);
     }
@@ -572,9 +619,7 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       message:
         `Scanned ${rows.length} feed rows · ${rowsTagged} tagged Non-SAG · ` +
         `matched ${sessionsMatched} session(s) · updated ${sessionsUpdated}` +
-        (assignmentsUpdated > 0
-          ? ` · flagged ${assignmentsUpdated} assignment(s)`
-          : "") +
+        (assignmentsUpdated > 0 ? ` · flagged ${assignmentsUpdated} assignment(s)` : "") +
         (sessionsSkippedOverride > 0
           ? ` · ${sessionsSkippedOverride} kept due to admin override`
           : ""),
@@ -586,5 +631,4 @@ export const backfillNonSagLabels = createServerFn({ method: "POST" })
       assignmentsUpdated,
       unmatched: Array.from(unmatched),
     };
-
   });

@@ -31,10 +31,34 @@ const SPANS = [
 ];
 
 const rotaAssignments = SPANS.flatMap(({ fri, mon }) => [
-  { staff_id: USER_ID, duty_type: "theatre", session_date: fri, session: "am", theatre_session_id: SESSION_ID },
-  { staff_id: USER_ID, duty_type: "theatre", session_date: fri, session: "pm", theatre_session_id: SESSION_ID },
-  { staff_id: USER_ID, duty_type: "theatre", session_date: mon, session: "am", theatre_session_id: SESSION_ID },
-  { staff_id: USER_ID, duty_type: "theatre", session_date: mon, session: "pm", theatre_session_id: SESSION_ID },
+  {
+    staff_id: USER_ID,
+    duty_type: "theatre",
+    session_date: fri,
+    session: "am",
+    theatre_session_id: SESSION_ID,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: "theatre",
+    session_date: fri,
+    session: "pm",
+    theatre_session_id: SESSION_ID,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: "theatre",
+    session_date: mon,
+    session: "am",
+    theatre_session_id: SESSION_ID,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: "theatre",
+    session_date: mon,
+    session: "pm",
+    theatre_session_id: SESSION_ID,
+  },
 ]);
 
 const theatreSessions = [
@@ -167,7 +191,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 
 vi.mock("@/lib/gmail.server", () => ({

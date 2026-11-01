@@ -71,21 +71,23 @@ export function ExceptionCard({
       .eq("report_id", report.id)
       .order("created_at", { ascending: true });
     setComments(
-      (data ?? []).map((c: {
-        id: string;
-        report_id: string;
-        author_id: string;
-        body: string;
-        created_at: string;
-        profiles: { full_name: string | null } | null;
-      }) => ({
-        id: c.id,
-        report_id: c.report_id,
-        author_id: c.author_id,
-        body: c.body,
-        created_at: c.created_at,
-        author_name: c.profiles?.full_name ?? null,
-      })),
+      (data ?? []).map(
+        (c: {
+          id: string;
+          report_id: string;
+          author_id: string;
+          body: string;
+          created_at: string;
+          profiles: { full_name: string | null } | null;
+        }) => ({
+          id: c.id,
+          report_id: c.report_id,
+          author_id: c.author_id,
+          body: c.body,
+          created_at: c.created_at,
+          author_name: c.profiles?.full_name ?? null,
+        }),
+      ),
     );
   };
 
@@ -138,10 +140,7 @@ export function ExceptionCard({
         return;
       }
     }
-    const { error } = await supabase
-      .from("exception_reports")
-      .update(patch)
-      .eq("id", report.id);
+    const { error } = await supabase.from("exception_reports").update(patch).eq("id", report.id);
     setBusy(false);
     if (error) {
       toast.error(error.message);
@@ -153,7 +152,8 @@ export function ExceptionCard({
   };
 
   const withdraw = async () => {
-    if (!confirm("Withdraw this exception report? It will be closed with no further action.")) return;
+    if (!confirm("Withdraw this exception report? It will be closed with no further action."))
+      return;
     setBusy(true);
     const { error } = await supabase
       .from("exception_reports")
@@ -205,9 +205,7 @@ export function ExceptionCard({
                 {overdue ? `Overdue ${dueRel}` : `Due ${dueRel}`}
               </span>
             )}
-            {report.outcome && (
-              <Badge variant="outline">{OUTCOME_LABEL[report.outcome]}</Badge>
-            )}
+            {report.outcome && <Badge variant="outline">{OUTCOME_LABEL[report.outcome]}</Badge>}
           </div>
         </div>
       </CardHeader>
@@ -230,16 +228,31 @@ export function ExceptionCard({
               <div className="text-sm font-medium">Responder actions</div>
               <div className="flex flex-wrap gap-2">
                 {report.status === "submitted" && (
-                  <Button size="sm" variant="secondary" onClick={() => setStatus("acknowledged")} disabled={busy}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setStatus("acknowledged")}
+                    disabled={busy}
+                  >
                     Acknowledge
                   </Button>
                 )}
                 {report.status !== "under_review" && (
-                  <Button size="sm" variant="secondary" onClick={() => setStatus("under_review")} disabled={busy}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setStatus("under_review")}
+                    disabled={busy}
+                  >
                     Mark under review
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setStatus("escalated")} disabled={busy}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setStatus("escalated")}
+                  disabled={busy}
+                >
                   Escalate to Guardian
                 </Button>
               </div>
@@ -250,7 +263,9 @@ export function ExceptionCard({
                   </SelectTrigger>
                   <SelectContent>
                     {(Object.keys(OUTCOME_LABEL) as ExceptionOutcome[]).map((k) => (
-                      <SelectItem key={k} value={k}>{OUTCOME_LABEL[k]}</SelectItem>
+                      <SelectItem key={k} value={k}>
+                        {OUTCOME_LABEL[k]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -312,13 +327,16 @@ export function ExceptionCard({
 }
 
 function StatusBadge({ status }: { status: ExceptionStatus }) {
-  const map: Record<ExceptionStatus, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
-    submitted:      { variant: "secondary",   label: "Submitted" },
-    acknowledged:   { variant: "secondary",   label: "Acknowledged" },
-    under_review:   { variant: "secondary",   label: "Under review" },
-    resolved:       { variant: "outline",     label: "Resolved" },
-    escalated:      { variant: "destructive", label: "Escalated" },
-    withdrawn:      { variant: "outline",     label: "Withdrawn" },
+  const map: Record<
+    ExceptionStatus,
+    { variant: "default" | "secondary" | "outline" | "destructive"; label: string }
+  > = {
+    submitted: { variant: "secondary", label: "Submitted" },
+    acknowledged: { variant: "secondary", label: "Acknowledged" },
+    under_review: { variant: "secondary", label: "Under review" },
+    resolved: { variant: "outline", label: "Resolved" },
+    escalated: { variant: "destructive", label: "Escalated" },
+    withdrawn: { variant: "outline", label: "Withdrawn" },
   };
   const s = map[status];
   return <Badge variant={s.variant}>{s.label}</Badge>;

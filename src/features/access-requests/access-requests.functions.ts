@@ -13,13 +13,25 @@ const inputSchema = z.object({
 const GENERIC = { ok: true as const };
 
 async function adminEmails(supabaseAdmin: any): Promise<string[]> {
-  const { data: roles, error } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+  const { data: roles, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
   if (error) throw error;
   const ids = [...new Set(((roles ?? []) as Array<{ user_id: string }>).map((r) => r.user_id))];
   if (!ids.length) return [];
-  const { data: profs, error: pErr } = await supabaseAdmin.from("profiles").select("email").in("id", ids);
+  const { data: profs, error: pErr } = await supabaseAdmin
+    .from("profiles")
+    .select("email")
+    .in("id", ids);
   if (pErr) throw pErr;
-  return [...new Set(((profs ?? []) as Array<{ email: string | null }>).map((p) => p.email).filter((e): e is string => !!e))];
+  return [
+    ...new Set(
+      ((profs ?? []) as Array<{ email: string | null }>)
+        .map((p) => p.email)
+        .filter((e): e is string => !!e),
+    ),
+  ];
 }
 
 export const submitAccessRequest = createServerFn({ method: "POST" })
@@ -57,7 +69,10 @@ export const submitAccessRequest = createServerFn({ method: "POST" })
         await Promise.allSettled(recipients.map((to) => sendGmail({ to, subject, text })));
       }
     } catch (e) {
-      console.error("access-request notification failed", e instanceof Error ? e.message : "unknown");
+      console.error(
+        "access-request notification failed",
+        e instanceof Error ? e.message : "unknown",
+      );
     }
     return GENERIC;
   });

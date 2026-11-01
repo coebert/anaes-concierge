@@ -84,7 +84,6 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
         id: c.credential_id,
         transports: (c.transports ?? undefined) as any,
       })),
-
     });
 
     await cleanupExpiredChallenges(supabaseAdmin);
@@ -149,16 +148,13 @@ export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 // ---------------------------------------------------------------------------
 // Authentication (public — no session yet)
 // ---------------------------------------------------------------------------
 
 export const startPasskeyAuthentication = createServerFn({ method: "POST" })
   .inputValidator((data: { email?: string } | undefined) =>
-    z
-      .object({ email: z.string().trim().email().max(255).optional() })
-      .parse(data ?? {}),
+    z.object({ email: z.string().trim().email().max(255).optional() }).parse(data ?? {}),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin, srv } = await loadServer();
@@ -180,9 +176,7 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
           .eq("user_id", userId);
         allow = (creds ?? []).map((c) => ({
           id: c.credential_id as string,
-          transports: (c.transports ?? undefined) as
-            | AuthenticatorTransportFuture[]
-            | undefined,
+          transports: (c.transports ?? undefined) as AuthenticatorTransportFuture[] | undefined,
         }));
       }
     }
@@ -252,7 +246,13 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
             .eq("id", id);
           if (error) throw new Error("Passkey sign-in is temporarily unavailable.");
         },
-        verify: async ({ response, expectedChallenge, expectedOrigin, expectedRPID, credential }) => {
+        verify: async ({
+          response,
+          expectedChallenge,
+          expectedOrigin,
+          expectedRPID,
+          credential,
+        }) => {
           const v = await srv.verifyAuthenticationResponse({
             response: response as never,
             expectedChallenge,
@@ -275,8 +275,7 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
     );
 
     // Look up the user's email so we can mint a magic-link session token.
-    const { data: userRec, error: userErr } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+    const { data: userRec, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
     const email = userRec?.user?.email;
     if (userErr || !email) {
       throw new Error(userErr?.message ?? "Could not resolve account email.");
@@ -293,7 +292,6 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
 
     return { tokenHash: link.properties.hashed_token };
   });
-
 
 // ---------------------------------------------------------------------------
 // Manage stored passkeys
@@ -313,9 +311,7 @@ export const listMyPasskeys = createServerFn({ method: "GET" })
 
 export const deleteMyPasskey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string }) =>
-    z.object({ id: z.string().guid() }).parse(data),
-  )
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("passkey_credentials")

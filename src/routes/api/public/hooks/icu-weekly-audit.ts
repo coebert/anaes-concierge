@@ -24,9 +24,8 @@ export const Route = createFileRoute("/api/public/hooks/icu-weekly-audit")({
         const force = params.get("force") === "true";
 
         try {
-          const { runIcuWeeklyAuditJob } = await import(
-            "@/features/analytics/icu-weekly-job.server"
-          );
+          const { runIcuWeeklyAuditJob } =
+            await import("@/features/analytics/icu-weekly-job.server");
           const result = await runIcuWeeklyAuditJob({ maxSlices, sliceDays, force });
           return new Response(JSON.stringify({ ok: result.status !== "failed", ...result }), {
             status: result.status === "failed" ? 500 : 200,

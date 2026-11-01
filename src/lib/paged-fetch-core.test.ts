@@ -11,7 +11,8 @@ function source(total: number, opts: { failAtOffset?: number; delayMs?: number }
   const fetchPage = async (from: number, to: number) => {
     calls.push([from, to]);
     if (opts.delayMs) await new Promise((r) => setTimeout(r, opts.delayMs));
-    if (opts.failAtOffset !== undefined && from >= opts.failAtOffset) return { data: null, error: { message: "boom" } };
+    if (opts.failAtOffset !== undefined && from >= opts.failAtOffset)
+      return { data: null, error: { message: "boom" } };
     // emulate PostgREST's server-side 1000-row cap
     return { data: data.slice(from, Math.min(to + 1, from + 1000)), error: null };
   };
@@ -39,7 +40,9 @@ describe("drainPages", () => {
   });
   it("above cap: throws IncompleteResultError instead of returning a truncated list", async () => {
     const s = source(21);
-    await expect(drainPages(s.fetchPage, { pageSize: 5, maxRows: 20 })).rejects.toBeInstanceOf(IncompleteResultError);
+    await expect(drainPages(s.fetchPage, { pageSize: 5, maxRows: 20 })).rejects.toBeInstanceOf(
+      IncompleteResultError,
+    );
   });
   it("page-2 error is surfaced, not swallowed", async () => {
     const s = source(2500, { failAtOffset: 1000 });
@@ -71,12 +74,16 @@ describe("wrappers propagate completeness", () => {
     expect(ok.data).toHaveLength(1500);
   });
   it("fetchAllRowsPaged throws above its safety cap and dedupes by key", async () => {
-    await expect(fetchAllRowsPaged(source(21).fetchPage, { pageSize: 5, safetyCap: 20 })).rejects.toThrow(IncompleteResultError);
+    await expect(
+      fetchAllRowsPaged(source(21).fetchPage, { pageSize: 5, safetyCap: 20 }),
+    ).rejects.toThrow(IncompleteResultError);
     const out = await fetchAllRowsPaged(source(1001).fetchPage, { rowKey: (r) => r.id });
     expect(out).toHaveLength(1001);
   });
   it("fetchAllPaged throws above maxRows", async () => {
     const s = source(21);
-    await expect(fetchAllPaged(() => ({ range: s.fetchPage }), { pageSize: 5, maxRows: 20 })).rejects.toThrow(IncompleteResultError);
+    await expect(
+      fetchAllPaged(() => ({ range: s.fetchPage }), { pageSize: 5, maxRows: 20 }),
+    ).rejects.toThrow(IncompleteResultError);
   });
 });

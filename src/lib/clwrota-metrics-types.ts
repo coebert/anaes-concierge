@@ -11,8 +11,7 @@
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 
-export type ClwRotaSyncMetricRow =
-  Database["public"]["Tables"]["clwrota_sync_metrics"]["Row"];
+export type ClwRotaSyncMetricRow = Database["public"]["Tables"]["clwrota_sync_metrics"]["Row"];
 
 export type ClwRotaSyncKind = "leave" | "rota" | "staff";
 

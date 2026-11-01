@@ -2,13 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import {
   listReclassificationRuns,
@@ -42,8 +36,8 @@ export function ReclassificationUndoCard() {
       <CardHeader>
         <CardTitle className="text-base">Auto-reclassification history</CardTitle>
         <CardDescription>
-          Undo a previous run that automatically converted trainee "solo" lists to
-          "supervised". Rows changed manually since the run are left alone.
+          Undo a previous run that automatically converted trainee "solo" lists to "supervised".
+          Rows changed manually since the run are left alone.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -52,7 +46,9 @@ export function ReclassificationUndoCard() {
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading runs…
           </div>
         ) : !data || data.runs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No auto-reclassification runs recorded yet.</p>
+          <p className="text-sm text-muted-foreground">
+            No auto-reclassification runs recorded yet.
+          </p>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {data.runs.map((r) => (
@@ -65,7 +61,8 @@ export function ReclassificationUndoCard() {
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {r.count} list(s) · {r.from_role} → {r.to_role} · run {r.sync_run_id.slice(0, 8)}
+                    {r.count} list(s) · {r.from_role} → {r.to_role} · run{" "}
+                    {r.sync_run_id.slice(0, 8)}
                   </div>
                 </div>
                 <Button

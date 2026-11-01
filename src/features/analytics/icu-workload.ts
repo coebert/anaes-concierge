@@ -34,11 +34,7 @@ export type IcuPaRules = {
   weekend_pa_credit: number;
 };
 
-export const ICU_DUTY_TYPES = [
-  "icu_consultant_oncall",
-  "icu_ct2_plus",
-  "icu_trainee",
-] as const;
+export const ICU_DUTY_TYPES = ["icu_consultant_oncall", "icu_ct2_plus", "icu_trainee"] as const;
 
 export function isWeekendISO(isoDate: string): boolean {
   // UTC noon avoids DST / TZ edge cases at date boundaries.
@@ -111,10 +107,7 @@ function round2(n: number): number {
  * Tally ICU activity per staff member and convert it into PAs using the
  * department rota rules.
  */
-export function tallyIcuWorkload(
-  rows: readonly IcuRow[],
-  rules: IcuPaRules,
-): IcuStaffTally[] {
+export function tallyIcuWorkload(rows: readonly IcuRow[], rules: IcuPaRules): IcuStaffTally[] {
   const sessionsPerPa = rules.sessions_per_pa > 0 ? rules.sessions_per_pa : 1;
 
   type Acc = {
@@ -256,9 +249,6 @@ export function tallyIcuWorkload(
   }
 
   return out
-    .filter(
-      (t) =>
-        t.days > 0 || t.onCalls > 0 || t.extraDays > 0 || t.weekendDays > 0,
-    )
+    .filter((t) => t.days > 0 || t.onCalls > 0 || t.extraDays > 0 || t.weekendDays > 0)
     .sort((a, b) => b.totalPas - a.totalPas || a.staff_id.localeCompare(b.staff_id));
 }

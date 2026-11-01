@@ -17,10 +17,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   ChevronDown,
@@ -32,7 +41,13 @@ import {
   User,
 } from "lucide-react";
 
-import { cn, parseDateLocal, toISODateLocal, formatDateGB, formatDateWithWeekdayGB } from "@/lib/utils";
+import {
+  cn,
+  parseDateLocal,
+  toISODateLocal,
+  formatDateGB,
+  formatDateWithWeekdayGB,
+} from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
@@ -41,9 +56,7 @@ type SessionHalf = "am" | "pm";
 // Trainee levels too junior to ever genuinely run a list solo. Kept in sync
 // with JUNIOR_LEVELS in src/lib/solo-stats.ts — an unmatched entry means the
 // calendar and the solo-stats aggregator would disagree.
-const JUNIOR_TRAINEE_LEVELS = new Set([
-  "FY2", "ACCS", "CT1", "CT2", "ST1", "ST2",
-]);
+const JUNIOR_TRAINEE_LEVELS = new Set(["FY2", "ACCS", "CT1", "CT2", "ST1", "ST2"]);
 
 export function startOfWeek(d: Date) {
   const x = new Date(d);
@@ -54,9 +67,13 @@ export function startOfWeek(d: Date) {
   return x;
 }
 export function addDays(d: Date, n: number) {
-  const x = new Date(d); x.setDate(x.getDate() + n); return x;
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
 }
-export function iso(d: Date) { return toISODateLocal(d); }
+export function iso(d: Date) {
+  return toISODateLocal(d);
+}
 export function fmt(d: Date) {
   // British DD/MM/YYYY with weekday context, e.g. "Mon 26/05/2026".
   return formatDateWithWeekdayGB(d);
@@ -133,8 +150,12 @@ export function shiftAnchor(anchor: Date, mode: ViewMode, dir: 1 | -1): Date {
 }
 
 export function ViewModeToggle({
-  mode, onChange,
-}: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
+  mode,
+  onChange,
+}: {
+  mode: ViewMode;
+  onChange: (m: ViewMode) => void;
+}) {
   return (
     <div className="inline-flex rounded-md border">
       {(["day", "week", "month"] as ViewMode[]).map((m) => (
@@ -154,8 +175,14 @@ export function ViewModeToggle({
 }
 
 export function PeriodNav({
-  anchor, mode, onChange,
-}: { anchor: Date; mode: ViewMode; onChange: (d: Date) => void }) {
+  anchor,
+  mode,
+  onChange,
+}: {
+  anchor: Date;
+  mode: ViewMode;
+  onChange: (d: Date) => void;
+}) {
   const label = (() => {
     if (mode === "day") {
       // British DD/MM/YYYY with full weekday, e.g. "Monday, 26/05/2026".
@@ -165,7 +192,8 @@ export function PeriodNav({
     }
     // Month-only navigation label (e.g. "May 2026") — not a full date.
     // eslint-disable-next-line no-restricted-syntax
-    if (mode === "month") return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    if (mode === "month")
+      return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     const ws = startOfWeek(anchor);
     return `Week of ${fmt(ws)}`;
   })();
@@ -188,9 +216,13 @@ export function PeriodNav({
 }
 
 export function WeekPicker({
-  weekStart, onChange, days,
+  weekStart,
+  onChange,
+  days,
 }: {
-  weekStart: Date; onChange: (d: Date) => void; days?: 5 | 7;
+  weekStart: Date;
+  onChange: (d: Date) => void;
+  days?: 5 | 7;
 }) {
   void days;
   return (
@@ -199,7 +231,8 @@ export function WeekPicker({
         <ChevronLeft className="h-4 w-4" />
       </Button>
       <Input
-        type="date" value={iso(weekStart)}
+        type="date"
+        value={iso(weekStart)}
         onChange={(e) => {
           const d = parseDateLocal(e.target.value);
           if (d) onChange(startOfWeek(d));
@@ -314,16 +347,12 @@ const TheatreCellContent = memo(function TheatreCellContent({
       )}
       {spec && <div className={cn("font-bold truncate", tone.label)}>{spec}</div>}
       {surgicalConsultant && (
-        <div className="text-[10px] text-muted-foreground truncate">
-          {surgicalConsultant}
-        </div>
+        <div className="text-[10px] text-muted-foreground truncate">{surgicalConsultant}</div>
       )}
       {assigns.map((a) => {
         const isConsultant = a.grade === "consultant";
         const isTrainee = a.grade === "trainee";
-        const showRoleBadge = !(
-          a.roleOnList === "solo" && (isConsultant || !a.isSoloTrainee)
-        );
+        const showRoleBadge = !(a.roleOnList === "solo" && (isConsultant || !a.isSoloTrainee));
         return (
           <Link
             key={a.id}
@@ -389,10 +418,7 @@ const StaffListCellContent = memo(function StaffListCellContent({
               {isTrainee ? ` (${a.trainingLevel || "Level unknown"})` : ""}
             </Link>
             {a.medicalExaminer && (
-              <MedicalExaminerDetailsDialog
-                details={a.medicalExaminer}
-                staffName={a.fullName}
-              />
+              <MedicalExaminerDetailsDialog details={a.medicalExaminer} staffName={a.fullName} />
             )}
           </div>
         );
@@ -467,7 +493,9 @@ const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog(
             <>
               <dt className="text-muted-foreground">Flags</dt>
               <dd>
-                <Badge variant="outline" className="text-[9px]">Non-SAG</Badge>
+                <Badge variant="outline" className="text-[9px]">
+                  Non-SAG
+                </Badge>
               </dd>
             </>
           )}
@@ -487,11 +515,7 @@ const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog(
   );
 });
 
-const NhhCellContent = memo(function NhhCellContent({
-  model,
-}: {
-  model: NhhCellModel;
-}) {
+const NhhCellContent = memo(function NhhCellContent({ model }: { model: NhhCellModel }) {
   if (model.staff.length === 0) {
     return <div className="text-muted-foreground/40 text-[10px]">—</div>;
   }
@@ -517,11 +541,7 @@ const NhhCellContent = memo(function NhhCellContent({
   );
 });
 
-const NightCellContent = memo(function NightCellContent({
-  model,
-}: {
-  model: NightCellModel;
-}) {
+const NightCellContent = memo(function NightCellContent({ model }: { model: NightCellModel }) {
   if (model.staff.length === 0) {
     return <div className="text-muted-foreground/40 text-[10px]">—</div>;
   }
@@ -582,8 +602,10 @@ export function GlobalWeekGrid({
     queryKey: ["theatres-active"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("theatres").select("id,name,kind,sort_order")
-        .eq("active", true).order("sort_order");
+        .from("theatres")
+        .select("id,name,kind,sort_order")
+        .eq("active", true)
+        .order("sort_order");
       if (error) throw error;
       return data;
     },
@@ -595,7 +617,8 @@ export function GlobalWeekGrid({
       const { data, error } = await supabase
         .from("theatre_sessions")
         .select("id,theatre_id,session,session_date,surgical_consultant,specialty_id,is_non_sag")
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return data;
     },
@@ -609,11 +632,17 @@ export function GlobalWeekGrid({
         .select("id,staff_id,session,session_date,theatre_session_id,role_on_list,supervisor_id")
         .eq("duty_type", "theatre")
         .in("session", ["am", "pm"])
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return (data ?? []) as Array<{
-        id: string; staff_id: string; session: SessionHalf; session_date: string;
-        theatre_session_id: string | null; role_on_list: string; supervisor_id: string | null;
+        id: string;
+        staff_id: string;
+        session: SessionHalf;
+        session_date: string;
+        theatre_session_id: string | null;
+        role_on_list: string;
+        supervisor_id: string | null;
       }>;
     },
   });
@@ -625,10 +654,14 @@ export function GlobalWeekGrid({
         .from("rota_assignments")
         .select("id,staff_id,session,session_date")
         .eq("duty_type", "nhh_oncall")
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return (data ?? []) as Array<{
-        id: string; staff_id: string; session: string; session_date: string;
+        id: string;
+        staff_id: string;
+        session: string;
+        session_date: string;
       }>;
     },
   });
@@ -638,7 +671,9 @@ export function GlobalWeekGrid({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,session,session_date,duty_type,clwrota_external_id,source,role_on_list,notes,extra_type,locally_modified,is_non_sag,created_at,updated_at")
+        .select(
+          "id,staff_id,session,session_date,duty_type,clwrota_external_id,source,role_on_list,notes,extra_type,locally_modified,is_non_sag,created_at,updated_at",
+        )
         .or(
           [
             "duty_type.in.(spa,admin,medical_examiner)",
@@ -650,22 +685,25 @@ export function GlobalWeekGrid({
           ].join(","),
         )
         .in("session", ["am", "pm"])
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return (data ?? [])
         .filter((r) => r.duty_type !== "teaching" || isTutorialAuditCandidate(r))
         .map((r) => ({
-        ...r,
-        // Re-map teaching-tutorial rows onto a synthetic "tutorial" bucket
-        // so the calendar row config filter (filterAssignmentsForCell) can
-        // find them without leaking generic teaching blocks into the row.
-        duty_type:
-          r.duty_type !== "medical_examiner" &&
-          isTutorialAuditCandidate(r)
-            ? "tutorial"
-            : r.duty_type,
-      })) as Array<{
-        id: string; staff_id: string; session: SessionHalf; session_date: string;
+          ...r,
+          // Re-map teaching-tutorial rows onto a synthetic "tutorial" bucket
+          // so the calendar row config filter (filterAssignmentsForCell) can
+          // find them without leaking generic teaching blocks into the row.
+          duty_type:
+            r.duty_type !== "medical_examiner" && isTutorialAuditCandidate(r)
+              ? "tutorial"
+              : r.duty_type,
+        })) as Array<{
+        id: string;
+        staff_id: string;
+        session: SessionHalf;
+        session_date: string;
         duty_type: "spa" | "admin" | "medical_examiner" | "tutorial";
         clwrota_external_id: string | null;
         source: string;
@@ -681,12 +719,18 @@ export function GlobalWeekGrid({
   });
 
   const extraDutyTypes = useMemo(
-    () => [
-      "consultant_in_charge",
-      "obstetrics", "obstetrics_2nd",
-      "icu_consultant_oncall", "icu_ct2_plus", "icu_trainee",
-      "general_consultant_oncall", "registrar_oncall", "sho_oncall",
-    ] as const,
+    () =>
+      [
+        "consultant_in_charge",
+        "obstetrics",
+        "obstetrics_2nd",
+        "icu_consultant_oncall",
+        "icu_ct2_plus",
+        "icu_trainee",
+        "general_consultant_oncall",
+        "registrar_oncall",
+        "sho_oncall",
+      ] as const,
     [],
   );
   const { data: extraDuties } = useQuery({
@@ -697,10 +741,14 @@ export function GlobalWeekGrid({
         .select("id,staff_id,session,session_date,duty_type")
         .in("duty_type", [...extraDutyTypes])
         .in("session", ["am", "pm"])
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return (data ?? []) as Array<{
-        id: string; staff_id: string; session: SessionHalf; session_date: string;
+        id: string;
+        staff_id: string;
+        session: SessionHalf;
+        session_date: string;
         duty_type: string;
       }>;
     },
@@ -710,12 +758,13 @@ export function GlobalWeekGrid({
   // consultants and registrar/SHO cover for the night shift (excludes NHH,
   // which has its own dedicated row above).
   const nightOnCallDutyTypes = useMemo(
-    () => [
-      "general_consultant_oncall",
-      "icu_consultant_oncall",
-      "registrar_oncall",
-      "sho_oncall",
-    ] as const,
+    () =>
+      [
+        "general_consultant_oncall",
+        "icu_consultant_oncall",
+        "registrar_oncall",
+        "sho_oncall",
+      ] as const,
     [],
   );
   const { data: nightOnCall } = useQuery({
@@ -726,17 +775,18 @@ export function GlobalWeekGrid({
         .select("id,staff_id,session,session_date,duty_type")
         .in("duty_type", [...nightOnCallDutyTypes])
         .eq("session", "night")
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return (data ?? []) as Array<{
-        id: string; staff_id: string; session: string; session_date: string;
+        id: string;
+        staff_id: string;
+        session: string;
+        session_date: string;
         duty_type: string;
       }>;
     },
   });
-
-
-
 
   const listActive = useServerFn(listActiveStaffSafe);
   const { data: staff } = useQuery({
@@ -747,8 +797,7 @@ export function GlobalWeekGrid({
   const { data: specs } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties").select("id,name");
+      const { data, error } = await supabase.from("specialties").select("id,name");
       if (error) throw error;
       return data;
     },
@@ -842,8 +891,18 @@ export function GlobalWeekGrid({
       [
         { key: "spa", label: "SPA", sub: "Supporting prof. activities", tint: "bg-emerald-500/5" },
         { key: "admin", label: "Admin", sub: "Administrative time", tint: "bg-sky-500/5" },
-        { key: "medical_examiner", label: "Medical examiner", sub: "ME session", tint: "bg-violet-500/5" },
-        { key: "tutorial", label: "Tutorials", sub: "Tutorial / lecture delivery", tint: "bg-amber-500/5" },
+        {
+          key: "medical_examiner",
+          label: "Medical examiner",
+          sub: "ME session",
+          tint: "bg-violet-500/5",
+        },
+        {
+          key: "tutorial",
+          label: "Tutorials",
+          sub: "Tutorial / lecture delivery",
+          tint: "bg-amber-500/5",
+        },
       ] as const,
     [],
   );
@@ -854,11 +913,13 @@ export function GlobalWeekGrid({
       for (const d of days) {
         const dayIso = iso(d);
         for (const sh of ["am", "pm"] as SessionHalf[]) {
-          const raw = filterAssignmentsForCell(spaAdmin, row.key, dayIso, sh).filter((assignment) => {
-            if (row.key !== "tutorial") return true;
-            const grade = staffMap.get(assignment.staff_id)?.grade;
-            return grade === "consultant" || grade === "sas";
-          });
+          const raw = filterAssignmentsForCell(spaAdmin, row.key, dayIso, sh).filter(
+            (assignment) => {
+              if (row.key !== "tutorial") return true;
+              const grade = staffMap.get(assignment.staff_id)?.grade;
+              return grade === "consultant" || grade === "sas";
+            },
+          );
           const sorted = [...raw].sort(
             (a, b) =>
               gradeRank(staffMap.get(a.staff_id)?.grade) -
@@ -922,7 +983,6 @@ export function GlobalWeekGrid({
     return { perHalf, perDay, total: [...perDay.values()].reduce((s, n) => s + n, 0) };
   }, [spaAdmin, staffMap]);
 
-
   const extraRowConfigs = useMemo(
     () =>
       [
@@ -960,14 +1020,22 @@ export function GlobalWeekGrid({
 
   const dutyTag = (duty: string): string | null => {
     switch (duty) {
-      case "obstetrics_2nd": return "2nd";
-      case "icu_consultant_oncall": return "Cons";
-      case "icu_ct2_plus": return "CT2+";
-      case "icu_trainee": return "Trn";
-      case "general_consultant_oncall": return "Cons";
-      case "registrar_oncall": return "Reg";
-      case "sho_oncall": return "SHO";
-      default: return null;
+      case "obstetrics_2nd":
+        return "2nd";
+      case "icu_consultant_oncall":
+        return "Cons";
+      case "icu_ct2_plus":
+        return "CT2+";
+      case "icu_trainee":
+        return "Trn";
+      case "general_consultant_oncall":
+        return "Cons";
+      case "registrar_oncall":
+        return "Reg";
+      case "sho_oncall":
+        return "SHO";
+      default:
+        return null;
     }
   };
 
@@ -1042,8 +1110,7 @@ export function GlobalWeekGrid({
       const dayAssigns = (nightOnCall ?? []).filter((a) => a.session_date === dayIso);
       const sorted = [...dayAssigns].sort(
         (a, b) =>
-          gradeRank(staffMap.get(a.staff_id)?.grade) -
-          gradeRank(staffMap.get(b.staff_id)?.grade),
+          gradeRank(staffMap.get(a.staff_id)?.grade) - gradeRank(staffMap.get(b.staff_id)?.grade),
       );
       const seen = new Set<string>();
       const staffList: NightCellModel["staff"] = [];
@@ -1067,8 +1134,6 @@ export function GlobalWeekGrid({
     }
     return cells;
   }, [days, nightOnCall, staffMap]);
-
-
 
   // Dimming helper — cheap string scan, runs per-cell on each keystroke but
   // only toggles a className on the outer <td>; memoized cell-content
@@ -1140,38 +1205,44 @@ export function GlobalWeekGrid({
               <th className="border-b border-r p-1"></th>
               {days.flatMap((d) => {
                 const dayIso = iso(d);
-                const amHit = highlightTutorials && (tutorialHighlights.perHalf.get(`${dayIso}|am`) ?? 0) > 0;
-                const pmHit = highlightTutorials && (tutorialHighlights.perHalf.get(`${dayIso}|pm`) ?? 0) > 0;
+                const amHit =
+                  highlightTutorials && (tutorialHighlights.perHalf.get(`${dayIso}|am`) ?? 0) > 0;
+                const pmHit =
+                  highlightTutorials && (tutorialHighlights.perHalf.get(`${dayIso}|pm`) ?? 0) > 0;
                 return [
                   <th
                     key={dayIso + "am"}
-                    className={cn("border-b p-1 font-normal", amHit && "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40")}
+                    className={cn(
+                      "border-b p-1 font-normal",
+                      amHit && "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40",
+                    )}
                   >
                     <SessionChip half="am" />
                   </th>,
                   <th
                     key={dayIso + "pm"}
-                    className={cn("border-b border-r p-1 font-normal", pmHit && "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40")}
+                    className={cn(
+                      "border-b border-r p-1 font-normal",
+                      pmHit && "bg-amber-500/10 ring-1 ring-inset ring-amber-500/40",
+                    )}
                   >
                     <SessionChip half="pm" />
                   </th>,
                 ];
               })}
             </tr>
-
           </thead>
           <tbody>
             {theatreRows.map(({ theatre: t, cells }) => (
               <tr key={t.id} className="align-top">
                 <td className="border-r p-2 font-medium whitespace-nowrap">
-
                   {t.name}
                   <div className="text-[10px] text-muted-foreground">
                     {t.kind === "main"
                       ? "Main"
                       : t.kind === "day_surgery"
-                      ? "Day surgery"
-                      : "Private (NHH)"}
+                        ? "Day surgery"
+                        : "Private (NHH)"}
                   </div>
                 </td>
                 {cells.map((c) => (
@@ -1279,7 +1350,6 @@ export function GlobalWeekGrid({
   );
 }
 
-
 /* --------------------- Per-staff week view --------------------- */
 
 export function StaffWeekView({ staffId }: { staffId: string }) {
@@ -1293,7 +1363,10 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
       return next;
     });
   };
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart],
+  );
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
@@ -1313,7 +1386,8 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
         .from("rota_assignments")
         .select("id,session,session_date,theatre_session_id,role_on_list,supervisor_id")
         .eq("staff_id", staffId)
-        .gte("session_date", startIso).lte("session_date", endIso);
+        .gte("session_date", startIso)
+        .lte("session_date", endIso);
       if (error) throw error;
       return data;
     },
@@ -1336,8 +1410,7 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
   const { data: theatres } = useQuery({
     queryKey: ["theatres-active"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("theatres").select("id,name").order("sort_order");
+      const { data, error } = await supabase.from("theatres").select("id,name").order("sort_order");
       if (error) throw error;
       return data;
     },
@@ -1359,7 +1432,8 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
         .from("leave_requests")
         .select("id,type,status,start_date,end_date,half_day_start,half_day_end")
         .eq("staff_id", staffId)
-        .lte("start_date", endIso).gte("end_date", startIso);
+        .lte("start_date", endIso)
+        .gte("end_date", startIso);
       if (error) throw error;
       return data;
     },
@@ -1370,15 +1444,10 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <h2
-            className={cn(
-              "text-xl font-semibold",
-              profile?.grade === "consultant" && "font-bold",
-            )}
+            className={cn("text-xl font-semibold", profile?.grade === "consultant" && "font-bold")}
           >
             {profile?.full_name ?? "Staff member"}
-            {profile?.grade === "trainee"
-              ? ` (${profile?.training_level || "Level unknown"})`
-              : ""}
+            {profile?.grade === "trainee" ? ` (${profile?.training_level || "Level unknown"})` : ""}
           </h2>
           <p className="text-sm text-muted-foreground">
             {profile?.grade ?? "—"}
@@ -1392,9 +1461,8 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
         {days.map((d) => {
           const dayIso = iso(d);
           const dayAssigns = assigns?.filter((a) => a.session_date === dayIso) ?? [];
-          const dayLeave = leave?.filter(
-            (l) => l.start_date <= dayIso && l.end_date >= dayIso,
-          ) ?? [];
+          const dayLeave =
+            leave?.filter((l) => l.start_date <= dayIso && l.end_date >= dayIso) ?? [];
           const isToday = dayIso === iso(new Date());
           const isExpanded = expandedDays.has(dayIso);
           return (
@@ -1403,7 +1471,11 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 text-sm font-medium">{fmt(d)}</div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {isToday && <Badge variant="default" className="text-[9px]">Today</Badge>}
+                    {isToday && (
+                      <Badge variant="default" className="text-[9px]">
+                        Today
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1411,13 +1483,19 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                       onClick={() => toggleDay(dayIso)}
                       title={isExpanded ? "Collapse" : "Expand"}
                     >
-                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
                 {dayLeave.map((l) => (
                   <div key={l.id} className="rounded bg-amber-500/10 p-2 text-xs">
-                    <Badge variant="outline" className="mr-1">{l.type}</Badge>
+                    <Badge variant="outline" className="mr-1">
+                      {l.type}
+                    </Badge>
                     <span className="text-muted-foreground">{l.status}</span>
                   </div>
                 ))}
@@ -1430,11 +1508,21 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                       const spec = session && specs?.find((s) => s.id === session.specialty_id);
                       const tone = specialtyTone(spec?.name ?? null);
                       return (
-                        <div key={sh} className={cn("rounded border p-3 text-xs transition-colors", a && tone.cell)}>
-                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{sh}</div>
+                        <div
+                          key={sh}
+                          className={cn(
+                            "rounded border p-3 text-xs transition-colors",
+                            a && tone.cell,
+                          )}
+                        >
+                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {sh}
+                          </div>
                           {a ? (
                             <div className="space-y-1">
-                              <div className="min-w-0 truncate font-medium">{theatre?.name ?? "—"}</div>
+                              <div className="min-w-0 truncate font-medium">
+                                {theatre?.name ?? "—"}
+                              </div>
                               {session?.is_non_sag && (
                                 <Badge
                                   variant="outline"
@@ -1444,9 +1532,15 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
                                   Non-SAG
                                 </Badge>
                               )}
-                              {spec && <div className={cn("min-w-0 truncate font-medium", tone.label)}>{spec.name}</div>}
+                              {spec && (
+                                <div className={cn("min-w-0 truncate font-medium", tone.label)}>
+                                  {spec.name}
+                                </div>
+                              )}
                               {session?.surgical_consultant && (
-                                <div className="min-w-0 truncate text-muted-foreground">{session.surgical_consultant}</div>
+                                <div className="min-w-0 truncate text-muted-foreground">
+                                  {session.surgical_consultant}
+                                </div>
                               )}
                               <Badge variant="outline" className="text-[9px]">
                                 {a.role_on_list}
@@ -1488,8 +1582,12 @@ export function StaffWeekView({ staffId }: { staffId: string }) {
 /* --------------------- Staff picker --------------------- */
 
 export function StaffPicker({
-  value, onChange,
-}: { value?: string; onChange: (id: string) => void }) {
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange: (id: string) => void;
+}) {
   const listActive = useServerFn(listActiveStaffSafe);
   const { data } = useQuery({
     queryKey: ["staff-active-safe"],
@@ -1505,10 +1603,10 @@ export function StaffPicker({
         {data
           ?.sort((a, b) => compareBySurname(a.full_name, b.full_name))
           .map((s) => (
-          <SelectItem key={s.id} value={s.id}>
-            {s.full_name} {s.grade ? `(${s.grade})` : ""}
-          </SelectItem>
-        ))}
+            <SelectItem key={s.id} value={s.id}>
+              {s.full_name} {s.grade ? `(${s.grade})` : ""}
+            </SelectItem>
+          ))}
       </SelectContent>
     </Select>
   );
@@ -1530,7 +1628,10 @@ export function SpecialtyLegend() {
   if (!specs?.length) return null;
 
   // Group by colour key so "Ortho", "Orthopedics", "Trauma" etc. share one swatch
-  const groups = new Map<string, { key: string; names: string[]; tone: ReturnType<typeof specialtyTone> }>();
+  const groups = new Map<
+    string,
+    { key: string; names: string[]; tone: ReturnType<typeof specialtyTone> }
+  >();
   for (const sp of specs) {
     const ck = specialtyColorKey(sp.name);
     const key = ck ?? "neutral";
@@ -1578,15 +1679,43 @@ export function SpecialtyLegend() {
 export function DutyTypeLegend() {
   const [open, setOpen] = useState(false);
   const included: Array<{ label: string; sub: string; swatch: string }> = [
-    { label: "Theatre lists", sub: "All theatre sessions (main, day surgery, private/NHH)", swatch: "bg-muted" },
-    { label: "SPA", sub: "duty_type = spa · Supporting professional activities", swatch: "bg-emerald-500/40" },
+    {
+      label: "Theatre lists",
+      sub: "All theatre sessions (main, day surgery, private/NHH)",
+      swatch: "bg-muted",
+    },
+    {
+      label: "SPA",
+      sub: "duty_type = spa · Supporting professional activities",
+      swatch: "bg-emerald-500/40",
+    },
     { label: "Admin", sub: "duty_type = admin · Administrative time", swatch: "bg-sky-500/40" },
-    { label: "Medical examiner", sub: "duty_type = medical_examiner · AM/PM split from CLWRota", swatch: "bg-violet-500/40" },
-    { label: "Consultant in charge", sub: "duty_type = consultant_in_charge", swatch: "bg-rose-500/40" },
-    { label: "Obstetrics / Labour ward", sub: "duty_type = obstetrics, obstetrics_2nd", swatch: "bg-pink-500/40" },
+    {
+      label: "Medical examiner",
+      sub: "duty_type = medical_examiner · AM/PM split from CLWRota",
+      swatch: "bg-violet-500/40",
+    },
+    {
+      label: "Consultant in charge",
+      sub: "duty_type = consultant_in_charge",
+      swatch: "bg-rose-500/40",
+    },
+    {
+      label: "Obstetrics / Labour ward",
+      sub: "duty_type = obstetrics, obstetrics_2nd",
+      swatch: "bg-pink-500/40",
+    },
     { label: "ICU", sub: "duty_type = icu (consultant + trainee)", swatch: "bg-cyan-500/40" },
-    { label: "NHH 1st on-call", sub: "duty_type = nhh_oncall · Out-of-hours cover", swatch: "bg-purple-500/40" },
-    { label: "Night on-call", sub: "General/ICU consultant + trainee night cover", swatch: "bg-slate-500/40" },
+    {
+      label: "NHH 1st on-call",
+      sub: "duty_type = nhh_oncall · Out-of-hours cover",
+      swatch: "bg-purple-500/40",
+    },
+    {
+      label: "Night on-call",
+      sub: "General/ICU consultant + trainee night cover",
+      swatch: "bg-slate-500/40",
+    },
   ];
   const excluded: Array<{ label: string; sub: string }> = [
     { label: "Leave", sub: "Approved/pending leave is shown on staff views, not counted as duty" },
@@ -1612,7 +1741,11 @@ export function DutyTypeLegend() {
             </div>
             <ul className="space-y-1">
               {included.map((row) => (
-                <li key={row.label} className="flex items-start gap-2" data-testid={`duty-legend-included-${row.label}`}>
+                <li
+                  key={row.label}
+                  className="flex items-start gap-2"
+                  data-testid={`duty-legend-included-${row.label}`}
+                >
                   <span className={cn("mt-1 h-2.5 w-2.5 rounded-sm shrink-0", row.swatch)} />
                   <span>
                     <span className="font-medium">{row.label}</span>

@@ -99,14 +99,10 @@ describe("computeWellbeing — decided_at anchor for rejected/cancelled leave", 
 
     it("falls back to start_date when decided_at is undefined (property omitted)", () => {
       expect(
-        leaveValue([
-          makeRow(status, { start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY }),
-        ]),
+        leaveValue([makeRow(status, { start_date: IN_WINDOW_DAY, end_date: IN_WINDOW_DAY })]),
       ).toBe(1);
       expect(
-        leaveValue([
-          makeRow(status, { start_date: OUT_WINDOW_DAY, end_date: OUT_WINDOW_DAY }),
-        ]),
+        leaveValue([makeRow(status, { start_date: OUT_WINDOW_DAY, end_date: OUT_WINDOW_DAY })]),
       ).toBe(0);
     });
 

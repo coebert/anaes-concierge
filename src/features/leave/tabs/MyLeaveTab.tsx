@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -31,7 +25,9 @@ export function MyLeaveTabLabel({ isCoordinatorOrAdmin }: { isCoordinatorOrAdmin
     <>
       My leave
       {isCoordinatorOrAdmin && (
-        <Badge variant="outline" className="text-xs font-normal">Personal view</Badge>
+        <Badge variant="outline" className="text-xs font-normal">
+          Personal view
+        </Badge>
       )}
     </>
   );
@@ -92,7 +88,9 @@ export function MyLeaveTab({
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">
                     {formatDateGB(r.start_date)}
-                    {r.half_day_start ? ` (${r.half_day_start === "am" ? "PM only" : "AM only"})` : ""}
+                    {r.half_day_start
+                      ? ` (${r.half_day_start === "am" ? "PM only" : "AM only"})`
+                      : ""}
                     {" → "}
                     {formatDateGB(r.end_date)}
                     {r.half_day_end ? ` (${r.half_day_end} only)` : ""}
@@ -110,7 +108,12 @@ export function MyLeaveTab({
                   </TableCell>
                   <TableCell>
                     {r.status === "pending" && (
-                      <Button variant="ghost" size="icon" onClick={() => onCancel(r.id)} title="Cancel">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onCancel(r.id)}
+                        title="Cancel"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}

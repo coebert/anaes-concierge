@@ -33,19 +33,24 @@ export function evaluateAudit(stdout, level = "moderate") {
   }
   if ("error" in report) {
     const err = report.error;
-    const code = err && typeof err === "object" ? err.code ?? "unknown" : String(err);
+    const code = err && typeof err === "object" ? (err.code ?? "unknown") : String(err);
     return { code: 2, message: `bun audit reported an error (${code}) — treating as failure` };
   }
   const threshold = ORDER.indexOf(level);
   const counts = { low: 0, moderate: 0, high: 0, critical: 0 };
   const offending = [];
   for (const [name, advisories] of Object.entries(report)) {
-    if (!Array.isArray(advisories)) return { code: 2, message: `unexpected advisory list for ${name}` };
+    if (!Array.isArray(advisories))
+      return { code: 2, message: `unexpected advisory list for ${name}` };
     for (const adv of advisories) {
       const sev = adv?.severity;
-      if (!ORDER.includes(sev)) return { code: 2, message: `unknown severity "${sev}" for ${name}` };
+      if (!ORDER.includes(sev))
+        return { code: 2, message: `unknown severity "${sev}" for ${name}` };
       counts[sev] += 1;
-      if (ORDER.indexOf(sev) >= threshold) offending.push(`${sev.padEnd(8)} ${name} ${adv.vulnerable_versions ?? ""} ${adv.url ?? ""}`);
+      if (ORDER.indexOf(sev) >= threshold)
+        offending.push(
+          `${sev.padEnd(8)} ${name} ${adv.vulnerable_versions ?? ""} ${adv.url ?? ""}`,
+        );
     }
   }
   return offending.length
@@ -54,12 +59,18 @@ export function evaluateAudit(stdout, level = "moderate") {
 }
 
 function main() {
-  const level = (process.argv.find((a) => a.startsWith("--level=")) ?? "--level=moderate").split("=")[1];
+  const level = (process.argv.find((a) => a.startsWith("--level=")) ?? "--level=moderate").split(
+    "=",
+  )[1];
   if (!existsSync("bun.lock")) {
     console.error("[audit] bun.lock not found — refusing to scan a fresh resolution");
     process.exit(2);
   }
-  const r = spawnSync("bun", ["audit", "--json"], { encoding: "utf8", timeout: 120_000, maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync("bun", ["audit", "--json"], {
+    encoding: "utf8",
+    timeout: 120_000,
+    maxBuffer: 64 * 1024 * 1024,
+  });
   if (r.error) {
     console.error(`[audit] could not run bun audit: ${r.error.message}`);
     process.exit(2);
@@ -70,7 +81,12 @@ function main() {
     process.exit(2);
   }
   const res = evaluateAudit(r.stdout, level);
-  if (res.code === 0 && r.status === 1 && res.counts && Object.values(res.counts).every((n) => n === 0)) {
+  if (
+    res.code === 0 &&
+    r.status === 1 &&
+    res.counts &&
+    Object.values(res.counts).every((n) => n === 0)
+  ) {
     console.error("[audit] bun audit exited 1 but reported no advisories — treating as failure");
     process.exit(2);
   }

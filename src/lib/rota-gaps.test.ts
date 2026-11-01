@@ -4,13 +4,7 @@ import { computeRotaGaps } from "./rota-gaps";
 describe("computeRotaGaps", () => {
   it("returns no gaps when every weekday has an assignment", () => {
     // Mon 2025-06-02 → Fri 2025-06-06
-    const dates = new Set([
-      "2025-06-02",
-      "2025-06-03",
-      "2025-06-04",
-      "2025-06-05",
-      "2025-06-06",
-    ]);
+    const dates = new Set(["2025-06-02", "2025-06-03", "2025-06-04", "2025-06-05", "2025-06-06"]);
     const r = computeRotaGaps(dates, "2025-06-02", "2025-06-06");
     expect(r.ranges).toEqual([]);
     expect(r.totalMissingDays).toBe(0);
@@ -41,8 +35,16 @@ describe("computeRotaGaps", () => {
     // Mon 02, Tue 03 missing; Wed 04 worked; Thu 05, Fri 06 missing
     const r = computeRotaGaps(new Set(["2025-06-04"]), "2025-06-02", "2025-06-06");
     expect(r.ranges).toHaveLength(2);
-    expect(r.ranges[0]).toMatchObject({ startISO: "2025-06-02", endISO: "2025-06-03", missingDays: 2 });
-    expect(r.ranges[1]).toMatchObject({ startISO: "2025-06-05", endISO: "2025-06-06", missingDays: 2 });
+    expect(r.ranges[0]).toMatchObject({
+      startISO: "2025-06-02",
+      endISO: "2025-06-03",
+      missingDays: 2,
+    });
+    expect(r.ranges[1]).toMatchObject({
+      startISO: "2025-06-05",
+      endISO: "2025-06-06",
+      missingDays: 2,
+    });
   });
 
   it("treats LTFT days off like weekends", () => {
@@ -77,10 +79,10 @@ describe("classifyRotaGaps", () => {
       "2025-06-11",
       [],
     );
-    expect(r.counts.pre_rotation).toBe(2);  // Mon 02, Tue 03
+    expect(r.counts.pre_rotation).toBe(2); // Mon 02, Tue 03
     expect(r.counts.rotation_ended).toBe(4); // Thu 12, Fri 13, Sat 14, Sun 15
-    expect(r.counts.ltft_off).toBe(2);       // Sat 07, Sun 08
-    expect(r.counts.sync_missing).toBe(6);   // Wed 04 → Wed 11 minus weekend
+    expect(r.counts.ltft_off).toBe(2); // Sat 07, Sun 08
+    expect(r.counts.sync_missing).toBe(6); // Wed 04 → Wed 11 minus weekend
     // Ranges are contiguous-by-kind:
     const kinds = r.ranges.map((x) => x.kind);
     expect(kinds).toEqual([

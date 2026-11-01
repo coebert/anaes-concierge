@@ -64,83 +64,86 @@ export function AdminWellbeingPage() {
       // Budget math: 6 sources × up to 10 pages each ≈ 60 requests worst-case
       // on the current dataset. If real usage grows, bump this deliberately.
       const budget = createQueryBudget("admin-wellbeing", 60);
-      const [profiles, assignments, changes, leave, exceptionsRaw, rtws] =
-        await Promise.all([
-          fetchAllPaged<{
-            id: string;
-            full_name: string | null;
-            email: string | null;
-            grade: string | null;
-            active: boolean | null;
-          }>(
-            () =>
-              supabase
-                .from("profiles")
-                .select("id,full_name,email,grade,active")
-                .eq("active", true)
-                .order("id", { ascending: true }),
-            { budget, source: "profiles" },
-          ),
-          // Paginate — a single wide .range() is capped at db-max-rows (1000
-          // on hosted Supabase), so unordered wide reads silently drop rows.
-          fetchAllPaged<{ staff_id: string; session_date: string; session: string }>(
-            () =>
-              supabase
-                .from("rota_assignments")
-                .select("staff_id,session_date,session")
-                .gte("session_date", yearAgo)
-                .order("session_date", { ascending: true }),
-            { budget, source: "rota_assignments" },
-          ),
-          fetchAllPaged<{ staff_id: string | null; session_date: string; hours_before_session: number | null }>(
-            () =>
-              supabase
-                .from("rota_change_log")
-                .select("staff_id,session_date,hours_before_session")
-                .gte("session_date", yearAgo)
-                .order("session_date", { ascending: true }),
-            { budget, source: "rota_change_log" },
-          ),
-          fetchAllPaged<{
-            id: string;
-            staff_id: string;
-            type: string;
-            status: string;
-            start_date: string;
-            end_date: string;
-            half_day_start: string | null;
-            half_day_end: string | null;
-            created_at: string;
-            decided_at: string | null;
-          }>(
-            () =>
-              supabase
-                .from("leave_requests")
-                .select(
-                  "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
-                )
-                .order("end_date", { ascending: false }),
-            { budget, source: "leave_requests" },
-          ),
-          fetchAllPaged<{ trainee_id: string; event_date: string; status: string }>(
-            () =>
-              supabase
-                .from("exception_reports")
-                .select("trainee_id,event_date,status")
-                .gte("event_date", yearAgo)
-                .neq("status", "withdrawn")
-                .order("event_date", { ascending: false }),
-            { budget, source: "exception_reports" },
-          ),
-          fetchAllPaged<{ leave_request_id: string; conducted_at: string | null }>(
-            () =>
-              supabase
-                .from("return_to_work_interviews")
-                .select("leave_request_id,conducted_at")
-                .order("conducted_at", { ascending: false, nullsFirst: false }),
-            { budget, source: "return_to_work_interviews" },
-          ),
-        ]);
+      const [profiles, assignments, changes, leave, exceptionsRaw, rtws] = await Promise.all([
+        fetchAllPaged<{
+          id: string;
+          full_name: string | null;
+          email: string | null;
+          grade: string | null;
+          active: boolean | null;
+        }>(
+          () =>
+            supabase
+              .from("profiles")
+              .select("id,full_name,email,grade,active")
+              .eq("active", true)
+              .order("id", { ascending: true }),
+          { budget, source: "profiles" },
+        ),
+        // Paginate — a single wide .range() is capped at db-max-rows (1000
+        // on hosted Supabase), so unordered wide reads silently drop rows.
+        fetchAllPaged<{ staff_id: string; session_date: string; session: string }>(
+          () =>
+            supabase
+              .from("rota_assignments")
+              .select("staff_id,session_date,session")
+              .gte("session_date", yearAgo)
+              .order("session_date", { ascending: true }),
+          { budget, source: "rota_assignments" },
+        ),
+        fetchAllPaged<{
+          staff_id: string | null;
+          session_date: string;
+          hours_before_session: number | null;
+        }>(
+          () =>
+            supabase
+              .from("rota_change_log")
+              .select("staff_id,session_date,hours_before_session")
+              .gte("session_date", yearAgo)
+              .order("session_date", { ascending: true }),
+          { budget, source: "rota_change_log" },
+        ),
+        fetchAllPaged<{
+          id: string;
+          staff_id: string;
+          type: string;
+          status: string;
+          start_date: string;
+          end_date: string;
+          half_day_start: string | null;
+          half_day_end: string | null;
+          created_at: string;
+          decided_at: string | null;
+        }>(
+          () =>
+            supabase
+              .from("leave_requests")
+              .select(
+                "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+              )
+              .order("end_date", { ascending: false }),
+          { budget, source: "leave_requests" },
+        ),
+        fetchAllPaged<{ trainee_id: string; event_date: string; status: string }>(
+          () =>
+            supabase
+              .from("exception_reports")
+              .select("trainee_id,event_date,status")
+              .gte("event_date", yearAgo)
+              .neq("status", "withdrawn")
+              .order("event_date", { ascending: false }),
+          { budget, source: "exception_reports" },
+        ),
+        fetchAllPaged<{ leave_request_id: string; conducted_at: string | null }>(
+          () =>
+            supabase
+              .from("return_to_work_interviews")
+              .select("leave_request_id,conducted_at")
+              .order("conducted_at", { ascending: false, nullsFirst: false }),
+          { budget, source: "return_to_work_interviews" },
+        ),
+      ]);
       reportQueryBudget(budget);
       return {
         profiles,
@@ -201,8 +204,7 @@ export function AdminWellbeingPage() {
           ? Math.max(
               0,
               Math.floor(
-                (now.getTime() - new Date(approvedAnnual[0].end_date).getTime()) /
-                  86_400_000,
+                (now.getTime() - new Date(approvedAnnual[0].end_date).getTime()) / 86_400_000,
               ),
             )
           : null;
@@ -285,12 +287,14 @@ export function AdminWellbeingPage() {
         </div>
       ) : null}
 
-
-
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard label="Staff assessed" value={rows.length} icon={HeartPulse} />
         <StatCard label="Strained / at-risk" value={atRiskCount} icon={AlertTriangle} />
-        <StatCard label="High / elevated attrition risk" value={highAttrition} icon={TrendingDown} />
+        <StatCard
+          label="High / elevated attrition risk"
+          value={highAttrition}
+          icon={TrendingDown}
+        />
       </div>
 
       <Card>
@@ -350,9 +354,7 @@ function RowView({
   return (
     <TableRow>
       <TableCell className="font-medium">{row.name}</TableCell>
-      <TableCell className="text-xs capitalize text-muted-foreground">
-        {row.grade ?? "—"}
-      </TableCell>
+      <TableCell className="text-xs capitalize text-muted-foreground">{row.grade ?? "—"}</TableCell>
       <TableCell className="text-right tabular-nums">{row.wellbeing.score}</TableCell>
       <TableCell>
         <Badge className={WELLBEING_BAND_TONE[row.wellbeing.band]}>

@@ -187,9 +187,7 @@ vi.mock("@/components/wellbeing/RecognitionDialog", () => ({
 }));
 
 const { WellbeingPage } = await import("@/routes/_authenticated/wellbeing");
-const { AdminWellbeingPage } = await import(
-  "@/routes/_authenticated/admin.wellbeing"
-);
+const { AdminWellbeingPage } = await import("@/routes/_authenticated/admin.wellbeing");
 
 // -------------------- helpers --------------------
 
@@ -252,9 +250,7 @@ function renderWithClient(node: React.ReactElement) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
   });
-  const utils = render(
-    <QueryClientProvider client={qc}>{node}</QueryClientProvider>,
-  );
+  const utils = render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>);
   return { qc, ...utils };
 }
 
@@ -273,9 +269,9 @@ function extractIntFromNode(el: Element): number {
 
 function personalScoreFromDom(): number {
   // The score card renders <div class="text-5xl ...">{score}<span>/ 100</span></div>.
-  const nodes = Array.from(
-    document.body.querySelectorAll("div"),
-  ).filter((el) => /^\d+\s*\/\s*100$/.test(el.textContent?.trim() ?? ""));
+  const nodes = Array.from(document.body.querySelectorAll("div")).filter((el) =>
+    /^\d+\s*\/\s*100$/.test(el.textContent?.trim() ?? ""),
+  );
   expect(nodes.length, "personal score node not found").toBeGreaterThan(0);
   return extractIntFromNode(nodes[0]!);
 }
@@ -353,20 +349,16 @@ describe("wellbeing enum mapping — /wellbeing and /admin/wellbeing agree", () 
     // ---- personal page ----
     const personal = renderWithClient(<WellbeingPage />);
     await waitForFetchesToSettle(personal.qc);
-    await waitFor(
-      () => expect(personalScoreFromDom()).toBe(reference.score),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(personalScoreFromDom()).toBe(reference.score), { timeout: 3000 });
     expect(personalDriverLabel()).toBe("2 rejected/cancelled leave");
     cleanup();
 
     // ---- admin page ----
     const admin = renderWithClient(<AdminWellbeingPage />);
     await waitForFetchesToSettle(admin.qc);
-    await waitFor(
-      () => expect(screen.getByText("Enum Test Doctor")).toBeTruthy(),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(screen.getByText("Enum Test Doctor")).toBeTruthy(), {
+      timeout: 3000,
+    });
     const adminScore = adminScoreForStaffFromDom("Enum Test Doctor");
     expect(adminScore).toBe(reference.score);
   });
@@ -399,19 +391,15 @@ describe("wellbeing enum mapping — /wellbeing and /admin/wellbeing agree", () 
 
       const personal = renderWithClient(<WellbeingPage />);
       await waitForFetchesToSettle(personal.qc);
-      await waitFor(
-        () => expect(personalScoreFromDom()).toBe(100),
-        { timeout: 3000 },
-      );
+      await waitFor(() => expect(personalScoreFromDom()).toBe(100), { timeout: 3000 });
       expect(personalDriverLabel()).toBe("0 rejected/cancelled leave");
       cleanup();
 
       const admin = renderWithClient(<AdminWellbeingPage />);
       await waitForFetchesToSettle(admin.qc);
-      await waitFor(
-        () => expect(screen.getByText("Enum Test Doctor")).toBeTruthy(),
-        { timeout: 3000 },
-      );
+      await waitFor(() => expect(screen.getByText("Enum Test Doctor")).toBeTruthy(), {
+        timeout: 3000,
+      });
       expect(adminScoreForStaffFromDom("Enum Test Doctor")).toBe(100);
     },
   );

@@ -16,20 +16,12 @@ import { fetchAllRowsPaged, idKey } from "@/features/audit/paginate";
 import { leaveYearWindow } from "@/features/leave/leave-count";
 
 import { type AllowanceLike as AllowanceRow } from "@/features/leave/leave-allowances";
-import {
-  ACTIVE_STATUSES,
-  type LeaveRow,
-  type ProfileRow,
-} from "@/features/leave/tabs/shared";
+import { ACTIVE_STATUSES, type LeaveRow, type ProfileRow } from "@/features/leave/tabs/shared";
 import { DayCalendarTab } from "@/features/leave/tabs/DayCalendarTab";
 import { UpcomingLeaveTab } from "@/features/leave/tabs/UpcomingLeaveTab";
 import { SickLeaveTab, type SickRow } from "@/features/leave/tabs/SickLeaveTab";
 import { AllowancesTab } from "@/features/leave/tabs/AllowancesTab";
-import {
-  MyLeaveTab,
-  MyLeaveTabLabel,
-  MyLeaveDescription,
-} from "@/features/leave/tabs/MyLeaveTab";
+import { MyLeaveTab, MyLeaveTabLabel, MyLeaveDescription } from "@/features/leave/tabs/MyLeaveTab";
 
 // Re-exported so existing UI tests continue to import from "./leave".
 export { MyLeaveTabLabel, MyLeaveDescription };
@@ -141,7 +133,9 @@ function LeavePage() {
         (from, to) =>
           supabase
             .from("leave_requests")
-            .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
+            .select(
+              "id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end",
+            )
             .in("status", ["approved", "pending"])
             .lt("start_date", w.endExclusive)
             .gte("end_date", w.start)
@@ -167,7 +161,9 @@ function LeavePage() {
     void loadYear(selectedYearStartISO);
   };
 
-  useEffect(() => { void load(); }, [user?.id]);
+  useEffect(() => {
+    void load();
+  }, [user?.id]);
 
   useEffect(() => {
     void loadYear(selectedYearStartISO);
@@ -199,10 +195,7 @@ function LeavePage() {
     return m;
   }, [profiles]);
 
-  const activeRows = useMemo(
-    () => rows.filter((r) => ACTIVE_STATUSES.has(r.status)),
-    [rows],
-  );
+  const activeRows = useMemo(() => rows.filter((r) => ACTIVE_STATUSES.has(r.status)), [rows]);
 
   const myRows = useMemo(
     () => (user ? myLeave.filter((r) => r.staff_id === user.id) : []),
@@ -247,9 +240,16 @@ function LeavePage() {
       />
 
       {loadError && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          <span>Leave could not be fully loaded, so totals below may be incomplete: {loadError}</span>
-          <Button size="sm" variant="outline" onClick={reloadAll}>Retry</Button>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          <span>
+            Leave could not be fully loaded, so totals below may be incomplete: {loadError}
+          </span>
+          <Button size="sm" variant="outline" onClick={reloadAll}>
+            Retry
+          </Button>
         </div>
       )}
       <Tabs defaultValue="calendar" className="space-y-4">
@@ -264,19 +264,11 @@ function LeavePage() {
         </TabsList>
 
         <TabsContent value="calendar">
-          <DayCalendarTab
-            loading={loading}
-            activeRows={activeRows}
-            profileById={profileById}
-          />
+          <DayCalendarTab loading={loading} activeRows={activeRows} profileById={profileById} />
         </TabsContent>
 
         <TabsContent value="upcoming">
-          <UpcomingLeaveTab
-            loading={loading}
-            allUpcoming={allUpcoming}
-            profileById={profileById}
-          />
+          <UpcomingLeaveTab loading={loading} allUpcoming={allUpcoming} profileById={profileById} />
         </TabsContent>
 
         <TabsContent value="sick">
@@ -290,9 +282,20 @@ function LeavePage() {
 
         <TabsContent value="allowances">
           {yearError && (
-            <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              <span>Totals for this leave year could not be loaded and are not shown: {yearError}</span>
-              <Button size="sm" variant="outline" onClick={() => void loadYear(selectedYearStartISO)}>Retry</Button>
+            <div
+              role="alert"
+              className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              <span>
+                Totals for this leave year could not be loaded and are not shown: {yearError}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void loadYear(selectedYearStartISO)}
+              >
+                Retry
+              </Button>
             </div>
           )}
           <AllowancesTab

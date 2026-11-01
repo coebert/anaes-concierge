@@ -1,13 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ShieldAlert, UserMinus, GraduationCap, MapPin, Info, ListChecks, CalendarOff } from "lucide-react";
+  ShieldAlert,
+  UserMinus,
+  GraduationCap,
+  MapPin,
+  Info,
+  ListChecks,
+  CalendarOff,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskLabel } from "@/features/audit/robustness";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
@@ -16,7 +20,20 @@ import { PageLoading } from "@/components/loading";
 import { QueryErrorNotice } from "@/components/query-state-notice";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 function shortDay(iso: string) {
   const d = new Date(iso + "T00:00:00Z");
@@ -51,7 +68,10 @@ function dayChipAccent(risk: "ok" | "tight" | "shortfall" | "spa_required") {
   return "bg-emerald-500 text-white";
 }
 
-function worstRisk(a: "ok" | "tight" | "shortfall" | "spa_required", b: "ok" | "tight" | "shortfall" | "spa_required") {
+function worstRisk(
+  a: "ok" | "tight" | "shortfall" | "spa_required",
+  b: "ok" | "tight" | "shortfall" | "spa_required",
+) {
   const order = { ok: 0, tight: 1, spa_required: 2, shortfall: 3 } as const;
   return order[a] >= order[b] ? a : b;
 }
@@ -60,12 +80,22 @@ export function SummaryDashboard() {
   const today = todayISO();
   const in6 = addDaysISO(6);
 
-  const { data: robustness, isLoading: rLoading, error: rLoadingErr, refetch: rLoadingRetry } = useQuery({
+  const {
+    data: robustness,
+    isLoading: rLoading,
+    error: rLoadingErr,
+    refetch: rLoadingRetry,
+  } = useQuery({
     queryKey: ["summary-robustness", today, in6],
     queryFn: () => computeRobustness(today, in6),
   });
 
-  const { data: leaveToday, isLoading: lLoading, error: lLoadingErr, refetch: lLoadingRetry } = useQuery({
+  const {
+    data: leaveToday,
+    isLoading: lLoading,
+    error: lLoadingErr,
+    refetch: lLoadingRetry,
+  } = useQuery({
     queryKey: ["summary-leave-today", today],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -76,18 +106,27 @@ export function SummaryDashboard() {
         .gte("end_date", today);
       if (error) throw error;
       return (data ?? []) as Array<{
-        id: string; type: string; staff_id: string;
+        id: string;
+        type: string;
+        staff_id: string;
         profiles: { full_name: string; grade: string | null };
       }>;
     },
   });
 
-  const { data: soloToday, isLoading: sLoading, error: sLoadingErr, refetch: sLoadingRetry } = useQuery({
+  const {
+    data: soloToday,
+    isLoading: sLoading,
+    error: sLoadingErr,
+    refetch: sLoadingRetry,
+  } = useQuery({
     queryKey: ["summary-solo-trainees-today", today],
     queryFn: async () => {
       const { data: assigns, error } = await supabase
         .from("rota_assignments")
-        .select("id,staff_id,theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(full_name,grade,training_level)")
+        .select(
+          "id,staff_id,theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(full_name,grade,training_level)",
+        )
         .eq("session_date", today)
         .eq("role_on_list", "solo")
         .eq("duty_type", "theatre")
@@ -95,10 +134,14 @@ export function SummaryDashboard() {
         .not("theatre_session_id", "is", null);
       if (error) throw error;
       const rows = (assigns ?? []) as Array<{
-        id: string; staff_id: string; theatre_session_id: string | null;
+        id: string;
+        staff_id: string;
+        theatre_session_id: string | null;
         profiles: { full_name: string; grade: string; training_level: string | null };
       }>;
-      const tsIds = Array.from(new Set(rows.map((r) => r.theatre_session_id).filter(Boolean) as string[]));
+      const tsIds = Array.from(
+        new Set(rows.map((r) => r.theatre_session_id).filter(Boolean) as string[]),
+      );
       const theatreById = new Map<string, string>();
       const consultantSessionIds = new Set<string>();
       if (tsIds.length > 0) {
@@ -124,7 +167,6 @@ export function SummaryDashboard() {
         for (const r of (coAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
           if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
         }
-
       }
       return rows
         .filter((r) => r.theatre_session_id && !consultantSessionIds.has(r.theatre_session_id))
@@ -151,12 +193,25 @@ export function SummaryDashboard() {
       return acc;
     },
     {
-      consultants: { total: 0, byType: {} as Record<string, number>, entries: [] as Array<{ name: string; type: string }> },
-      trainees: { total: 0, byType: {} as Record<string, number>, entries: [] as Array<{ name: string; type: string }> },
+      consultants: {
+        total: 0,
+        byType: {} as Record<string, number>,
+        entries: [] as Array<{ name: string; type: string }>,
+      },
+      trainees: {
+        total: 0,
+        byType: {} as Record<string, number>,
+        entries: [] as Array<{ name: string; type: string }>,
+      },
     },
   );
 
-  const { data: listCoverage, isLoading: cLoading, error: cLoadingErr, refetch: cLoadingRetry } = useQuery({
+  const {
+    data: listCoverage,
+    isLoading: cLoading,
+    error: cLoadingErr,
+    refetch: cLoadingRetry,
+  } = useQuery({
     queryKey: ["summary-list-coverage", today, in6],
     queryFn: () => computeListCoverage(today, in6),
   });
@@ -165,7 +220,12 @@ export function SummaryDashboard() {
   // not on approved leave, and not on an LTFT contractual day off. SPA/admin
   // (and every other duty_type) counts as "scheduled", so those people are
   // intentionally excluded from these lists.
-  const { data: notWorking, isLoading: nwLoading, error: nwLoadingErr, refetch: nwLoadingRetry } = useQuery({
+  const {
+    data: notWorking,
+    isLoading: nwLoading,
+    error: nwLoadingErr,
+    refetch: nwLoadingRetry,
+  } = useQuery({
     queryKey: ["summary-not-working-today", today],
     queryFn: async () => {
       const [staffRes, assignRes, leaveRes] = await Promise.all([
@@ -174,10 +234,7 @@ export function SummaryDashboard() {
           .select("id,full_name,grade,training_level,ltft_days_off,rotation_end_date")
           .eq("active", true)
           .in("grade", ["consultant", "sas", "trainee"]),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id")
-          .eq("session_date", today),
+        supabase.from("rota_assignments").select("staff_id").eq("session_date", today),
         supabase
           .from("leave_requests")
           .select("staff_id")
@@ -245,15 +302,17 @@ export function SummaryDashboard() {
                 <ShieldAlert className="h-4 w-4 text-primary" />
                 Rota robustness — next 7 days
               </CardTitle>
-              <CardDescription>
-                Worst-half risk per day. Click a day to drill down.
-              </CardDescription>
+              <CardDescription>Worst-half risk per day. Click a day to drill down.</CardDescription>
             </CardHeader>
             <CardContent>
               {rLoading ? (
                 <PageLoading />
               ) : rLoadingErr && !robustness ? (
-                <QueryErrorNotice error={rLoadingErr} what="the 7-day robustness check" onRetry={() => void rLoadingRetry()} />
+                <QueryErrorNotice
+                  error={rLoadingErr}
+                  what="the 7-day robustness check"
+                  onRetry={() => void rLoadingRetry()}
+                />
               ) : days.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No weekdays in the next 7 days.</div>
               ) : (
@@ -277,7 +336,8 @@ export function SummaryDashboard() {
                                 "group/daychip relative flex min-w-[5.75rem] flex-col items-stretch overflow-hidden rounded-lg border text-xs shadow-sm transition-all duration-150",
                                 "hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                                 dayChipSurface(risk),
-                                isToday && "ring-2 ring-primary/60 ring-offset-1 ring-offset-background",
+                                isToday &&
+                                  "ring-2 ring-primary/60 ring-offset-1 ring-offset-background",
                               )}
                             >
                               <div className="flex items-baseline justify-between gap-1.5 px-2.5 pt-1.5">
@@ -289,7 +349,9 @@ export function SummaryDashboard() {
                                     Today
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] text-muted-foreground/80">{parts.month}</span>
+                                  <span className="text-[10px] text-muted-foreground/80">
+                                    {parts.month}
+                                  </span>
                                 )}
                               </div>
                               <div className="flex items-baseline gap-1.5 px-2.5 pb-1">
@@ -297,25 +359,45 @@ export function SummaryDashboard() {
                                   {parts.day}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground tabular-nums">
-                                  hr <span className="font-semibold text-foreground">{headroom}</span>
+                                  hr{" "}
+                                  <span className="font-semibold text-foreground">{headroom}</span>
                                   <span className="mx-1 text-muted-foreground/50">·</span>
-                                  spa <span className={cn("font-semibold tabular-nums", spa > 0 ? "text-orange-600 dark:text-orange-400" : "text-foreground/70")}>{spa}</span>
+                                  spa{" "}
+                                  <span
+                                    className={cn(
+                                      "font-semibold tabular-nums",
+                                      spa > 0
+                                        ? "text-orange-600 dark:text-orange-400"
+                                        : "text-foreground/70",
+                                    )}
+                                  >
+                                    {spa}
+                                  </span>
                                 </span>
                               </div>
-                              <div className={cn(
-                                "mt-auto px-2.5 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide",
-                                dayChipAccent(risk),
-                              )}>
+                              <div
+                                className={cn(
+                                  "mt-auto px-2.5 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide",
+                                  dayChipAccent(risk),
+                                )}
+                              >
                                 {riskLabel(risk)}
                               </div>
                             </Link>
                           </TooltipTrigger>
                           <TooltipContent side="top">
                             <p className="text-xs">
-                              {formatDateGB(d.date)}<br />
-                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, SPA {d.am.consultantsOnSpa}, {d.am.unfilled} unfilled)<br />
-                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, SPA {d.pm.consultantsOnSpa}, {d.pm.unfilled} unfilled)<br />
-                              <span className="text-muted-foreground">SPA is reported separately and never folded into headroom.</span>
+                              {formatDateGB(d.date)}
+                              <br />
+                              AM: {riskLabel(d.am.risk)} (headroom {d.am.headroom}, SPA{" "}
+                              {d.am.consultantsOnSpa}, {d.am.unfilled} unfilled)
+                              <br />
+                              PM: {riskLabel(d.pm.risk)} (headroom {d.pm.headroom}, SPA{" "}
+                              {d.pm.consultantsOnSpa}, {d.pm.unfilled} unfilled)
+                              <br />
+                              <span className="text-muted-foreground">
+                                SPA is reported separately and never folded into headroom.
+                              </span>
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -324,7 +406,6 @@ export function SummaryDashboard() {
                   </div>
                   <RobustnessLegend />
                 </>
-
               )}
             </CardContent>
           </Card>
@@ -335,7 +416,9 @@ export function SummaryDashboard() {
               <CardTitle className="text-base flex items-center gap-2">
                 <UserMinus className="h-4 w-4 text-orange-600" />
                 Consultants on leave today
-                <Badge variant="secondary" className="ml-auto">{leaveByGrade.consultants.total}</Badge>
+                <Badge variant="secondary" className="ml-auto">
+                  {leaveByGrade.consultants.total}
+                </Badge>
               </CardTitle>
               <CardDescription>Approved leave covering {formatDateGB(today)}.</CardDescription>
             </CardHeader>
@@ -343,7 +426,11 @@ export function SummaryDashboard() {
               {lLoading ? (
                 <PageLoading />
               ) : lLoadingErr && !leaveToday ? (
-                <QueryErrorNotice error={lLoadingErr} what="today's leave" onRetry={() => void lLoadingRetry()} />
+                <QueryErrorNotice
+                  error={lLoadingErr}
+                  what="today's leave"
+                  onRetry={() => void lLoadingRetry()}
+                />
               ) : leaveByGrade.consultants.total === 0 ? (
                 <div className="text-sm text-muted-foreground">No consultants on leave today.</div>
               ) : (
@@ -361,7 +448,9 @@ export function SummaryDashboard() {
               <CardTitle className="text-base flex items-center gap-2">
                 <UserMinus className="h-4 w-4 text-sky-600" />
                 Trainees on leave today
-                <Badge variant="secondary" className="ml-auto">{leaveByGrade.trainees.total}</Badge>
+                <Badge variant="secondary" className="ml-auto">
+                  {leaveByGrade.trainees.total}
+                </Badge>
               </CardTitle>
               <CardDescription>Approved leave covering {formatDateGB(today)}.</CardDescription>
             </CardHeader>
@@ -369,7 +458,11 @@ export function SummaryDashboard() {
               {lLoading ? (
                 <PageLoading />
               ) : lLoadingErr && !leaveToday ? (
-                <QueryErrorNotice error={lLoadingErr} what="today's leave" onRetry={() => void lLoadingRetry()} />
+                <QueryErrorNotice
+                  error={lLoadingErr}
+                  what="today's leave"
+                  onRetry={() => void lLoadingRetry()}
+                />
               ) : leaveByGrade.trainees.total === 0 ? (
                 <div className="text-sm text-muted-foreground">No trainees on leave today.</div>
               ) : (
@@ -387,7 +480,9 @@ export function SummaryDashboard() {
               <CardTitle className="text-base flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 text-warning" />
                 Solo trainees today
-                <Badge variant="secondary" className="ml-auto">{soloToday?.length ?? 0}</Badge>
+                <Badge variant="secondary" className="ml-auto">
+                  {soloToday?.length ?? 0}
+                </Badge>
               </CardTitle>
               <CardDescription>Trainee assigned as solo on a theatre list.</CardDescription>
             </CardHeader>
@@ -395,18 +490,26 @@ export function SummaryDashboard() {
               {sLoading ? (
                 <PageLoading />
               ) : sLoadingErr && !soloToday ? (
-                <QueryErrorNotice error={sLoadingErr} what="solo trainees" onRetry={() => void sLoadingRetry()} />
+                <QueryErrorNotice
+                  error={sLoadingErr}
+                  what="solo trainees"
+                  onRetry={() => void sLoadingRetry()}
+                />
               ) : (soloToday?.length ?? 0) === 0 ? (
                 <div className="text-sm text-muted-foreground">No solo trainees today.</div>
               ) : (
                 <ul className="space-y-1.5 text-sm">
                   {soloToday!.map((s) => (
-                    <li key={s.id} className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-muted/30 px-2 py-1.5">
+                    <li
+                      key={s.id}
+                      className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-muted/30 px-2 py-1.5"
+                    >
                       <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
                       <div className="flex-1">
                         <div className="font-medium">{s.theatre}</div>
                         <div className="text-xs text-muted-foreground">
-                          {s.name}{s.trainingLevel ? ` · ${s.trainingLevel}` : ""}
+                          {s.name}
+                          {s.trainingLevel ? ` · ${s.trainingLevel}` : ""}
                         </div>
                       </div>
                     </li>
@@ -459,14 +562,19 @@ export function SummaryDashboard() {
               List coverage breakdown — next 7 days
             </CardTitle>
             <CardDescription>
-              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA half-days (SPA is reported separately and never folded into headroom).
+              Per-day totals of lists with solo-capable cover, unfilled lists, and SPA half-days
+              (SPA is reported separately and never folded into headroom).
             </CardDescription>
           </CardHeader>
           <CardContent>
             {cLoading ? (
               <PageLoading />
             ) : cLoadingErr && !listCoverage ? (
-              <QueryErrorNotice error={cLoadingErr} what="list coverage" onRetry={() => void cLoadingRetry()} />
+              <QueryErrorNotice
+                error={cLoadingErr}
+                what="list coverage"
+                onRetry={() => void cLoadingRetry()}
+              />
             ) : (listCoverage?.length ?? 0) === 0 ? (
               <div className="text-sm text-muted-foreground">No data for the next 7 days.</div>
             ) : (
@@ -478,7 +586,9 @@ export function SummaryDashboard() {
                       <th className="pb-2 pr-4 font-medium text-right">Lists</th>
                       <th className="pb-2 pr-4 font-medium text-right">Solo-capable</th>
                       <th className="pb-2 pr-4 font-medium text-right">Unfilled</th>
-                      <th className="pb-2 pr-4 font-medium text-right text-orange-700">SPA (separate)</th>
+                      <th className="pb-2 pr-4 font-medium text-right text-orange-700">
+                        SPA (separate)
+                      </th>
                       <th className="pb-2 font-medium">SPA needed</th>
                     </tr>
                   </thead>
@@ -512,7 +622,8 @@ export function SummaryDashboard() {
                               </TooltipTrigger>
                               <TooltipContent side="top">
                                 <p className="text-xs">
-                                  AM: {d.am.total} lists<br />
+                                  AM: {d.am.total} lists
+                                  <br />
                                   PM: {d.pm.total} lists
                                 </p>
                               </TooltipContent>
@@ -521,16 +632,26 @@ export function SummaryDashboard() {
                           <td className="py-2 pr-4 text-right">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className={cn("cursor-help", totalSolo < totalLists - totalUnfilled && "text-warning font-medium")}>
+                                <span
+                                  className={cn(
+                                    "cursor-help",
+                                    totalSolo < totalLists - totalUnfilled &&
+                                      "text-warning font-medium",
+                                  )}
+                                >
                                   {totalSolo}
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent side="top">
                                 <p className="text-xs">
-                                  AM: {d.am.soloCapable} solo-capable<br />
+                                  AM: {d.am.soloCapable} solo-capable
+                                  <br />
                                   PM: {d.pm.soloCapable} solo-capable
-                                  {(d.am.supervised + d.pm.supervised) > 0 && (
-                                    <><br />Total supervised: {d.am.supervised + d.pm.supervised}</>
+                                  {d.am.supervised + d.pm.supervised > 0 && (
+                                    <>
+                                      <br />
+                                      Total supervised: {d.am.supervised + d.pm.supervised}
+                                    </>
                                   )}
                                 </p>
                               </TooltipContent>
@@ -539,13 +660,19 @@ export function SummaryDashboard() {
                           <td className="py-2 pr-4 text-right">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className={cn("cursor-help", totalUnfilled > 0 && "text-red-600 font-medium")}>
+                                <span
+                                  className={cn(
+                                    "cursor-help",
+                                    totalUnfilled > 0 && "text-red-600 font-medium",
+                                  )}
+                                >
                                   {totalUnfilled}
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent side="top">
                                 <p className="text-xs">
-                                  AM: {d.am.unfilled} unfilled<br />
+                                  AM: {d.am.unfilled} unfilled
+                                  <br />
                                   PM: {d.pm.unfilled} unfilled
                                 </p>
                               </TooltipContent>
@@ -554,15 +681,24 @@ export function SummaryDashboard() {
                           <td className="py-2 pr-4 text-right">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className={cn("cursor-help text-orange-700", totalSpa === 0 && "text-muted-foreground")}>
+                                <span
+                                  className={cn(
+                                    "cursor-help text-orange-700",
+                                    totalSpa === 0 && "text-muted-foreground",
+                                  )}
+                                >
                                   {totalSpa}
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent side="top">
                                 <p className="text-xs">
-                                  AM: {amSpa} consultant(s) on SPA<br />
-                                  PM: {pmSpa} consultant(s) on SPA<br />
-                                  <span className="text-muted-foreground">SPA is a separate metric — not added into headroom.</span>
+                                  AM: {amSpa} consultant(s) on SPA
+                                  <br />
+                                  PM: {pmSpa} consultant(s) on SPA
+                                  <br />
+                                  <span className="text-muted-foreground">
+                                    SPA is a separate metric — not added into headroom.
+                                  </span>
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -571,7 +707,11 @@ export function SummaryDashboard() {
                             {spaHalves.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
                                 {spaHalves.map((h) => (
-                                  <Badge key={h} variant="outline" className="text-[10px] border-orange-400/60 text-orange-700 bg-orange-50 dark:bg-orange-950/30">
+                                  <Badge
+                                    key={h}
+                                    variant="outline"
+                                    className="text-[10px] border-orange-400/60 text-orange-700 bg-orange-50 dark:bg-orange-950/30"
+                                  >
                                     {h} SPA needed
                                   </Badge>
                                 ))}
@@ -594,7 +734,15 @@ export function SummaryDashboard() {
   );
 }
 
-function LegendSwatch({ color, label, description }: { color: string; label: string; description: string }) {
+function LegendSwatch({
+  color,
+  label,
+  description,
+}: {
+  color: string;
+  label: string;
+  description: string;
+}) {
   return (
     <div className="flex items-start gap-2">
       <span className={cn("mt-0.5 inline-block h-3 w-3 shrink-0 rounded-sm", color)} />
@@ -614,7 +762,9 @@ function RobustnessLegend() {
         How rota robustness is calculated
       </div>
       <p className="mb-2 text-[10px] text-muted-foreground leading-relaxed">
-        Robustness compares solo-capable staff (consultants + senior trainees ST6–ST8 who are free) against unfilled theatre lists. Junior trainees and SAS doctors are tracked but do not count toward solo cover. Each day shows the worst half (AM or PM).
+        Robustness compares solo-capable staff (consultants + senior trainees ST6–ST8 who are free)
+        against unfilled theatre lists. Junior trainees and SAS doctors are tracked but do not count
+        toward solo cover. Each day shows the worst half (AM or PM).
       </p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
         <LegendSwatch
@@ -693,7 +843,9 @@ function NotScheduledCard({
         <CardTitle className="text-base flex items-center gap-2">
           <CalendarOff className={cn("h-4 w-4", tone)} />
           {title}
-          <Badge variant="secondary" className="ml-auto">{entries.length}</Badge>
+          <Badge variant="secondary" className="ml-auto">
+            {entries.length}
+          </Badge>
         </CardTitle>
         <CardDescription>
           No rota entry for {formatDateGB(today)} (SPA/admin excluded).

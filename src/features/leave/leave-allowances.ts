@@ -11,7 +11,7 @@ export interface LeaveRowLike {
   type: string;
   status: string;
   start_date: string; // YYYY-MM-DD
-  end_date: string;   // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
   half_day_start: string | null;
   half_day_end: string | null;
 }
@@ -25,8 +25,8 @@ export interface AllowanceLike {
 }
 
 export interface Bucket {
-  taken: number;   // approved
-  booked: number;  // pending
+  taken: number; // approved
+  booked: number; // pending
 }
 
 export interface AllowanceSummary {

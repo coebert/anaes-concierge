@@ -31,8 +31,7 @@ import { AdminWellbeingPage } from "@/routes/_authenticated/admin.wellbeing";
 const DB_MAX_ROWS = 1000;
 const TODAY = new Date();
 const DAY_MS = 86_400_000;
-const isoDaysAgo = (d: number) =>
-  new Date(TODAY.getTime() - d * DAY_MS).toISOString().slice(0, 10);
+const isoDaysAgo = (d: number) => new Date(TODAY.getTime() - d * DAY_MS).toISOString().slice(0, 10);
 
 type Row = Record<string, unknown>;
 
@@ -189,7 +188,13 @@ describe("AdminWellbeingPage — study & compassionate leave integration", () =>
     // single unordered .range() would silently drop the recent denials.
     rowsByTable.profiles = [
       { id: "s-study", full_name: "Dr Study", email: null, grade: "consultant", active: true },
-      { id: "s-compassionate", full_name: "Dr Compassionate", email: null, grade: "consultant", active: true },
+      {
+        id: "s-compassionate",
+        full_name: "Dr Compassionate",
+        email: null,
+        grade: "consultant",
+        active: true,
+      },
     ];
 
     const leave: Row[] = [

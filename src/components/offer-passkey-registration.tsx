@@ -54,8 +54,8 @@ export function OfferPasskeyRegistration({ onDone }: Props) {
       <div className="space-y-1">
         <p className="font-medium">Set up a passkey for faster sign-in?</p>
         <p className="text-sm text-muted-foreground">
-          Use Face ID, Touch ID, or Windows Hello to sign in without a password
-          next time on this device.
+          Use Face ID, Touch ID, or Windows Hello to sign in without a password next time on this
+          device.
         </p>
       </div>
       <div className="flex flex-col gap-2">
@@ -74,16 +74,13 @@ export function OfferPasskeyRegistration({ onDone }: Props) {
  * Detect whether the current device could plausibly store a passkey and the
  * signed-in user has none yet. Returns false on any error or unsupported UA.
  */
-export async function shouldOfferPasskey(
-  listFn: () => Promise<unknown>,
-): Promise<boolean> {
+export async function shouldOfferPasskey(listFn: () => Promise<unknown>): Promise<boolean> {
   if (typeof window === "undefined" || !window.PublicKeyCredential) return false;
   try {
     const pkc = window.PublicKeyCredential as unknown as {
       isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
     };
-    const available =
-      (await pkc.isUserVerifyingPlatformAuthenticatorAvailable?.()) ?? false;
+    const available = (await pkc.isUserVerifyingPlatformAuthenticatorAvailable?.()) ?? false;
     if (!available) return false;
     const existing = (await listFn()) as unknown[];
     return Array.isArray(existing) && existing.length === 0;

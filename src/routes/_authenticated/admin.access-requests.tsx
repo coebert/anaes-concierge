@@ -7,10 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  listAccessRequests, decideAccessRequest, deleteAccessRequest,
+  listAccessRequests,
+  decideAccessRequest,
+  deleteAccessRequest,
 } from "@/features/access-requests/admin-access-requests.functions";
 import { toast } from "sonner";
 import { Check, X, Trash2 } from "lucide-react";

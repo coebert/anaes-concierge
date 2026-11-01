@@ -27,22 +27,51 @@ function chain(table: string) {
   );
   return c;
 }
-vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ from: (t: string) => chain(t) }) }));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({ from: (t: string) => chain(t) }),
+}));
 
 const TOKEN = "a".repeat(64);
 async function call() {
   const { Route } = await import("@/routes/api/public/calendar/$token");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (Route as any).options.server.handlers.GET({ params: { token: TOKEN } }) as Promise<Response>;
+  return (Route as any).options.server.handlers.GET({
+    params: { token: TOKEN },
+  }) as Promise<Response>;
 }
 
 beforeEach(() => {
   for (const k of Object.keys(tables)) delete tables[k];
   for (const k of Object.keys(selects)) delete selects[k];
-  tables.profiles = { data: { id: "u1", full_name: "Dr Ünïcode, Test", active: true }, error: null };
+  tables.profiles = {
+    data: { id: "u1", full_name: "Dr Ünïcode, Test", active: true },
+    error: null,
+  };
   tables.user_roles = { data: [{ role: "staff" }], error: null };
-  tables.rota_assignments = { data: [{ id: "r1", session_date: "2026-11-02", session: "am", duty_type: "theatre", notes: "line1\r\nline2" }], error: null };
-  tables.leave_requests = { data: [{ id: "l1", type: "sick", status: "approved", start_date: "2026-11-05", end_date: "2026-11-05" }], error: null };
+  tables.rota_assignments = {
+    data: [
+      {
+        id: "r1",
+        session_date: "2026-11-02",
+        session: "am",
+        duty_type: "theatre",
+        notes: "line1\r\nline2",
+      },
+    ],
+    error: null,
+  };
+  tables.leave_requests = {
+    data: [
+      {
+        id: "l1",
+        type: "sick",
+        status: "approved",
+        start_date: "2026-11-05",
+        end_date: "2026-11-05",
+      },
+    ],
+    error: null,
+  };
 });
 
 describe("calendar feed route", () => {

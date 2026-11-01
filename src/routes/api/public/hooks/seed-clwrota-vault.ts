@@ -19,10 +19,10 @@ import { secretsMatch } from "@/lib/webhook-auth";
 // Worker — including unrelated cron-triggered `/api/public/hooks/clwrota-sync`
 // calls. Build the response inside the handler instead.
 function genericUnauthorized(): Response {
-  return new Response(
-    JSON.stringify({ ok: false, error: "Unauthorized" }),
-    { status: 401, headers: { "Content-Type": "application/json" } },
-  );
+  return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 export const Route = createFileRoute("/api/public/hooks/seed-clwrota-vault")({
@@ -41,15 +41,14 @@ export const Route = createFileRoute("/api/public/hooks/seed-clwrota-vault")({
         const { error } = await supabaseAdmin.rpc("upsert_vault_secret", {
           p_name: "CLWROTA_WEBHOOK_SECRET",
           p_secret: expected,
-          p_description:
-            "Used by pg_cron to authenticate to /api/public/hooks/clwrota-sync",
+          p_description: "Used by pg_cron to authenticate to /api/public/hooks/clwrota-sync",
         });
 
         if (error) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "vault upsert failed" }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "vault upsert failed" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
         return Response.json({ ok: true });
       },

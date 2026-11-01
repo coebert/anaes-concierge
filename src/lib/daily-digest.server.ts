@@ -96,9 +96,7 @@ export function describeAssignment(
 ): string {
   const half = halfLabel(row.session);
   const duty = DUTY_LABELS[row.duty_type ?? ""] ?? (row.duty_type ?? "Session").replace(/_/g, " ");
-  const what = theatreName
-    ? `${theatreName}${specialty ? ` (${specialty})` : ""}`
-    : duty;
+  const what = theatreName ? `${theatreName}${specialty ? ` (${specialty})` : ""}` : duty;
   return half ? `${half}: ${what}` : what;
 }
 
@@ -121,8 +119,7 @@ export async function dispatchDailyDigests(options?: { date?: string; force?: bo
     .select("id, user_id, endpoint, p256dh, auth");
   if (subsErr) throw subsErr;
   const subs = ((subsData ?? []) as SubscriptionRow[]).filter(isDeliverableSubscription);
-  if (subs.length === 0)
-    return { date, candidates: 0, sent: 0, skipped: 0, failed: 0, pruned: 0 };
+  if (subs.length === 0) return { date, candidates: 0, sent: 0, skipped: 0, failed: 0, pruned: 0 };
 
   const subsByUser = new Map<string, SubscriptionRow[]>();
   for (const s of subs) {

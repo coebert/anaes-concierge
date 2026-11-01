@@ -11,9 +11,7 @@
  * when we attempted nested-block reordering).
  */
 import { describe, it, expect } from "vitest";
-import {
-  readFileSync, readdirSync, existsSync, writeFileSync, mkdtempSync, rmSync,
-} from "node:fs";
+import { readFileSync, readdirSync, existsSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -38,12 +36,7 @@ function run(inputName: string) {
 
 describe("fix-use-before-define codemod — true positives", () => {
   // Each entry: fixture base name (input + expected files must both exist).
-  const cases = [
-    "enum-reorder",
-    "exported-const",
-    "class-reorder",
-    "use-client-directive",
-  ];
+  const cases = ["enum-reorder", "exported-const", "class-reorder", "use-client-directive"];
 
   it.each(cases)("%s: matches the expected output", (base) => {
     const { newSrc, moves } = run(`${base}.input.ts`);
@@ -147,43 +140,51 @@ describe("fix-use-before-define codemod — stress fixture", () => {
   const COUNT = 30; // 30 of each kind → 90 reorderable + 30 shadow decoys.
   const filename = "stress-synthetic.ts";
 
-  it("first pass produces output that is byte-identical to every subsequent pass", { timeout: 30000 }, () => {
-    const original = generateStressSource(COUNT);
-    const pass1 = processSource(original, filename) as {
-      newSrc: string;
-      moves: Array<{ name: string }>;
-    };
-
-    // Sanity: the first pass actually did meaningful work.
-    expect(pass1.newSrc).not.toBe(original);
-    // Lower bound: at minimum every CONST_/Level/Widget forward ref plus the
-    // one late import should have been moved. (Internal multi-pass folding
-    // may inflate the count slightly — that's OK, we don't pin the exact
-    // number.)
-    expect(pass1.moves.length).toBeGreaterThanOrEqual(3 * COUNT + 1);
-    // Shadowing decoys MUST NOT contribute any moves.
-    expect(pass1.moves.some((m) => /^err\d+$/.test(m.name))).toBe(false);
-
-    // Core assertion: byte-identical output across many subsequent runs.
-    let prev = pass1.newSrc;
-    for (let i = 0; i < 4; i++) {
-      const r = processSource(prev, filename) as {
+  it(
+    "first pass produces output that is byte-identical to every subsequent pass",
+    { timeout: 30000 },
+    () => {
+      const original = generateStressSource(COUNT);
+      const pass1 = processSource(original, filename) as {
         newSrc: string;
-        moves: unknown[];
+        moves: Array<{ name: string }>;
       };
-      expect(r.moves).toHaveLength(0);
-      expect(r.newSrc).toBe(prev);
-      prev = r.newSrc;
-    }
-  });
 
-  it("outer `errN` consts are preserved verbatim (shadowing decoys never move)", { timeout: 30000 }, () => {
-    const original = generateStressSource(COUNT);
-    const { newSrc } = processSource(original, filename) as { newSrc: string };
-    for (let i = 0; i < COUNT; i++) {
-      expect(newSrc).toContain(`export const err${i} = new Error("outer-${i}");`);
-    }
-  });
+      // Sanity: the first pass actually did meaningful work.
+      expect(pass1.newSrc).not.toBe(original);
+      // Lower bound: at minimum every CONST_/Level/Widget forward ref plus the
+      // one late import should have been moved. (Internal multi-pass folding
+      // may inflate the count slightly — that's OK, we don't pin the exact
+      // number.)
+      expect(pass1.moves.length).toBeGreaterThanOrEqual(3 * COUNT + 1);
+      // Shadowing decoys MUST NOT contribute any moves.
+      expect(pass1.moves.some((m) => /^err\d+$/.test(m.name))).toBe(false);
+
+      // Core assertion: byte-identical output across many subsequent runs.
+      let prev = pass1.newSrc;
+      for (let i = 0; i < 4; i++) {
+        const r = processSource(prev, filename) as {
+          newSrc: string;
+          moves: unknown[];
+        };
+        expect(r.moves).toHaveLength(0);
+        expect(r.newSrc).toBe(prev);
+        prev = r.newSrc;
+      }
+    },
+  );
+
+  it(
+    "outer `errN` consts are preserved verbatim (shadowing decoys never move)",
+    { timeout: 30000 },
+    () => {
+      const original = generateStressSource(COUNT);
+      const { newSrc } = processSource(original, filename) as { newSrc: string };
+      for (let i = 0; i < COUNT; i++) {
+        expect(newSrc).toContain(`export const err${i} = new Error("outer-${i}");`);
+      }
+    },
+  );
 });
 
 /**

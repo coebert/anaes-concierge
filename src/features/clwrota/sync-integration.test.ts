@@ -149,7 +149,10 @@ type Assignment = {
   duty_type: string;
 };
 
-function makeStore(seed?: { profiles?: Profile[]; theatres?: Array<{ id: string; name: string }> }) {
+function makeStore(seed?: {
+  profiles?: Profile[];
+  theatres?: Array<{ id: string; name: string }>;
+}) {
   let nextId = 1;
   const newId = (prefix: string) => `${prefix}-${nextId++}`;
 
@@ -178,9 +181,7 @@ function makeStore(seed?: { profiles?: Profile[]; theatres?: Array<{ id: string;
       const grade = pick(r, ["grade"]);
       const full_name = `${first} ${last}`.trim();
 
-      let existing = extId
-        ? profiles.find((p) => p.clwrota_external_id === extId)
-        : undefined;
+      let existing = extId ? profiles.find((p) => p.clwrota_external_id === extId) : undefined;
       if (!existing && email) existing = profiles.find((p) => p.email?.toLowerCase() === email);
 
       if (existing) {
@@ -279,7 +280,6 @@ function makeStore(seed?: { profiles?: Profile[]; theatres?: Array<{ id: string;
       }
     }
 
-
     return { sessionsUpserted, assignmentsInserted, assignmentsUpdated, skipped };
   };
 
@@ -370,7 +370,9 @@ describe("CLWRota Central API sync — integration", () => {
       ],
     });
     // Roster first — the calendar sync needs profiles to resolve staff.
-    store.syncStaff(parseRows(await fetchReportRaw(STAFF_URL, API_KEY, { maxAttempts: 1, baseDelayMs: 0 })).rows);
+    store.syncStaff(
+      parseRows(await fetchReportRaw(STAFF_URL, API_KEY, { maxAttempts: 1, baseDelayMs: 0 })).rows,
+    );
 
     const rotaText = await fetchReportRaw(ROTA_URL, API_KEY, { maxAttempts: 1, baseDelayMs: 0 });
     const result = store.syncRota(parseRows(rotaText).rows);

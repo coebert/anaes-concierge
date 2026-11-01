@@ -67,12 +67,7 @@ function makeFakeTable(rows: Row[]) {
 function lastApprovedAnnual(staffId: string, leave: readonly Row[]): Row | null {
   return (
     leave
-      .filter(
-        (l) =>
-          l.staff_id === staffId &&
-          l.type === "annual" &&
-          l.status === "approved",
-      )
+      .filter((l) => l.staff_id === staffId && l.type === "annual" && l.status === "approved")
       .sort((a, b) => b.end_date.localeCompare(a.end_date))[0] ?? null
   );
 }
@@ -100,8 +95,7 @@ function buildFixture() {
   }));
   const rows: Row[] = [];
   let counter = 0;
-  const push = (r: Omit<Row, "id">) =>
-    rows.push({ id: `r-${counter++}`, ...r });
+  const push = (r: Omit<Row, "id">) => rows.push({ id: `r-${counter++}`, ...r });
 
   // Tucker's OLD approved annual leave — 330 days ago. This is the row the
   // buggy read surfaced as "last annual leave".
@@ -163,9 +157,7 @@ describe("Dr S Tucker 300+ days regression", () => {
     const { tucker, rows } = buildFixture();
     const table = makeFakeTable(rows);
 
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
 
     expect(fetched.length).toBe(rows.length);
 
@@ -213,18 +205,10 @@ describe("Dr S Tucker 300+ days regression", () => {
 
     // With `.order('end_date', desc)` + pagination, the recent row is now
     // on page 1 (newest first), and the full fetch matches the fixture.
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
     const tuckerApproved = fetched.filter(
-      (r) =>
-        r.staff_id === tucker.id &&
-        r.type === "annual" &&
-        r.status === "approved",
+      (r) => r.staff_id === tucker.id && r.type === "annual" && r.status === "approved",
     );
-    expect(tuckerApproved.map((r) => r.end_date)).toEqual([
-      isoDaysAgo(15),
-      isoDaysAgo(330),
-    ]);
+    expect(tuckerApproved.map((r) => r.end_date)).toEqual([isoDaysAgo(15), isoDaysAgo(330)]);
   });
 });

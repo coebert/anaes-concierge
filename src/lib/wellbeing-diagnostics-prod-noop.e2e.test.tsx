@@ -152,143 +152,133 @@ afterEach(() => {
 
 // --------------------- tests ---------------------
 
-describe(
-  "prod-mode invalidateWellbeing is silent — no console.debug diagnostics from cancel-leave / withdraw-exception",
-  () => {
-    it(
-      "cancel-leave path emits ZERO [wellbeing] console.debug lines and ZERO ring-buffer entries " +
-        "when import.meta.env.DEV is false",
-      async () => {
-        const qc = makeQueryClient();
-        const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+describe("prod-mode invalidateWellbeing is silent — no console.debug diagnostics from cancel-leave / withdraw-exception", () => {
+  it(
+    "cancel-leave path emits ZERO [wellbeing] console.debug lines and ZERO ring-buffer entries " +
+      "when import.meta.env.DEV is false",
+    async () => {
+      const qc = makeQueryClient();
+      const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
 
-        // Inline replica of the leave.tsx cancel closure — same shape
-        // as the dev-mode e2e, so the two tests differ ONLY in the
-        // DEV flag.
-        const { supabase } = await import("@/integrations/supabase/client");
-        const cancelLeave = async (id: string) => {
-          const { error } = await (supabase.from("leave_requests") as unknown as {
+      // Inline replica of the leave.tsx cancel closure — same shape
+      // as the dev-mode e2e, so the two tests differ ONLY in the
+      // DEV flag.
+      const { supabase } = await import("@/integrations/supabase/client");
+      const cancelLeave = async (id: string) => {
+        const { error } = await (
+          supabase.from("leave_requests") as unknown as {
             update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-          })
-            .update({ status: "cancelled" })
-            .eq("id", id);
-          if (error) throw error;
-          invalidateWellbeing(qc, "leave.cancel", { ids: [id] });
-        };
+          }
+        )
+          .update({ status: "cancelled" })
+          .eq("id", id);
+        if (error) throw error;
+        invalidateWellbeing(qc, "leave.cancel", { ids: [id] });
+      };
 
-        await cancelLeave(LEAVE_REQUEST_ID);
+      await cancelLeave(LEAVE_REQUEST_ID);
 
-        // The observable prod contract: no diagnostic lines whatsoever.
-        expect(wellbeingLines(debugSpy)).toEqual([]);
-        // Ring buffer must also stay empty — the dev-diagnostics panel
-        // is not populated in prod.
-        expect(getWellbeingInvalidations()).toEqual([]);
+      // The observable prod contract: no diagnostic lines whatsoever.
+      expect(wellbeingLines(debugSpy)).toEqual([]);
+      // Ring buffer must also stay empty — the dev-diagnostics panel
+      // is not populated in prod.
+      expect(getWellbeingInvalidations()).toEqual([]);
 
-        // Yet the actual cache work MUST still happen — silencing logs
-        // must not silence invalidation.
-        expect(invalidateSpy).toHaveBeenCalledTimes(2);
-        const keys = invalidateSpy.mock.calls.map(
-          (c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey,
-        );
-        expect(keys).toContainEqual(["admin-wellbeing"]);
-        expect(keys).toContainEqual(["my-wellbeing"]);
-      },
-    );
+      // Yet the actual cache work MUST still happen — silencing logs
+      // must not silence invalidation.
+      expect(invalidateSpy).toHaveBeenCalledTimes(2);
+      const keys = invalidateSpy.mock.calls.map(
+        (c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(keys).toContainEqual(["admin-wellbeing"]);
+      expect(keys).toContainEqual(["my-wellbeing"]);
+    },
+  );
 
-    it(
-      "withdraw-exception via <ExceptionCard> emits ZERO [wellbeing] console.debug lines " +
-        "and ZERO ring-buffer entries when import.meta.env.DEV is false",
-      async () => {
-        const qc = makeQueryClient();
-        const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+  it(
+    "withdraw-exception via <ExceptionCard> emits ZERO [wellbeing] console.debug lines " +
+      "and ZERO ring-buffer entries when import.meta.env.DEV is false",
+    async () => {
+      const qc = makeQueryClient();
+      const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
 
-        const confirmSpy = vi
-          .spyOn(window, "confirm")
-          .mockImplementation(() => true);
+      const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
 
-        const onChange = vi.fn();
-        render(
-          <ExceptionCard
-            report={makeReport()}
-            canRespond={false}
-            onChange={onChange}
-          />,
-          { wrapper: wrap(qc) },
-        );
+      const onChange = vi.fn();
+      render(<ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />, {
+        wrapper: wrap(qc),
+      });
 
-        const user = userEvent.setup();
-        await user.click(screen.getByRole("button", { name: /Hours of work/i }));
-        await user.click(screen.getByRole("button", { name: /Withdraw/i }));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: /Hours of work/i }));
+      await user.click(screen.getByRole("button", { name: /Withdraw/i }));
 
-        // Wait until the withdraw handler has finished — proxy via
-        // onChange, which fires after `invalidateWellbeing`.
-        await waitFor(() => {
-          expect(onChange).toHaveBeenCalled();
-        });
+      // Wait until the withdraw handler has finished — proxy via
+      // onChange, which fires after `invalidateWellbeing`.
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalled();
+      });
 
-        expect(wellbeingLines(debugSpy)).toEqual([]);
-        expect(getWellbeingInvalidations()).toEqual([]);
+      expect(wellbeingLines(debugSpy)).toEqual([]);
+      expect(getWellbeingInvalidations()).toEqual([]);
 
-        // Cache invalidation still runs — just silently.
-        const keys = invalidateSpy.mock.calls.map(
-          (c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey,
-        );
-        expect(keys).toContainEqual(["admin-wellbeing"]);
-        expect(keys).toContainEqual(["my-wellbeing"]);
+      // Cache invalidation still runs — just silently.
+      const keys = invalidateSpy.mock.calls.map(
+        (c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey,
+      );
+      expect(keys).toContainEqual(["admin-wellbeing"]);
+      expect(keys).toContainEqual(["my-wellbeing"]);
 
-        confirmSpy.mockRestore();
-      },
-    );
+      confirmSpy.mockRestore();
+    },
+  );
 
-    it(
-      "flipping DEV back on mid-suite restores the diagnostics — proves the guard is " +
-        "read at call-time, not baked in at module load, AND every line carries " +
-        "mutation=<type> and ids=[<affected>]",
-      () => {
-        const qc = makeQueryClient();
+  it(
+    "flipping DEV back on mid-suite restores the diagnostics — proves the guard is " +
+      "read at call-time, not baked in at module load, AND every line carries " +
+      "mutation=<type> and ids=[<affected>]",
+    () => {
+      const qc = makeQueryClient();
 
-        // Prod mode (set in beforeEach) — silent.
-        invalidateWellbeing(qc, "leave.cancel", { ids: [LEAVE_REQUEST_ID] });
-        expect(wellbeingLines(debugSpy)).toEqual([]);
-        expect(getWellbeingInvalidations()).toEqual([]);
+      // Prod mode (set in beforeEach) — silent.
+      invalidateWellbeing(qc, "leave.cancel", { ids: [LEAVE_REQUEST_ID] });
+      expect(wellbeingLines(debugSpy)).toEqual([]);
+      expect(getWellbeingInvalidations()).toEqual([]);
 
-        // Flip DEV on and call the exception.withdraw path — now noisy.
-        (import.meta.env as MutableEnv).DEV = true;
-        invalidateWellbeing(qc, "exception.withdraw", { ids: [REPORT_ID] });
-        const withdrawLines = wellbeingLines(debugSpy);
-        expect(withdrawLines).toHaveLength(2);
-        // Every line MUST carry the reason, the mutation-type prefix,
-        // and the affected exception-report ID.
-        for (const line of withdrawLines) {
-          expect(line).toContain("reason=exception.withdraw");
-          expect(line).toContain("mutation=exception");
-          expect(line).toContain(`ids=["${REPORT_ID}"]`);
-        }
-        // One line per invalidated key.
-        expect(withdrawLines.some((l) => l.includes(`queryKey=["admin-wellbeing"]`))).toBe(true);
-        expect(withdrawLines.some((l) => l.includes(`queryKey=["my-wellbeing"]`))).toBe(true);
+      // Flip DEV on and call the exception.withdraw path — now noisy.
+      (import.meta.env as MutableEnv).DEV = true;
+      invalidateWellbeing(qc, "exception.withdraw", { ids: [REPORT_ID] });
+      const withdrawLines = wellbeingLines(debugSpy);
+      expect(withdrawLines).toHaveLength(2);
+      // Every line MUST carry the reason, the mutation-type prefix,
+      // and the affected exception-report ID.
+      for (const line of withdrawLines) {
+        expect(line).toContain("reason=exception.withdraw");
+        expect(line).toContain("mutation=exception");
+        expect(line).toContain(`ids=["${REPORT_ID}"]`);
+      }
+      // One line per invalidated key.
+      expect(withdrawLines.some((l) => l.includes(`queryKey=["admin-wellbeing"]`))).toBe(true);
+      expect(withdrawLines.some((l) => l.includes(`queryKey=["my-wellbeing"]`))).toBe(true);
 
-        // Ring-buffer entries mirror the structured fields.
-        const buf = getWellbeingInvalidations();
-        expect(buf).toHaveLength(2);
-        for (const entry of buf) {
-          expect(entry.reason).toBe("exception.withdraw");
-          expect(entry.mutationType).toBe("exception");
-          expect(entry.ids).toEqual([REPORT_ID]);
-        }
+      // Ring-buffer entries mirror the structured fields.
+      const buf = getWellbeingInvalidations();
+      expect(buf).toHaveLength(2);
+      for (const entry of buf) {
+        expect(entry.reason).toBe("exception.withdraw");
+        expect(entry.mutationType).toBe("exception");
+        expect(entry.ids).toEqual([REPORT_ID]);
+      }
 
-        // Same run, different mutation — assert the leave.cancel shape
-        // too, so we catch a regression that hard-codes "exception".
-        invalidateWellbeing(qc, "leave.cancel", { ids: [LEAVE_REQUEST_ID] });
-        const cancelLines = wellbeingLines(debugSpy).filter((l) =>
-          l.includes("reason=leave.cancel"),
-        );
-        expect(cancelLines).toHaveLength(2);
-        for (const line of cancelLines) {
-          expect(line).toContain("mutation=leave");
-          expect(line).toContain(`ids=["${LEAVE_REQUEST_ID}"]`);
-        }
-      },
-    );
-  },
-);
+      // Same run, different mutation — assert the leave.cancel shape
+      // too, so we catch a regression that hard-codes "exception".
+      invalidateWellbeing(qc, "leave.cancel", { ids: [LEAVE_REQUEST_ID] });
+      const cancelLines = wellbeingLines(debugSpy).filter((l) => l.includes("reason=leave.cancel"));
+      expect(cancelLines).toHaveLength(2);
+      for (const line of cancelLines) {
+        expect(line).toContain("mutation=leave");
+        expect(line).toContain(`ids=["${LEAVE_REQUEST_ID}"]`);
+      }
+    },
+  );
+});

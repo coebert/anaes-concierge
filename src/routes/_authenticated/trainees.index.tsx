@@ -11,7 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -24,7 +29,11 @@ import { cn, todayISO } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { chunkIds } from "@/lib/supabase-chunked";
 import { fetchAllRowsPaged, idKey } from "@/features/audit/paginate";
-import { computeTraineeMetrics, isJuniorTraineeLevel, type MetricAssignment } from "@/features/trainees/trainee-metrics";
+import {
+  computeTraineeMetrics,
+  isJuniorTraineeLevel,
+  type MetricAssignment,
+} from "@/features/trainees/trainee-metrics";
 import { isIcuBlockOnly } from "@/features/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
@@ -108,7 +117,7 @@ function TraineesPage() {
         // today.
         const assignmentPages = await Promise.all(
           chunkIds(traineeIds).map((ids) =>
-            fetchAllRowsPaged<typeof allAssignments[number]>(
+            fetchAllRowsPaged<(typeof allAssignments)[number]>(
               (from, to) =>
                 supabase
                   .from("rota_assignments")
@@ -141,11 +150,7 @@ function TraineesPage() {
       if (tsIds.length) {
         const tsResults = await Promise.all(
           tsIdChunks.map((c) =>
-            supabase
-              .from("theatre_sessions")
-              .select("id,specialty_id")
-              .in("id", c)
-              .range(0, 49999),
+            supabase.from("theatre_sessions").select("id,specialty_id").in("id", c).range(0, 49999),
           ),
         );
         for (const { data: ts, error: e5 } of tsResults) {
@@ -169,7 +174,9 @@ function TraineesPage() {
           tsIdChunks.map((c) =>
             supabase
               .from("rota_assignments")
-              .select("theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
+              .select(
+                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              )
               .in("theatre_session_id", c)
               .in("profiles.grade", ["consultant", "sas"])
               .range(0, 49999),
@@ -184,7 +191,9 @@ function TraineesPage() {
       }
 
       const effectiveRole = (a: { role_on_list: string; theatre_session_id: string | null }) =>
-        a.role_on_list === "solo" && a.theatre_session_id && supervisorSessionIds.has(a.theatre_session_id)
+        a.role_on_list === "solo" &&
+        a.theatre_session_id &&
+        supervisorSessionIds.has(a.theatre_session_id)
           ? "supervised"
           : a.role_on_list;
 
@@ -200,7 +209,7 @@ function TraineesPage() {
         .reduce<Record<string, Array<{ specialty_id: string | null; role_on_list: string }>>>(
           (acc, a) => {
             (acc[a.staff_id] ||= []).push({
-              specialty_id: a.theatre_session_id ? tsMap.get(a.theatre_session_id) ?? null : null,
+              specialty_id: a.theatre_session_id ? (tsMap.get(a.theatre_session_id) ?? null) : null,
               role_on_list: effectiveRole(a),
             });
             return acc;
@@ -231,7 +240,7 @@ function TraineesPage() {
       if (traineeIds.length) {
         const futurePages = await Promise.all(
           chunkIds(traineeIds).map((ids) =>
-            fetchAllRowsPaged<typeof futureAssignments[number]>(
+            fetchAllRowsPaged<(typeof futureAssignments)[number]>(
               (from, to) =>
                 supabase
                   .from("rota_assignments")
@@ -248,13 +257,12 @@ function TraineesPage() {
         );
         futureAssignments = futurePages.flat();
       }
-      const futureByStaff = futureAssignments.reduce<Record<string, Array<{ duty_type: string | null; session_date: string }>>>(
-        (acc, a) => {
-          (acc[a.staff_id] ||= []).push({ duty_type: a.duty_type, session_date: a.session_date });
-          return acc;
-        },
-        {},
-      );
+      const futureByStaff = futureAssignments.reduce<
+        Record<string, Array<{ duty_type: string | null; session_date: string }>>
+      >((acc, a) => {
+        (acc[a.staff_id] ||= []).push({ duty_type: a.duty_type, session_date: a.session_date });
+        return acc;
+      }, {});
 
       return {
         trainees: trainees ?? [],
@@ -313,8 +321,7 @@ function TraineesPage() {
           firstAssignmentDate && (!t.start_date || firstAssignmentDate < t.start_date)
             ? firstAssignmentDate
             : t.start_date;
-        const rotationEnd =
-          (t as { rotation_end_date?: string | null }).rotation_end_date ?? null;
+        const rotationEnd = (t as { rotation_end_date?: string | null }).rotation_end_date ?? null;
         const icuOnly = isIcuBlockOnly(
           data.futureAssignmentsByStaff[t.id] ?? [],
           todayISO(),
@@ -342,9 +349,7 @@ function TraineesPage() {
     () =>
       rows
         .filter(({ effectiveStartDate }) => isNotYetStarted(effectiveStartDate))
-        .sort((a, b) =>
-          (a.effectiveStartDate ?? "").localeCompare(b.effectiveStartDate ?? ""),
-        ),
+        .sort((a, b) => (a.effectiveStartDate ?? "").localeCompare(b.effectiveStartDate ?? "")),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, today],
   );
@@ -413,14 +418,12 @@ function TraineesPage() {
           <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
             <div>
               <span className="font-semibold">{complianceSummary.includedInCompliance}</span>
-              <span className="ml-1 text-muted-foreground">
-                included in rota compliance checks
-              </span>
+              <span className="ml-1 text-muted-foreground">included in rota compliance checks</span>
             </div>
             <span className="text-muted-foreground">·</span>
             <div className="text-muted-foreground">
-              <span className="font-medium text-foreground">{complianceSummary.active}</span>{" "}
-              active of {complianceSummary.total} on record
+              <span className="font-medium text-foreground">{complianceSummary.active}</span> active
+              of {complianceSummary.total} on record
             </div>
             {complianceSummary.inactive > 0 ? (
               <div className="text-muted-foreground">
@@ -430,7 +433,9 @@ function TraineesPage() {
             ) : null}
             {complianceSummary.notYetStarted > 0 ? (
               <div className="text-muted-foreground">
-                <span className="font-medium text-foreground">{complianceSummary.notYetStarted}</span>{" "}
+                <span className="font-medium text-foreground">
+                  {complianceSummary.notYetStarted}
+                </span>{" "}
                 excluded (not yet started)
               </div>
             ) : null}
@@ -444,9 +449,9 @@ function TraineesPage() {
               <div>
                 <CardTitle className="text-base">Not yet started</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  On CLWRota but not scheduled for any activity (and not on leave) in
-                  the next two weeks. Predicted start date taken from their first
-                  future CLWRota assignment or the staff feed.
+                  On CLWRota but not scheduled for any activity (and not on leave) in the next two
+                  weeks. Predicted start date taken from their first future CLWRota assignment or
+                  the staff feed.
                 </p>
               </div>
               {hasRole("admin") ? (
@@ -510,7 +515,6 @@ function TraineesPage() {
           </CardContent>
         </Card>
       ) : null}
-
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -580,7 +584,9 @@ function TraineesPage() {
                 subtitle={trainee.training_level ?? "No level set"}
                 metrics={metrics}
                 startDate={effectiveStartDate}
-                rotationEndDate={(trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null}
+                rotationEndDate={
+                  (trainee as { rotation_end_date?: string | null }).rotation_end_date ?? null
+                }
                 icuBlockOnly={icuOnly}
               />
             ))}
@@ -610,7 +616,10 @@ function TraineesPage() {
               </TableHeader>
               <TableBody>
                 {rows.map(({ trainee, progress, overall, icuOnly, effectiveStartDate }) => (
-                  <TableRow key={trainee.id} className={canOpenProfile(trainee.id) ? "cursor-pointer" : undefined}>
+                  <TableRow
+                    key={trainee.id}
+                    className={canOpenProfile(trainee.id) ? "cursor-pointer" : undefined}
+                  >
                     <TableCell>
                       {canOpenProfile(trainee.id) ? (
                         <Link
@@ -635,7 +644,8 @@ function TraineesPage() {
                           className="ml-2 text-xs border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-300"
                           title="Automatically marked inactive after >4 weeks with no rota assignment and no approved leave."
                         >
-                          No longer at Salisbury · since {format(new Date((trainee as { left_at: string }).left_at), "d MMM yyyy")}
+                          No longer at Salisbury · since{" "}
+                          {format(new Date((trainee as { left_at: string }).left_at), "d MMM yyyy")}
                         </Badge>
                       ) : null}
                     </TableCell>

@@ -87,22 +87,13 @@ function PanelInner() {
           </div>
           <ol className="flex-1 overflow-auto divide-y divide-border">
             {entries.length === 0 ? (
-              <li className="px-3 py-4 text-center text-muted-foreground">
-                No invalidations yet.
-              </li>
+              <li className="px-3 py-4 text-center text-muted-foreground">No invalidations yet.</li>
             ) : (
               entries.map((e) => (
-                <li
-                  key={e.id}
-                  data-testid="wellbeing-diagnostics-entry"
-                  className="px-3 py-1.5"
-                >
+                <li key={e.id} data-testid="wellbeing-diagnostics-entry" className="px-3 py-1.5">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-semibold text-foreground">{e.key}</span>
-                    <time
-                      dateTime={e.at}
-                      className="text-[10px] text-muted-foreground"
-                    >
+                    <time dateTime={e.at} className="text-[10px] text-muted-foreground">
                       {formatTime(e.at)}
                     </time>
                   </div>

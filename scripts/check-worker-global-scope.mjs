@@ -192,15 +192,9 @@ if (totalViolations > 0) {
   console.error(
     `\n✖ ${totalViolations} disallowed Cloudflare Workers global-scope operation(s) found.`,
   );
-  console.error(
-    "  These crash the Worker isolate on startup with:",
-  );
-  console.error(
-    '  "Disallowed operation called within global scope ..."',
-  );
-  console.error(
-    "  Move the call inside a function/handler body so it runs per-request,",
-  );
+  console.error("  These crash the Worker isolate on startup with:");
+  console.error('  "Disallowed operation called within global scope ..."');
+  console.error("  Move the call inside a function/handler body so it runs per-request,");
   console.error("  not at module load time.\n");
   process.exit(1);
 }

@@ -64,13 +64,15 @@ describe("classifyLeaveType — professional split (CLWRota backfill safety)", (
     expect(classifyLeaveType("Study Leave", "ALS Faculty Salisbury")).toBe("professional");
     expect(classifyLeaveType("Study Leave", "As a Faculty")).toBe("professional");
     expect(classifyLeaveType("Study Leave", "Faculty for new airway course")).toBe("professional");
-    expect(classifyLeaveType("Study Leave", "Instructor on EPALS course at SDH")).toBe("professional");
+    expect(classifyLeaveType("Study Leave", "Instructor on EPALS course at SDH")).toBe(
+      "professional",
+    );
     expect(classifyLeaveType("Study Leave", "GIC course - ALS instructor")).toBe("professional");
     expect(classifyLeaveType("Study Leave", "Coach to lead Course")).toBe("professional");
     expect(classifyLeaveType("Study Leave", "Organising above course")).toBe("professional");
-    expect(classifyLeaveType("Study Leave", "ICM resident conference - part of organising committee")).toBe(
-      "professional",
-    );
+    expect(
+      classifyLeaveType("Study Leave", "ICM resident conference - part of organising committee"),
+    ).toBe("professional");
     expect(classifyLeaveType("Course", "post frca teaching")).toBe("professional");
   });
 
@@ -119,9 +121,9 @@ describe("looksLikeProfessionalReason — keyword detection", () => {
     null,
     "",
     "Holiday",
-    "emsb Instructor course",                 // attending, not instructing
-    "Salisbury Regional Anaesthesia Course",  // attending
-    "SCRAPA 2026 Revalidation Symposium",     // attending
+    "emsb Instructor course", // attending, not instructing
+    "Salisbury Regional Anaesthesia Course", // attending
+    "SCRAPA 2026 Revalidation Symposium", // attending
   ])("does not match %j", (r) => expect(looksLikeProfessionalReason(r)).toBe(false));
 });
 
@@ -213,16 +215,16 @@ describe("end-to-end: CLWRota sync → allowance balances stay correct after bac
   const payload: Array<[string, string | null, string, string]> = [
     // Genuine study (attended a course)
     ["Study Leave", "Salisbury Regional Anaesthesia Course", "2026-04-06", "2026-04-08"], // 3 wd
-    ["Study Leave", null, "2026-05-04", "2026-05-04"],                                     // 1 wd
+    ["Study Leave", null, "2026-05-04", "2026-05-04"], // 1 wd
     // Backfill targets — these MUST land in 'professional' on resync
-    ["Study Leave", "Teaching on STIVA", "2026-06-08", "2026-06-08"],                       // 1 wd
-    ["Study Leave", "ALS Faculty Salisbury", "2026-07-13", "2026-07-14"],                   // 2 wd
-    ["Study Leave", "Organising above course", "2026-08-10", "2026-08-10"],                 // 1 wd
+    ["Study Leave", "Teaching on STIVA", "2026-06-08", "2026-06-08"], // 1 wd
+    ["Study Leave", "ALS Faculty Salisbury", "2026-07-13", "2026-07-14"], // 2 wd
+    ["Study Leave", "Organising above course", "2026-08-10", "2026-08-10"], // 1 wd
     // Edge: instructor course = learner → stays study
-    ["Study Leave", "emsb Instructor course", "2026-09-07", "2026-09-07"],                  // 1 wd
+    ["Study Leave", "emsb Instructor course", "2026-09-07", "2026-09-07"], // 1 wd
     // Other types feed their own buckets
-    ["Annual Leave", "Holiday with family", "2026-10-05", "2026-10-09"],                    // 5 wd
-    ["Sick", "Flu", "2026-11-02", "2026-11-02"],                                             // 1 wd
+    ["Annual Leave", "Holiday with family", "2026-10-05", "2026-10-09"], // 5 wd
+    ["Sick", "Flu", "2026-11-02", "2026-11-02"], // 1 wd
   ];
 
   const rows = payload.map(([typeRaw, reason, start, end], i) => ({
@@ -610,19 +612,13 @@ describe("classifyLeaveStatus — UK admin phrases & non-English variants", () =
     ["Yn aros", "pending"],
   ];
 
-  it.each(ukAdminFixtures)(
-    "UK admin: %s → %s",
-    (input, expected) => {
-      expect(classifyLeaveStatus(input)).toBe(expected);
-    },
-  );
+  it.each(ukAdminFixtures)("UK admin: %s → %s", (input, expected) => {
+    expect(classifyLeaveStatus(input)).toBe(expected);
+  });
 
-  it.each(nonEnglishFixtures)(
-    "non-English: %s → %s",
-    (input, expected) => {
-      expect(classifyLeaveStatus(input)).toBe(expected);
-    },
-  );
+  it.each(nonEnglishFixtures)("non-English: %s → %s", (input, expected) => {
+    expect(classifyLeaveStatus(input)).toBe(expected);
+  });
 
   it("treats non-English variants case- and punctuation-insensitively", () => {
     expect(classifyLeaveStatus("  APPROUVÉ.  ")).toBe("approved");

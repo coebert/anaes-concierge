@@ -152,126 +152,118 @@ afterEach(() => {
 
 // --------------------- tests ---------------------
 
-describe(
-  "dev-mode console.debug diagnostics fire from cancel-leave and withdraw-exception flows",
-  () => {
-    it(
-      "cancelling a leave request emits one [wellbeing] debug line per invalidated key " +
-        "with reason=leave.cancel and an ISO timestamp",
-      async () => {
-        const qc = makeQueryClient();
+describe("dev-mode console.debug diagnostics fire from cancel-leave and withdraw-exception flows", () => {
+  it(
+    "cancelling a leave request emits one [wellbeing] debug line per invalidated key " +
+      "with reason=leave.cancel and an ISO timestamp",
+    async () => {
+      const qc = makeQueryClient();
 
-        // Inline replica of `_authenticated/leave.tsx` `cancel` — the
-        // handler is a local closure inside the route component and not
-        // exported. This mirrors the exact three lines that matter for
-        // the diagnostic wire.
-        const { supabase } = await import("@/integrations/supabase/client");
-        const cancelLeave = async (id: string) => {
-          const { error } = await (supabase.from("leave_requests") as unknown as {
+      // Inline replica of `_authenticated/leave.tsx` `cancel` — the
+      // handler is a local closure inside the route component and not
+      // exported. This mirrors the exact three lines that matter for
+      // the diagnostic wire.
+      const { supabase } = await import("@/integrations/supabase/client");
+      const cancelLeave = async (id: string) => {
+        const { error } = await (
+          supabase.from("leave_requests") as unknown as {
             update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-          })
-            .update({ status: "cancelled" })
-            .eq("id", id);
-          if (error) throw error;
-          // The route calls `invalidateWellbeing(qc, "leave.cancel")` —
-          // the reason string is the observable contract with operators
-          // filtering the console.
-          invalidateWellbeing(qc, "leave.cancel");
-        };
-
-        await cancelLeave(LEAVE_REQUEST_ID);
-
-        const lines = wellbeingLines(debugSpy);
-        expect(lines).toHaveLength(2);
-
-        const adminLine = lines.find((l) => l.includes('["admin-wellbeing"]'));
-        const meLine = lines.find((l) => l.includes('["my-wellbeing"]'));
-        expect(adminLine, "no diagnostic line for admin-wellbeing").toBeDefined();
-        expect(meLine, "no diagnostic line for my-wellbeing").toBeDefined();
-
-        assertLineShape(adminLine!, "admin-wellbeing", "leave.cancel");
-        assertLineShape(meLine!, "my-wellbeing", "leave.cancel");
-      },
-    );
-
-    it(
-      "withdrawing an exception via <ExceptionCard> emits one [wellbeing] debug line " +
-        "per invalidated key with reason=exception.withdraw",
-      async () => {
-        const qc = makeQueryClient();
-
-        // The card's `withdraw` handler calls `window.confirm` — auto-accept
-        // so the flow proceeds past the guard.
-        const confirmSpy = vi
-          .spyOn(window, "confirm")
-          .mockImplementation(() => true);
-
-        const onChange = vi.fn();
-        render(
-          <ExceptionCard
-            report={makeReport()}
-            canRespond={false}
-            onChange={onChange}
-          />,
-          { wrapper: wrap(qc) },
-        );
-
-        // Open the card, then click Withdraw — same DOM path a trainee
-        // would take, so the diagnostics we assert on are the ones an
-        // operator would see in dev after that click.
-        const user = userEvent.setup();
-        await user.click(screen.getByRole("button", { name: /Hours of work/i }));
-        await user.click(screen.getByRole("button", { name: /Withdraw/i }));
-
-        // Wait for the async withdraw handler to reach `invalidateWellbeing`.
-        await waitFor(() => {
-          expect(wellbeingLines(debugSpy)).toHaveLength(2);
-        });
-
-        const lines = wellbeingLines(debugSpy);
-        const adminLine = lines.find((l) => l.includes('["admin-wellbeing"]'));
-        const meLine = lines.find((l) => l.includes('["my-wellbeing"]'));
-        expect(adminLine).toBeDefined();
-        expect(meLine).toBeDefined();
-
-        assertLineShape(adminLine!, "admin-wellbeing", "exception.withdraw");
-        assertLineShape(meLine!, "my-wellbeing", "exception.withdraw");
-
-        // The `onChange` callback still fires after logging — the diagnostic
-        // wire is additive, not a replacement for the parent-refresh call.
-        expect(onChange).toHaveBeenCalled();
-
-        confirmSpy.mockRestore();
-      },
-    );
-
-    it(
-      "each mutation path emits its OWN reason label — a subsequent cancel " +
-        "after a withdraw does not carry the withdraw reason forward",
-      async () => {
-        // Guards against a regression that memoised or hoisted the reason
-        // string, so a second call reuses the first one. Two calls in
-        // sequence must yield 4 lines with two distinct reasons.
-        const qc = makeQueryClient();
-
-        invalidateWellbeing(qc, "exception.withdraw");
+          }
+        )
+          .update({ status: "cancelled" })
+          .eq("id", id);
+        if (error) throw error;
+        // The route calls `invalidateWellbeing(qc, "leave.cancel")` —
+        // the reason string is the observable contract with operators
+        // filtering the console.
         invalidateWellbeing(qc, "leave.cancel");
+      };
 
-        const lines = wellbeingLines(debugSpy);
-        expect(lines).toHaveLength(4);
+      await cancelLeave(LEAVE_REQUEST_ID);
 
-        const withdrawLines = lines.filter((l) => l.includes("reason=exception.withdraw"));
-        const cancelLines = lines.filter((l) => l.includes("reason=leave.cancel"));
+      const lines = wellbeingLines(debugSpy);
+      expect(lines).toHaveLength(2);
 
-        expect(withdrawLines).toHaveLength(2);
-        expect(cancelLines).toHaveLength(2);
+      const adminLine = lines.find((l) => l.includes('["admin-wellbeing"]'));
+      const meLine = lines.find((l) => l.includes('["my-wellbeing"]'));
+      expect(adminLine, "no diagnostic line for admin-wellbeing").toBeDefined();
+      expect(meLine, "no diagnostic line for my-wellbeing").toBeDefined();
 
-        // Each reason covers both keys — no reason maps to only one side.
-        for (const group of [withdrawLines, cancelLines]) {
-          expect(group.some((l) => l.includes('["admin-wellbeing"]'))).toBe(true);
-          expect(group.some((l) => l.includes('["my-wellbeing"]'))).toBe(true);
-        }
-      },
-    );
-  },
-);
+      assertLineShape(adminLine!, "admin-wellbeing", "leave.cancel");
+      assertLineShape(meLine!, "my-wellbeing", "leave.cancel");
+    },
+  );
+
+  it(
+    "withdrawing an exception via <ExceptionCard> emits one [wellbeing] debug line " +
+      "per invalidated key with reason=exception.withdraw",
+    async () => {
+      const qc = makeQueryClient();
+
+      // The card's `withdraw` handler calls `window.confirm` — auto-accept
+      // so the flow proceeds past the guard.
+      const confirmSpy = vi.spyOn(window, "confirm").mockImplementation(() => true);
+
+      const onChange = vi.fn();
+      render(<ExceptionCard report={makeReport()} canRespond={false} onChange={onChange} />, {
+        wrapper: wrap(qc),
+      });
+
+      // Open the card, then click Withdraw — same DOM path a trainee
+      // would take, so the diagnostics we assert on are the ones an
+      // operator would see in dev after that click.
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: /Hours of work/i }));
+      await user.click(screen.getByRole("button", { name: /Withdraw/i }));
+
+      // Wait for the async withdraw handler to reach `invalidateWellbeing`.
+      await waitFor(() => {
+        expect(wellbeingLines(debugSpy)).toHaveLength(2);
+      });
+
+      const lines = wellbeingLines(debugSpy);
+      const adminLine = lines.find((l) => l.includes('["admin-wellbeing"]'));
+      const meLine = lines.find((l) => l.includes('["my-wellbeing"]'));
+      expect(adminLine).toBeDefined();
+      expect(meLine).toBeDefined();
+
+      assertLineShape(adminLine!, "admin-wellbeing", "exception.withdraw");
+      assertLineShape(meLine!, "my-wellbeing", "exception.withdraw");
+
+      // The `onChange` callback still fires after logging — the diagnostic
+      // wire is additive, not a replacement for the parent-refresh call.
+      expect(onChange).toHaveBeenCalled();
+
+      confirmSpy.mockRestore();
+    },
+  );
+
+  it(
+    "each mutation path emits its OWN reason label — a subsequent cancel " +
+      "after a withdraw does not carry the withdraw reason forward",
+    async () => {
+      // Guards against a regression that memoised or hoisted the reason
+      // string, so a second call reuses the first one. Two calls in
+      // sequence must yield 4 lines with two distinct reasons.
+      const qc = makeQueryClient();
+
+      invalidateWellbeing(qc, "exception.withdraw");
+      invalidateWellbeing(qc, "leave.cancel");
+
+      const lines = wellbeingLines(debugSpy);
+      expect(lines).toHaveLength(4);
+
+      const withdrawLines = lines.filter((l) => l.includes("reason=exception.withdraw"));
+      const cancelLines = lines.filter((l) => l.includes("reason=leave.cancel"));
+
+      expect(withdrawLines).toHaveLength(2);
+      expect(cancelLines).toHaveLength(2);
+
+      // Each reason covers both keys — no reason maps to only one side.
+      for (const group of [withdrawLines, cancelLines]) {
+        expect(group.some((l) => l.includes('["admin-wellbeing"]'))).toBe(true);
+        expect(group.some((l) => l.includes('["my-wellbeing"]'))).toBe(true);
+      }
+    },
+  );
+});

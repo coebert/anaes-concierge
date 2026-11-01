@@ -16,13 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AppLogo } from "@/components/app-logo";
 
@@ -121,9 +115,7 @@ function LoginPage() {
         <CardHeader className="space-y-2 text-center">
           <AppLogo className="mx-auto h-14 w-14 rounded-xl" />
           <CardTitle className="text-2xl">Salisbury Anaesthetics Rota</CardTitle>
-          <CardDescription>
-            Sign in to manage and view the department rota.
-          </CardDescription>
+          <CardDescription>Sign in to manage and view the department rota.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {offerPasskey ? (
@@ -167,10 +159,7 @@ function LoginPage() {
                     checked={remember}
                     onCheckedChange={(v) => setRemember(v === true)}
                   />
-                  <Label
-                    htmlFor="remember"
-                    className="text-sm font-normal cursor-pointer"
-                  >
+                  <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
                     Keep me signed in
                   </Label>
                 </div>
@@ -209,10 +198,7 @@ function LoginPage() {
 
               <p className="text-center text-sm text-muted-foreground">
                 Need access?{" "}
-                <Link
-                  to="/signup"
-                  className="font-medium text-foreground hover:underline"
-                >
+                <Link to="/signup" className="font-medium text-foreground hover:underline">
                   Request access
                 </Link>
               </p>

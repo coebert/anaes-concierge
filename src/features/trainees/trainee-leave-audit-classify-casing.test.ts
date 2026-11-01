@@ -58,12 +58,7 @@ const CASES = {
   },
 };
 
-function check(
-  label: string,
-  status: string,
-  expectedCounted: boolean,
-  expectedName: string,
-) {
+function check(label: string, status: string, expectedCounted: boolean, expectedName: string) {
   const r = classifyLeaveOverlap(status);
   expect(r.counted).toBe(expectedCounted);
   expect(r.reason.toLowerCase()).toContain(expectedName);

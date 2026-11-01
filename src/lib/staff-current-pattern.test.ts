@@ -11,10 +11,7 @@
  * that the on-screen "How this was computed" panel exposes to the user.
  */
 import { describe, it, expect } from "vitest";
-import {
-  buildCurrentPatternResponse,
-  deriveMinRecurrence,
-} from "./staff-current-pattern";
+import { buildCurrentPatternResponse, deriveMinRecurrence } from "./staff-current-pattern";
 import {
   LOCATION_LABELS,
   suggestedRegularityThreshold,
@@ -115,10 +112,7 @@ describe("chat get_staff_current_pattern — response shape parity with the card
   it("shows a cell as soon as the winning bucket reaches minCount distinct dates", () => {
     // With windowDays=14 the shared minCount is 2, so two Mondays in main are enough.
     const res = build(
-      [
-        theatre("2025-01-06", "am", "s-main"),
-        theatre("2025-01-13", "am", "s-main"),
-      ],
+      [theatre("2025-01-06", "am", "s-main"), theatre("2025-01-13", "am", "s-main")],
       14,
     );
     expect(res.minRecurrence).toBe(2);

@@ -82,8 +82,10 @@ function makeStore() {
           session_date: r.session_date!,
           theatre_id: r.theatre_id!,
           session: r.session!,
-          specialty_id: columns.has("specialty_id") ? r.specialty_id ?? null : null,
-          surgical_consultant: columns.has("surgical_consultant") ? r.surgical_consultant ?? null : null,
+          specialty_id: columns.has("specialty_id") ? (r.specialty_id ?? null) : null,
+          surgical_consultant: columns.has("surgical_consultant")
+            ? (r.surgical_consultant ?? null)
+            : null,
           is_non_sag: false,
           non_sag_override: false,
         });
@@ -131,9 +133,8 @@ function makeStore() {
       asgDrafts.map((a) => ({
         ...a,
         theatre_session_id:
-          a.theatre_session_id /* already resolved */ ??
-          (a as unknown as { _key?: string })._key
-            ? byKey.get((a as unknown as { _key: string })._key) ?? null
+          (a.theatre_session_id /* already resolved */ ?? (a as unknown as { _key?: string })._key)
+            ? (byKey.get((a as unknown as { _key: string })._key) ?? null)
             : null,
       })),
     );
@@ -188,7 +189,9 @@ describe("CLWRota sync — idempotent rerun", () => {
     expect(store.sessions.length).toBe(afterFirst); // no duplicates
 
     // And IDs are stable — same key resolves to the same row id.
-    const idsByKey = new Map(store.sessions.map((s) => [`${s.session_date}|${s.theatre_id}|${s.session}`, s.id]));
+    const idsByKey = new Map(
+      store.sessions.map((s) => [`${s.session_date}|${s.theatre_id}|${s.session}`, s.id]),
+    );
     store.runSync(drafts, []);
     for (const s of store.sessions) {
       expect(idsByKey.get(`${s.session_date}|${s.theatre_id}|${s.session}`)).toBe(s.id);

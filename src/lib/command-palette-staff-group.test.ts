@@ -17,17 +17,13 @@ describe("command palette — moved items appear under Staff, not Audits", () =>
     { id: "wellbeing-admin", to: "/admin/wellbeing" },
   ] as const;
 
-  const grouped = groupNav(
-    filterNavForUser({ hasRole: (r) => r === "admin", grade: null }),
-  );
+  const grouped = groupNav(filterNavForUser({ hasRole: (r) => r === "admin", grade: null }));
   const staffIds = new Set((grouped.get("staff") ?? []).map((i) => i.id));
   const auditIds = new Set((grouped.get("audits") ?? []).map((i) => i.id));
 
   for (const item of MOVED) {
     it(`${item.id} is listed under the Staff group`, () => {
-      const staffItem = (grouped.get("staff") ?? []).find(
-        (i) => i.id === item.id,
-      );
+      const staffItem = (grouped.get("staff") ?? []).find((i) => i.id === item.id);
       expect(staffItem, `${item.id} missing from Staff group`).toBeDefined();
       expect(staffItem?.to).toBe(item.to);
       expect(staffIds.has(item.id)).toBe(true);

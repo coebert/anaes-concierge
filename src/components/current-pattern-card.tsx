@@ -12,20 +12,10 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CalendarRange, ChevronDown, ExternalLink, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageLoading } from "@/components/loading";
@@ -76,14 +66,12 @@ const LOCATION_TONE: Record<LocationBucket, string> = {
   other: "bg-muted text-muted-foreground border-border",
 };
 
-
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 }
 const todayIso = () => new Date().toISOString().slice(0, 10);
-
 
 // ---------------------------------------------------------------------------
 // localStorage cache
@@ -111,10 +99,7 @@ function cacheKey(staffId: string, windowDays: number): string {
   return `${CACHE_PREFIX}${staffId}:${windowDays}`;
 }
 
-function readCache(
-  staffId: string,
-  windowDays: number,
-): CacheEntry | null {
+function readCache(staffId: string, windowDays: number): CacheEntry | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(cacheKey(staffId, windowDays));
@@ -128,12 +113,7 @@ function readCache(
   }
 }
 
-function writeCache(
-  staffId: string,
-  windowDays: number,
-  to: string,
-  data: PatternResult,
-): void {
+function writeCache(staffId: string, windowDays: number, to: string, data: PatternResult): void {
   if (typeof window === "undefined") return;
   try {
     const entry: CacheEntry = { savedAt: Date.now(), to, data };
@@ -160,10 +140,7 @@ export function CurrentPatternCard({
   const to = todayIso();
 
   // Seed React Query from localStorage so repeat visits paint instantly.
-  const cached = useMemo(
-    () => readCache(staffId, windowDays),
-    [staffId, windowDays],
-  );
+  const cached = useMemo(() => readCache(staffId, windowDays), [staffId, windowDays]);
 
   const { data, isLoading, error } = useQuery<PatternResult | null>({
     queryKey: ["current-pattern", staffId, from, to],
@@ -175,11 +152,7 @@ export function CurrentPatternCard({
     gcTime: 30 * 60_000,
     queryFn: async () => {
       const [profileRes, theatresRes, specialtiesRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, full_name, grade")
-          .eq("id", staffId)
-          .maybeSingle(),
+        supabase.from("profiles").select("id, full_name, grade").eq("id", staffId).maybeSingle(),
         supabase.from("theatres").select("id, name, kind"),
         supabase.from("specialties").select("id, name"),
       ]);
@@ -258,24 +231,15 @@ export function CurrentPatternCard({
       // half-sessions and can itself become the dominant "location".
       const { data: leaveRowsRaw, error: leaveErr } = await supabase
         .from("leave_requests")
-        .select(
-          "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
-        )
+        .select("type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes")
         .eq("staff_id", staffId)
         .eq("status", "approved")
         .lte("start_date", to)
         .gte("end_date", from);
       if (leaveErr) throw leaveErr;
       const leaveRows = (leaveRowsRaw ?? []) as LeaveRowLite[];
-      const leaveOverlay = expandApprovedLeaveToAssignments(
-        staffId,
-        leaveRows,
-        from,
-        to,
-      );
+      const leaveOverlay = expandApprovedLeaveToAssignments(staffId, leaveRows, from, to);
       const effectiveAssignments = applyLeaveOverlay(assignments, leaveOverlay);
-
-
 
       const profile = profileRes.data;
       if (!profile) return null;
@@ -299,12 +263,9 @@ export function CurrentPatternCard({
 
       const consultantPattern =
         grade === "consultant" || grade === "sas"
-          ? computeConsultantPattern(
-              effectiveAssignments,
-              sessionsById,
-              theatresById,
-              { regularityThreshold: threshold },
-            )
+          ? computeConsultantPattern(effectiveAssignments, sessionsById, theatresById, {
+              regularityThreshold: threshold,
+            })
           : null;
 
       const minCount = Math.max(2, Math.floor(threshold / 2) + 1);
@@ -326,7 +287,6 @@ export function CurrentPatternCard({
         minCount,
         assignmentCount: effectiveAssignments.length,
       };
-
     },
   });
 
@@ -387,12 +347,10 @@ export function CurrentPatternCard({
           <div className="space-y-1">
             <CardTitle className="text-base">Current pattern</CardTitle>
             <CardDescription>
-              Based on the last {data.windowDays} days ·{" "}
-              {summary.totalSessions} sessions
-              {consultantPattern &&
-                consultantPattern.totalOnCallSessions > 0 && (
-                  <> · {consultantPattern.totalOnCallSessions} on-call</>
-                )}
+              Based on the last {data.windowDays} days · {summary.totalSessions} sessions
+              {consultantPattern && consultantPattern.totalOnCallSessions > 0 && (
+                <> · {consultantPattern.totalOnCallSessions} on-call</>
+              )}
             </CardDescription>
           </div>
           {showViewAllLink && (
@@ -413,10 +371,7 @@ export function CurrentPatternCard({
               <tr>
                 <th className="w-10" />
                 {[1, 2, 3, 4, 5].map((d) => (
-                  <th
-                    key={d}
-                    className="font-medium text-muted-foreground"
-                  >
+                  <th key={d} className="font-medium text-muted-foreground">
                     {WEEKDAY_LABELS[d]}
                   </th>
                 ))}
@@ -467,17 +422,12 @@ export function CurrentPatternCard({
               consultantPattern.onCallWeekdays.length > 0 && (
                 <Badge variant="secondary" className="gap-1">
                   On-call ({consultantPattern.onCallType}):{" "}
-                  {consultantPattern.onCallWeekdays
-                    .map((d) => WEEKDAY_LABELS[d])
-                    .join(", ")}
+                  {consultantPattern.onCallWeekdays.map((d) => WEEKDAY_LABELS[d]).join(", ")}
                 </Badge>
               )}
             {consultantPattern.privateWeekdays.length > 0 && (
               <Badge variant="secondary" className="gap-1 bg-success-muted text-success">
-                SAG:{" "}
-                {consultantPattern.privateWeekdays
-                  .map((d) => WEEKDAY_LABELS[d])
-                  .join(", ")}
+                SAG: {consultantPattern.privateWeekdays.map((d) => WEEKDAY_LABELS[d]).join(", ")}
               </Badge>
             )}
             {(consultantPattern.spaAmWeekdays.length > 0 ||
@@ -485,10 +435,7 @@ export function CurrentPatternCard({
               <Badge variant="outline" className="gap-1">
                 SPA:{" "}
                 {Array.from(
-                  new Set([
-                    ...consultantPattern.spaAmWeekdays,
-                    ...consultantPattern.spaPmWeekdays,
-                  ]),
+                  new Set([...consultantPattern.spaAmWeekdays, ...consultantPattern.spaPmWeekdays]),
                 )
                   .sort((a, b) => a - b)
                   .map((d) => WEEKDAY_LABELS[d])
@@ -501,14 +448,10 @@ export function CurrentPatternCard({
         {/* Location totals */}
         {locationTotals.length > 0 && (
           <div className="space-y-1.5">
-            <div className="text-xs font-medium text-muted-foreground">
-              Where they work
-            </div>
+            <div className="text-xs font-medium text-muted-foreground">Where they work</div>
             <div className="space-y-1">
               {locationTotals.map(([bucket, count]) => {
-                const pct = Math.round(
-                  (count / summary.totalSessions) * 100,
-                );
+                const pct = Math.round((count / summary.totalSessions) * 100);
                 return (
                   <div key={bucket} className="flex items-center gap-2 text-xs">
                     <div className="w-32 shrink-0 text-muted-foreground">
@@ -563,73 +506,51 @@ export function CurrentPatternCard({
           <CollapsibleContent className="px-1 pt-3 text-xs leading-relaxed text-muted-foreground">
             <p className="mb-2">
               Derived from{" "}
-              <span className="font-medium text-foreground">
-                {data.assignmentCount}
-              </span>{" "}
-              rota assignments in the last{" "}
-              <span className="font-medium text-foreground">
-                {data.windowDays} days
-              </span>{" "}
-              synced from CLWRota. Weekends are hidden — only Mon–Fri AM/PM
-              half-sessions are shown.
+              <span className="font-medium text-foreground">{data.assignmentCount}</span> rota
+              assignments in the last{" "}
+              <span className="font-medium text-foreground">{data.windowDays} days</span> synced
+              from CLWRota. Weekends are hidden — only Mon–Fri AM/PM half-sessions are shown.
             </p>
             <p className="mb-2">
               <span className="font-medium text-foreground">
                 Dominant location per half-session.
               </span>{" "}
-              For each weekday × AM/PM pair, assignments are grouped by
-              location bucket ({Object.values(LOCATION_LABELS)
+              For each weekday × AM/PM pair, assignments are grouped by location bucket (
+              {Object.values(LOCATION_LABELS)
                 .filter((l) => l !== "—")
-                .join(", ")}). The bucket with the most{" "}
-              <em>distinct dates</em> in that slot wins the cell — so working
-              two AM lists on the same Tuesday still only counts once. The
-              cell shows the winning bucket's abbreviation and hovers to
-              reveal "<em>N of M</em> recent {WEEKDAY_LABELS[1]} AM sessions".
+                .join(", ")}
+              ). The bucket with the most <em>distinct dates</em> in that slot wins the cell — so
+              working two AM lists on the same Tuesday still only counts once. The cell shows the
+              winning bucket's abbreviation and hovers to reveal "<em>N of M</em> recent{" "}
+              {WEEKDAY_LABELS[1]} AM sessions".
             </p>
             <p className="mb-2">
-              <span className="font-medium text-foreground">
-                Regularity threshold.
-              </span>{" "}
-              A cell only appears if the winning bucket recurs on at least{" "}
-              <span className="font-medium text-foreground">
-                {data.minCount} distinct dates
-              </span>{" "}
-              in the window (roughly half the ~
-              {data.threshold}-week regularity target from{" "}
-              <code>suggestedRegularityThreshold({data.windowDays})</code>).
-              One-off cover shifts therefore fall out; a dot (·) means "no
-              regular pattern here".
+              <span className="font-medium text-foreground">Regularity threshold.</span> A cell only
+              appears if the winning bucket recurs on at least{" "}
+              <span className="font-medium text-foreground">{data.minCount} distinct dates</span> in
+              the window (roughly half the ~{data.threshold}-week regularity target from{" "}
+              <code>suggestedRegularityThreshold({data.windowDays})</code>). One-off cover shifts
+              therefore fall out; a dot (·) means "no regular pattern here".
             </p>
             <p className="mb-2">
-
-              <span className="font-medium text-foreground">
-                Leave overlay.
-              </span>{" "}
-              Approved leave in the window blocks the covered AM/PM
-              half-sessions: any rota assignment on those halves is dropped
-              and replaced with a "Leave" entry, which then competes with
-              other buckets for the dominant cell. Half-day markers
-              (<code>half_day_start</code> / <code>half_day_end</code>) are
-              honoured, so a PM-only day only blocks PM.
+              <span className="font-medium text-foreground">Leave overlay.</span> Approved leave in
+              the window blocks the covered AM/PM half-sessions: any rota assignment on those halves
+              is dropped and replaced with a "Leave" entry, which then competes with other buckets
+              for the dominant cell. Half-day markers (<code>half_day_start</code> /{" "}
+              <code>half_day_end</code>) are honoured, so a PM-only day only blocks PM.
             </p>
 
             <p className="mb-2">
-              <span className="font-medium text-foreground">
-                Consultant / SAS extras.
-              </span>{" "}
-              On-call, SAG (private SAG list), and SPA badges use the same
-              regularity threshold via <code>computeConsultantPattern</code>.
-              On-call type ("weekday", "weekend", "mixed") is inferred from
-              which weekdays are covered.
+              <span className="font-medium text-foreground">Consultant / SAS extras.</span> On-call,
+              SAG (private SAG list), and SPA badges use the same regularity threshold via{" "}
+              <code>computeConsultantPattern</code>. On-call type ("weekday", "weekend", "mixed") is
+              inferred from which weekdays are covered.
             </p>
             <p className="mb-0">
-              <span className="font-medium text-foreground">
-                Location share &amp; specialties.
-              </span>{" "}
-              The bar chart counts every assignment (not distinct dates), so
-              an AM+PM day contributes twice. Top specialties are the most
-              common surgical specialties on theatre lists this staff member
-              covered.
+              <span className="font-medium text-foreground">Location share &amp; specialties.</span>{" "}
+              The bar chart counts every assignment (not distinct dates), so an AM+PM day
+              contributes twice. Top specialties are the most common surgical specialties on theatre
+              lists this staff member covered.
             </p>
           </CollapsibleContent>
         </Collapsible>

@@ -42,9 +42,27 @@ function buildRows(input: Row[]) {
 describe("CLWRota status → allowance impact (only approved deducts)", () => {
   it("approved leave lands in `taken` for every bucket", () => {
     const rows = buildRows([
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Approved", start: "2026-04-06", end: "2026-04-10" }, // 5 wd
-      { typeRaw: "Study Leave", reason: "Salisbury Regional Anaesthesia Course", statusRaw: "Granted", start: "2026-05-04", end: "2026-05-06" }, // 3 wd
-      { typeRaw: "Study Leave", reason: "ALS Faculty Salisbury", statusRaw: "OK", start: "2026-06-08", end: "2026-06-09" }, // 2 wd
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Approved",
+        start: "2026-04-06",
+        end: "2026-04-10",
+      }, // 5 wd
+      {
+        typeRaw: "Study Leave",
+        reason: "Salisbury Regional Anaesthesia Course",
+        statusRaw: "Granted",
+        start: "2026-05-04",
+        end: "2026-05-06",
+      }, // 3 wd
+      {
+        typeRaw: "Study Leave",
+        reason: "ALS Faculty Salisbury",
+        statusRaw: "OK",
+        start: "2026-06-08",
+        end: "2026-06-09",
+      }, // 2 wd
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
     expect(s.annual).toEqual({ taken: 5, booked: 0 });
@@ -54,9 +72,27 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
 
   it("pending leave lands in `booked`, never `taken`, across all buckets", () => {
     const rows = buildRows([
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Pending approval", start: "2026-04-06", end: "2026-04-07" }, // 2 wd
-      { typeRaw: "Study Leave", reason: null, statusRaw: "Awaiting decision", start: "2026-05-04", end: "2026-05-04" }, // 1 wd
-      { typeRaw: "Study Leave", reason: "Teaching on STIVA", statusRaw: "Requested", start: "2026-06-08", end: "2026-06-08" }, // 1 wd prof
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Pending approval",
+        start: "2026-04-06",
+        end: "2026-04-07",
+      }, // 2 wd
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "Awaiting decision",
+        start: "2026-05-04",
+        end: "2026-05-04",
+      }, // 1 wd
+      {
+        typeRaw: "Study Leave",
+        reason: "Teaching on STIVA",
+        statusRaw: "Requested",
+        start: "2026-06-08",
+        end: "2026-06-08",
+      }, // 1 wd prof
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
     expect(s.annual).toEqual({ taken: 0, booked: 2 });
@@ -66,9 +102,27 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
 
   it("rejected leave is ignored across all buckets (no taken, no booked)", () => {
     const rows = buildRows([
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Rejected", start: "2026-04-06", end: "2026-04-10" },
-      { typeRaw: "Study Leave", reason: null, statusRaw: "Declined", start: "2026-05-04", end: "2026-05-08" },
-      { typeRaw: "Study Leave", reason: "ALS Faculty", statusRaw: "Denied", start: "2026-06-08", end: "2026-06-12" },
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Rejected",
+        start: "2026-04-06",
+        end: "2026-04-10",
+      },
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "Declined",
+        start: "2026-05-04",
+        end: "2026-05-08",
+      },
+      {
+        typeRaw: "Study Leave",
+        reason: "ALS Faculty",
+        statusRaw: "Denied",
+        start: "2026-06-08",
+        end: "2026-06-12",
+      },
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
     expect(s.annual).toEqual({ taken: 0, booked: 0 });
@@ -78,9 +132,27 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
 
   it("cancelled / withdrawn leave is ignored across all buckets", () => {
     const rows = buildRows([
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Cancelled", start: "2026-04-06", end: "2026-04-10" },
-      { typeRaw: "Study Leave", reason: null, statusRaw: "Withdrawn", start: "2026-05-04", end: "2026-05-08" },
-      { typeRaw: "Study Leave", reason: "Instructor on EPALS", statusRaw: "Cancelled", start: "2026-06-08", end: "2026-06-12" },
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Cancelled",
+        start: "2026-04-06",
+        end: "2026-04-10",
+      },
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "Withdrawn",
+        start: "2026-05-04",
+        end: "2026-05-08",
+      },
+      {
+        typeRaw: "Study Leave",
+        reason: "Instructor on EPALS",
+        statusRaw: "Cancelled",
+        start: "2026-06-08",
+        end: "2026-06-12",
+      },
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
     expect(s.annual).toEqual({ taken: 0, booked: 0 });
@@ -91,18 +163,78 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
   it("mixed statuses on the same bucket only deduct approved rows", () => {
     const rows = buildRows([
       // Annual: 5 approved + 2 pending + (3 rejected + 4 cancelled ignored)
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Approved", start: "2026-04-06", end: "2026-04-10" },     // 5
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Pending", start: "2026-04-13", end: "2026-04-14" },      // 2
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Rejected", start: "2026-04-20", end: "2026-04-22" },     // 3 ignored
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "Cancelled", start: "2026-04-27", end: "2026-04-30" },    // 4 ignored
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Approved",
+        start: "2026-04-06",
+        end: "2026-04-10",
+      }, // 5
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Pending",
+        start: "2026-04-13",
+        end: "2026-04-14",
+      }, // 2
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Rejected",
+        start: "2026-04-20",
+        end: "2026-04-22",
+      }, // 3 ignored
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "Cancelled",
+        start: "2026-04-27",
+        end: "2026-04-30",
+      }, // 4 ignored
       // Study: 2 approved + 1 pending + 5 cancelled ignored
-      { typeRaw: "Study Leave", reason: null, statusRaw: "Granted", start: "2026-05-04", end: "2026-05-05" },       // 2
-      { typeRaw: "Study Leave", reason: null, statusRaw: "Awaiting", start: "2026-05-11", end: "2026-05-11" },      // 1
-      { typeRaw: "Study Leave", reason: null, statusRaw: "Withdrawn", start: "2026-05-18", end: "2026-05-22" },     // 5 ignored
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "Granted",
+        start: "2026-05-04",
+        end: "2026-05-05",
+      }, // 2
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "Awaiting",
+        start: "2026-05-11",
+        end: "2026-05-11",
+      }, // 1
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "Withdrawn",
+        start: "2026-05-18",
+        end: "2026-05-22",
+      }, // 5 ignored
       // Professional: 2 approved + 1 pending + 1 rejected ignored
-      { typeRaw: "Study Leave", reason: "Teaching on STIVA", statusRaw: "Approved", start: "2026-06-08", end: "2026-06-09" }, // 2
-      { typeRaw: "Study Leave", reason: "ALS Faculty", statusRaw: "Pending", start: "2026-06-15", end: "2026-06-15" },         // 1
-      { typeRaw: "Study Leave", reason: "Organising above course", statusRaw: "Declined", start: "2026-06-22", end: "2026-06-22" }, // ignored
+      {
+        typeRaw: "Study Leave",
+        reason: "Teaching on STIVA",
+        statusRaw: "Approved",
+        start: "2026-06-08",
+        end: "2026-06-09",
+      }, // 2
+      {
+        typeRaw: "Study Leave",
+        reason: "ALS Faculty",
+        statusRaw: "Pending",
+        start: "2026-06-15",
+        end: "2026-06-15",
+      }, // 1
+      {
+        typeRaw: "Study Leave",
+        reason: "Organising above course",
+        statusRaw: "Declined",
+        start: "2026-06-22",
+        end: "2026-06-22",
+      }, // ignored
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
 
@@ -121,9 +253,27 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
     // must still deduct allowance. If this ever flips, every synced row
     // would silently stop counting.
     const rows = buildRows([
-      { typeRaw: "Annual Leave", reason: null, statusRaw: null, start: "2026-04-06", end: "2026-04-08" },  // 3
-      { typeRaw: "Study Leave", reason: null, statusRaw: "", start: "2026-05-04", end: "2026-05-04" },     // 1
-      { typeRaw: "Study Leave", reason: "Teaching on STIVA", statusRaw: "   ", start: "2026-06-08", end: "2026-06-08" }, // 1
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: null,
+        start: "2026-04-06",
+        end: "2026-04-08",
+      }, // 3
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "",
+        start: "2026-05-04",
+        end: "2026-05-04",
+      }, // 1
+      {
+        typeRaw: "Study Leave",
+        reason: "Teaching on STIVA",
+        statusRaw: "   ",
+        start: "2026-06-08",
+        end: "2026-06-08",
+      }, // 1
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
     expect(s.annual.taken).toBe(3);
@@ -134,9 +284,27 @@ describe("CLWRota status → allowance impact (only approved deducts)", () => {
 
   it("unknown status strings still fall back to approved and deduct allowance", () => {
     const rows = buildRows([
-      { typeRaw: "Annual Leave", reason: null, statusRaw: "qwerty", start: "2026-04-06", end: "2026-04-08" },   // 3
-      { typeRaw: "Study Leave", reason: null, statusRaw: "12345", start: "2026-05-04", end: "2026-05-04" },     // 1
-      { typeRaw: "Study Leave", reason: "Teaching on STIVA", statusRaw: "🚀", start: "2026-06-08", end: "2026-06-08" }, // 1
+      {
+        typeRaw: "Annual Leave",
+        reason: null,
+        statusRaw: "qwerty",
+        start: "2026-04-06",
+        end: "2026-04-08",
+      }, // 3
+      {
+        typeRaw: "Study Leave",
+        reason: null,
+        statusRaw: "12345",
+        start: "2026-05-04",
+        end: "2026-05-04",
+      }, // 1
+      {
+        typeRaw: "Study Leave",
+        reason: "Teaching on STIVA",
+        statusRaw: "🚀",
+        start: "2026-06-08",
+        end: "2026-06-08",
+      }, // 1
     ]);
     const s = summariseStaffLeave(STAFF, rows, undefined, YEAR_START);
     expect(s.annual.taken).toBe(3);

@@ -44,12 +44,7 @@ const ROOT = process.cwd();
 const DRY = process.argv.includes("--dry-run");
 const CHECK = process.argv.includes("--check");
 
-const SKIP = [
-  /\/components\/ui\//,
-  /\.gen\.ts$/,
-  /\.d\.ts$/,
-  /\/node_modules\//,
-];
+const SKIP = [/\/components\/ui\//, /\.gen\.ts$/, /\.d\.ts$/, /\/node_modules\//];
 
 function listFiles() {
   const out = execSync("git ls-files src", { cwd: ROOT, encoding: "utf8" });
@@ -67,10 +62,7 @@ function declaredNames(stmt) {
     for (const d of stmt.declarationList.declarations) {
       collectBindingNames(d.name, names);
     }
-  } else if (
-    (ts.isClassDeclaration(stmt) || ts.isEnumDeclaration(stmt)) &&
-    stmt.name
-  ) {
+  } else if ((ts.isClassDeclaration(stmt) || ts.isEnumDeclaration(stmt)) && stmt.name) {
     names.push(stmt.name.text);
   }
   return names;
@@ -97,9 +89,12 @@ function namesIntroducedBy(n) {
     for (const x of arr) frame.add(x);
   };
   if (
-    ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) ||
-    ts.isArrowFunction(n) || ts.isMethodDeclaration(n) ||
-    ts.isConstructorDeclaration(n) || ts.isGetAccessor(n) ||
+    ts.isFunctionDeclaration(n) ||
+    ts.isFunctionExpression(n) ||
+    ts.isArrowFunction(n) ||
+    ts.isMethodDeclaration(n) ||
+    ts.isConstructorDeclaration(n) ||
+    ts.isGetAccessor(n) ||
     ts.isSetAccessor(n)
   ) {
     for (const p of n.parameters || []) push(p.name);
@@ -119,9 +114,7 @@ function namesIntroducedBy(n) {
       if (ts.isVariableStatement(c)) {
         for (const d of c.declarationList.declarations) push(d.name);
       } else if (
-        (ts.isFunctionDeclaration(c) ||
-          ts.isClassDeclaration(c) ||
-          ts.isEnumDeclaration(c)) &&
+        (ts.isFunctionDeclaration(c) || ts.isClassDeclaration(c) || ts.isEnumDeclaration(c)) &&
         c.name
       ) {
         frame.add(c.name.text);
@@ -129,9 +122,7 @@ function namesIntroducedBy(n) {
     }
   }
   // `for (const x of …)` / `for (let i = 0; …)` bind x/i in the loop body.
-  if (
-    ts.isForStatement(n) || ts.isForInStatement(n) || ts.isForOfStatement(n)
-  ) {
+  if (ts.isForStatement(n) || ts.isForInStatement(n) || ts.isForOfStatement(n)) {
     const init = n.initializer;
     if (init && ts.isVariableDeclarationList(init)) {
       for (const d of init.declarations) push(d.name);
@@ -217,8 +208,7 @@ function hoistImports(stmts) {
   // Treat the leading directive prologue ("use client", "use strict", …) and
   // ImportDeclarations as the allowed "leading block". The first statement
   // that is NEITHER becomes the anchor; imports that follow it get moved up.
-  const isDirective = (s) =>
-    ts.isExpressionStatement(s) && ts.isStringLiteral(s.expression);
+  const isDirective = (s) => ts.isExpressionStatement(s) && ts.isStringLiteral(s.expression);
   let firstNonImport = -1;
   let inPrologue = true;
   const moves = [];
@@ -236,11 +226,16 @@ function hoistImports(stmts) {
   // Rebuild: directives (in original order), then imports (in original order),
   // then everything else (in original order).
   const order = [];
-  const directives = [], imports = [], rest = [];
+  const directives = [],
+    imports = [],
+    rest = [];
   let stillPrologue = true;
   for (let i = 0; i < stmts.length; i++) {
     const s = stmts[i];
-    if (stillPrologue && isDirective(s)) { directives.push(i); continue; }
+    if (stillPrologue && isDirective(s)) {
+      directives.push(i);
+      continue;
+    }
     stillPrologue = false;
     if (ts.isImportDeclaration(s)) imports.push(i);
     else rest.push(i);
@@ -292,7 +287,10 @@ export function processSource(initialSrc, file) {
   // offsets stay consistent after edits.
   for (let pass = 0; pass < 5; pass++) {
     const sf = ts.createSourceFile(
-      file, src, ts.ScriptTarget.Latest, true,
+      file,
+      src,
+      ts.ScriptTarget.Latest,
+      true,
       file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
 
@@ -341,19 +339,17 @@ function processFile(file) {
 }
 
 // CLI entry. Skip when imported (e.g. from the test suite).
-const invokedDirectly =
-  process.argv[1] && process.argv[1].endsWith("fix-use-before-define.mjs");
+const invokedDirectly = process.argv[1] && process.argv[1].endsWith("fix-use-before-define.mjs");
 if (invokedDirectly) {
   // Any non-flag positional args are treated as explicit file paths to
   // process (relative or absolute). With none, fall back to scanning the
   // git-tracked src/ tree. Explicit paths are how the e2e test drives the
   // CLI against a tempfile outside the repo.
-  const explicit = process.argv
-    .slice(2)
-    .filter((a) => !a.startsWith("--"));
-  const files = explicit.length > 0
-    ? explicit.map((f) => (f.startsWith("/") ? f : join(ROOT, f)))
-    : listFiles();
+  const explicit = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+  const files =
+    explicit.length > 0
+      ? explicit.map((f) => (f.startsWith("/") ? f : join(ROOT, f)))
+      : listFiles();
 
   let total = 0;
   for (const f of files) {

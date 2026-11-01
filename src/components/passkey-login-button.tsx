@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import {
-  startAuthentication,
-  browserSupportsWebAuthnAutofill,
-} from "@simplewebauthn/browser";
+import { startAuthentication, browserSupportsWebAuthnAutofill } from "@simplewebauthn/browser";
 import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialRequestOptionsJSON,
@@ -98,11 +95,7 @@ export function PasskeyLoginButton({
     }
     // Email is optional — usernameless flow works if the user has a
     // discoverable credential. If they typed one, we hand it to the server.
-    const parsedEmail = z
-      .string()
-      .trim()
-      .email()
-      .safeParse(email);
+    const parsedEmail = z.string().trim().email().safeParse(email);
     const emailForServer = parsedEmail.success ? parsedEmail.data : undefined;
 
     setBusy(true);

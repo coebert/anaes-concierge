@@ -54,12 +54,21 @@ export function ensureLeaveReportFields(rawUrl: string): string {
   // Requesting an unknown field returns 400 and aborts the whole sync.
   if (!rawUrl) return rawUrl;
   const required = [
-    "start_time", "end_time", "date", "duration",
-    "person.email", "person.local_id", "person.esr_employee_number",
-    "person.first_name", "person.last_name", "person.rota_name",
+    "start_time",
+    "end_time",
+    "date",
+    "duration",
+    "person.email",
+    "person.local_id",
+    "person.esr_employee_number",
+    "person.first_name",
+    "person.last_name",
+    "person.rota_name",
     "leave_type.name",
-    "leave_request.local_id", "leave_request.state",
-    "leave_request.start_date", "leave_request.end_date",
+    "leave_request.local_id",
+    "leave_request.state",
+    "leave_request.start_date",
+    "leave_request.end_date",
     "leave_request.details",
     "leave_submittal.state",
   ];
@@ -67,7 +76,10 @@ export function ensureLeaveReportFields(rawUrl: string): string {
     const u = new URL(rawUrl);
     const existing = u.searchParams.get("fields");
     const set = new Set(
-      (existing ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+      (existing ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     );
     for (const f of required) set.add(f);
     u.searchParams.set("fields", Array.from(set).join(","));
@@ -108,7 +120,10 @@ export function ensureRotaReportFields(rawUrl: string): string {
     const existing = u.searchParams.get("fields");
     if (!existing) return rawUrl; // no fields= means "all fields" — notes already included
     const set = new Set(
-      existing.split(",").map((s) => s.trim()).filter(Boolean),
+      existing
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     );
     for (const f of required) set.add(f);
     u.searchParams.set("fields", Array.from(set).join(","));
@@ -158,11 +173,7 @@ export function clampDateWindow(
  * (YYYY-MM-DD). Used by chunked historical backfills so the caller can
  * walk a long range in Worker-sized slices.
  */
-export function explicitDateWindow(
-  rawUrl: string,
-  from: string,
-  to: string,
-): string {
+export function explicitDateWindow(rawUrl: string, from: string, to: string): string {
   if (!rawUrl) return rawUrl;
   try {
     const u = new URL(rawUrl);
@@ -174,15 +185,19 @@ export function explicitDateWindow(
   }
 }
 
-
-
-
 /**
  * True if the error/response indicates a transient upstream timeout or
  * temporary gateway failure that's worth retrying.
  */
 function isTransientUpstreamError(status: number, body: string, err?: unknown): boolean {
-  if (status === 408 || status === 502 || status === 503 || status === 504 || status === 524 || status === 522) {
+  if (
+    status === 408 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    status === 524 ||
+    status === 522
+  ) {
     return true;
   }
   const haystack = `${body} ${err instanceof Error ? err.message : ""}`.toLowerCase();
@@ -259,7 +274,6 @@ export async function fetchReportRaw(
         }
       }
 
-
       const transient = isTransientUpstreamError(res.status, text);
       const errMsg = `CLWRota report failed: ${res.status} ${text.slice(0, 200)}`;
       if (!transient || attempt === maxAttempts) {
@@ -273,7 +287,8 @@ export async function fetchReportRaw(
       lastErr = err;
     }
     // Exponential backoff with jitter: 1s, 2s, 4s, 8s … capped at 15s.
-    const delay = Math.min(15000, baseDelayMs * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+    const delay =
+      Math.min(15000, baseDelayMs * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
     console.warn(
       `[clwrota] transient fetch failure on attempt ${attempt}/${maxAttempts}, retrying in ${delay}ms`,
       lastErr instanceof Error ? lastErr.message : lastErr,
@@ -283,7 +298,6 @@ export async function fetchReportRaw(
   // Unreachable, but keeps TS happy.
   throw lastErr instanceof Error ? lastErr : new Error("CLWRota report failed");
 }
-
 
 // Top-level JSON shape we can ingest: either an array of row objects, or an
 // object that contains rows under a known wrapper key (Rotamap central_api,
@@ -307,7 +321,10 @@ export async function fetchReportRaw(
  * traced back to either "upstream returned nothing" (`parseError: null`)
  * or "upstream returned malformed data" (`parseError: "..."`).
  */
-export function parseRows(text: string): { rows: Record<string, unknown>[]; parseError: string | null } {
+export function parseRows(text: string): {
+  rows: Record<string, unknown>[];
+  parseError: string | null;
+} {
   // Try JSON first.
   let parsed: unknown;
   try {
@@ -319,9 +336,10 @@ export function parseRows(text: string): { rows: Record<string, unknown>[]; pars
       if (lines.length < 2) {
         return {
           rows: [],
-          parseError: text.trim().length === 0
-            ? "Empty response body"
-            : "Response is neither valid JSON nor a CSV with a header + ≥1 data row",
+          parseError:
+            text.trim().length === 0
+              ? "Empty response body"
+              : "Response is neither valid JSON nor a CSV with a header + ≥1 data row",
         };
       }
       const headers = lines[0].split(",").map((h) => h.trim());
@@ -376,13 +394,15 @@ export function parseRows(text: string): { rows: Record<string, unknown>[]; pars
     const cols = obj["columns"];
     const rowsRaw = obj["rows"];
     if (
-      Array.isArray(cols) && cols.length > 0 &&
-      typeof cols[0] === "object" && cols[0] !== null &&
+      Array.isArray(cols) &&
+      cols.length > 0 &&
+      typeof cols[0] === "object" &&
+      cols[0] !== null &&
       "field_name" in (cols[0] as Record<string, unknown>) &&
       Array.isArray(rowsRaw)
     ) {
-      const fieldNames = (cols as Array<Record<string, unknown>>).map(
-        (c) => String(c.field_name ?? ""),
+      const fieldNames = (cols as Array<Record<string, unknown>>).map((c) =>
+        String(c.field_name ?? ""),
       );
       if (rowsRaw.length > 0 && !Array.isArray(rowsRaw[0]) && typeof rowsRaw[0] === "object") {
         const rows = (rowsRaw as unknown[]).filter(
@@ -404,7 +424,16 @@ export function parseRows(text: string): { rows: Record<string, unknown>[]; pars
     }
 
     // Common shapes: { data: [...] }, { rows: [...] }, { results: [...] }, etc.
-    for (const key of ["data", "rows", "results", "staff", "people", "persons", "report", "items"]) {
+    for (const key of [
+      "data",
+      "rows",
+      "results",
+      "staff",
+      "people",
+      "persons",
+      "report",
+      "items",
+    ]) {
       if (Array.isArray(obj[key])) {
         const rows = (obj[key] as unknown[]).filter(
           (r): r is Record<string, unknown> =>
@@ -441,8 +470,6 @@ export function parseRows(text: string): { rows: Record<string, unknown>[]; pars
   }
 }
 
-
-
 export function pick(row: Record<string, unknown>, keys: string[]): string | null {
   for (const k of keys) {
     const direct = row[k];
@@ -473,14 +500,27 @@ export function pick(row: Record<string, unknown>, keys: string[]): string | nul
  */
 export function parsePaCredit(row: Record<string, unknown>): number | null {
   const raw = pick(row, [
-    "pa", "pas", "pa_value", "pa_values", "pa_count", "pa_credits",
-    "activity.pas", "activity.pa",
-    "duty.pas", "duty.pa",
-    "role.pas", "role.pa",
-    "session.pas", "session.pa",
-    "shift.pas", "shift.pa",
-    "slot.pas", "slot_pas", "slot.pa",
-    "assignment.pas", "assignment.pa",
+    "pa",
+    "pas",
+    "pa_value",
+    "pa_values",
+    "pa_count",
+    "pa_credits",
+    "activity.pas",
+    "activity.pa",
+    "duty.pas",
+    "duty.pa",
+    "role.pas",
+    "role.pa",
+    "session.pas",
+    "session.pa",
+    "shift.pas",
+    "shift.pa",
+    "slot.pas",
+    "slot_pas",
+    "slot.pa",
+    "assignment.pas",
+    "assignment.pa",
   ]);
   if (!raw) return null;
   // Tolerate text like "1.5 PA" or "0.5".
@@ -610,7 +650,14 @@ export function normaliseDate(raw: string | null): string | null {
 
 export function normaliseRole(
   raw: string | null,
-): "solo" | "supervised" | "supervising" | "on_call" | "non_clinical" | "teaching" | "admin_session" {
+):
+  | "solo"
+  | "supervised"
+  | "supervising"
+  | "on_call"
+  | "non_clinical"
+  | "teaching"
+  | "admin_session" {
   const s = (raw ?? "").trim().toLowerCase();
   if (s.includes("trainer") || (s.includes("supervis") && (s.includes("ing") || s.includes("or"))))
     return "supervising";
@@ -684,9 +731,7 @@ export function looksLikeMedicalExaminerLabel(
  * tokens and the phrase "departmental teaching" only, so plain trainee
  * teaching blocks ("Non-patient-facing: Fellow") do not get mislabelled.
  */
-export function looksLikeTutorialLabel(
-  labels: ReadonlyArray<string | null | undefined>,
-): boolean {
+export function looksLikeTutorialLabel(labels: ReadonlyArray<string | null | undefined>): boolean {
   for (const raw of labels) {
     if (!raw) continue;
     const s = String(raw).toLowerCase();
@@ -700,10 +745,7 @@ export function looksLikeTutorialLabel(
   return false;
 }
 
-export function pickTutorialLabel(
-  row: Record<string, unknown>,
-  keys: string[],
-): string | null {
+export function pickTutorialLabel(row: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
     const value = pick(row, [key]);
     if (value && looksLikeTutorialLabel([value])) return value;
@@ -849,4 +891,3 @@ export function resolveOffsiteTheatreAlias(
   }
   return undefined;
 }
-

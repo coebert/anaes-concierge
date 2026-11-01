@@ -41,13 +41,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -168,7 +165,6 @@ const cases: MatrixCase[] = [
   },
 ];
 
-
 describe("computeRobustness — AM/PM × active/inactive theatre matrix", () => {
   for (const tc of cases) {
     it(tc.name, async () => {
@@ -184,15 +180,13 @@ describe("computeRobustness — AM/PM × active/inactive theatre matrix", () => 
 
       // Allocate enough consultants to cover every "filled" row.
       const filledCount = tc.rows.filter((r) => r.filled).length;
-      fixture.profiles = Array.from({ length: Math.max(filledCount, 1) }).map(
-        (_, i) => ({
-          id: `c${i + 1}`,
-          grade: "consultant",
-          training_level: null,
-          ltft_days_off: [],
-          active: true,
-        }),
-      );
+      fixture.profiles = Array.from({ length: Math.max(filledCount, 1) }).map((_, i) => ({
+        id: `c${i + 1}`,
+        grade: "consultant",
+        training_level: null,
+        ltft_days_off: [],
+        active: true,
+      }));
 
       // Distribute active rows across the two active theatres so each
       // active half-day list maps to a distinct theatre_id (mirrors prod).

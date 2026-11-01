@@ -77,7 +77,9 @@ function TutorialDashboardPage() {
       cur.count += 1;
       map.set(s.staff_id, cur);
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name),
+    );
   }, [sessions]);
 
   const invalidRange = startIso > endIso;
@@ -147,7 +149,9 @@ function TutorialDashboardPage() {
             ))}
           </div>
           {invalidRange && (
-            <p className="text-sm text-destructive">The start date must be on or before the end date.</p>
+            <p className="text-sm text-destructive">
+              The start date must be on or before the end date.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -169,7 +173,8 @@ function TutorialDashboardPage() {
           )}
           {!compare.data && !compare.isPending && (
             <p className="text-sm text-muted-foreground">
-              Run the comparison to fetch the live CLWRota report for {range.startIso} → {range.endIso}
+              Run the comparison to fetch the live CLWRota report for {range.startIso} →{" "}
+              {range.endIso}
               and check it against the audit.
             </p>
           )}
@@ -242,9 +247,7 @@ function TutorialDashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
-              Tutorial deliveries ({sessions.length})
-            </CardTitle>
+            <CardTitle className="text-base">Tutorial deliveries ({sessions.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {sessionsQuery.isLoading ? (

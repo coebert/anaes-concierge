@@ -91,8 +91,8 @@ function MyExceptionsPage() {
       {reports.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            You haven't raised any exception reports yet. Use the button above
-            when your working day varies materially from your rostered schedule.
+            You haven't raised any exception reports yet. Use the button above when your working day
+            varies materially from your rostered schedule.
           </CardContent>
         </Card>
       ) : (

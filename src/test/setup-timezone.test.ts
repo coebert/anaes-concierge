@@ -9,8 +9,6 @@ describe("shared test setup", () => {
     // getTimezoneOffset() returns 0 iff local time == UTC.
     expect(new Date("2026-07-10T00:00:00Z").getTimezoneOffset()).toBe(0);
     // Local-string parsing must match UTC-string parsing.
-    expect(new Date("2026-07-10T00:00:00").getTime()).toBe(
-      Date.UTC(2026, 6, 10, 0, 0, 0),
-    );
+    expect(new Date("2026-07-10T00:00:00").getTime()).toBe(Date.UTC(2026, 6, 10, 0, 0, 0));
   });
 });

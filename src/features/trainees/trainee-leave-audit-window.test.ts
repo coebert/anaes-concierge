@@ -77,46 +77,46 @@ describe("leaveOverlapsWindow — inclusive boundary behaviour", () => {
   const window = { window_start: "2026-06-15", window_end: "2026-06-29" };
 
   it("includes a leave row that starts on the same UTC day as window_start", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-15", end_date: "2026-06-15" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-15", end_date: "2026-06-15" }, window)).toBe(
+      true,
+    );
   });
 
   it("includes a leave row that ends on the same UTC day as window_end", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-29", end_date: "2026-06-29" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-29", end_date: "2026-06-29" }, window)).toBe(
+      true,
+    );
   });
 
   it("includes a leave row that ends exactly on window_start (1-day overlap)", () => {
     // Leave ending 2026-06-15 still has that working day in the window.
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-10", end_date: "2026-06-15" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-10", end_date: "2026-06-15" }, window)).toBe(
+      true,
+    );
   });
 
   it("includes a leave row that starts exactly on window_end (1-day overlap)", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-29", end_date: "2026-07-05" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-29", end_date: "2026-07-05" }, window)).toBe(
+      true,
+    );
   });
 
   it("excludes a leave row that ends the calendar day before window_start", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-10", end_date: "2026-06-14" }, window),
-    ).toBe(false);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-10", end_date: "2026-06-14" }, window)).toBe(
+      false,
+    );
   });
 
   it("excludes a leave row that starts the calendar day after window_end", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-30", end_date: "2026-07-05" }, window),
-    ).toBe(false);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-30", end_date: "2026-07-05" }, window)).toBe(
+      false,
+    );
   });
 
   it("includes a leave row that fully encloses the window", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-05-01", end_date: "2026-12-31" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-05-01", end_date: "2026-12-31" }, window)).toBe(
+      true,
+    );
   });
 });
 
@@ -129,22 +129,22 @@ describe("leaveOverlapsWindow — TZ-shifted instants land in the right bucket",
 
   it("23:30 UTC on day-0 → leave dated 2026-06-15 is in-window", () => {
     expect(window.window_start).toBe("2026-06-15");
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-15", end_date: "2026-06-15" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-15", end_date: "2026-06-15" }, window)).toBe(
+      true,
+    );
   });
 
   it("23:30 UTC on day-0 → leave dated 2026-06-29 is in-window (boundary)", () => {
     expect(window.window_end).toBe("2026-06-29");
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-29", end_date: "2026-06-29" }, window),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-29", end_date: "2026-06-29" }, window)).toBe(
+      true,
+    );
   });
 
   it("23:30 UTC on day-0 → leave dated 2026-06-30 is out-of-window", () => {
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-30", end_date: "2026-06-30" }, window),
-    ).toBe(false);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-30", end_date: "2026-06-30" }, window)).toBe(
+      false,
+    );
   });
 
   it("00:30 UTC on day-0 (would be previous day in -05:00) still uses UTC date", () => {
@@ -152,8 +152,8 @@ describe("leaveOverlapsWindow — TZ-shifted instants land in the right bucket",
     expect(w.window_start).toBe("2026-06-15");
     // A leave row dated 2026-06-14 ("yesterday locally" west of UTC) must
     // be out-of-window — we go by the UTC calendar, not the user's clock.
-    expect(
-      leaveOverlapsWindow({ start_date: "2026-06-14", end_date: "2026-06-14" }, w),
-    ).toBe(false);
+    expect(leaveOverlapsWindow({ start_date: "2026-06-14", end_date: "2026-06-14" }, w)).toBe(
+      false,
+    );
   });
 });

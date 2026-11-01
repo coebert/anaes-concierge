@@ -20,12 +20,7 @@ import { PageLoading } from "@/components/loading";
  * Theatre duty rows show the specific theatre name they're allocated to.
  */
 
-const NON_CLINICAL_DUTY_TYPES = new Set([
-  "spa",
-  "admin",
-  "teaching",
-  "non_clinical",
-]);
+const NON_CLINICAL_DUTY_TYPES = new Set(["spa", "admin", "teaching", "non_clinical"]);
 
 type StaffLite = {
   id: string;
@@ -92,11 +87,7 @@ export function TodayInHospital() {
 
       // Resolve theatre names for any theatre sessions referenced today.
       const tsIds = Array.from(
-        new Set(
-          (rota ?? [])
-            .map((r) => r.theatre_session_id)
-            .filter((x): x is string => !!x),
-        ),
+        new Set((rota ?? []).map((r) => r.theatre_session_id).filter((x): x is string => !!x)),
       );
       const theatreByTsId = new Map<string, string | null>();
       if (tsIds.length) {
@@ -113,9 +104,7 @@ export function TodayInHospital() {
         }
       }
 
-      const byId = new Map<string, StaffLite>(
-        (staff ?? []).map((s) => [s.id, s as StaffLite]),
-      );
+      const byId = new Map<string, StaffLite>((staff ?? []).map((s) => [s.id, s as StaffLite]));
       const am = new Map<string, PersonEntry>();
       const pm = new Map<string, PersonEntry>();
       for (const row of rota ?? []) {
@@ -124,7 +113,7 @@ export function TodayInHospital() {
         const profile = byId.get(row.staff_id);
         if (!profile) continue;
         const theatreName = row.theatre_session_id
-          ? theatreByTsId.get(row.theatre_session_id) ?? null
+          ? (theatreByTsId.get(row.theatre_session_id) ?? null)
           : null;
         const bucket = row.session === "am" ? am : pm;
         const existing = bucket.get(row.staff_id);
@@ -161,13 +150,22 @@ export function TodayInHospital() {
       <CardContent>
         {error && data ? (
           <div className="mb-3">
-            <QueryErrorNotice stale error={error} what="today's clinical assignments" onRetry={() => void refetch()} />
+            <QueryErrorNotice
+              stale
+              error={error}
+              what="today's clinical assignments"
+              onRetry={() => void refetch()}
+            />
           </div>
         ) : null}
         {isLoading ? (
           <PageLoading />
         ) : error && !data ? (
-          <QueryErrorNotice error={error} what="today's clinical assignments" onRetry={() => void refetch()} />
+          <QueryErrorNotice
+            error={error}
+            what="today's clinical assignments"
+            onRetry={() => void refetch()}
+          />
         ) : !data || (data.am.size === 0 && data.pm.size === 0) ? (
           <p className="text-sm text-muted-foreground">
             No clinical assignments recorded for today.
@@ -199,15 +197,10 @@ function isNhhDuty(d: DutyEntry): boolean {
   return d.duty_type === "nhh_oncall" || isNhhTheatre(d.theatre_name);
 }
 
-function partitionForSite(
-  entries: Map<string, PersonEntry>,
-  site: "sdh" | "nhh",
-): PersonEntry[] {
+function partitionForSite(entries: Map<string, PersonEntry>, site: "sdh" | "nhh"): PersonEntry[] {
   const out: PersonEntry[] = [];
   for (const e of entries.values()) {
-    const matching = e.duties.filter((d) =>
-      site === "nhh" ? isNhhDuty(d) : !isNhhDuty(d),
-    );
+    const matching = e.duties.filter((d) => (site === "nhh" ? isNhhDuty(d) : !isNhhDuty(d)));
     if (matching.length) out.push({ staff: e.staff, duties: matching });
   }
   return out;
@@ -258,13 +251,7 @@ function SiteHeader({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
-function SessionColumn({
-  title,
-  entries,
-}: {
-  title: string;
-  entries: PersonEntry[];
-}) {
+function SessionColumn({ title, entries }: { title: string; entries: PersonEntry[] }) {
   const byGrade = new Map<StaffLite["grade"], PersonEntry[]>();
   for (const e of entries) {
     const k = e.staff.grade ?? null;
@@ -304,8 +291,7 @@ function SessionColumn({
                     >
                       <span className="font-medium">
                         {e.staff.full_name ?? "—"}
-                        {e.staff.training_level &&
-                        e.staff.training_level !== "Consultant" ? (
+                        {e.staff.training_level && e.staff.training_level !== "Consultant" ? (
                           <span className="ml-1.5 text-xs text-muted-foreground">
                             {e.staff.training_level}
                           </span>
@@ -320,8 +306,7 @@ function SessionColumn({
                           >
                             {d.duty_type === "theatre" && d.theatre_name
                               ? d.theatre_name
-                              : d.theatre_name &&
-                                  d.duty_type !== "nhh_oncall"
+                              : d.theatre_name && d.duty_type !== "nhh_oncall"
                                 ? `${dutyLabel(d.duty_type)} · ${d.theatre_name}`
                                 : dutyLabel(d.duty_type)}
                           </Badge>

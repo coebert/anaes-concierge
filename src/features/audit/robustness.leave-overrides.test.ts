@@ -53,9 +53,7 @@ function makeChain(table: string) {
     in: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     eq: () => chain,
@@ -84,33 +82,54 @@ import { computeRobustness } from "./robustness";
 const DATE = "2026-06-01"; // Monday
 
 const CONS = (id: string) => ({
-  id, full_name: id, grade: "consultant",
-  training_level: null, ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "consultant",
+  training_level: null,
+  ltft_days_off: [],
+  active: true,
 });
 const SENIOR = (id: string) => ({
-  id, full_name: id, grade: "trainee",
-  training_level: "ST7", ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "trainee",
+  training_level: "ST7",
+  ltft_days_off: [],
+  active: true,
 });
 const SAS_P = (id: string) => ({
-  id, full_name: id, grade: "sas",
-  training_level: null, ltft_days_off: [], active: true,
+  id,
+  full_name: id,
+  grade: "sas",
+  training_level: null,
+  ltft_days_off: [],
+  active: true,
 });
 
 const ts = (id: string, session: "am" | "pm", theatreId = `theatre-${id}`) => ({
-  id, session_date: DATE, session,
-  theatre_id: theatreId, specialty_id: null,
+  id,
+  session_date: DATE,
+  session,
+  theatre_id: theatreId,
+  specialty_id: null,
 });
 
-const theatreAsn = (
-  staff_id: string, session: "am" | "pm", theatre_session_id: string,
-) => ({
-  staff_id, session_date: DATE, session,
-  duty_type: "theatre", theatre_session_id, role_on_list: "solo",
+const theatreAsn = (staff_id: string, session: "am" | "pm", theatre_session_id: string) => ({
+  staff_id,
+  session_date: DATE,
+  session,
+  duty_type: "theatre",
+  theatre_session_id,
+  role_on_list: "solo",
 });
 
 const spaAsn = (staff_id: string, session: "am" | "pm") => ({
-  staff_id, session_date: DATE, session,
-  duty_type: "spa", theatre_session_id: null, role_on_list: null,
+  staff_id,
+  session_date: DATE,
+  session,
+  duty_type: "spa",
+  theatre_session_id: null,
+  role_on_list: null,
 });
 
 const leave = (
@@ -186,13 +205,10 @@ describe("Leave overrides availability for both AM and PM", () => {
 
   it("multi-day leave covers an in-range date", async () => {
     fixture.profiles = [CONS("c1"), CONS("c2")];
-    fixture.leave_requests = [
-      leave("c1", "annual", { start: "2026-05-28", end: "2026-06-05" }),
-    ];
+    fixture.leave_requests = [leave("c1", "annual", { start: "2026-05-28", end: "2026-06-05" })];
     const am = await half("am");
     expect(am.consultantsAvailable).toBe(1);
   });
-
 
   it("trainee on annual leave is removed from senior pool AM and PM", async () => {
     fixture.profiles = [SENIOR("st7-a"), SENIOR("st7-b")];
@@ -221,13 +237,13 @@ describe("Leave overrides availability for both AM and PM", () => {
     // c-spa: SPA AM + free PM (flex AM, free PM)
     // c-free: free all day
     fixture.profiles = [
-      CONS("c-off"), CONS("c-list"), CONS("c-pain"),
-      CONS("c-spa"), CONS("c-free"),
+      CONS("c-off"),
+      CONS("c-list"),
+      CONS("c-pain"),
+      CONS("c-spa"),
+      CONS("c-free"),
     ];
-    fixture.theatre_sessions = [
-      ts("poac-am", "am", "room-poac"),
-      ts("pain-pm", "pm", "room-pain"),
-    ];
+    fixture.theatre_sessions = [ts("poac-am", "am", "room-poac"), ts("pain-pm", "pm", "room-pain")];
     fixture.rota_assignments = [
       theatreAsn("c-list", "am", "poac-am"),
       theatreAsn("c-pain", "pm", "pain-pm"),
@@ -251,10 +267,7 @@ describe("Leave overrides availability for both AM and PM", () => {
     fixture.profiles = [CONS("c1"), CONS("c2"), CONS("c3")];
     fixture.theatre_sessions = [ts("t-am", "am")];
     fixture.rota_assignments = [theatreAsn("c3", "am", "t-am")];
-    fixture.leave_requests = [
-      leave("c1", "annual"),
-      leave("c2", "study"),
-    ];
+    fixture.leave_requests = [leave("c1", "annual"), leave("c2", "study")];
     const am = await half("am");
     expect(am.consultantsAvailable).toBe(0);
     expect(am.consultantsOnSpa).toBe(0);

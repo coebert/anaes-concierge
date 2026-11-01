@@ -24,7 +24,10 @@ export const ACCESS_REQUEST_LIMITS = {
   globalPerHour: 30,
 } as const;
 
-export async function accessRequestQuotaBuckets(clientKey: string, email: string): Promise<string[]> {
+export async function accessRequestQuotaBuckets(
+  clientKey: string,
+  email: string,
+): Promise<string[]> {
   const e = (await sha256Hex(`email:${email.toLowerCase()}`)).slice(0, 32);
   const L = ACCESS_REQUEST_LIMITS;
   return [
@@ -47,5 +50,8 @@ export const CHAT_LIMITS = {
 
 export function chatQuotaBuckets(userId: string): string[] {
   const L = CHAT_LIMITS;
-  return [`chat:u:${userId}|3600|${L.perUserPerHour}|${L.perUserBytesPerHour}`, `chat:g|3600|${L.globalPerHour}|`];
+  return [
+    `chat:u:${userId}|3600|${L.perUserPerHour}|${L.perUserBytesPerHour}`,
+    `chat:g|3600|${L.globalPerHour}|`,
+  ];
 }

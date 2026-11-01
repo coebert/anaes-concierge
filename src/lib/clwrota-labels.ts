@@ -30,7 +30,11 @@ export function isNonWorkingRotaLabel(
     // frequently use it in surgical descriptors such as "Free Flap",
     // "Free Fluid" or "Free Tissue Transfer", which are real theatre
     // lists, not non-working markers.
-    if (/(^|\b)(off|off day|day off|regular day off|ltft day off|not working|available|available clinical|spare|tbc|tba|unallocated|nil)(\b|$)/.test(text)) {
+    if (
+      /(^|\b)(off|off day|day off|regular day off|ltft day off|not working|available|available clinical|spare|tbc|tba|unallocated|nil)(\b|$)/.test(
+        text,
+      )
+    ) {
       return true;
     }
     return normalisedExtras.some((tok) => text.includes(tok));
@@ -50,8 +54,6 @@ export function isNonWorkingRotaLabel(
  */
 const NON_SAG_REGEX = /\bnon[\s\-_]?sag\b/i;
 
-export function isNonSagRotaLabel(
-  fields: Array<string | null | undefined>,
-): boolean {
+export function isNonSagRotaLabel(fields: Array<string | null | undefined>): boolean {
   return fields.some((f) => (f ? NON_SAG_REGEX.test(f) : false));
 }

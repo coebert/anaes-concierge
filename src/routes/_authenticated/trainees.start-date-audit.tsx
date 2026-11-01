@@ -7,12 +7,7 @@ import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useSyncClwRotaLeave } from "@/features/clwrota/clwrota-sync-hooks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -30,9 +25,7 @@ import {
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { useAuth } from "@/lib/auth-context";
 
-export const Route = createFileRoute(
-  "/_authenticated/trainees/start-date-audit",
-)({
+export const Route = createFileRoute("/_authenticated/trainees/start-date-audit")({
   head: () => ({ meta: [{ title: "Trainee start-date audit — Salisbury Anaesthetics Rota" }] }),
   component: AuditGuard,
 });
@@ -43,9 +36,7 @@ function AuditGuard() {
   if (!hasRole("admin")) {
     return (
       <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">
-          Admin only.
-        </CardContent>
+        <CardContent className="p-6 text-sm text-muted-foreground">Admin only.</CardContent>
       </Card>
     );
   }
@@ -97,7 +88,9 @@ function AuditPage() {
     onSuccess: (res: unknown) => {
       const r = res as { status?: string; error?: string | null } | null;
       if (r?.status && r.status !== "ok") {
-        toast.error(`Leave sync finished with status: ${r.status}${r.error ? ` — ${r.error}` : ""}`);
+        toast.error(
+          `Leave sync finished with status: ${r.status}${r.error ? ` — ${r.error}` : ""}`,
+        );
       } else {
         toast.success("CLWRota leave sync completed");
       }
@@ -119,8 +112,7 @@ function AuditPage() {
     retrySnapshotRef.current &&
     data &&
     (dataUpdatedAt !== retrySnapshotRef.current.dataUpdatedAt ||
-      (data.leave_sources.clwrota_last_sync_at ?? null) !==
-        retrySnapshotRef.current.lastSyncAt) &&
+      (data.leave_sources.clwrota_last_sync_at ?? null) !== retrySnapshotRef.current.lastSyncAt) &&
     !staleDuringRetry
   ) {
     setStaleDuringRetry(true);
@@ -130,13 +122,10 @@ function AuditPage() {
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Start-date prediction audit
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Start-date prediction audit</h1>
           <p className="text-sm text-muted-foreground">
-            Shows which leave records were considered (counted) or ignored when
-            deciding whether each trainee has approved/pending leave overlapping
-            the next two weeks.
+            Shows which leave records were considered (counted) or ignored when deciding whether
+            each trainee has approved/pending leave overlapping the next two weeks.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -149,9 +138,7 @@ function AuditPage() {
 
       {isLoading ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Loading audit…
-          </CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">Loading audit…</CardContent>
         </Card>
       ) : error ? (
         <Card>
@@ -166,9 +153,8 @@ function AuditPage() {
               <Info className="h-4 w-4" />
               <AlertTitle>Audit data changed during sync</AlertTitle>
               <AlertDescription>
-                The leave audit was updated by another process while the
-                CLWRota retry was running. The warnings below may not reflect
-                the latest sync state.
+                The leave audit was updated by another process while the CLWRota retry was running.
+                The warnings below may not reflect the latest sync state.
                 <div className="mt-2">
                   <Button
                     size="sm"
@@ -209,17 +195,13 @@ function AuditPage() {
                   {data.leave_sources.clwrota_last_status ? (
                     <>
                       {" · status: "}
-                      <span className="font-mono">
-                        {data.leave_sources.clwrota_last_status}
-                      </span>
+                      <span className="font-mono">{data.leave_sources.clwrota_last_status}</span>
                     </>
                   ) : null}
                   {data.leave_sources.clwrota_last_error ? (
                     <>
                       {" · error: "}
-                      <span className="font-mono">
-                        {data.leave_sources.clwrota_last_error}
-                      </span>
+                      <span className="font-mono">{data.leave_sources.clwrota_last_error}</span>
                     </>
                   ) : null}
                 </div>
@@ -230,7 +212,9 @@ function AuditPage() {
                     onClick={() => retry.mutate()}
                     disabled={retry.isPending}
                   >
-                    <RefreshCw className={`mr-1 h-4 w-4 ${retry.isPending ? "animate-spin" : ""}`} />
+                    <RefreshCw
+                      className={`mr-1 h-4 w-4 ${retry.isPending ? "animate-spin" : ""}`}
+                    />
                     {retry.isPending ? "Retrying sync…" : "Retry CLWRota leave sync"}
                   </Button>
                 </div>
@@ -243,13 +227,11 @@ function AuditPage() {
               <CardTitle className="text-base">Decision window</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              Scanning leave between{" "}
-              <span className="font-mono">{data.window_start}</span> and{" "}
+              Scanning leave between <span className="font-mono">{data.window_start}</span> and{" "}
               <span className="font-mono">{data.window_end}</span>. A leave row
-              <em> counts </em> only when its status is{" "}
-              <code>approved</code> or <code>pending</code>. Cancelled, denied,
-              or reserve-listed rows are ignored and do NOT prevent a trainee
-              being flagged as "not yet started".
+              <em> counts </em> only when its status is <code>approved</code> or{" "}
+              <code>pending</code>. Cancelled, denied, or reserve-listed rows are ignored and do NOT
+              prevent a trainee being flagged as "not yet started".
             </CardContent>
           </Card>
 
@@ -261,10 +243,7 @@ function AuditPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {data.trainees.map((t) => (
-                <div
-                  key={t.id}
-                  className="rounded-md border p-3 space-y-2 bg-card"
-                >
+                <div key={t.id} className="rounded-md border p-3 space-y-2 bg-card">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Link
@@ -293,16 +272,11 @@ function AuditPage() {
                         <span className="font-mono">{t.activity_count}</span>
                       </span>
                       <span>
-                        Profile start:{" "}
-                        <span className="font-mono">
-                          {t.start_date ?? "—"}
-                        </span>
+                        Profile start: <span className="font-mono">{t.start_date ?? "—"}</span>
                       </span>
                       <span>
                         Predicted next session:{" "}
-                        <span className="font-mono">
-                          {t.predicted_start ?? "—"}
-                        </span>
+                        <span className="font-mono">{t.predicted_start ?? "—"}</span>
                       </span>
                     </div>
                   </div>
@@ -314,7 +288,6 @@ function AuditPage() {
                       ))}
                     </ul>
                   ) : null}
-
 
                   {t.leave_rows.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic">

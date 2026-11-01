@@ -18,10 +18,7 @@ describe("sessionsCoveredByTimeRange — edge cases", () => {
 
     it("returns [] for identical ISO timestamps", () => {
       expect(
-        sessionsCoveredByTimeRange(
-          "2026-05-26T14:30:00+01:00",
-          "2026-05-26T14:30:00+01:00",
-        ),
+        sessionsCoveredByTimeRange("2026-05-26T14:30:00+01:00", "2026-05-26T14:30:00+01:00"),
       ).toEqual([]);
     });
   });
@@ -59,10 +56,7 @@ describe("sessionsCoveredByTimeRange — edge cases", () => {
 
     it("returns [] for an ISO overnight range where end wall-clock < start", () => {
       expect(
-        sessionsCoveredByTimeRange(
-          "2026-05-26T22:00:00+01:00",
-          "2026-05-27T06:00:00+01:00",
-        ),
+        sessionsCoveredByTimeRange("2026-05-26T22:00:00+01:00", "2026-05-27T06:00:00+01:00"),
       ).toEqual([]);
     });
   });

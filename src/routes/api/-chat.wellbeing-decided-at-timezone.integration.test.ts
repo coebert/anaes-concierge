@@ -36,10 +36,7 @@
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
-import {
-  computeWellbeing,
-  type LeaveLite,
-} from "@/features/wellbeing/wellbeing-score";
+import { computeWellbeing, type LeaveLite } from "@/features/wellbeing/wellbeing-score";
 
 // --------------------- fixtures ---------------------
 
@@ -86,8 +83,7 @@ interface QueryState {
 function makeAdminClient() {
   const build = (table: string) => {
     const state: QueryState = { table, eqCols: {}, neqCols: {}, single: false };
-    const resolve = () =>
-      Promise.resolve({ data: dataFor(state), error: null });
+    const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const b: any = {};
     b.select = () => b;
@@ -113,12 +109,10 @@ function makeAdminClient() {
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({
-        maybeSingle: () =>
-          Promise.resolve({ data: { id: "new" }, error: null }),
+        maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }),
       }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      then: (r: any) =>
-        Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
@@ -139,9 +133,7 @@ function makeAdminClient() {
 function dataFor(state: QueryState): unknown {
   switch (state.table) {
     case "ai_conversations":
-      return state.single
-        ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" }
-        : [];
+      return state.single ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" } : [];
     case "ai_messages":
       return [];
     case "user_roles":
@@ -183,17 +175,15 @@ vi.mock("ai", async () => {
         toUIMessageStreamResponse: async () => {
           const wb = opts.tools?.get_my_wellbeing_score;
           const tool = wb ? await wb.execute({}) : null;
-          const leaveDriver = tool?.drivers?.find(
-            (d: { key: string }) => d.key === "leave",
-          );
+          const leaveDriver = tool?.drivers?.find((d: { key: string }) => d.key === "leave");
           const reply = tool
             ? `Your wellbeing score is ${tool.score} (${tool.band_label}). ` +
               `Leave signal: ${leaveDriver?.label ?? "n/a"}.`
             : "No wellbeing data available.";
-          return new Response(
-            JSON.stringify({ assistantText: reply, tool }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ assistantText: reply, tool }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
         },
       };
     },
@@ -329,10 +319,7 @@ describe("/api/chat integration — backend applies wall-clock timezone normalis
       // Reference is the source of truth — if this ever changes the
       // whole test recalibrates in one place.
       const expected = referenceLeaveCount(leaveFixture);
-      expect(
-        expected,
-        "sanity: reference must count 4 wall-clock in-window rows",
-      ).toBe(4);
+      expect(expected, "sanity: reference must count 4 wall-clock in-window rows").toBe(4);
 
       const reply = await askChat();
       const leaveDriver = reply.tool.drivers.find((d) => d.key === "leave")!;
@@ -342,9 +329,7 @@ describe("/api/chat integration — backend applies wall-clock timezone normalis
       expect(leaveDriver.label).toBe(`${expected} rejected/cancelled leave`);
 
       // (3) Assistant reply embeds the same driver label.
-      expect(reply.assistantText).toContain(
-        `${expected} rejected/cancelled leave`,
-      );
+      expect(reply.assistantText).toContain(`${expected} rejected/cancelled leave`);
     },
   );
 

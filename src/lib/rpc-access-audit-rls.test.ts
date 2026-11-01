@@ -25,11 +25,7 @@ import { describe, it, expect } from "vitest";
 const TABLE = "public.rpc_access_audit";
 
 function psql(sql: string): string {
-  const r = spawnSync(
-    "psql",
-    ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8" },
-  );
+  const r = spawnSync("psql", ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql], { encoding: "utf8" });
   if (r.status !== 0) {
     throw new Error(`psql failed (${r.status}): ${r.stderr || r.stdout}`);
   }
@@ -42,9 +38,7 @@ const dbAvailable =
 
 describe.skipIf(!dbAvailable)("rpc_access_audit RLS", () => {
   it("has RLS enabled", () => {
-    const enabled = psql(
-      `SELECT relrowsecurity FROM pg_class WHERE oid = '${TABLE}'::regclass`,
-    );
+    const enabled = psql(`SELECT relrowsecurity FROM pg_class WHERE oid = '${TABLE}'::regclass`);
     expect(enabled).toBe("t");
   });
 

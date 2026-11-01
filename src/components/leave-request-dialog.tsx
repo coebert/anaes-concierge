@@ -1,16 +1,32 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import { computeLeaveConflicts, countWorkingDays, type LeaveConflict } from "@/features/leave/leave-utils";
+import {
+  computeLeaveConflicts,
+  countWorkingDays,
+  type LeaveConflict,
+} from "@/features/leave/leave-utils";
 import { validateHalfDayRange } from "@/features/leave/half-day-validation";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyLeaveSubmitted } from "@/features/leave/leave-notifications.functions";
@@ -22,7 +38,15 @@ interface Props {
   onSubmitted?: () => void;
 }
 
-const TYPES = ["annual", "study", "professional", "compassionate", "sick", "parental", "other"] as const;
+const TYPES = [
+  "annual",
+  "study",
+  "professional",
+  "compassionate",
+  "sick",
+  "parental",
+  "other",
+] as const;
 
 export interface ImpactCell {
   before: string;
@@ -95,7 +119,6 @@ function ImpactCellView({ cell }: { cell: ImpactCell }) {
   );
 }
 
-
 export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
   const notify = useServerFn(notifyLeaveSubmitted);
   const { user } = useAuth();
@@ -164,20 +187,26 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
     const conflictNotes =
       ownConflicts.length > 0
         ? `${ownConflicts.length} clinical session(s) need cover: ${ownConflicts
-            .map((c) => `${formatDateGB(c.date)} ${c.session.toUpperCase()} ${c.theatre ?? ""}`.trim())
+            .map((c) =>
+              `${formatDateGB(c.date)} ${c.session.toUpperCase()} ${c.theatre ?? ""}`.trim(),
+            )
             .join("; ")}`
         : null;
 
-    const { data: inserted, error } = await supabase.from("leave_requests").insert({
-      staff_id: user.id,
-      type,
-      start_date: startDate,
-      end_date: endDate,
-      half_day_start: halfDayStart === "none" ? null : halfDayStart,
-      half_day_end: halfDayEnd === "none" ? null : halfDayEnd,
-      reason: reason || null,
-      conflict_notes: conflictNotes,
-    }).select("id").maybeSingle();
+    const { data: inserted, error } = await supabase
+      .from("leave_requests")
+      .insert({
+        staff_id: user.id,
+        type,
+        start_date: startDate,
+        end_date: endDate,
+        half_day_start: halfDayStart === "none" ? null : halfDayStart,
+        half_day_end: halfDayEnd === "none" ? null : halfDayEnd,
+        reason: reason || null,
+        conflict_notes: conflictNotes,
+      })
+      .select("id")
+      .maybeSingle();
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -185,7 +214,9 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
     }
     toast.success("Leave request submitted");
     if (inserted?.id) {
-      void notify({ data: { leaveId: inserted.id } }).catch((e) => console.error("notify failed", e));
+      void notify({ data: { leaveId: inserted.id } }).catch((e) =>
+        console.error("notify failed", e),
+      );
     }
     onOpenChange(false);
     onSubmitted?.();
@@ -225,26 +256,52 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
             <div className="col-span-2">
               <Label>Type</Label>
               <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {TYPES.map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                    <SelectItem key={t} value={t} className="capitalize">
+                      {t}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Start date</Label>
-              <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setConflicts(null); }} />
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setConflicts(null);
+                }}
+              />
             </div>
             <div>
               <Label>End date</Label>
-              <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setConflicts(null); }} />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setConflicts(null);
+                }}
+              />
             </div>
             <div>
               <Label>Start day</Label>
-              <Select value={halfDayStart} onValueChange={(v) => { setHalfDayStart(v as typeof halfDayStart); setConflicts(null); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={halfDayStart}
+                onValueChange={(v) => {
+                  setHalfDayStart(v as typeof halfDayStart);
+                  setConflicts(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Full day</SelectItem>
                   <SelectItem value="pm">Afternoon only (skip AM)</SelectItem>
@@ -253,8 +310,16 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
             </div>
             <div>
               <Label>End day</Label>
-              <Select value={halfDayEnd} onValueChange={(v) => { setHalfDayEnd(v as typeof halfDayEnd); setConflicts(null); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={halfDayEnd}
+                onValueChange={(v) => {
+                  setHalfDayEnd(v as typeof halfDayEnd);
+                  setConflicts(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Full day</SelectItem>
                   <SelectItem value="am">Morning only (skip PM)</SelectItem>
@@ -275,7 +340,13 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
           )}
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={checkConflicts} disabled={!startDate || !endDate || checking}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={checkConflicts}
+              disabled={!startDate || !endDate || checking}
+            >
               {checking ? "Checking…" : "Check conflicts"}
             </Button>
             {conflicts && conflicts.length === 0 && (
@@ -291,7 +362,8 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
                 <ul className="mt-1 list-disc pl-5 text-xs">
                   {ownConflicts.map((c, i) => (
                     <li key={i}>
-                      {formatDateGB(c.date)} · {c.session.toUpperCase()} · {c.theatre ?? "—"} ({c.role})
+                      {formatDateGB(c.date)} · {c.session.toUpperCase()} · {c.theatre ?? "—"} (
+                      {c.role})
                     </li>
                   ))}
                 </ul>
@@ -305,7 +377,11 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
               <AlertTitle>Colleagues already on approved leave</AlertTitle>
               <AlertDescription>
                 <ul className="mt-1 list-disc pl-5 text-xs">
-                  {[...new Set(otherConflicts.map((c) => `${formatDateGB(c.date)} · ${c.staffName}`))].map((s) => (
+                  {[
+                    ...new Set(
+                      otherConflicts.map((c) => `${formatDateGB(c.date)} · ${c.staffName}`),
+                    ),
+                  ].map((s) => (
                     <li key={s}>{s}</li>
                   ))}
                 </ul>
@@ -319,10 +395,7 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
                 Impact preview — how your weekly grid will change
               </div>
               <div className="max-h-56 overflow-y-auto">
-                <table
-                  className="w-full text-xs"
-                  aria-label="Leave impact preview"
-                >
+                <table className="w-full text-xs" aria-label="Leave impact preview">
                   <thead className="bg-muted/40 text-muted-foreground">
                     <tr>
                       <th className="px-3 py-1.5 text-left font-medium">Date</th>
@@ -357,9 +430,10 @@ export function LeaveRequestDialog({ open, onOpenChange, onSubmitted }: Props) {
           )}
         </div>
 
-
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={submit} disabled={saving || !startDate || !endDate}>
             {saving ? "Submitting…" : "Submit request"}
           </Button>

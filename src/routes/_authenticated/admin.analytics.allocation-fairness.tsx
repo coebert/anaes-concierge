@@ -9,22 +9,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Scale } from "lucide-react";
-import {
-  computeAllocationFairness,
-  type AllocRotaRow,
-} from "@/features/analytics/analyses";
+import { computeAllocationFairness, type AllocRotaRow } from "@/features/analytics/analyses";
 import { gini } from "@/lib/analytics-gini";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/allocation-fairness",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/allocation-fairness")({
   head: () => ({
     meta: [
       { title: "Allocation fairness — HR analytics" },
-      { name: "description", content: "Per-doctor Gini across list types, weekends and on-calls over 12 months." },
+      {
+        name: "description",
+        content: "Per-doctor Gini across list types, weekends and on-calls over 12 months.",
+      },
     ],
   }),
   component: AllocationFairnessPage,
@@ -63,9 +66,7 @@ function AllocationFairnessPage() {
           session_date: r.session_date,
           duty_type: r.duty_type,
           role_on_list: r.role_on_list,
-          specialty_id: r.theatre_session_id
-            ? tsById.get(r.theatre_session_id) ?? null
-            : null,
+          specialty_id: r.theatre_session_id ? (tsById.get(r.theatre_session_id) ?? null) : null,
         }));
       return { rows, profiles: profRes.data ?? [], specById };
     },
@@ -98,10 +99,16 @@ function AllocationFairnessPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Doctors with rota (12m)" value={view.rows.length} icon={Scale} />
         <StatCard label="Workload Gini" value={view.overallGini.toFixed(2)} icon={Scale} />
-        <StatCard label="Median list-type Gini"
-          value={median(view.rows.map((r) => r.listTypeGini)).toFixed(2)} icon={Scale} />
-        <StatCard label="Total sessions"
-          value={view.rows.reduce((a, r) => a + r.totalSessions, 0)} icon={Scale} />
+        <StatCard
+          label="Median list-type Gini"
+          value={median(view.rows.map((r) => r.listTypeGini)).toFixed(2)}
+          icon={Scale}
+        />
+        <StatCard
+          label="Total sessions"
+          value={view.rows.reduce((a, r) => a + r.totalSessions, 0)}
+          icon={Scale}
+        />
       </div>
       <Card>
         <CardContent className="p-0">
@@ -121,19 +128,35 @@ function AllocationFairnessPage() {
               {view.rows.map((r) => (
                 <TableRow key={r.staff_id}>
                   <TableCell>{r.name}</TableCell>
-                  <TableCell><Badge variant="outline">{r.grade ?? "—"}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.grade ?? "—"}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">{r.totalSessions}</TableCell>
                   <TableCell className="text-right">{r.listTypeCount}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant={r.listTypeGini > 0.5 ? "destructive" : r.listTypeGini > 0.3 ? "secondary" : "outline"}>
+                    <Badge
+                      variant={
+                        r.listTypeGini > 0.5
+                          ? "destructive"
+                          : r.listTypeGini > 0.3
+                            ? "secondary"
+                            : "outline"
+                      }
+                    >
                       {r.listTypeGini.toFixed(2)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {r.weekendCount} <span className="text-muted-foreground">({(r.weekendShare * 100).toFixed(0)}%)</span>
+                    {r.weekendCount}{" "}
+                    <span className="text-muted-foreground">
+                      ({(r.weekendShare * 100).toFixed(0)}%)
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    {r.onCallCount} <span className="text-muted-foreground">({(r.onCallShare * 100).toFixed(0)}%)</span>
+                    {r.onCallCount}{" "}
+                    <span className="text-muted-foreground">
+                      ({(r.onCallShare * 100).toFixed(0)}%)
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}

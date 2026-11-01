@@ -42,10 +42,7 @@ export function InlineLoading({
     <span
       role="status"
       aria-live="polite"
-      className={cn(
-        "inline-flex items-center gap-2 text-sm text-muted-foreground",
-        className,
-      )}
+      className={cn("inline-flex items-center gap-2 text-sm text-muted-foreground", className)}
     >
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
       {label}
@@ -57,26 +54,14 @@ export function InlineLoading({
  * Skeleton grid that matches the StatCard footprint so the first paint of
  * a dashboard doesn't jump when real numbers arrive.
  */
-export function StatGridSkeleton({
-  count = 4,
-  className,
-}: {
-  count?: number;
-  className?: string;
-}) {
+export function StatGridSkeleton({ count = 4, className }: { count?: number; className?: string }) {
   return (
     <div
-      className={cn(
-        "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4",
-        className,
-      )}
+      className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4", className)}
       aria-hidden
     >
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-xl border bg-card p-4 shadow-sm"
-        >
+        <div key={i} className="rounded-xl border bg-card p-4 shadow-sm">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="mt-3 h-7 w-16" />
           <Skeleton className="mt-2 h-3 w-32" />
@@ -89,13 +74,7 @@ export function StatGridSkeleton({
 /**
  * Skeleton rows for table/list surfaces.
  */
-export function RowsSkeleton({
-  rows = 5,
-  className,
-}: {
-  rows?: number;
-  className?: string;
-}) {
+export function RowsSkeleton({ rows = 5, className }: { rows?: number; className?: string }) {
   return (
     <div className={cn("space-y-2", className)} aria-hidden>
       {Array.from({ length: rows }).map((_, i) => (

@@ -43,20 +43,14 @@ describe("tallyPaByConsultant", () => {
   });
 
   it("dedupes on-call halves when estimating gap rows", () => {
-    const [t] = tallyPaByConsultant(
-      [row({ session: "eve" }), row({ session: "night" })],
-      RULES,
-    );
+    const [t] = tallyPaByConsultant([row({ session: "eve" }), row({ session: "night" })], RULES);
     expect(t.gapSessions).toBe(2);
     expect(t.estimatedPas).toBe(1.5); // one on-call, not two
   });
 
   it("weekend gap day is worth the weekend credit only, not session + weekend", () => {
     // 2026-06-07 is a Sunday.
-    const [t] = tallyPaByConsultant(
-      [row({ session_date: "2026-06-07", session: "night" })],
-      RULES,
-    );
+    const [t] = tallyPaByConsultant([row({ session_date: "2026-06-07", session: "night" })], RULES);
     expect(t.estimatedPas).toBe(3);
   });
 

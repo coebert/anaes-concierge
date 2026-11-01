@@ -9,28 +9,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Users } from "lucide-react";
 import { computeOnCallInequality } from "@/features/analytics/analyses";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/oncall-inequality",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/oncall-inequality")({
   head: () => ({
     meta: [
       { title: "On-call frequency inequality — HR analytics" },
-      { name: "description", content: "Consultant on-calls per WTE, banded by LTFT fraction, with outlier flags." },
+      {
+        name: "description",
+        content: "Consultant on-calls per WTE, banded by LTFT fraction, with outlier flags.",
+      },
     ],
   }),
   component: OnCallInequalityPage,
 });
 
-const ONCALL_DUTY = [
-  "icu_consultant_oncall",
-  "general_consultant_oncall",
-  "nhh_oncall",
-] as const;
+const ONCALL_DUTY = ["icu_consultant_oncall", "general_consultant_oncall", "nhh_oncall"] as const;
 
 function OnCallInequalityPage() {
   const { hasRole, loading } = useAuth();
@@ -40,22 +42,27 @@ function OnCallInequalityPage() {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [profRes, rotaRes] = await Promise.all([
-        supabase.from("profiles")
+        supabase
+          .from("profiles")
           .select("id,full_name,ltft_days_off,grade,active")
-          .eq("grade", "consultant").eq("active", true),
-        supabase.from("rota_assignments")
+          .eq("grade", "consultant")
+          .eq("active", true),
+        supabase
+          .from("rota_assignments")
           .select("staff_id,duty_type,role_on_list")
           .gte("session_date", since.toISOString().slice(0, 10))
           .range(0, 49999),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;
-      const onCallRows = (rotaRes.data ?? []).filter(
-        (r) =>
-          r.staff_id &&
-          (r.role_on_list === "on_call" ||
-            (r.duty_type && (ONCALL_DUTY as readonly string[]).includes(r.duty_type))),
-      ).map((r) => ({ staff_id: r.staff_id as string }));
+      const onCallRows = (rotaRes.data ?? [])
+        .filter(
+          (r) =>
+            r.staff_id &&
+            (r.role_on_list === "on_call" ||
+              (r.duty_type && (ONCALL_DUTY as readonly string[]).includes(r.duty_type))),
+        )
+        .map((r) => ({ staff_id: r.staff_id as string }));
       return { profiles: profRes.data ?? [], onCallRows };
     },
   });
@@ -87,8 +94,11 @@ function OnCallInequalityPage() {
         <StatCard label="Consultants" value={view.rows.length} icon={Users} />
         <StatCard label="Overall on-call Gini" value={view.giniOverall.toFixed(2)} icon={Users} />
         <StatCard label="Outliers" value={view.rows.filter((r) => r.outlier).length} icon={Users} />
-        <StatCard label="Total on-calls"
-          value={view.rows.reduce((a, r) => a + r.onCallCount, 0)} icon={Users} />
+        <StatCard
+          label="Total on-calls"
+          value={view.rows.reduce((a, r) => a + r.onCallCount, 0)}
+          icon={Users}
+        />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -115,12 +125,12 @@ function OnCallInequalityPage() {
                 <TableRow key={r.staff_id}>
                   <TableCell>{r.name}</TableCell>
                   <TableCell>{r.ltftFraction.toFixed(2)}</TableCell>
-                  <TableCell><Badge variant="outline">{r.band}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.band}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">{r.onCallCount}</TableCell>
                   <TableCell className="text-right">{r.onCallPerWTE.toFixed(1)}</TableCell>
-                  <TableCell>
-                    {r.outlier && <Badge variant="destructive">Outlier</Badge>}
-                  </TableCell>
+                  <TableCell>{r.outlier && <Badge variant="destructive">Outlier</Badge>}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -2,24 +2,30 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  AlertTriangle, ArrowRight, CalendarIcon, CircleHelp, Clock, GraduationCap, Info, Users, X,
+  AlertTriangle,
+  ArrowRight,
+  CalendarIcon,
+  CircleHelp,
+  Clock,
+  GraduationCap,
+  Info,
+  Users,
+  X,
 } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { format, startOfMonth, startOfYear, subDays, subMonths } from "date-fns";
@@ -31,9 +37,7 @@ import {
 } from "@/features/audit/last-minute-changes.functions";
 import { PageLoading } from "@/components/loading";
 
-export const Route = createFileRoute(
-  "/_authenticated/robustness/last-minute-changes",
-)({
+export const Route = createFileRoute("/_authenticated/robustness/last-minute-changes")({
   head: () => ({ meta: [{ title: "Last-minute changes — Salisbury Anaesthetics Rota" }] }),
   component: LastMinuteChangesPage,
   errorComponent: ({ error }) => (
@@ -46,11 +50,11 @@ export const Route = createFileRoute(
 
 const GROUP_LABEL: Record<StaffingGroup, string> = {
   consultant: "Consultants",
-  trainee:    "Trainees",
-  sas:        "SAS doctors",
-  anp:        "ANPs",
-  other:      "Other",
-  unknown:    "Unknown grade",
+  trainee: "Trainees",
+  sas: "SAS doctors",
+  anp: "ANPs",
+  other: "Other",
+  unknown: "Unknown grade",
 };
 
 type DrillFilter =
@@ -62,18 +66,26 @@ type DrillFilter =
   | { kind: "group-action"; group: StaffingGroup; action: "insert" | "update" | "delete" };
 
 function isoDaysAgo(days: number): string {
-  const d = new Date(); d.setDate(d.getDate() - days);
+  const d = new Date();
+  d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 }
-function todayISO(): string { return new Date().toISOString().slice(0, 10); }
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function describeFilter(f: DrillFilter): string {
   switch (f.kind) {
-    case "none":        return "";
-    case "all":         return "All last-minute changes";
-    case "action":      return `All ${f.action === "update" ? "moves/updates" : f.action + "s"}`;
-    case "action-pair": return "All inserts + removals";
-    case "group":       return `${GROUP_LABEL[f.group]} — all changes`;
+    case "none":
+      return "";
+    case "all":
+      return "All last-minute changes";
+    case "action":
+      return `All ${f.action === "update" ? "moves/updates" : f.action + "s"}`;
+    case "action-pair":
+      return "All inserts + removals";
+    case "group":
+      return `${GROUP_LABEL[f.group]} — all changes`;
     case "group-action":
       return `${GROUP_LABEL[f.group]} — ${f.action === "update" ? "moves/updates" : f.action + "s"}`;
   }
@@ -81,11 +93,16 @@ function describeFilter(f: DrillFilter): string {
 
 function applyFilter(rows: LastMinuteChangeRow[], f: DrillFilter): LastMinuteChangeRow[] {
   switch (f.kind) {
-    case "none":        return [];
-    case "all":         return rows;
-    case "action":      return rows.filter((r) => r.action === f.action);
-    case "action-pair": return rows.filter((r) => f.actions.includes(r.action as "insert" | "delete"));
-    case "group":       return rows.filter((r) => r.group === f.group);
+    case "none":
+      return [];
+    case "all":
+      return rows;
+    case "action":
+      return rows.filter((r) => r.action === f.action);
+    case "action-pair":
+      return rows.filter((r) => f.actions.includes(r.action as "insert" | "delete"));
+    case "group":
+      return rows.filter((r) => r.group === f.group);
     case "group-action":
       return rows.filter((r) => r.group === f.group && r.action === f.action);
   }
@@ -95,22 +112,26 @@ function applyFilter(rows: LastMinuteChangeRow[], f: DrillFilter): LastMinuteCha
 // abbreviation appended so it is unambiguous. Hours-before is a duration
 // (timezone-agnostic) but we re-derive it from the two absolute instants
 // so the displayed value always matches the displayed times exactly.
-const LOCAL_TZ = typeof Intl !== "undefined"
-  ? Intl.DateTimeFormat().resolvedOptions().timeZone
-  : "UTC";
+const LOCAL_TZ =
+  typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
 // DD/MM/YYYY, HH:mm pinned to the user's local IANA timezone so the "hours
 // before" duration always matches the two absolute instants shown alongside.
 // eslint-disable-next-line no-restricted-syntax -- explicit en-GB DD/MM/YYYY with pinned timeZone.
 const localDateTimeFmt = new Intl.DateTimeFormat("en-GB", {
   timeZone: LOCAL_TZ,
-  year: "numeric", month: "2-digit", day: "2-digit",
-  hour: "2-digit", minute: "2-digit",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
 });
 // Timezone abbreviation only ("BST", "GMT") — no date/time content.
 // eslint-disable-next-line no-restricted-syntax
 const localTzAbbrFmt = new Intl.DateTimeFormat("en-GB", {
-  timeZone: LOCAL_TZ, timeZoneName: "short", hour: "2-digit",
+  timeZone: LOCAL_TZ,
+  timeZoneName: "short",
+  hour: "2-digit",
 });
 
 function formatLocal(iso: string): string {
@@ -156,37 +177,32 @@ function LastMinuteChangesPage() {
     [data, windowHours],
   );
 
-  const drillRows = useMemo(
-    () => applyFilter(windowRows, filter),
-    [windowRows, filter],
-  );
+  const drillRows = useMemo(() => applyFilter(windowRows, filter), [windowRows, filter]);
 
   const groupRows = useMemo(() => {
     if (!byGroup) return [];
     const order: StaffingGroup[] = ["consultant", "trainee", "sas", "anp", "other", "unknown"];
-    return order
-      .map((g) => ({ group: g, ...byGroup[g] }))
-      .filter((r) => r.total > 0);
+    return order.map((g) => ({ group: g, ...byGroup[g] })).filter((r) => r.total > 0);
   }, [byGroup]);
 
   function drill(f: DrillFilter) {
     setFilter(f);
-    requestAnimationFrame(() => drillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    requestAnimationFrame(() =>
+      drillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   }
 
   return (
     <TooltipProvider>
       <div className="space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Last minute changes audit
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Last minute changes audit</h1>
           <p className="text-sm text-muted-foreground">
-            Counts every change to a rota assignment (insert, move or removal)
-            made within the selected window of the scheduled start of the
-            clinical activity. Toggle between <strong>24 hours</strong> and
-            <strong> 48 hours</strong> to compare. Click any total or row count
-            below to drill into the underlying events.
+            Counts every change to a rota assignment (insert, move or removal) made within the
+            selected window of the scheduled start of the clinical activity. Toggle between{" "}
+            <strong>24 hours</strong> and
+            <strong> 48 hours</strong> to compare. Click any total or row count below to drill into
+            the underlying events.
           </p>
         </header>
 
@@ -201,7 +217,11 @@ function LastMinuteChangesPage() {
             <DateRangeFilter
               rangeStart={rangeStart}
               rangeEnd={rangeEnd}
-              onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); setFilter({ kind: "none" }); }}
+              onChange={(s, e) => {
+                setRangeStart(s);
+                setRangeEnd(e);
+                setFilter({ kind: "none" });
+              }}
             />
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">Change window:</span>
@@ -217,14 +237,13 @@ function LastMinuteChangesPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="leading-relaxed">
-                    A change counts as a last-minute change if the time between
-                    the rota edit and the scheduled start of the session is
-                    <strong> within {windowHours} hours</strong>. This uses the
-                    exact timestamps of both events, so a change made at 09:00 on
-                    Monday for a session starting at 10:00 on Tuesday is counted in
-                    the 24-hour window. Changes made after the session has started
-                    appear as negative &ldquo;hours before&rdquo; and are also
-                    included if they fall within the window.
+                    A change counts as a last-minute change if the time between the rota edit and
+                    the scheduled start of the session is
+                    <strong> within {windowHours} hours</strong>. This uses the exact timestamps of
+                    both events, so a change made at 09:00 on Monday for a session starting at 10:00
+                    on Tuesday is counted in the 24-hour window. Changes made after the session has
+                    started appear as negative &ldquo;hours before&rdquo; and are also included if
+                    they fall within the window.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -233,14 +252,18 @@ function LastMinuteChangesPage() {
                   key={w}
                   size="sm"
                   variant={windowKey === w ? "default" : "outline"}
-                  onClick={() => { setWindowKey(w); setFilter({ kind: "none" }); }}
+                  onClick={() => {
+                    setWindowKey(w);
+                    setFilter({ kind: "none" });
+                  }}
                 >
                   Within {w}h
                 </Button>
               ))}
               {data && (
                 <Badge variant="secondary" className="ml-2">
-                  24h: {data.totalsByWindow["24"]?.all ?? 0} · 48h: {data.totalsByWindow["48"]?.all ?? 0}
+                  24h: {data.totalsByWindow["24"]?.all ?? 0} · 48h:{" "}
+                  {data.totalsByWindow["48"]?.all ?? 0}
                 </Badge>
               )}
             </div>
@@ -255,13 +278,12 @@ function LastMinuteChangesPage() {
             <div className="space-y-1">
               <h3 className="text-sm font-medium">Why 24 h and 48 h totals can look identical</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                The database trigger that records last-minute rota changes was widened from
-                ±24 hours to ±48 hours on{" "}
-                <strong>25 June 2026 at 07:59:15 UTC</strong>. Historical rows captured
-                before that moment could only record edits within ±24 hours, so the
-                24–48 hour band has no data for any session range that predates that
-                migration. Both totals will appear the same for older ranges. New edits
-                made from that point onward are captured across the full ±48 hour window.
+                The database trigger that records last-minute rota changes was widened from ±24
+                hours to ±48 hours on <strong>25 June 2026 at 07:59:15 UTC</strong>. Historical rows
+                captured before that moment could only record edits within ±24 hours, so the 24–48
+                hour band has no data for any session range that predates that migration. Both
+                totals will appear the same for older ranges. New edits made from that point onward
+                are captured across the full ±48 hour window.
               </p>
             </div>
           </CardContent>
@@ -274,31 +296,40 @@ function LastMinuteChangesPage() {
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label={`Total changes within ${windowHours}h`}
-                value={totals?.all ?? (isLoading ? "…" : 0)}
-                icon={Clock} tone="amber"
-                onClick={() => drill({ kind: "all" })} />
-          <Stat label="Reassignments / moves"
-                value={totals?.updates ?? (isLoading ? "…" : 0)}
-                icon={Users} tone="orange"
-                onClick={() => drill({ kind: "action", action: "update" })} />
-          <Stat label="Inserts + removals"
-                value={totals ? totals.inserts + totals.deletes : (isLoading ? "…" : 0)}
-                icon={AlertTriangle} tone="red"
-                onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })} />
-          <Stat label="Trainee changes (incl. list moves)"
-                value={totals?.traineeListMoves ?? (isLoading ? "…" : 0)}
-                icon={GraduationCap} tone="emerald"
-                onClick={() => drill({ kind: "group", group: "trainee" })} />
+          <Stat
+            label={`Total changes within ${windowHours}h`}
+            value={totals?.all ?? (isLoading ? "…" : 0)}
+            icon={Clock}
+            tone="amber"
+            onClick={() => drill({ kind: "all" })}
+          />
+          <Stat
+            label="Reassignments / moves"
+            value={totals?.updates ?? (isLoading ? "…" : 0)}
+            icon={Users}
+            tone="orange"
+            onClick={() => drill({ kind: "action", action: "update" })}
+          />
+          <Stat
+            label="Inserts + removals"
+            value={totals ? totals.inserts + totals.deletes : isLoading ? "…" : 0}
+            icon={AlertTriangle}
+            tone="red"
+            onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })}
+          />
+          <Stat
+            label="Trainee changes (incl. list moves)"
+            value={totals?.traineeListMoves ?? (isLoading ? "…" : 0)}
+            icon={GraduationCap}
+            tone="emerald"
+            onClick={() => drill({ kind: "group", group: "trainee" })}
+          />
         </div>
-
 
         <Card>
           <CardHeader>
             <CardTitle className="text-base">By staffing group</CardTitle>
-            <CardDescription>
-              Click any cell to drill into the matching events.
-            </CardDescription>
+            <CardDescription>Click any cell to drill into the matching events.</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -324,17 +355,33 @@ function LastMinuteChangesPage() {
                       <TableCell className="font-medium">
                         {GROUP_LABEL[r.group]}
                         {r.group === "trainee" && (
-                          <Badge variant="outline" className="ml-2">tracks list moves</Badge>
+                          <Badge variant="outline" className="ml-2">
+                            tracks list moves
+                          </Badge>
                         )}
                       </TableCell>
-                      <DrillCell value={r.total}
-                        onClick={() => drill({ kind: "group", group: r.group })} />
-                      <DrillCell value={r.inserts}
-                        onClick={() => drill({ kind: "group-action", group: r.group, action: "insert" })} />
-                      <DrillCell value={r.updates}
-                        onClick={() => drill({ kind: "group-action", group: r.group, action: "update" })} />
-                      <DrillCell value={r.deletes}
-                        onClick={() => drill({ kind: "group-action", group: r.group, action: "delete" })} />
+                      <DrillCell
+                        value={r.total}
+                        onClick={() => drill({ kind: "group", group: r.group })}
+                      />
+                      <DrillCell
+                        value={r.inserts}
+                        onClick={() =>
+                          drill({ kind: "group-action", group: r.group, action: "insert" })
+                        }
+                      />
+                      <DrillCell
+                        value={r.updates}
+                        onClick={() =>
+                          drill({ kind: "group-action", group: r.group, action: "update" })
+                        }
+                      />
+                      <DrillCell
+                        value={r.deletes}
+                        onClick={() =>
+                          drill({ kind: "group-action", group: r.group, action: "delete" })
+                        }
+                      />
                     </TableRow>
                   ))}
                 </TableBody>
@@ -387,15 +434,21 @@ function LastMinuteChangesPage() {
                       <TableRow key={r.id}>
                         <TableCell className="whitespace-nowrap">
                           {formatDateGB(r.sessionDate)}{" "}
-                          <span className="uppercase text-xs text-muted-foreground">{r.session}</span>
+                          <span className="uppercase text-xs text-muted-foreground">
+                            {r.session}
+                          </span>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {formatLocal(r.sessionStartTs)}
                         </TableCell>
                         <TableCell>
-                          {r.action === "update" && r.prevStaffName && r.prevStaffName !== r.staffName ? (
+                          {r.action === "update" &&
+                          r.prevStaffName &&
+                          r.prevStaffName !== r.staffName ? (
                             <span className="inline-flex items-center gap-1">
-                              <span className="line-through text-muted-foreground">{r.prevStaffName}</span>
+                              <span className="line-through text-muted-foreground">
+                                {r.prevStaffName}
+                              </span>
                               <ArrowRight className="h-3 w-3" />
                               <span>{r.staffName}</span>
                             </span>
@@ -409,17 +462,23 @@ function LastMinuteChangesPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <span className={cn(
-                            "rounded px-2 py-0.5 text-xs font-medium",
-                            r.action === "insert" && "bg-success-muted text-success",
-                            r.action === "update" && "bg-warning-muted text-warning",
-                            r.action === "delete" && "bg-red-100 text-red-700",
-                          )}>
+                          <span
+                            className={cn(
+                              "rounded px-2 py-0.5 text-xs font-medium",
+                              r.action === "insert" && "bg-success-muted text-success",
+                              r.action === "update" && "bg-warning-muted text-warning",
+                              r.action === "delete" && "bg-red-100 text-red-700",
+                            )}
+                          >
                             {r.action}
                           </span>
                         </TableCell>
                         <TableCell className="text-xs">
-                          <ListMove from={r.fromList?.label ?? null} to={r.toList?.label ?? null} action={r.action} />
+                          <ListMove
+                            from={r.fromList?.label ?? null}
+                            to={r.toList?.label ?? null}
+                            action={r.action}
+                          />
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {hoursBetween(r.changedAt, r.sessionStartTs).toFixed(1)}
@@ -438,13 +497,11 @@ function LastMinuteChangesPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground">
-          Source: <code>rota_change_log</code>. The database trigger captures
-          every insert, update or delete on a rota assignment whose session
-          start is within ±48 hours of the change; the 24h view is a strict
-          subset of the 48h view (currently showing ±{windowHours}h). All times
-          shown in your local timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()});
-          &ldquo;hours before&rdquo; is the elapsed duration between the change
-          and the scheduled session start.
+          Source: <code>rota_change_log</code>. The database trigger captures every insert, update
+          or delete on a rota assignment whose session start is within ±48 hours of the change; the
+          24h view is a strict subset of the 48h view (currently showing ±{windowHours}h). All times
+          shown in your local timezone (<code>{LOCAL_TZ}</code>, {localTzAbbr()}); &ldquo;hours
+          before&rdquo; is the elapsed duration between the change and the scheduled session start.
         </p>
       </div>
     </TooltipProvider>
@@ -469,10 +526,28 @@ function DrillCell({ value, onClick }: { value: number; onClick: () => void }) {
   );
 }
 
-function ListMove({ from, to, action }: { from: string | null; to: string | null; action: string }) {
+function ListMove({
+  from,
+  to,
+  action,
+}: {
+  from: string | null;
+  to: string | null;
+  action: string;
+}) {
   if (!from && !to) return <span className="text-muted-foreground">—</span>;
-  if (action === "insert") return <span><span className="text-muted-foreground">added to</span> {to ?? "—"}</span>;
-  if (action === "delete") return <span><span className="text-muted-foreground">removed from</span> {from ?? "—"}</span>;
+  if (action === "insert")
+    return (
+      <span>
+        <span className="text-muted-foreground">added to</span> {to ?? "—"}
+      </span>
+    );
+  if (action === "delete")
+    return (
+      <span>
+        <span className="text-muted-foreground">removed from</span> {from ?? "—"}
+      </span>
+    );
   if (from && to && from !== to) {
     return (
       <span className="inline-flex items-center gap-1">
@@ -495,10 +570,13 @@ type StatProps = {
 
 function Stat({ label, value, icon: Icon, tone, onClick }: StatProps) {
   const toneClass =
-    tone === "red" ? "bg-red-500/10 text-red-600"
-    : tone === "amber" ? "bg-warning-muted text-warning"
-    : tone === "orange" ? "bg-orange-500/10 text-orange-600"
-    : "bg-success-muted text-success";
+    tone === "red"
+      ? "bg-red-500/10 text-red-600"
+      : tone === "amber"
+        ? "bg-warning-muted text-warning"
+        : tone === "orange"
+          ? "bg-orange-500/10 text-orange-600"
+          : "bg-success-muted text-success";
   const interactive = typeof value === "number" && value > 0 && !!onClick;
   return (
     <Card
@@ -506,7 +584,13 @@ function Stat({ label, value, icon: Icon, tone, onClick }: StatProps) {
       className={cn(interactive && "cursor-pointer transition-colors hover:bg-accent/40")}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
-      onKeyDown={interactive ? (e) => { if (e.key === "Enter" || e.key === " ") onClick!(); } : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") onClick!();
+            }
+          : undefined
+      }
     >
       <CardContent className="flex items-center gap-3 p-4">
         <div className={cn("flex h-10 w-10 items-center justify-center rounded-md", toneClass)}>
@@ -532,16 +616,19 @@ function toISO(d: Date): string {
 type Preset = { label: string; range: () => { start: Date; end: Date } };
 
 const PRESETS: Preset[] = [
-  { label: "Last 7 days",   range: () => ({ start: subDays(new Date(), 6),  end: new Date() }) },
-  { label: "Last 30 days",  range: () => ({ start: subDays(new Date(), 29), end: new Date() }) },
-  { label: "Last 90 days",  range: () => ({ start: subDays(new Date(), 89), end: new Date() }) },
-  { label: "This month",    range: () => ({ start: startOfMonth(new Date()), end: new Date() }) },
-  { label: "Last month",    range: () => {
+  { label: "Last 7 days", range: () => ({ start: subDays(new Date(), 6), end: new Date() }) },
+  { label: "Last 30 days", range: () => ({ start: subDays(new Date(), 29), end: new Date() }) },
+  { label: "Last 90 days", range: () => ({ start: subDays(new Date(), 89), end: new Date() }) },
+  { label: "This month", range: () => ({ start: startOfMonth(new Date()), end: new Date() }) },
+  {
+    label: "Last month",
+    range: () => {
       const start = startOfMonth(subMonths(new Date(), 1));
       const end = subDays(startOfMonth(new Date()), 1);
       return { start, end };
-    } },
-  { label: "Year to date",  range: () => ({ start: startOfYear(new Date()), end: new Date() }) },
+    },
+  },
+  { label: "Year to date", range: () => ({ start: startOfYear(new Date()), end: new Date() }) },
 ];
 
 type DateRangeFilterProps = {
@@ -554,9 +641,7 @@ function DateRangeFilter({ rangeStart, rangeEnd, onChange }: DateRangeFilterProp
   const range: DateRange = { from: parseISO(rangeStart), to: parseISO(rangeEnd) };
   const days = Math.max(
     1,
-    Math.round(
-      (parseISO(rangeEnd).getTime() - parseISO(rangeStart).getTime()) / 86_400_000,
-    ) + 1,
+    Math.round((parseISO(rangeEnd).getTime() - parseISO(rangeStart).getTime()) / 86_400_000) + 1,
   );
 
   return (
@@ -601,7 +686,9 @@ function DateRangeFilter({ rangeStart, rangeEnd, onChange }: DateRangeFilterProp
         })}
       </div>
 
-      <Badge variant="secondary" className="ml-auto">{days} day{days === 1 ? "" : "s"}</Badge>
+      <Badge variant="secondary" className="ml-auto">
+        {days} day{days === 1 ? "" : "s"}
+      </Badge>
     </div>
   );
 }

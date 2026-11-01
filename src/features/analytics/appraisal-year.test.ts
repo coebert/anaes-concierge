@@ -50,9 +50,7 @@ describe("buildAppraisalYear", () => {
     expect(s.icu.onCalls).toBe(1);
     expect(s.icu.sessions).toBe(1);
     expect(s.other.sessions).toBe(1);
-    expect(s.overall.totalPas).toBe(
-      Math.round((s.icu.totalPas + s.other.totalPas) * 100) / 100,
-    );
+    expect(s.overall.totalPas).toBe(Math.round((s.icu.totalPas + s.other.totalPas) * 100) / 100);
   });
 
   it("ignores work outside the appraisal year and other doctors", () => {

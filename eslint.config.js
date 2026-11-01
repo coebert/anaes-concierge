@@ -84,7 +84,7 @@ export default tseslint.config(
           selector:
             "CallExpression[callee.type='MemberExpression'][callee.property.name='toLocaleString'][arguments.0.type='Literal']",
           message:
-            "Do not call `.toLocaleString(\"...\")` with a locale string for date rendering — use formatDateTimeGB from @/lib/utils. (If this is a number, prefer `.toLocaleString(\"en-GB\")` with an inline eslint-disable-next-line and a reason.)",
+            'Do not call `.toLocaleString("...")` with a locale string for date rendering — use formatDateTimeGB from @/lib/utils. (If this is a number, prefer `.toLocaleString("en-GB")` with an inline eslint-disable-next-line and a reason.)',
         },
         {
           selector:

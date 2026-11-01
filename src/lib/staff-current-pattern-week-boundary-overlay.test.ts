@@ -72,18 +72,13 @@ function dutyMap(rows: AssignmentLite[]): Record<string, string | null> {
 describe("applyLeaveOverlay — multi-day week-boundary half-day leave", () => {
   const SPAN = leave({
     start_date: "2026-01-09", // Fri
-    end_date: "2026-01-12",   // Mon
+    end_date: "2026-01-12", // Mon
     half_day_start: "pm",
     half_day_end: "am",
   });
 
   it("replaces exactly the 6 covered half-sessions and leaves Fri AM + Mon PM intact", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF_ID,
-      [SPAN],
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF_ID, [SPAN], WINDOW_FROM, WINDOW_TO);
     const baseline: AssignmentLite[] = [
       asn("2026-01-09", "am"),
       asn("2026-01-09", "pm"),
@@ -110,12 +105,7 @@ describe("applyLeaveOverlay — multi-day week-boundary half-day leave", () => {
   });
 
   it("does not touch commitments outside the leave span (Thu before, Tue after)", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF_ID,
-      [SPAN],
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF_ID, [SPAN], WINDOW_FROM, WINDOW_TO);
     const baseline: AssignmentLite[] = [
       asn("2026-01-08", "am"), // Thu (before)
       asn("2026-01-08", "pm"),
@@ -156,12 +146,7 @@ describe("applyLeaveOverlay — multi-day week-boundary half-day leave", () => {
         half_day_end: "am",
       }),
     ];
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF_ID,
-      spans,
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF_ID, spans, WINDOW_FROM, WINDOW_TO);
     const baseline: AssignmentLite[] = [
       // week 1
       asn("2026-01-09", "am"),
@@ -187,12 +172,7 @@ describe("applyLeaveOverlay — multi-day week-boundary half-day leave", () => {
   });
 
   it("survives non-theatre duty types on the intact halves (spa on Fri AM, icu on Mon PM)", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF_ID,
-      [SPAN],
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF_ID, [SPAN], WINDOW_FROM, WINDOW_TO);
     const baseline: AssignmentLite[] = [
       asn("2026-01-09", "am", "spa"),
       asn("2026-01-09", "pm"),

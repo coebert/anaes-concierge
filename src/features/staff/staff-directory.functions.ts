@@ -46,9 +46,7 @@ export const listActiveStaffSafe = createServerFn({ method: "GET" })
     await getActiveMembership(context.supabase, context.userId);
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
-    const rows = (data ?? [])
-      .filter((p) => p.active === true)
-      .map(toSafe);
+    const rows = (data ?? []).filter((p) => p.active === true).map(toSafe);
     rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
     return rows;
   });
@@ -56,9 +54,7 @@ export const listActiveStaffSafe = createServerFn({ method: "GET" })
 /** Lookup safe staff rows by ids — visible to any authenticated user. */
 export const listStaffByIdsSafe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z.object({ ids: z.array(z.string().guid()).max(500) }).parse(d),
-  )
+  .inputValidator((d) => z.object({ ids: z.array(z.string().guid()).max(500) }).parse(d))
   .handler(async ({ data, context }): Promise<SafeStaff[]> => {
     await getActiveMembership(context.supabase, context.userId);
     if (!data.ids.length) return [];
@@ -97,9 +93,7 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
     const rows = (data ?? [])
-      .filter(
-        (p) => p.grade === "trainee" && (p.active === true || p.left_at !== null),
-      )
+      .filter((p) => p.grade === "trainee" && (p.active === true || p.left_at !== null))
       .map((p) => ({
         id: p.id,
         full_name: p.full_name,

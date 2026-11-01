@@ -5,26 +5,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
-  evaluatePreference, preferenceMatches, isPreferred, prefersNotTo, compareStaffByPreference,
+  evaluatePreference,
+  preferenceMatches,
+  isPreferred,
+  prefersNotTo,
+  compareStaffByPreference,
   detectListCoverageRequirements,
-  type StaffPracticePref, type StaffSpecialtyPref,
+  type StaffPracticePref,
+  type StaffSpecialtyPref,
 } from "./preferences";
 import { usePreferenceMatchFilter } from "./use-preference-match-filter";
 import { toast } from "sonner";
 import { cn, formatDateLongGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import {
-  validateAssignment, worstSeverity,
-  type Issue, type Profile, type RotaRules,
+  validateAssignment,
+  worstSeverity,
+  type Issue,
+  type Profile,
+  type RotaRules,
 } from "@/lib/rota-validation";
 import { checkCustomRuleViolations } from "@/features/rules/custom-rules.functions";
 import {
@@ -47,10 +64,24 @@ import {
 } from "./types";
 
 export function CellDialog({
-  theatreId, theatreName, date, session, onOpenChange, staff,
-  weekDates, weekAssignments, contextAssignments, jobPlans, leave, fixedSessions, rules,
+  theatreId,
+  theatreName,
+  date,
+  session,
+  onOpenChange,
+  staff,
+  weekDates,
+  weekAssignments,
+  contextAssignments,
+  jobPlans,
+  leave,
+  fixedSessions,
+  rules,
 }: {
-  theatreId: string; theatreName: string; date: string; session: SessionHalf;
+  theatreId: string;
+  theatreName: string;
+  date: string;
+  session: SessionHalf;
   onOpenChange: (o: boolean) => void;
   staff: Profile[];
   weekDates: string[];
@@ -66,8 +97,7 @@ export function CellDialog({
   const { data: specialties } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties").select("id,name").order("name");
+      const { data, error } = await supabase.from("specialties").select("id,name").order("name");
       if (error) throw error;
       return data;
     },
@@ -112,11 +142,14 @@ export function CellDialog({
         const { data, error } = await supabase
           .from("theatre_sessions")
           .insert({
-            theatre_id: theatreId, session_date: date, session,
+            theatre_id: theatreId,
+            session_date: date,
+            session,
             specialty_id: specialtyId || null,
             surgical_consultant: consultant || null,
           })
-          .select("id").single();
+          .select("id")
+          .single();
         if (error) throw error;
         return data.id;
       }
@@ -218,7 +251,10 @@ export function CellDialog({
     const m = new Map<string, Map<string, StaffSpecialtyPref>>();
     for (const p of specialtyPrefs ?? []) {
       let inner = m.get(p.staff_id);
-      if (!inner) { inner = new Map(); m.set(p.staff_id, inner); }
+      if (!inner) {
+        inner = new Map();
+        m.set(p.staff_id, inner);
+      }
       inner.set(p.specialty_id, p);
     }
     return m;
@@ -284,7 +320,10 @@ export function CellDialog({
   const checkRules = useServerFn(checkCustomRuleViolations);
   const [customIssues, setCustomIssues] = useState<Issue[]>([]);
   useEffect(() => {
-    if (!newStaff) { setCustomIssues([]); return; }
+    if (!newStaff) {
+      setCustomIssues([]);
+      return;
+    }
     let cancelled = false;
     const ctx = contextAssignments
       .filter((a) => a.staff_id === newStaff)
@@ -315,22 +354,26 @@ export function CellDialog({
         if (!cancelled) setCustomIssues([]);
       }
     }, 500);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newStaff, newRole, date, session]);
 
   // Soft warnings from the competency register for the candidate being added.
-  const candidateCompetencyIssues: Issue[] = newStaff && specialtyId
-    ? evaluateCompetency({
-        staffId: newStaff,
-        specialtyId,
-        role: newRole,
-        onDate: date,
-        requirements: competencyRequirements ?? [],
-        staffCompetencies: staffHoldings ?? [],
-        competencies: competencyRows ?? [],
-      })
-    : [];
+  const candidateCompetencyIssues: Issue[] =
+    newStaff && specialtyId
+      ? evaluateCompetency({
+          staffId: newStaff,
+          specialtyId,
+          role: newRole,
+          onDate: date,
+          requirements: competencyRequirements ?? [],
+          staffCompetencies: staffHoldings ?? [],
+          competencies: competencyRows ?? [],
+        })
+      : [];
 
   const candidatePreferenceIssues: Issue[] = newStaff
     ? evaluatePreference(prefInputFor(newStaff))
@@ -346,7 +389,10 @@ export function CellDialog({
   const competencyIssuesFor = (staffId: string, role: RotaRole): Issue[] =>
     specialtyId
       ? evaluateCompetency({
-          staffId, specialtyId, role, onDate: date,
+          staffId,
+          specialtyId,
+          role,
+          onDate: date,
           requirements: competencyRequirements ?? [],
           staffCompetencies: staffHoldings ?? [],
           competencies: competencyRows ?? [],
@@ -383,7 +429,8 @@ export function CellDialog({
       if (blocking) throw new Error("Resolve blocking validation errors first.");
       const { error } = await supabase.from("rota_assignments").insert({
         staff_id: newStaff,
-        session, session_date: date,
+        session,
+        session_date: date,
         theatre_session_id: ts.id,
         role_on_list: newRole,
       });
@@ -420,7 +467,9 @@ export function CellDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{theatreName} — {session.toUpperCase()}</DialogTitle>
+          <DialogTitle>
+            {theatreName} — {session.toUpperCase()}
+          </DialogTitle>
           <DialogDescription>{dateLabel}</DialogDescription>
         </DialogHeader>
 
@@ -431,10 +480,14 @@ export function CellDialog({
               <div className="space-y-1.5">
                 <Label className="text-xs">Specialty</Label>
                 <Select value={specialtyId} onValueChange={setSpecialtyId}>
-                  <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
                   <SelectContent>
                     {specialties?.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -468,14 +521,32 @@ export function CellDialog({
                         <li key={a.id} className="flex items-start gap-2 p-2 text-sm">
                           <Select
                             value={a.role_on_list}
-                            onValueChange={(v) => updateAssign.mutate({
-                              id: a.id, staff_id: a.staff_id, role_on_list: v as RotaRole,
-                            })}
+                            onValueChange={(v) =>
+                              updateAssign.mutate({
+                                id: a.id,
+                                staff_id: a.staff_id,
+                                role_on_list: v as RotaRole,
+                              })
+                            }
                           >
-                            <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-7 w-32 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
-                              {(["solo", "supervised", "supervising", "on_call", "non_clinical", "teaching", "admin_session"] as RotaRole[]).map((r) => (
-                                <SelectItem key={r} value={r}>{r}</SelectItem>
+                              {(
+                                [
+                                  "solo",
+                                  "supervised",
+                                  "supervising",
+                                  "on_call",
+                                  "non_clinical",
+                                  "teaching",
+                                  "admin_session",
+                                ] as RotaRole[]
+                              ).map((r) => (
+                                <SelectItem key={r} value={r}>
+                                  {r}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -483,14 +554,24 @@ export function CellDialog({
                             <div className="flex items-center gap-2">
                               <Select
                                 value={a.staff_id}
-                                onValueChange={(v) => updateAssign.mutate({
-                                  id: a.id, staff_id: v, role_on_list: a.role_on_list as RotaRole,
-                                })}
+                                onValueChange={(v) =>
+                                  updateAssign.mutate({
+                                    id: a.id,
+                                    staff_id: v,
+                                    role_on_list: a.role_on_list as RotaRole,
+                                  })
+                                }
                               >
-                                <SelectTrigger className="h-7 min-w-[12rem] text-xs"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-7 min-w-[12rem] text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
                                   {staff
-                                    .filter((s) => s.id === a.staff_id || !assigns?.some((x) => x.staff_id === s.id))
+                                    .filter(
+                                      (s) =>
+                                        s.id === a.staff_id ||
+                                        !assigns?.some((x) => x.staff_id === s.id),
+                                    )
                                     .sort((a, b) => compareBySurname(a.full_name, b.full_name))
                                     .map((s) => (
                                       <SelectItem key={s.id} value={s.id}>
@@ -520,7 +601,11 @@ export function CellDialog({
                               })()}
                               {worst && <SeverityIcon severity={worst} />}
                               {a.locally_modified && a.clwrota_external_id && (
-                                <Badge variant="secondary" className="px-1 py-0 text-[9px]" title="Locked: this row was edited locally and will not be overwritten by CLWRota sync.">
+                                <Badge
+                                  variant="secondary"
+                                  className="px-1 py-0 text-[9px]"
+                                  title="Locked: this row was edited locally and will not be overwritten by CLWRota sync."
+                                >
                                   locked
                                 </Badge>
                               )}
@@ -528,11 +613,14 @@ export function CellDialog({
                             {iss.length > 0 && (
                               <ul className="space-y-0.5 text-[11px] text-muted-foreground">
                                 {iss.map((i, idx) => (
-                                  <li key={idx} className={cn(
-                                    "flex items-center gap-1",
-                                    i.severity === "error" && "text-destructive",
-                                    i.severity === "warning" && "text-warning",
-                                  )}>
+                                  <li
+                                    key={idx}
+                                    className={cn(
+                                      "flex items-center gap-1",
+                                      i.severity === "error" && "text-destructive",
+                                      i.severity === "warning" && "text-warning",
+                                    )}
+                                  >
                                     <span>• {i.message}</span>
                                   </li>
                                 ))}
@@ -542,7 +630,9 @@ export function CellDialog({
                                       staffId={a.staff_id}
                                       staffName={staffByIdLocal(a.staff_id)?.full_name}
                                       specialtyId={specialtyId}
-                                      specialtyName={specialties?.find((s) => s.id === specialtyId)?.name}
+                                      specialtyName={
+                                        specialties?.find((s) => s.id === specialtyId)?.name
+                                      }
                                       role={a.role_on_list}
                                       onDate={date}
                                       competencies={competencyRows ?? []}
@@ -555,7 +645,11 @@ export function CellDialog({
                               </ul>
                             )}
                           </div>
-                          <Button size="icon" variant="ghost" onClick={() => removeAssign.mutate(a.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeAssign.mutate(a.id)}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </li>
@@ -568,7 +662,9 @@ export function CellDialog({
                 {specialtyId && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1">
-                      <span aria-hidden className="text-amber-500">★</span>
+                      <span aria-hidden className="text-amber-500">
+                        ★
+                      </span>
                       <span className="font-medium">Match preferences</span>
                       <Switch
                         checked={filterToMatching}
@@ -609,16 +705,13 @@ export function CellDialog({
                             : compareBySurname(a.full_name, b.full_name),
                         )
 
-
-
                         .map((s) => {
                           const pi = prefInputFor(s.id);
                           const preferred = isPreferred(pi);
                           const matches = preferenceMatches(pi);
                           const preferNot = prefersNotTo(pi);
                           const scopedToPrefs =
-                            !!specialtyId &&
-                            (s.grade === "consultant" || s.grade === "sas");
+                            !!specialtyId && (s.grade === "consultant" || s.grade === "sas");
                           const reasons: string[] = [];
                           if (scopedToPrefs) {
                             const sPref =
@@ -661,7 +754,10 @@ export function CellDialog({
                                     className={cn(
                                       "inline-flex h-4 w-4 items-center justify-center text-xs font-bold tabular-nums",
                                       preferred && "text-amber-500",
-                                      !preferred && matches && !preferNot && "text-emerald-600 dark:text-emerald-400",
+                                      !preferred &&
+                                        matches &&
+                                        !preferNot &&
+                                        "text-emerald-600 dark:text-emerald-400",
                                       matches && preferNot && "text-amber-600 dark:text-amber-400",
                                       !matches && "text-destructive",
                                     )}
@@ -670,7 +766,9 @@ export function CellDialog({
                                   </span>
                                 )}
                                 {!filterToMatching && preferred && (
-                                  <span aria-label="Preferred" className="text-amber-500">★</span>
+                                  <span aria-label="Preferred" className="text-amber-500">
+                                    ★
+                                  </span>
                                 )}
 
                                 <span>
@@ -702,10 +800,24 @@ export function CellDialog({
                     </SelectContent>
                   </Select>
                   <Select value={newRole} onValueChange={(v) => setNewRole(v as RotaRole)}>
-                    <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-40">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {(["solo", "supervised", "supervising", "on_call", "non_clinical", "teaching", "admin_session"] as RotaRole[]).map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      {(
+                        [
+                          "solo",
+                          "supervised",
+                          "supervising",
+                          "on_call",
+                          "non_clinical",
+                          "teaching",
+                          "admin_session",
+                        ] as RotaRole[]
+                      ).map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -715,7 +827,8 @@ export function CellDialog({
                     disabled={addAssign.isPending || blocking}
                     variant={blocking ? "destructive" : "default"}
                   >
-                    <Plus className="mr-1 h-4 w-4" />Assign
+                    <Plus className="mr-1 h-4 w-4" />
+                    Assign
                   </Button>
                 </div>
                 {newStaff && allCandidateIssues.length > 0 && (
@@ -739,13 +852,17 @@ export function CellDialog({
                     </div>
                     <ul className="space-y-0.5 text-[11px]">
                       {allCandidateIssues.map((i, idx) => (
-                        <li key={idx} className={cn(
-                          "flex items-start gap-1.5",
-                          i.severity === "error" && "text-destructive",
-                          i.severity === "warning" && "text-warning",
-                          i.severity === "info" && "text-muted-foreground",
-                        )}>
-                          <span>•</span><span>{i.message}</span>
+                        <li
+                          key={idx}
+                          className={cn(
+                            "flex items-start gap-1.5",
+                            i.severity === "error" && "text-destructive",
+                            i.severity === "warning" && "text-warning",
+                            i.severity === "info" && "text-muted-foreground",
+                          )}
+                        >
+                          <span>•</span>
+                          <span>{i.message}</span>
                         </li>
                       ))}
                     </ul>
@@ -757,7 +874,9 @@ export function CellDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Done</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
