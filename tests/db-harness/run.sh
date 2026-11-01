@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Migrations 0007+ (definer caller identity) need the non-superuser postgres
+# owner trap and are proven separately in tests/db-harness/definer/run.sh.
 # Disposable Postgres harness for the security-remediation triggers and the
 # restricted audit SQL role. Creates a throwaway cluster under /tmp, loads a
 # synthetic fixture + the REAL migration SQL from drizzle/migrations, runs
@@ -13,7 +15,7 @@ pg_ctl -D "$D/data" -o "-k $D -p 55439 -c listen_addresses=''" -l "$D/log" start
 P="psql -h $D -p 55439 -U harness -d postgres -v ON_ERROR_STOP=1 -q"
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../.."
 $P -f "$HERE/fixture.sql" >/dev/null
-for m in "$ROOT"/drizzle/migrations/000[0-9]_*.sql; do
+for m in "$ROOT"/drizzle/migrations/000[0-6]_*.sql; do
   sed '/--> statement-breakpoint/d' "$m" | $P >/dev/null
 done
 for f in "$HERE"/pending-*.sql; do [ -f "$f" ] && $P -f "$f" >/dev/null; done

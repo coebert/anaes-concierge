@@ -16,7 +16,7 @@ pg_ctl -D "$D/data" -o "-k $D -p 55440 -c listen_addresses=''" -l "$D/log" start
 P="psql -h $D -p 55440 -U harness -d postgres -v ON_ERROR_STOP=1 -q"
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../.."
 $P -f "$HERE/fixture.sql" >/dev/null
-for m in "$ROOT"/drizzle/migrations/000[0-9]_*.sql; do sed '/--> statement-breakpoint/d' "$m" | $P >/dev/null; done
+for m in "$ROOT"/drizzle/migrations/000[0-6]_*.sql; do sed '/--> statement-breakpoint/d' "$m" | $P >/dev/null; done
 $P <<'SQL'
 CREATE ROLE authenticator LOGIN NOINHERIT;
 GRANT anon, authenticated TO authenticator;
