@@ -12,7 +12,7 @@ PG=${PG:-$(nix build nixpkgs#postgresql_16 --no-link --print-out-paths | grep -v
 PGRST=${PGRST:-$(nix build nixpkgs#postgrest --no-link --print-out-paths | head -1)}
 export PATH="$PG/bin:$PGRST/bin:$PATH"
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../../.."
-MIG="$ROOT/drizzle/migrations/0007_definer_caller_identity.sql"
+MIG="$ROOT/drizzle/migrations/0007_definer_caller_identity.sql"; [ -f "$MIG" ] || MIG="$HERE/pending-0007.sql"
 D=$(mktemp -d /tmp/pgdefiner.XXXX)
 cleanup() { [ -n "${RPID:-}" ] && kill "$RPID" 2>/dev/null || true; pg_ctl -D "$D/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"; }
 trap cleanup EXIT
