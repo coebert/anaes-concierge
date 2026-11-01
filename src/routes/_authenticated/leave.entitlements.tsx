@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/leave/entitlements")({
 function EntitlementsPage() {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     enabled: !!user,
     queryKey: ["my-entitlements", user?.id],
     queryFn: async () => {
@@ -120,6 +120,14 @@ function EntitlementsPage() {
   const slaTarget = allowance?.sla_target_days ?? 14;
 
   if (isLoading) return <PageLoading />;
+  if (error) {
+    return (
+      <div role="alert" className="space-y-3 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <p>Your entitlements could not be loaded, so no totals are shown: {error instanceof Error ? error.message : String(error)}</p>
+        <button type="button" className="underline" onClick={() => void refetch()}>Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
