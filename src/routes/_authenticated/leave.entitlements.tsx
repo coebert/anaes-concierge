@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRowsPaged } from "@/features/audit/paginate";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,36 +46,46 @@ function EntitlementsPage() {
     enabled: !!user,
     queryKey: ["my-entitlements", user?.id],
     queryFn: async () => {
-      const [allowRes, profRes, leaveRes, ledgerRes] = await Promise.all([
+      const [allowRes, profRes, leave, ledger] = await Promise.all([
         supabase.from("leave_allowances").select("*").eq("staff_id", user!.id),
         supabase
           .from("profiles")
           .select("start_date,left_at,full_name")
           .eq("id", user!.id)
           .single(),
-        supabase
-          .from("leave_requests")
-          .select(
-            "id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
-          )
-          .eq("staff_id", user!.id)
-          .range(0, 4999),
-        supabase
-          .from("leave_ledger_entries")
-          .select("entry_date,kind,hours,reason,created_at")
-          .eq("staff_id", user!.id)
-          .order("entry_date", { ascending: false })
-          .range(0, 499),
+        // Paged with a stable order: the API returns at most 1000 rows per
+        // request, so a wide .range() could silently drop history.
+        fetchAllRowsPaged<LeaveRow>(
+          (from, to) =>
+            supabase
+              .from("leave_requests")
+              .select("id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at")
+              .eq("staff_id", user!.id)
+              .order("start_date")
+              .order("id")
+              .range(from, to) as never,
+          { label: "Leave history" },
+        ),
+        // TOIL balance sums EVERY ledger entry — a 500-row cap made it wrong.
+        fetchAllRowsPaged<{ entry_date: string; kind: "accrual" | "spend" | "adjustment"; hours: number; reason: string | null; created_at: string; id: string }>(
+          (from, to) =>
+            supabase
+              .from("leave_ledger_entries")
+              .select("id,entry_date,kind,hours,reason,created_at")
+              .eq("staff_id", user!.id)
+              .order("entry_date", { ascending: false })
+              .order("id")
+              .range(from, to) as never,
+          { label: "TOIL ledger" },
+        ),
       ]);
       if (allowRes.error) throw allowRes.error;
       if (profRes.error) throw profRes.error;
-      if (leaveRes.error) throw leaveRes.error;
-      if (ledgerRes.error) throw ledgerRes.error;
       return {
         allowances: (allowRes.data ?? []) as AllowanceRow[],
         profile: profRes.data,
-        leave: (leaveRes.data ?? []) as LeaveRow[],
-        ledger: ledgerRes.data ?? [],
+        leave,
+        ledger,
       };
     },
   });
