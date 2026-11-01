@@ -13,6 +13,7 @@ import { computeRobustness, computeListCoverage, riskLabel } from "@/features/au
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { PageLoading } from "@/components/loading";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -59,12 +60,12 @@ export function SummaryDashboard() {
   const today = todayISO();
   const in6 = addDaysISO(6);
 
-  const { data: robustness, isLoading: rLoading } = useQuery({
+  const { data: robustness, isLoading: rLoading, error: rLoadingErr, refetch: rLoadingRetry } = useQuery({
     queryKey: ["summary-robustness", today, in6],
     queryFn: () => computeRobustness(today, in6),
   });
 
-  const { data: leaveToday, isLoading: lLoading } = useQuery({
+  const { data: leaveToday, isLoading: lLoading, error: lLoadingErr, refetch: lLoadingRetry } = useQuery({
     queryKey: ["summary-leave-today", today],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -81,7 +82,7 @@ export function SummaryDashboard() {
     },
   });
 
-  const { data: soloToday, isLoading: sLoading } = useQuery({
+  const { data: soloToday, isLoading: sLoading, error: sLoadingErr, refetch: sLoadingRetry } = useQuery({
     queryKey: ["summary-solo-trainees-today", today],
     queryFn: async () => {
       const { data: assigns, error } = await supabase
@@ -101,23 +102,25 @@ export function SummaryDashboard() {
       const theatreById = new Map<string, string>();
       const consultantSessionIds = new Set<string>();
       if (tsIds.length > 0) {
-        const { data: ts } = await supabase
+        const { data: ts, error: tsErr } = await supabase
           .from("theatre_sessions")
           .select("id,theatre_id,theatres!inner(name)")
           .in("id", tsIds);
+        if (tsErr) throw tsErr;
         for (const r of (ts ?? []) as Array<{ id: string; theatres: { name: string } }>) {
           theatreById.set(r.id, r.theatres.name);
         }
         // Exclude sessions that also have a consultant or SAS doctor assigned —
         // those trainees are working alongside a senior career-grade doctor,
         // so they aren't truly solo / unsupervised.
-        const { data: coAssigns } = await supabase
+        const { data: coAssigns, error: coErr } = await supabase
           .from("rota_assignments")
           .select("theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
           .eq("session_date", today)
           .eq("duty_type", "theatre")
           .in("theatre_session_id", tsIds)
           .in("profiles.grade", ["consultant", "sas"]);
+        if (coErr) throw coErr;
         for (const r of (coAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
           if (r.theatre_session_id) consultantSessionIds.add(r.theatre_session_id);
         }
@@ -153,7 +156,7 @@ export function SummaryDashboard() {
     },
   );
 
-  const { data: listCoverage, isLoading: cLoading } = useQuery({
+  const { data: listCoverage, isLoading: cLoading, error: cLoadingErr, refetch: cLoadingRetry } = useQuery({
     queryKey: ["summary-list-coverage", today, in6],
     queryFn: () => computeListCoverage(today, in6),
   });
@@ -162,7 +165,7 @@ export function SummaryDashboard() {
   // not on approved leave, and not on an LTFT contractual day off. SPA/admin
   // (and every other duty_type) counts as "scheduled", so those people are
   // intentionally excluded from these lists.
-  const { data: notWorking, isLoading: nwLoading } = useQuery({
+  const { data: notWorking, isLoading: nwLoading, error: nwLoadingErr, refetch: nwLoadingRetry } = useQuery({
     queryKey: ["summary-not-working-today", today],
     queryFn: async () => {
       const [staffRes, assignRes, leaveRes] = await Promise.all([
@@ -249,6 +252,8 @@ export function SummaryDashboard() {
             <CardContent>
               {rLoading ? (
                 <PageLoading />
+              ) : rLoadingErr && !robustness ? (
+                <QueryErrorNotice error={rLoadingErr} what="the 7-day robustness check" onRetry={() => void rLoadingRetry()} />
               ) : days.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No weekdays in the next 7 days.</div>
               ) : (
@@ -337,6 +342,8 @@ export function SummaryDashboard() {
             <CardContent className="space-y-2">
               {lLoading ? (
                 <PageLoading />
+              ) : lLoadingErr && !leaveToday ? (
+                <QueryErrorNotice error={lLoadingErr} what="today's leave" onRetry={() => void lLoadingRetry()} />
               ) : leaveByGrade.consultants.total === 0 ? (
                 <div className="text-sm text-muted-foreground">No consultants on leave today.</div>
               ) : (
@@ -361,6 +368,8 @@ export function SummaryDashboard() {
             <CardContent className="space-y-2">
               {lLoading ? (
                 <PageLoading />
+              ) : lLoadingErr && !leaveToday ? (
+                <QueryErrorNotice error={lLoadingErr} what="today's leave" onRetry={() => void lLoadingRetry()} />
               ) : leaveByGrade.trainees.total === 0 ? (
                 <div className="text-sm text-muted-foreground">No trainees on leave today.</div>
               ) : (
@@ -385,6 +394,8 @@ export function SummaryDashboard() {
             <CardContent className="space-y-2">
               {sLoading ? (
                 <PageLoading />
+              ) : sLoadingErr && !soloToday ? (
+                <QueryErrorNotice error={sLoadingErr} what="solo trainees" onRetry={() => void sLoadingRetry()} />
               ) : (soloToday?.length ?? 0) === 0 ? (
                 <div className="text-sm text-muted-foreground">No solo trainees today.</div>
               ) : (
@@ -412,6 +423,8 @@ export function SummaryDashboard() {
             title="Consultants not scheduled today"
             tone="text-success"
             loading={nwLoading}
+            error={nwLoadingErr && !notWorking ? nwLoadingErr : null}
+            onRetry={() => void nwLoadingRetry()}
             entries={notWorking?.consultants ?? []}
             today={today}
             showLevel={false}
@@ -420,6 +433,8 @@ export function SummaryDashboard() {
             title="SAS not scheduled today"
             tone="text-indigo-600"
             loading={nwLoading}
+            error={nwLoadingErr && !notWorking ? nwLoadingErr : null}
+            onRetry={() => void nwLoadingRetry()}
             entries={notWorking?.sas ?? []}
             today={today}
             showLevel={false}
@@ -428,6 +443,8 @@ export function SummaryDashboard() {
             title="Trainees not scheduled today"
             tone="text-fuchsia-600"
             loading={nwLoading}
+            error={nwLoadingErr && !notWorking ? nwLoadingErr : null}
+            onRetry={() => void nwLoadingRetry()}
             entries={notWorking?.trainees ?? []}
             today={today}
             showLevel
@@ -448,6 +465,8 @@ export function SummaryDashboard() {
           <CardContent>
             {cLoading ? (
               <PageLoading />
+            ) : cLoadingErr && !listCoverage ? (
+              <QueryErrorNotice error={cLoadingErr} what="list coverage" onRetry={() => void cLoadingRetry()} />
             ) : (listCoverage?.length ?? 0) === 0 ? (
               <div className="text-sm text-muted-foreground">No data for the next 7 days.</div>
             ) : (
@@ -660,6 +679,8 @@ function NotScheduledCard({
   title: string;
   tone: string;
   loading: boolean;
+  error?: unknown;
+  onRetry?: () => void;
   entries: Array<{ id: string; name: string; trainingLevel: string | null }>;
   today: string;
   showLevel: boolean;
@@ -679,6 +700,8 @@ function NotScheduledCard({
       <CardContent className="space-y-2">
         {loading ? (
           <PageLoading />
+        ) : error ? (
+          <QueryErrorNotice error={error} what="today's schedule" onRetry={onRetry} />
         ) : entries.length === 0 ? (
           <div className="text-sm text-muted-foreground">Everyone is scheduled today.</div>
         ) : (
