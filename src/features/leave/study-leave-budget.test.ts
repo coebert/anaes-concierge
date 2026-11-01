@@ -156,6 +156,9 @@ describe("previewAfterDecision", () => {
     pendingGbp: 400,
     remainingGbp: 150,
     crossYearCostRequestIds: [] as string[],
+    unallocatedCosts: [],
+    unallocatedGbp: 0,
+    balanceProvisional: false,
   };
 
   it("approving adds days and £ to taken/spent", () => {

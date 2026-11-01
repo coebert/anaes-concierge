@@ -82,12 +82,27 @@ export function StudyLeaveBudgetCard({
           />
         </div>
 
-        {base.crossYearCostRequestIds.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {base.crossYearCostRequestIds.length} study request(s) with a course cost span two leave
-            years. Their days are split by date, but the £ cost is not split — it is counted only in
-            the year the course starts. Check these manually if the cost should be shared.
-          </p>
+        {base.balanceProvisional && (
+          <div
+            role="status"
+            className="rounded-md border border-border bg-background p-2 text-xs text-muted-foreground"
+          >
+            <p className="font-medium text-foreground">
+              £ balance is provisional: {gbp.format(base.unallocatedGbp)} awaiting manual allocation
+            </p>
+            <p>
+              {base.unallocatedCosts.length} study course(s) span two leave years. Their days are
+              split by date, but their cost is not charged to either year until it is allocated
+              manually, so the remaining £ above is not a final figure.
+            </p>
+            <ul className="mt-1 list-disc pl-4">
+              {base.unallocatedCosts.map((u) => (
+                <li key={u.id}>
+                  {gbp.format(u.costGbp)} ({u.status})
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {(overDays || overBudget) && (
