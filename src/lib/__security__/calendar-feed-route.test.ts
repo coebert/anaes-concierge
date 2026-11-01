@@ -36,7 +36,7 @@ const TOKEN = "a".repeat(64);
 async function call() {
   const { Route } = await import("@/routes/api/public/calendar/$token");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (Route as Dyn).options.server.handlers.GET({
+  return (Route as unknown as Dyn).options.server.handlers.GET({
     params: { token: TOKEN },
   }) as Promise<Response>;
 }

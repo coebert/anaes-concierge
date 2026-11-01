@@ -276,7 +276,7 @@ afterAll(() => vi.useRealTimers());
 
 async function invokeChat(userText: string): Promise<void> {
   const mod = await import("./chat");
-  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
@@ -342,8 +342,8 @@ describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota 
         status: "submitted",
         category: "rest",
       });
-      expect((active.currentPattern as Dyn).exceptions).toHaveLength(1);
-      expect((active.currentPattern as Dyn).exceptions[0].id).toBe("ex-1");
+      expect((active.currentPattern as unknown as Dyn).exceptions).toHaveLength(1);
+      expect((active.currentPattern as unknown as Dyn).exceptions[0].id).toBe("ex-1");
 
       // Run B — same report, withdrawn.
       exceptionReportsFixture = [
@@ -363,7 +363,7 @@ describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota 
       const withdrawnAssignment = annotatedAssignment(withdrawn.upcomingRota);
       expect(withdrawnAssignment).toBeDefined();
       expect(withdrawnAssignment.exceptions).toEqual([]);
-      expect((withdrawn.currentPattern as Dyn).exceptions).toEqual([]);
+      expect((withdrawn.currentPattern as unknown as Dyn).exceptions).toEqual([]);
 
       // Leave summary does not read exceptions and must be unchanged.
       expect(withdrawn.leaveSummary).toEqual(active.leaveSummary);
@@ -388,12 +388,12 @@ describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota 
       ];
       const active = await runAndCapture();
       expect(annotatedAssignment(active.upcomingRota).exceptions).toHaveLength(1);
-      expect((active.currentPattern as Dyn).exceptions).toHaveLength(1);
+      expect((active.currentPattern as unknown as Dyn).exceptions).toHaveLength(1);
 
       exceptionReportsFixture = [];
       const gone = await runAndCapture();
       expect(annotatedAssignment(gone.upcomingRota).exceptions).toEqual([]);
-      expect((gone.currentPattern as Dyn).exceptions).toEqual([]);
+      expect((gone.currentPattern as unknown as Dyn).exceptions).toEqual([]);
       expect(gone.leaveSummary).toEqual(active.leaveSummary);
     },
   );

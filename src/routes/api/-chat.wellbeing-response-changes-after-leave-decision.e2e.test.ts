@@ -207,7 +207,7 @@ async function askChat(): Promise<{
   };
 }> {
   const mod = await import("./chat");
-  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
@@ -229,7 +229,7 @@ async function askChat(): Promise<{
   });
   const res = await handler({ request: req });
   expect(res.status).toBe(200);
-  return (await res.json()) as Dyn;
+  return (await res.json()) as unknown as Dyn;
 }
 
 /** Three annual-leave rows — three fills the driver's cap so the change is

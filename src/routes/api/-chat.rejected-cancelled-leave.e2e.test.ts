@@ -364,7 +364,7 @@ type PatternPayload = {
 
 async function invokePatternTool(): Promise<PatternPayload> {
   const mod = await import("./chat");
-  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {

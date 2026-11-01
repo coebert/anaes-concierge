@@ -299,7 +299,7 @@ afterAll(() => vi.useRealTimers());
 async function invokePost(body: unknown): Promise<Response> {
   // Import lazily so the vi.mock hoists apply before route module load.
   const mod = await import("./chat");
-  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
@@ -374,7 +374,7 @@ describe("/api/chat e2e — get_staff_current_pattern with overlapping leave", (
 
   it("rejects unauthenticated requests", async () => {
     const mod = await import("./chat");
-    const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
+    const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
       request: Request;
     }) => Promise<Response>;
     const req = new Request("http://x/api/chat", {
