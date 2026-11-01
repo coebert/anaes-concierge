@@ -120,3 +120,16 @@ SELECT t('quota: zero window rejected (no divide-by-zero)', NULL, $q$SELECT take
 SELECT t('quota: malformed spec rejected', NULL, $q$SELECT take_request_quota(ARRAY['bad key with spaces|60|1|'],0)$q$, 'denied');
 SELECT t('quota: negative bytes rejected', NULL, $q$SELECT take_request_quota(ARRAY['n:a|60|5|'],-1)$q$, 'denied');
 SELECT t('quota: zero max rejected', NULL, $q$SELECT take_request_quota(ARRAY['m:a|60|0|'],0)$q$, 'denied');
+
+-- 9. View paths + profile ciphertext (live profiles_v / leave_requests_v shapes)
+SELECT t('profile-view: staff sets own calendar token via profiles_v', :S, $q$UPDATE profiles_v SET calendar_feed_token='attacker-chosen-token-0000000000000000' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
+SELECT t('profile-view: staff changes own email via profiles_v', :S, $q$UPDATE profiles_v SET email='victim@example.invalid' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
+SELECT t('profile-view: staff renames self via profiles_v', :S, $q$UPDATE profiles_v SET full_name='Dr S via view' WHERE id='00000000-0000-0000-0000-000000000051'; SELECT assert_true((SELECT full_name FROM profiles WHERE id='00000000-0000-0000-0000-000000000051')='Dr S via view','renamed')$q$, 'allowed');
+SELECT t('profile-enc: staff writes email_enc directly', :S, $q$UPDATE profiles SET email_enc=convert_to('ENC:victim','UTF8') WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
+SELECT t('profile-enc: staff writes email_hash directly', :S, $q$UPDATE profiles SET email_hash='\x00' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
+SELECT t('profile-enc: staff writes gmc_number_enc directly', :S, $q$UPDATE profiles SET gmc_number_enc='\x00' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
+SELECT t('profile: staff clears own calendar token', :S, $q$UPDATE profiles SET calendar_feed_token=NULL WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
+SELECT t('leave-view: staff inserts pre-approved leave via leave_requests_v', :S, $q$INSERT INTO leave_requests_v(staff_id,start_date,end_date,status) VALUES ('00000000-0000-0000-0000-000000000051','2027-07-01','2027-07-02','approved')$q$, 'denied');
+SELECT t('leave-view: staff inserts forged decision via leave_requests_v', :S, $q$INSERT INTO leave_requests_v(staff_id,start_date,end_date,decided_by,decided_at,decision_notes) VALUES ('00000000-0000-0000-0000-000000000051','2027-07-01','2027-07-02','00000000-0000-0000-0000-00000000000a',now(),'ok')$q$, 'denied');
+SELECT t('leave-view: staff inserts own pending via view; reason encrypted', :S, $q$INSERT INTO leave_requests_v(id,staff_id,start_date,end_date,reason) VALUES ('10000000-0000-0000-0000-0000000000ec','00000000-0000-0000-0000-000000000051','2027-07-01','2027-07-02','via view'); SELECT assert_true((SELECT convert_from(reason_enc,'UTF8') FROM leave_requests WHERE id='10000000-0000-0000-0000-0000000000ec')='ENC:via view','enc')$q$, 'allowed');
+SELECT t('leave-enc: staff edits pending reason AND forges ciphertext in same update', :S, $q$UPDATE leave_requests SET reason='legit', decision_notes_enc=convert_to('ENC:approved','UTF8') WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');

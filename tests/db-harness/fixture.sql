@@ -142,3 +142,33 @@ CREATE TABLE pulse_survey_responses (id uuid PRIMARY KEY DEFAULT gen_random_uuid
 INSERT INTO icu_detection_matches (staff_id, session_date, matched_field, matched_value, person_label, source_row) VALUES ('00000000-0000-0000-0000-000000000051','2026-10-01','place','ICU raw','Dr Raw','{"raw":"payload"}');
 INSERT INTO clwrota_sync_state VALUES (1, now(), 'ok', 'err', 'https://example.invalid/rota?key=SECRET', 'https://example.invalid/leave', 'https://example.invalid/staff');
 INSERT INTO rpc_access_alerts (rpc_name, details) VALUES ('x', '{"ip":"1.2.3.4"}');
+-- Live profile encryption trigger + security_invoker profiles_v with the live
+-- (non-definer) INSTEAD OF UPDATE body; leave_requests_v INSTEAD OF INSERT.
+CREATE FUNCTION _sync_profiles_encryption() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR NEW.email IS DISTINCT FROM OLD.email THEN NEW.email_enc := public.encrypt_text(NEW.email); END IF;
+  IF TG_OP = 'INSERT' OR NEW.gmc_number IS DISTINCT FROM OLD.gmc_number THEN NEW.gmc_number_enc := public.encrypt_text(NEW.gmc_number); END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER profiles_sync_encryption BEFORE INSERT OR UPDATE OF email, gmc_number ON profiles FOR EACH ROW EXECUTE FUNCTION _sync_profiles_encryption();
+UPDATE profiles SET email = 'synthetic-' || id || '@example.invalid';
+CREATE VIEW profiles_v WITH (security_invoker = true) AS SELECT id, email, full_name, grade, training_level, gmc_number, start_date, active, clwrota_external_id, created_at, updated_at, rotation_end_date, ltft_days_off, left_at, calendar_feed_token, email_hash FROM profiles;
+GRANT SELECT, INSERT, UPDATE, DELETE ON profiles_v TO authenticated;
+CREATE FUNCTION _profiles_v_update() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  UPDATE public.profiles SET email = NEW.email, full_name = NEW.full_name, grade = NEW.grade, training_level = NEW.training_level,
+    gmc_number = NEW.gmc_number, start_date = NEW.start_date, active = NEW.active, clwrota_external_id = NEW.clwrota_external_id,
+    rotation_end_date = NEW.rotation_end_date, ltft_days_off = NEW.ltft_days_off, left_at = NEW.left_at,
+    calendar_feed_token = NEW.calendar_feed_token, updated_at = now()
+  WHERE id = OLD.id;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER profiles_v_update INSTEAD OF UPDATE ON profiles_v FOR EACH ROW EXECUTE FUNCTION _profiles_v_update();
+CREATE FUNCTION _leave_requests_v_insert() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.leave_requests (id, staff_id, type, start_date, end_date, half_day_start, half_day_end, reason, status, decided_by, decided_at, decision_notes, conflict_notes, reserve_listed_at, clwrota_external_id)
+  VALUES (COALESCE(NEW.id, gen_random_uuid()), NEW.staff_id, NEW.type, NEW.start_date, NEW.end_date, NEW.half_day_start, NEW.half_day_end,
+    NEW.reason, COALESCE(NEW.status, 'pending'), NEW.decided_by, NEW.decided_at, NEW.decision_notes, NEW.conflict_notes, NEW.reserve_listed_at, NEW.clwrota_external_id);
+  RETURN NEW;
+END $$;
+CREATE TRIGGER leave_requests_v_insert INSTEAD OF INSERT ON leave_requests_v FOR EACH ROW EXECUTE FUNCTION _leave_requests_v_insert();
