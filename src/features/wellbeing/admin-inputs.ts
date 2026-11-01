@@ -102,7 +102,7 @@ export function selectAdminSignalInputs(args: {
     (l) =>
       l.type === "sick" &&
       l.status === "approved" &&
-      day(l.end_date) < overdueCutoff &&
+      day(l.end_date) <= overdueCutoff &&
       !completedRtw.has(l.id),
   ).length;
 
