@@ -29,6 +29,13 @@
       "when": 1793539916986,
       "tag": "0003_security_followup_guards_quotas",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793541570634,
+      "tag": "0004_harden_request_quota_inputs",
+      "breakpoints": true
     }
   ]
 }
