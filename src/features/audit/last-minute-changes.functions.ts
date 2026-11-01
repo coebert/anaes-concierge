@@ -167,26 +167,21 @@ const TheatreSessionRowSchema = z.object({
 type TheatreSessionRow = z.infer<typeof TheatreSessionRowSchema>;
 
 /**
- * Validate an array of rows row-by-row. Rows failing validation are dropped
- * and logged; this guarantees a typed array out and avoids crashing the audit
- * when one bad row arrives from Postgrest.
+ * Validate every row. Any malformed row or non-array result THROWS: the audit
+ * totals must never silently lose rows.
  */
 function parseRows<T>(schema: z.ZodType<T>, raw: unknown, label: string): T[] {
-  if (!Array.isArray(raw)) {
-    if (raw != null)
-      console.warn(`[last-minute-changes] ${label}: expected array, got`, typeof raw);
-    return [];
-  }
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) throw new Error(`Last-minute changes: ${label} returned an unexpected shape.`);
   const out: T[] = [];
-  let dropped = 0;
+  let bad = 0;
   for (const item of raw) {
     const result = schema.safeParse(item);
     if (result.success) out.push(result.data);
-    else dropped += 1;
+    else bad += 1;
   }
-  if (dropped > 0) {
-    console.warn(`[last-minute-changes] ${label}: dropped ${dropped}/${raw.length} invalid rows`);
-  }
+  if (bad > 0)
+    throw new Error(`Last-minute changes: ${bad}/${raw.length} ${label} rows were malformed. Totals withheld.`);
   return out;
 }
 
