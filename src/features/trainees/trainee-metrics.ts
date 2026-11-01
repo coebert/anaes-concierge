@@ -35,7 +35,12 @@ export type TraineeMetrics = {
   supervisedLists: number;
   totalClinical: number;
   onCallLists: number;
+  /** On-call sessions ÷ all rostered sessions (same unit), or null when no sessions. */
   onCallPct: number | null;
+  /** Basis of onCallPct, for UI labelling. */
+  onCallPctBasis: "sessions";
+  onCallSessions: number;
+  sessionDenominator: number;
   icuLists: number;
   obstetricsLists: number;
   totalAssignments: number;
@@ -182,10 +187,25 @@ export function computeTraineeMetrics(
     (a) => a.duty_type != null && OBSTETRICS_DUTY_TYPES.has(a.duty_type),
   ).length;
   const totalAssignments = assignments.length;
-  const onCallPct = totalAssignments > 0
-    ? Math.round((onCallLists / totalAssignments) * 1000) / 10
+  // On-call share is measured in ONE unit — rostered sessions — for both
+  // numerator and denominator. (Previously ICU collapsed-day counts were
+  // divided by raw session rows, so an all-ICU AM+PM+eve day read 33.3%.)
+  // Exact duplicate rows (same date + session + duty) are counted once.
+  const sessionKey = (a: MetricAssignment, i: number) =>
+    a.session_date && (a as { session?: string | null }).session
+      ? `${a.session_date}|${(a as { session?: string | null }).session}|${a.duty_type ?? ""}`
+      : `__row-${i}`;
+  const uniqueSessions = new Map<string, MetricAssignment>();
+  assignments.forEach((a, i) => uniqueSessions.set(sessionKey(a, i), a));
+  const sessionDenominator = uniqueSessions.size;
+  const onCallSessions = [...uniqueSessions.values()].filter(
+    (a) => a.duty_type != null && ONCALL_DUTY_TYPES.has(a.duty_type),
+  ).length;
+  // No sessions → unavailable (null), never a made-up 0%.
+  const onCallPct = sessionDenominator > 0
+    ? Math.round((onCallSessions / sessionDenominator) * 1000) / 10
     : null;
-
+  void onCallLists;
 
   // Only real lists (matched to a theatre_session) count toward the clinical
   // specialty breakdown — otherwise unmatched "solo" default rows pollute it
@@ -303,6 +323,9 @@ export function computeTraineeMetrics(
     totalClinical,
     onCallLists,
     onCallPct,
+    onCallPctBasis: "sessions",
+    onCallSessions,
+    sessionDenominator,
     icuLists,
     obstetricsLists,
     totalAssignments,
