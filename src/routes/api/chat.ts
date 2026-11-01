@@ -559,39 +559,55 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           .neq("status", "withdrawn")
           .gte("event_date", from)
           .lte("event_date", to);
+        type TsRow = {
+          id: string;
+          theatre_id: string | null;
+          specialty_id: string | null;
+          surgical_consultant: string | null;
+        };
+        type NameRow = { id: string; name: string };
+        type SupRow = { id: string; full_name: string | null };
+        type ExcRow = {
+          id: string;
+          event_date: string;
+          event_session: string | null;
+          category: string;
+          status: string;
+          immediate_safety_concern: boolean | null;
+        };
         const [{ data: ts }, { data: sups }] = await Promise.all([
           tsIds.length
             ? admin
                 .from("theatre_sessions")
                 .select("id,theatre_id,specialty_id,surgical_consultant")
                 .in("id", tsIds)
-            : Promise.resolve({ data: [] as any[] }),
+            : Promise.resolve({ data: [] as TsRow[] }),
           supIds.length
             ? admin.from("profiles").select("id,full_name").in("id", supIds)
-            : Promise.resolve({ data: [] as any[] }),
+            : Promise.resolve({ data: [] as SupRow[] }),
         ]);
         const theatreIds = Array.from(
-          new Set((ts ?? []).map((t: any) => t.theatre_id).filter(Boolean)),
+          new Set(((ts ?? []) as TsRow[]).map((t) => t.theatre_id).filter(Boolean)),
         );
         const specIds = Array.from(
-          new Set((ts ?? []).map((t: any) => t.specialty_id).filter(Boolean)),
+          new Set(((ts ?? []) as TsRow[]).map((t) => t.specialty_id).filter(Boolean)),
         );
         const [{ data: theatres }, { data: specs }] = await Promise.all([
           theatreIds.length
-            ? admin.from("theatres").select("id,name").in("id", theatreIds)
-            : Promise.resolve({ data: [] as any[] }),
+            ? admin.from("theatres").select("id,name").in("id", theatreIds as string[])
+            : Promise.resolve({ data: [] as NameRow[] }),
           specIds.length
-            ? admin.from("specialties").select("id,name").in("id", specIds)
-            : Promise.resolve({ data: [] as any[] }),
+            ? admin.from("specialties").select("id,name").in("id", specIds as string[])
+            : Promise.resolve({ data: [] as NameRow[] }),
         ]);
-        const tsMap = new Map((ts ?? []).map((t: any) => [t.id, t]));
-        const theatreMap = new Map((theatres ?? []).map((t: any) => [t.id, t.name]));
-        const specMap = new Map((specs ?? []).map((s: any) => [s.id, s.name]));
-        const supMap = new Map((sups ?? []).map((s: any) => [s.id, s.full_name]));
+        const tsMap = new Map(((ts ?? []) as TsRow[]).map((t) => [t.id, t]));
+        const theatreMap = new Map(((theatres ?? []) as NameRow[]).map((t) => [t.id, t.name]));
+        const specMap = new Map(((specs ?? []) as NameRow[]).map((s) => [s.id, s.name]));
+        const supMap = new Map(((sups ?? []) as SupRow[]).map((s) => [s.id, s.full_name]));
         // Index active exceptions by date+session, and also date-only for
         // reports raised without a session half.
-        const excByKey = new Map<string, any[]>();
-        for (const e of (excRows ?? []) as any[]) {
+        const excByKey = new Map<string, ExcRow[]>();
+        for (const e of (excRows ?? []) as ExcRow[]) {
           const keys = [`${e.event_date}::${e.event_session ?? ""}`, `${e.event_date}::`];
           for (const k of keys) {
             const arr = excByKey.get(k) ?? [];
@@ -603,7 +619,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           range: { from, to },
           assignments: (data ?? []).map((a) => {
             const ts = a.theatre_session_id ? tsMap.get(a.theatre_session_id) : null;
-            const excMatches = new Map<string, any>();
+            const excMatches = new Map<string, ExcRow>();
             for (const k of [`${a.session_date}::${a.session ?? ""}`, `${a.session_date}::`]) {
               for (const e of excByKey.get(k) ?? []) excMatches.set(e.id, e);
             }
@@ -746,7 +762,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 
           return {
             ...merged,
-            exceptions: ((excRows ?? []) as any[]).map((e) => ({
+            exceptions: ((excRows ?? []) as ExcRow[]).map((e) => ({
               id: e.id,
               category: e.category,
               status: e.status,
