@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import { calendarLeaveLabel } from "@/lib/calendar-feed-privacy";
 
 // Apple Calendar / iCal subscription feed.
 // URL: /api/public/calendar/<token>.ics
@@ -119,7 +120,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           sb
             .from("leave_requests")
             .select(
-              "id, type, status, start_date, end_date, half_day_start, half_day_end, reason, updated_at",
+              "id, type, status, start_date, end_date, half_day_start, half_day_end, updated_at",
             )
             .eq("staff_id", staffId)
             .eq("status", "approved")
@@ -265,7 +266,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           const updatedDate = l.updated_at ? new Date(l.updated_at) : new Date();
           const updated = fmtUtc(updatedDate);
           const sequence = Math.floor(updatedDate.getTime() / 1000);
-          const typeLabel = TITLE_CASE(String(l.type ?? "leave"));
+          const typeLabel = calendarLeaveLabel(l.type);
           lines.push("BEGIN:VEVENT");
           lines.push(`UID:${uid}`);
           lines.push(`DTSTAMP:${dtstamp}`);
@@ -273,8 +274,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           lines.push(`SEQUENCE:${sequence}`);
           lines.push(`DTSTART;VALUE=DATE:${fmtDate(l.start_date)}`);
           lines.push(`DTEND;VALUE=DATE:${fmtDatePlus(l.end_date, 1)}`);
-          lines.push(fold(`SUMMARY:${escapeText(typeLabel + " (approved)")}`));
-          if (l.reason) lines.push(fold(`DESCRIPTION:${escapeText(l.reason)}`));
+          lines.push(fold(`SUMMARY:${escapeText(typeLabel)}`));
           lines.push("TRANSP:TRANSPARENT");
           lines.push("END:VEVENT");
         }
@@ -286,8 +286,10 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           status: 200,
           headers: {
             "Content-Type": "text/calendar; charset=utf-8",
-            // Short edge cache so a save in the app is reflected within ~1 min.
-            "Cache-Control": "public, max-age=60, must-revalidate",
+            // The URL is a bearer credential: never let shared caches store it.
+            "Cache-Control": "private, no-store, max-age=0",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
             "Content-Disposition": `inline; filename="rota.ics"`,
           },
         });

@@ -19,19 +19,10 @@ import {
 } from "lucide-react";
 import { formatDateTimeGB } from "@/lib/utils";
 
-interface HealthCheck {
-  name: string;
-  status: "ok" | "warning" | "error";
-  latencyMs?: number;
-  message?: string;
-}
+import { parseHealthResponse, type ParsedHealth, type ParsedHealthCheck } from "@/lib/health-response";
 
-interface HealthResponse {
-  status: "healthy" | "degraded" | "unhealthy";
-  timestamp: string;
-  version: string;
-  checks: HealthCheck[];
-}
+type HealthCheck = ParsedHealthCheck;
+type HealthResponse = ParsedHealth;
 
 export const Route = createFileRoute("/health")({
   head: () => ({
@@ -53,12 +44,13 @@ function HealthPage() {
   } = useQuery<HealthResponse>({
     queryKey: ["health"],
     queryFn: async () => {
-      const res = await fetch("/api/public/health");
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Health API returned ${res.status}: ${text}`);
+      const res = await fetch("/api/public/health", { cache: "no-store" });
+      const text = await res.text();
+      const parsed = parseHealthResponse(res.status, text);
+      if (parsed.status === "unknown" && !res.ok) {
+        throw new Error(`Health API returned ${res.status}`);
       }
-      return res.json();
+      return parsed;
     },
     refetchInterval: 30000,
     staleTime: 5000,
@@ -101,28 +93,45 @@ function HealthPage() {
           <LoadingSkeleton />
         ) : error ? (
           <ErrorState error={error as Error} onRetry={() => refetch()} />
-        ) : health ? (
+        ) : health && health.checks === null ? (
+          <Card>
+            <CardContent className="space-y-2 p-6 text-sm">
+              <p className="font-medium">
+                {health.status === "alive"
+                  ? "The app is up and responding."
+                  : `The app reported: ${health.status} (HTTP ${health.httpStatus}).`}
+              </p>
+              <p className="text-muted-foreground">
+                Dependency checks (database, AI, CLWRota) were not run for this request.
+                Detailed readiness is only available to authorised monitoring.
+              </p>
+              {health.timestamp && (
+                <p className="text-xs text-muted-foreground">Checked: {formatDateTimeGB(health.timestamp)}</p>
+              )}
+            </CardContent>
+          </Card>
+        ) : health && health.checks ? (
           <div className="space-y-6">
             {/* Summary bar */}
             <div className="grid gap-4 sm:grid-cols-3">
               <SummaryCard
                 icon={CheckCircle2}
                 label="Healthy"
-                value={health.checks.filter((c) => c.status === "ok").length}
+                value={(health.checks ?? []).filter((c) => c.status === "ok").length}
                 color="text-success"
                 bg="bg-emerald-50"
               />
               <SummaryCard
                 icon={AlertCircle}
                 label="Warnings"
-                value={health.checks.filter((c) => c.status === "warning").length}
+                value={(health.checks ?? []).filter((c) => c.status === "warning").length}
                 color="text-warning"
                 bg="bg-amber-50"
               />
               <SummaryCard
                 icon={XCircle}
                 label="Errors"
-                value={health.checks.filter((c) => c.status === "error").length}
+                value={(health.checks ?? []).filter((c) => c.status === "error").length}
                 color="text-red-600"
                 bg="bg-red-50"
               />
@@ -130,15 +139,15 @@ function HealthPage() {
 
             {/* Checks grid */}
             <div className="grid gap-4 sm:grid-cols-2">
-              {health.checks.map((check) => (
+              {(health.checks ?? []).map((check) => (
                 <CheckCard key={check.name} check={check} />
               ))}
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Checked: {formatDateTimeGB(health.timestamp)}</span>
-              <span>Version: {health.version}</span>
+              <span>Checked: {health.timestamp ? formatDateTimeGB(health.timestamp) : "—"}</span>
+              <span>Version: {health.version ?? "—"}</span>
             </div>
           </div>
         ) : null}
@@ -149,6 +158,8 @@ function HealthPage() {
 
 function OverallBadge({ status }: { status: HealthResponse["status"] }) {
   const variants: Record<string, { label: string; className: string }> = {
+    alive: { label: "Alive", className: "bg-success-muted text-success hover:bg-success-muted" },
+    unknown: { label: "Unknown", className: "bg-warning-muted text-warning hover:bg-warning-muted" },
     healthy: { label: "Healthy", className: "bg-success-muted text-success hover:bg-success-muted" },
     degraded: { label: "Degraded", className: "bg-warning-muted text-warning hover:bg-warning-muted" },
     unhealthy: { label: "Unhealthy", className: "bg-red-100 text-red-700 hover:bg-red-100" },
@@ -191,7 +202,7 @@ function CheckCard({ check }: { check: HealthCheck }) {
     warning: AlertCircle,
     error: XCircle,
   };
-  const Icon = iconMap[check.status];
+  const Icon = iconMap[check.status] ?? XCircle;
   const colorMap = {
     ok: "text-success",
     warning: "text-warning",

@@ -2,17 +2,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { validateJson } from "@/lib/json-validation";
+import { secretsMatch } from "@/lib/webhook-auth";
 
 const version = "1.0.0";
+const CHECK_TIMEOUT_MS = 4000;
+const DETAIL_CACHE_MS = 30_000;
 
-interface HealthResponse {
+export interface HealthResponse {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
   version: string;
   checks: HealthCheck[];
 }
 
-interface HealthCheck {
+export interface HealthCheck {
   name: string;
   status: "ok" | "warning" | "error";
   latencyMs?: number;
@@ -29,10 +32,7 @@ async function checkDatabase(): Promise<HealthCheck> {
   const started = Date.now();
   try {
     const admin = getAdminClient();
-    const { error } = await admin
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .limit(1);
+    const { error } = await admin.from("profiles").select("id").limit(1).abortSignal(AbortSignal.timeout(CHECK_TIMEOUT_MS));
     if (error) {
       console.error("[health] database check failed", error);
       return {
@@ -75,6 +75,7 @@ async function checkAiGateway(): Promise<HealthCheck> {
         "Lovable-API-Key": key,
         "X-Lovable-AIG-SDK": "vercel-ai-sdk",
       },
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     });
     if (!res.ok) {
       console.error("[health] AI gateway HTTP", res.status);
@@ -156,6 +157,8 @@ async function checkClwRotaConfig(): Promise<HealthCheck> {
     const res = await fetch(probeUrl, {
       method: "GET",
       headers: { "X-Auth": apiKey, Accept: "application/json" },
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      redirect: "manual",
     });
     if (!res.ok) {
       console.error("[health] CLWRota HTTP", res.status);
@@ -198,7 +201,11 @@ async function checkKeyTables(): Promise<HealthCheck> {
     ];
     const results = await Promise.all(
       tables.map(async (t) => {
-        const { error } = await admin.from(t).select("id", { count: "exact", head: true }).limit(1);
+        const { error } = await admin
+          .from(t)
+          .select("id")
+          .limit(1)
+          .abortSignal(AbortSignal.timeout(CHECK_TIMEOUT_MS));
         return { ok: !error };
       }),
     );
@@ -229,54 +236,53 @@ async function checkKeyTables(): Promise<HealthCheck> {
 }
 
 
-function timingSafeEqualStr(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+let cachedDetail: { at: number; promise: Promise<HealthCheck[]> } | null = null;
+
+/** Detailed readiness, deduplicated and cached so bursts don't fan out upstream. */
+function runDetailedChecks(): Promise<HealthCheck[]> {
+  const now = Date.now();
+  if (cachedDetail && now - cachedDetail.at < DETAIL_CACHE_MS) return cachedDetail.promise;
+  const promise = Promise.all([
+    checkDatabase(),
+    checkAiGateway(),
+    checkJsonValidation(),
+    checkClwRotaConfig(),
+    checkKeyTables(),
+  ]);
+  cachedDetail = { at: now, promise };
+  promise.catch(() => {
+    cachedDetail = null;
+  });
+  return promise;
+}
+
+export function summarise(checks: HealthCheck[]): HealthResponse["status"] {
+  if (checks.some((c) => c.status === "error")) return "unhealthy";
+  if (checks.some((c) => c.status === "warning")) return "degraded";
+  return "healthy";
+}
+
+export async function handleHealthRequest(request: Request): Promise<Response> {
+  const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" };
+  // Authorise BEFORE doing any dependency work. Anonymous callers get a cheap
+  // liveness answer that makes no database, AI or CLWRota calls and claims
+  // nothing about dependency readiness.
+  if (!secretsMatch(request.headers.get("x-health-secret"), process.env.HEALTH_DETAILS_SECRET)) {
+    return Response.json(
+      { status: "alive", scope: "liveness", timestamp: new Date().toISOString(), version },
+      { status: 200, headers },
+    );
+  }
+  const checks = await runDetailedChecks();
+  const status = summarise(checks);
+  const body: HealthResponse = { status, timestamp: new Date().toISOString(), version, checks };
+  return Response.json(body, { status: status === "unhealthy" ? 503 : 200, headers });
 }
 
 export const Route = createFileRoute("/api/public/health")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const checks = await Promise.all([
-          checkDatabase(),
-          checkAiGateway(),
-          checkJsonValidation(),
-          checkClwRotaConfig(),
-          checkKeyTables(),
-        ]);
-
-        const hasError = checks.some((c) => c.status === "error");
-        const hasWarning = checks.some((c) => c.status === "warning");
-        const status: HealthResponse["status"] = hasError
-          ? "unhealthy"
-          : hasWarning
-            ? "degraded"
-            : "healthy";
-
-        // Detailed per-check output (latencies, configured-or-not flags, upstream
-        // names) is only returned to trusted callers presenting the shared
-        // X-Health-Secret header. Anonymous callers get a minimal status only,
-        // so the endpoint can't be used to map infrastructure or detect missing
-        // secrets. When no secret is configured, default to minimal output.
-        const provided = request.headers.get("x-health-secret") ?? "";
-        const expected = process.env.HEALTH_DETAILS_SECRET ?? "";
-        const detailed = expected.length > 0 && timingSafeEqualStr(provided, expected);
-
-        const body: HealthResponse | { status: HealthResponse["status"]; timestamp: string } = detailed
-          ? { status, timestamp: new Date().toISOString(), version, checks }
-          : { status, timestamp: new Date().toISOString() };
-
-        return Response.json(body, {
-          status: status === "unhealthy" ? 503 : 200,
-          headers: {
-            "Cache-Control": "no-store",
-            "Content-Type": "application/json",
-          },
-        });
-      },
+      GET: async ({ request }) => handleHealthRequest(request),
     },
   },
 });

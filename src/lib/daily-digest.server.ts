@@ -7,6 +7,7 @@
 //     where the only row is non-clinical/leave, produce no notification.
 //   - One digest per person per day (deduplicated in `daily_digest_log`).
 import webpush from "web-push";
+import { clampPushPayload, isDeliverableSubscription } from "@/lib/push-endpoint";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 
@@ -119,7 +120,7 @@ export async function dispatchDailyDigests(options?: { date?: string; force?: bo
     .from("push_subscriptions")
     .select("id, user_id, endpoint, p256dh, auth");
   if (subsErr) throw subsErr;
-  const subs = (subsData ?? []) as SubscriptionRow[];
+  const subs = ((subsData ?? []) as SubscriptionRow[]).filter(isDeliverableSubscription);
   if (subs.length === 0)
     return { date, candidates: 0, sent: 0, skipped: 0, failed: 0, pruned: 0 };
 
@@ -230,10 +231,13 @@ export async function dispatchDailyDigests(options?: { date?: string; force?: bo
     let deliveredAny = false;
     for (const sub of subsByUser.get(staffId) ?? []) {
       try {
+        if (!isDeliverableSubscription(sub) || clampPushPayload(payload) === null) {
+          throw new Error("Refusing to send to an invalid push subscription or oversized payload");
+        }
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
-          { TTL: 60 * 60 * 8 },
+          { TTL: 60 * 60 * 8, timeout: 10_000 },
         );
         sent += 1;
         deliveredAny = true;

@@ -38,7 +38,7 @@ export const Route = createFileRoute(
   component: LastMinuteChangesPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-4 text-sm text-destructive">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
   notFoundComponent: () => <div className="p-4">Not found.</div>,
