@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { checkActiveMembership, membershipDenial } from "@/lib/app-membership";
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -89,26 +90,7 @@ function addDays(iso: string, n: number) {
   return d.toISOString().slice(0, 10);
 }
 
-async function isAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  return !!data;
-}
 
-async function isCoordinatorOrAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .in("role", ["admin", "rota_coordinator"]);
-  return (data ?? []).length > 0;
-}
 
 function buildAdminTools() {
   const admin = getAdminClient();
@@ -1013,6 +995,10 @@ export const Route = createFileRoute("/api/chat")({
       POST: async ({ request }) => {
         const userId = await getAuthenticatedUserId(request.headers.get("authorization"));
         if (!userId) return new Response("Unauthorized", { status: 401 });
+        // Active approved membership (fail closed) before ANY service-role
+        // read or privileged tool. A valid token alone is not membership.
+        const membership = await checkActiveMembership(getAdminClient(), userId);
+        if (!membership.ok) return membershipDenial(membership);
 
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) {
@@ -1111,8 +1097,9 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createLovableAiGatewayProvider(apiKey);
         const model = gateway("google/gemini-3-flash-preview");
 
-        const adminUser = await isAdmin(userId);
-        const canSeeColleagueNames = adminUser || (await isCoordinatorOrAdmin(userId));
+        // Roles come from the verified membership snapshot (same request).
+        const adminUser = membership.roles.has("admin");
+        const canSeeColleagueNames = adminUser || membership.roles.has("rota_coordinator");
         const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
         const privacyPreamble = canSeeColleagueNames
           ? ""
