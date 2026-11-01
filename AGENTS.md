@@ -9,3 +9,5 @@
 - The audit SQL role reads only columns in the reviewed `audit_ro.column_allowlist`; never switch back to a computed denylist.
 - Auth identity changes are applied synchronously (reset + loading gate + cache purge) before the new session is published; only network loads are deferred.
 - Non-registry dependencies must be listed with exact resolution+integrity in `scripts/supply-chain-unscanned.json` or the scanner fails.
+- Wellbeing scores below the coverage gate (`MIN_ASSESSABLE_SESSIONS`) are `unknown`, never a good score; admin retention inputs go through `src/features/wellbeing/admin-inputs.ts` with an explicit as-of date — absent or future data must not read as good wellbeing.
+- The retention "attrition" rubric is an unvalidated signal score shown as x/100 with the band picked from the displayed integer; never present it as a prediction or probability.

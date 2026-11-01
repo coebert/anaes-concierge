@@ -9,3 +9,6 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] 191 pre-existing lint errors (mostly `any`)
 - [ ] esbuild (drizzle-kit) + minimatch (eslint) moderate, katex low — blocked on upstream pins
 - [ ] Confirm cross-year study £ attribution rule — waiting on department
+- [ ] Wellbeing: department sign-off on coverage gate (10 sessions) — awaiting user
+- [ ] Wellbeing: per-person pulse trend not wired (shown "not assessed") — needs survey design decision
+- [ ] Review 16 SECURITY DEFINER linter warnings individually; deep code scan is stale (cannot trigger here)
