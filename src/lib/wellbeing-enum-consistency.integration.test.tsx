@@ -55,6 +55,7 @@ type LeaveRow = {
 };
 
 const state = vi.hoisted(() => ({
+  assignmentRows: [] as Array<{ staff_id: string; session_date: string; session: string }>,
   leaveRows: [] as Array<{
     id: string;
     staff_id: string;
