@@ -355,19 +355,20 @@ function RotaGridPage() {
         description={`Week of ${fmt(days[0])} — click any cell to set the surgical list and assign anaesthetists.`}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-              <ChevronLeft className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))} aria-label="Previous week">
+              <ChevronLeft className="h-4 w-4" aria-hidden />
             </Button>
             <Input
               type="date" value={iso(weekStart)}
+              aria-label="Jump to week containing date"
               onChange={(e) => {
                 const d = parseDateLocal(e.target.value);
                 if (d) setWeekStart(startOfWeek(d));
               }}
               className="h-8 w-40"
             />
-            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))} aria-label="Next week">
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
               This week
