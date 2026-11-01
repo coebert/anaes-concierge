@@ -224,7 +224,7 @@ export async function dispatchPendingPushNotifications(): Promise<{
       try {
         if (!isDeliverableSubscription(sub) || clampPushPayload(payload) === null) {
           throw new Error("Refusing to send to an invalid push subscription or oversized payload");
-          }
+        }
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
@@ -469,7 +469,7 @@ export async function dispatchPendingLeavePushNotifications(): Promise<{
       try {
         if (!isDeliverableSubscription(sub) || clampPushPayload(payload) === null) {
           throw new Error("Refusing to send to an invalid push subscription or oversized payload");
-          }
+        }
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,

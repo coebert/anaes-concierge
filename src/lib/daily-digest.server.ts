@@ -233,7 +233,7 @@ export async function dispatchDailyDigests(options?: { date?: string; force?: bo
       try {
         if (!isDeliverableSubscription(sub) || clampPushPayload(payload) === null) {
           throw new Error("Refusing to send to an invalid push subscription or oversized payload");
-          }
+        }
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
