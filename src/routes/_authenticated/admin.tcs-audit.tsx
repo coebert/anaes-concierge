@@ -78,7 +78,7 @@ function TcsAuditPage() {
           ? null
           : new Date(today.getTime() - parseInt(lookback) * 86400_000).toISOString().slice(0, 10);
 
-      const { data: trainees, error: e1 } = await pagedRows("profiles", "id, full_name, training_level, start_date, rotation_end_date, ltft_days_off", { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["full_name", "id"] });
+      const { data: trainees, error: e1 } = await supabase.from("profiles").select("id, full_name, training_level, start_date, rotation_end_date, ltft_days_off").eq("grade", "trainee").eq("active", true), order: ["full_name", "id"] });
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length)
@@ -101,7 +101,7 @@ function TcsAuditPage() {
         theatre_session_id: string | null;
       }>(
         (from, to) => {
-          let q = pagedRows("rota_assignments", "staff_id, session_date, session, duty_type, role_on_list, theatre_session_id", { filter: (q) => q.in("staff_id", ids), order: ["session_date", "staff_id", "session", "id"] })
+          let q = pagedRows("rota_assignments", "staff_id, session_date, session, duty_type, role_on_list, theatre_session_id", { filter: (q) => q.in("staff_id", ids).order("session_date", { ascending: true }).order("staff_id", { ascending: true }).order("session", { ascending: true }).order("id", { ascending: true })
             .range(from, to);
           if (since) q = q.gte("session_date", since);
           return q;
