@@ -61,10 +61,13 @@ export function PasskeyManager() {
       if (typeof window === "undefined" || !window.PublicKeyCredential) {
         throw new Error("This device does not support passkeys.");
       }
-      const options = (await startReg()) as PublicKeyCredentialCreationOptionsJSON;
+      const { options, ceremonyId } = (await startReg()) as {
+        options: PublicKeyCredentialCreationOptionsJSON;
+        ceremonyId: string;
+      };
       const attResp = await startRegistration({ optionsJSON: options });
       await verifyReg({
-        data: { response: attResp, deviceName: detectDeviceName() },
+        data: { response: attResp, deviceName: detectDeviceName(), ceremonyId },
       });
     },
     onSuccess: () => {

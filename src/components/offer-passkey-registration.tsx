@@ -25,10 +25,13 @@ export function OfferPasskeyRegistration({ onDone }: Props) {
   const enroll = async () => {
     setBusy(true);
     try {
-      const options = (await startReg()) as PublicKeyCredentialCreationOptionsJSON;
+      const { options, ceremonyId } = (await startReg()) as {
+        options: PublicKeyCredentialCreationOptionsJSON;
+        ceremonyId: string;
+      };
       const attResp = await startRegistration({ optionsJSON: options });
       await verifyReg({
-        data: { response: attResp, deviceName: detectDeviceName() },
+        data: { response: attResp, deviceName: detectDeviceName(), ceremonyId },
       });
       toast.success("Passkey registered — you can use it next time");
       onDone();

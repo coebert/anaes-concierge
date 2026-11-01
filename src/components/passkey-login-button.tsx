@@ -49,10 +49,11 @@ export function PasskeyLoginButton({
 
   const completeCeremony = async (
     assertion: AuthenticationResponseJSON,
+    ceremonyId: string,
     emailForServer?: string,
   ) => {
     const { tokenHash } = await verifyPk({
-      data: { email: emailForServer, response: assertion },
+      data: { email: emailForServer, response: assertion, ceremonyId },
     });
     const { error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
@@ -73,14 +74,15 @@ export function PasskeyLoginButton({
     (async () => {
       try {
         if (!(await browserSupportsWebAuthnAutofill())) return;
-        const { options } = (await startPk({ data: {} })) as {
+        const { options, ceremonyId } = (await startPk({ data: {} })) as {
           options: PublicKeyCredentialRequestOptionsJSON;
+          ceremonyId: string;
         };
         const assertion = await startAuthentication({
           optionsJSON: options,
           useBrowserAutofill: true,
         });
-        await completeCeremony(assertion);
+        await completeCeremony(assertion, ceremonyId);
       } catch {
         // Autofill was cancelled, unsupported, or the input wasn't tagged —
         // silently ignore; the explicit button remains available.
@@ -105,11 +107,11 @@ export function PasskeyLoginButton({
 
     setBusy(true);
     try {
-      const { options } = (await startPk({
+      const { options, ceremonyId } = (await startPk({
         data: emailForServer ? { email: emailForServer } : {},
-      })) as { options: PublicKeyCredentialRequestOptionsJSON };
+      })) as { options: PublicKeyCredentialRequestOptionsJSON; ceremonyId: string };
       const assertion = await startAuthentication({ optionsJSON: options });
-      await completeCeremony(assertion, emailForServer);
+      await completeCeremony(assertion, ceremonyId, emailForServer);
     } catch (e: unknown) {
       if (e instanceof Error && e.name === "NotAllowedError") {
         toast.error("Cancelled");
