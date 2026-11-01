@@ -93,6 +93,9 @@ function makeChain(table: keyof Fixture) {
     gte: (c: string, v: string) => (filters.gte.push([c, v]), chain),
     lte: (c: string, v: string) => (filters.lte.push([c, v]), chain),
     in: (c: string, v: unknown[]) => (filters.in.push([c, v]), chain),
+    // ordering/paging are no-ops for this in-memory fixture
+    order: () => chain,
+    range: () => chain,
     then: (onFulfilled: any, onRejected?: any) =>
       resolve().then(onFulfilled, onRejected),
   };
