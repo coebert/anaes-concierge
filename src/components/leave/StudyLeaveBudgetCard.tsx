@@ -83,6 +83,13 @@ export function StudyLeaveBudgetCard({
           />
         </div>
 
+        {base.crossYearCostRequestIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {base.crossYearCostRequestIds.length} study request(s) with a course cost span two leave years. Their days are split by date,
+            but the £ cost is not split — it is counted only in the year the course starts. Check these manually if the cost should be shared.
+          </p>
+        )}
+
         {(overDays || overBudget) && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
