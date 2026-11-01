@@ -229,4 +229,21 @@ describe("AuthProvider identity transitions", () => {
     await settleLoad("B", ["staff"], "Staff B");
     expect(latest!.loading).toBe(false);
   });
+
+  it("sign-out then B signs in before timers: stale null load never opens B's gate", async () => {
+    await signInAsAdminA();
+    act(() => h.authCb!("SIGNED_OUT", null));
+    act(() => h.authCb!("SIGNED_IN", sess("B")));
+    const from = snapshots.length;
+    await flushTimers(); // fires the stale null load AND B's load (B still pending)
+    expect(latest!.user?.id).toBe("B");
+    expect(latest!.loading).toBe(true);
+    for (const s of snapshots.slice(from)) {
+      // no render of B with an open gate and empty roles (routing flash)
+      if (s.uid === "B") expect(s.loading).toBe(true);
+    }
+    await settleLoad("B", ["staff"], "Staff B");
+    expect(latest!.loading).toBe(false);
+    expect(latest!.roles).toEqual(["staff"]);
+  });
 });
