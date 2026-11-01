@@ -53,8 +53,7 @@ function fmtDatePlus(s: string, days: number) {
   const dt = new Date(Date.UTC(y, m - 1, d + days));
   return `${dt.getUTCFullYear()}${pad(dt.getUTCMonth() + 1)}${pad(dt.getUTCDate())}`;
 }
-const TITLE_CASE = (s: string) =>
-  s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const TITLE_CASE = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 /** Session clock times used for timed AM/PM events (local Europe/London). */
 export const AM_START = "080000";
@@ -136,7 +135,12 @@ export function renderCalendarFeed(input: FeedInput): string {
     const sup = a.supervisor_id ? input.supervisors.get(a.supervisor_id) : undefined;
     if (sup) desc.push(`Supervisor: ${sup}`);
 
-    lines.push("BEGIN:VEVENT", `UID:rota-${a.id}@${input.host}`, `DTSTAMP:${dtstamp}`, ...stamp(a.updated_at));
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:rota-${a.id}@${input.host}`,
+      `DTSTAMP:${dtstamp}`,
+      ...stamp(a.updated_at),
+    );
     if (a.session === "am" || a.session === "pm") {
       const d = fmtDate(a.session_date);
       const [s, e] = a.session === "am" ? [AM_START, AM_END_PM_START] : [AM_END_PM_START, PM_END];
@@ -154,7 +158,12 @@ export function renderCalendarFeed(input: FeedInput): string {
   }
 
   for (const l of input.leave) {
-    lines.push("BEGIN:VEVENT", `UID:leave-${l.id}@${input.host}`, `DTSTAMP:${dtstamp}`, ...stamp(l.updated_at));
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:leave-${l.id}@${input.host}`,
+      `DTSTAMP:${dtstamp}`,
+      ...stamp(l.updated_at),
+    );
     lines.push(...leaveEventTimes(l));
     lines.push(foldIcsLine(`SUMMARY:${escapeIcsText(calendarLeaveLabel(l.type))}`));
     lines.push("TRANSP:TRANSPARENT", "END:VEVENT");
@@ -228,7 +237,9 @@ export async function buildCalendarFeedForToken(
       pageAll<FeedAssignment>("assignments", (a, b) =>
         sb
           .from("rota_assignments")
-          .select("id, session_date, session, duty_type, role_on_list, updated_at, supervisor_id, theatre_session_id")
+          .select(
+            "id, session_date, session, duty_type, role_on_list, updated_at, supervisor_id, theatre_session_id",
+          )
           .eq("staff_id", staffId)
           .gte("session_date", fromStr)
           .lte("session_date", toStr)
@@ -250,7 +261,9 @@ export async function buildCalendarFeedForToken(
       ),
     ]);
 
-    const tsIds = [...new Set(assignments.map((a) => a.theatre_session_id).filter(Boolean))] as string[];
+    const tsIds = [
+      ...new Set(assignments.map((a) => a.theatre_session_id).filter(Boolean)),
+    ] as string[];
     const theatreSessions = new Map<string, FeedTheatreSession>();
     for (let i = 0; i < tsIds.length; i += 150) {
       const { data, error } = await sb
@@ -263,7 +276,9 @@ export async function buildCalendarFeedForToken(
     if (theatreSessions.size !== tsIds.length)
       return { kind: "unavailable", reason: "theatre session missing" };
 
-    const supIds = [...new Set(assignments.map((a) => a.supervisor_id).filter(Boolean))] as string[];
+    const supIds = [
+      ...new Set(assignments.map((a) => a.supervisor_id).filter(Boolean)),
+    ] as string[];
     const supervisors = new Map<string, string>();
     for (let i = 0; i < supIds.length; i += 150) {
       const { data, error } = await sb

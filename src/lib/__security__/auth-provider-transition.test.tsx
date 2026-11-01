@@ -54,12 +54,18 @@ vi.mock("@/lib/remember-me", () => ({ shouldDropSessionOnLoad: () => false }));
 import { AuthProvider, useAuth, type AuthState } from "@/lib/auth-context";
 
 const sess = (id: string, token = "t1") => ({ access_token: token, user: { id } });
-const snapshots: Array<Pick<AuthState, "loading" | "roles" | "fullName"> & { uid: string | null }> = [];
+const snapshots: Array<Pick<AuthState, "loading" | "roles" | "fullName"> & { uid: string | null }> =
+  [];
 let latest: AuthState | null = null;
 function Probe() {
   const a = useAuth();
   latest = a;
-  snapshots.push({ uid: a.user?.id ?? null, loading: a.loading, roles: a.roles, fullName: a.fullName });
+  snapshots.push({
+    uid: a.user?.id ?? null,
+    loading: a.loading,
+    roles: a.roles,
+    fullName: a.fullName,
+  });
   return null;
 }
 

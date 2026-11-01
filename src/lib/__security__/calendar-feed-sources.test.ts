@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildCalendarFeedForToken, leaveEventTimes, renderCalendarFeed } from "@/lib/calendar-feed";
+import {
+  buildCalendarFeedForToken,
+  leaveEventTimes,
+  renderCalendarFeed,
+} from "@/lib/calendar-feed";
 import { escapeIcsText, foldIcsLine } from "@/lib/ics";
 
 type R = { data: unknown; error: unknown };
@@ -12,14 +16,18 @@ function fakeSb(tables: Tables, selects: Record<string, string[]> = {}) {
       const calls: { m: string; a: unknown[] }[] = [];
       const resolve = () => {
         const t = tables[table];
-        return Promise.resolve(typeof t === "function" ? t(calls) : (t ?? { data: [], error: null }));
+        return Promise.resolve(
+          typeof t === "function" ? t(calls) : (t ?? { data: [], error: null }),
+        );
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const c: any = new Proxy(
         {},
         {
           get(_t, prop: string) {
-            if (prop === "then") return (res: (v: R) => unknown, rej: (e: unknown) => unknown) => resolve().then(res, rej);
+            if (prop === "then")
+              return (res: (v: R) => unknown, rej: (e: unknown) => unknown) =>
+                resolve().then(res, rej);
             if (prop === "maybeSingle") return () => resolve();
             return (...args: unknown[]) => {
               calls.push({ m: prop, a: args });
@@ -44,18 +52,45 @@ const base = (): Tables => ({
   user_roles: { data: [{ role: "staff" }], error: null },
   rota_assignments: {
     data: [
-      { id: "r1", session_date: "2026-11-02", session: "am", duty_type: "theatre", role_on_list: "solo", updated_at: null, supervisor_id: "sup1", theatre_session_id: "ts1", notes: "PRIVATE NOTE" },
+      {
+        id: "r1",
+        session_date: "2026-11-02",
+        session: "am",
+        duty_type: "theatre",
+        role_on_list: "solo",
+        updated_at: null,
+        supervisor_id: "sup1",
+        theatre_session_id: "ts1",
+        notes: "PRIVATE NOTE",
+      },
     ],
     error: null,
   },
   leave_requests: {
     data: [
-      { id: "l1", type: "sick", start_date: "2026-11-05", end_date: "2026-11-05", half_day_start: null, half_day_end: null, updated_at: null, reason: "PRIVATE REASON" },
+      {
+        id: "l1",
+        type: "sick",
+        start_date: "2026-11-05",
+        end_date: "2026-11-05",
+        half_day_start: null,
+        half_day_end: null,
+        updated_at: null,
+        reason: "PRIVATE REASON",
+      },
     ],
     error: null,
   },
   theatre_sessions: {
-    data: [{ id: "ts1", surgical_consultant: "Mr Cut", theatres: { name: "Theatre 3" }, specialties: { name: "Ortho" }, notes: "TS NOTE" }],
+    data: [
+      {
+        id: "ts1",
+        surgical_consultant: "Mr Cut",
+        theatres: { name: "Theatre 3" },
+        specialties: { name: "Ortho" },
+        notes: "TS NOTE",
+      },
+    ],
     error: null,
   },
 });
@@ -85,13 +120,17 @@ describe("calendar feed sources (fail closed)", () => {
   it("503s when the profile lookup errors", async () => {
     const t = base();
     t.profiles = { data: null, error: { message: "boom" } };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("unavailable");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "unavailable",
+    );
   });
 
   it("503s when a referenced theatre session is missing (no partial 200)", async () => {
     const t = base();
     t.theatre_sessions = { data: [], error: null };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("unavailable");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "unavailable",
+    );
   });
 
   it("503s when supervisor lookup errors or is missing", async () => {
@@ -100,7 +139,9 @@ describe("calendar feed sources (fail closed)", () => {
       calls.some((c) => c.m === "in")
         ? { data: [], error: null }
         : { data: { id: "u1", full_name: "Dr Test", active: true, left_at: null }, error: null };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("unavailable");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "unavailable",
+    );
   });
 
   it("503s when a second page errors", async () => {
@@ -109,12 +150,23 @@ describe("calendar feed sources (fail closed)", () => {
       const range = calls.find((c) => c.m === "range")?.a as number[];
       if (range[0] === 0)
         return {
-          data: Array.from({ length: 1000 }, (_, i) => ({ id: `r${i}`, session_date: "2026-11-02", session: "night", duty_type: "sho_oncall", role_on_list: null, updated_at: null, supervisor_id: null, theatre_session_id: null })),
+          data: Array.from({ length: 1000 }, (_, i) => ({
+            id: `r${i}`,
+            session_date: "2026-11-02",
+            session: "night",
+            duty_type: "sho_oncall",
+            role_on_list: null,
+            updated_at: null,
+            supervisor_id: null,
+            theatre_session_id: null,
+          })),
           error: null,
         };
       return { data: null, error: { message: "page 2" } };
     };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("unavailable");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "unavailable",
+    );
   });
 
   it.each([
@@ -123,27 +175,43 @@ describe("calendar feed sources (fail closed)", () => {
   ])("denies the token of an %s member", async (_n, extra) => {
     const t = base();
     t.profiles = { data: { id: "u1", full_name: "X", ...extra }, error: null };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("not_found");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "not_found",
+    );
   });
 
   it("denies a removed member (no roles)", async () => {
     const t = base();
     t.user_roles = { data: [], error: null };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("not_found");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "not_found",
+    );
   });
 
   it("denies unknown/short/malformed tokens without querying", async () => {
-    expect((await buildCalendarFeedForToken(fakeSb({}), "short", { now: NOW })).kind).toBe("not_found");
-    expect((await buildCalendarFeedForToken(fakeSb({}), "x".repeat(40) + "\r\n", { now: NOW })).kind).toBe("not_found");
+    expect((await buildCalendarFeedForToken(fakeSb({}), "short", { now: NOW })).kind).toBe(
+      "not_found",
+    );
+    expect(
+      (await buildCalendarFeedForToken(fakeSb({}), "x".repeat(40) + "\r\n", { now: NOW })).kind,
+    ).toBe("not_found");
     const t = base();
     t.profiles = { data: null, error: null };
-    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe("not_found");
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "not_found",
+    );
   });
 });
 
 describe("calendar leave half days", () => {
   const L = (s: string, e: string, hs: string | null, he: string | null) => ({
-    id: "l", type: "annual", start_date: s, end_date: e, half_day_start: hs, half_day_end: he, updated_at: null,
+    id: "l",
+    type: "annual",
+    start_date: s,
+    end_date: e,
+    half_day_start: hs,
+    half_day_end: he,
+    updated_at: null,
   });
   it("full days stay all-day", () => {
     expect(leaveEventTimes(L("2026-11-02", "2026-11-03", null, null))).toEqual([
@@ -190,7 +258,12 @@ describe("ICS escaping and folding fixtures", () => {
   });
   it("folds at 75 UTF-8 octets without splitting multibyte characters", () => {
     const enc = new TextEncoder();
-    for (const src of ["SUMMARY:" + "é".repeat(80), "SUMMARY:" + "🩺".repeat(40), "DESCRIPTION:" + "a".repeat(74) + "€€€", "X:" + "a".repeat(73)]) {
+    for (const src of [
+      "SUMMARY:" + "é".repeat(80),
+      "SUMMARY:" + "🩺".repeat(40),
+      "DESCRIPTION:" + "a".repeat(74) + "€€€",
+      "X:" + "a".repeat(73),
+    ]) {
       const folded = foldIcsLine(src);
       const parts = folded.split("\r\n");
       for (const p of parts) expect(enc.encode(p).byteLength).toBeLessThanOrEqual(75);
