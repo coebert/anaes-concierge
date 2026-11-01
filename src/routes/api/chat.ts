@@ -634,7 +634,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               date: a.session_date,
               session: a.session,
               role: a.role_on_list,
-              theatre: ts ? (theatreMap.get(ts.theatre_id) ?? null) : null,
+              theatre: ts?.theatre_id ? (theatreMap.get(ts.theatre_id) ?? null) : null,
               specialty: ts?.specialty_id ? (specMap.get(ts.specialty_id) ?? null) : null,
               surgeon: ts?.surgical_consultant ?? null,
               supervisor: a.supervisor_id
@@ -762,7 +762,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 
           return {
             ...merged,
-            exceptions: ((excRows ?? []) as ExcRow[]).map((e) => ({
+            exceptions: ((excRows ?? []) as Array<{ id: string; category: string; status: string } & Record<string, unknown>>).map((e) => ({
               id: e.id,
               category: e.category,
               status: e.status,
@@ -927,8 +927,8 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         const ids = (data ?? []).map((r) => r.staff_id);
         const { data: profs } = ids.length
           ? await admin.from("profiles").select("id,full_name,grade").in("id", ids)
-          : { data: [] as any[] };
-        const pmap = new Map((profs ?? []).map((p: any) => [p.id, p]));
+          : { data: [] as { id: string; full_name: string | null; grade: string | null }[] };
+        const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
         return {
           date: today,
           on_call: (data ?? []).map((r) => ({
