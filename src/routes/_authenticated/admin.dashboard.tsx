@@ -268,11 +268,8 @@ function AdminDashboardPage() {
 
       const [profilesRes, theatreRes, allRes] = await Promise.all([
         pagedRows("profiles", "id, full_name, grade, training_level", { order: ["id"] }),
-        pagedRows("rota_assignments", "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id", { filter: (q) => q.eq("duty_type", "theatre").in("session", ["am", "pm"]).not("theatre_session_id", "is", null).gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] })
-          // The 12-month trainee summary regularly exceeds the backend's
-          // default 1,000-row page cap. Without an explicit range, later rows
-          // are dropped and some trainees appear to have zero matched lists.
-          .range(0, 49999),
+        // 12-month theatre rows exceed the 1,000-row page cap: read every page.
+        pagedRows("rota_assignments", "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id", { filter: (q) => q.eq("duty_type", "theatre").in("session", ["am", "pm"]).not("theatre_session_id", "is", null).gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] }),
         pagedRows("rota_assignments", "staff_id, duty_type, session_date", { filter: (q) => q.gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] }),
       ]);
       if (profilesRes.error) throw profilesRes.error;
