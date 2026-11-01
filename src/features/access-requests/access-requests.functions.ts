@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -12,7 +14,7 @@ const inputSchema = z.object({
 /** Every outcome returns the same body so callers can't probe for accounts or limits. */
 const GENERIC = { ok: true as const };
 
-async function adminEmails(supabaseAdmin: any): Promise<string[]> {
+async function adminEmails(supabaseAdmin: SupabaseClient<Database>): Promise<string[]> {
   const { data: roles, error } = await supabaseAdmin
     .from("user_roles")
     .select("user_id")

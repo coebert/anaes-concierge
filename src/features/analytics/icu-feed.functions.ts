@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -70,7 +72,7 @@ export type IcuFeedStatus = {
 };
 
 async function assertCoordinator(context: {
-  supabase: { from: (t: string) => any };
+  supabase: SupabaseClient<Database>;
   userId: string;
 }) {
   const { data: roles, error } = await context.supabase

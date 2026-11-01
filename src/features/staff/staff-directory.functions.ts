@@ -1,3 +1,4 @@
+import type { MembershipClient } from "@/lib/app-membership";
 import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -65,7 +66,7 @@ export const listStaffByIdsSafe = createServerFn({ method: "POST" })
   });
 
 async function getCallerAccess(
-  supabase: any,
+  supabase: MembershipClient,
   userId: string,
 ): Promise<{ isAdmin: boolean; isCoordinator: boolean; isTrainee: boolean }> {
   const { roles: roleSet, grade } = await getActiveMembership(supabase, userId);
@@ -76,7 +77,7 @@ async function getCallerAccess(
   };
 }
 
-async function assertAdminOrTrainee(supabase: any, userId: string) {
+async function assertAdminOrTrainee(supabase: MembershipClient, userId: string) {
   const access = await getCallerAccess(supabase, userId);
   if (!access.isAdmin && !access.isCoordinator && !access.isTrainee) {
     throw new Error("Forbidden: trainee data is restricted.");

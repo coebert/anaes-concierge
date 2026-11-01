@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { checkActiveMembership } from "@/lib/app-membership";
@@ -34,7 +36,7 @@ async function loadServer() {
 }
 
 async function consumeById(
-  supabaseAdmin: any,
+  supabaseAdmin: SupabaseClient<Database>,
   id: string,
   purpose: string,
 ): Promise<ChallengeRow | null> {
@@ -46,7 +48,7 @@ async function consumeById(
   return ((data as ChallengeRow[] | null) ?? [])[0] ?? null;
 }
 
-async function cleanupExpiredChallenges(supabaseAdmin: any) {
+async function cleanupExpiredChallenges(supabaseAdmin: SupabaseClient<Database>) {
   await supabaseAdmin
     .from("passkey_challenges")
     .delete()
@@ -64,7 +66,7 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
     const { rpID, rpName } = getRpInfo();
     const userId = context.userId;
 
-    const email = (context.claims as any)?.email as string | undefined;
+    const email = (context.claims as { email?: unknown } | undefined)?.email as string | undefined;
 
     const { data: existing } = await supabaseAdmin
       .from("passkey_credentials")
@@ -82,9 +84,9 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
         residentKey: "preferred",
         userVerification: "preferred",
       },
-      excludeCredentials: (existing ?? []).map((c: any) => ({
+      excludeCredentials: (existing ?? []).map((c) => ({
         id: c.credential_id,
-        transports: (c.transports ?? undefined) as any,
+        transports: (c.transports ?? undefined) as AuthenticatorTransportFuture[] | undefined,
       })),
     });
 
@@ -101,7 +103,7 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
 
 export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
   .middleware([requireActiveMember])
-  .inputValidator((data: { response: any; deviceName?: string; ceremonyId: string }) =>
+  .inputValidator((data: { response: unknown; deviceName?: string; ceremonyId: string }) =>
     z
       .object({
         response: z.any(),
