@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -76,7 +77,7 @@ export function TodayInHospital() {
   const today = todayISO();
   const listStaff = useServerFn(listActiveStaffSafe);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["today-in-hospital", today],
     queryFn: async () => {
       const [{ data: rota, error }, staff] = await Promise.all([
@@ -158,8 +159,15 @@ export function TodayInHospital() {
         </div>
       </CardHeader>
       <CardContent>
+        {error && data ? (
+          <div className="mb-3">
+            <QueryErrorNotice stale error={error} what="today's clinical assignments" onRetry={() => void refetch()} />
+          </div>
+        ) : null}
         {isLoading ? (
           <PageLoading />
+        ) : error && !data ? (
+          <QueryErrorNotice error={error} what="today's clinical assignments" onRetry={() => void refetch()} />
         ) : !data || (data.am.size === 0 && data.pm.size === 0) ? (
           <p className="text-sm text-muted-foreground">
             No clinical assignments recorded for today.

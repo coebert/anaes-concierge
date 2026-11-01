@@ -672,6 +672,8 @@ function NotScheduledCard({
   title,
   tone,
   loading,
+  error,
+  onRetry,
   entries,
   today,
   showLevel,
