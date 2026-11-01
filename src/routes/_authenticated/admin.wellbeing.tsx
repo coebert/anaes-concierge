@@ -20,6 +20,7 @@ import { PageLoading } from "@/components/loading";
 import { HeartPulse, AlertTriangle, TrendingDown } from "lucide-react";
 import {
   computeWellbeing,
+  MIN_ASSESSABLE_SESSIONS,
   WELLBEING_BAND_LABEL,
   WELLBEING_BAND_TONE,
   type WellbeingResult,
