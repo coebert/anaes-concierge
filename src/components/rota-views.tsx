@@ -386,6 +386,11 @@ const TheatreCellContent = memo(function TheatreCellContent({
   );
 });
 
+const SESSION_TIMES: Record<SessionHalf, { start: string; end: string; label: string }> = {
+  am: { start: "08:00", end: "13:00", label: "AM (08:00–13:00)" },
+  pm: { start: "13:00", end: "18:00", label: "PM (13:00–18:00)" },
+};
+
 const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog({
   details,
   staffName,
@@ -509,10 +514,6 @@ const StaffListCellContent = memo(function StaffListCellContent({
   );
 });
 
-const SESSION_TIMES: Record<SessionHalf, { start: string; end: string; label: string }> = {
-  am: { start: "08:00", end: "13:00", label: "AM (08:00–13:00)" },
-  pm: { start: "13:00", end: "18:00", label: "PM (13:00–18:00)" },
-};
 
 const NhhCellContent = memo(function NhhCellContent({ model }: { model: NhhCellModel }) {
   if (model.staff.length === 0) {

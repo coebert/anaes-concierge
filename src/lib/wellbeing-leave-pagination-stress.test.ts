@@ -151,6 +151,9 @@ const ENFORCE_BASELINE = PROFILE.name === "large" && !UPDATE_BASELINE;
 
 const recordedRuntimes: Partial<Record<ScenarioKey, number>> = {};
 
+const RAW_SEED = Number.parseInt(process.env.LEAVE_STRESS_SEED ?? "", 10);
+const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xc0ffee;
+
 function recordAndAssert(key: ScenarioKey, elapsedMs: number): void {
   recordedRuntimes[key] = elapsedMs;
   if (!ENFORCE_BASELINE) return;
@@ -216,8 +219,6 @@ afterAll(() => {
 // paginated output. Override with `LEAVE_STRESS_SEED=<int>` to reproduce a
 // reported failure with a different seed while keeping the run deterministic.
 // -----------------------------------------------------------------------------
-const RAW_SEED = Number.parseInt(process.env.LEAVE_STRESS_SEED ?? "", 10);
-const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xc0ffee;
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
