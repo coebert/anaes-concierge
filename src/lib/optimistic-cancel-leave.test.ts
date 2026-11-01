@@ -16,7 +16,11 @@ import "@/test/assert-utc-hook";
 import { describe, it, expect } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
-import { optimisticCancelLeave } from "@/features/leave/optimistic-cancel-leave";
+import {
+  buildLeaveStatusPatch,
+  optimisticCancelLeave,
+  optimisticUpdateLeaveStatus,
+} from "@/features/leave/optimistic-cancel-leave";
 import type { LeaveRow } from "@/features/leave/tabs/shared";
 import { computeWellbeing } from "@/features/wellbeing/wellbeing-score";
 
@@ -47,29 +51,38 @@ function makeRow(overrides: Partial<LeaveRow> = {}): LeaveRow {
  * Fake Supabase that lets the test control WHEN the UPDATE resolves —
  * essential for asserting "optimistic before server response".
  */
+type UpdateRes = {
+  data: Array<Record<string, unknown>> | null;
+  error: { message: string } | null;
+};
 function makeDeferredSupabase() {
-  let resolveFn!: (v: { error: { message: string } | null }) => void;
-  const pending = new Promise<{ error: { message: string } | null }>((res) => {
+  let resolveFn!: (v: UpdateRes) => void;
+  const pending = new Promise<UpdateRes>((res) => {
     resolveFn = res;
   });
-  const calls: Array<{ table: string; patch: unknown; id: string }> = [];
+  const calls: Array<{ table: string; patch: Record<string, unknown>; id: string; cols: string }> =
+    [];
 
   const supabase = {
     from: (table: string) => ({
       update: (patch: Record<string, unknown>) => ({
-        eq: (col: string, val: string) => {
-          calls.push({ table, patch, id: val });
-          expect(col).toBe("id");
-          return pending;
-        },
+        eq: (col: string, val: string) => ({
+          select: (cols: string) => {
+            calls.push({ table, patch, id: val, cols });
+            expect(col).toBe("id");
+            return pending;
+          },
+        }),
       }),
     }),
   };
   return {
     supabase,
     calls,
-    resolveOk: () => resolveFn({ error: null }),
-    resolveError: (msg: string) => resolveFn({ error: { message: msg } }),
+    resolveOk: (row: Record<string, unknown> = {}) =>
+      resolveFn({ data: [{ id: LEAVE_ID, status: "cancelled", decided_at: null, ...row }], error: null }),
+    resolveRows: (rows: Array<Record<string, unknown>>) => resolveFn({ data: rows, error: null }),
+    resolveError: (msg: string) => resolveFn({ data: null, error: { message: msg } }),
   };
 }
 
@@ -125,13 +138,14 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
     // (a) Local rows already show cancelled.
     expect(rows[0].status).toBe("cancelled");
     expect(mine[0].status).toBe("cancelled");
-    expect(rows[0].decided_at).toBe(NOW.toISOString());
+    // No invented authoritative metadata: the original decision is kept.
+    expect(rows[0].decided_at).toBeNull();
 
     // (b) Wellbeing caches show the cancellation, and the recomputed
     //     score has the `leave` driver at 1 (0 before).
     const cachedMine = qc.getQueryData<{ leave: typeof seedLeave }>(["my-wellbeing", STAFF])!;
     expect(cachedMine.leave[0].status).toBe("cancelled");
-    expect(cachedMine.leave[0].decided_at).toBe(NOW.toISOString());
+    expect(cachedMine.leave[0].decided_at).toBeNull();
 
     const recomputed = computeWellbeing({
       staffId: STAFF,
@@ -149,18 +163,16 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
     // update now stamps `decided_at` alongside `status` so the
     // server row matches what `computeWellbeing` needs to bucket
     // the cancellation into the rolling window.
-    expect(calls).toEqual([
-      {
-        table: "leave_requests",
-        patch: { status: "cancelled", decided_at: NOW.toISOString() },
-        id: LEAVE_ID,
-      },
+    // Only the cancellation field is sent — the owner guard forbids any
+    // change to decision metadata.
+    expect(calls.map((c) => [c.table, c.patch, c.id])).toEqual([
+      ["leave_requests", { status: "cancelled" }, LEAVE_ID],
     ]);
 
     // Now let the server respond and complete the flow.
     resolveOk();
     const result = await pending;
-    expect(result).toEqual({ ok: true });
+    expect(result.ok).toBe(true);
 
     // After success, the wellbeing keys are marked stale so the next
     // remount/observer will refetch — server truth wins on reconciliation.
@@ -265,6 +277,70 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
 
     resolveOk();
     const result = await pending;
-    expect(result).toEqual({ ok: true });
+    expect(result.ok).toBe(true);
+  });
+
+  it("treats a zero-row update (RLS filtered) as failure and rolls back", async () => {
+    const qc = new QueryClient();
+    const { supabase, resolveRows } = makeDeferredSupabase();
+    let rows: LeaveRow[] = [makeRow()];
+    const pending = optimisticCancelLeave({
+      id: LEAVE_ID,
+      supabase,
+      qc,
+      patchRows: (u) => {
+        rows = u(rows);
+      },
+      patchMyLeave: () => {},
+    });
+    resolveRows([]);
+    const result = await pending;
+    expect(result.ok).toBe(false);
+    expect(rows[0].status).toBe("pending");
+  });
+});
+
+describe("optimisticUpdateLeaveStatus — decisions reconcile with the server row", () => {
+  it("drops protected fields from extraPatch and installs the server-stamped actor/time", async () => {
+    const qc = new QueryClient();
+    const { supabase, calls, resolveRows } = makeDeferredSupabase();
+    qc.setQueryData(["admin-wellbeing"], {
+      leave: [{ id: LEAVE_ID, staff_id: STAFF, type: "annual", status: "pending", start_date: "2026-06-20", end_date: "2026-06-22", decided_at: null }],
+    });
+    const pending = optimisticUpdateLeaveStatus({
+      id: LEAVE_ID,
+      status: "rejected",
+      reason: "leave.decide:rejected",
+      extraPatch: {
+        decided_by: "forged",
+        decided_at: "1999-01-01T00:00:00Z",
+        status: "approved",
+        staff_id: "other",
+        decision_notes: "n",
+        reserve_listed_at: "2026-07-10T12:00:00.000Z",
+      },
+      supabase,
+      qc,
+    });
+    expect(calls[0].patch).toEqual({
+      status: "rejected",
+      decision_notes: "n",
+      reserve_listed_at: "2026-07-10T12:00:00.000Z",
+    });
+    // Optimistic cache does not invent decided_at.
+    const mid = qc.getQueryData<{ leave: Array<{ decided_at: string | null; status: string }> }>(["admin-wellbeing"])!;
+    expect(mid.leave[0].status).toBe("rejected");
+    expect(mid.leave[0].decided_at).toBeNull();
+    resolveRows([{ id: LEAVE_ID, status: "rejected", decided_at: "2026-07-10T12:00:05Z", decided_by: "coord" }]);
+    const result = await pending;
+    expect(result.ok).toBe(true);
+    const after = qc.getQueryData<{ leave: Array<{ decided_at: string | null }> }>(["admin-wellbeing"])!;
+    expect(after.leave[0].decided_at).toBe("2026-07-10T12:00:05Z");
+  });
+
+  it("buildLeaveStatusPatch for cancel ignores every extra", () => {
+    expect(buildLeaveStatusPatch("cancelled", { decided_at: "x", decision_notes: "y" })).toEqual({
+      status: "cancelled",
+    });
   });
 });
