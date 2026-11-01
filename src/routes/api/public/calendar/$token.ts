@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import { calendarLeaveLabel } from "@/lib/calendar-feed-privacy";
 
 // Apple Calendar / iCal subscription feed.
 // URL: /api/public/calendar/<token>.ics
@@ -59,8 +60,6 @@ function fold(line: string) {
 
 const TITLE_CASE = (s: string) =>
   s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-
-import { calendarLeaveLabel } from "@/lib/calendar-feed-privacy";
 
 export const Route = createFileRoute("/api/public/calendar/$token")({
   server: {
@@ -275,7 +274,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
           lines.push(`SEQUENCE:${sequence}`);
           lines.push(`DTSTART;VALUE=DATE:${fmtDate(l.start_date)}`);
           lines.push(`DTEND;VALUE=DATE:${fmtDatePlus(l.end_date, 1)}`);
-          lines.push(fold(`SUMMARY:${escapeText(typeLabel + " (approved)")}`));
+          lines.push(fold(`SUMMARY:${escapeText(typeLabel)}`));
           lines.push("TRANSP:TRANSPARENT");
           lines.push("END:VEVENT");
         }
