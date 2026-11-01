@@ -120,9 +120,7 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
   );
   const totalSessions = myAssignments.length;
   const nights = myAssignments.filter((a) => a.session === "night").length;
-  const evenings = myAssignments.filter((a) => a.session === "eve").length;
   const weekends = myAssignments.filter((a) => isWeekend(a.session_date)).length;
-  void evenings;
   // UNION of qualifying rows: a weekend night counts once, not twice.
   const unsocialRows = myAssignments.filter(
     (a) => a.session === "night" || a.session === "eve" || isWeekend(a.session_date),
