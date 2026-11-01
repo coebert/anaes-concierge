@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Status of the daily intensive-care feed job, plus the raw ICU sessions it
@@ -85,7 +85,7 @@ async function assertCoordinator(context: {
 }
 
 export const getIcuFeedStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({
@@ -204,7 +204,7 @@ export const getIcuFeedStatus = createServerFn({ method: "POST" })
 
 /** Mark an ICU divergence alert as seen. Admin / rota coordinator only. */
 export const acknowledgeIcuAuditAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await assertCoordinator(context as never);

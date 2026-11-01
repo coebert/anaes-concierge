@@ -1,5 +1,5 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Health check: verifies that the listed public-schema tables are reachable
@@ -14,7 +14,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * this only catches the "table not granted to authenticated" failure mode.
  */
 export const checkTableGrants = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((input: { tables: string[] }) => {
     if (!input || !Array.isArray(input.tables)) {
       throw new Error("tables must be an array of table names");

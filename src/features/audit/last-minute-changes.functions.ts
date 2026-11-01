@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Last minute changes audit.
@@ -166,7 +166,7 @@ function firstName(ref: NamedRef): string | null {
 }
 
 export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((input: { rangeStart: string; rangeEnd: string }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.rangeStart))
       throw new Error("rangeStart must be YYYY-MM-DD");
