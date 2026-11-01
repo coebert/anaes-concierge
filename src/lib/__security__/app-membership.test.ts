@@ -52,7 +52,11 @@ describe("checkActiveMembership (shared gate)", () => {
     ).toEqual({ ok: false, reason: "not_member" });
   });
   it("a client that throws fails closed as unavailable", async () => {
-    const boom = { from: () => { throw new Error("net"); } };
+    const boom = {
+      from: () => {
+        throw new Error("net");
+      },
+    };
     expect(await checkActiveMembership(boom, "u")).toEqual({ ok: false, reason: "unavailable" });
   });
   it("active admin is a member with roles", async () => {

@@ -76,14 +76,13 @@ export function reportQueryBudget(budget: QueryBudget): void {
 
   const summary = `[query-budget] ${budget.label}: ${budget.count}/${budget.max} requests ${JSON.stringify(budget.bySource)}`;
   if (!isTest) {
-    // eslint-disable-next-line no-console
     console.info(summary);
   }
   if (budget.count > budget.max) {
     const msg = `Query budget exceeded for "${budget.label}": ${budget.count} > ${budget.max}. Breakdown: ${JSON.stringify(budget.bySource)}`;
     if (isTest) return;
     if (isDev) throw new Error(msg);
-    // eslint-disable-next-line no-console
+
     console.error(msg);
   }
 }

@@ -101,7 +101,6 @@ const TIME_OVERRUN_THRESHOLD =
   Number.isFinite(RAW_THRESHOLD) && RAW_THRESHOLD >= 0 ? RAW_THRESHOLD : 0.15;
 const HARD_TIME_LIMIT_MS = Math.round(PROFILE.timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD));
 
-// eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
 // -----------------------------------------------------------------------------
@@ -158,7 +157,6 @@ function recordAndAssert(key: ScenarioKey, elapsedMs: number): void {
   const baselineMs = BASELINE.large.scenarios[key].ms;
   const ceilingMs = Math.round(baselineMs * (1 + REGRESSION_THRESHOLD));
   if (elapsedMs > baselineMs) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[stress:large] ${key} slower than baseline: ${elapsedMs.toFixed(0)}ms ` +
         `> ${baselineMs}ms (ceiling ${ceilingMs}ms, +${(REGRESSION_THRESHOLD * 100).toFixed(0)}%)`,
@@ -202,7 +200,7 @@ afterAll(() => {
     },
   };
   writeFileSync(BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-  // eslint-disable-next-line no-console
+
   console.info(
     `[stress:large] baseline updated at ${BASELINE_PATH}: ${JSON.stringify(next.large.scenarios)}`,
   );
@@ -232,7 +230,6 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-// eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] seed=0x${SEED.toString(16)}`);
 
 type Row = {
@@ -463,7 +460,6 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
       // under the hard limit. Hard budget: fail the build once elapsed
       // exceeds `timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD)`.
       if (elapsed > PROFILE.timeBudgetMs) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[stress:${PROFILE.name}] scenario C exceeded soft budget: ` +
             `${elapsed.toFixed(0)}ms > ${PROFILE.timeBudgetMs}ms ` +

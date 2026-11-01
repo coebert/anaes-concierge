@@ -79,7 +79,7 @@ export function describeSession(
 
 export function trace(event: string, data?: Record<string, unknown>): void {
   if (!enabled()) return;
-  // eslint-disable-next-line no-console
+
   console.debug(NS, event, {
     t: new Date().toISOString(),
     ...(data ?? {}),
@@ -88,7 +88,7 @@ export function trace(event: string, data?: Record<string, unknown>): void {
 
 export function traceError(event: string, err: unknown, data?: Record<string, unknown>): void {
   if (!enabled()) return;
-  // eslint-disable-next-line no-console
+
   console.error(NS, event, {
     t: new Date().toISOString(),
     error: err instanceof Error ? { name: err.name, message: err.message } : err,

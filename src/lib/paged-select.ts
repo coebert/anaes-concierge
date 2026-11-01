@@ -75,7 +75,11 @@ type PublicTables = import("@/integrations/supabase/types").Database["public"]["
 export async function pagedRows<
   TName extends keyof PublicTables & string,
   Row = PublicTables[TName]["Row"],
->(table: TName, columns: string, opts: PagedSelectOptions): Promise<{ data: Row[]; error: { message: string } | null }> {
+>(
+  table: TName,
+  columns: string,
+  opts: PagedSelectOptions,
+): Promise<{ data: Row[]; error: { message: string } | null }> {
   const data = await pagedSelect<Row>(table, columns, opts);
   return { data, error: null };
 }

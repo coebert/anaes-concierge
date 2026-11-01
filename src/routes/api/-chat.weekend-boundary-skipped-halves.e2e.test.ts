@@ -163,7 +163,14 @@ function dataFor(state: QueryState): unknown {
       return state.single ? null : [{ role: "staff" }];
     case "profiles":
       return state.single
-        ? { id: USER_ID, full_name: "Dr Skipped", grade: "consultant", email: null, active: true, left_at: null }
+        ? {
+            id: USER_ID,
+            full_name: "Dr Skipped",
+            grade: "consultant",
+            email: null,
+            active: true,
+            left_at: null,
+          }
         : [{ id: USER_ID, full_name: "Dr Skipped", grade: "consultant" }];
     case "theatres":
       return theatres;

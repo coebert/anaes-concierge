@@ -17,7 +17,10 @@ function memoryStore(now: () => number) {
         const mine = [...leases.values()].filter((l) => l.user === args.p_user_id).length;
         if (mine >= (args.p_max as number)) return { data: null, error: null };
         const id = `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
-        leases.set(id, { user: args.p_user_id as string, exp: now() + (args.p_ttl_seconds as number) * 1000 });
+        leases.set(id, {
+          user: args.p_user_id as string,
+          exp: now() + (args.p_ttl_seconds as number) * 1000,
+        });
         return { data: id, error: null };
       }
       return { data: leases.delete(args.p_lease_id as string), error: null };
@@ -32,7 +35,10 @@ function memoryStore(now: () => number) {
 
 describe("chat stream lease client", () => {
   it("grants, then releases idempotently", async () => {
-    const rpc = vi.fn<LeaseRpc>(async (fn) => ({ data: fn.startsWith("acquire") ? ID : true, error: null }));
+    const rpc = vi.fn<LeaseRpc>(async (fn) => ({
+      data: fn.startsWith("acquire") ? ID : true,
+      error: null,
+    }));
     const l = await acquireChatStreamLease(rpc, U);
     expect(l.ok).toBe(true);
     if (!l.ok) return;
@@ -40,18 +46,32 @@ describe("chat stream lease client", () => {
     expect(rpc.mock.calls.filter((c) => c[0] === "release_chat_stream_lease")).toHaveLength(1);
   });
   it("busy when the store returns null", async () => {
-    expect(await acquireChatStreamLease(async () => ({ data: null, error: null }), U)).toEqual({ ok: false, reason: "busy" });
+    expect(await acquireChatStreamLease(async () => ({ data: null, error: null }), U)).toEqual({
+      ok: false,
+      reason: "busy",
+    });
   });
   it.each([
     ["error", async () => ({ data: null, error: { message: "x" } })],
     ["non-uuid", async () => ({ data: true, error: null })],
-    ["throw", async () => { throw new Error("net"); }],
+    [
+      "throw",
+      async () => {
+        throw new Error("net");
+      },
+    ],
   ] as Array<[string, LeaseRpc]>)("fails closed on %s", async (_n, rpc) => {
     expect(await acquireChatStreamLease(rpc, U)).toEqual({ ok: false, reason: "unavailable" });
   });
   it("a failing release never throws (TTL reclaims)", async () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
-    const l = await acquireChatStreamLease(async (fn) => (fn.startsWith("acquire") ? { data: ID, error: null } : { data: null, error: { message: "down" } }), U);
+    const l = await acquireChatStreamLease(
+      async (fn) =>
+        fn.startsWith("acquire")
+          ? { data: ID, error: null }
+          : { data: null, error: { message: "down" } },
+      U,
+    );
     if (!l.ok) throw new Error("expected grant");
     await expect(l.release()).resolves.toBeUndefined();
     err.mockRestore();
@@ -59,7 +79,9 @@ describe("chat stream lease client", () => {
   it("20 concurrent acquires against a cap-2 store grant exactly 2; release frees one", async () => {
     const t = 0;
     const s = memoryStore(() => t);
-    const res = await Promise.all(Array.from({ length: 20 }, () => acquireChatStreamLease(s.rpc, U)));
+    const res = await Promise.all(
+      Array.from({ length: 20 }, () => acquireChatStreamLease(s.rpc, U)),
+    );
     const granted = res.filter((r) => r.ok);
     expect(granted).toHaveLength(2);
     await (granted[0] as { release: () => Promise<void> }).release();

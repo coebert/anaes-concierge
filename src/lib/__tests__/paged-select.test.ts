@@ -4,10 +4,7 @@ import { pagedRows, pagedSelect } from "@/lib/paged-select";
 type Call = { m: string; a: unknown[] };
 
 /** Synthetic PostgREST builder: records calls, serves `rows` by range. */
-function fakeClient(
-  rows: { id: string }[],
-  opts: { failFrom?: number; delayMs?: number } = {},
-) {
+function fakeClient(rows: { id: string }[], opts: { failFrom?: number; delayMs?: number } = {}) {
   const log: Call[][] = [];
   return {
     log,

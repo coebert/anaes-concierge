@@ -116,7 +116,7 @@ function ConsultantAuditsPage() {
       {
         const PAGE = 1000;
         let offset = 0;
-        // eslint-disable-next-line no-constant-condition
+
         while (true) {
           const { data: page, error: se } = await supabase
             .from("theatre_sessions")
@@ -169,7 +169,7 @@ function ConsultantAuditsPage() {
       {
         const PAGE = 1000;
         let offset = 0;
-        // eslint-disable-next-line no-constant-condition
+
         while (true) {
           const { data: page, error: ae } = await supabase
             .from("rota_assignments")

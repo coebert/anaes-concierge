@@ -99,7 +99,8 @@ vi.mock("ai", async () => {
         }) => {
           if (h.sc.stream === "finish") void o.onFinish({ responseMessage: { parts: [] } });
           if (h.sc.stream === "error") o.onError(new Error("mid-stream"));
-          if (h.sc.stream === "hang") h.finish = () => o.onFinish({ responseMessage: { parts: [] } });
+          if (h.sc.stream === "hang")
+            h.finish = () => o.onFinish({ responseMessage: { parts: [] } });
           return new Response("ok", { status: 200 });
         },
       };

@@ -191,7 +191,7 @@ export function PeriodNav({
       return `${wd}, ${formatDateGB(anchor)}`;
     }
     // Month-only navigation label (e.g. "May 2026") — not a full date.
-    // eslint-disable-next-line no-restricted-syntax
+
     if (mode === "month")
       return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
     const ws = startOfWeek(anchor);

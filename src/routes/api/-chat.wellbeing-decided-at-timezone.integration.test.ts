@@ -143,7 +143,14 @@ function dataFor(state: QueryState): unknown {
       return state.single ? null : [{ role: "staff" }];
     case "profiles":
       return state.single
-        ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null, active: true, left_at: null }
+        ? {
+            id: USER_ID,
+            full_name: "Dr Test",
+            grade: "consultant",
+            email: null,
+            active: true,
+            left_at: null,
+          }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
     case "leave_requests":
       return leaveFixture;
