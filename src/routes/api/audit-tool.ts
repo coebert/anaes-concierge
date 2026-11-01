@@ -212,7 +212,6 @@ async function getAuthenticatedUserId(authHeader: string | null) {
   return { userId: data.user.id, token };
 }
 
-
 function isoDaysAgo(days: number) {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - days);
@@ -662,7 +661,8 @@ export const Route = createFileRoute("/api/audit-tool")({
               try {
                 ({ data } = await pagedRows("profiles", "grade, training_level", {
                   client: adminClient,
-                  filter: (q) => (grade ? q.eq("active", true).eq("grade", grade) : q.eq("active", true)),
+                  filter: (q) =>
+                    grade ? q.eq("active", true).eq("grade", grade) : q.eq("active", true),
                   order: ["id"],
                 }));
               } catch (e) {
