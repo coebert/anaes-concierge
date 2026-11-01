@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { sendGmail } from "@/lib/gmail.server";
+import { CHAT_LIMITS, chatQuotaBuckets } from "@/lib/request-quota";
 import {
   type AssignmentLite,
   type SessionLite,
@@ -992,22 +993,55 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 }
 
 
+const ChatPart = z
+  .object({ type: z.string().max(64), text: z.string().max(CHAT_LIMITS.maxTextCharsPerMessage).optional() })
+  .passthrough();
+
 const ChatMessage = z.object({
-  id: z.string().optional(),
+  id: z.string().max(128).optional(),
   role: z.enum(["user", "assistant"]),
-  parts: z.array(z.record(z.any())).optional(),
-  content: z.string().optional(),
+  parts: z.array(ChatPart).max(CHAT_LIMITS.maxPartsPerMessage).optional(),
+  content: z.string().max(CHAT_LIMITS.maxTextCharsPerMessage).optional(),
 }).passthrough();
 
-const ChatBody = z.object({
+export const ChatBody = z.object({
   messages: z.array(ChatMessage)
     .min(1, "Please type a message before sending.")
-    .max(500, "This conversation is too long — please start a new chat."),
+    .max(CHAT_LIMITS.maxMessages, "This conversation is too long — please start a new chat."),
   conversationId: z.string({
     required_error: "Missing conversation — please open or start a chat first.",
     invalid_type_error: "Missing conversation — please open or start a chat first.",
   }).uuid("The conversation reference is invalid — please start a new chat."),
+  /** Email the reply to the signed-in user. Off unless the client explicitly asks. */
+  emailReply: z.boolean().optional().default(false),
 });
+
+/** Reads the body with a hard byte cap (Content-Length is advisory only). */
+export async function readBoundedBody(request: Request, maxBytes: number): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.byteLength;
+  }
+  return new TextDecoder().decode(buf);
+}
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -1024,8 +1058,17 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         let body: z.infer<typeof ChatBody>;
+        let rawText: string | null;
         try {
-          const raw = await request.json();
+          rawText = await readBoundedBody(request, CHAT_LIMITS.maxRequestBytes);
+        } catch {
+          return new Response("We couldn't read your message. Please try again.", { status: 400 });
+        }
+        if (rawText === null) {
+          return new Response("This conversation is too large — please start a new chat.", { status: 413 });
+        }
+        try {
+          const raw = JSON.parse(rawText);
           body = ChatBody.parse(raw);
         } catch (e) {
           const friendly = e instanceof z.ZodError
@@ -1037,10 +1080,24 @@ export const Route = createFileRoute("/api/chat")({
           return new Response(`We couldn't send your message. ${friendly}`, { status: 400 });
         }
 
-        const { messages, conversationId } = body;
+        const { messages, conversationId, emailReply } = body;
         const uiMessages = messages as unknown as UIMessage[];
 
         const admin = getAdminClient();
+        // Durable per-user + global hourly quotas (requests and bytes).
+        const { data: allowed, error: quotaErr } = await admin.rpc("take_request_quota", {
+          p_buckets: chatQuotaBuckets(userId),
+          p_bytes: new TextEncoder().encode(rawText).byteLength,
+        });
+        if (quotaErr) {
+          return new Response("The assistant is temporarily unavailable. Please try again shortly.", { status: 503 });
+        }
+        if (allowed !== true) {
+          return new Response("You've reached the hourly assistant limit. Please try again later.", {
+            status: 429,
+            headers: { "Retry-After": "900" },
+          });
+        }
         // Confirm conversation belongs to user
         const { data: conv } = await admin
           .from("ai_conversations")
@@ -1114,7 +1171,8 @@ export const Route = createFileRoute("/api/chat")({
               console.error("Failed to persist assistant message", e);
             }
 
-            // Email the assistant's text reply to the user
+            // Email the assistant's text reply only when the user asked for it.
+            if (!emailReply) return;
             try {
               const text = (responseMessage.parts ?? [])
                 .filter((p: any) => p.type === "text")
