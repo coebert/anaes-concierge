@@ -51,7 +51,7 @@ function ConversationPage() {
           ({
             id: m.id,
             role: m.role as UIMessage["role"],
-            parts: ((m.parts ?? []) as unknown as UIMessage["parts"]),
+            parts: (m.parts ?? []) as unknown as UIMessage["parts"],
           }) as UIMessage,
       );
     },

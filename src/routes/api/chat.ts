@@ -604,10 +604,16 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         );
         const [{ data: theatres }, { data: specs }] = await Promise.all([
           theatreIds.length
-            ? admin.from("theatres").select("id,name").in("id", theatreIds as string[])
+            ? admin
+                .from("theatres")
+                .select("id,name")
+                .in("id", theatreIds as string[])
             : Promise.resolve({ data: [] as NameRow[] }),
           specIds.length
-            ? admin.from("specialties").select("id,name").in("id", specIds as string[])
+            ? admin
+                .from("specialties")
+                .select("id,name")
+                .in("id", specIds as string[])
             : Promise.resolve({ data: [] as NameRow[] }),
         ]);
         const tsMap = new Map(((ts ?? []) as TsRow[]).map((t) => [t.id, t]));
@@ -772,15 +778,17 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 
           return {
             ...merged,
-            exceptions: ((excRows ?? []) as Array<{
-              id: string;
-              category: string;
-              status: string;
-              event_date: string;
-              event_session: string | null;
-              immediate_safety_concern: boolean | null;
-              due_by: string | null;
-            }>).map((e) => ({
+            exceptions: (
+              (excRows ?? []) as Array<{
+                id: string;
+                category: string;
+                status: string;
+                event_date: string;
+                event_session: string | null;
+                immediate_safety_concern: boolean | null;
+                due_by: string | null;
+              }>
+            ).map((e) => ({
               id: e.id,
               category: e.category,
               status: e.status,

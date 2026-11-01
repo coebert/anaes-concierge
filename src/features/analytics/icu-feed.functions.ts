@@ -71,10 +71,7 @@ export type IcuFeedStatus = {
   alerts: IcuAuditAlert[];
 };
 
-async function assertCoordinator(context: {
-  supabase: SupabaseClient<Database>;
-  userId: string;
-}) {
+async function assertCoordinator(context: { supabase: SupabaseClient<Database>; userId: string }) {
   const { data: roles, error } = await context.supabase
     .from("user_roles")
     .select("role")
