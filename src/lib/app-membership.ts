@@ -8,9 +8,9 @@
  * passkey sign-in (before a session is minted). Fails closed on any error.
  */
 export type MembershipClient = {
-  // Minimal structural shape of a supabase-js client; kept loose so both the
-  // RLS client and the service-role client satisfy it.
-  from: (t: string) => MembershipQuery;
+  // Any supabase-js client (RLS or service role). Narrowed internally to the
+  // two reads this module performs.
+  from: (t: never) => unknown;
 };
 type MembershipResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
 interface MembershipQuery {
@@ -39,10 +39,11 @@ export async function checkActiveMembership(
   supabase: MembershipClient,
   userId: string,
 ): Promise<MembershipCheck> {
+  const db = supabase as unknown as { from: (t: string) => MembershipQuery };
   try {
     const [rolesRes, profRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase.from("profiles").select("grade, active, left_at").eq("id", userId).maybeSingle(),
+      db.from("user_roles").select("role").eq("user_id", userId),
+      db.from("profiles").select("grade, active, left_at").eq("id", userId).maybeSingle(),
     ]);
     if (rolesRes.error || profRes.error) return { ok: false, reason: "unavailable" };
     const roles = new Set<string>((rolesRes.data ?? []).map((r) => r.role));
