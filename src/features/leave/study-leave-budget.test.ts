@@ -95,6 +95,7 @@ describe("previewAfterDecision", () => {
     yearStartISO: "2026-04-01",
     daysAllowance: 10, daysTaken: 3, daysPending: 2, daysRemaining: 5,
     budgetGbp: 800, spentGbp: 250, pendingGbp: 400, remainingGbp: 150,
+    crossYearCostRequestIds: [] as string[],
   };
 
   it("approving adds days and £ to taken/spent", () => {
