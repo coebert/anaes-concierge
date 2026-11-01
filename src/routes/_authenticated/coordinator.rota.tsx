@@ -13,6 +13,7 @@ import { parseDateLocal, toISODateLocal, formatDateWithWeekdayGB } from "@/lib/u
 import { useAuth } from "@/lib/auth-context";
 import { type Profile, type RotaRules } from "@/lib/rota-validation";
 import { RotaWeekGrid } from "@/features/coordinator-rota/RotaWeekGrid";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { CellDialog } from "@/features/coordinator-rota/CellDialog";
 import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyBlockersPanel";
 import { usePreferenceMatchFilter } from "@/features/coordinator-rota/use-preference-match-filter";
@@ -85,7 +86,7 @@ function RotaGridPage() {
     theatreId: string; date: string; session: SessionHalf;
   } | null>(null);
 
-  const { data: theatres } = useQuery({
+  const { data: theatres, error: theatresErr, isPending: theatresPending, refetch: theatresRefetch } = useQuery({
     queryKey: ["theatres-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -98,7 +99,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: theatreSessions } = useQuery({
+  const { data: theatreSessions, error: theatreSessionsErr, isPending: theatreSessionsPending, refetch: theatreSessionsRefetch } = useQuery({
     queryKey: ["theatre-sessions", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -121,7 +122,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: assignments } = useQuery({
+  const { data: assignments, error: assignmentsErr, isPending: assignmentsPending, refetch: assignmentsRefetch } = useQuery({
     queryKey: ["assignments", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -138,7 +139,7 @@ function RotaGridPage() {
 
   const ctxStartIso = iso(addDays(days[0], -21));
   const ctxEndIso = iso(addDays(days[days.length - 1], 21));
-  const { data: contextAssignments } = useQuery({
+  const { data: contextAssignments, error: contextAssignmentsErr, isPending: contextAssignmentsPending, refetch: contextAssignmentsRefetch } = useQuery({
     queryKey: ["assignments-context", ctxStartIso, ctxEndIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -153,7 +154,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: staff } = useQuery({
+  const { data: staff, error: staffErr, isPending: staffPending, refetch: staffRefetch } = useQuery({
     queryKey: ["staff-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -166,7 +167,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: rules } = useQuery({
+  const { data: rules, error: rulesErr, isPending: rulesPending, refetch: rulesRefetch } = useQuery({
     queryKey: ["rota-rules"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -176,7 +177,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: jobPlans } = useQuery({
+  const { data: jobPlans, error: jobPlansErr, isPending: jobPlansPending, refetch: jobPlansRefetch } = useQuery({
     queryKey: ["job-plans-all"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -187,7 +188,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: leave } = useQuery({
+  const { data: leave, error: leaveErr, isPending: leavePending, refetch: leaveRefetch } = useQuery({
     queryKey: ["leave-week", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -200,7 +201,7 @@ function RotaGridPage() {
     },
   });
 
-  const { data: fixedSessions } = useQuery({
+  const { data: fixedSessions, error: fixedSessionsErr, isPending: fixedSessionsPending, refetch: fixedSessionsRefetch } = useQuery({
     queryKey: ["fixed-sessions-all"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -210,6 +211,27 @@ function RotaGridPage() {
       return data as { staff_id: string; day_of_week: number; session: SessionHalf }[];
     },
   });
+
+  // Every source the cell editor validates against. If any is still
+  // loading or failed, editing is BLOCKED — validating against [] or
+  // default rules would silently approve unsafe changes.
+  const validationSources = [
+    { label: "staff", pending: staffPending, error: staffErr, retry: staffRefetch },
+    { label: "rota rules", pending: rulesPending, error: rulesErr, retry: rulesRefetch },
+    { label: "job plans", pending: jobPlansPending, error: jobPlansErr, retry: jobPlansRefetch },
+    { label: "leave", pending: leavePending, error: leaveErr, retry: leaveRefetch },
+    { label: "fixed sessions", pending: fixedSessionsPending, error: fixedSessionsErr, retry: fixedSessionsRefetch },
+    { label: "this week's assignments", pending: assignmentsPending, error: assignmentsErr, retry: assignmentsRefetch },
+    { label: "surrounding assignments", pending: contextAssignmentsPending, error: contextAssignmentsErr, retry: contextAssignmentsRefetch },
+  ];
+  const validationFailed = validationSources.filter((v) => v.error);
+  const validationLoading = validationSources.filter((v) => v.pending && !v.error);
+  const validationReady = validationFailed.length === 0 && validationLoading.length === 0;
+  const gridSources = [
+    { label: "theatres", error: theatresErr, retry: theatresRefetch },
+    { label: "theatre sessions", error: theatreSessionsErr, retry: theatreSessionsRefetch },
+    { label: "assignments", error: assignmentsErr, retry: assignmentsRefetch },
+  ].filter((g) => g.error);
 
   const [matchOnly, setMatchOnly] = usePreferenceMatchFilter();
 
@@ -438,6 +460,29 @@ function RotaGridPage() {
         onSelectCell={setCellOpen}
       />
 
+      {gridSources.length > 0 && (
+        <QueryErrorNotice
+          error={gridSources[0].error}
+          what={`the rota (${gridSources.map((g) => g.label).join(", ")})`}
+          onRetry={() => gridSources.forEach((g) => void g.retry())}
+        />
+      )}
+      {!validationReady && (
+        <div role="status" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+          {validationFailed.length > 0 ? (
+            <>
+              Editing is paused: {validationFailed.map((v) => v.label).join(", ")} could not be loaded, so changes
+              can't be checked for clashes or rule breaches.{" "}
+              <button type="button" className="underline" onClick={() => validationFailed.forEach((v) => void v.retry())}>
+                Retry
+              </button>
+            </>
+          ) : (
+            <>Editing will be available once {validationLoading.map((v) => v.label).join(", ")} finish loading…</>
+          )}
+        </div>
+      )}
+
       <RotaWeekGrid
         days={days}
         theatres={theatres}
@@ -449,7 +494,7 @@ function RotaGridPage() {
       />
 
 
-      {cellOpen && (
+      {cellOpen && validationReady && (
         <CellDialog
           theatreId={cellOpen.theatreId}
           theatreName={theatres?.find((t) => t.id === cellOpen.theatreId)?.name ?? ""}
@@ -463,6 +508,7 @@ function RotaGridPage() {
           jobPlans={jobPlans ?? []}
           leave={leave ?? []}
           fixedSessions={fixedSessions ?? []}
+          // Rules row genuinely absent (loaded, no error) → documented defaults.
           rules={rules ?? DEFAULT_RULES}
         />
       )}
