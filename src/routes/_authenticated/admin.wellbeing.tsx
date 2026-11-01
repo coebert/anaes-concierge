@@ -20,6 +20,7 @@ import { PageLoading } from "@/components/loading";
 import { HeartPulse, AlertTriangle, TrendingDown } from "lucide-react";
 import {
   computeWellbeing,
+  MIN_ASSESSABLE_SESSIONS,
   WELLBEING_BAND_LABEL,
   WELLBEING_BAND_TONE,
   type WellbeingResult,
@@ -229,6 +230,7 @@ export function AdminWellbeingPage() {
     (r) => r.wellbeing.band === "at_risk" || r.wellbeing.band === "strained",
   ).length;
   const notAssessedCount = rows.filter((r) => !r.wellbeing.scoreKnown).length;
+  const assessedCount = rows.length - notAssessedCount;
   const highAttrition = rows.filter(
     (r) => r.attrition.band === "high" || r.attrition.band === "elevated",
   ).length;
@@ -271,8 +273,14 @@ export function AdminWellbeingPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <StatCard label="Staff assessed" value={rows.length} icon={HeartPulse} />
+      <div className="grid gap-3 sm:grid-cols-5">
+        <StatCard label="Staff listed" value={rows.length} icon={HeartPulse} />
+        <StatCard
+          label="Staff assessed"
+          value={assessedCount}
+          hint={`${MIN_ASSESSABLE_SESSIONS}+ sessions in 90 days`}
+          icon={HeartPulse}
+        />
         <StatCard label="Strained / at-risk" value={atRiskCount} icon={AlertTriangle} />
         <StatCard label="High / elevated signal score" value={highAttrition} icon={TrendingDown} />
         <StatCard label="Not enough data" value={notAssessedCount} icon={HeartPulse} />
@@ -280,7 +288,11 @@ export function AdminWellbeingPage() {
       <p className="text-xs text-muted-foreground" data-testid="admin-wellbeing-caveat">
         These are unvalidated operational signal scores, not predictions of who will leave. Use them
         only to prompt a supportive conversation — never for HR or performance decisions. The
-        pulse-survey trend is not yet measured per person and is shown as not assessed.
+        pulse-survey trend is not yet measured per person and is shown as not assessed. Scores are
+        based only on the records available in the app. The {MIN_ASSESSABLE_SESSIONS}-session
+        minimum is a conservative display threshold, not a validated measure of data sufficiency: a
+        person with just over {MIN_ASSESSABLE_SESSIONS} sparse sessions is shown with a score, but
+        that does not mean their full 90 days are covered.
       </p>
 
       <Card>

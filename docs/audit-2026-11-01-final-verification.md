@@ -7,6 +7,117 @@ rows were changed. The one live database change was grants/functions (DDL)
 only. The dangerous audit-SQL examples were run **only** on disposable local
 clusters, never on the live database.
 
+## DEFINER CALLER-IDENTITY FIX + WELLBEING CLOSEOUT (supersedes the sections below)
+
+**Synthetic data only.** Not published. No live privileged function was invoked,
+no sync/HTTP was sent, no business rows were read or changed. Live reads were
+catalog metadata only (function definitions, ACLs, role membership,
+`cron.job` username/booleans — no command text, no secrets).
+
+### Defect (reproduced)
+Live metadata: functions owned by `postgres`; `postgres` is NOT superuser, is
+BYPASSRLS and a member of `anon`, `authenticated`, `service_role`; all 15
+`cron.job` rows have `username = postgres`. Inside SECURITY DEFINER,
+`current_user` is the owner, so `current_user = 'service_role' OR
+pg_has_role(current_user,'service_role','MEMBER')` was always true. Phase 1 of
+`tests/db-harness/definer/run.sh` loads the verbatim live bodies and proves it:
+staff A read staff B's decrypted AI chat; staff A read all 3 RTW interviews;
+staff A and a postgres session switched to `authenticated` enqueued sync calls;
+staff A and a no-claims authenticated session passed the cron-listing and
+competency guards; `rpc_access_audit.db_role` recorded `postgres`.
+
+Also found: `get_competency_eligibility` and `list_clwrota_cron_runs` failed
+with 42702 (ambiguous OUT column) on every call past the guard, because live
+`plpgsql.variable_conflict = error`. Fixed with `#variable_conflict use_column`
+(no logic change).
+
+### Fix — migration `0007_definer_caller_identity` (applied live after proof)
+New INVOKER helpers (service_role-only EXECUTE):
+`_request_is_service_role()` = JWT role claim `service_role` AND switched role
+GUC `service_role` (a forged claim under `authenticated` fails);
+`_request_is_authenticated_user()` = uid present AND claim `authenticated` AND
+role GUC `authenticated`; `_request_is_active_admin()`;
+`_request_is_verified_scheduler()` = `session_user = postgres`, role GUC
+`none`/`postgres`, no request claims; `_request_caller_kind()` for audit.
+
+| Function | Live access now |
+|---|---|
+| get_ai_messages_decrypted | service; conversation owner who is an active member; active coordinator/admin |
+| get_rtw_interviews_decrypted | service; own rows (active member); active coordinator/admin |
+| get_competency_eligibility | service; any active member (roleless/inactive/missing profile → 42501) |
+| list_clwrota_cron_runs, detect_rpc_access_anomalies | service; active admin |
+| decrypt_ai_message_parts, decrypt_owner_or_coord, decrypt_coord_only, admin_decrypt_text/jsonb | service_role EXECUTE only; bodies use the new helpers |
+| log_rpc_access | `db_role` = real caller kind (`authenticated`, `service_role`, `scheduler:postgres`, `unverified:…`) |
+| trigger_clwrota_sync, _with_query, _rate_limited, _all_rate_limited | **closed by grant**: EXECUTE only service_role + owner postgres |
+
+**Deviation, stated plainly:** the four sync bodies read the webhook secret, and
+the migration tool refuses any SQL that touches secret storage ("Agent access
+to secrets is not allowed"), so their bodies could not be rewritten. Instead
+`authenticated`, `anon` and PUBLIC lost EXECUTE. The stale `current_user` test
+is still in those four bodies but no request role can reach it. Consequences:
+(a) admins can no longer call them directly over the API — the app never did;
+it triggers through server functions that check admin then use the service
+role; (b) the scheduler is the owner `postgres` (cron username verified), not
+an in-body scheduler check; (c) any `postgres` session (operator access) can
+still run them. Rewriting the bodies to use `_request_is_verified_scheduler()`
+needs someone with secret-storage permission to apply them.
+
+### Proof — `tests/db-harness/definer/run.sh`: 152 cases, 0 failures
+PostgreSQL 16.13 + PostgREST 14.1; non-superuser `postgres` owner in
+`service_role`; stub `net.http_post` queue; dummy secret; synthetic staff A/B
+(separate encrypted chats and RTW), coordinator, admin, inactive admin,
+departed staff, roleless, role-without-profile. Exact SQLSTATE / row content /
+queue delta per case: 7 trap reproductions on live bodies; after 0007 — chat
+and RTW cross-read denied (0 rows), own and coordinator/admin reads correct,
+anon/authenticator-without-role 42501, no-claims authenticated, forged service
+claim, forged admin sub under anon, postgres switched to authenticated all
+denied; direct helper calls 42501; every forbidden sync call enqueues 0;
+service and scheduler enqueue exactly 1 (all-steps: 3); all queued rows carry
+only the expected URL and dummy secret; audit rows read
+`A/authenticated, null/service_role, null/scheduler:postgres`. Real PostgREST:
+25 GET/POST cases incl. bad-signature and `alg=none` JWTs (401).
+Live metadata after apply: all 15 functions have the expected ACLs; no
+authenticated-executable definer function still tests `current_user`.
+
+### Database linter: 16 warnings → 12 (+3 info unchanged)
+Resolved (4): the four sync triggers (no longer authenticated-executable).
+Remaining 12, reviewed, intended for signed-in users, no suppressions:
+`get_ai_messages_decrypted`, `get_rtw_interviews_decrypted`,
+`get_competency_eligibility`, `list_clwrota_cron_runs`,
+`detect_rpc_access_anomalies` (fixed bodies above); `has_role`,
+`current_user_is_coordinator_or_admin` (RLS helpers, require active profile);
+`admin_run_readonly_sql` (admin + read-only + column allowlist, harnessed);
+`get_leave_ledger_decrypted` (own rows or coordinator/admin; nested decrypt
+fixed); `get_pulse_aggregate` (coordinator/admin only);
+`get_pulse_responses_decrypted` (own or admin); `get_recognition_decrypted`
+(public entries, own, sender, or admin — **follow-up:** public entries are not
+membership-gated, so a signed-in but inactive account can read them).
+Info (3): RLS on, no policies — `passkey_challenges`, `request_quota_buckets`,
+`chat_stream_leases`: service-only by design.
+
+### Wellbeing closeout
+- Admin page: "Staff listed" (all rows) and "Staff assessed" (score known) are
+  separate cards; "Not enough data" unchanged. Caveat now says scores use only
+  the records in the app and the 10-session minimum is a conservative display
+  threshold, not validated data sufficiency.
+- Retention factor reads "Wellbeing not assessed" when the score is unknown
+  (was e.g. "Wellbeing 100/100").
+- RTW counts as completed only if `conducted_at <= asOf`.
+- Weights, caps and bands unchanged. Bradford untouched (concern dismissed).
+- New tests fail on the old code (checked by temporarily reverting) and pass now.
+
+### Checks
+Tests 1,923 passed, 4 skipped, 0 failed (190 files). Typecheck clean. Lint
+0 errors, 44 warnings. Production build passes (needed
+`NODE_OPTIONS=--max-old-space-size=6144`; default heap ran out). DB harnesses:
+149/149 SQL, 12/12 PostgREST, 152/152 definer.
+
+### Not verified
+Live behaviour of the new guards was not invoked (by instruction). Expected
+signals to watch: the next `clwrota-sync-*` cron runs, and the 5-minute
+anomaly hook (service path). The real-browser checks listed below are still
+open.
+
 ## FINAL STATE (after the membership / pagination / leases / lint pass)
 
 This section supersedes the release status and results table further down,

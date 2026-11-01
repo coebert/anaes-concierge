@@ -3726,6 +3726,11 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      _request_caller_kind: { Args: never; Returns: string }
+      _request_is_active_admin: { Args: never; Returns: boolean }
+      _request_is_authenticated_user: { Args: never; Returns: boolean }
+      _request_is_service_role: { Args: never; Returns: boolean }
+      _request_is_verified_scheduler: { Args: never; Returns: boolean }
       acquire_chat_stream_lease: {
         Args: { p_max: number; p_ttl_seconds: number; p_user_id: string }
         Returns: string

@@ -32,8 +32,9 @@ interface Rpc {
 const RPCS: Rpc[] = [
   {
     signature: "public.get_competency_eligibility(date)",
-    guardMatch: /auth\.uid\(\)\s+IS\s+NULL[\s\S]+insufficient_privilege/i,
-    authenticatedAllowed: true, // any signed-in user, anon rejected
+    guardMatch:
+      /_request_is_authenticated_user\(\)[\s\S]+is_app_member\(auth\.uid\(\)\)[\s\S]+insufficient_privilege/i,
+    authenticatedAllowed: true, // any active signed-in member, anon rejected
   },
   {
     signature: "public.trigger_clwrota_sync(text)",
@@ -57,8 +58,8 @@ const RPCS: Rpc[] = [
   },
   {
     signature: "public.list_clwrota_cron_runs(integer)",
-    guardMatch: /has_role\(auth\.uid\(\),\s*'admin'\)[\s\S]+insufficient_privilege/i,
-    authenticatedAllowed: false,
+    guardMatch: /_request_is_active_admin\(\)[\s\S]+insufficient_privilege/i,
+    authenticatedAllowed: true, // EXECUTE kept; in-body active-admin gate (migration 0007)
   },
 ];
 
@@ -113,13 +114,11 @@ describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", ()
         // Signed-in caller needed at the grant layer; body then decides.
         expect(hasExec).toBe("t");
       } else {
-        // The in-body has_role(admin) check is the real gate. We accept
-        // either "no EXECUTE" (belt) or "EXECUTE + body guard" (braces),
-        // but the body guard is asserted separately above. Verify at
-        // least that the guard *exists* — the previous test already did
-        // that — and that ANY authenticated call without admin role
-        // will hit the guard. Nothing more to enforce at grant layer.
-        expect(["t", "f"]).toContain(hasExec);
+        // Migration 0007: the sync triggers' in-body check tested
+        // current_user, which inside SECURITY DEFINER is the owner (a
+        // service_role member), so it never gated anyone. They are closed
+        // at the grant layer: signed-in users must have NO EXECUTE.
+        expect(hasExec, `authenticated can still execute ${signature}`).toBe("f");
       }
     });
 
@@ -190,9 +189,8 @@ describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", ()
       });
 
       it("trigger_clwrota_sync rejects authenticated (non-admin) with insufficient_privilege", () => {
-        // authenticated has EXECUTE (for admins), so this exercises the
-        // in-body guard specifically — auth.uid() is NULL here so
-        // has_role(...) is false.
+        // authenticated has no EXECUTE (migration 0007), so the ACL layer
+        // rejects with 42501.
         const outcome = callAsRoleExpectingReject(
           "authenticated",
           "public.trigger_clwrota_sync('staff')",

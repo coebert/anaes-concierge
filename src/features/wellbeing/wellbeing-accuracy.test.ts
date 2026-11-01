@@ -106,6 +106,47 @@ describe("insufficient data is unknown, never Thriving 100", () => {
     expect(a.band).toBe("not_assessed");
     expect(a.notAssessed).toContain("pulse survey trend");
   });
+  it("wellbeing factor reads 'not assessed', never 'Wellbeing N/100', when unknown", () => {
+    // 9 weekend nights: below the gate, but harsh enough that the raw
+    // arithmetic score is low and the wellbeing factor ranks in the top 3.
+    const wb = computeWellbeing({
+      ...base,
+      now: ASOF,
+      assignments: rows(WEEKEND_DAYS.slice(0, MIN_ASSESSABLE_SESSIONS - 1), "night"),
+    });
+    expect(wb.scoreKnown).toBe(false);
+    expect(wb.score).toBeLessThan(100);
+    const a = computeAttritionRisk({
+      wellbeing: wb,
+      bradfordScore: 0,
+      denialRate12m: 0,
+      shortNoticeChanges12m: 0,
+      daysSinceLastAnnual: 10,
+      overdueRtwCount: 0,
+      pulseTrend: null,
+    });
+    const labels = a.topFactors.map((f) => f.label).join(" | ");
+    expect(labels).not.toMatch(/Wellbeing \d+\/100/);
+    expect(a.topFactors.find((f) => f.key === "wellbeing")?.label).toBe("Wellbeing not assessed");
+  });
+  it("known wellbeing keeps its numeric factor label", () => {
+    const wb = computeWellbeing({
+      ...base,
+      now: ASOF,
+      assignments: rows(WEEKDAYS.slice(0, MIN_ASSESSABLE_SESSIONS), "am"),
+    });
+    const a = computeAttritionRisk({
+      wellbeing: wb,
+      bradfordScore: 0,
+      denialRate12m: 0,
+      shortNoticeChanges12m: 0,
+      daysSinceLastAnnual: 10,
+      overdueRtwCount: 0,
+      pulseTrend: null,
+    });
+    expect(a.band).not.toBe("not_assessed");
+    expect(a.topFactors.map((f) => f.label)).not.toContain("Wellbeing not assessed");
+  });
 });
 
 describe("band thresholds unchanged", () => {
@@ -220,6 +261,23 @@ describe("admin 12-month signal selection", () => {
     ).toBe(1);
     expect(
       sel([sick], { rtws: [{ leave_request_id: "sick1", conducted_at: "2026-10-06T09:00:00Z" }] })
+        .overdueRtwCount,
+    ).toBe(0);
+  });
+  it("RTW completed after asOf does not clear an interview overdue on asOf", () => {
+    const sick = L({ id: "sick2", type: "sick", start_date: "2026-10-01", end_date: "2026-10-03" });
+    // ASOF is 2026-11-01T12:00Z; completion recorded later must not count.
+    expect(
+      sel([sick], { rtws: [{ leave_request_id: "sick2", conducted_at: "2026-11-05T09:00:00Z" }] })
+        .overdueRtwCount,
+    ).toBe(1);
+    expect(
+      sel([sick], { rtws: [{ leave_request_id: "sick2", conducted_at: "2026-11-01T12:00:01Z" }] })
+        .overdueRtwCount,
+    ).toBe(1);
+    // Completed exactly at asOf counts.
+    expect(
+      sel([sick], { rtws: [{ leave_request_id: "sick2", conducted_at: "2026-11-01T12:00:00Z" }] })
         .overdueRtwCount,
     ).toBe(0);
   });
