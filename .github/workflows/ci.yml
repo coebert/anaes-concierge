@@ -91,16 +91,14 @@ jobs:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-1.4.4-${{ hashFiles('bun.lock') }}
       - run: bun install --frozen-lockfile
-      - name: Verify bun.lock is current (no drift from package.json)
+      - name: Verify bun.lock is the only, unchanged lockfile
+        # --frozen-lockfile above already fails if package.json and bun.lock disagree.
         run: |
-          cp bun.lock /tmp/bun.lock.committed
-          bun install --frozen-lockfile --lockfile-only 2>/dev/null || bun install --frozen-lockfile
           git diff --exit-code -- bun.lock
           test ! -e package-lock.json
       - run: bun run typecheck
       - name: Production build
-        env:
-          NODE_OPTIONS: --max-old-space-size=6144
+        # `build` sets --max-old-space-size=8192 itself; ubuntu-latest has 16 GB.
         run: bun run build
 
   security-scan:
