@@ -25,6 +25,16 @@ import {
 import { computeWellbeing, WELLBEING_BAND_LABEL } from "@/features/wellbeing/wellbeing-score";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
 
+/** Narrow a UI message part to a text part (`{ type: "text", text }`). */
+function isTextPart(p: unknown): p is { type: "text"; text: string } {
+  return (
+    typeof p === "object" &&
+    p !== null &&
+    (p as { type?: unknown }).type === "text" &&
+    typeof (p as { text?: unknown }).text === "string"
+  );
+}
+
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
 You help staff understand their rota, leave entitlement, leave requests and trainee progress.
 Be concise and use markdown. Dates should be human-friendly (e.g. "Mon 2 Jun"). Always call the relevant
@@ -1104,8 +1114,8 @@ export const Route = createFileRoute("/api/chat")({
           // If conversation still has the default title, derive one from the first user message
           if (conv.title === "New conversation") {
             const text = (lastMsg.parts ?? [])
-              .filter((p: any) => p.type === "text")
-              .map((p: any) => p.text)
+              .filter(isTextPart)
+              .map((p) => p.text)
               .join(" ")
               .trim();
             if (text) {
@@ -1179,8 +1189,8 @@ export const Route = createFileRoute("/api/chat")({
               if (!emailReply) return;
               try {
                 const text = (responseMessage.parts ?? [])
-                  .filter((p: any) => p.type === "text")
-                  .map((p: any) => p.text as string)
+                  .filter(isTextPart)
+                  .map((p) => p.text)
                   .join("\n\n")
                   .trim();
                 if (!text) return;
@@ -1193,10 +1203,10 @@ export const Route = createFileRoute("/api/chat")({
                 const recipient = prof?.email;
                 if (!recipient) return;
 
-                const lastUser = [...uiMessages].reverse().find((m: any) => m.role === "user");
-                const question = ((lastUser?.parts ?? []) as any[])
-                  .filter((p) => p.type === "text")
-                  .map((p) => p.text as string)
+                const lastUser = [...uiMessages].reverse().find((m) => m.role === "user");
+                const question = ((lastUser?.parts ?? []) as readonly unknown[])
+                  .filter(isTextPart)
+                  .map((p) => p.text)
                   .join(" ")
                   .trim();
                 const subject = question
