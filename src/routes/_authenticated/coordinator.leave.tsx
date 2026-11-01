@@ -193,6 +193,8 @@ function LeaveCard({
   const staffName = profile.name;
   const notifyDecided = useServerFn(notifyLeaveDecided);
   const [conflicts, setConflicts] = useState<LeaveConflict[] | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictAttempt, setConflictAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [acting, setActing] = useState(false);
@@ -223,6 +225,8 @@ function LeaveCard({
   useEffect(() => {
     if (row.status !== "pending") return;
     setLoading(true);
+    setConflictError(null);
+    setConflicts(null);
     void computeLeaveConflicts(
       row.staff_id,
       row.start_date,
@@ -230,8 +234,11 @@ function LeaveCard({
       (row.half_day_start as "am" | "pm" | null) ?? null,
       (row.half_day_end as "am" | "pm" | null) ?? null,
       row.id,
-    ).then((c) => { setConflicts(c); setLoading(false); });
-  }, [row.id]);
+    )
+      .then((c) => setConflicts(c))
+      .catch((e: unknown) => setConflictError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  }, [row.id, conflictAttempt]);
 
   const persistCost = async (): Promise<boolean> => {
     if (!isStudy) return true;
@@ -317,6 +324,15 @@ function LeaveCard({
           <>
             {loading ? (
               <p className="text-xs text-muted-foreground">Checking cover…</p>
+            ) : conflictError || conflicts === null ? (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Cover could not be checked</AlertTitle>
+                <AlertDescription className="text-xs">
+                  Rota conflicts are unknown — this is not the same as "no conflicts". {conflictError}{" "}
+                  <button type="button" className="underline" onClick={() => setConflictAttempt((n) => n + 1)}>Retry</button>
+                </AlertDescription>
+              </Alert>
             ) : (
               <>
                 {ownConflicts.length > 0 ? (
