@@ -18,6 +18,7 @@ import {
   leaveWorkingDays,
   type LeaveRowLike,
 } from "./leave-allowances";
+import { leaveYearWindow } from "./leave-count";
 
 export interface StudyLeaveRow extends LeaveRowLike {
   id: string;
@@ -26,6 +27,13 @@ export interface StudyLeaveRow extends LeaveRowLike {
 
 export interface StudyBudget {
   yearStartISO: string;
+  /**
+   * Study requests that cross the leave-year boundary and carry a £ cost.
+   * Their days are clipped to this year; their cost is attributed in full to
+   * the year in which the request STARTS (no pro-rata split is invented).
+   * Listed so coordinators can review them manually.
+   */
+  crossYearCostRequestIds: string[];
   daysAllowance: number;
   daysTaken: number;
   daysPending: number;
@@ -61,14 +69,19 @@ export function computeStudyBudget(
   let daysPending = 0;
   let spentGbp = 0;
   let pendingGbp = 0;
+  const crossYear: string[] = [];
 
   for (const r of rows) {
     if (r.staff_id !== staffId) continue;
     if (r.type !== "study") continue;
     if (excludeRequestId && r.id === excludeRequestId) continue;
     if (!leaveOverlapsYear(r, yearStartISO)) continue;
-    const days = leaveWorkingDays(r);
-    const cost = Number(r.study_cost_gbp ?? 0);
+    const days = leaveWorkingDays(r, yearStartISO);
+    const rawCost = Number(r.study_cost_gbp ?? 0);
+    const w = leaveYearWindow(yearStartISO);
+    const crossesYear = r.start_date < w.start || r.end_date >= w.endExclusive;
+    if (crossesYear && rawCost > 0) crossYear.push(r.id);
+    const cost = r.start_date >= w.start && r.start_date < w.endExclusive ? rawCost : 0;
     if (r.status === "approved") {
       daysTaken += days;
       spentGbp += cost;
@@ -80,6 +93,7 @@ export function computeStudyBudget(
 
   return {
     yearStartISO,
+    crossYearCostRequestIds: crossYear,
     daysAllowance,
     daysTaken,
     daysPending,

@@ -15,6 +15,8 @@
  * half-sessions and are rejected.
  */
 
+import { isValidIsoDate } from "./leave-count";
+
 export type HalfDayMarker = "am" | "pm" | null;
 
 export interface HalfDayRangeInput {
@@ -40,7 +42,6 @@ export type HalfDayValidationResult =
   | { ok: true; halfSessionCount: number }
   | { ok: false; errors: HalfDayValidationError[] };
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function daysInclusive(startIso: string, endIso: string): number {
   const s = Date.UTC(
@@ -70,10 +71,10 @@ export function validateHalfDayRange(
 ): HalfDayValidationResult {
   const errors: HalfDayValidationError[] = [];
 
-  if (!ISO_DATE.test(input.start_date) || !ISO_DATE.test(input.end_date)) {
+  if (!isValidIsoDate(input.start_date) || !isValidIsoDate(input.end_date)) {
     errors.push({
       code: "missing_dates",
-      message: "Start and end dates are required (YYYY-MM-DD).",
+      message: "Start and end dates are required and must be real calendar dates (YYYY-MM-DD).",
     });
     return { ok: false, errors };
   }

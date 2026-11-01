@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { countLeaveWorkingDays, isValidIsoDate } from "./leave-count";
 
 export type SessionPart = "am" | "pm";
 
@@ -112,20 +113,18 @@ export async function computeLeaveConflicts(
   return conflicts;
 }
 
+/** Working days for the request dialog — same convention as allowances. */
 export function countWorkingDays(
   startDate: string,
   endDate: string,
   halfDayStart?: SessionPart | null,
   halfDayEnd?: SessionPart | null,
 ): number {
-  let days = 0;
-  for (const d of eachDate(startDate, endDate)) {
-    const dow = new Date(d + "T00:00:00Z").getUTCDay();
-    if (dow === 0 || dow === 6) continue;
-    let inc = 1;
-    if (d === startDate && halfDayStart) inc -= 0.5;
-    if (d === endDate && halfDayEnd) inc -= 0.5;
-    days += inc;
-  }
-  return Math.max(0, days);
+  if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate)) return 0;
+  return countLeaveWorkingDays({
+    start_date: startDate,
+    end_date: endDate,
+    half_day_start: halfDayStart ?? null,
+    half_day_end: halfDayEnd ?? null,
+  });
 }
