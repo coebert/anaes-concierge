@@ -394,179 +394,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.trigger_clwrota_sync(p_step text)
- RETURNS bigint
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'vault'
-AS $function$
-DECLARE
-  v_secret text;
-  v_url text := 'https://project--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app/api/public/hooks/clwrota-sync';
-  v_request_id bigint;
-BEGIN
-  -- Explicit access check: admin or service_role only.
-  -- 0007: service path = signed service_role request; scheduled path = verified
-  -- pg_cron identity (session_user postgres, no role switch, no request claims);
-  -- user path = active admin.
-  IF NOT (public._request_is_service_role()
-          OR public._request_is_verified_scheduler()
-          OR public._request_is_active_admin()) THEN
-    RAISE EXCEPTION 'trigger_clwrota_sync requires admin or service_role'
-      USING ERRCODE = 'insufficient_privilege';
-  END IF;
-
-  IF p_step NOT IN ('staff','rota','leave') THEN
-    RAISE EXCEPTION 'p_step must be one of: staff, rota, leave (got %)', p_step;
-  END IF;
-
-  SELECT decrypted_secret INTO v_secret
-  FROM vault.decrypted_secrets WHERE name = 'CLWROTA_WEBHOOK_SECRET' LIMIT 1;
-  IF v_secret IS NULL OR length(v_secret) = 0 THEN
-    RAISE EXCEPTION 'CLWROTA_WEBHOOK_SECRET is not present in vault.secrets';
-  END IF;
-
-  SELECT net.http_post(
-    url := v_url || '?step=' || p_step,
-    headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret', v_secret),
-    body := '{}'::jsonb,
-    timeout_milliseconds := 60000
-  ) INTO v_request_id;
-  RETURN v_request_id;
-END $function$;
-
-CREATE OR REPLACE FUNCTION public.trigger_clwrota_sync_with_query(p_step text, p_query text DEFAULT NULL::text)
- RETURNS bigint
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'vault'
-AS $function$
-DECLARE
-  v_secret text;
-  v_url text := 'https://project--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app/api/public/hooks/clwrota-sync';
-  v_request_id bigint;
-  v_full_url text;
-BEGIN
-  -- 0007: service path = signed service_role request; scheduled path = verified
-  -- pg_cron identity (session_user postgres, no role switch, no request claims);
-  -- user path = active admin.
-  IF NOT (public._request_is_service_role()
-          OR public._request_is_verified_scheduler()
-          OR public._request_is_active_admin()) THEN
-    RAISE EXCEPTION 'trigger_clwrota_sync_with_query requires admin or service_role'
-      USING ERRCODE = 'insufficient_privilege';
-  END IF;
-
-  IF p_step NOT IN ('staff','rota','leave') THEN
-    RAISE EXCEPTION 'p_step must be one of: staff, rota, leave (got %)', p_step;
-  END IF;
-
-  SELECT decrypted_secret INTO v_secret
-  FROM vault.decrypted_secrets WHERE name = 'CLWROTA_WEBHOOK_SECRET' LIMIT 1;
-  IF v_secret IS NULL OR length(v_secret) = 0 THEN
-    RAISE EXCEPTION 'CLWROTA_WEBHOOK_SECRET is not present in vault.secrets';
-  END IF;
-
-  v_full_url := v_url || '?step=' || p_step;
-  IF p_query IS NOT NULL AND length(p_query) > 0 THEN
-    v_full_url := v_full_url || '&' || p_query;
-  END IF;
-
-  SELECT net.http_post(
-    url := v_full_url,
-    headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret', v_secret),
-    body := '{}'::jsonb,
-    timeout_milliseconds := 60000
-  ) INTO v_request_id;
-
-  RETURN v_request_id;
-END $function$;
-
-CREATE OR REPLACE FUNCTION public.trigger_clwrota_sync_rate_limited(p_step text)
- RETURNS bigint
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'vault'
-AS $function$
-DECLARE
-  v_secret text;
-  v_url text := 'https://project--58d57e5a-3648-4d9e-b953-83e4bf950e52.lovable.app/api/public/hooks/clwrota-sync';
-  v_request_id bigint;
-  v_min_interval integer;
-  v_last_attempt timestamptz;
-  v_lock_key bigint;
-BEGIN
-  -- 0007: service path = signed service_role request; user path = active admin.
-  IF NOT (public._request_is_service_role() OR public._request_is_active_admin()) THEN
-    RAISE EXCEPTION 'trigger_clwrota_sync_rate_limited requires admin or service_role'
-      USING ERRCODE = 'insufficient_privilege';
-  END IF;
-
-  IF p_step NOT IN ('staff','rota','leave') THEN
-    RAISE EXCEPTION 'p_step must be one of: staff, rota, leave (got %)', p_step;
-  END IF;
-
-  SELECT min_interval_seconds, last_attempt_at INTO v_min_interval, v_last_attempt
-  FROM public.clwrota_sync_rate_limit WHERE step = p_step FOR UPDATE;
-
-  IF v_last_attempt IS NOT NULL
-     AND now() - v_last_attempt < make_interval(secs => v_min_interval) THEN
-    RETURN NULL;
-  END IF;
-
-  v_lock_key := hashtextextended('clwrota_sync_' || p_step, 0);
-  IF NOT pg_try_advisory_xact_lock(v_lock_key) THEN
-    RETURN NULL;
-  END IF;
-
-  SELECT decrypted_secret INTO v_secret
-  FROM vault.decrypted_secrets WHERE name = 'CLWROTA_WEBHOOK_SECRET' LIMIT 1;
-  IF v_secret IS NULL OR length(v_secret) = 0 THEN
-    RAISE EXCEPTION 'CLWROTA_WEBHOOK_SECRET is not present in vault.secrets';
-  END IF;
-
-  SELECT net.http_post(
-    url := v_url || '?step=' || p_step,
-    headers := jsonb_build_object('Content-Type','application/json','x-webhook-secret', v_secret),
-    body := '{}'::jsonb,
-    timeout_milliseconds := 60000
-  ) INTO v_request_id;
-
-  UPDATE public.clwrota_sync_rate_limit
-     SET last_attempt_at = now(), last_request_id = v_request_id, updated_at = now()
-   WHERE step = p_step;
-
-  RETURN v_request_id;
-END $function$;
-
-CREATE OR REPLACE FUNCTION public.trigger_clwrota_sync_all_rate_limited()
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_staff bigint;
-  v_rota  bigint;
-  v_leave bigint;
-BEGIN
-  -- 0007: service path = signed service_role request; user path = active admin.
-  IF NOT (public._request_is_service_role() OR public._request_is_active_admin()) THEN
-    RAISE EXCEPTION 'trigger_clwrota_sync_all_rate_limited requires admin or service_role'
-      USING ERRCODE = 'insufficient_privilege';
-  END IF;
-
-  v_staff := public.trigger_clwrota_sync_rate_limited('staff');
-  v_rota  := public.trigger_clwrota_sync_rate_limited('rota');
-  v_leave := public.trigger_clwrota_sync_rate_limited('leave');
-  RETURN jsonb_build_object(
-    'staff_request_id', v_staff,
-    'rota_request_id',  v_rota,
-    'leave_request_id', v_leave,
-    'fired_at', now()
-  );
-END $function$;
-
 -- Grants (restated; CREATE OR REPLACE keeps ACLs, this makes them explicit).
 REVOKE ALL ON FUNCTION
   public.decrypt_ai_message_parts(bytea, uuid), public.decrypt_owner_or_coord(bytea, uuid),
@@ -581,14 +408,26 @@ GRANT EXECUTE ON FUNCTION
 REVOKE ALL ON FUNCTION
   public.detect_rpc_access_anomalies(integer, integer), public.get_ai_messages_decrypted(uuid),
   public.get_competency_eligibility(date), public.get_rtw_interviews_decrypted(),
-  public.list_clwrota_cron_runs(integer), public.trigger_clwrota_sync(text),
-  public.trigger_clwrota_sync_with_query(text, text), public.trigger_clwrota_sync_rate_limited(text),
-  public.trigger_clwrota_sync_all_rate_limited()
+  public.list_clwrota_cron_runs(integer)
   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION
   public.detect_rpc_access_anomalies(integer, integer), public.get_ai_messages_decrypted(uuid),
   public.get_competency_eligibility(date), public.get_rtw_interviews_decrypted(),
-  public.list_clwrota_cron_runs(integer), public.trigger_clwrota_sync(text),
-  public.trigger_clwrota_sync_with_query(text, text), public.trigger_clwrota_sync_rate_limited(text),
-  public.trigger_clwrota_sync_all_rate_limited()
+  public.list_clwrota_cron_runs(integer)
   TO authenticated, service_role;
+
+-- CLWRota sync triggers: their bodies read the webhook secret, and the
+-- migration tool refuses any SQL that touches secret storage, so the bodies
+-- cannot be rewritten here. They are closed by grant instead: only the
+-- service role (server code, which checks admin first) and the owner postgres
+-- (= the verified pg_cron identity; live cron.job.username is postgres) can
+-- execute them. Signed-in users, anon and PUBLIC cannot, so the stale
+-- in-body current_user test is unreachable from any request role.
+REVOKE ALL ON FUNCTION
+  public.trigger_clwrota_sync(text), public.trigger_clwrota_sync_with_query(text, text),
+  public.trigger_clwrota_sync_rate_limited(text), public.trigger_clwrota_sync_all_rate_limited()
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION
+  public.trigger_clwrota_sync(text), public.trigger_clwrota_sync_with_query(text, text),
+  public.trigger_clwrota_sync_rate_limited(text), public.trigger_clwrota_sync_all_rate_limited()
+  TO service_role;
