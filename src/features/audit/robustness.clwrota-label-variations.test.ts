@@ -85,6 +85,16 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 vi.mock("@tanstack/react-start", () => ({
+  // robustness.ts transitively imports require-admin.ts, which builds a
+  // middleware chain at module load: createMiddleware().middleware().server().
+  createMiddleware: () => {
+    const chain: Record<string, unknown> = {};
+    chain.middleware = () => chain;
+    chain.server = () => chain;
+    chain.client = () => chain;
+    chain.inputValidator = () => chain;
+    return chain;
+  },
   createServerFn: () => ({
     middleware: () => ({
       inputValidator: () => ({ handler: () => async () => undefined }),
