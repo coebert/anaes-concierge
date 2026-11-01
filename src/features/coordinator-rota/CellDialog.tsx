@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,7 +104,7 @@ export function CellDialog({
     },
   });
 
-  const { data: ts, refetch } = useQuery({
+  const tsQuery = useQuery({
     queryKey: ["theatre-session", theatreId, date, session],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -117,6 +118,8 @@ export function CellDialog({
       return data;
     },
   });
+  const ts = tsQuery.data;
+  const refetch = tsQuery.refetch;
 
   const [specialtyId, setSpecialtyId] = useState<string>("");
   const [consultant, setConsultant] = useState<string>("");
@@ -162,7 +165,7 @@ export function CellDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: rawAssigns, refetch: refetchAssigns } = useQuery({
+  const assignsQuery = useQuery({
     queryKey: ["assigns", theatreId, date, session, ts?.id],
     enabled: !!ts?.id,
     queryFn: async () => {
@@ -174,6 +177,8 @@ export function CellDialog({
       return data;
     },
   });
+  const rawAssigns = assignsQuery.data;
+  const refetchAssigns = assignsQuery.refetch;
 
   const gradeRank = (g: string | null | undefined) =>
     g === "consultant" ? 0 : g === "sas" ? 1 : g === "trainee" ? 2 : 3;
@@ -190,7 +195,7 @@ export function CellDialog({
 
   // Competency register data — used to emit soft warnings when the candidate
   // staff member is not signed off for the specialty of this list.
-  const { data: competencyRows } = useQuery({
+  const competenciesQuery = useQuery({
     queryKey: ["competencies-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -201,7 +206,7 @@ export function CellDialog({
       return (data ?? []) as Competency[];
     },
   });
-  const { data: competencyRequirements } = useQuery({
+  const requirementsQuery = useQuery({
     queryKey: ["specialty-competency-requirements"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -211,7 +216,7 @@ export function CellDialog({
       return (data ?? []) as CompetencyRequirement[];
     },
   });
-  const { data: staffHoldings } = useQuery({
+  const holdingsQuery = useQuery({
     queryKey: ["staff-competencies-all-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -222,7 +227,7 @@ export function CellDialog({
     },
   });
 
-  const { data: practicePrefs } = useQuery({
+  const practicePrefsQuery = useQuery({
     queryKey: ["staff-practice-prefs"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -232,7 +237,7 @@ export function CellDialog({
       return (data ?? []) as StaffPracticePref[];
     },
   });
-  const { data: specialtyPrefs } = useQuery({
+  const specialtyPrefsQuery = useQuery({
     queryKey: ["staff-specialty-prefs"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -242,6 +247,13 @@ export function CellDialog({
       return (data ?? []) as StaffSpecialtyPref[];
     },
   });
+  // Only a SUCCESSFUL empty result means "no config"; pending/failed reads
+  // leave these undefined and block saving (see validationBlocked).
+  const competencyRows = competenciesQuery.data;
+  const competencyRequirements = requirementsQuery.data;
+  const staffHoldings = holdingsQuery.data;
+  const practicePrefs = practicePrefsQuery.data;
+  const specialtyPrefs = specialtyPrefsQuery.data;
   const practiceByStaff = useMemo(() => {
     const m = new Map<string, StaffPracticePref>();
     for (const p of practicePrefs ?? []) m.set(p.staff_id, p);
@@ -319,11 +331,17 @@ export function CellDialog({
 
   const checkRules = useServerFn(checkCustomRuleViolations);
   const [customIssues, setCustomIssues] = useState<Issue[]>([]);
+  const [customRuleState, setCustomRuleState] = useState<"idle" | "pending" | "ok" | "error">(
+    "idle",
+  );
+  const [customRuleAttempt, setCustomRuleAttempt] = useState(0);
   useEffect(() => {
     if (!newStaff) {
       setCustomIssues([]);
+      setCustomRuleState("idle");
       return;
     }
+    setCustomRuleState("pending");
     let cancelled = false;
     const ctx = contextAssignments
       .filter((a) => a.staff_id === newStaff)
@@ -350,8 +368,13 @@ export function CellDialog({
             message: `Custom rule — ${v.summary}: ${v.reason} (Rule: "${v.ruleText}")`,
           })),
         );
+        setCustomRuleState("ok");
       } catch {
-        if (!cancelled) setCustomIssues([]);
+        // A failed check is NOT "no violations": keep Assign blocked.
+        if (!cancelled) {
+          setCustomIssues([]);
+          setCustomRuleState("error");
+        }
       }
     }, 500);
     return () => {
@@ -359,7 +382,24 @@ export function CellDialog({
       clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newStaff, newRole, date, session]);
+  }, [newStaff, newRole, date, session, customRuleAttempt]);
+
+  // Every read the Assign validation depends on, with its own Retry.
+  const validationSources = [
+    { label: "this list", q: tsQuery },
+    { label: "current assignments", q: assignsQuery, skip: !ts?.id },
+    { label: "competencies", q: competenciesQuery },
+    { label: "competency requirements", q: requirementsQuery },
+    { label: "staff competency sign-offs", q: holdingsQuery },
+    { label: "practice preferences", q: practicePrefsQuery },
+    { label: "specialty preferences", q: specialtyPrefsQuery },
+  ];
+  const failedSources = validationSources.filter((v) => !v.skip && v.q.isError);
+  const pendingSources = validationSources.filter((v) => !v.skip && v.q.isPending);
+  const customRuleBlocked =
+    !!newStaff && (customRuleState === "pending" || customRuleState === "error");
+  const validationBlocked =
+    failedSources.length > 0 || pendingSources.length > 0 || customRuleBlocked;
 
   // Soft warnings from the competency register for the candidate being added.
   const candidateCompetencyIssues: Issue[] =
@@ -427,6 +467,8 @@ export function CellDialog({
       if (!ts?.id) throw new Error("Save the list first");
       if (!newStaff) throw new Error("Pick a staff member");
       if (blocking) throw new Error("Resolve blocking validation errors first.");
+      if (validationBlocked)
+        throw new Error("Validation checks have not loaded — retry them before assigning.");
       const { error } = await supabase.from("rota_assignments").insert({
         staff_id: newStaff,
         session,
@@ -501,7 +543,18 @@ export function CellDialog({
                 />
               </div>
             </div>
-            <Button size="sm" onClick={() => saveSession.mutate()} disabled={saveSession.isPending}>
+            {tsQuery.isError && (
+              <QueryErrorNotice
+                error={tsQuery.error}
+                what="this list (it may already exist — saving is blocked)"
+                onRetry={() => void tsQuery.refetch()}
+              />
+            )}
+            <Button
+              size="sm"
+              onClick={() => saveSession.mutate()}
+              disabled={saveSession.isPending || !tsQuery.isSuccess}
+            >
               {ts ? "Update list" : "Create list"}
             </Button>
           </div>
@@ -824,13 +877,34 @@ export function CellDialog({
                   <Button
                     size="sm"
                     onClick={() => addAssign.mutate()}
-                    disabled={addAssign.isPending || blocking}
+                    disabled={addAssign.isPending || blocking || validationBlocked}
                     variant={blocking ? "destructive" : "default"}
                   >
                     <Plus className="mr-1 h-4 w-4" />
                     Assign
                   </Button>
                 </div>
+                {failedSources.map((v) => (
+                  <QueryErrorNotice
+                    key={v.label}
+                    error={v.q.error}
+                    what={`${v.label} (needed to validate assignments)`}
+                    onRetry={() => void v.q.refetch()}
+                  />
+                ))}
+                {newStaff && customRuleState === "error" && (
+                  <QueryErrorNotice
+                    error={null}
+                    what="the custom rota rule check (Assign is blocked until it runs)"
+                    onRetry={() => setCustomRuleAttempt((n) => n + 1)}
+                  />
+                )}
+                {failedSources.length === 0 &&
+                  (pendingSources.length > 0 || (newStaff && customRuleState === "pending")) && (
+                    <p role="status" className="text-xs text-muted-foreground">
+                      Loading validation checks… Assign is unavailable until they finish.
+                    </p>
+                  )}
                 {newStaff && allCandidateIssues.length > 0 && (
                   <div className="rounded-md border bg-muted/30 p-2 space-y-1">
                     <div className="text-xs font-medium flex items-center gap-1.5">

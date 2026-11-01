@@ -1,3 +1,4 @@
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -162,7 +163,7 @@ function LastMinuteChangesPage() {
   const drillRef = useRef<HTMLDivElement | null>(null);
 
   const fetchAudit = useServerFn(getLastMinuteChangesAudit);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["last-minute-changes", rangeStart, rangeEnd],
     queryFn: () => fetchAudit({ data: { rangeStart, rangeEnd } }),
   });
@@ -290,36 +291,38 @@ function LastMinuteChangesPage() {
         </Card>
 
         {error && (
-          <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-            {(error as Error).message}
-          </div>
+          <QueryErrorNotice
+            error={error}
+            onRetry={() => void refetch()}
+            what="last-minute changes (totals withheld)"
+          />
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
             label={`Total changes within ${windowHours}h`}
-            value={totals?.all ?? (isLoading ? "…" : 0)}
+            value={totals?.all ?? (isLoading ? "…" : "—")}
             icon={Clock}
             tone="amber"
             onClick={() => drill({ kind: "all" })}
           />
           <Stat
             label="Reassignments / moves"
-            value={totals?.updates ?? (isLoading ? "…" : 0)}
+            value={totals?.updates ?? (isLoading ? "…" : "—")}
             icon={Users}
             tone="orange"
             onClick={() => drill({ kind: "action", action: "update" })}
           />
           <Stat
             label="Inserts + removals"
-            value={totals ? totals.inserts + totals.deletes : isLoading ? "…" : 0}
+            value={totals ? totals.inserts + totals.deletes : isLoading ? "…" : "—"}
             icon={AlertTriangle}
             tone="red"
             onClick={() => drill({ kind: "action-pair", actions: ["insert", "delete"] })}
           />
           <Stat
             label="Trainee changes (incl. list moves)"
-            value={totals?.traineeListMoves ?? (isLoading ? "…" : 0)}
+            value={totals?.traineeListMoves ?? (isLoading ? "…" : "—")}
             icon={GraduationCap}
             tone="emerald"
             onClick={() => drill({ kind: "group", group: "trainee" })}
@@ -334,6 +337,10 @@ function LastMinuteChangesPage() {
           <CardContent>
             {isLoading ? (
               <PageLoading />
+            ) : !data ? (
+              <div className="text-sm text-muted-foreground">
+                Unavailable — see the error above.
+              </div>
             ) : groupRows.length === 0 ? (
               <div className="text-sm text-muted-foreground">
                 No last-minute changes recorded in this range.

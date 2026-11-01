@@ -80,7 +80,10 @@ function makeDeferredSupabase() {
     supabase,
     calls,
     resolveOk: (row: Record<string, unknown> = {}) =>
-      resolveFn({ data: [{ id: LEAVE_ID, status: "cancelled", decided_at: null, ...row }], error: null }),
+      resolveFn({
+        data: [{ id: LEAVE_ID, status: "cancelled", decided_at: null, ...row }],
+        error: null,
+      }),
     resolveRows: (rows: Array<Record<string, unknown>>) => resolveFn({ data: rows, error: null }),
     resolveError: (msg: string) => resolveFn({ data: null, error: { message: msg } }),
   };
@@ -305,7 +308,17 @@ describe("optimisticUpdateLeaveStatus — decisions reconcile with the server ro
     const qc = new QueryClient();
     const { supabase, calls, resolveRows } = makeDeferredSupabase();
     qc.setQueryData(["admin-wellbeing"], {
-      leave: [{ id: LEAVE_ID, staff_id: STAFF, type: "annual", status: "pending", start_date: "2026-06-20", end_date: "2026-06-22", decided_at: null }],
+      leave: [
+        {
+          id: LEAVE_ID,
+          staff_id: STAFF,
+          type: "annual",
+          status: "pending",
+          start_date: "2026-06-20",
+          end_date: "2026-06-22",
+          decided_at: null,
+        },
+      ],
     });
     const pending = optimisticUpdateLeaveStatus({
       id: LEAVE_ID,
@@ -328,13 +341,19 @@ describe("optimisticUpdateLeaveStatus — decisions reconcile with the server ro
       reserve_listed_at: "2026-07-10T12:00:00.000Z",
     });
     // Optimistic cache does not invent decided_at.
-    const mid = qc.getQueryData<{ leave: Array<{ decided_at: string | null; status: string }> }>(["admin-wellbeing"])!;
+    const mid = qc.getQueryData<{ leave: Array<{ decided_at: string | null; status: string }> }>([
+      "admin-wellbeing",
+    ])!;
     expect(mid.leave[0].status).toBe("rejected");
     expect(mid.leave[0].decided_at).toBeNull();
-    resolveRows([{ id: LEAVE_ID, status: "rejected", decided_at: "2026-07-10T12:00:05Z", decided_by: "coord" }]);
+    resolveRows([
+      { id: LEAVE_ID, status: "rejected", decided_at: "2026-07-10T12:00:05Z", decided_by: "coord" },
+    ]);
     const result = await pending;
     expect(result.ok).toBe(true);
-    const after = qc.getQueryData<{ leave: Array<{ decided_at: string | null }> }>(["admin-wellbeing"])!;
+    const after = qc.getQueryData<{ leave: Array<{ decided_at: string | null }> }>([
+      "admin-wellbeing",
+    ])!;
     expect(after.leave[0].decided_at).toBe("2026-07-10T12:00:05Z");
   });
 

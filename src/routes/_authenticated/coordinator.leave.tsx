@@ -483,6 +483,18 @@ function LeaveCard({
               baseBudget.remainingGbp -
                 (row.status === "approved" ? Number(row.study_cost_gbp) : 0),
             )}
+            {baseBudget.balanceProvisional && (
+              <span>
+                {" "}
+                (provisional —{" "}
+                {new Intl.NumberFormat("en-GB", {
+                  style: "currency",
+                  currency: "GBP",
+                  maximumFractionDigits: 0,
+                }).format(baseBudget.unallocatedGbp)}{" "}
+                of cross-year course costs awaiting manual allocation)
+              </span>
+            )}
           </div>
         )}
 

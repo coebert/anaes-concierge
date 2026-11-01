@@ -25,11 +25,18 @@ export interface StudyBudget {
   yearStartISO: string;
   /**
    * Study requests that cross the leave-year boundary and carry a £ cost.
-   * Their days are clipped to this year; their cost is attributed in full to
-   * the year in which the request STARTS (no pro-rata split is invented).
-   * Listed so coordinators can review them manually.
+   * Owner policy: "Leave the cost allocation for manual review". Their days
+   * are clipped to this year, but their £ cost is charged to NEITHER year
+   * (no start-year attribution, no automatic split). There is no stored
+   * manual allocation, so these stay unallocated and the £ balance is
+   * provisional while any exist.
    */
   crossYearCostRequestIds: string[];
+  /** Cross-year course costs awaiting manual allocation (approved + pending). */
+  unallocatedCosts: { id: string; costGbp: number; status: string }[];
+  unallocatedGbp: number;
+  /** True when unallocated costs exist: remainingGbp is not a final figure. */
+  balanceProvisional: boolean;
   daysAllowance: number;
   daysTaken: number;
   daysPending: number;
@@ -66,6 +73,7 @@ export function computeStudyBudget(
   let spentGbp = 0;
   let pendingGbp = 0;
   const crossYear: string[] = [];
+  const unallocated: StudyBudget["unallocatedCosts"] = [];
 
   for (const r of rows) {
     if (r.staff_id !== staffId) continue;
@@ -76,8 +84,13 @@ export function computeStudyBudget(
     const rawCost = Number(r.study_cost_gbp ?? 0);
     const w = leaveYearWindow(yearStartISO);
     const crossesYear = r.start_date < w.start || r.end_date >= w.endExclusive;
-    if (crossesYear && rawCost > 0) crossYear.push(r.id);
-    const cost = r.start_date >= w.start && r.start_date < w.endExclusive ? rawCost : 0;
+    let cost = rawCost;
+    if (crossesYear && rawCost > 0) {
+      crossYear.push(r.id);
+      if (r.status === "approved" || r.status === "pending")
+        unallocated.push({ id: r.id, costGbp: rawCost, status: r.status });
+      cost = 0;
+    }
     if (r.status === "approved") {
       daysTaken += days;
       spentGbp += cost;
@@ -90,6 +103,9 @@ export function computeStudyBudget(
   return {
     yearStartISO,
     crossYearCostRequestIds: crossYear,
+    unallocatedCosts: unallocated,
+    unallocatedGbp: unallocated.reduce((n, u) => n + u.costGbp, 0),
+    balanceProvisional: unallocated.length > 0,
     daysAllowance,
     daysTaken,
     daysPending,
@@ -154,6 +170,9 @@ export function formatBudgetSummary(b: StudyBudget): string {
     `Days: ${b.daysRemaining.toFixed(1)} of ${b.daysAllowance} remaining ` +
     `(${b.daysTaken} taken, ${b.daysPending} pending). ` +
     `Budget: ${gbp(b.remainingGbp)} of ${gbp(b.budgetGbp)} remaining ` +
-    `(${gbp(b.spentGbp)} spent, ${gbp(b.pendingGbp)} pending).`
+    `(${gbp(b.spentGbp)} spent, ${gbp(b.pendingGbp)} pending).` +
+    (b.balanceProvisional
+      ? ` Provisional: ${gbp(b.unallocatedGbp)} of cross-year course costs awaiting manual allocation.`
+      : "")
   );
 }

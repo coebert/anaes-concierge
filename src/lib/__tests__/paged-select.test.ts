@@ -12,8 +12,9 @@ function fakeClient(rows: { id: string }[], opts: { failFrom?: number; delayMs?:
       from() {
         const calls: Call[] = [];
         log.push(calls);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const b: any = new Proxy(
+        // Every property is a recording method that returns the builder
+        // itself, except `range`, which resolves a page.
+        const b: unknown = new Proxy(
           {},
           {
             get(_t, prop: string) {
@@ -108,5 +109,17 @@ describe("pagedRows", () => {
     const res = await pagedRows("profiles", "id", { order: ["id"], client });
     expect(res.error).toBeNull();
     expect(res.data).toHaveLength(1200);
+  });
+
+  it("only accepts real column names for order (compile-time)", async () => {
+    const { client, log } = fakeClient(make(2));
+    await pagedRows("inbox_dismissals", "item_id", { order: ["-dismissed_at", "item_id"], client });
+    expect(log[0].filter((c) => c.m === "order").map((c) => c.a[0])).toEqual([
+      "dismissed_at",
+      "item_id",
+    ]);
+    // inbox_dismissals has no `id` column (PK is item_id): this must not type-check.
+    // @ts-expect-error -- "id" is not a column of inbox_dismissals
+    await pagedRows("inbox_dismissals", "item_id", { order: ["id"], client });
   });
 });

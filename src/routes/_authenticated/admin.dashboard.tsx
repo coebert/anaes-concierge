@@ -167,7 +167,9 @@ function AdminDashboardPage() {
           filter: (q) => q.in("grade", ["consultant", "trainee"]).eq("active", true),
           order: ["id"],
         }),
-        pagedRows("leave_allowances", "staff_id, annual_days", { order: ["id"] }),
+        pagedRows("leave_allowances", "staff_id, annual_days, leave_year_start", {
+          order: ["leave_year_start", "id"],
+        }),
         pagedRows(
           "leave_requests",
           "staff_id, start_date, end_date, half_day_start, half_day_end",
@@ -203,11 +205,20 @@ function AdminDashboardPage() {
       for (const p of profilesRes.data ?? []) {
         if (p.grade === "consultant" || p.grade === "trainee") gradeById.set(p.id, p.grade);
       }
-      const allowanceById = new Map<string, number>();
+      // Allowances are per leave year: keep every year (ascending) and pick,
+      // for each month, the latest year starting on or before that month.
+      const allowancesById = new Map<string, { from: string; days: number }[]>();
       for (const a of allowRes.data ?? []) {
-        if (a.annual_days && Number(a.annual_days) > 0)
-          allowanceById.set(a.staff_id, Number(a.annual_days));
+        const list = allowancesById.get(a.staff_id) ?? [];
+        list.push({ from: a.leave_year_start, days: Number(a.annual_days) });
+        allowancesById.set(a.staff_id, list);
       }
+      const allowanceFor = (staffId: string, monthKey: string): number | undefined => {
+        const monthEnd = `${monthKey}-31`;
+        let pick: number | undefined;
+        for (const r of allowancesById.get(staffId) ?? []) if (r.from <= monthEnd) pick = r.days;
+        return pick && pick > 0 ? pick : undefined;
+      };
 
       // days taken per staff per month (weekdays only, with half-day handling)
       const daysTaken = new Map<string, Map<string, number>>(); // staffId -> monthKey -> days
@@ -239,7 +250,7 @@ function AdminDashboardPage() {
           trainee: { sumPct: 0, n: 0 },
         };
         for (const [staffId, grade] of gradeById) {
-          const allowance = allowanceById.get(staffId);
+          const allowance = allowanceFor(staffId, m.key);
           if (!allowance) continue;
           const taken = daysTaken.get(staffId)?.get(m.key) ?? 0;
           acc[grade].sumPct += (taken / allowance) * 100;
@@ -268,10 +279,12 @@ function AdminDashboardPage() {
         consultantAvg: avg("consultantPct"),
         traineeAvg: avg("traineePct"),
         consultantsTracked: Array.from(gradeById.entries()).filter(
-          ([id, g]) => g === "consultant" && allowanceById.has(id),
+          ([id, g]) =>
+            g === "consultant" && allowanceFor(id, months[months.length - 1].key) !== undefined,
         ).length,
         traineesTracked: Array.from(gradeById.entries()).filter(
-          ([id, g]) => g === "trainee" && allowanceById.has(id),
+          ([id, g]) =>
+            g === "trainee" && allowanceFor(id, months[months.length - 1].key) !== undefined,
         ).length,
       };
     },

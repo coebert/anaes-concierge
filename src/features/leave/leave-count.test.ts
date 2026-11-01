@@ -102,7 +102,7 @@ describe("A. unified leave counting", () => {
       Y26,
     );
     expect(study.daysTaken).toBe(2);
-    // cross-year cost is attributed to the start year (2025) and flagged, not split
+    // cross-year cost is left for manual review: charged to neither year
     expect(study.spentGbp).toBe(0);
     expect(study.crossYearCostRequestIds).toEqual(["a"]);
   });

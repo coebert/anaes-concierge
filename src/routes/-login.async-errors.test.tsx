@@ -80,3 +80,23 @@ describe("login async failures", () => {
     );
   });
 });
+
+describe("login connection failure returned as an error result", () => {
+  it("shows the friendly connection message, not raw 'Failed to fetch'", async () => {
+    signInWithPassword.mockReset();
+    toastError.mockReset();
+    signInWithPassword.mockResolvedValue({
+      data: {},
+      error: Object.assign(new Error("Failed to fetch"), {
+        name: "AuthRetryableFetchError",
+        status: 0,
+      }),
+    });
+    render(<Login />);
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "a@example.com" } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "longenough123" } });
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(String(toastError.mock.calls[0][0])).toMatch(/couldn't reach the sign-in service/i);
+  });
+});

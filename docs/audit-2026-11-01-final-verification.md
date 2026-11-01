@@ -1,5 +1,93 @@
 # Final verification — 2026-11-01
 
+## Consolidated closeout (sections 1–5) — final run on tree `c51ab01e` (+ this pass's saved edits)
+
+Synthetic data only. Nothing published; no email/push/LLM/CLWRota calls; no real
+rows changed; database guards and migrations unchanged in this pass.
+
+### Changes
+1. **Workflow/auth** (previous turn): cancel sends only `{status:"cancelled"}`;
+   decisions take actor/time from the DB and reconcile the returned row; 0-row
+   updates roll back. Auth null-identity load checks the generation token
+   before clearing `loading`.
+2. **Aggregate reads:** last-minute changes already paged; admin dashboard
+   annual-leave read paged and now picks each staff member's allowance **for
+   the leave year covering each month** (was: an arbitrary year's row); audit
+   tool snapshot theatres/specialties now paged (duty categories, staff groups,
+   profiles were already paged; snapshot failure omits the block entirely).
+3. **Study cost (owner: "leave the cost allocation for manual review"):**
+   cross-year course costs are charged to **neither** year; `unallocatedCosts`
+   / `unallocatedGbp` are listed and `balanceProvisional=true`; the budget card
+   and coordinator line say the £ balance is provisional. No manual-allocation
+   field exists, so none is used or invented. Days still split by date.
+4. **Frontend reliability:** every retained summary-dashboard tile shows a
+   "Couldn't refresh — showing last loaded version" warning with Retry;
+   absence summary cards show "…" while loading, "—" when failed, and a stale
+   warning with Retry when a refresh fails. Rota cell dialog: Assign is
+   disabled while any of list / assignments / competencies / requirements /
+   sign-offs / practice prefs / specialty prefs / custom-rule check is pending
+   or failed (each with Retry); list Save is disabled and an error shown when
+   the list read fails. Only a successful empty read counts as "no config".
+5. **Chat/inbox/lint:** hard 240 s stream deadline (< 600 s lease TTL) that
+   aborts upstream work, errors the outgoing stream, then releases the lease
+   once (`src/lib/chat-stream-deadline.ts`). Last-minute changes: no more
+   `emptyAudit()` on failure — errors reach the page's Retry and totals show
+   "—"; profile/theatre lookups in ≤200-id chunks; missing required staff /
+   list joins and malformed rows throw. Inbox dismissals ordered by `item_id`,
+   inbox gated on the dismissal read with Retry, mutations disabled while
+   unknown. `pagedRows` order keys are now typed to real table columns
+   (incl. `-col`); a `@ts-expect-error` test proves `inbox_dismissals.id` is
+   rejected, and the full typecheck found no other wrong column.
+   `paged-select.test.ts` lint suppression removed.
+6. **Login:** a dropped connection returned as an error result (not a throw)
+   showed raw "Failed to fetch"; now shows the friendly connection message.
+
+### KaTeX (GHSA-238p-pmpm-9mq7, low)
+KaTeX now receives **own, frozen** options with `trust:false` (plus
+`maxExpand`/`maxSize`, `throwOnError:false`); `rehype-katex@7.0.1` declared
+directly at the already-locked version. Render tests confirm KaTeX actually
+renders and `\href{javascript:…}`, `\htmlId`, `\htmlData` produce no link/
+attributes; Streamdown strips `<script>`, `on*` handlers and `javascript:` links.
+Mermaid runs at `securityLevel:"strict"`. **Not claimed fixed**: katex 0.16.47
+is still in the lock and the audit still reports it; no global prototype
+workaround added.
+
+### Simulated vs real checks
+- **Simulated browser (Playwright, localhost, all external network faked):**
+  login at 1280 px and 375 px — connection failure → friendly message, button
+  re-enabled; invalid credentials → message; no horizontal overflow (0 px).
+- **Component-level (jsdom, mocked services):** rota dialog delayed/failed per
+  source (14 cases), inbox dismissal column + failure/recovery, chat rendering
+  safety, chat stream deadline with fake clock (hung, slow, cancel, error),
+  last-minute-changes consumer (2,500 rows, page-2 failure, missing join,
+  malformed row), study cost two-year cases.
+- **Not done / blocked:** signed-in browser flows (admin/coordinator/trainee
+  routing, leave submit/cancel totals, year switching, assistant init Retry,
+  375 px conversation drawer, stale dashboard) need a real account, which is
+  out of scope; they are covered only at component level where listed above.
+  The custom-rule-check failure gate is enforced in code but not driven in a
+  test (selecting staff in the dialog's dropdown is not reliable in jsdom).
+  A "WB DIAG" label seen on the preview login page is not in the app's code
+  (injected by preview tooling).
+
+### Final results (single run, same tree)
+| Check | Result |
+|---|---|
+| Tests | 195 files; **1,964 passed, 4 skipped** (live-RLS probes needing credentials), 0 failed |
+| Typecheck | clean |
+| Lint | **0 errors, 44 warnings** |
+| Production build | passes (`NODE_OPTIONS=--max-old-space-size=6144`) |
+| DB harness SQL | 159 cases, 0 failures |
+| DB harness PostgREST | 12 cases, 0 failures |
+| Definer harness | 152 cases, 0 failures |
+| Dependency check | **fails (by design)**: moderate esbuild ≤0.24.2, moderate minimatch <11.0.1, low katex; xlsx reported unscanned |
+| Platform security scan | not re-run in this pass |
+
+Note: the rota-dialog and absence/dashboard fixes run against the existing
+1000-row-capped reads for competencies/preferences in the dialog; those reads
+were not converted to paging in this pass.
+
+
 Follows `audit-2026-11-01-accuracy-remediation.md`. Covers the six remaining
 defects that were reproduced independently. **Synthetic data only.** Nothing was
 published; no notifications, emails or CLWRota syncs; no staff, rota or leave

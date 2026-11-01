@@ -156,6 +156,9 @@ describe("previewAfterDecision", () => {
     pendingGbp: 400,
     remainingGbp: 150,
     crossYearCostRequestIds: [] as string[],
+    unallocatedCosts: [],
+    unallocatedGbp: 0,
+    balanceProvisional: false,
   };
 
   it("approving adds days and £ to taken/spent", () => {
@@ -176,5 +179,49 @@ describe("previewAfterDecision", () => {
     expect(p.pendingGbp).toBe(600);
     expect(p.daysRemaining).toBe(4);
     expect(p.remainingGbp).toBe(-50);
+  });
+});
+
+describe("cross-year course cost — owner policy: leave for manual review", () => {
+  // Synthetic course 30 Mar – 2 Apr 2026 straddling the 1 Apr leave-year start.
+  const course = row({
+    id: "X",
+    status: "approved",
+    start_date: "2026-03-30",
+    end_date: "2026-04-02",
+    study_cost_gbp: 600,
+  });
+  const y25 = { leave_year_start: "2025-04-01", study_days: 10, study_budget_gbp: 800 };
+  const y26 = { leave_year_start: "2026-04-01", study_days: 10, study_budget_gbp: 800 };
+
+  it("charges the cost to neither the starting nor the following year", () => {
+    const a = computeStudyBudget(staffId, [course], y25, "2025-04-01");
+    const b = computeStudyBudget(staffId, [course], y26, "2026-04-01");
+    expect(a.spentGbp).toBe(0);
+    expect(b.spentGbp).toBe(0);
+    // days still split by actual date (Mon 30, Tue 31 Mar | Wed 1, Thu 2 Apr)
+    expect(a.daysTaken).toBe(2);
+    expect(b.daysTaken).toBe(2);
+  });
+
+  it("shows the pending £ amount and list in both years", () => {
+    for (const al of [y25, y26]) {
+      const b = computeStudyBudget(staffId, [course], al, al.leave_year_start);
+      expect(b.unallocatedGbp).toBe(600);
+      expect(b.unallocatedCosts).toEqual([{ id: "X", costGbp: 600, status: "approved" }]);
+    }
+  });
+
+  it("marks the balance provisional so the excluded cost never reads as spare budget", () => {
+    const b = computeStudyBudget(staffId, [course], y26, "2026-04-01");
+    expect(b.remainingGbp).toBe(800);
+    expect(b.balanceProvisional).toBe(true);
+    const plain = computeStudyBudget(staffId, [], y26, "2026-04-01");
+    expect(plain.balanceProvisional).toBe(false);
+  });
+
+  it("keeps the original cost on the record untouched", () => {
+    computeStudyBudget(staffId, [course], y26, "2026-04-01");
+    expect(course.study_cost_gbp).toBe(600);
   });
 });

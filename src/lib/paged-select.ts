@@ -65,6 +65,9 @@ export async function pagedSelect<T>(
   );
 }
 
+/** A column of Row, optionally prefixed with "-" for descending order. */
+export type OrderKey<R> = (keyof R & string) | `-${keyof R & string}`;
+
 type PublicTables = import("@/integrations/supabase/types").Database["public"]["Tables"];
 
 /**
@@ -78,7 +81,10 @@ export async function pagedRows<
 >(
   table: TName,
   columns: string,
-  opts: PagedSelectOptions,
+  opts: Omit<PagedSelectOptions, "order"> & {
+    /** Real column names of the table only ("-" prefix = descending). */
+    order: readonly OrderKey<PublicTables[TName]["Row"]>[];
+  },
 ): Promise<{ data: Row[]; error: { message: string } | null }> {
   const data = await pagedSelect<Row>(table, columns, opts);
   return { data, error: null };

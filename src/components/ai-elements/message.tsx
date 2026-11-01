@@ -6,7 +6,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
+import { createMathPlugin } from "@streamdown/math";
+import rehypeKatex from "rehype-katex";
 import { mermaid } from "@streamdown/mermaid";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -269,6 +270,27 @@ export const MessageBranchPage = ({ className, ...props }: MessageBranchPageProp
 };
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+
+/**
+ * KaTeX with OWN (not inherited) safe options: `trust: false` blocks
+ * \href/\url/\htmlClass/\includegraphics etc. and `maxExpand` bounds macro
+ * blow-ups. Set explicitly so a polluted Object.prototype cannot flip them
+ * (GHSA-238p-pmpm-9mq7 needs inherited options). Streamdown's HTML
+ * sanitising/link hardening still applies to the rest of the message.
+ */
+const baseMath = createMathPlugin();
+export const KATEX_SAFE_OPTIONS = Object.freeze({
+  errorColor: "var(--color-muted-foreground)",
+  trust: false,
+  strict: "ignore",
+  maxExpand: 1000,
+  maxSize: 50,
+  throwOnError: false,
+} as const);
+const math = {
+  ...baseMath,
+  rehypePlugin: [rehypeKatex, { ...KATEX_SAFE_OPTIONS }] as typeof baseMath.rehypePlugin,
+};
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
