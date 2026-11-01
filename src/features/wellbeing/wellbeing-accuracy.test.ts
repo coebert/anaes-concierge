@@ -106,9 +106,16 @@ describe("insufficient data is unknown, never Thriving 100", () => {
     expect(a.band).toBe("not_assessed");
     expect(a.notAssessed).toContain("pulse survey trend");
   });
-  it("wellbeing factor reads 'not assessed', never 'Wellbeing 100/100', when unknown", () => {
-    const wb = computeWellbeing({ ...base, now: ASOF, assignments: [] });
+  it("wellbeing factor reads 'not assessed', never 'Wellbeing N/100', when unknown", () => {
+    // 9 weekend nights: below the gate, but harsh enough that the raw
+    // arithmetic score is low and the wellbeing factor ranks in the top 3.
+    const wb = computeWellbeing({
+      ...base,
+      now: ASOF,
+      assignments: rows(WEEKEND_DAYS.slice(0, MIN_ASSESSABLE_SESSIONS - 1), "night"),
+    });
     expect(wb.scoreKnown).toBe(false);
+    expect(wb.score).toBeLessThan(100);
     const a = computeAttritionRisk({
       wellbeing: wb,
       bradfordScore: 0,
@@ -120,8 +127,7 @@ describe("insufficient data is unknown, never Thriving 100", () => {
     });
     const labels = a.topFactors.map((f) => f.label).join(" | ");
     expect(labels).not.toMatch(/Wellbeing \d+\/100/);
-    const wf = [...a.topFactors].find((f) => f.key === "wellbeing");
-    if (wf) expect(wf.label).toBe("Wellbeing not assessed");
+    expect(a.topFactors.find((f) => f.key === "wellbeing")?.label).toBe("Wellbeing not assessed");
   });
   it("known wellbeing keeps its numeric factor label", () => {
     const wb = computeWellbeing({
