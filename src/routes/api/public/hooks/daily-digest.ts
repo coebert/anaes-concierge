@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { verifyWebhookRequest, unauthorizedResponse } from "@/lib/webhook-auth";
 
 /**
  * Morning rota digest push (06:30 Europe/London).
@@ -13,13 +14,8 @@ export const Route = createFileRoute("/api/public/hooks/daily-digest")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expected = process.env.PUSH_WEBHOOK_SECRET;
-        if (!expected) {
-          return new Response("PUSH_WEBHOOK_SECRET not configured", { status: 500 });
-        }
-        const provided = request.headers.get("x-webhook-secret");
-        if (!provided || provided !== expected) {
-          return new Response("Unauthorized", { status: 401 });
+        if (!verifyWebhookRequest(request, "PUSH_WEBHOOK_SECRET")) {
+          return unauthorizedResponse();
         }
 
         const params = new URL(request.url).searchParams;

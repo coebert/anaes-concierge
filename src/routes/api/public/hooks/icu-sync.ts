@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { timingSafeEqual } from "crypto";
+import { verifyWebhookRequest, unauthorizedResponse } from "@/lib/webhook-auth";
 
 /**
  * Scheduled daily intensive-care (ICU) feed sync.
@@ -14,12 +14,8 @@ export const Route = createFileRoute("/api/public/hooks/icu-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const provided = request.headers.get("x-webhook-secret") ?? "";
-        const expected = process.env.CLWROTA_WEBHOOK_SECRET ?? "";
-        const a = Buffer.from(provided);
-        const b = Buffer.from(expected);
-        if (!expected || a.length !== b.length || !timingSafeEqual(a, b)) {
-          return new Response("Unauthorized", { status: 401 });
+        if (!verifyWebhookRequest(request, "CLWROTA_WEBHOOK_SECRET")) {
+          return unauthorizedResponse();
         }
 
         const params = new URL(request.url).searchParams;

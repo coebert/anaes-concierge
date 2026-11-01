@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { secretsMatch } from "@/lib/webhook-auth";
 
 /**
  * One-shot seed hook: copies the runtime `CLWROTA_WEBHOOK_SECRET` env var
@@ -24,13 +25,6 @@ function genericUnauthorized(): Response {
   );
 }
 
-function timingSafeEqualStr(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return out === 0;
-}
-
 export const Route = createFileRoute("/api/public/hooks/seed-clwrota-vault")({
   server: {
     handlers: {
@@ -39,7 +33,7 @@ export const Route = createFileRoute("/api/public/hooks/seed-clwrota-vault")({
         const provided = request.headers.get("x-webhook-secret") ?? "";
         // Treat "secret not configured" and "wrong secret" identically so the
         // endpoint never leaks configuration state to unauthenticated probes.
-        if (!expected || !provided || !timingSafeEqualStr(provided, expected)) {
+        if (!secretsMatch(provided, expected)) {
           return genericUnauthorized();
         }
 
