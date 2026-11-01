@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 
 import { useEffect } from "react";
@@ -55,7 +56,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
           Something went wrong
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "Please try again."}
+          {(error instanceof Error && error.message) || "Please try again."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
