@@ -107,12 +107,12 @@ SELECT t('passkey: consume discoverable challenge by exact id once', NULL, $q$SE
 SELECT t('passkey: expired challenge not consumable', NULL, $q$SELECT assert_true((SELECT count(*) FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000003','authentication'))=0,'expired')$q$, 'allowed');
 SELECT t('passkey: wrong purpose not consumable', NULL, $q$SELECT assert_true((SELECT count(*) FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','registration'))=0,'purpose')$q$, 'allowed');
 SELECT t('passkey: bound challenge returns its user for cross-user check', NULL, $q$SELECT assert_true((SELECT user_id FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','authentication'))='00000000-0000-0000-0000-000000000052','user')$q$, 'allowed');
-SELECT t('passkey: authenticated cannot call consume rpc', :S, $q$PERFORM 1 FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','authentication')$q$, 'denied');
+SELECT t('passkey: authenticated cannot call consume rpc', :S, $q$SELECT * FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','authentication')$q$, 'denied');
 SELECT t('passkey: user cannot insert own credential directly', :S, $q$INSERT INTO passkey_credentials(user_id,credential_id,public_key) VALUES ('00000000-0000-0000-0000-000000000051','attacker','pk')$q$, 'denied');
 SELECT t('passkey: user cannot reset counter directly', :S, $q$UPDATE passkey_credentials SET counter=0 WHERE credential_id='cred-s'$q$, 'denied');
 
 -- 8. Quotas
 SELECT t('quota: within limits allowed', NULL, $q$SELECT assert_true(take_request_quota(ARRAY['h:a|3600|2|','h:g|3600|10|'],0),'ok')$q$, 'allowed');
-SELECT t('quota: third hit in window refused and nothing counted', NULL, $q$PERFORM take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); PERFORM take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); PERFORM assert_true(NOT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0),'refused'); PERFORM assert_true((SELECT hits FROM request_quota_buckets WHERE bucket='q:g')=2,'atomic')$q$, 'allowed');
-SELECT t('quota: byte cap enforced', NULL, $q$PERFORM assert_true(NOT take_request_quota(ARRAY['b:a|3600|100|1000'],5000),'bytes')$q$, 'allowed');
-SELECT t('quota: authenticated cannot call', :S, $q$PERFORM take_request_quota(ARRAY['x|60|1|'],0)$q$, 'denied');
+SELECT t('quota: third hit in window refused and nothing counted', NULL, $q$SELECT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); SELECT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); SELECT assert_true(NOT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0),'refused'); SELECT assert_true((SELECT hits FROM request_quota_buckets WHERE bucket='q:g')=2,'atomic')$q$, 'allowed');
+SELECT t('quota: byte cap enforced', NULL, $q$SELECT assert_true(NOT take_request_quota(ARRAY['b:a|3600|100|1000'],5000),'bytes')$q$, 'allowed');
+SELECT t('quota: authenticated cannot call', :S, $q$SELECT take_request_quota(ARRAY['x|60|1|'],0)$q$, 'denied');
