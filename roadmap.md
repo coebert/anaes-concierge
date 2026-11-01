@@ -1,31 +1,12 @@
 # Roadmap (2026-11-01 remediation)
 
-## Security follow-up
-- [ ] Leave guard ordering before encryption, shadow-field/created_at protection (harness)
-- [ ] Profile calendar_feed_token server-owned
-- [ ] audit_reader: net/side-effect review, time limits, positive query
-- [ ] Membership gate on staff-directory decrypt functions
-- [ ] Calendar feed fail-closed, membership/revocation, ICS folding
-- [ ] Passkey challenge binding by ceremony ID
-- [ ] Access request durable throttle
-- [ ] Chat request bounds + quotas
+Done: security follow-up items, accuracy A–E, TCS honesty, frontend F–I, baseline red tests, bun audit scanner + CI, zod 4, report (`docs/audit-2026-11-01-accuracy-remediation.md`).
 
-## Accuracy
-- [ ] A leave counting unified
-- [ ] B leave year anniversary / proration / date validation
-- [ ] C leave.tsx pagination, conflicts errors, PA config errors
-- [ ] D pagination helpers completeness
-- [ ] E trainee metrics ICU units
-- [ ] TCS honesty
-
-## Frontend
-- [ ] F dashboard error states
-- [ ] G chat init + mobile
-- [ ] H RotaWeekGrid a11y
-- [ ] I login catch/finally
-
-## Tests / supply chain
-- [ ] Baseline red tests
-- [ ] bun audit script, stale package-lock, CI typecheck/build
-- [ ] zod4 assessment
-- [ ] Report docs/audit-2026-11-01-accuracy-remediation.md
+## Open
+- [ ] Positive PostgREST GET test of audit SQL tool — blocked: no signed-in session
+- [ ] Signed-in browser checks (incl. chat at 375px) — blocked: no signed-in session
+- [ ] Chat concurrency cap — not implemented
+- [ ] Convert remaining fixed wide-range queries on analytics pages to full paging
+- [ ] Remaining 200 lint errors (mostly `any`)
+- [ ] Toolchain advisories (undici, sharp, minimatch, esbuild) + katex low — blocked on upstream pins
+- [ ] Confirm cross-year study £ attribution rule — waiting on department
