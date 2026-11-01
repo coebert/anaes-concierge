@@ -89,3 +89,6 @@ INSERT INTO exception_reports (id, trainee_id, event_date, category, description
  ('20000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000051','2026-10-01','hours','synthetic description','submitted', now() + interval '7 days'),
  ('20000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-00000000000a','2026-10-01','hours','admin own report','submitted', now() + interval '7 days');
 CREATE ROLE postgres SUPERUSER NOLOGIN;
+-- Live pre-existing BEFORE UPDATE trigger (function body replaced by migration 0000).
+CREATE FUNCTION enforce_leave_request_update_rules() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;
+CREATE TRIGGER trg_enforce_leave_request_update_rules BEFORE UPDATE ON leave_requests FOR EACH ROW EXECUTE FUNCTION enforce_leave_request_update_rules();

