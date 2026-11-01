@@ -21,7 +21,7 @@ import { StatCard } from "@/components/stat-card";
 import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/tcs-audit")({
-  head: () => ({ meta: [{ title: "TCS 2016 audit — Salisbury Anaesthetics Rota" }] }),
+  head: () => ({ meta: [{ title: "TCS 2016 working-hours screening (estimated) — Salisbury Anaesthetics Rota" }, { name: "description", content: "Estimated screening of trainee rotas against 2016 TCS working-hours limits. Not a compliance certification." }] }),
   component: TcsAuditPage,
 });
 
@@ -220,9 +220,9 @@ function TcsAuditPage() {
         );
       })
       .sort((a, b) => {
-        // Non-compliant first, then by surname
+        // Possible breaches first, then incomplete, then by surname
         const rank = (o: string) =>
-          o === "non_compliant" ? 0 : o === "insufficient_data" ? 2 : 1;
+          o === "possible_breach" ? 0 : o === "incomplete" ? 1 : o === "insufficient_data" ? 3 : 2;
         const diff = rank(a.audit.overall) - rank(b.audit.overall);
         if (diff !== 0) return diff;
         return compareBySurname(a.trainee.full_name, b.trainee.full_name);
@@ -232,16 +232,16 @@ function TcsAuditPage() {
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
-  const compliantCount = rows.filter((r) => r.audit.overall === "compliant" && !r.reason).length;
-  const breachCount = rows.filter((r) => r.audit.overall === "non_compliant").length;
+  const compliantCount = rows.filter((r) => r.audit.overall === "no_flags_estimated" && !r.reason).length;
+  const breachCount = rows.filter((r) => r.audit.overall === "possible_breach").length;
   const noDataCount = rows.filter((r) => r.reason === "no_sync").length;
   const preRotationCount = rows.filter((r) => r.reason === "not_started" || r.reason === "rotation_ended").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="TCS 2016 compliance audit"
-        description="Checks each trainee's rota against the 2016 Junior Doctor Terms & Conditions of Service. Session times are approximated from AM/PM/eve/night blocks where actual start/end times are not stored."
+        title="TCS 2016 working-hours screening (estimated)"
+        description="An estimated screen of each trainee's rota against 2016 TCS limits — not a compliance certification. Shift times are inferred from AM/PM/eve/night blocks; a definitive check needs actual start/finish times, the full rota cycle and any recorded agreements (e.g. for 5 consecutive long shifts)."
         actions={
           <>
             <div className="w-44">
@@ -270,8 +270,8 @@ function TcsAuditPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-4">
-            <Stat icon={ShieldCheck} tone="ok" label="Compliant" value={compliantCount} />
-            <Stat icon={ShieldAlert} tone="bad" label="Non-compliant" value={breachCount} />
+            <Stat icon={ShieldCheck} tone="ok" label="No flags (estimated)" value={compliantCount} />
+            <Stat icon={ShieldAlert} tone="bad" label="Possible breaches" value={breachCount} />
             <Stat icon={HelpCircle} tone="muted" label="No rota synced" value={noDataCount} />
             <Stat icon={HelpCircle} tone="muted" label="Pre/post rotation" value={preRotationCount} />
           </div>
@@ -344,13 +344,15 @@ function OverallBadge({
   overall,
   reason,
 }: {
-  overall: "compliant" | "non_compliant" | "insufficient_data";
+  overall: AuditOverall;
   reason?: ReasonCode;
 }) {
-  if (overall === "compliant")
-    return <Badge className="bg-emerald-600 hover:bg-emerald-600">Compliant</Badge>;
-  if (overall === "non_compliant")
-    return <Badge variant="destructive">Non-compliant</Badge>;
+  if (overall === "no_flags_estimated")
+    return <Badge variant="secondary">No flags (estimated)</Badge>;
+  if (overall === "possible_breach")
+    return <Badge variant="destructive">Possible breach — verify</Badge>;
+  if (overall === "incomplete" && !reason)
+    return <Badge variant="outline">Incomplete — not fully assessed</Badge>;
   if (reason === "not_started") return <Badge variant="outline">Pre-rotation</Badge>;
   if (reason === "rotation_ended") return <Badge variant="outline">Rotation ended</Badge>;
   if (reason === "no_sync") return <Badge variant="outline">No rota synced</Badge>;
