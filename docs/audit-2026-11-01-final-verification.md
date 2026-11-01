@@ -7,7 +7,111 @@ rows were changed. The one live database change was grants/functions (DDL)
 only. The dangerous audit-SQL examples were run **only** on disposable local
 clusters, never on the live database.
 
-## Release status
+## FINAL STATE (after the membership / pagination / leases / lint pass)
+
+This section supersedes the release status and results table further down,
+which describe the earlier pass. Synthetic data only; nothing published; no
+emails, pushes or CLWRota syncs; no staff, rota or leave rows changed. One
+additive migration was applied to the live database (functions, grants and a
+new service-only table — no business rows touched).
+
+### Release status
+
+**Still not release-clean, for one reason only:** the dependency check exits 1
+on three upstream advisories that have no compatible fix (table below). Lint,
+typecheck, the full suite, both DB harnesses and the production build pass.
+
+### Commands and exact results (final saved code)
+
+| Check | Command | Exit | Result |
+|---|---|---|---|
+| Unit/integration suite | `bunx vitest run` | 0 | 190 files; **1,920 passed, 4 skipped** (live-RLS probes needing credentials), 0 failed |
+| Typecheck | `bunx tsgo --noEmit -p .` | 0 | 0 errors |
+| Lint | `bunx eslint .` | **0** | **0 errors**, 44 warnings (33 `react-refresh/only-export-components`, 11 `react-hooks/exhaustive-deps`). No rule disabled, no ignore added. |
+| Production build | `NODE_OPTIONS=--max-old-space-size=6144 bunx vite build` | 0 | built |
+| SQL harness | `PG=… bash tests/db-harness/run.sh` | 0 | **149 cases, 0 failures** (incl. 8-way concurrent lease race: exactly 2 granted at cap 2) |
+| PostgREST harness | `PG=… PGRST=… bash tests/db-harness/postgrest.sh` | 0 | **12 cases, 0 failures** (PostgREST 14.1) |
+| Dependency audit (real `bun.lock`) | `node scripts/check-supply-chain.mjs` | **1** | 1,153 packages; 2 moderate, 1 low; xlsx listed UNSCANNED (reviewed pin) |
+
+Platform scans were not re-run: the previous pass ran them the same day; the
+deep code scan remains **blocked** (cannot be started from here), not zero.
+
+### Remaining advisories (no suppression)
+
+| Package@version | Severity | Scope | Pulled in by | Why not fixed |
+|---|---|---|---|---|
+| esbuild@0.18.20 (≤0.24.2) | moderate | build tooling only (migration CLI) | drizzle-kit → @esbuild-kit/esm-loader → @esbuild-kit/core-utils (`~0.18.20`) | Latest drizzle-kit (0.31.11) still depends on it; core-utils is deprecated upstream. Overriding a `~0.18` pin to ≥0.25 is an incompatible API jump. |
+| minimatch@3.1.5 and @10.2.5 (<11.0.1) | moderate | lint tooling only | eslint, @eslint/eslintrc, @eslint/config-array (`^3.1.5`); typescript-estree (`^10.2.2`) | Fix is a new major; eslint requires the v3 API. Not overridden. |
+| katex@0.16.47 (<0.18.2) | low | **runtime** (maths rendering in assistant chat) | @streamdown/math, rehype-katex, mermaid (all `^0.16`) | Every dependent pins `^0.16`; 0.18 is a breaking line under 0.x semver. Not overridden blindly. |
+
+### What changed in this pass
+
+1. **Active membership gate (fail closed).** `src/lib/app-membership.ts`
+   requires ≥1 role **and** a profile with `active = true` and `left_at IS
+   NULL`; lookup errors → 503, every other denial → the same generic 403 (no
+   account-existence signal). Applied before: `/api/chat` (before quotas,
+   conversation reads or any service-role tool; roles come from the
+   membership snapshot), `/api/audit-tool` (membership, then admin), passkey
+   session mint (`src/features/passkeys/passkey-session.ts`), and every
+   protected server function via `requireActiveMember` / `requireAdmin`.
+   Public access-request and passkey-login start remain public by design.
+   DB side (migration `0006_active_membership_gate_and_chat_stream_leases`):
+   `has_role`, `current_user_is_coordinator_or_admin`, `is_app_member` now
+   also require an active, not-departed profile.
+   Tests: inactive admin, roleless, missing profile, departed, query error,
+   active success — `src/routes/api/-chat.membership-and-concurrency.test.ts`,
+   `src/routes/api/-audit-tool.membership.test.ts`,
+   `src/features/passkeys/__tests__/passkey-session.test.ts`,
+   `src/lib/__security__/app-membership.test.ts`, plus SQL harness cases.
+2. **Chat concurrency leases.** Service-only table `chat_stream_leases` with
+   atomic `acquire_chat_stream_lease` (per-user advisory lock, cap 2, TTL 600 s,
+   expired leases reaped) and idempotent release. `/api/chat` acquires before
+   streaming and releases on finish, error, abort and synchronous failure; a
+   store error refuses the request (503). TTL is the crash recovery.
+   Tests: `src/lib/__security__/chat-stream-lease.test.ts`, the handler test
+   above, and the SQL harness race.
+3. **Pagination.** New `src/lib/paged-select.ts` (`pagedSelect`/`pagedRows`)
+   over the hardened `paged-fetch-core`: required stable order ending in a
+   unique column, page-2+ errors and cap overflow **throw**. Converted every
+   read the review listed: the eight analytics pages, absence (Bradford + RTW),
+   leave fairness, inbox, dashboard trainee/solo metrics (removing a
+   `.range(0, 49999)` that was silently capped at 1,000), trainee-overview
+   supervisor join, hours-screen approved leave (ID chunks of 200) and
+   supervisor join. Also converted fixed-range reads found in the whole-app
+   sweep: trainee start-date / leave-audit / theatre-validation checks,
+   tutorial audit/verify/backfill profile and trace reads, the audit
+   assistant's staffing and duty histograms, and the late-changes report.
+   Each of these pages now shows an error with Retry instead of zeros.
+   Calendar feed leave was already paged and fail-closed; added multi-page
+   (2,300 rows) and page-2-failure tests. Tests: `src/lib/__tests__/paged-select.test.ts`
+   (multi-page with delay, filters/desc order, page-2 failure, exact cap vs
+   over cap, empty, missing order).
+   Bounded `.limit(N)` lists that are explicitly "latest N" displays (sync
+   metrics, reclassification runs, push dispatch batches) were left as-is.
+4. **Calendar** (re-verified): AM/PM leave stays timed, notes/reasons are
+   never selected or rendered, any source error → 503 (23 tests).
+5. **Lint 216 → 0 errors** with real fixes: typed Supabase clients,
+   message-part type guard, explicit row types in the assistant, `unknown`
+   in catches, shared British date helpers (`formatMonthYearGB`,
+   `formatShortDayMonthGB`, `londonDateISO`, `londonHourOfDay` in
+   `src/lib/utils.ts`, same output and time zones), regex escape cleanup
+   (equivalence checked), declaration-order fixes (a ref breaks the
+   settings-page mutation cycle), and test doubles typed via
+   `src/test-utils/dyn.ts` instead of `any`.
+
+### Still open / not verified
+
+- Not exercised in a real signed-in browser: membership denial for a
+  disabled account, the lease limit with two live streams, and the error
+  notices on the converted pages.
+- RTW completion on the absence/inbox pages relies on `conducted_at`, which
+  is NOT NULL in the schema, so the wellbeing "uncompleted interview" case
+  cannot occur there.
+- `pagedRows` types its rows as the full table row even when fewer columns
+  are selected (pre-existing pattern; compile-time only).
+- Study-course cost split across leave years still needs the owner's rule.
+
+## Earlier pass — release status (superseded above)
 
 **Not release-clean.** CI's `supply-chain` job will fail: 2 moderate advisories
 remain in development tools, plus 1 low (see §2). Lint fails with 191
@@ -15,7 +119,8 @@ pre-existing errors (§6). Typecheck, the full test suite, both DB harnesses
 and the production build pass. I recommend publishing only after the owner
 accepts the itemised risks below. I have not published.
 
-## Commands and exact results (after the final changes)
+## Commands and exact results (earlier pass)
+
 
 | Check | Command | Exit | Result |
 |---|---|---|---|
