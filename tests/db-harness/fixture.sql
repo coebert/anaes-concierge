@@ -134,3 +134,11 @@ INSERT INTO passkey_challenges (id, user_id, challenge, purpose) VALUES
  ('30000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000052', 'chal-for-T', 'authentication');
 INSERT INTO passkey_challenges (id, user_id, challenge, purpose, expires_at) VALUES
  ('30000000-0000-0000-0000-000000000003', NULL, 'chal-expired', 'authentication', now() - interval '1 minute');
+-- Raw-payload / URL columns the audit allowlist must never expose (live shapes, subset).
+CREATE TABLE icu_detection_matches (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), staff_id uuid, session_date date, matched_field text, matched_value text, person_label text, source_row jsonb, detected_at timestamptz DEFAULT now());
+CREATE TABLE clwrota_sync_state (id integer PRIMARY KEY, last_sync_at timestamptz, last_status text, last_error text, rota_report_url text, leave_report_url text, staff_report_url text);
+CREATE TABLE rpc_access_alerts (id bigserial PRIMARY KEY, rpc_name text, details jsonb, created_at timestamptz DEFAULT now());
+CREATE TABLE pulse_survey_responses (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), staff_id uuid, score_1 smallint, comment text);
+INSERT INTO icu_detection_matches (staff_id, session_date, matched_field, matched_value, person_label, source_row) VALUES ('00000000-0000-0000-0000-000000000051','2026-10-01','place','ICU raw','Dr Raw','{"raw":"payload"}');
+INSERT INTO clwrota_sync_state VALUES (1, now(), 'ok', 'err', 'https://example.invalid/rota?key=SECRET', 'https://example.invalid/leave', 'https://example.invalid/staff');
+INSERT INTO rpc_access_alerts (rpc_name, details) VALUES ('x', '{"ip":"1.2.3.4"}');
