@@ -38,7 +38,7 @@ async function call() {
   const { Route } = await import("@/routes/api/public/calendar/$token");
   return (Route as unknown as Dyn).options.server.handlers.GET({
     params: { token: TOKEN },
-  }) as Promise<Response>;
+  }) as unknown as Promise<Response>;
 }
 
 beforeEach(() => {

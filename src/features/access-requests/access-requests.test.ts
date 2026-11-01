@@ -52,7 +52,9 @@ describe("public access requests", () => {
   it("within quota: stores one request and notifies admins (mocked email)", async () => {
     rpc.mockResolvedValue({ data: true, error: null });
     const { submitAccessRequest } = await import("./access-requests.functions");
-    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).resolves.toEqual({ ok: true });
+    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).resolves.toEqual({
+      ok: true,
+    });
     expect(insert).toHaveBeenCalledTimes(1);
     expect(sendGmail).toHaveBeenCalledTimes(1);
     const [buckets] = [rpc.mock.calls[0][1].p_buckets as string[]];
@@ -63,14 +65,18 @@ describe("public access requests", () => {
   it("over quota: same generic response, no insert, no email", async () => {
     rpc.mockResolvedValue({ data: false, error: null });
     const { submitAccessRequest } = await import("./access-requests.functions");
-    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).resolves.toEqual({ ok: true });
+    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).resolves.toEqual({
+      ok: true,
+    });
     expect(insert).not.toHaveBeenCalled();
     expect(sendGmail).not.toHaveBeenCalled();
   });
   it("quota store error fails closed (no insert, no email)", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "db" } });
     const { submitAccessRequest } = await import("./access-requests.functions");
-    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).rejects.toThrow(/try again/);
+    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).rejects.toThrow(
+      /try again/,
+    );
     expect(insert).not.toHaveBeenCalled();
   });
   it("rejects oversized input", async () => {
