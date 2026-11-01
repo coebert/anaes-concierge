@@ -66,7 +66,17 @@ function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword(parsed.data);
       if (error) {
-        toast.error(error.message);
+        // A dropped connection comes back as an error result (status 0 /
+        // retryable fetch error), not a throw — give the same friendly text.
+        const retryable =
+          error.name === "AuthRetryableFetchError" ||
+          (error as { status?: number }).status === 0 ||
+          /failed to fetch|network/i.test(error.message);
+        toast.error(
+          retryable
+            ? "Couldn't reach the sign-in service. Check your connection and try again."
+            : error.message,
+        );
         return;
       }
       // Passkey offer is optional — never block sign-in if the check fails.
