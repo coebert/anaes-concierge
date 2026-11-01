@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { checkActiveMembership } from "@/lib/app-membership";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
@@ -273,6 +274,17 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
       },
       { ceremonyId: data.ceremonyId, email: data.email, response: data.response, origin, rpID },
     );
+
+    // Only active approved members may receive a session. Same generic
+    // error for every refusal so a disabled account is not revealed.
+    const membership = await checkActiveMembership(supabaseAdmin, userId);
+    if (!membership.ok) {
+      throw new Error(
+        membership.reason === "unavailable"
+          ? "Passkey sign-in is temporarily unavailable."
+          : "Passkey sign-in failed.",
+      );
+    }
 
     // Look up the user's email so we can mint a magic-link session token.
     const { data: userRec, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);

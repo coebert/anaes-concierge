@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { checkActiveMembership, membershipDenial } from "@/lib/app-membership";
 import {
   convertToModelMessages,
   generateText,
@@ -210,16 +211,6 @@ async function getAuthenticatedUserId(authHeader: string | null) {
   return { userId: data.user.id, token };
 }
 
-async function isAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  return !!data;
-}
 
 function isoDaysAgo(days: number) {
   const d = new Date();
@@ -402,8 +393,12 @@ export const Route = createFileRoute("/api/audit-tool")({
       POST: async ({ request }) => {
         const auth = await getAuthenticatedUserId(request.headers.get("authorization"));
         if (!auth) return new Response("Unauthorized", { status: 401 });
-        if (!(await isAdmin(auth.userId))) {
-          return new Response("Forbidden — admin role required", { status: 403 });
+        // Active approved membership (fail closed), then admin role from the
+        // same snapshot — a disabled admin is refused before any tool runs.
+        const membership = await checkActiveMembership(getAdminClient(), auth.userId);
+        if (!membership.ok) return membershipDenial(membership);
+        if (!membership.roles.has("admin")) {
+          return new Response("Forbidden", { status: 403 });
         }
 
         const key = process.env.LOVABLE_API_KEY;
