@@ -36,6 +36,13 @@
       "when": 1793541570634,
       "tag": "0004_harden_request_quota_inputs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793542436075,
+      "tag": "0005_audit_reader_explicit_column_allowlist",
+      "breakpoints": true
     }
   ]
 }
