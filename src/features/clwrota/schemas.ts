@@ -37,9 +37,9 @@ export type RotamapCentralApiResponse = z.infer<typeof RotamapCentralApiSchema>;
  *   - any other object (probed for `data`/`rows`/`results`/... wrappers)
  */
 export const RowsWrapperSchema = z.union([
-  z.array(z.record(z.unknown())),
+  z.array(z.record(z.string(), z.unknown())),
   RotamapCentralApiSchema,
-  z.record(z.unknown()),
+  z.record(z.string(), z.unknown()),
 ]);
 
 export type RowsWrapper = z.infer<typeof RowsWrapperSchema>;
@@ -142,7 +142,7 @@ export const ClwRotaLeaveRowSchema = z
 export type ClwRotaLeaveRow = z.infer<typeof ClwRotaLeaveRowSchema>;
 
 /** A single parsed row — used when a report has no dedicated row schema. */
-export const ClwRotaGenericRowSchema = z.record(z.unknown());
+export const ClwRotaGenericRowSchema = z.record(z.string(), z.unknown());
 export type ClwRotaGenericRow = z.infer<typeof ClwRotaGenericRowSchema>;
 
 // ---------------------------------------------------------------------------

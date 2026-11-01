@@ -425,7 +425,7 @@ export const Route = createFileRoute("/api/audit-tool")({
         const AuditMessage = z.object({
           id: z.string().optional(),
           role: z.enum(["user", "assistant"]),
-          parts: z.array(z.record(z.any())).optional(),
+          parts: z.array(z.record(z.string(), z.any())).optional(),
           content: z.string().optional(),
         }).passthrough();
         const AuditBody = z.object({
@@ -440,7 +440,7 @@ export const Route = createFileRoute("/api/audit-tool")({
           parsed = AuditBody.parse(raw);
         } catch (e) {
           const friendly = e instanceof z.ZodError
-            ? e.errors.slice(0, 3).map((x) => {
+            ? e.issues.slice(0, 3).map((x) => {
                 const field = x.path.join(".") || "request";
                 return `“${field}”: ${x.message}`;
               }).join("; ")

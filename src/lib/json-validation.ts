@@ -37,7 +37,7 @@ export function assertJson<T>(value: unknown, schema: ZodSchema<T>, label = "pay
 }
 
 function formatZodError(err: z.ZodError): string {
-  return err.errors
+  return err.issues
     .slice(0, 5)
     .map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`)
     .join("; ");

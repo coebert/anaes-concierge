@@ -1072,7 +1072,7 @@ export const Route = createFileRoute("/api/chat")({
           body = ChatBody.parse(raw);
         } catch (e) {
           const friendly = e instanceof z.ZodError
-            ? e.errors.slice(0, 3).map((x) => {
+            ? e.issues.slice(0, 3).map((x) => {
                 const field = x.path.join(".") || "request";
                 return `“${field}”: ${x.message}`;
               }).join("; ")
