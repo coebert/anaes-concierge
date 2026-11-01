@@ -215,7 +215,7 @@ beforeAll(() => {
 });
 afterAll(() => vi.useRealTimers());
 
-async function askChat(): Promise<{ assistantText: string; tool: Dyn }> {
+async function askChat(): Promise<{ assistantText: string; tool: { score: number; active_exception_count: number; [k: string]: unknown } }> {
   const mod = await import("./chat");
   const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
@@ -244,7 +244,7 @@ async function askChat(): Promise<{ assistantText: string; tool: Dyn }> {
   });
   const res = await handler({ request: req });
   expect(res.status).toBe(200);
-  return (await res.json()) as { assistantText: string; tool: Dyn };
+  return (await res.json()) as { assistantText: string; tool: { score: number; active_exception_count: number; [k: string]: unknown } };
 }
 
 function makeExceptions(status: string): ExcRow[] {

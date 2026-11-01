@@ -229,7 +229,7 @@ async function askChat(): Promise<{
   });
   const res = await handler({ request: req });
   expect(res.status).toBe(200);
-  return (await res.json()) as unknown as Dyn;
+  return await res.json();
 }
 
 /** Three annual-leave rows — three fills the driver's cap so the change is

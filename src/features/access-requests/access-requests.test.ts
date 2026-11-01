@@ -1,4 +1,4 @@
-import type { Dyn, MockBuilder } from "@/test-utils/dyn";
+import type { Dyn } from "@/test-utils/dyn";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
@@ -6,9 +6,11 @@ const insert = vi.fn();
 const sendGmail = vi.fn(async () => ({ ok: true }));
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
-    const b: MockBuilder = {
-      inputValidator: (v: Dyn) => ((b.v = v), b),
-      handler: (h: Dyn) => (d: Dyn) => h({ data: b.v(d.data) }),
+    type Fn = (input: unknown) => unknown;
+    const b: { v: Fn; inputValidator: (v: Fn) => unknown; handler: (h: Fn) => Fn } = {
+      v: (x) => x,
+      inputValidator: (v) => ((b.v = v), b),
+      handler: (h) => (d) => h({ data: b.v((d as { data: unknown }).data) }),
     };
     return b;
   },

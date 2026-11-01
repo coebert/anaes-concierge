@@ -12,8 +12,9 @@ function chain(table: string) {
     const t = tables[table];
     return Promise.resolve(typeof t === "function" ? t(calls) : (t ?? { data: [], error: null }));
   };
-  const c: Dyn = new Proxy(
-    {},
+  const c: Dyn = new Proxy<Dyn>(
+    // Proxy target only; every access is intercepted below.
+    (() => undefined) as unknown as Dyn,
     {
       get(_t, prop: string) {
         if (prop === "then") return (res: ThenCb, rej: ThenCb) => resolve().then(res, rej);
@@ -35,7 +36,6 @@ vi.mock("@supabase/supabase-js", () => ({
 const TOKEN = "a".repeat(64);
 async function call() {
   const { Route } = await import("@/routes/api/public/calendar/$token");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (Route as unknown as Dyn).options.server.handlers.GET({
     params: { token: TOKEN },
   }) as Promise<Response>;

@@ -310,8 +310,9 @@ async function runAndCapture(): Promise<{
   };
 }
 
-function annotatedAssignment(rota: Dyn) {
-  return rota.assignments.find((a: Dyn) => a.date === EXC_EVENT_DATE);
+function annotatedAssignment(rota: unknown): Dyn {
+  const r = rota as { assignments: Array<{ date: string }> };
+  return r.assignments.find((a) => a.date === EXC_EVENT_DATE) as unknown as Dyn;
 }
 
 describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota and current-pattern", () => {
