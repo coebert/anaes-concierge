@@ -10,7 +10,7 @@ function deps(m: Awaited<ReturnType<MintDeps["checkMembership"]>>) {
   return {
     checkMembership: vi.fn(async () => m),
     getUserEmail: vi.fn(async () => ({ email: "synthetic@example.invalid" })),
-    generateMagicLinkHash: vi.fn(async () => "hash-1"),
+    generateMagicLinkHash: vi.fn(async (_email: string): Promise<string | null> => "hash-1"),
   };
 }
 
