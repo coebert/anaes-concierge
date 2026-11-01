@@ -1,3 +1,4 @@
+import type { Dyn } from "@/test-utils/dyn";
 /**
  * End-to-end regression for /api/chat: the assistant's REPLY TEXT for a
  * wellbeing question must change after leave is cancelled or rejected,
@@ -69,7 +70,7 @@ function makeAdminClient() {
   const build = (table: string) => {
     const state: QueryState = { table, eqCols: {}, neqCols: {}, single: false };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: any = {};
+    const b: Dyn = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -95,11 +96,11 @@ function makeAdminClient() {
       select: () => ({
         maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }),
       }),
-      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: Dyn) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (ok: any, err: any) => resolve().then(ok, err);
+    b.then = (ok: Dyn, err: Dyn) => resolve().then(ok, err);
     return b;
   };
   return {
@@ -160,7 +161,7 @@ vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
   return {
     ...actual,
-    streamText: (opts: { tools: Record<string, any> }) => {
+    streamText: (opts: { tools: Record<string, Dyn> }) => {
       return {
         toUIMessageStreamResponse: async () => {
           const wb = opts.tools?.get_my_wellbeing_score;
@@ -206,7 +207,7 @@ async function askChat(): Promise<{
   };
 }> {
   const mod = await import("./chat");
-  const handler = (mod.Route as any).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
@@ -228,7 +229,7 @@ async function askChat(): Promise<{
   });
   const res = await handler({ request: req });
   expect(res.status).toBe(200);
-  return (await res.json()) as any;
+  return (await res.json()) as Dyn;
 }
 
 /** Three annual-leave rows — three fills the driver's cap so the change is

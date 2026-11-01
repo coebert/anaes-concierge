@@ -1,3 +1,4 @@
+import type { Dyn } from "@/test-utils/dyn";
 /**
  * End-to-end test for /api/chat: when the assistant answers questions
  * about wellbeing impact of leave, its tool inputs must distinguish
@@ -154,7 +155,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: any = {};
+    const b: Dyn = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -182,11 +183,11 @@ function makeAdminClient() {
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }) }),
-      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: Dyn) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (ok: any, err: any) => resolve().then(ok, err);
+    b.then = (ok: Dyn, err: Dyn) => resolve().then(ok, err);
     return b;
   };
   return {
@@ -265,7 +266,7 @@ vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
   return {
     ...actual,
-    streamText: (opts: { tools: Record<string, any>; system?: string }) => {
+    streamText: (opts: { tools: Record<string, Dyn>; system?: string }) => {
       captured.toolNames = Object.keys(opts.tools ?? {});
       captured.systemPrompt = opts.system ?? "";
       // Invoke BOTH tools the assistant would use to compose a wellbeing
@@ -323,7 +324,7 @@ type PatternPayload = {
 
 async function invokeChat(userText: string): Promise<void> {
   const mod = await import("./chat");
-  const handler = (mod.Route as any).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {

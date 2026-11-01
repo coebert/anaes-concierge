@@ -1,3 +1,4 @@
+import type { Dyn } from "@/test-utils/dyn";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { escapeIcsText, foldIcsLine } from "@/lib/ics";
 
@@ -11,11 +12,11 @@ function chain(table: string) {
     const t = tables[table];
     return Promise.resolve(typeof t === "function" ? t(calls) : (t ?? { data: [], error: null }));
   };
-  const c: any = new Proxy(
+  const c: Dyn = new Proxy(
     {},
     {
       get(_t, prop: string) {
-        if (prop === "then") return (res: any, rej: any) => resolve().then(res, rej);
+        if (prop === "then") return (res: Dyn, rej: Dyn) => resolve().then(res, rej);
         if (prop === "maybeSingle") return () => resolve();
         return (...args: unknown[]) => {
           calls.push(prop);
@@ -35,7 +36,7 @@ const TOKEN = "a".repeat(64);
 async function call() {
   const { Route } = await import("@/routes/api/public/calendar/$token");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (Route as any).options.server.handlers.GET({
+  return (Route as Dyn).options.server.handlers.GET({
     params: { token: TOKEN },
   }) as Promise<Response>;
 }

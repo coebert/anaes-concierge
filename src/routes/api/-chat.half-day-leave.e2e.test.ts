@@ -1,3 +1,4 @@
+import type { Dyn } from "@/test-utils/dyn";
 /**
  * End-to-end test for the /api/chat POST handler with HALF-DAY leave.
  *
@@ -97,7 +98,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: any = {};
+    const b: Dyn = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -128,11 +129,11 @@ function makeAdminClient() {
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }) }),
-      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: Dyn) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (onOk: any, onErr: any) => resolve().then(onOk, onErr);
+    b.then = (onOk: Dyn, onErr: Dyn) => resolve().then(onOk, onErr);
     return b;
   };
 
@@ -211,7 +212,7 @@ vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
   return {
     ...actual,
-    streamText: (opts: { tools: Record<string, any> }) => {
+    streamText: (opts: { tools: Record<string, Dyn> }) => {
       const patternTool = opts.tools?.get_staff_current_pattern;
       const promise = patternTool
         ? Promise.resolve(patternTool.execute({}))
@@ -245,7 +246,7 @@ afterAll(() => vi.useRealTimers());
 
 async function invokePost(body: unknown): Promise<Response> {
   const mod = await import("./chat");
-  const handler = (mod.Route as any).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as Dyn).options.server.handlers.POST as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
