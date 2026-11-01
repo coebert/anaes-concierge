@@ -2086,6 +2086,27 @@ export type Database = {
           },
         ]
       }
+      request_quota_buckets: {
+        Row: {
+          bucket: string
+          bytes: number
+          hits: number
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          bytes?: number
+          hits?: number
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          bytes?: number
+          hits?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       return_to_work_interviews: {
         Row: {
           conducted_at: string
@@ -3689,6 +3710,13 @@ export type Database = {
           challenge: string
         }[]
       }
+      consume_passkey_challenge_by_id: {
+        Args: { p_id: string; p_purpose: string }
+        Returns: {
+          challenge: string
+          user_id: string
+        }[]
+      }
       current_user_is_coordinator_or_admin: { Args: never; Returns: boolean }
       decrypt_ai_message_parts: {
         Args: { p_cipher: string; p_conversation_id: string }
@@ -3925,6 +3953,10 @@ export type Database = {
           p_session: Database["public"]["Enums"]["session_half"]
         }
         Returns: string
+      }
+      take_request_quota: {
+        Args: { p_buckets: string[]; p_bytes?: number }
+        Returns: boolean
       }
       trigger_clwrota_sync: { Args: { p_step: string }; Returns: number }
       trigger_clwrota_sync_all_rate_limited: { Args: never; Returns: Json }
