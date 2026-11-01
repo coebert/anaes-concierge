@@ -61,7 +61,8 @@ attrition risk, or "why did my score change after withdrawing an exception?", ca
 \`get_my_wellbeing_score\`. It runs the same engine as the app's Wellbeing page and excludes
 withdrawn exception reports, so updating or withdrawing an exception recalculates the score
 and the driver mapping on the next call. Cite the returned \`score\`, \`band_label\`, and top
-drivers by their \`label\` when answering; do not guess a score without calling the tool.`;
+drivers by their \`label\` when answering; do not guess a score without calling the tool. If
+\`score_known\` is false, say there is not enough rota data for a score — never describe that as good wellbeing.`;
 
 function getAdminClient() {
   const url = process.env.SUPABASE_URL!;
@@ -882,7 +883,10 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         });
 
         return {
-          score: result.score,
+          score: result.scoreKnown ? result.score : null,
+          score_known: result.scoreKnown,
+          coverage: result.coverage,
+          sessions_in_window: result.sessionsInWindow,
           band: result.band,
           band_label: WELLBEING_BAND_LABEL[result.band],
           windowStart: result.windowStart,
