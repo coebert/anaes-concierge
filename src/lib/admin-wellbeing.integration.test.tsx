@@ -240,7 +240,14 @@ describe("AdminWellbeingPage — study & compassionate leave integration", () =>
       });
     }
     rowsByTable.leave_requests = leave;
-    rowsByTable.rota_assignments = [];
+    // Enough weekday rota rows per person to be assessable (coverage gate).
+    rowsByTable.rota_assignments = ["s-study", "s-compassionate"].flatMap((sid) =>
+      Array.from({ length: 12 }, (_, i) => ({
+        staff_id: sid,
+        session_date: isoDaysAgo(7 + i),
+        session: "am",
+      })),
+    );
     rowsByTable.rota_change_log = [];
     rowsByTable.exception_reports = [];
     rowsByTable.return_to_work_interviews = [];

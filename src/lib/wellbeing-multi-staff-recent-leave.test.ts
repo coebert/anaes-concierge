@@ -353,7 +353,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     }
   });
 
-  it("handles leave rows on the 90-day window boundary — inclusive at day 90, exclusive at day 91", async () => {
+  it("handles leave rows on the 90-day window boundary — 90 inclusive calendar days: day 89 ago IN, day 90 ago OUT", async () => {
     // Small dedicated fixture: one staff, four rejected spells straddling the
     // window edge, plus filler to still exercise pagination through the cap.
     const STAFF = { id: "staff-boundary", name: "Dr Boundary" };
@@ -395,7 +395,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       staff_name: STAFF.name,
       type: "annual",
       status: "rejected",
-      start_date: isoDaysAgo(89),
+      start_date: isoDaysAgo(88),
       end_date: isoDaysAgo(100),
     });
 
@@ -425,8 +425,8 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     const staffRows = fetched.filter((r) => r.staff_id === STAFF.id);
     expect(staffRows.map((r) => r.end_date)).toEqual([
       isoDaysAgo(0), // cancelled today
-      isoDaysAgo(85), // rejected, day-90 boundary
-      isoDaysAgo(86), // rejected, day-91 (out of window but still returned)
+      isoDaysAgo(85), // rejected, 89 days ago = first in-window day
+      isoDaysAgo(86), // rejected, 90 days ago (out of window but still returned)
       isoDaysAgo(100), // rejected with start=89 (in-window) but end=100
     ]);
 
