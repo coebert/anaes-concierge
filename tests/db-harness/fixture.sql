@@ -3,7 +3,8 @@
 CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE SCHEMA auth; GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+-- Same body as Supabase's auth.uid(): legacy claim.sub GUC or PostgREST's request.jwt.claims JSON.
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''), (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'))::uuid $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 CREATE TYPE app_role AS ENUM ('admin','rota_coordinator','staff');
 CREATE TYPE staff_grade AS ENUM ('consultant','sas','trainee');
