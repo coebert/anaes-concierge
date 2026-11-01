@@ -123,7 +123,7 @@ c "rtw: anonymous denied"                        anon     "$RTW" "err:42501|q=0"
 c "rtw: scheduler session sees none"             sched    "$RTW" "ok:0:|q=0"
 c "rtw: service_role sees all"                   service  "$RTW" "ok:3:A-rtw,B-rtw,I-rtw|q=0"
 # Competency: any active member.
-c "comp: staffA allowed"                         user:$A  "$COMP" "ok:5|q=0"
+c "comp: staffA allowed"                         user:$A  "$COMP" "ok:6|q=0"
 c "comp: roleless denied"                        user:$R  "$COMP" "err:42501|q=0"
 c "comp: inactive admin denied"                  user:$E  "$COMP" "err:42501|q=0"
 c "comp: missing profile denied"                 user:$M  "$COMP" "err:42501|q=0"
@@ -131,7 +131,7 @@ c "comp: no-claims authenticated denied"         noclaims "$COMP" "err:42501|q=0
 c "comp: forged service claim denied"            forged-svc "$COMP" "err:42501|q=0"
 c "comp: anonymous denied"                       anon     "$COMP" "err:42501|q=0"
 c "comp: scheduler session denied"               sched    "$COMP" "err:42501|q=0"
-c "comp: service_role allowed"                   service  "$COMP" "ok:5|q=0"
+c "comp: service_role allowed"                   service  "$COMP" "ok:6|q=0"
 # Sync variants: admin or service; scheduler only for the scheduled ones.
 for f in "trigger_clwrota_sync('staff')" "trigger_clwrota_sync_with_query('rota','from=2026-01-01')" "trigger_clwrota_sync_rate_limited('leave')"; do
   n=${f%%(*}
