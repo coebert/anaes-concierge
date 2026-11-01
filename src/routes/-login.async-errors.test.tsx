@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+afterEach(() => cleanup());
 
 const { signInWithPassword, signInWithOAuth, toastError } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
@@ -44,7 +46,7 @@ describe("login async failures", () => {
     const btn = screen.getByRole("button", { name: /^sign in$/i });
     fireEvent.click(btn);
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/try again/i)));
-    expect(screen.getByRole("button", { name: /^sign in$/i })).not.toBeDisabled();
+    expect((screen.getByRole("button", { name: /^sign in$/i }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("Google SDK throw clears busy and shows a friendly message", async () => {
@@ -52,6 +54,6 @@ describe("login async failures", () => {
     render(<Login />);
     fireEvent.click(screen.getByRole("button", { name: /google/i }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/google sign-in/i)));
-    expect(screen.getByRole("button", { name: /google/i })).not.toBeDisabled();
+    expect((screen.getByRole("button", { name: /google/i }) as HTMLButtonElement).disabled).toBe(false);
   });
 });
