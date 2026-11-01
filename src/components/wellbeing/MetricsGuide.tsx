@@ -209,10 +209,10 @@ export function WellbeingMetricGuide({ showAttrition = false }: { showAttrition?
               </AccordionTrigger>
               <AccordionContent className="space-y-3 text-sm">
                 <p>
-                  A transparent weighted rubric that adds up operational signals into a score out
-                  of 100. <strong>It is not a prediction or a probability</strong> of anyone leaving
-                  and has not been validated against who actually leaves. Higher means more
-                  signals are present.
+                  A transparent weighted rubric that adds up operational signals into a score out of
+                  100. <strong>It is not a prediction or a probability</strong> of anyone leaving
+                  and has not been validated against who actually leaves. Higher means more signals
+                  are present.
                 </p>
                 <p>
                   Each factor is scaled 0 – 1, multiplied by its weight, then summed to give the

@@ -163,60 +163,62 @@ export function AdminWellbeingPage() {
   const rows = useMemo(() => {
     if (!data) return [];
     const now = new Date();
-    return data.profiles
-      .map((p) => {
-        const staffLeave = data.leave.filter((l) => l.staff_id === p.id);
-        const sickSpells = staffLeave
-          .filter((l) => l.type === "sick" && l.status === "approved")
-          .map((s) => ({
-            start_date: s.start_date,
-            end_date: s.end_date,
-            half_day_start: !!s.half_day_start,
-            half_day_end: !!s.half_day_end,
-          }));
-        const bradford = computeBradfordFactor(sickSpells);
-        const wellbeing = computeWellbeing({
-          staffId: p.id,
-          now,
-          assignments: data.assignments,
-          changes: data.changes,
-          leave: staffLeave,
-          exceptions: data.exceptions,
-          bradfordScore: bradford.score,
-        });
+    return (
+      data.profiles
+        .map((p) => {
+          const staffLeave = data.leave.filter((l) => l.staff_id === p.id);
+          const sickSpells = staffLeave
+            .filter((l) => l.type === "sick" && l.status === "approved")
+            .map((s) => ({
+              start_date: s.start_date,
+              end_date: s.end_date,
+              half_day_start: !!s.half_day_start,
+              half_day_end: !!s.half_day_end,
+            }));
+          const bradford = computeBradfordFactor(sickSpells);
+          const wellbeing = computeWellbeing({
+            staffId: p.id,
+            now,
+            assignments: data.assignments,
+            changes: data.changes,
+            leave: staffLeave,
+            exceptions: data.exceptions,
+            bradfordScore: bradford.score,
+          });
 
-        const signals = selectAdminSignalInputs({
-          staffId: p.id,
-          asOf: now,
-          leave: staffLeave,
-          changes: data.changes,
-          rtws: data.rtws,
-        });
+          const signals = selectAdminSignalInputs({
+            staffId: p.id,
+            asOf: now,
+            leave: staffLeave,
+            changes: data.changes,
+            rtws: data.rtws,
+          });
 
-        const attrition = computeAttritionRisk({
-          wellbeing,
-          bradfordScore: bradford.score,
-          denialRate12m: signals.denialRate12m,
-          shortNoticeChanges12m: signals.shortNoticeChanges12m,
-          daysSinceLastAnnual: signals.daysSinceLastAnnual,
-          overdueRtwCount: signals.overdueRtwCount,
-          pulseTrend: signals.pulseTrend,
-        });
+          const attrition = computeAttritionRisk({
+            wellbeing,
+            bradfordScore: bradford.score,
+            denialRate12m: signals.denialRate12m,
+            shortNoticeChanges12m: signals.shortNoticeChanges12m,
+            daysSinceLastAnnual: signals.daysSinceLastAnnual,
+            overdueRtwCount: signals.overdueRtwCount,
+            pulseTrend: signals.pulseTrend,
+          });
 
-        return {
-          id: p.id,
-          name: p.full_name || p.email || "Unknown",
-          grade: p.grade,
-          wellbeing,
-          attrition,
-        };
-      })
-      // Unknown-coverage rows sort first so missing data is reviewed, not hidden.
-      .sort(
-        (a, b) =>
-          Number(a.wellbeing.scoreKnown) - Number(b.wellbeing.scoreKnown) ||
-          a.wellbeing.score - b.wellbeing.score,
-      );
+          return {
+            id: p.id,
+            name: p.full_name || p.email || "Unknown",
+            grade: p.grade,
+            wellbeing,
+            attrition,
+          };
+        })
+        // Unknown-coverage rows sort first so missing data is reviewed, not hidden.
+        .sort(
+          (a, b) =>
+            Number(a.wellbeing.scoreKnown) - Number(b.wellbeing.scoreKnown) ||
+            a.wellbeing.score - b.wellbeing.score,
+        )
+    );
   }, [data]);
 
   const filteredRows = rows.filter((r) =>
@@ -272,17 +274,13 @@ export function AdminWellbeingPage() {
       <div className="grid gap-3 sm:grid-cols-4">
         <StatCard label="Staff assessed" value={rows.length} icon={HeartPulse} />
         <StatCard label="Strained / at-risk" value={atRiskCount} icon={AlertTriangle} />
-        <StatCard
-          label="High / elevated signal score"
-          value={highAttrition}
-          icon={TrendingDown}
-        />
+        <StatCard label="High / elevated signal score" value={highAttrition} icon={TrendingDown} />
         <StatCard label="Not enough data" value={notAssessedCount} icon={HeartPulse} />
       </div>
       <p className="text-xs text-muted-foreground" data-testid="admin-wellbeing-caveat">
-        These are unvalidated operational signal scores, not predictions of who will leave. Use
-        them only to prompt a supportive conversation — never for HR or performance decisions.
-        The pulse-survey trend is not yet measured per person and is shown as not assessed.
+        These are unvalidated operational signal scores, not predictions of who will leave. Use them
+        only to prompt a supportive conversation — never for HR or performance decisions. The
+        pulse-survey trend is not yet measured per person and is shown as not assessed.
       </p>
 
       <Card>

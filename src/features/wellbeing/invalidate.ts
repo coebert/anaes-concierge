@@ -77,7 +77,7 @@ function recordWellbeingInvalidation(
   const label = reason ?? "unspecified";
   const mutationType = mutationTypeOf(label);
   const at = new Date().toISOString();
-  // eslint-disable-next-line no-console
+
   console.debug(
     `[wellbeing] invalidate queryKey=["${key}"] reason=${label} mutation=${mutationType} ids=${formatIds(ids)} at=${at}`,
   );
