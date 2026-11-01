@@ -319,6 +319,11 @@ function TcsAuditPage() {
                       <ReasonBanner reason={reason} startISO={startISO} endISO={endISO} />
                     ) : (
                       <>
+                        {audit.caveats.length > 0 && (
+                          <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground" aria-label="Why this is an estimate">
+                            {audit.caveats.map((c) => <li key={c}>{c}</li>)}
+                          </ul>
+                        )}
                         <div className="grid gap-2 md:grid-cols-2">
                           {audit.rules.map((r) => (
                             <RuleCard key={r.id} rule={r} />
