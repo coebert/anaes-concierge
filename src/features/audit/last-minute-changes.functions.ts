@@ -1,5 +1,35 @@
 import { requireActiveMember } from "@/lib/require-admin";
 import { pagedRows } from "@/lib/paged-select";
+import { chunkIds } from "@/lib/supabase-chunked";
+
+/**
+ * Every log row's subject staff, previous staff and theatre lists must
+ * resolve. `changed_by` is optional attribution (system/sync edits).
+ */
+export function assertRequiredJoins(
+  logs: readonly {
+    id: string;
+    staff_id: string | null;
+    prev_staff_id: string | null;
+    prev_theatre_session_id: string | null;
+    new_theatre_session_id: string | null;
+  }[],
+  profiles: ReadonlyMap<string, unknown>,
+  lists: ReadonlyMap<string, unknown>,
+): void {
+  const missing: string[] = [];
+  for (const r of logs) {
+    for (const id of [r.staff_id, r.prev_staff_id]) if (id && !profiles.has(id)) missing.push(`profile ${id}`);
+    for (const id of [r.prev_theatre_session_id, r.new_theatre_session_id])
+      if (id && !lists.has(id)) missing.push(`theatre session ${id}`);
+  }
+  if (missing.length > 0) {
+    const uniq = Array.from(new Set(missing));
+    throw new Error(
+      `Last-minute changes: ${uniq.length} required record(s) could not be loaded (${uniq.slice(0, 3).join(", ")}${uniq.length > 3 ? ", …" : ""}). Totals withheld.`,
+    );
+  }
+}
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -177,32 +207,6 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<LastMinuteChangesAudit> => {
     const { supabase } = context;
 
-    const emptyAudit = (): LastMinuteChangesAudit => {
-      const WINDOWS = [24, 48] as const;
-      const totalsByWindow: Record<string, WindowTotals> = {};
-      const byGroupByWindow: Record<string, WindowByGroup> = {};
-      for (const w of WINDOWS) {
-        totalsByWindow[String(w)] = {
-          all: 0,
-          inserts: 0,
-          updates: 0,
-          deletes: 0,
-          traineeListMoves: 0,
-        };
-        byGroupByWindow[String(w)] = emptyByGroup();
-      }
-      return {
-        rangeStart: data.rangeStart,
-        rangeEnd: data.rangeEnd,
-        windowsHours: [...WINDOWS],
-        totals: totalsByWindow["48"],
-        byGroup: byGroupByWindow["48"],
-        totalsByWindow,
-        byGroupByWindow,
-        rows: [],
-      };
-    };
-
     const isTransient = (e: unknown): boolean => {
       const msg = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
       return (
@@ -233,7 +237,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       throw lastErr;
     };
 
-    try {
+    {
       const logsResult = await withRetry(
         "rota_change_log",
         async () =>
@@ -277,12 +281,15 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         ),
       );
 
+      // Bounded IN lookups (≤200 ids per request). A referenced staff member
+      // or theatre list that does not come back is an attribution failure:
+      // throw rather than silently mislabel or drop rows.
       const profileMap = new Map<string, { full_name: string | null; grade: string | null }>();
-      if (staffIds.length > 0) {
+      for (const ids of chunkIds(staffIds)) {
         const { data: profs, error: pErr } = await supabase
           .from("profiles")
           .select("id, full_name, grade")
-          .in("id", staffIds);
+          .in("id", ids);
         if (pErr) throw new Error(pErr.message);
         const profileRows: ProfileRow[] = parseRows(ProfileRowSchema, profs, "profiles");
         for (const p of profileRows)
@@ -290,11 +297,11 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       }
 
       const listMap = new Map<string, ListRef>();
-      if (sessionIds.length > 0) {
+      for (const ids of chunkIds(sessionIds)) {
         const { data: sess, error: sErr } = await supabase
           .from("theatre_sessions")
           .select("id, theatre_id, specialty_id, theatres(name), specialties(name)")
-          .in("id", sessionIds);
+          .in("id", ids);
         if (sErr) throw new Error(sErr.message);
         const sessionRows: TheatreSessionRow[] = parseRows(
           TheatreSessionRowSchema,
@@ -312,6 +319,7 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
           });
         }
       }
+      assertRequiredJoins(logs, profileMap, listMap);
 
       const rows: LastMinuteChangeRow[] = logs.map((r): LastMinuteChangeRow => {
         const prof = r.staff_id ? (profileMap.get(r.staff_id) ?? null) : null;
@@ -382,8 +390,5 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
         byGroupByWindow,
         rows,
       };
-    } catch (err) {
-      console.error("getLastMinuteChangesAudit failed:", err);
-      return emptyAudit();
     }
   });
