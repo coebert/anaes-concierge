@@ -55,7 +55,7 @@ The retention signal's fixed 0.30 placeholder for a missing pulse trend is
 | Case | Before | After |
 |---|---|---|
 | All weekend nights | unsocial 200 % | 100 % |
-| Mixed overlap (2 wknd nights, 2 wkday eves, 2 wknd AM, 4 wkday AM) | 120 % | 60 % |
+| Mixed overlap (2 wknd nights, 2 wkday eves, 2 wknd AM, 4 wkday AM) | 80 % (double-counted 2 rows) | 60 % |
 | Window at 00:00, 12:00 and 23:59:59 | start depended on time | always 2026-08-04..2026-11-01 |
 | Empty input | Thriving 100 | unknown / insufficient |
 | 9 vs 10 sessions | — | unknown vs assessed |
