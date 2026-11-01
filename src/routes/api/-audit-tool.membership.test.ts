@@ -25,7 +25,10 @@ vi.mock("@supabase/supabase-js", () => ({
             : [];
       const error = t === "user_roles" && h.roles === "error" ? { message: "x" } : null;
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "order", "limit", "gte", "lte", "in", "not", "is", "range"]) q[m] = () => q;
+      for (const m of ["select", "eq", "order", "limit", "gte", "lte", "in", "not", "is"])
+        q[m] = () => q;
+      // Paged reads: one short page of list-shaped rows ends pagination.
+      q.range = () => Promise.resolve({ data: Array.isArray(data) ? data : [], error });
       q.maybeSingle = () => Promise.resolve({ data, error });
       q.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data, error }).then(ok);
       return q;
