@@ -9,6 +9,7 @@ import {
   parseRows,
   pick,
 } from "./parsing";
+import { pagedRows } from "@/lib/paged-select";
 import { fetchAllPaged } from "@/lib/supabase-chunked";
 import { isTutorialAuditCandidate } from "./tutorial-audit";
 
@@ -111,11 +112,12 @@ export async function verifyTutorialWindow(opts: {
   const { rows } = parseRows(text);
 
   // Consultant / SAS staff — the only grades whose tutorial delivery we audit.
-  const profRes = await supabaseAdmin
-    .from("profiles")
-    .select("id,email,full_name,clwrota_external_id,grade")
-    .in("grade", ["consultant", "sas"])
-    .range(0, 9999);
+  const profRes = await pagedRows("profiles", "id,email,full_name,clwrota_external_id,grade", {
+    client: supabaseAdmin,
+    filter: (q) => q.in("grade", ["consultant", "sas"]),
+    order: ["id"],
+    source: "profiles",
+  });
   if (profRes.error) throw new Error(profRes.error.message);
 
   const byEmail = new Map<string, string>();

@@ -1,4 +1,5 @@
 import { requireActiveMember } from "@/lib/require-admin";
+import { pagedRows } from "@/lib/paged-select";
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -67,24 +68,26 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
   }
 
   // Activity in window [today, today+14]
-  const { data: activityRows, error: aErr } = await supabaseAdmin
-    .from("rota_assignments")
-    .select("staff_id")
-    .in("staff_id", ids)
-    .gte("session_date", today)
-    .lte("session_date", windowEnd)
-    .range(0, 49999);
+  const { data: activityRows, error: aErr } = await pagedRows("rota_assignments", "staff_id", {
+    client: supabaseAdmin,
+    filter: (q) => q.in("staff_id", ids).gte("session_date", today).lte("session_date", windowEnd),
+    order: ["session_date", "id"],
+    source: "rota_assignments",
+  });
   if (aErr) throw new Error(aErr.message);
   const hasActivity = new Set((activityRows ?? []).map((r) => r.staff_id));
 
   // Leave overlapping window (any non-cancelled/non-denied status counts).
-  const { data: leaveRows, error: lErr } = await supabaseAdmin
-    .from("leave_requests")
-    .select("staff_id, start_date, end_date, status")
-    .in("staff_id", ids)
-    .lte("start_date", windowEnd)
-    .gte("end_date", today)
-    .range(0, 49999);
+  const { data: leaveRows, error: lErr } = await pagedRows(
+    "leave_requests",
+    "staff_id, start_date, end_date, status",
+    {
+      client: supabaseAdmin,
+      filter: (q) => q.in("staff_id", ids).lte("start_date", windowEnd).gte("end_date", today),
+      order: ["start_date", "id"],
+      source: "leave_requests",
+    },
+  );
   if (lErr) throw new Error(lErr.message);
   const hasLeave = new Set(
     (leaveRows ?? [])
@@ -98,13 +101,16 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
 
   const futureFirstByStaff = new Map<string, string>();
   if (candidateIds.length) {
-    const { data: futureRows, error: fErr } = await supabaseAdmin
-      .from("rota_assignments")
-      .select("staff_id, session_date")
-      .in("staff_id", candidateIds)
-      .gt("session_date", today)
-      .order("session_date", { ascending: true })
-      .range(0, 49999);
+    const { data: futureRows, error: fErr } = await pagedRows(
+      "rota_assignments",
+      "staff_id, session_date",
+      {
+        client: supabaseAdmin,
+        filter: (q) => q.in("staff_id", candidateIds).gt("session_date", today),
+        order: ["session_date", "id"],
+        source: "rota_assignments",
+      },
+    );
     if (fErr) throw new Error(fErr.message);
     for (const r of futureRows ?? []) {
       if (!futureFirstByStaff.has(r.staff_id)) {

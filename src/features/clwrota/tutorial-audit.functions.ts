@@ -1,4 +1,5 @@
 import { requireActiveMember } from "@/lib/require-admin";
+import { pagedRows } from "@/lib/paged-select";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { fetchAllPaged } from "@/lib/supabase-chunked";
@@ -82,11 +83,12 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
     const assignmentSelect: string =
       "id,staff_id,session_date,session,duty_type,notes,role_on_list,extra_type,clwrota_external_id,source,locally_modified,theatre_session_id";
     const [profilesRes, assignments] = await Promise.all([
-      supabaseAdmin
-        .from("profiles")
-        .select("id,full_name,grade,active")
-        .in("grade", ["consultant", "sas"])
-        .range(0, 9999),
+      pagedRows("profiles", "id,full_name,grade,active", {
+        client: supabaseAdmin,
+        filter: (q) => q.in("grade", ["consultant", "sas"]),
+        order: ["id"],
+        source: "profiles",
+      }),
       fetchAllPaged<AuditAssignmentRow>(() =>
         supabaseAdmin
           .from("rota_assignments")
@@ -137,14 +139,16 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
     }
 
     // Saved CLWRota row metadata for each detected tutorial (traceability).
-    const traceRes = await supabaseAdmin
-      .from("tutorial_detection_matches")
-      .select(
-        "staff_id,session_date,session,clwrota_external_id,matched_field,matched_value,place_name,slot_titles,role_label,person_label,detected_by,detected_at,source_row",
-      )
-      .gte("session_date", data.startIso)
-      .lte("session_date", data.endIso)
-      .range(0, 9999);
+    const traceRes = await pagedRows(
+      "tutorial_detection_matches",
+      "staff_id,session_date,session,clwrota_external_id,matched_field,matched_value,place_name,slot_titles,role_label,person_label,detected_by,detected_at,source_row",
+      {
+        client: supabaseAdmin,
+        filter: (q) => q.gte("session_date", data.startIso).lte("session_date", data.endIso),
+        order: ["session_date", "id"],
+        source: "tutorial_detection_matches",
+      },
+    );
     if (traceRes.error) throw new Error(traceRes.error.message);
     const traceByKey = new Map<string, TutorialSourceTrace>();
     for (const t of traceRes.data ?? []) {
