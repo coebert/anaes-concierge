@@ -30,7 +30,7 @@ describe("auditTcs2016", () => {
     // 5 days * 10h = 50h in one week — but averaged over the merged span
     // (span = 1 day from first start to last end -> handled via spanDays>=1).
     expect(r.rules.find((x) => x.id === "max_13h_shift")?.status).toBe("pass");
-    expect(r.rules.find((x) => x.id === "max_5_long")?.status).toBe("pass");
+    expect(r.rules.find((x) => x.id === "max_consecutive_long")?.status).toBe("pass");
   });
 
   it("flags 5 consecutive nights", () => {
