@@ -192,7 +192,7 @@ All 129 cases pass.
 ## 5. Calendar feed
 
 The route is now thin. Its logic lives in `src/lib/calendar-feed.ts`, tested
-with fixtures in `src/lib/__security__/calendar-feed-sources.test.ts` (23
+with fixtures in `src/lib/__security__/calendar-feed-sources.test.ts` (21
 tests).
 - **503 when:** any query fails (profile, membership, assignments, leave,
   theatre sessions, supervisors, or a later page), or a referenced theatre
