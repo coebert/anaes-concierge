@@ -58,7 +58,7 @@ function renderDialog() {
         theatreId="th-synthetic"
         theatreName="Theatre 1"
         date="2026-11-02"
-        session="AM"
+        session="am"
         onOpenChange={() => undefined}
         staff={[]}
         weekDates={["2026-11-02"]}
