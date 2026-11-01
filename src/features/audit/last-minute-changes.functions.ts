@@ -19,7 +19,8 @@ export function assertRequiredJoins(
 ): void {
   const missing: string[] = [];
   for (const r of logs) {
-    for (const id of [r.staff_id, r.prev_staff_id]) if (id && !profiles.has(id)) missing.push(`profile ${id}`);
+    for (const id of [r.staff_id, r.prev_staff_id])
+      if (id && !profiles.has(id)) missing.push(`profile ${id}`);
     for (const id of [r.prev_theatre_session_id, r.new_theatre_session_id])
       if (id && !lists.has(id)) missing.push(`theatre session ${id}`);
   }
@@ -172,7 +173,8 @@ type TheatreSessionRow = z.infer<typeof TheatreSessionRowSchema>;
  */
 function parseRows<T>(schema: z.ZodType<T>, raw: unknown, label: string): T[] {
   if (raw == null) return [];
-  if (!Array.isArray(raw)) throw new Error(`Last-minute changes: ${label} returned an unexpected shape.`);
+  if (!Array.isArray(raw))
+    throw new Error(`Last-minute changes: ${label} returned an unexpected shape.`);
   const out: T[] = [];
   let bad = 0;
   for (const item of raw) {
@@ -181,7 +183,9 @@ function parseRows<T>(schema: z.ZodType<T>, raw: unknown, label: string): T[] {
     else bad += 1;
   }
   if (bad > 0)
-    throw new Error(`Last-minute changes: ${bad}/${raw.length} ${label} rows were malformed. Totals withheld.`);
+    throw new Error(
+      `Last-minute changes: ${bad}/${raw.length} ${label} rows were malformed. Totals withheld.`,
+    );
   return out;
 }
 

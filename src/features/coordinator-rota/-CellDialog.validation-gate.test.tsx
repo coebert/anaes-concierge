@@ -122,11 +122,19 @@ describe("rota cell dialog validation gate (synthetic)", () => {
     });
   }
 
-  it("theatre session read failed → Create/Update list and Assign both disabled", async () => {
+  it("theatre session read failed → list save blocked, no Assign, Retry recovers", async () => {
     modes.theatre_sessions = "fail";
     renderDialog();
-    await screen.findByText(/theatre_sessions unavailable/);
-    expect((assignButton() as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: /(create|update) list/i }) as HTMLButtonElement).disabled).toBe(true);
+    const alert = await screen.findByText(/theatre_sessions unavailable/);
+    const save = () =>
+      screen.getByRole("button", { name: /(create|update) list/i }) as HTMLButtonElement;
+    expect(save().disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: /^assign$/i })).toBeNull();
+    modes.theatre_sessions = "ok";
+    fireEvent.click(
+      within(alert.closest("[role=alert]") as HTMLElement).getByRole("button", { name: /retry/i }),
+    );
+    await waitFor(() => expect(save().disabled).toBe(false));
+    await waitFor(() => expect((assignButton() as HTMLButtonElement).disabled).toBe(false));
   });
 });

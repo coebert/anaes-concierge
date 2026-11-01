@@ -21,14 +21,12 @@ The robustness audit must **exclude** any `theatre_sessions` row whose `theatre_
 All three functions fetch the set of inactive theatre IDs upfront (via `.eq("active", false)`) and filter the `theatre_sessions` array before it enters demand/coverage logic:
 
 ```typescript
-const inactiveTheatreIds = new Set(
-  (inactiveTheatreRows ?? []).map((t) => t.id)
-);
+const inactiveTheatreIds = new Set((inactiveTheatreRows ?? []).map((t) => t.id));
 
 const theatreSessions = theatreSessionsRaw.filter(
   (t) =>
     !isEmergencyTheatreSession(t, emergencySpecialtyIds) &&
-    !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id))
+    !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id)),
 );
 ```
 

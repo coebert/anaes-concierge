@@ -338,7 +338,9 @@ function LastMinuteChangesPage() {
             {isLoading ? (
               <PageLoading />
             ) : !data ? (
-              <div className="text-sm text-muted-foreground">Unavailable — see the error above.</div>
+              <div className="text-sm text-muted-foreground">
+                Unavailable — see the error above.
+              </div>
             ) : groupRows.length === 0 ? (
               <div className="text-sm text-muted-foreground">
                 No last-minute changes recorded in this range.

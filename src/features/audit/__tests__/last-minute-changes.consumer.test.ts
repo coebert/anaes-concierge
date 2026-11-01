@@ -9,10 +9,8 @@ vi.mock("@tanstack/react-start", () => ({
       v: ((x: unknown) => x) as Fn,
       middleware: () => b,
       inputValidator: (v: Fn) => ((b.v = v), b),
-      handler:
-        (h: Fn) =>
-        (d: { data: unknown; supabase: unknown }) =>
-          h({ data: b.v(d.data), context: { supabase: d.supabase } }),
+      handler: (h: Fn) => (d: { data: unknown; supabase: unknown }) =>
+        h({ data: b.v(d.data), context: { supabase: d.supabase } }),
     };
     return b;
   },

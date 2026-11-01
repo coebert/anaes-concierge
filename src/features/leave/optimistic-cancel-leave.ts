@@ -186,7 +186,10 @@ export async function optimisticUpdateLeaveStatus(
   };
   for (const keyPrefix of [["my-wellbeing"], ["admin-wellbeing"]]) {
     for (const q of cache.findAll({ queryKey: keyPrefix })) {
-      cacheSnapshots.push({ key: q.queryKey, prev: q.state.data as CachedWellbeingData | undefined });
+      cacheSnapshots.push({
+        key: q.queryKey,
+        prev: q.state.data as CachedWellbeingData | undefined,
+      });
     }
   }
   patchCaches(rowPatch);
@@ -216,7 +219,9 @@ export async function optimisticUpdateLeaveStatus(
     rollback();
     return {
       ok: false,
-      error: new Error(errMsg ?? "The leave request was not updated (no permission or it changed)."),
+      error: new Error(
+        errMsg ?? "The leave request was not updated (no permission or it changed).",
+      ),
     };
   }
 

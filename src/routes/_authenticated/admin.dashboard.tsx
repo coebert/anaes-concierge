@@ -279,10 +279,12 @@ function AdminDashboardPage() {
         consultantAvg: avg("consultantPct"),
         traineeAvg: avg("traineePct"),
         consultantsTracked: Array.from(gradeById.entries()).filter(
-          ([id, g]) => g === "consultant" && allowanceFor(id, months[months.length - 1].key) !== undefined,
+          ([id, g]) =>
+            g === "consultant" && allowanceFor(id, months[months.length - 1].key) !== undefined,
         ).length,
         traineesTracked: Array.from(gradeById.entries()).filter(
-          ([id, g]) => g === "trainee" && allowanceFor(id, months[months.length - 1].key) !== undefined,
+          ([id, g]) =>
+            g === "trainee" && allowanceFor(id, months[months.length - 1].key) !== undefined,
         ).length,
       };
     },

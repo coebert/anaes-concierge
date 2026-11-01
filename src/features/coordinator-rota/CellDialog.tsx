@@ -543,7 +543,18 @@ export function CellDialog({
                 />
               </div>
             </div>
-            <Button size="sm" onClick={() => saveSession.mutate()} disabled={saveSession.isPending || !tsQuery.isSuccess}>
+            {tsQuery.isError && (
+              <QueryErrorNotice
+                error={tsQuery.error}
+                what="this list (it may already exist — saving is blocked)"
+                onRetry={() => void tsQuery.refetch()}
+              />
+            )}
+            <Button
+              size="sm"
+              onClick={() => saveSession.mutate()}
+              disabled={saveSession.isPending || !tsQuery.isSuccess}
+            >
               {ts ? "Update list" : "Create list"}
             </Button>
           </div>

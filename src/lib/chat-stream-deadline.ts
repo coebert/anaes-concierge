@@ -87,5 +87,9 @@ export function withStreamDeadline(res: Response, opts: DeadlineOptions): Respon
       finish();
     },
   });
-  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+  return new Response(body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers,
+  });
 }
