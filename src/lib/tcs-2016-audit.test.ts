@@ -19,11 +19,14 @@ describe("auditTcs2016", () => {
     expect(r.overall).toBe("insufficient_data");
   });
 
-  it("compliant for a normal Mon–Fri AM+PM week", () => {
+  it("normal Mon–Fri AM+PM week is never reported 'compliant' — only an estimate", () => {
     const days = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"];
     const a = days.flatMap((d) => [mk(d, "am"), mk(d, "pm")]);
     const r = auditTcs2016(a);
-    expect(r.overall).toBe("compliant");
+    // One week is too short to average, and the weekend rule needs the
+    // full rota cycle, so the honest outcome is "incomplete".
+    expect(r.overall).toBe("incomplete");
+    expect(r.basis).toBe("estimated_screening");
     // 5 days * 10h = 50h in one week — but averaged over the merged span
     // (span = 1 day from first start to last end -> handled via spanDays>=1).
     expect(r.rules.find((x) => x.id === "max_13h_shift")?.status).toBe("pass");
@@ -46,12 +49,13 @@ describe("auditTcs2016", () => {
     expect(r.rules.find((x) => x.id === "max_7_consec_days")?.status).toBe("fail");
   });
 
-  it("flags back-to-back worked weekends", () => {
+  it("weekend frequency: not assessed without the rota cycle; flagged over a known cycle", () => {
     const a = [
       mk("2026-05-23", "am"), mk("2026-05-24", "am"),
       mk("2026-05-30", "am"), mk("2026-05-31", "am"),
     ];
-    const r = auditTcs2016(a);
+    expect(auditTcs2016(a).rules.find((x) => x.id === "weekend_freq")?.status).toBe("indeterminate");
+    const r = auditTcs2016(a, { windowStartISO: "2026-05-18", windowEndISO: "2026-05-31", rotaCycleWeeks: 2 });
     expect(r.rules.find((x) => x.id === "weekend_freq")?.status).toBe("fail");
   });
 
@@ -76,9 +80,9 @@ describe("auditTcs2016", () => {
     }
     const a = days.flatMap((d) => [mk(d, "am"), mk(d, "pm")]);
     const r = auditTcs2016(a);
-    const longRule = r.rules.find((x) => x.id === "max_5_long");
+    const longRule = r.rules.find((x) => x.id === "max_consecutive_long");
     expect(longRule?.status).toBe("pass");
-    expect(longRule?.detail).toMatch(/: 0$/);
+    expect(longRule?.detail).toMatch(/: 0 /);
   });
 
   // Regression: even a genuine long shift (eve appended to AM+PM = 13h)
@@ -96,10 +100,14 @@ describe("auditTcs2016", () => {
       }
     }
     const r = auditTcs2016(a);
-    const longRule = r.rules.find((x) => x.id === "max_5_long");
-    // 5 long working days each week, gap on weekend → max run is 5.
-    expect(longRule?.detail).toMatch(/: 5$/);
-    expect(longRule?.status).toBe("pass");
+    const longRule = r.rules.find((x) => x.id === "max_consecutive_long");
+    // 5 long working days each week, gap on weekend → max run is 5 (not 40),
+    // which exceeds the default limit of 4…
+    expect(longRule?.detail).toMatch(/: 5 /);
+    expect(longRule?.status).toBe("fail");
+    // …and passes only with an explicitly recorded mutual agreement.
+    const agreed = auditTcs2016(a, { agreedFiveLongShifts: true });
+    expect(agreed.rules.find((x) => x.id === "max_consecutive_long")?.status).toBe("pass");
   });
 
   // Regression: 4 nights then a rest day then 4 more nights must NOT
@@ -174,9 +182,9 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     expect(rule?.detail).toMatch(/excluded 5 leave days/);
   });
 
-  it("LTFT 0.6 trainee gets a pro-rata 28.8 h/week cap on R1", () => {
-    // 8 weeks of Mon/Tue/Wed AM+PM (30 h/wk) — over a full-time 48 h cap
-    // this passes; pro-rated to 28.8 h it must FAIL.
+  it("LTFT pro-rata cap is informational only; the verdict uses 48 h/week", () => {
+    // 8 weeks of Mon/Tue/Wed AM+PM (30 h/wk). Pro-rating 48 h by an
+    // inferred FTE fraction is not a contractual rule, so this passes.
     const startMon = new Date("2026-05-25T00:00:00Z"); // Monday
     const asgs: AuditAssignment[] = [];
     for (let w = 0; w < 8; w++) {
@@ -193,9 +201,8 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     });
     expect(r.ltftFraction).toBeCloseTo(0.6, 5);
     const rule = r.rules.find((x) => x.id === "avg_48h");
-    expect(rule?.status).toBe("fail");
-    expect(rule?.label).toMatch(/LTFT pro-rata/);
-    expect(rule?.detail).toMatch(/28\.8 h\/wk/);
+    expect(rule?.status).toBe("pass");
+    expect(rule?.detail).toMatch(/28\.8 h\/wk shown for information only/);
   });
 
   it("LTFT off-days bridge consecutive-day runs in R6", () => {
@@ -222,7 +229,7 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
       mk("2026-05-26", "am"), mk("2026-05-26", "pm"), mk("2026-05-26", "eve"), // Tue AM+PM+eve = 13h
     ];
     const r = auditTcs2016(asgs);
-    const rule = r.rules.find((x) => x.id === "max_5_long");
+    const rule = r.rules.find((x) => x.id === "max_consecutive_long");
     const notes = rule?.evidence?.notes ?? [];
     expect(notes.some((n) => /also breaches R7/.test(n))).toBe(true);
   });
@@ -247,5 +254,43 @@ describe("auditTcs2016 — Phase 1 accuracy improvements", () => {
     for (const s of r.shifts) {
       expect(dates).toContain(s.date);
     }
+  });
+});
+
+describe("auditTcs2016 — honesty regressions (reproduced review cases)", () => {
+  it("1: a single AM row is NOT reported compliant when the 48h average is indeterminate", () => {
+    const r = auditTcs2016([mk("2026-05-25", "am")]);
+    expect(r.rules.find((x) => x.id === "avg_48h")?.status).toBe("indeterminate");
+    expect(r.overall).toBe("incomplete");
+    expect(r.caveats.join(" ")).toMatch(/inferred/);
+  });
+  it("2: five consecutive AM+PM+eve (~13h) days breach the default max of 4 long shifts", () => {
+    const days = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29"];
+    const r = auditTcs2016(days.flatMap((d) => [mk(d, "am"), mk(d, "pm"), mk(d, "eve")]));
+    expect(r.rules.find((x) => x.id === "max_consecutive_long")?.status).toBe("fail");
+    expect(r.overall).toBe("possible_breach");
+  });
+  it("3: Mon–Fri for two weeks is not flagged (no '8 in 14' rule exists)", () => {
+    const days = ["2026-05-25", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29",
+      "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"];
+    const r = auditTcs2016(days.flatMap((d) => [mk(d, "am"), mk(d, "pm")]));
+    expect(r.rules.find((x) => x.id === "max_8_in_14")).toBeUndefined();
+    expect(r.rules.find((x) => x.id === "max_7_consec_days")?.status).toBe("pass");
+    expect(r.rules.some((x) => x.status === "fail")).toBe(false);
+  });
+  it("4: a Friday night running into Saturday counts as a worked weekend", () => {
+    const r = auditTcs2016([mk("2026-05-29", "night", "sho_oncall", "on_call")]);
+    expect(r.rules.find((x) => x.id === "weekend_freq")?.detail).toMatch(/^1 weekend/);
+    expect(r.shifts[0].isWeekend).toBe(true);
+  });
+  it("never emits a 'compliant' overall value", () => {
+    const days: string[] = [];
+    for (let i = 0; i < 26 * 7; i++) {
+      const d = new Date(Date.UTC(2026, 0, 5) + i * 86_400_000);
+      if (d.getUTCDay() >= 1 && d.getUTCDay() <= 4) days.push(d.toISOString().slice(0, 10));
+    }
+    const r = auditTcs2016(days.map((d) => mk(d, "am")), { rotaCycleWeeks: 4 });
+    expect(["no_flags_estimated", "incomplete", "possible_breach", "insufficient_data"]).toContain(r.overall);
+    expect(r.overall).not.toBe("compliant" as never);
   });
 });
