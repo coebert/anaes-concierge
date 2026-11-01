@@ -105,7 +105,7 @@ function CoordinatorInboxPage() {
       const { data, error } = await pagedRows(
         "inbox_dismissals",
         "item_id,kind,dismissed_at,dismissed_by",
-        { order: ["id"] },
+        { order: ["item_id"] },
       );
       if (error) throw error;
       return data ?? [];
