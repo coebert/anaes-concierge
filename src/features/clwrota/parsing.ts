@@ -639,7 +639,7 @@ export function normaliseDate(raw: string | null): string | null {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
   const m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
   if (m) {
-    let [, d, mo, y] = m;
+    const [, d, mo, y] = m;
     if (y.length === 2) y = `20${y}`;
     return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
   }

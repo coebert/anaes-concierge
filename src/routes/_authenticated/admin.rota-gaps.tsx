@@ -222,8 +222,6 @@ function RotaGapsPage() {
       });
   }, [data, filter, hideClean]);
 
-  if (loading) return <PageLoading />;
-  if (!hasRole("admin")) return <Navigate to="/" />;
 
   const traineesWithGaps = rows.filter((r) => r.report.totalMissingDays > 0).length;
   const totalGapDays = rows.reduce((sum, r) => sum + r.report.totalMissingDays, 0);
@@ -285,6 +283,10 @@ function RotaGapsPage() {
     cumulativeDays: 0,
     cumulativePct: 0,
   };
+
+  // Early returns come AFTER every hook so hook order is stable.
+  if (loading) return <PageLoading />;
+  if (!hasRole("admin")) return <Navigate to="/" />;
 
   async function runTargetedSync() {
     const targets = plannedSlice;
