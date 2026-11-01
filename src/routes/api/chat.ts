@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { acquireChatStreamLease } from "@/lib/chat-stream-lease";
+import { CHAT_STREAM_DEADLINE_MS, withStreamDeadline } from "@/lib/chat-stream-deadline";
 import { checkActiveMembership, membershipDenial } from "@/lib/app-membership";
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
@@ -1151,7 +1152,18 @@ export const Route = createFileRoute("/api/chat")({
               });
         }
         const releaseLease = lease.release;
-        request.signal?.addEventListener("abort", () => void releaseLease(), { once: true });
+        // One controller stops upstream work for client abort, deadline,
+        // stream error or cancel. The lease is released only after it fires
+        // or the stream has ended (see withStreamDeadline).
+        const upstream = new AbortController();
+        request.signal?.addEventListener(
+          "abort",
+          () => {
+            upstream.abort(request.signal.reason);
+            void releaseLease();
+          },
+          { once: true },
+        );
         try {
           const gateway = createLovableAiGatewayProvider(apiKey);
           const model = gateway("google/gemini-3-flash-preview");
@@ -1170,10 +1182,10 @@ export const Route = createFileRoute("/api/chat")({
             messages: await convertToModelMessages(uiMessages),
             tools: buildTools(userId, adminUser, canSeeColleagueNames),
             stopWhen: stepCountIs(50),
-            abortSignal: request.signal,
+            abortSignal: upstream.signal,
           });
 
-          return result.toUIMessageStreamResponse({
+          const streamed = result.toUIMessageStreamResponse({
             originalMessages: uiMessages,
             onFinish: async ({ responseMessage }) => {
               // Stream is done (completed or aborted): free the slot first.
@@ -1246,10 +1258,16 @@ export const Route = createFileRoute("/api/chat")({
               }
             },
             onError: (err) => {
+              upstream.abort(err);
               void releaseLease();
               console.error("Chat stream error", err);
               return "An error occurred. Please try again.";
             },
+          });
+          return withStreamDeadline(streamed, {
+            deadlineMs: CHAT_STREAM_DEADLINE_MS,
+            upstream,
+            onTerminate: () => releaseLease(),
           });
         } catch (e) {
           await releaseLease();
