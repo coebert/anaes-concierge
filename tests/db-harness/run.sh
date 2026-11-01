@@ -8,7 +8,7 @@ if [ "$(id -u)" = 0 ]; then exec su nobody -s /bin/bash -c "PG=${PG:-} bash $(re
 PG=${PG:-$(nix build nixpkgs#postgresql_16 --no-link --print-out-paths | grep -v -- -man | head -1)}
 export PATH="$PG/bin:$PATH"
 D=$(mktemp -d /tmp/pgharness.XXXX); trap 'pg_ctl -D "$D/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
-initdb -D "$D/data" -U harness -A trust >/dev/null
+LC_ALL=C LANG=C initdb --no-locale -E UTF8 -D "$D/data" -U harness -A trust >/dev/null
 pg_ctl -D "$D/data" -o "-k $D -p 55439 -c listen_addresses=''" -l "$D/log" start >/dev/null
 P="psql -h $D -p 55439 -U harness -d postgres -v ON_ERROR_STOP=1 -q"
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../.."
