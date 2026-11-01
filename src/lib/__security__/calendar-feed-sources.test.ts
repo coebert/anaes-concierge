@@ -144,6 +144,54 @@ describe("calendar feed sources (fail closed)", () => {
     );
   });
 
+  it("includes every leave row across multiple 1,000-row pages", async () => {
+    const t = base();
+    const all = Array.from({ length: 2300 }, (_, i) => {
+      const d = new Date(Date.UTC(2026, 10, 3) + (i % 300) * 86_400_000).toISOString().slice(0, 10);
+      return {
+        id: `l${String(i).padStart(4, "0")}`,
+        type: "annual",
+        start_date: d,
+        end_date: d,
+        half_day_start: null,
+        half_day_end: null,
+        updated_at: null,
+      };
+    });
+    t.leave_requests = (calls) => {
+      const [a, b] = calls.find((c) => c.m === "range")?.a as number[];
+      return { data: all.slice(a, b + 1), error: null };
+    };
+    const r = await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW });
+    expect(r.kind).toBe("ok");
+    const body = (r as { body: string }).body;
+    for (const id of ["l0000", "l0999", "l1000", "l2299"]) expect(body).toContain(id);
+  });
+
+  it("503s when a second leave page errors", async () => {
+    const t = base();
+    t.leave_requests = (calls) => {
+      const [a] = calls.find((c) => c.m === "range")?.a as number[];
+      if (a === 0)
+        return {
+          data: Array.from({ length: 1000 }, (_, i) => ({
+            id: `l${i}`,
+            type: "annual",
+            start_date: "2026-11-10",
+            end_date: "2026-11-10",
+            half_day_start: null,
+            half_day_end: null,
+            updated_at: null,
+          })),
+          error: null,
+        };
+      return { data: null, error: { message: "page 2" } };
+    };
+    expect((await buildCalendarFeedForToken(fakeSb(t), TOKEN, { now: NOW })).kind).toBe(
+      "unavailable",
+    );
+  });
+
   it("503s when a second page errors", async () => {
     const t = base();
     t.rota_assignments = (calls) => {
