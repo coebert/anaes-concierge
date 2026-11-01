@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin/clwrota-step-status"
       <h1 className="text-lg font-semibold text-destructive">
         Could not load CLWRota step status
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
     </div>
   ),
   notFoundComponent: () => <div className="p-6">Page not found.</div>,
