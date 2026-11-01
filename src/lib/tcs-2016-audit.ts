@@ -1,4 +1,12 @@
-// 2016 Junior Doctor Terms & Conditions of Service (TCS) compliance audit.
+// 2016 Junior Doctor TCS — ESTIMATED WORKING-HOURS SCREENING (not a
+// contractual compliance determination or legal certification).
+//
+// Shift timings are INFERRED from the half-day enum below, rota-cycle and
+// mutual-agreement inputs are usually unknown, and coverage may be
+// incomplete. This module therefore never returns a "compliant" verdict:
+// the best outcome is "no flags (estimated)". A definitive check needs
+// actual start/finish times, the full rota cycle and any recorded
+// agreements (see the BMA rota checker / NHS Employers TCS).
 //
 // Inputs are pure data (rota assignments) so this is fully unit-testable.
 // Session start/end times are approximated from the half-day enum:
@@ -54,8 +62,21 @@ export type RuleResult = {
   evidence?: RuleEvidence;
 };
 
+export type AuditOverall =
+  /** At least one estimated rule flags a possible breach — verify with actual timings. */
+  | "possible_breach"
+  /** No rule flagged, but at least one required rule could not be assessed. */
+  | "incomplete"
+  /** Every assessed rule passed on estimated timings. Still NOT a compliance certification. */
+  | "no_flags_estimated"
+  | "insufficient_data";
+
 export type AuditResult = {
-  overall: "compliant" | "non_compliant" | "insufficient_data";
+  overall: AuditOverall;
+  /** Always "estimated_screening": timings are inferred, not recorded. */
+  basis: "estimated_screening";
+  /** Plain-language reasons this result is not definitive. */
+  caveats: string[];
   totalShifts: number;
   totalHours: number;
   /** First / last shift date actually present in the data (may be narrower than the requested window). */
@@ -119,8 +140,25 @@ function toShift(a: AuditAssignment): Shift {
     // TCS 2016: a "long shift" lasts MORE than 10 hours. A standard AM+PM
     // theatre day merges to exactly 10 h and must not be counted as long.
     isLong: hours > 10,
-    isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+    // A shift counts toward a weekend if ANY part of it falls on Sat/Sun —
+    // e.g. a Friday night running into Saturday morning.
+    isWeekend: dayOfWeek === 0 || dayOfWeek === 6 || isWeekendDow(new Date(endMs - 1).getUTCDay()),
   };
+}
+
+function isWeekendDow(d: number): boolean {
+  return d === 0 || d === 6;
+}
+
+/** Saturday keys (YYYY-MM-DD) of every weekend a shift touches, incl. cross-midnight. */
+function weekendKeysTouched(startMs: number, endMs: number): string[] {
+  const keys = new Set<string>();
+  for (let t = Date.UTC(new Date(startMs).getUTCFullYear(), new Date(startMs).getUTCMonth(), new Date(startMs).getUTCDate()); t < endMs; t += 86_400_000) {
+    const dow = new Date(t).getUTCDay();
+    if (dow === 6) keys.add(new Date(t).toISOString().slice(0, 10));
+    else if (dow === 0) keys.add(new Date(t - 86_400_000).toISOString().slice(0, 10));
+  }
+  return [...keys];
 }
 
 // Merge adjacent sessions on the same calendar day into a single "shift"
@@ -150,7 +188,7 @@ function mergeDaytimeShifts(shifts: Shift[]): Shift[] {
       duty_type: arr.map((x) => x.duty_type).join("+"),
       isNight: false,
       isLong: totalH > 10,
-      isWeekend: arr[0].isWeekend,
+      isWeekend: arr.some((x) => x.isWeekend),
     };
     out.push(merged);
   }
@@ -188,7 +226,24 @@ export type AuditOptions = {
    * in the TCS-2016 sense.
    */
   ltftDaysOff?: number[];
+  /**
+   * TRUE only when a recorded, explicit mutual agreement allows up to 5
+   * consecutive long shifts. Default (absent/false) is the contractual
+   * maximum of 4. Never infer this.
+   */
+  agreedFiveLongShifts?: boolean;
+  /**
+   * Length of the full rota cycle in weeks, if known from the work
+   * schedule. Weekend frequency is a whole-cycle measure, so without it
+   * the weekend rule is reported "not assessed".
+   */
+  rotaCycleWeeks?: number;
 };
+
+const BASE_CAVEATS = [
+  "Shift start/finish times are inferred (AM 08–13, PM 13–18, eve 18–21, night 21–08), not recorded.",
+  "This is an estimated screening aid, not a contractual or legal compliance determination.",
+];
 
 /** Count of contracted weekdays per LTFT week (excluding weekends), capped at 5. */
 function ltftWorkingWeekdays(ltftDaysOff: number[] | undefined): number {
@@ -212,6 +267,8 @@ export function auditTcs2016(
   if (working.length === 0) {
     return {
       overall: "insufficient_data",
+      basis: "estimated_screening",
+      caveats: [...BASE_CAVEATS, "No rota assignments were available to screen."],
       totalShifts: 0,
       totalHours: 0,
       windowStart: null,
@@ -292,18 +349,18 @@ export function auditTcs2016(
     leaveInWindow > 0
       ? ` (excluded ${leaveInWindow} leave day${leaveInWindow === 1 ? "" : "s"})`
       : "";
-  // LTFT: scale the 48 h/week cap pro-rata (e.g. 0.6 FTE → 28.8 h/week).
-  const ltftThreshold = 48 * ltftFraction;
+  // The contractual average limit is 48 h/week. LTFT pro-rating of that
+  // cap from an inferred FTE fraction is NOT a contractual rule, so it is
+  // shown for information only and never drives the verdict.
+  const ltftThreshold = 48;
   const ltftNote =
     ltftFraction < 1
-      ? ` · LTFT ${(ltftFraction * 100).toFixed(0)}% → cap ${ltftThreshold.toFixed(1)} h/wk`
+      ? ` · LTFT ~${(ltftFraction * 100).toFixed(0)}% (pro-rata ${(48 * ltftFraction).toFixed(1)} h/wk shown for information only)`
       : "";
   rules.push({
     id: "avg_48h",
     label:
-      ltftFraction < 1
-        ? `Average ≤ ${ltftThreshold.toFixed(1)}h / week (LTFT pro-rata)`
-        : "Average ≤ 48h / week (over reference period)",
+      "Average ≤ 48h / week (estimated, reference period up to 26 weeks)",
     status:
       spanWeeks < 4
         ? "indeterminate"
@@ -428,11 +485,16 @@ export function auditTcs2016(
       );
     }
   }
+  const longMax = options.agreedFiveLongShifts ? 5 : 4;
   rules.push({
-    id: "max_5_long",
-    label: "Max 5 consecutive long shifts (>10h)",
-    status: maxRunLong <= 5 ? "pass" : "fail",
-    detail: `Longest run of consecutive long shifts: ${maxRunLong}`,
+    id: "max_consecutive_long",
+    label: options.agreedFiveLongShifts
+      ? "Max 5 consecutive long shifts (>10h) — recorded mutual agreement"
+      : "Max 4 consecutive long shifts (>10h)",
+    status: maxRunLong <= longMax ? "pass" : "fail",
+    detail:
+      `Longest run of consecutive long shifts (estimated lengths): ${maxRunLong}` +
+      (options.agreedFiveLongShifts ? "" : " · limit is 4 unless an explicit mutual agreement for 5 is recorded"),
     evidence:
       longRunShifts.length === 0
         ? undefined
@@ -624,78 +686,46 @@ export function auditTcs2016(
   });
 
 
-  // R9 — No more than 1 weekend in 2 worked
+  // R9 — Weekend frequency (max 1 in 2) is measured across the FULL rota
+  // cycle. Shifts that cross into Saturday/Sunday count. Without a known
+  // cycle length this is reported as not assessed rather than inferred
+  // from back-to-back weekends (which is not the contractual test).
   const weekendsWorked = new Set<string>();
-  for (const s of shifts) {
-    if (!s.isWeekend) continue;
-    const d = new Date(s.startMs);
-    const day = d.getUTCDay();
-    const satMs = day === 6 ? s.startMs : s.startMs - MS_DAY;
-    weekendsWorked.add(new Date(satMs).toISOString().slice(0, 10));
-  }
+  for (const s of shifts) for (const k of weekendKeysTouched(s.startMs, s.endMs)) weekendsWorked.add(k);
   const sortedWE = Array.from(weekendsWorked).sort();
-  const backToBackPairs: Array<[string, string]> = [];
-  for (let k = 1; k < sortedWE.length; k++) {
-    const prev = new Date(sortedWE[k - 1] + "T00:00:00Z").getTime();
-    const cur = new Date(sortedWE[k] + "T00:00:00Z").getTime();
-    if (cur - prev === 7 * MS_DAY) backToBackPairs.push([sortedWE[k - 1], sortedWE[k]]);
-  }
   const weekendShifts = shifts.filter((s) => s.isWeekend).map(summarise);
+  const cycle = options.rotaCycleWeeks;
+  const cycleKnown = typeof cycle === "number" && Number.isInteger(cycle) && cycle > 0;
+  const refWeeks = Math.max(1, Math.round(refSpanDaysRaw / 7));
+  const weekendFreq = weekendsWorked.size / refWeeks;
   rules.push({
     id: "weekend_freq",
-    label: "No more than 1 weekend in 2 worked",
-    status: backToBackPairs.length === 0 ? "pass" : "fail",
-    detail:
-      `${weekendsWorked.size} weekend(s) worked in window` +
-      (backToBackPairs.length ? ` · ${backToBackPairs.length} back-to-back weekend pair(s)` : ""),
+    label: "Weekend frequency ≤ 1 in 2 (across the full rota cycle)",
+    status: !cycleKnown ? "indeterminate" : weekendFreq <= 0.5 ? "pass" : "fail",
+    detail: cycleKnown
+      ? `${weekendsWorked.size} weekend(s) worked over ~${refWeeks} week(s) ≈ 1 in ${weekendFreq > 0 ? (1 / weekendFreq).toFixed(1) : "∞"} (rota cycle ${cycle} weeks)`
+      : `${weekendsWorked.size} weekend(s) worked in window — not assessed: the full rota cycle length is unknown`,
     evidence:
       weekendShifts.length === 0
         ? undefined
-        : {
-            shifts: weekendShifts,
-            notes:
-              backToBackPairs.length > 0
-                ? backToBackPairs.map(([a, b]) => `Back-to-back: weekend of ${a} & weekend of ${b}`)
-                : [`Worked weekends (Sat keys): ${sortedWE.join(", ")}`],
-          },
+        : { shifts: weekendShifts, notes: [`Worked weekends (Sat keys, incl. shifts crossing into Sat/Sun): ${sortedWE.join(", ")}`] },
   });
 
-  // R10 — Max 8 days worked in any 14
-  let max8in14 = 0;
-  let peak14Start = 0;
-  for (let k = 0; k < days.length; k++) {
-    const startMs = dateAtHour(days[k], 0);
-    let count = 0;
-    for (let l = k; l < days.length; l++) {
-      const dMs = dateAtHour(days[l], 0);
-      if (dMs - startMs >= 14 * MS_DAY) break;
-      count++;
-    }
-    if (count > max8in14) {
-      max8in14 = count;
-      peak14Start = k;
-    }
-  }
-  const peak14StartDate = days[peak14Start];
-  const peak14EndDate = addDaysISO(peak14StartDate, 13);
-  rules.push({
-    id: "max_8_in_14",
-    label: "Max 8 days worked in any 14",
-    status: max8in14 <= 8 ? "pass" : "fail",
-    detail: `Peak: ${max8in14} working days in a rolling 14-day window`,
-    evidence: {
-      windowStart: peak14StartDate,
-      windowEnd: peak14EndDate,
-      shifts: shiftsInDayRange(peak14StartDate, peak14EndDate).map(summarise),
-      notes: [`${max8in14} working day(s) in the 14-day window ${peak14StartDate} → ${peak14EndDate}`],
-    },
-  });
+  // (The former "max 8 days in any 14" rule was removed: it is not a 2016
+  // TCS limit. The contractual limit is max 7 consecutive days — R6.)
 
   const hasFail = rules.some((r) => r.status === "fail");
-  const overall: AuditResult["overall"] = hasFail ? "non_compliant" : "compliant";
+  const hasIndeterminate = rules.some((r) => r.status === "indeterminate");
+  const overall: AuditOverall = hasFail ? "possible_breach" : hasIndeterminate ? "incomplete" : "no_flags_estimated";
+  const caveats = [...BASE_CAVEATS];
+  if (!options.agreedFiveLongShifts) caveats.push("No recorded agreement for 5 consecutive long shifts, so the default limit of 4 was applied.");
+  if (!cycleKnown) caveats.push("Rota cycle length unknown — weekend frequency not assessed.");
+  for (const r of rules) if (r.status === "indeterminate") caveats.push(`Not assessed: ${r.label}.`);
 
   return {
     overall,
+    basis: "estimated_screening",
+    caveats,
     totalShifts: shifts.length,
     totalHours,
     windowStart,
