@@ -1,4 +1,4 @@
-import type { Dyn } from "@/test-utils/dyn";
+import type { Dyn, ThenCb } from "@/test-utils/dyn";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { escapeIcsText, foldIcsLine } from "@/lib/ics";
 
@@ -16,7 +16,7 @@ function chain(table: string) {
     {},
     {
       get(_t, prop: string) {
-        if (prop === "then") return (res: Dyn, rej: Dyn) => resolve().then(res, rej);
+        if (prop === "then") return (res: ThenCb, rej: ThenCb) => resolve().then(res, rej);
         if (prop === "maybeSingle") return () => resolve();
         return (...args: unknown[]) => {
           calls.push(prop);

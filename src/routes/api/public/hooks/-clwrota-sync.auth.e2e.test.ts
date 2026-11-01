@@ -22,7 +22,7 @@ const SECRET = "correct-horse-battery-staple";
 
 async function invokePost(headers: Record<string, string>): Promise<Response> {
   const mod = await import("./clwrota-sync");
-  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/public/hooks/clwrota-sync?step=staff", {

@@ -1,4 +1,4 @@
-import type { Dyn } from "@/test-utils/dyn";
+import type { MockBuilder, ThenCb } from "@/test-utils/dyn";
 /**
  * Unit tests for half-day leave that spans a week boundary
  * (Fri PM → next-Mon AM), verifying:
@@ -83,7 +83,7 @@ function makeChain(table: keyof Fixture) {
     }
     return Promise.resolve({ data: rows, error: null });
   };
-  const chain: Dyn = {
+  const chain: MockBuilder = {
     select: () => chain,
     eq: (c: string, v: unknown) => (filters.eq.push([c, v]), chain),
     neq: (c: string, v: unknown) => (filters.neq.push([c, v]), chain),
@@ -93,7 +93,7 @@ function makeChain(table: keyof Fixture) {
     // ordering/paging are no-ops for this in-memory fixture
     order: () => chain,
     range: () => chain,
-    then: (onFulfilled: Dyn, onRejected?: Dyn) => resolve().then(onFulfilled, onRejected),
+    then: (onFulfilled: ThenCb, onRejected?: ThenCb) => resolve().then(onFulfilled, onRejected),
   };
   return chain;
 }

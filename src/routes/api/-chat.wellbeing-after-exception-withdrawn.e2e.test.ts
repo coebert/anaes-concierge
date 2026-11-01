@@ -1,4 +1,4 @@
-import type { Dyn } from "@/test-utils/dyn";
+import type { Dyn, MockBuilder, ThenCb } from "@/test-utils/dyn";
 /**
  * End-to-end test for /api/chat: withdrawing an exception report (or
  * flipping its status to `withdrawn`) must cause the rota-impact tools —
@@ -121,7 +121,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: Dyn = {};
+    const b: MockBuilder = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -153,11 +153,11 @@ function makeAdminClient() {
       select: () => ({
         maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }),
       }),
-      then: (r: Dyn) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: ThenCb) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (ok: Dyn, err: Dyn) => resolve().then(ok, err);
+    b.then = (ok: ThenCb, err: ThenCb) => resolve().then(ok, err);
     return b;
   };
   return {
@@ -276,7 +276,7 @@ afterAll(() => vi.useRealTimers());
 
 async function invokeChat(userText: string): Promise<void> {
   const mod = await import("./chat");
-  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {

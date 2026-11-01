@@ -1,4 +1,4 @@
-import type { Dyn } from "@/test-utils/dyn";
+import type { Dyn, MockBuilder, ThenCb } from "@/test-utils/dyn";
 /**
  * End-to-end test for the /api/chat POST handler with HALF-DAY leave.
  *
@@ -98,7 +98,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: Dyn = {};
+    const b: MockBuilder = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -129,11 +129,11 @@ function makeAdminClient() {
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }) }),
-      then: (r: Dyn) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: ThenCb) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (onOk: Dyn, onErr: Dyn) => resolve().then(onOk, onErr);
+    b.then = (onOk: ThenCb, onErr: ThenCb) => resolve().then(onOk, onErr);
     return b;
   };
 
@@ -246,7 +246,7 @@ afterAll(() => vi.useRealTimers());
 
 async function invokePost(body: unknown): Promise<Response> {
   const mod = await import("./chat");
-  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
