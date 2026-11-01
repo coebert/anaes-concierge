@@ -762,7 +762,15 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 
           return {
             ...merged,
-            exceptions: ((excRows ?? []) as Array<{ id: string; category: string; status: string } & Record<string, unknown>>).map((e) => ({
+            exceptions: ((excRows ?? []) as Array<{
+              id: string;
+              category: string;
+              status: string;
+              event_date: string;
+              event_session: string | null;
+              immediate_safety_concern: boolean | null;
+              due_by: string | null;
+            }>).map((e) => ({
               id: e.id,
               category: e.category,
               status: e.status,
