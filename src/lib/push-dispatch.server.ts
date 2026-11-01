@@ -1,6 +1,7 @@
 // Server-only helpers for dispatching web push notifications.
 // Loaded lazily from the route handler (never at module scope in route files).
 import webpush from "web-push";
+import { clampPushPayload, isDeliverableSubscription } from "@/lib/push-endpoint";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 
@@ -182,7 +183,7 @@ export async function dispatchPendingPushNotifications(): Promise<{
     .select("id, user_id, endpoint, p256dh, auth")
     .in("user_id", userIds);
   const subsByUser = new Map<string, SubscriptionRow[]>();
-  for (const s of (subs ?? []) as SubscriptionRow[]) {
+  for (const s of ((subs ?? []) as SubscriptionRow[]).filter(isDeliverableSubscription)) {
     const arr = subsByUser.get(s.user_id) ?? [];
     arr.push(s);
     subsByUser.set(s.user_id, arr);
@@ -221,10 +222,13 @@ export async function dispatchPendingPushNotifications(): Promise<{
     });
     for (const sub of userSubs) {
       try {
+        if (!isDeliverableSubscription(sub) || clampPushPayload(payload) === null) {
+          throw new Error("Refusing to send to an invalid push subscription or oversized payload");
+          }
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
-          { TTL: 60 * 60 * 6 },
+          { TTL: 60 * 60 * 6, timeout: 10_000 },
         );
         sent += 1;
         logEntries.push({
@@ -412,7 +416,7 @@ export async function dispatchPendingLeavePushNotifications(): Promise<{
     .select("id, user_id, endpoint, p256dh, auth")
     .in("user_id", userIds);
   const subsByUser = new Map<string, SubscriptionRow[]>();
-  for (const s of (subs ?? []) as SubscriptionRow[]) {
+  for (const s of ((subs ?? []) as SubscriptionRow[]).filter(isDeliverableSubscription)) {
     const arr = subsByUser.get(s.user_id) ?? [];
     arr.push(s);
     subsByUser.set(s.user_id, arr);
@@ -463,10 +467,13 @@ export async function dispatchPendingLeavePushNotifications(): Promise<{
     });
     for (const sub of userSubs) {
       try {
+        if (!isDeliverableSubscription(sub) || clampPushPayload(payload) === null) {
+          throw new Error("Refusing to send to an invalid push subscription or oversized payload");
+          }
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
-          { TTL: 60 * 60 * 24 },
+          { TTL: 60 * 60 * 24, timeout: 10_000 },
         );
         sent += 1;
         logEntries.push({

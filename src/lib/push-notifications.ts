@@ -1,3 +1,4 @@
+import { isAllowedPushEndpoint, isValidPushKeys } from "@/lib/push-endpoint";
 import { supabase } from "@/integrations/supabase/client";
 
 // Public VAPID key — safe to ship to the browser. Do not put the private key here.
@@ -56,6 +57,9 @@ export async function subscribeToPush(userId: string): Promise<PushSubscription>
   const p256dh = json.keys?.p256dh;
   const auth = json.keys?.auth;
   if (!p256dh || !auth) throw new Error("Push subscription missing encryption keys.");
+  if (!isAllowedPushEndpoint(endpoint) || !isValidPushKeys(p256dh, auth)) {
+    throw new Error("This browser's push service isn't supported.");
+  }
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
@@ -63,7 +67,7 @@ export async function subscribeToPush(userId: string): Promise<PushSubscription>
       endpoint,
       p256dh,
       auth,
-      user_agent: navigator.userAgent,
+      user_agent: navigator.userAgent.slice(0, 512),
       last_used_at: new Date().toISOString(),
     },
     { onConflict: "endpoint" },
