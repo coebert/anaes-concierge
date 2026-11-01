@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { pagedRows } from "@/lib/paged-select";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
@@ -84,22 +85,9 @@ function AdminDashboardPage() {
     queryKey: ["admin-dashboard-overview", date],
     queryFn: async () => {
       const [profilesRes, assignmentsRes, leaveRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, full_name, grade, training_level, active, rotation_end_date")
-          .eq("active", true),
-        supabase
-          .from("rota_assignments")
-          .select(
-            "id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type",
-          )
-          .eq("session_date", date),
-        supabase
-          .from("leave_requests")
-          .select("id, staff_id, type, status, start_date, end_date")
-          .eq("status", "approved")
-          .lte("start_date", date)
-          .gte("end_date", date),
+        pagedRows("profiles", "id, full_name, grade, training_level, active, rotation_end_date", { filter: (q) => q.eq("active", true), order: ["id"] }),
+        pagedRows("rota_assignments", "id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type", { filter: (q) => q.eq("session_date", date), order: ["session_date", "id"] }),
+        pagedRows("leave_requests", "id, staff_id, type, status, start_date, end_date", { filter: (q) => q.eq("status", "approved").lte("start_date", date).gte("end_date", date), order: ["start_date", "id"] }),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (assignmentsRes.error) throw assignmentsRes.error;
@@ -165,19 +153,9 @@ function AdminDashboardPage() {
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
       const [profilesRes, allowRes, leaveRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, grade, active")
-          .in("grade", ["consultant", "trainee"])
-          .eq("active", true),
-        supabase.from("leave_allowances").select("staff_id, annual_days"),
-        supabase
-          .from("leave_requests")
-          .select("staff_id, start_date, end_date, half_day_start, half_day_end")
-          .eq("status", "approved")
-          .eq("type", "annual")
-          .lte("start_date", endISO)
-          .gte("end_date", startISO),
+        pagedRows("profiles", "id, grade, active", { filter: (q) => q.in("grade", ["consultant", "trainee"]).eq("active", true), order: ["id"] }),
+        pagedRows("leave_allowances", "staff_id, annual_days", { order: ["id"] }),
+        pagedRows("leave_requests", "staff_id, start_date, end_date, half_day_start, half_day_end", { filter: (q) => q.eq("status", "approved").eq("type", "annual").lte("start_date", endISO).gte("end_date", startISO), order: ["start_date", "id"] }),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (allowRes.error) throw allowRes.error;
@@ -289,27 +267,13 @@ function AdminDashboardPage() {
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
       const [profilesRes, theatreRes, allRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, grade, training_level"),
-        supabase
-          .from("rota_assignments")
-          .select(
-            "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id",
-          )
-          .eq("duty_type", "theatre")
-          .in("session", ["am", "pm"])
-          .not("theatre_session_id", "is", null)
-          .gte("session_date", startISO)
-          .lte("session_date", endISO)
+        pagedRows("profiles", "id, full_name, grade, training_level", { order: ["id"] }),
+        pagedRows("rota_assignments", "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id", { filter: (q) => q.eq("duty_type", "theatre").in("session", ["am", "pm"]).not("theatre_session_id", "is", null).gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] })
           // The 12-month trainee summary regularly exceeds the backend's
           // default 1,000-row page cap. Without an explicit range, later rows
           // are dropped and some trainees appear to have zero matched lists.
           .range(0, 49999),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id, duty_type, session_date")
-          .gte("session_date", startISO)
-          .lte("session_date", endISO)
-          .range(0, 49999),
+        pagedRows("rota_assignments", "staff_id, duty_type, session_date", { filter: (q) => q.gte("session_date", startISO).lte("session_date", endISO), order: ["session_date", "id"] }),
       ]);
       if (profilesRes.error) throw profilesRes.error;
       if (theatreRes.error) throw theatreRes.error;
@@ -333,12 +297,7 @@ function AdminDashboardPage() {
     queryKey: ["admin-dashboard-trainee-metrics"],
     queryFn: async () => {
       const today = todayISO();
-      const { data: trainees, error: e1 } = await supabase
-        .from("profiles")
-        .select("id, full_name, training_level, start_date, rotation_end_date")
-        .eq("grade", "trainee")
-        .eq("active", true)
-        .order("full_name");
+      const { data: trainees, error: e1 } = await pagedRows("profiles", "id, full_name, training_level, start_date, rotation_end_date", { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["full_name", "id"] });
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) {
@@ -359,19 +318,9 @@ function AdminDashboardPage() {
         { data: specs, error: e3 },
         { data: futureRows, error: eFuture },
       ] = await Promise.all([
-        supabase
-          .from("rota_assignments")
-          .select("staff_id, role_on_list, session, duty_type, theatre_session_id, session_date")
-          .in("staff_id", ids)
-          .lte("session_date", today)
-          .range(0, 49999),
-        supabase.from("specialties").select("id, name"),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id, duty_type, session_date")
-          .in("staff_id", ids)
-          .gt("session_date", today)
-          .range(0, 49999),
+        pagedRows("rota_assignments", "staff_id, role_on_list, session, duty_type, theatre_session_id, session_date", { filter: (q) => q.in("staff_id", ids).lte("session_date", today), order: ["session_date", "id"] }),
+        pagedRows("specialties", "id, name", { order: ["id"] }),
+        pagedRows("rota_assignments", "staff_id, duty_type, session_date", { filter: (q) => q.in("staff_id", ids).gt("session_date", today), order: ["session_date", "id"] }),
       ]);
       if (e2) throw e2;
       if (e3) throw e3;
@@ -393,11 +342,7 @@ function AdminDashboardPage() {
         // truncates and leaves sessions without a specialty.
         const results = await Promise.all(
           chunkIds(tsIds).map((c) =>
-            supabase
-              .from("theatre_sessions")
-              .select("id, specialty_id")
-              .in("id", c)
-              .range(0, 49999),
+            pagedRows("theatre_sessions", "id, specialty_id", { filter: (q) => q.in("id", c), order: ["session_date", "id"] }),
           ),
         );
         for (const { data: ts, error: e4 } of results) {
@@ -406,14 +351,7 @@ function AdminDashboardPage() {
         }
         const supResults = await Promise.all(
           chunkIds(tsIds).map((c) =>
-            supabase
-              .from("rota_assignments")
-              .select(
-                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
-              )
-              .in("theatre_session_id", c)
-              .in("profiles.grade", ["consultant", "sas"])
-              .range(0, 49999),
+            pagedRows("rota_assignments", "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)", { filter: (q) => q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]), order: ["session_date", "id"] }),
           ),
         );
         for (const { data: tsAssigns, error: e5 } of supResults) {
@@ -454,8 +392,8 @@ function AdminDashboardPage() {
     queryKey: ["admin-dashboard-trainee-targets"],
     queryFn: async () => {
       const [{ data: targets, error: e1 }, { data: specs, error: e2 }] = await Promise.all([
-        supabase.from("trainee_targets").select("*"),
-        supabase.from("specialties").select("id, name"),
+        pagedRows("trainee_targets", "*", { order: ["id"] }),
+        pagedRows("specialties", "id, name", { order: ["id"] }),
       ]);
       if (e1) throw e1;
       if (e2) throw e2;

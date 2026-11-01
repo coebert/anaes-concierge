@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { pagedRows } from "@/lib/paged-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -87,8 +88,8 @@ function TraineesPage() {
       const [trainees, { data: targets, error: e2 }, { data: specs, error: e3 }] =
         await Promise.all([
           fetchTrainees(),
-          supabase.from("trainee_targets").select("*"),
-          supabase.from("specialties").select("id,name"),
+          pagedRows("trainee_targets", "*", { order: ["id"] }),
+          pagedRows("specialties", "id,name", { order: ["id"] }),
         ]);
       if (e2) throw e2;
       if (e3) throw e3;
@@ -119,16 +120,7 @@ function TraineesPage() {
           chunkIds(traineeIds).map((ids) =>
             fetchAllRowsPaged<(typeof allAssignments)[number]>(
               (from, to) =>
-                supabase
-                  .from("rota_assignments")
-                  .select(
-                    "id,staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified",
-                  )
-                  .in("staff_id", ids)
-                  .order("staff_id", { ascending: true })
-                  .order("session_date", { ascending: true })
-                  .order("session", { ascending: true })
-                  .order("id", { ascending: true })
+                pagedRows("rota_assignments", "id,staff_id,role_on_list,session,duty_type,theatre_session_id,session_date,locally_modified", { filter: (q) => q.in("staff_id", ids), order: ["staff_id", "session_date", "session", "id"] })
                   .range(from, to),
               { rowKey: idKey, label: "trainees-overview-assignments" },
             ),
@@ -150,7 +142,7 @@ function TraineesPage() {
       if (tsIds.length) {
         const tsResults = await Promise.all(
           tsIdChunks.map((c) =>
-            supabase.from("theatre_sessions").select("id,specialty_id").in("id", c).range(0, 49999),
+            pagedRows("theatre_sessions", "id,specialty_id", { filter: (q) => q.in("id", c), order: ["session_date", "id"] }),
           ),
         );
         for (const { data: ts, error: e5 } of tsResults) {
@@ -172,14 +164,7 @@ function TraineesPage() {
         // and the whole query errors out, leaving the page empty.
         const supResults = await Promise.all(
           tsIdChunks.map((c) =>
-            supabase
-              .from("rota_assignments")
-              .select(
-                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
-              )
-              .in("theatre_session_id", c)
-              .in("profiles.grade", ["consultant", "sas"])
-              .range(0, 49999),
+            pagedRows("rota_assignments", "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)", { filter: (q) => q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]), order: ["session_date", "id"] }),
           ),
         );
         for (const { data: tsAssigns, error: e6 } of supResults) {
@@ -242,14 +227,7 @@ function TraineesPage() {
           chunkIds(traineeIds).map((ids) =>
             fetchAllRowsPaged<(typeof futureAssignments)[number]>(
               (from, to) =>
-                supabase
-                  .from("rota_assignments")
-                  .select("id,staff_id,duty_type,session_date")
-                  .in("staff_id", ids)
-                  .gt("session_date", todayIso)
-                  .order("staff_id", { ascending: true })
-                  .order("session_date", { ascending: true })
-                  .order("id", { ascending: true })
+                pagedRows("rota_assignments", "id,staff_id,duty_type,session_date", { filter: (q) => q.in("staff_id", ids).gt("session_date", todayIso), order: ["staff_id", "session_date", "id"] })
                   .range(from, to),
               { rowKey: idKey, label: "trainees-overview-future-assignments" },
             ),
