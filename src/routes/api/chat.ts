@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { acquireChatStreamLease } from "@/lib/chat-stream-lease";
 import { checkActiveMembership, membershipDenial } from "@/lib/app-membership";
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
@@ -89,8 +90,6 @@ function addDays(iso: string, n: number) {
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 }
-
-
 
 function buildAdminTools() {
   const admin = getAdminClient();
@@ -1094,100 +1093,126 @@ export const Route = createFileRoute("/api/chat")({
           }
         }
 
-        const gateway = createLovableAiGatewayProvider(apiKey);
-        const model = gateway("google/gemini-3-flash-preview");
-
-        // Roles come from the verified membership snapshot (same request).
-        const adminUser = membership.roles.has("admin");
-        const canSeeColleagueNames = adminUser || membership.roles.has("rota_coordinator");
-        const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
-        const privacyPreamble = canSeeColleagueNames
-          ? ""
-          : "\n\nPRIVACY: The current user is NOT a coordinator or admin. You MUST NOT reveal, guess, or infer the names of other staff members. If a tool returns a name as 'Withheld', report it as withheld; never substitute a real name. Decline politely if the user asks you to identify a colleague (e.g. 'who is on call?', 'who supervised me?', 'who is in theatre 3?'), and suggest they contact a rota coordinator.";
-
-        const result = streamText({
-          model,
-          system: SYSTEM_PROMPT + rulesPreamble + privacyPreamble,
-          messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId, adminUser, canSeeColleagueNames),
-          stopWhen: stepCountIs(50),
-        });
-
-        return result.toUIMessageStreamResponse({
-          originalMessages: uiMessages,
-          onFinish: async ({ responseMessage }) => {
-            try {
-              await admin.from("ai_messages").insert({
-                conversation_id: conversationId,
-                user_id: userId,
-                role: "assistant",
-                parts: responseMessage.parts ?? [],
+        // Bounded simultaneous streams per user (durable lease; fail closed).
+        const lease = await acquireChatStreamLease(
+          (fn, args) => admin.rpc(fn as never, args as never),
+          userId,
+        );
+        if (!lease.ok) {
+          return lease.reason === "busy"
+            ? new Response(
+                "You already have assistant replies in progress. Please wait for one to finish.",
+                { status: 429, headers: { "Retry-After": "10" } },
+              )
+            : new Response("The assistant is temporarily unavailable. Please try again shortly.", {
+                status: 503,
               });
-              await admin
-                .from("ai_conversations")
-                .update({ updated_at: new Date().toISOString() })
-                .eq("id", conversationId);
-            } catch (e) {
-              console.error("Failed to persist assistant message", e);
-            }
+        }
+        const releaseLease = lease.release;
+        request.signal?.addEventListener("abort", () => void releaseLease(), { once: true });
+        try {
+          const gateway = createLovableAiGatewayProvider(apiKey);
+          const model = gateway("google/gemini-3-flash-preview");
 
-            // Email the assistant's text reply only when the user asked for it.
-            if (!emailReply) return;
-            try {
-              const text = (responseMessage.parts ?? [])
-                .filter((p: any) => p.type === "text")
-                .map((p: any) => p.text as string)
-                .join("\n\n")
-                .trim();
-              if (!text) return;
+          // Roles come from the verified membership snapshot (same request).
+          const adminUser = membership.roles.has("admin");
+          const canSeeColleagueNames = adminUser || membership.roles.has("rota_coordinator");
+          const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
+          const privacyPreamble = canSeeColleagueNames
+            ? ""
+            : "\n\nPRIVACY: The current user is NOT a coordinator or admin. You MUST NOT reveal, guess, or infer the names of other staff members. If a tool returns a name as 'Withheld', report it as withheld; never substitute a real name. Decline politely if the user asks you to identify a colleague (e.g. 'who is on call?', 'who supervised me?', 'who is in theatre 3?'), and suggest they contact a rota coordinator.";
 
-              const { data: prof } = await admin
-                .from("profiles")
-                .select("email,full_name")
-                .eq("id", userId)
-                .maybeSingle();
-              const recipient = prof?.email;
-              if (!recipient) return;
+          const result = streamText({
+            model,
+            system: SYSTEM_PROMPT + rulesPreamble + privacyPreamble,
+            messages: await convertToModelMessages(uiMessages),
+            tools: buildTools(userId, adminUser, canSeeColleagueNames),
+            stopWhen: stepCountIs(50),
+            abortSignal: request.signal,
+          });
 
-              const lastUser = [...uiMessages].reverse().find((m: any) => m.role === "user");
-              const question = ((lastUser?.parts ?? []) as any[])
-                .filter((p) => p.type === "text")
-                .map((p) => p.text as string)
-                .join(" ")
-                .trim();
-              const subject = question
-                ? `Re: ${question.slice(0, 60)}${question.length > 60 ? "…" : ""}`
-                : "Your rota assistant reply";
+          return result.toUIMessageStreamResponse({
+            originalMessages: uiMessages,
+            onFinish: async ({ responseMessage }) => {
+              // Stream is done (completed or aborted): free the slot first.
+              await releaseLease();
+              try {
+                await admin.from("ai_messages").insert({
+                  conversation_id: conversationId,
+                  user_id: userId,
+                  role: "assistant",
+                  parts: responseMessage.parts ?? [],
+                });
+                await admin
+                  .from("ai_conversations")
+                  .update({ updated_at: new Date().toISOString() })
+                  .eq("id", conversationId);
+              } catch (e) {
+                console.error("Failed to persist assistant message", e);
+              }
 
-              const safeQuestion = question
-                ? question.replace(/[<>&]/g, (c) =>
-                    c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
-                  )
-                : "";
-              const safeAnswer = text.replace(/[<>&]/g, (c) =>
-                c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
-              );
-              const html = `<div style="font-family:Arial,sans-serif;color:#111;max-width:640px">
+              // Email the assistant's text reply only when the user asked for it.
+              if (!emailReply) return;
+              try {
+                const text = (responseMessage.parts ?? [])
+                  .filter((p: any) => p.type === "text")
+                  .map((p: any) => p.text as string)
+                  .join("\n\n")
+                  .trim();
+                if (!text) return;
+
+                const { data: prof } = await admin
+                  .from("profiles")
+                  .select("email,full_name")
+                  .eq("id", userId)
+                  .maybeSingle();
+                const recipient = prof?.email;
+                if (!recipient) return;
+
+                const lastUser = [...uiMessages].reverse().find((m: any) => m.role === "user");
+                const question = ((lastUser?.parts ?? []) as any[])
+                  .filter((p) => p.type === "text")
+                  .map((p) => p.text as string)
+                  .join(" ")
+                  .trim();
+                const subject = question
+                  ? `Re: ${question.slice(0, 60)}${question.length > 60 ? "…" : ""}`
+                  : "Your rota assistant reply";
+
+                const safeQuestion = question
+                  ? question.replace(/[<>&]/g, (c) =>
+                      c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+                    )
+                  : "";
+                const safeAnswer = text.replace(/[<>&]/g, (c) =>
+                  c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+                );
+                const html = `<div style="font-family:Arial,sans-serif;color:#111;max-width:640px">
   <p style="color:#555;font-size:13px;margin:0 0 4px">Salisbury DGH Anaesthetics Rota — AI assistant</p>
   ${safeQuestion ? `<blockquote style="border-left:3px solid #ddd;margin:0 0 16px;padding:6px 12px;color:#555;white-space:pre-wrap">${safeQuestion}</blockquote>` : ""}
   <div style="white-space:pre-wrap;line-height:1.5">${safeAnswer}</div>
 </div>`;
 
-              await sendGmail({
-                to: recipient,
-                subject,
-                text,
-                html,
-              });
-            } catch (e) {
-              console.error("Failed to email assistant reply", e);
-            }
-          },
-          onError: (err) => {
-            console.error("Chat stream error", err);
-            return "An error occurred. Please try again.";
-          },
-        });
+                await sendGmail({
+                  to: recipient,
+                  subject,
+                  text,
+                  html,
+                });
+              } catch (e) {
+                console.error("Failed to email assistant reply", e);
+              }
+            },
+            onError: (err) => {
+              void releaseLease();
+              console.error("Chat stream error", err);
+              return "An error occurred. Please try again.";
+            },
+          });
+        } catch (e) {
+          await releaseLease();
+          throw e;
+        }
       },
     },
   },
