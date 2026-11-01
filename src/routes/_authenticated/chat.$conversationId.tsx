@@ -100,11 +100,16 @@ function ConversationPage() {
     }
   }, [error, navigate]);
 
+  const [emailReply, setEmailReply] = useState(false);
+
   const onSubmit = async ({ text }: { text: string }) => {
     const trimmed = text.trim();
     if (!trimmed) return;
     setInput("");
-    await sendMessage({ text: trimmed });
+    // Email copy is strictly per-message opt-in; reset after each send.
+    const wantEmail = emailReply;
+    setEmailReply(false);
+    await sendMessage({ text: trimmed }, wantEmail ? { body: { emailReply: true } } : undefined);
   };
 
   return (
@@ -151,7 +156,17 @@ function ConversationPage() {
             placeholder="Ask about your rota, leave, or the team…"
             disabled={isBusy}
           />
-          <PromptInputFooter className="justify-end">
+          <PromptInputFooter className="justify-between gap-2">
+            <label className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={emailReply}
+                onChange={(e) => setEmailReply(e.target.checked)}
+                disabled={isBusy}
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate">Email me this answer</span>
+            </label>
             <PromptInputSubmit status={status} disabled={!input.trim() && !isBusy} />
           </PromptInputFooter>
         </PromptInput>
