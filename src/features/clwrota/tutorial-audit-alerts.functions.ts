@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type TutorialAuditAlert = {
   id: string;
@@ -61,7 +61,7 @@ async function assertCoordinator(context: {
 }
 
 export const getTutorialAuditStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }): Promise<TutorialAuditStatus> => {
     await assertCoordinator(context);
 
@@ -113,7 +113,7 @@ export const getTutorialAuditStatus = createServerFn({ method: "POST" })
   });
 
 export const acknowledgeTutorialAuditAlert = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     await assertCoordinator(context);

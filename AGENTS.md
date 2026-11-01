@@ -11,3 +11,5 @@
 - Non-registry dependencies must be listed with exact resolution+integrity in `scripts/supply-chain-unscanned.json` or the scanner fails.
 - Wellbeing scores below the coverage gate (`MIN_ASSESSABLE_SESSIONS`) are `unknown`, never a good score; admin retention inputs go through `src/features/wellbeing/admin-inputs.ts` with an explicit as-of date — absent or future data must not read as good wellbeing.
 - The retention "attrition" rubric is an unvalidated signal score shown as x/100 with the band picked from the displayed integer; never present it as a prediction or probability.
+- Every handler that uses service-role data or privileged tools first passes the shared active-membership check (`src/lib/app-membership.ts` / `requireActiveMember`), failing closed — a valid token alone is not membership.
+- Assistant streams hold a durable per-user lease (`chat_stream_leases` RPCs) released on finish/error/abort with TTL recovery; refuse the request if the lease store is unavailable.

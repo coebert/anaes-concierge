@@ -1,4 +1,6 @@
 import { PageHeader } from "@/components/page-header";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -81,14 +83,14 @@ function TraineesPage() {
   }, [fromDate, toDate]);
 
   const fetchTrainees = useServerFn(listTraineesForOverview);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["trainees-overview"],
     queryFn: async () => {
       const [trainees, { data: targets, error: e2 }, { data: specs, error: e3 }] =
         await Promise.all([
           fetchTrainees(),
-          supabase.from("trainee_targets").select("*"),
-          supabase.from("specialties").select("id,name"),
+          pagedRows("trainee_targets", "*", { order: ["id"] }),
+          pagedRows("specialties", "id,name", { order: ["id"] }),
         ]);
       if (e2) throw e2;
       if (e3) throw e3;
@@ -150,7 +152,10 @@ function TraineesPage() {
       if (tsIds.length) {
         const tsResults = await Promise.all(
           tsIdChunks.map((c) =>
-            supabase.from("theatre_sessions").select("id,specialty_id").in("id", c).range(0, 49999),
+            pagedRows("theatre_sessions", "id,specialty_id", {
+              filter: (q) => q.in("id", c),
+              order: ["session_date", "id"],
+            }),
           ),
         );
         for (const { data: ts, error: e5 } of tsResults) {
@@ -172,14 +177,15 @@ function TraineesPage() {
         // and the whole query errors out, leaving the page empty.
         const supResults = await Promise.all(
           tsIdChunks.map((c) =>
-            supabase
-              .from("rota_assignments")
-              .select(
-                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
-              )
-              .in("theatre_session_id", c)
-              .in("profiles.grade", ["consultant", "sas"])
-              .range(0, 49999),
+            pagedRows(
+              "rota_assignments",
+              "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+              {
+                filter: (q) =>
+                  q.in("theatre_session_id", c).in("profiles.grade", ["consultant", "sas"]),
+                order: ["session_date", "id"],
+              },
+            ),
           ),
         );
         for (const { data: tsAssigns, error: e6 } of supResults) {
@@ -573,6 +579,8 @@ function TraineesPage() {
         </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
+        ) : isError ? (
+          <QueryErrorNotice error={error} onRetry={() => void refetch()} what="trainee metrics" />
         ) : metricRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No trainees on record.</p>
         ) : (
@@ -601,6 +609,8 @@ function TraineesPage() {
         <CardContent>
           {isLoading ? (
             <PageLoading />
+          ) : isError ? (
+            <QueryErrorNotice error={error} onRetry={() => void refetch()} what="trainees" />
           ) : !rows.length ? (
             <p className="text-sm text-muted-foreground">No trainees on record.</p>
           ) : (

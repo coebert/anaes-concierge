@@ -1,24 +1,33 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { checkActiveMembership } from "@/lib/app-membership";
 
 /**
- * Composed middleware that first validates the Supabase bearer token
- * (via `requireSupabaseAuth`) and then asserts the caller holds the
- * `admin` role. Uses the caller's RLS-scoped supabase client rather than
- * the service-role admin client, so we don't need to import a server-only
- * module at top level.
- *
- * Handlers guarded by this middleware receive the same context shape as
- * `requireSupabaseAuth` (supabase, userId, claims).
+ * Validates the bearer token (requireSupabaseAuth) and then requires ACTIVE
+ * APPROVED MEMBERSHIP: ≥1 user_roles row and an active profile with no
+ * left_at. Fails closed on query errors. Use instead of bare
+ * requireSupabaseAuth for every server function that later uses the
+ * service-role client or exposes staff data. Intentionally public/self-serve
+ * paths (access requests, passkey sign-in start/verify) do not use it.
  */
-export const requireAdmin = createMiddleware({ type: "function" })
+export const requireActiveMember = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
-    const { data, error } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (error) throw new Error(error.message);
-    if (!data) throw new Error("Forbidden: admin role required");
+    const check = await checkActiveMembership(context.supabase, context.userId);
+    if (!check.ok) {
+      throw new Error(
+        check.reason === "unavailable"
+          ? "Could not verify your access. Please try again."
+          : "Forbidden",
+      );
+    }
+    return next({ context: { ...context, roles: check.roles } });
+  });
+
+/** Active member AND admin role (from the same membership snapshot). */
+export const requireAdmin = createMiddleware({ type: "function" })
+  .middleware([requireActiveMember])
+  .server(async ({ next, context }) => {
+    if (!context.roles.has("admin")) throw new Error("Forbidden: admin role required");
     return next({ context });
   });

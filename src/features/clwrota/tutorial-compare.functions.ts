@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type TutorialCompareDelivery = {
   key: string;
@@ -26,7 +26,7 @@ export type TutorialCompareResult = {
  * rows the tutorial audit holds, for an arbitrary date range. Read-only.
  */
 export const compareTutorialDeliveries = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({

@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,25 +36,23 @@ export const Route = createFileRoute("/_authenticated/admin/analytics/handover-r
 
 function HandoverRiskPage() {
   const { hasRole, loading } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-analytics-handover"],
     queryFn: async () => {
       const since = new Date();
       since.setUTCDate(since.getUTCDate() - 84); // 12 weeks
       const sinceIso = since.toISOString().slice(0, 10);
       const [rotaRes, tsRes, specRes, profRes] = await Promise.all([
-        supabase
-          .from("rota_assignments")
-          .select("staff_id,session_date,session,theatre_session_id")
-          .gte("session_date", sinceIso)
-          .range(0, 49999),
-        supabase.from("theatre_sessions").select("id,specialty_id").range(0, 49999),
-        supabase.from("specialties").select("id,name"),
-        supabase
-          .from("profiles")
-          .select("id,full_name,grade,active")
-          .eq("grade", "consultant")
-          .eq("active", true),
+        pagedRows("rota_assignments", "staff_id,session_date,session,theatre_session_id", {
+          filter: (q) => q.gte("session_date", sinceIso),
+          order: ["session_date", "id"],
+        }),
+        pagedRows("theatre_sessions", "id,specialty_id", { order: ["session_date", "id"] }),
+        pagedRows("specialties", "id,name", { order: ["id"] }),
+        pagedRows("profiles", "id,full_name,grade,active", {
+          filter: (q) => q.eq("grade", "consultant").eq("active", true),
+          order: ["id"],
+        }),
       ]);
       if (rotaRes.error) throw rotaRes.error;
       if (tsRes.error) throw tsRes.error;
@@ -88,6 +88,8 @@ function HandoverRiskPage() {
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
+  if (isError)
+    return <QueryErrorNotice error={error} onRetry={() => void refetch()} what="this analysis" />;
   if (isLoading) return <PageLoading />;
 
   return (

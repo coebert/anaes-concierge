@@ -81,7 +81,6 @@ export async function fetchAllRowsPaged<T>(
     out.push(row);
   }
   if (overlaps > 0) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[paginate ${label}] dropped ${overlaps} duplicate row(s) across page boundaries — the query order is not unique; add a tiebreaker column.`,
     );

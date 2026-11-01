@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { acquireChatStreamLease } from "@/lib/chat-stream-lease";
+import { checkActiveMembership, membershipDenial } from "@/lib/app-membership";
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -22,6 +24,16 @@ import {
 } from "@/lib/staff-current-pattern";
 import { computeWellbeing, WELLBEING_BAND_LABEL } from "@/features/wellbeing/wellbeing-score";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
+
+/** Narrow a UI message part to a text part (`{ type: "text", text }`). */
+function isTextPart(p: unknown): p is { type: "text"; text: string } {
+  return (
+    typeof p === "object" &&
+    p !== null &&
+    (p as { type?: unknown }).type === "text" &&
+    typeof (p as { text?: unknown }).text === "string"
+  );
+}
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
 You help staff understand their rota, leave entitlement, leave requests and trainee progress.
@@ -87,27 +99,6 @@ function addDays(iso: string, n: number) {
   const d = new Date(iso);
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
-}
-
-async function isAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  return !!data;
-}
-
-async function isCoordinatorOrAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .in("role", ["admin", "rota_coordinator"]);
-  return (data ?? []).length > 0;
 }
 
 function buildAdminTools() {
@@ -578,39 +569,61 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           .neq("status", "withdrawn")
           .gte("event_date", from)
           .lte("event_date", to);
+        type TsRow = {
+          id: string;
+          theatre_id: string | null;
+          specialty_id: string | null;
+          surgical_consultant: string | null;
+        };
+        type NameRow = { id: string; name: string };
+        type SupRow = { id: string; full_name: string | null };
+        type ExcRow = {
+          id: string;
+          event_date: string;
+          event_session: string | null;
+          category: string;
+          status: string;
+          immediate_safety_concern: boolean | null;
+        };
         const [{ data: ts }, { data: sups }] = await Promise.all([
           tsIds.length
             ? admin
                 .from("theatre_sessions")
                 .select("id,theatre_id,specialty_id,surgical_consultant")
                 .in("id", tsIds)
-            : Promise.resolve({ data: [] as any[] }),
+            : Promise.resolve({ data: [] as TsRow[] }),
           supIds.length
             ? admin.from("profiles").select("id,full_name").in("id", supIds)
-            : Promise.resolve({ data: [] as any[] }),
+            : Promise.resolve({ data: [] as SupRow[] }),
         ]);
         const theatreIds = Array.from(
-          new Set((ts ?? []).map((t: any) => t.theatre_id).filter(Boolean)),
+          new Set(((ts ?? []) as TsRow[]).map((t) => t.theatre_id).filter(Boolean)),
         );
         const specIds = Array.from(
-          new Set((ts ?? []).map((t: any) => t.specialty_id).filter(Boolean)),
+          new Set(((ts ?? []) as TsRow[]).map((t) => t.specialty_id).filter(Boolean)),
         );
         const [{ data: theatres }, { data: specs }] = await Promise.all([
           theatreIds.length
-            ? admin.from("theatres").select("id,name").in("id", theatreIds)
-            : Promise.resolve({ data: [] as any[] }),
+            ? admin
+                .from("theatres")
+                .select("id,name")
+                .in("id", theatreIds as string[])
+            : Promise.resolve({ data: [] as NameRow[] }),
           specIds.length
-            ? admin.from("specialties").select("id,name").in("id", specIds)
-            : Promise.resolve({ data: [] as any[] }),
+            ? admin
+                .from("specialties")
+                .select("id,name")
+                .in("id", specIds as string[])
+            : Promise.resolve({ data: [] as NameRow[] }),
         ]);
-        const tsMap = new Map((ts ?? []).map((t: any) => [t.id, t]));
-        const theatreMap = new Map((theatres ?? []).map((t: any) => [t.id, t.name]));
-        const specMap = new Map((specs ?? []).map((s: any) => [s.id, s.name]));
-        const supMap = new Map((sups ?? []).map((s: any) => [s.id, s.full_name]));
+        const tsMap = new Map(((ts ?? []) as TsRow[]).map((t) => [t.id, t]));
+        const theatreMap = new Map(((theatres ?? []) as NameRow[]).map((t) => [t.id, t.name]));
+        const specMap = new Map(((specs ?? []) as NameRow[]).map((s) => [s.id, s.name]));
+        const supMap = new Map(((sups ?? []) as SupRow[]).map((s) => [s.id, s.full_name]));
         // Index active exceptions by date+session, and also date-only for
         // reports raised without a session half.
-        const excByKey = new Map<string, any[]>();
-        for (const e of (excRows ?? []) as any[]) {
+        const excByKey = new Map<string, ExcRow[]>();
+        for (const e of (excRows ?? []) as ExcRow[]) {
           const keys = [`${e.event_date}::${e.event_session ?? ""}`, `${e.event_date}::`];
           for (const k of keys) {
             const arr = excByKey.get(k) ?? [];
@@ -622,7 +635,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           range: { from, to },
           assignments: (data ?? []).map((a) => {
             const ts = a.theatre_session_id ? tsMap.get(a.theatre_session_id) : null;
-            const excMatches = new Map<string, any>();
+            const excMatches = new Map<string, ExcRow>();
             for (const k of [`${a.session_date}::${a.session ?? ""}`, `${a.session_date}::`]) {
               for (const e of excByKey.get(k) ?? []) excMatches.set(e.id, e);
             }
@@ -637,7 +650,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               date: a.session_date,
               session: a.session,
               role: a.role_on_list,
-              theatre: ts ? (theatreMap.get(ts.theatre_id) ?? null) : null,
+              theatre: ts?.theatre_id ? (theatreMap.get(ts.theatre_id) ?? null) : null,
               specialty: ts?.specialty_id ? (specMap.get(ts.specialty_id) ?? null) : null,
               surgeon: ts?.surgical_consultant ?? null,
               supervisor: a.supervisor_id
@@ -765,7 +778,17 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
 
           return {
             ...merged,
-            exceptions: ((excRows ?? []) as any[]).map((e) => ({
+            exceptions: (
+              (excRows ?? []) as Array<{
+                id: string;
+                category: string;
+                status: string;
+                event_date: string;
+                event_session: string | null;
+                immediate_safety_concern: boolean | null;
+                due_by: string | null;
+              }>
+            ).map((e) => ({
               id: e.id,
               category: e.category,
               status: e.status,
@@ -930,8 +953,8 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         const ids = (data ?? []).map((r) => r.staff_id);
         const { data: profs } = ids.length
           ? await admin.from("profiles").select("id,full_name,grade").in("id", ids)
-          : { data: [] as any[] };
-        const pmap = new Map((profs ?? []).map((p: any) => [p.id, p]));
+          : { data: [] as { id: string; full_name: string | null; grade: string | null }[] };
+        const pmap = new Map((profs ?? []).map((p) => [p.id, p]));
         return {
           date: today,
           on_call: (data ?? []).map((r) => ({
@@ -1013,6 +1036,10 @@ export const Route = createFileRoute("/api/chat")({
       POST: async ({ request }) => {
         const userId = await getAuthenticatedUserId(request.headers.get("authorization"));
         if (!userId) return new Response("Unauthorized", { status: 401 });
+        // Active approved membership (fail closed) before ANY service-role
+        // read or privileged tool. A valid token alone is not membership.
+        const membership = await checkActiveMembership(getAdminClient(), userId);
+        if (!membership.ok) return membershipDenial(membership);
 
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) {
@@ -1095,8 +1122,8 @@ export const Route = createFileRoute("/api/chat")({
           // If conversation still has the default title, derive one from the first user message
           if (conv.title === "New conversation") {
             const text = (lastMsg.parts ?? [])
-              .filter((p: any) => p.type === "text")
-              .map((p: any) => p.text)
+              .filter(isTextPart)
+              .map((p) => p.text)
               .join(" ")
               .trim();
             if (text) {
@@ -1108,99 +1135,126 @@ export const Route = createFileRoute("/api/chat")({
           }
         }
 
-        const gateway = createLovableAiGatewayProvider(apiKey);
-        const model = gateway("google/gemini-3-flash-preview");
-
-        const adminUser = await isAdmin(userId);
-        const canSeeColleagueNames = adminUser || (await isCoordinatorOrAdmin(userId));
-        const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
-        const privacyPreamble = canSeeColleagueNames
-          ? ""
-          : "\n\nPRIVACY: The current user is NOT a coordinator or admin. You MUST NOT reveal, guess, or infer the names of other staff members. If a tool returns a name as 'Withheld', report it as withheld; never substitute a real name. Decline politely if the user asks you to identify a colleague (e.g. 'who is on call?', 'who supervised me?', 'who is in theatre 3?'), and suggest they contact a rota coordinator.";
-
-        const result = streamText({
-          model,
-          system: SYSTEM_PROMPT + rulesPreamble + privacyPreamble,
-          messages: await convertToModelMessages(uiMessages),
-          tools: buildTools(userId, adminUser, canSeeColleagueNames),
-          stopWhen: stepCountIs(50),
-        });
-
-        return result.toUIMessageStreamResponse({
-          originalMessages: uiMessages,
-          onFinish: async ({ responseMessage }) => {
-            try {
-              await admin.from("ai_messages").insert({
-                conversation_id: conversationId,
-                user_id: userId,
-                role: "assistant",
-                parts: responseMessage.parts ?? [],
+        // Bounded simultaneous streams per user (durable lease; fail closed).
+        const lease = await acquireChatStreamLease(
+          (fn, args) => admin.rpc(fn as never, args as never),
+          userId,
+        );
+        if (!lease.ok) {
+          return lease.reason === "busy"
+            ? new Response(
+                "You already have assistant replies in progress. Please wait for one to finish.",
+                { status: 429, headers: { "Retry-After": "10" } },
+              )
+            : new Response("The assistant is temporarily unavailable. Please try again shortly.", {
+                status: 503,
               });
-              await admin
-                .from("ai_conversations")
-                .update({ updated_at: new Date().toISOString() })
-                .eq("id", conversationId);
-            } catch (e) {
-              console.error("Failed to persist assistant message", e);
-            }
+        }
+        const releaseLease = lease.release;
+        request.signal?.addEventListener("abort", () => void releaseLease(), { once: true });
+        try {
+          const gateway = createLovableAiGatewayProvider(apiKey);
+          const model = gateway("google/gemini-3-flash-preview");
 
-            // Email the assistant's text reply only when the user asked for it.
-            if (!emailReply) return;
-            try {
-              const text = (responseMessage.parts ?? [])
-                .filter((p: any) => p.type === "text")
-                .map((p: any) => p.text as string)
-                .join("\n\n")
-                .trim();
-              if (!text) return;
+          // Roles come from the verified membership snapshot (same request).
+          const adminUser = membership.roles.has("admin");
+          const canSeeColleagueNames = adminUser || membership.roles.has("rota_coordinator");
+          const rulesPreamble = adminUser ? await buildAdminCustomRulesPreamble() : "";
+          const privacyPreamble = canSeeColleagueNames
+            ? ""
+            : "\n\nPRIVACY: The current user is NOT a coordinator or admin. You MUST NOT reveal, guess, or infer the names of other staff members. If a tool returns a name as 'Withheld', report it as withheld; never substitute a real name. Decline politely if the user asks you to identify a colleague (e.g. 'who is on call?', 'who supervised me?', 'who is in theatre 3?'), and suggest they contact a rota coordinator.";
 
-              const { data: prof } = await admin
-                .from("profiles")
-                .select("email,full_name")
-                .eq("id", userId)
-                .maybeSingle();
-              const recipient = prof?.email;
-              if (!recipient) return;
+          const result = streamText({
+            model,
+            system: SYSTEM_PROMPT + rulesPreamble + privacyPreamble,
+            messages: await convertToModelMessages(uiMessages),
+            tools: buildTools(userId, adminUser, canSeeColleagueNames),
+            stopWhen: stepCountIs(50),
+            abortSignal: request.signal,
+          });
 
-              const lastUser = [...uiMessages].reverse().find((m: any) => m.role === "user");
-              const question = ((lastUser?.parts ?? []) as any[])
-                .filter((p) => p.type === "text")
-                .map((p) => p.text as string)
-                .join(" ")
-                .trim();
-              const subject = question
-                ? `Re: ${question.slice(0, 60)}${question.length > 60 ? "…" : ""}`
-                : "Your rota assistant reply";
+          return result.toUIMessageStreamResponse({
+            originalMessages: uiMessages,
+            onFinish: async ({ responseMessage }) => {
+              // Stream is done (completed or aborted): free the slot first.
+              await releaseLease();
+              try {
+                await admin.from("ai_messages").insert({
+                  conversation_id: conversationId,
+                  user_id: userId,
+                  role: "assistant",
+                  parts: responseMessage.parts ?? [],
+                });
+                await admin
+                  .from("ai_conversations")
+                  .update({ updated_at: new Date().toISOString() })
+                  .eq("id", conversationId);
+              } catch (e) {
+                console.error("Failed to persist assistant message", e);
+              }
 
-              const safeQuestion = question
-                ? question.replace(/[<>&]/g, (c) =>
-                    c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
-                  )
-                : "";
-              const safeAnswer = text.replace(/[<>&]/g, (c) =>
-                c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
-              );
-              const html = `<div style="font-family:Arial,sans-serif;color:#111;max-width:640px">
+              // Email the assistant's text reply only when the user asked for it.
+              if (!emailReply) return;
+              try {
+                const text = (responseMessage.parts ?? [])
+                  .filter(isTextPart)
+                  .map((p) => p.text)
+                  .join("\n\n")
+                  .trim();
+                if (!text) return;
+
+                const { data: prof } = await admin
+                  .from("profiles")
+                  .select("email,full_name")
+                  .eq("id", userId)
+                  .maybeSingle();
+                const recipient = prof?.email;
+                if (!recipient) return;
+
+                const lastUser = [...uiMessages].reverse().find((m) => m.role === "user");
+                const question = ((lastUser?.parts ?? []) as readonly unknown[])
+                  .filter(isTextPart)
+                  .map((p) => p.text)
+                  .join(" ")
+                  .trim();
+                const subject = question
+                  ? `Re: ${question.slice(0, 60)}${question.length > 60 ? "…" : ""}`
+                  : "Your rota assistant reply";
+
+                const safeQuestion = question
+                  ? question.replace(/[<>&]/g, (c) =>
+                      c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+                    )
+                  : "";
+                const safeAnswer = text.replace(/[<>&]/g, (c) =>
+                  c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&amp;",
+                );
+                const html = `<div style="font-family:Arial,sans-serif;color:#111;max-width:640px">
   <p style="color:#555;font-size:13px;margin:0 0 4px">Salisbury DGH Anaesthetics Rota — AI assistant</p>
   ${safeQuestion ? `<blockquote style="border-left:3px solid #ddd;margin:0 0 16px;padding:6px 12px;color:#555;white-space:pre-wrap">${safeQuestion}</blockquote>` : ""}
   <div style="white-space:pre-wrap;line-height:1.5">${safeAnswer}</div>
 </div>`;
 
-              await sendGmail({
-                to: recipient,
-                subject,
-                text,
-                html,
-              });
-            } catch (e) {
-              console.error("Failed to email assistant reply", e);
-            }
-          },
-          onError: (err) => {
-            console.error("Chat stream error", err);
-            return "An error occurred. Please try again.";
-          },
-        });
+                await sendGmail({
+                  to: recipient,
+                  subject,
+                  text,
+                  html,
+                });
+              } catch (e) {
+                console.error("Failed to email assistant reply", e);
+              }
+            },
+            onError: (err) => {
+              void releaseLease();
+              console.error("Chat stream error", err);
+              return "An error occurred. Please try again.";
+            },
+          });
+        } catch (e) {
+          await releaseLease();
+          throw e;
+        }
       },
     },
   },

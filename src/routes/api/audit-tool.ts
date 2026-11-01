@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { pagedRows } from "@/lib/paged-select";
+import { checkActiveMembership, membershipDenial } from "@/lib/app-membership";
 import {
   convertToModelMessages,
   generateText,
@@ -210,17 +212,6 @@ async function getAuthenticatedUserId(authHeader: string | null) {
   return { userId: data.user.id, token };
 }
 
-async function isAdmin(userId: string) {
-  const admin = getAdminClient();
-  const { data } = await admin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  return !!data;
-}
-
 function isoDaysAgo(days: number) {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - days);
@@ -247,13 +238,16 @@ async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
       .eq("active", true)
       .order("sort_order", { ascending: true })
       .limit(200),
-    admin.from("profiles").select("grade, training_level, active").eq("active", true).limit(2000),
-    admin
-      .from("rota_assignments")
-      .select("duty_type")
-      .gte("session_date", isoDaysAgo(30))
-      .not("duty_type", "is", null)
-      .limit(20000),
+    pagedRows("profiles", "grade, training_level, active", {
+      client: admin,
+      filter: (q) => q.eq("active", true),
+      order: ["id"],
+    }),
+    pagedRows("rota_assignments", "duty_type", {
+      client: admin,
+      filter: (q) => q.gte("session_date", isoDaysAgo(30)).not("duty_type", "is", null),
+      order: ["session_date", "id"],
+    }),
     admin.from("specialties").select("name").order("name", { ascending: true }).limit(100),
   ]);
 
@@ -402,8 +396,12 @@ export const Route = createFileRoute("/api/audit-tool")({
       POST: async ({ request }) => {
         const auth = await getAuthenticatedUserId(request.headers.get("authorization"));
         if (!auth) return new Response("Unauthorized", { status: 401 });
-        if (!(await isAdmin(auth.userId))) {
-          return new Response("Forbidden — admin role required", { status: 403 });
+        // Active approved membership (fail closed), then admin role from the
+        // same snapshot — a disabled admin is refused before any tool runs.
+        const membership = await checkActiveMembership(getAdminClient(), auth.userId);
+        if (!membership.ok) return membershipDenial(membership);
+        if (!membership.roles.has("admin")) {
+          return new Response("Forbidden", { status: 403 });
         }
 
         const key = process.env.LOVABLE_API_KEY;
@@ -659,14 +657,17 @@ export const Route = createFileRoute("/api/audit-tool")({
               grade: z.enum(["consultant", "sas", "trainee"]).optional(),
             }),
             execute: async ({ grade }) => {
-              let q = adminClient
-                .from("profiles")
-                .select("grade, training_level")
-                .eq("active", true)
-                .limit(2000);
-              if (grade) q = q.eq("grade", grade);
-              const { data, error } = await q;
-              if (error) return { error: error.message };
+              let data: { grade: string | null; training_level: string | null }[];
+              try {
+                ({ data } = await pagedRows("profiles", "grade, training_level", {
+                  client: adminClient,
+                  filter: (q) =>
+                    grade ? q.eq("active", true).eq("grade", grade) : q.eq("active", true),
+                  order: ["id"],
+                }));
+              } catch (e) {
+                return { error: e instanceof Error ? e.message : "profiles read failed" };
+              }
               const counts = new Map<string, Map<string, number>>();
               for (const p of data ?? []) {
                 const g = (p.grade ?? "unknown") as string;
@@ -696,13 +697,16 @@ export const Route = createFileRoute("/api/audit-tool")({
             }),
             execute: async ({ days_back }) => {
               const from = isoDaysAgo(days_back ?? 30);
-              const { data, error } = await adminClient
-                .from("rota_assignments")
-                .select("duty_type")
-                .gte("session_date", from)
-                .not("duty_type", "is", null)
-                .limit(50000);
-              if (error) return { error: error.message };
+              let data: { duty_type: string | null }[];
+              try {
+                ({ data } = await pagedRows("rota_assignments", "duty_type", {
+                  client: adminClient,
+                  filter: (q) => q.gte("session_date", from).not("duty_type", "is", null),
+                  order: ["session_date", "id"],
+                }));
+              } catch (e) {
+                return { error: e instanceof Error ? e.message : "rota read failed" };
+              }
               const counts = new Map<string, number>();
               for (const r of data ?? []) {
                 const k = r.duty_type as string;

@@ -51,7 +51,7 @@ function ConversationPage() {
           ({
             id: m.id,
             role: m.role as UIMessage["role"],
-            parts: (m.parts as any) ?? [],
+            parts: (m.parts ?? []) as unknown as UIMessage["parts"],
           }) as UIMessage,
       );
     },
@@ -148,7 +148,7 @@ function ConversationPage() {
       <div className="border-t p-3">
         <PromptInput onSubmit={onSubmit}>
           <PromptInputTextarea
-            ref={textareaRef as any}
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your rota, leave, or the team…"
@@ -183,7 +183,7 @@ function MessageBubble({ message }: { message: UIMessage }) {
           }
           if (part.type?.startsWith("tool-")) {
             const toolName = part.type.replace(/^tool-/, "");
-            const state = (part as any).state as string | undefined;
+            const state = "state" in part ? (part.state as string | undefined) : undefined;
             return (
               <div key={i} className="my-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Wrench className="h-3 w-3" />

@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { IcuVerifyResult } from "./icu-verify.server";
 
 export type { IcuVerifyResult, IcuSessionKey, IcuStaffCompareRow } from "./icu-verify.server";
@@ -11,7 +11,7 @@ export type { IcuVerifyResult, IcuSessionKey, IcuStaffCompareRow } from "./icu-v
  * Read-only; admin / rota coordinator only.
  */
 export const compareIcuSessions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({
@@ -67,7 +67,7 @@ export type IcuTraceRow = {
  * intensive-care session. Written by the live comparison; read-only here.
  */
 export const listIcuTraces = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({

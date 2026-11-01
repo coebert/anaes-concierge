@@ -1,4 +1,7 @@
 import { PageHeader } from "@/components/page-header";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows, pagedSelect } from "@/lib/paged-select";
+import { chunkIds } from "@/lib/supabase-chunked";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -67,7 +70,7 @@ function TcsAuditPage() {
   const [lookback, setLookback] = useState<Lookback>("180");
   const [filter, setFilter] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["tcs-audit", lookback],
     queryFn: async () => {
       const today = new Date();
@@ -77,12 +80,11 @@ function TcsAuditPage() {
           ? null
           : new Date(today.getTime() - parseInt(lookback) * 86400_000).toISOString().slice(0, 10);
 
-      const { data: trainees, error: e1 } = await supabase
-        .from("profiles")
-        .select("id, full_name, training_level, start_date, rotation_end_date, ltft_days_off")
-        .eq("grade", "trainee")
-        .eq("active", true)
-        .order("full_name");
+      const { data: trainees, error: e1 } = await pagedRows(
+        "profiles",
+        "id, full_name, training_level, start_date, rotation_end_date, ltft_days_off",
+        { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["full_name", "id"] },
+      );
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length)
@@ -112,6 +114,7 @@ function TcsAuditPage() {
             .order("session_date", { ascending: true })
             .order("staff_id", { ascending: true })
             .order("session", { ascending: true })
+            .order("id", { ascending: true })
             .range(from, to);
           if (since) q = q.gte("session_date", since);
           return q;
@@ -122,14 +125,25 @@ function TcsAuditPage() {
       // Pull approved leave so the audit can (a) bridge "consecutive days"
       // runs across leave days and (b) exclude leave days from the WTD
       // averaging denominator. Pending / cancelled requests are ignored.
-      let leaveQ = supabase
-        .from("leave_requests")
-        .select("staff_id, start_date, end_date, status")
-        .in("staff_id", ids)
-        .eq("status", "approved");
-      if (since) leaveQ = leaveQ.gte("end_date", since);
-      const { data: leaveRows, error: e3 } = await leaveQ;
-      if (e3) throw e3;
+      // Every page of approved leave, per ≤200-id chunk (URL-safe), stable order.
+      const leaveRows = (
+        await Promise.all(
+          chunkIds(ids).map((c) =>
+            pagedSelect<{ staff_id: string; start_date: string; end_date: string; status: string }>(
+              "leave_requests",
+              "id, staff_id, start_date, end_date, status",
+              {
+                filter: (q) => {
+                  const f = q.in("staff_id", c).eq("status", "approved");
+                  return since ? f.gte("end_date", since) : f;
+                },
+                order: ["start_date", "id"],
+                source: "tcs-audit.leave_requests",
+              },
+            ),
+          ),
+        )
+      ).flat();
       const leaveByStaff = new Map<string, Set<string>>();
       for (const lr of leaveRows ?? []) {
         let set = leaveByStaff.get(lr.staff_id);
@@ -156,12 +170,15 @@ function TcsAuditPage() {
         const CHUNK = 500;
         for (let i = 0; i < tsIds.length; i += CHUNK) {
           const slice = tsIds.slice(i, i + CHUNK);
-          const { data: tsAssigns, error: eS } = await supabase
-            .from("rota_assignments")
-            .select("theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(grade)")
-            .in("theatre_session_id", slice)
-            .in("profiles.grade", ["consultant", "sas"])
-            .range(0, 49999);
+          const { data: tsAssigns, error: eS } = await pagedRows(
+            "rota_assignments",
+            "theatre_session_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+            {
+              filter: (q) =>
+                q.in("theatre_session_id", slice).in("profiles.grade", ["consultant", "sas"]),
+              order: ["session_date", "id"],
+            },
+          );
           if (eS) throw eS;
           for (const r of (tsAssigns ?? []) as Array<{ theatre_session_id: string | null }>) {
             if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
@@ -314,6 +331,8 @@ function TcsAuditPage() {
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Running audit…</div>
+      ) : isError ? (
+        <QueryErrorNotice error={error} onRetry={() => void refetch()} what="the hours screen" />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-4">

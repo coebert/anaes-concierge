@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -100,9 +102,11 @@ function CoordinatorInboxPage() {
   const dismissalsQuery = useQuery({
     queryKey: ["coordinator-inbox-dismissals"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inbox_dismissals")
-        .select("item_id,kind,dismissed_at,dismissed_by");
+      const { data, error } = await pagedRows(
+        "inbox_dismissals",
+        "item_id,kind,dismissed_at,dismissed_by",
+        { order: ["id"] },
+      );
       if (error) throw error;
       return data ?? [];
     },
@@ -146,7 +150,7 @@ function CoordinatorInboxPage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["coordinator-inbox"],
     queryFn: async () => {
       const todayIso = new Date().toISOString().slice(0, 10);
@@ -155,32 +159,27 @@ function CoordinatorInboxPage() {
       const sixtyIso = sixtyDays.toISOString().slice(0, 10);
 
       const [leaveRes, excRes, sickRes, rtwRes, compRes, profRes, compDefRes] = await Promise.all([
-        supabase
-          .from("leave_requests")
-          .select("id,staff_id,type,status,start_date,end_date,created_at")
-          .eq("status", "pending")
-          .range(0, 999),
-        supabase
-          .from("exception_reports")
-          .select("id,trainee_id,status,due_by,immediate_safety_concern,description,category")
-          .range(0, 999),
-        supabase
-          .from("leave_requests")
-          .select("id,staff_id,start_date,end_date")
-          .eq("type", "sick")
-          .eq("status", "approved")
-          .lte("end_date", todayIso)
-          .range(0, 999),
-        supabase.from("return_to_work_interviews").select("leave_request_id").range(0, 9999),
-        supabase
-          .from("staff_competencies")
-          .select("id,staff_id,competency_id,expires_at,revoked_at")
-          .not("expires_at", "is", null)
-          .is("revoked_at", null)
-          .lte("expires_at", sixtyIso)
-          .range(0, 999),
-        supabase.from("profiles").select("id,full_name,email"),
-        supabase.from("competencies").select("id,name"),
+        pagedRows("leave_requests", "id,staff_id,type,status,start_date,end_date,created_at", {
+          filter: (q) => q.eq("status", "pending"),
+          order: ["start_date", "id"],
+        }),
+        pagedRows(
+          "exception_reports",
+          "id,trainee_id,status,due_by,immediate_safety_concern,description,category",
+          { order: ["event_date", "id"] },
+        ),
+        pagedRows("leave_requests", "id,staff_id,start_date,end_date", {
+          filter: (q) => q.eq("type", "sick").eq("status", "approved").lte("end_date", todayIso),
+          order: ["start_date", "id"],
+        }),
+        pagedRows("return_to_work_interviews", "leave_request_id", { order: ["created_at", "id"] }),
+        pagedRows("staff_competencies", "id,staff_id,competency_id,expires_at,revoked_at", {
+          filter: (q) =>
+            q.not("expires_at", "is", null).is("revoked_at", null).lte("expires_at", sixtyIso),
+          order: ["expires_at", "id"],
+        }),
+        pagedRows("profiles", "id,full_name,email", { order: ["id"] }),
+        pagedRows("competencies", "id,name", { order: ["id"] }),
       ]);
 
       if (leaveRes.error) throw leaveRes.error;
@@ -310,6 +309,8 @@ function CoordinatorInboxPage() {
 
       {isLoading ? (
         <PageLoading />
+      ) : isError ? (
+        <QueryErrorNotice error={error} onRetry={() => void refetch()} what="the inbox" />
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">

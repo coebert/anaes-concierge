@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,18 +52,20 @@ function LeaveFairnessPage() {
   const [q, setQ] = useState("");
   const [toilFor, setToilFor] = useState<{ id: string; name: string | null } | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-leave-fairness"],
     queryFn: async () => {
       const [profRes, leaveRes, allowRes] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,email,grade,active").eq("active", true),
-        supabase
-          .from("leave_requests")
-          .select(
-            "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
-          )
-          .range(0, 19999),
-        supabase.from("leave_allowances").select("staff_id,sla_target_days"),
+        pagedRows("profiles", "id,full_name,email,grade,active", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows(
+          "leave_requests",
+          "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+          { order: ["start_date", "id"] },
+        ),
+        pagedRows("leave_allowances", "staff_id,sla_target_days", { order: ["id"] }),
       ]);
       if (profRes.error) throw profRes.error;
       if (leaveRes.error) throw leaveRes.error;
@@ -169,6 +173,12 @@ function LeaveFairnessPage() {
 
           {isLoading ? (
             <PageLoading />
+          ) : isError ? (
+            <QueryErrorNotice
+              error={error}
+              onRetry={() => void refetch()}
+              what="leave fairness data"
+            />
           ) : filteredRows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No leave activity in the last 12 months.

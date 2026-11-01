@@ -114,6 +114,49 @@ export function formatDateTimeGB(value: Date | string | null | undefined): strin
   });
 }
 
+/**
+ * Month + year label, e.g. "May 2026" (no day, so no DD/MM ambiguity).
+ * Pass `timeZone` to pin the calendar used (e.g. "UTC" for YYYY-MM keys).
+ */
+export function formatMonthYearGB(value: Date, timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone }).format(
+    value,
+  );
+}
+
+/** Short day label for a `YYYY-MM-DD` date, e.g. "Mon 2 Nov" (UTC-pinned). */
+export function formatShortDayMonthGB(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${iso}T12:00:00Z`));
+}
+
+/** Calendar date in Europe/London as `YYYY-MM-DD` (not a display string). */
+export function londonDateISO(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/** Current hour 0–23 in Europe/London. */
+export function londonHourOfDay(now: Date = new Date()): number {
+  return (
+    Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        hour: "2-digit",
+        hour12: false,
+      }).format(now),
+    ) % 24
+  );
+}
+
 /* ----------------------------------------------------------------------------
  * Name parsing
  * -------------------------------------------------------------------------- */

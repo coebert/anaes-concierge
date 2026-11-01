@@ -1,3 +1,4 @@
+import type { Dyn } from "@/test-utils/dyn";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.fn();
@@ -5,9 +6,11 @@ const insert = vi.fn();
 const sendGmail = vi.fn(async () => ({ ok: true }));
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
-    const b: any = {
-      inputValidator: (v: any) => ((b.v = v), b),
-      handler: (h: any) => (d: any) => h({ data: b.v(d.data) }),
+    type Fn = (input: unknown) => unknown;
+    const b: { v: Fn; inputValidator: (v: Fn) => unknown; handler: (h: Fn) => Fn } = {
+      v: (x) => x,
+      inputValidator: (v) => ((b.v = v), b),
+      handler: (h) => (d) => h({ data: b.v((d as { data: unknown }).data) }),
     };
     return b;
   },
@@ -49,7 +52,9 @@ describe("public access requests", () => {
   it("within quota: stores one request and notifies admins (mocked email)", async () => {
     rpc.mockResolvedValue({ data: true, error: null });
     const { submitAccessRequest } = await import("./access-requests.functions");
-    await expect((submitAccessRequest as any)({ data: input })).resolves.toEqual({ ok: true });
+    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).resolves.toEqual({
+      ok: true,
+    });
     expect(insert).toHaveBeenCalledTimes(1);
     expect(sendGmail).toHaveBeenCalledTimes(1);
     const [buckets] = [rpc.mock.calls[0][1].p_buckets as string[]];
@@ -60,20 +65,24 @@ describe("public access requests", () => {
   it("over quota: same generic response, no insert, no email", async () => {
     rpc.mockResolvedValue({ data: false, error: null });
     const { submitAccessRequest } = await import("./access-requests.functions");
-    await expect((submitAccessRequest as any)({ data: input })).resolves.toEqual({ ok: true });
+    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).resolves.toEqual({
+      ok: true,
+    });
     expect(insert).not.toHaveBeenCalled();
     expect(sendGmail).not.toHaveBeenCalled();
   });
   it("quota store error fails closed (no insert, no email)", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "db" } });
     const { submitAccessRequest } = await import("./access-requests.functions");
-    await expect((submitAccessRequest as any)({ data: input })).rejects.toThrow(/try again/);
+    await expect((submitAccessRequest as unknown as Dyn)({ data: input })).rejects.toThrow(
+      /try again/,
+    );
     expect(insert).not.toHaveBeenCalled();
   });
   it("rejects oversized input", async () => {
     const { submitAccessRequest } = await import("./access-requests.functions");
     expect(() =>
-      (submitAccessRequest as any)({ data: { ...input, message: "x".repeat(1001) } }),
+      (submitAccessRequest as unknown as Dyn)({ data: { ...input, message: "x".repeat(1001) } }),
     ).toThrow();
   });
 });

@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,19 +28,17 @@ export const Route = createFileRoute("/_authenticated/admin/analytics/leave-deni
 
 function DenialsPage() {
   const { hasRole, loading } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-analytics-denials"],
     queryFn: async () => {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [lrRes, profRes] = await Promise.all([
-        supabase
-          .from("leave_requests")
-          .select("staff_id,status,decided_at,decision_notes")
-          .gte("decided_at", since.toISOString())
-          .eq("status", "rejected")
-          .range(0, 19999),
-        supabase.from("profiles").select("id,grade"),
+        pagedRows("leave_requests", "staff_id,status,decided_at,decision_notes", {
+          filter: (q) => q.gte("decided_at", since.toISOString()).eq("status", "rejected"),
+          order: ["start_date", "id"],
+        }),
+        pagedRows("profiles", "id,grade", { order: ["id"] }),
       ]);
       if (lrRes.error) throw lrRes.error;
       if (profRes.error) throw profRes.error;
@@ -56,6 +56,8 @@ function DenialsPage() {
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
+  if (isError)
+    return <QueryErrorNotice error={error} onRetry={() => void refetch()} what="this analysis" />;
   if (isLoading || !agg) return <PageLoading />;
 
   return (

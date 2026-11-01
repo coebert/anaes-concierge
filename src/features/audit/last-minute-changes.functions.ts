@@ -1,6 +1,7 @@
+import { requireActiveMember } from "@/lib/require-admin";
+import { pagedRows } from "@/lib/paged-select";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Last minute changes audit.
@@ -166,7 +167,7 @@ function firstName(ref: NamedRef): string | null {
 }
 
 export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((input: { rangeStart: string; rangeEnd: string }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.rangeStart))
       throw new Error("rangeStart must be YYYY-MM-DD");
@@ -236,17 +237,20 @@ export const getLastMinuteChangesAudit = createServerFn({ method: "POST" })
       const logsResult = await withRetry(
         "rota_change_log",
         async () =>
-          await supabase
-            .from("rota_change_log")
-            .select(
-              "id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id",
-            )
-            .gte("session_date", data.rangeStart)
-            .lte("session_date", data.rangeEnd)
-            .lte("hours_before_session", 48)
-            .gte("hours_before_session", -48)
-            .order("changed_at", { ascending: false })
-            .limit(5000),
+          await pagedRows(
+            "rota_change_log",
+            "id, action, session_date, session, staff_id, session_start_ts, changed_at, hours_before_session, changed_by, prev_theatre_session_id, new_theatre_session_id, prev_staff_id",
+            {
+              client: supabase,
+              filter: (q) =>
+                q
+                  .gte("session_date", data.rangeStart)
+                  .lte("session_date", data.rangeEnd)
+                  .lte("hours_before_session", 48)
+                  .gte("hours_before_session", -48),
+              order: ["-changed_at", "id"],
+            },
+          ),
       );
       if (logsResult.error) throw new Error(logsResult.error.message);
       const logs: RotaChangeLogRow[] = parseRows(

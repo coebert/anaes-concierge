@@ -1,5 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
+import { pagedRows } from "@/lib/paged-select";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
 import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS } from "./trainee-leave-audit-window";
 import { compareBySurnameAsc } from "@/lib/utils";
@@ -83,7 +84,7 @@ export type AuditResult = {
 const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
 
 export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }): Promise<AuditResult> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await context.supabase
@@ -161,26 +162,29 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       .in("staff_id", ids);
     const allowanceByStaff = new Set<string>((allowanceRows ?? []).map((r) => r.staff_id));
 
-    const { data: activityRows, error: aErr } = await supabaseAdmin
-      .from("rota_assignments")
-      .select("staff_id")
-      .in("staff_id", ids)
-      .gte("session_date", today)
-      .lte("session_date", windowEnd)
-      .range(0, 49999);
+    const { data: activityRows, error: aErr } = await pagedRows("rota_assignments", "staff_id", {
+      client: supabaseAdmin,
+      filter: (q) =>
+        q.in("staff_id", ids).gte("session_date", today).lte("session_date", windowEnd),
+      order: ["session_date", "id"],
+      source: "rota_assignments",
+    });
     if (aErr) throw new Error(aErr.message);
     const activityCount = new Map<string, number>();
     for (const r of activityRows ?? []) {
       activityCount.set(r.staff_id, (activityCount.get(r.staff_id) ?? 0) + 1);
     }
 
-    const { data: leaveRows, error: lErr } = await supabaseAdmin
-      .from("leave_requests")
-      .select("id, staff_id, start_date, end_date, status, type, reason")
-      .in("staff_id", ids)
-      .lte("start_date", windowEnd)
-      .gte("end_date", today)
-      .range(0, 49999);
+    const { data: leaveRows, error: lErr } = await pagedRows(
+      "leave_requests",
+      "id, staff_id, start_date, end_date, status, type, reason",
+      {
+        client: supabaseAdmin,
+        filter: (q) => q.in("staff_id", ids).lte("start_date", windowEnd).gte("end_date", today),
+        order: ["start_date", "id"],
+        source: "leave_requests",
+      },
+    );
     if (lErr) throw new Error(lErr.message);
     const leaveByStaff = new Map<string, AuditLeaveRow[]>();
     for (const r of leaveRows ?? []) {
@@ -203,13 +207,16 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
     // Future first assignment for "no activity & no counted leave" trainees.
     // Also drives ICU-block detection — pull duty_type so we can decide
     // whether the trainee's remaining rotation is ICU-only.
-    const { data: futureRows, error: fErr } = await supabaseAdmin
-      .from("rota_assignments")
-      .select("staff_id, session_date, duty_type")
-      .in("staff_id", ids)
-      .gt("session_date", today)
-      .order("session_date", { ascending: true })
-      .range(0, 49999);
+    const { data: futureRows, error: fErr } = await pagedRows(
+      "rota_assignments",
+      "staff_id, session_date, duty_type",
+      {
+        client: supabaseAdmin,
+        filter: (q) => q.in("staff_id", ids).gt("session_date", today),
+        order: ["session_date", "id"],
+        source: "rota_assignments",
+      },
+    );
     if (fErr) throw new Error(fErr.message);
     const firstFuture = new Map<string, string>();
     const futureByStaff = new Map<

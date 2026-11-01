@@ -23,7 +23,7 @@ import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
 import { QueryErrorNotice } from "@/components/query-state-notice";
 import { TodayInHospital } from "@/components/today-in-hospital";
-import { StatCard } from "@/components/stat-card";
+import { StatCard as Stat } from "@/components/stat-card";
 import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -427,7 +427,6 @@ function TraineeDashboard() {
 }
 
 /* ---------- Building blocks ---------- */
-const Stat = StatCard;
 
 function ActionCard({
   to,

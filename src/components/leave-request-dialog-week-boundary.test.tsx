@@ -1,3 +1,4 @@
+import type { Dyn } from "@/test-utils/dyn";
 // @vitest-environment jsdom
 /**
  * UI tests for the leave request dialog with a half-day range that
@@ -86,7 +87,7 @@ vi.mock("@/components/ui/select", () => {
     const collect = (nodes: React.ReactNode) => {
       React.Children.forEach(nodes, (child) => {
         if (!React.isValidElement(child)) return;
-        const el = child as React.ReactElement<any>;
+        const el = child as React.ReactElement<{ value?: string; children?: React.ReactNode }>;
         if (el.props && "value" in el.props) {
           options.push(
             <option key={el.props.value} value={el.props.value}>

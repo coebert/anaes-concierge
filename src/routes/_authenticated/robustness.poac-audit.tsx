@@ -42,7 +42,7 @@ async function fetchAllPaged<T>(
   let offset = 0;
   let pages = 0;
   let complete = true;
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const { data, error } = await build(offset, offset + pageSize - 1);
     if (error) throw error;

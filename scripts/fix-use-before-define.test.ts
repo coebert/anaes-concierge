@@ -1,3 +1,4 @@
+import type { Dyn } from "../src/test-utils/dyn";
 /**
  * Test suite for the no-use-before-define codemod.
  *
@@ -280,12 +281,12 @@ describe("fix-use-before-define codemod — CLI e2e", () => {
       } catch (e) {
         threw = e as Error;
         // execFileSync puts stderr+stdout in the error's stdout/stderr when it throws.
-        out = (e as any).stdout ?? "";
+        out = (e as unknown as Dyn).stdout ?? "";
       }
 
       // Must have exited non-zero.
       expect(threw).not.toBeNull();
-      expect((threw as any).status).toBe(1);
+      expect((threw as unknown as Dyn).status).toBe(1);
       expect(out).toMatch(/Would perform \d+ move\(s\)\./);
       // File on disk must remain untouched.
       expect(readFileSync(file, "utf8")).toBe(sample);

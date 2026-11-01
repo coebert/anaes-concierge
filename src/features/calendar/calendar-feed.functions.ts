@@ -1,14 +1,16 @@
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function ensureAdmin(supabase: any, userId: string) {
+async function ensureAdmin(supabase: SupabaseClient<Database>, userId: string) {
   const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Only admins can use the calendar feed for now.");
 }
 
 export const getCalendarFeedToken = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
@@ -34,7 +36,7 @@ export const getCalendarFeedToken = createServerFn({ method: "POST" })
   });
 
 export const regenerateCalendarFeedToken = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);

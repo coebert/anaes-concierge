@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,22 +38,20 @@ const ONCALL_DUTY = ["icu_consultant_oncall", "general_consultant_oncall", "nhh_
 
 function OnCallInequalityPage() {
   const { hasRole, loading } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-analytics-oncall"],
     queryFn: async () => {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [profRes, rotaRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,ltft_days_off,grade,active")
-          .eq("grade", "consultant")
-          .eq("active", true),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id,duty_type,role_on_list")
-          .gte("session_date", since.toISOString().slice(0, 10))
-          .range(0, 49999),
+        pagedRows("profiles", "id,full_name,ltft_days_off,grade,active", {
+          filter: (q) => q.eq("grade", "consultant").eq("active", true),
+          order: ["id"],
+        }),
+        pagedRows("rota_assignments", "staff_id,duty_type,role_on_list", {
+          filter: (q) => q.gte("session_date", since.toISOString().slice(0, 10)),
+          order: ["session_date", "id"],
+        }),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;
@@ -82,6 +82,8 @@ function OnCallInequalityPage() {
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
+  if (isError)
+    return <QueryErrorNotice error={error} onRetry={() => void refetch()} what="this analysis" />;
   if (isLoading || !view) return <PageLoading />;
 
   return (

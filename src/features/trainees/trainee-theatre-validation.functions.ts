@@ -1,6 +1,7 @@
+import { requireActiveMember } from "@/lib/require-admin";
+import { pagedRows } from "@/lib/paged-select";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { HIGH_UNMATCHED_RATIO } from "./trainee-metrics";
 import { isIcuBlockOnly } from "@/features/audit/trainee-audit";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -117,15 +118,22 @@ export async function performTraineeTheatreValidation(
   const CHUNK = 200;
   for (let i = 0; i < ids.length; i += CHUNK) {
     const slice = ids.slice(i, i + CHUNK);
-    const { data: rows, error } = await supabaseAdmin
-      .from("rota_assignments")
-      .select("staff_id, theatre_session_id, session, duty_type, session_date")
-      .in("staff_id", slice)
-      .eq("duty_type", "theatre")
-      .in("session", ["am", "pm"])
-      .gte("session_date", from)
-      .lte("session_date", to)
-      .range(0, 49999);
+    const { data: rows, error } = await pagedRows(
+      "rota_assignments",
+      "staff_id, theatre_session_id, session, duty_type, session_date",
+      {
+        client: supabaseAdmin,
+        filter: (q) =>
+          q
+            .in("staff_id", slice)
+            .eq("duty_type", "theatre")
+            .in("session", ["am", "pm"])
+            .gte("session_date", from)
+            .lte("session_date", to),
+        order: ["session_date", "id"],
+        source: "rota_assignments",
+      },
+    );
     if (error) throw new Error(error.message);
     for (const r of rows ?? []) {
       if (r.theatre_session_id) {
@@ -189,11 +197,12 @@ export async function performTraineeTheatreValidation(
     const DCHUNK = 500;
     for (let i = 0; i < distinctDates.length; i += DCHUNK) {
       const slice = distinctDates.slice(i, i + DCHUNK);
-      const { data: tsRows, error } = await supabaseAdmin
-        .from("theatre_sessions")
-        .select("session_date, session")
-        .in("session_date", slice)
-        .range(0, 49999);
+      const { data: tsRows, error } = await pagedRows("theatre_sessions", "session_date, session", {
+        client: supabaseAdmin,
+        filter: (q) => q.in("session_date", slice),
+        order: ["session_date", "id"],
+        source: "theatre_sessions",
+      });
       if (error) throw new Error(error.message);
       for (const r of tsRows ?? []) {
         dateSessionHasTheatre.set(`${r.session_date}|${r.session}`, true);
@@ -263,13 +272,17 @@ export async function performTraineeTheatreValidation(
     >();
     for (let i = 0; i < flaggedIds.length; i += CHUNK) {
       const slice = flaggedIds.slice(i, i + CHUNK);
-      const { data: futRows, error: fErr } = await supabaseAdmin
-        .from("rota_assignments")
-        .select("staff_id, duty_type, session_date")
-        .in("staff_id", slice)
-        .gte("session_date", todayIso)
-        .lte("session_date", to)
-        .range(0, 49999);
+      const { data: futRows, error: fErr } = await pagedRows(
+        "rota_assignments",
+        "staff_id, duty_type, session_date",
+        {
+          client: supabaseAdmin,
+          filter: (q) =>
+            q.in("staff_id", slice).gte("session_date", todayIso).lte("session_date", to),
+          order: ["session_date", "id"],
+          source: "rota_assignments",
+        },
+      );
       if (fErr) throw new Error(fErr.message);
       for (const r of futRows ?? []) {
         const list = futureByStaff.get(r.staff_id) ?? [];
@@ -307,7 +320,7 @@ export async function performTraineeTheatreValidation(
 }
 
 export const validateTraineeTheatreMatches = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((input: { from?: string; to?: string } | undefined) =>
     z
       .object({

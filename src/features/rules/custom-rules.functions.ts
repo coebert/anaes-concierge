@@ -1,5 +1,5 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { generateText, Output } from "ai";
 import { z } from "zod";
@@ -29,7 +29,7 @@ export type CustomRuleViolation = {
 };
 
 export const checkCustomRuleViolations = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((input: unknown) => CheckInput.parse(input))
   .handler(async ({ data, context }): Promise<{ violations: CustomRuleViolation[] }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,25 +27,21 @@ export const Route = createFileRoute("/_authenticated/admin/analytics/sickness-s
 
 function SicknessSeasonalityPage() {
   const { hasRole, loading } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-analytics-sickness-seasonality"],
     queryFn: async () => {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 2);
       const sinceIso = since.toISOString().slice(0, 10);
       const [sickRes, rotaRes] = await Promise.all([
-        supabase
-          .from("leave_requests")
-          .select("start_date,end_date")
-          .eq("type", "sick")
-          .eq("status", "approved")
-          .gte("start_date", sinceIso)
-          .range(0, 19999),
-        supabase
-          .from("rota_assignments")
-          .select("session_date")
-          .gte("session_date", sinceIso)
-          .range(0, 49999),
+        pagedRows("leave_requests", "start_date,end_date", {
+          filter: (q) => q.eq("type", "sick").eq("status", "approved").gte("start_date", sinceIso),
+          order: ["start_date", "id"],
+        }),
+        pagedRows("rota_assignments", "session_date", {
+          filter: (q) => q.gte("session_date", sinceIso),
+          order: ["session_date", "id"],
+        }),
       ]);
       if (sickRes.error) throw sickRes.error;
       if (rotaRes.error) throw rotaRes.error;
@@ -58,6 +56,8 @@ function SicknessSeasonalityPage() {
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
+  if (isError)
+    return <QueryErrorNotice error={error} onRetry={() => void refetch()} what="this analysis" />;
   if (isLoading || !view) return <PageLoading />;
 
   const monthNames = [

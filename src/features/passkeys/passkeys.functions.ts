@@ -1,8 +1,12 @@
+import type { Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
+import { checkActiveMembership } from "@/lib/app-membership";
+import { mintPasskeySession } from "@/features/passkeys/passkey-session";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   consumeRegistrationChallenge,
   verifyAuthenticationCore,
@@ -32,7 +36,7 @@ async function loadServer() {
 }
 
 async function consumeById(
-  supabaseAdmin: any,
+  supabaseAdmin: SupabaseClient<Database>,
   id: string,
   purpose: string,
 ): Promise<ChallengeRow | null> {
@@ -44,7 +48,7 @@ async function consumeById(
   return ((data as ChallengeRow[] | null) ?? [])[0] ?? null;
 }
 
-async function cleanupExpiredChallenges(supabaseAdmin: any) {
+async function cleanupExpiredChallenges(supabaseAdmin: SupabaseClient<Database>) {
   await supabaseAdmin
     .from("passkey_challenges")
     .delete()
@@ -56,13 +60,13 @@ async function cleanupExpiredChallenges(supabaseAdmin: any) {
 // ---------------------------------------------------------------------------
 
 export const startPasskeyRegistration = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabaseAdmin, srv } = await loadServer();
     const { rpID, rpName } = getRpInfo();
     const userId = context.userId;
 
-    const email = (context.claims as any)?.email as string | undefined;
+    const email = (context.claims as { email?: unknown } | undefined)?.email as string | undefined;
 
     const { data: existing } = await supabaseAdmin
       .from("passkey_credentials")
@@ -80,9 +84,9 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
         residentKey: "preferred",
         userVerification: "preferred",
       },
-      excludeCredentials: (existing ?? []).map((c: any) => ({
+      excludeCredentials: (existing ?? []).map((c) => ({
         id: c.credential_id,
-        transports: (c.transports ?? undefined) as any,
+        transports: (c.transports ?? undefined) as AuthenticatorTransportFuture[] | undefined,
       })),
     });
 
@@ -98,8 +102,8 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
   });
 
 export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { response: any; deviceName?: string; ceremonyId: string }) =>
+  .middleware([requireActiveMember])
+  .inputValidator((data: { response: unknown; deviceName?: string; ceremonyId: string }) =>
     z
       .object({
         response: z.any(),
@@ -274,23 +278,23 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
       { ceremonyId: data.ceremonyId, email: data.email, response: data.response, origin, rpID },
     );
 
-    // Look up the user's email so we can mint a magic-link session token.
-    const { data: userRec, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const email = userRec?.user?.email;
-    if (userErr || !email) {
-      throw new Error(userErr?.message ?? "Could not resolve account email.");
-    }
-
-    // Mint a one-shot magic link token the client exchanges for a session.
-    const { data: link, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-    });
-    if (linkErr || !link?.properties?.hashed_token) {
-      throw new Error(linkErr?.message ?? "Failed to mint session token.");
-    }
-
-    return { tokenHash: link.properties.hashed_token };
+    return mintPasskeySession(
+      {
+        checkMembership: (id) => checkActiveMembership(supabaseAdmin, id),
+        getUserEmail: async (id) => {
+          const { data: userRec, error } = await supabaseAdmin.auth.admin.getUserById(id);
+          return error ? { error: true } : { email: userRec?.user?.email ?? null };
+        },
+        generateMagicLinkHash: async (email) => {
+          const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+            type: "magiclink",
+            email,
+          });
+          return error ? null : (link?.properties?.hashed_token ?? null);
+        },
+      },
+      userId,
+    );
   });
 
 // ---------------------------------------------------------------------------
@@ -298,7 +302,7 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 export const listMyPasskeys = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("passkey_credentials")
@@ -310,7 +314,7 @@ export const listMyPasskeys = createServerFn({ method: "GET" })
   });
 
 export const deleteMyPasskey = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase

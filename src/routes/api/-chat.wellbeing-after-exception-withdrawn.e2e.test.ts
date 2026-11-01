@@ -1,3 +1,4 @@
+import type { Dyn, MockBuilder, ThenCb } from "@/test-utils/dyn";
 /**
  * End-to-end test for /api/chat: withdrawing an exception report (or
  * flipping its status to `withdrawn`) must cause the rota-impact tools —
@@ -120,7 +121,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: any = {};
+    const b: MockBuilder = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -152,17 +153,20 @@ function makeAdminClient() {
       select: () => ({
         maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }),
       }),
-      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: ThenCb) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (ok: any, err: any) => resolve().then(ok, err);
+    b.then = (ok: ThenCb, err: ThenCb) => resolve().then(ok, err);
     return b;
   };
   return {
     from: (t: string) => build(t),
     // Durable chat quota RPC (take_request_quota) — always within limits here.
-    rpc: async () => ({ data: true, error: null }),
+    rpc: async (name: string) => ({
+      data: name === "acquire_chat_stream_lease" ? "00000000-0000-4000-8000-0000000000aa" : true,
+      error: null,
+    }),
     auth: { getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }) },
   };
 }
@@ -174,10 +178,17 @@ function dataFor(state: QueryState): unknown {
     case "ai_messages":
       return [];
     case "user_roles":
-      return state.single ? null : [];
+      return state.single ? null : [{ role: "staff" }];
     case "profiles":
       return state.single
-        ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null }
+        ? {
+            id: USER_ID,
+            full_name: "Dr Test",
+            grade: "consultant",
+            email: null,
+            active: true,
+            left_at: null,
+          }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
     case "theatres":
       return theatres;
@@ -226,7 +237,7 @@ vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
   return {
     ...actual,
-    streamText: (opts: { tools: Record<string, any>; system?: string }) => {
+    streamText: (opts: { tools: Record<string, Dyn>; system?: string }) => {
       const summaryTool = opts.tools?.get_my_leave_summary;
       const patternTool = opts.tools?.get_staff_current_pattern;
       const rotaTool = opts.tools?.get_my_upcoming_rota;
@@ -265,7 +276,7 @@ afterAll(() => vi.useRealTimers());
 
 async function invokeChat(userText: string): Promise<void> {
   const mod = await import("./chat");
-  const handler = (mod.Route as any).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
@@ -299,8 +310,9 @@ async function runAndCapture(): Promise<{
   };
 }
 
-function annotatedAssignment(rota: any) {
-  return rota.assignments.find((a: any) => a.date === EXC_EVENT_DATE);
+function annotatedAssignment(rota: unknown): Dyn {
+  const r = rota as { assignments: Array<{ date: string }> };
+  return r.assignments.find((a) => a.date === EXC_EVENT_DATE) as unknown as Dyn;
 }
 
 describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota and current-pattern", () => {
@@ -331,8 +343,8 @@ describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota 
         status: "submitted",
         category: "rest",
       });
-      expect((active.currentPattern as any).exceptions).toHaveLength(1);
-      expect((active.currentPattern as any).exceptions[0].id).toBe("ex-1");
+      expect((active.currentPattern as unknown as Dyn).exceptions).toHaveLength(1);
+      expect((active.currentPattern as unknown as Dyn).exceptions[0].id).toBe("ex-1");
 
       // Run B — same report, withdrawn.
       exceptionReportsFixture = [
@@ -352,7 +364,7 @@ describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota 
       const withdrawnAssignment = annotatedAssignment(withdrawn.upcomingRota);
       expect(withdrawnAssignment).toBeDefined();
       expect(withdrawnAssignment.exceptions).toEqual([]);
-      expect((withdrawn.currentPattern as any).exceptions).toEqual([]);
+      expect((withdrawn.currentPattern as unknown as Dyn).exceptions).toEqual([]);
 
       // Leave summary does not read exceptions and must be unchanged.
       expect(withdrawn.leaveSummary).toEqual(active.leaveSummary);
@@ -377,12 +389,12 @@ describe("/api/chat e2e — withdrawing an exception recalculates upcoming-rota 
       ];
       const active = await runAndCapture();
       expect(annotatedAssignment(active.upcomingRota).exceptions).toHaveLength(1);
-      expect((active.currentPattern as any).exceptions).toHaveLength(1);
+      expect((active.currentPattern as unknown as Dyn).exceptions).toHaveLength(1);
 
       exceptionReportsFixture = [];
       const gone = await runAndCapture();
       expect(annotatedAssignment(gone.upcomingRota).exceptions).toEqual([]);
-      expect((gone.currentPattern as any).exceptions).toEqual([]);
+      expect((gone.currentPattern as unknown as Dyn).exceptions).toEqual([]);
       expect(gone.leaveSummary).toEqual(active.leaveSummary);
     },
   );

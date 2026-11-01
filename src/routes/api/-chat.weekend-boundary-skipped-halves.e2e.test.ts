@@ -1,3 +1,4 @@
+import type { Dyn, MockBuilder, ThenCb } from "@/test-utils/dyn";
 /**
  * End-to-end test for the /api/chat POST handler with a half-day leave
  * that spans a LONG weekend boundary (Fri PM → next-Tue AM, covering
@@ -101,7 +102,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: any = {};
+    const b: MockBuilder = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -132,18 +133,21 @@ function makeAdminClient() {
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }) }),
-      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: ThenCb) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (onOk: any, onErr: any) => resolve().then(onOk, onErr);
+    b.then = (onOk: ThenCb, onErr: ThenCb) => resolve().then(onOk, onErr);
     return b;
   };
 
   return {
     from: (t: string) => build(t),
     // Durable chat quota RPC (take_request_quota) — always within limits here.
-    rpc: async () => ({ data: true, error: null }),
+    rpc: async (name: string) => ({
+      data: name === "acquire_chat_stream_lease" ? "00000000-0000-4000-8000-0000000000aa" : true,
+      error: null,
+    }),
     auth: {
       getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }),
     },
@@ -157,10 +161,17 @@ function dataFor(state: QueryState): unknown {
     case "ai_messages":
       return [];
     case "user_roles":
-      return state.single ? null : [];
+      return state.single ? null : [{ role: "staff" }];
     case "profiles":
       return state.single
-        ? { id: USER_ID, full_name: "Dr Skipped", grade: "consultant", email: null }
+        ? {
+            id: USER_ID,
+            full_name: "Dr Skipped",
+            grade: "consultant",
+            email: null,
+            active: true,
+            left_at: null,
+          }
         : [{ id: USER_ID, full_name: "Dr Skipped", grade: "consultant" }];
     case "theatres":
       return theatres;
@@ -205,7 +216,7 @@ vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
   return {
     ...actual,
-    streamText: (opts: { tools: Record<string, any> }) => {
+    streamText: (opts: { tools: Record<string, Dyn> }) => {
       const patternTool = opts.tools?.get_staff_current_pattern;
       const promise = patternTool
         ? Promise.resolve(patternTool.execute({}))
@@ -239,7 +250,7 @@ afterAll(() => vi.useRealTimers());
 
 async function invokePost(body: unknown): Promise<Response> {
   const mod = await import("./chat");
-  const handler = (mod.Route as any).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {

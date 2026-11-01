@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { TutorialBackfillResult } from "./tutorial-backfill.server";
 
 export type { TutorialBackfillResult };
@@ -11,7 +11,7 @@ export type { TutorialBackfillResult };
  * scheduled cron hook can reuse exactly the same rules.
  */
 export const backfillTutorialDetection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({

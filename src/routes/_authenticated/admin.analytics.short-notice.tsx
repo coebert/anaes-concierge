@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,19 +37,20 @@ export const Route = createFileRoute("/_authenticated/admin/analytics/short-noti
 
 function ShortNoticePage() {
   const { hasRole, loading } = useAuth();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-analytics-short-notice"],
     queryFn: async () => {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [changeRes, profRes] = await Promise.all([
-        supabase
-          .from("rota_change_log")
-          .select("staff_id,action,hours_before_session,changed_at")
-          .gte("changed_at", since.toISOString())
-          .lte("hours_before_session", 48)
-          .range(0, 49999),
-        supabase.from("profiles").select("id,full_name,grade,active").eq("active", true),
+        pagedRows("rota_change_log", "staff_id,action,hours_before_session,changed_at", {
+          filter: (q) => q.gte("changed_at", since.toISOString()).lte("hours_before_session", 48),
+          order: ["changed_at", "id"],
+        }),
+        pagedRows("profiles", "id,full_name,grade,active", {
+          filter: (q) => q.eq("active", true),
+          order: ["id"],
+        }),
       ]);
       if (changeRes.error) throw changeRes.error;
       if (profRes.error) throw profRes.error;
@@ -77,6 +80,8 @@ function ShortNoticePage() {
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
+  if (isError)
+    return <QueryErrorNotice error={error} onRetry={() => void refetch()} what="this analysis" />;
   if (isLoading) return <PageLoading />;
 
   return (

@@ -86,6 +86,15 @@ raw "boundary: recursive exec_select then side effect" "select audit_ro.exec_sel
 raw "boundary: recursive exec_select reads hidden column" "select audit_ro.exec_select('select source_row from icu_detection_matches')" denied
 raw "boundary: write via data-modifying CTE" "with d as (delete from rota_assignments returning id) select * from d" denied
 raw "boundary: allowlisted read still works" "select count(*) from rota_assignments" allowed
+# Concurrency: 8 simultaneous sessions race for a cap-2 lease on one user.
+$P -c "DELETE FROM chat_stream_leases"
+for i in 1 2 3 4 5 6 7 8; do
+  $P -At -c "SET ROLE service_role; SELECT coalesce(acquire_chat_stream_lease('00000000-0000-0000-0000-0000000000e1',2,600)::text,'NULL')" > "$D/lease.$i" 2>&1 &
+done
+wait
+GOT=$(grep -c -E '^[0-9a-f-]{36}$' "$D"/lease.* | awk -F: '{s+=$2} END {print s}')
+$P -c "INSERT INTO results SELECT 'lease race: 8 concurrent acquires, cap 2 => exactly 2 granted', 'allowed', CASE WHEN $GOT=2 AND (SELECT count(*) FROM chat_stream_leases)=2 THEN 'allowed' ELSE 'denied' END, 'granted=$GOT'"
+$P -c "DELETE FROM chat_stream_leases"
 $P -c "INSERT INTO results SELECT 'boundary: no side effect reached net queue', 'allowed', CASE WHEN (SELECT count(*) FROM net.http_request_queue)=0 THEN 'allowed' ELSE 'denied' END, NULL"
 
 $P -P pager=off -c "SELECT CASE WHEN expected=actual THEN 'PASS' ELSE 'FAIL' END AS result, name, expected, actual, left(coalesce(detail,''),90) AS detail FROM results ORDER BY 1, 2"

@@ -282,6 +282,27 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_stream_leases: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clwrota_sync_metrics: {
         Row: {
           chunks_fell_back_to_per_row: number
@@ -3701,6 +3722,14 @@ export type Database = {
     Functions: {
       _enc_key: { Args: never; Returns: string }
       _hmac_key: { Args: never; Returns: string }
+      _is_active_member_profile: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      acquire_chat_stream_lease: {
+        Args: { p_max: number; p_ttl_seconds: number; p_user_id: string }
+        Returns: string
+      }
       admin_decrypt_jsonb: { Args: { p_cipher: string }; Returns: Json }
       admin_decrypt_text: { Args: { p_cipher: string }; Returns: string }
       admin_run_readonly_sql: { Args: { p_query: string }; Returns: Json }
@@ -3946,6 +3975,10 @@ export type Database = {
           left_at: string
           staff_id: string
         }[]
+      }
+      release_chat_stream_lease: {
+        Args: { p_lease_id: string }
+        Returns: boolean
       }
       session_start_ts: {
         Args: {

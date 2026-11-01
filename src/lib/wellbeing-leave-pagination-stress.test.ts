@@ -101,7 +101,6 @@ const TIME_OVERRUN_THRESHOLD =
   Number.isFinite(RAW_THRESHOLD) && RAW_THRESHOLD >= 0 ? RAW_THRESHOLD : 0.15;
 const HARD_TIME_LIMIT_MS = Math.round(PROFILE.timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD));
 
-// eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
 
 // -----------------------------------------------------------------------------
@@ -152,13 +151,15 @@ const ENFORCE_BASELINE = PROFILE.name === "large" && !UPDATE_BASELINE;
 
 const recordedRuntimes: Partial<Record<ScenarioKey, number>> = {};
 
+const RAW_SEED = Number.parseInt(process.env.LEAVE_STRESS_SEED ?? "", 10);
+const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xc0ffee;
+
 function recordAndAssert(key: ScenarioKey, elapsedMs: number): void {
   recordedRuntimes[key] = elapsedMs;
   if (!ENFORCE_BASELINE) return;
   const baselineMs = BASELINE.large.scenarios[key].ms;
   const ceilingMs = Math.round(baselineMs * (1 + REGRESSION_THRESHOLD));
   if (elapsedMs > baselineMs) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[stress:large] ${key} slower than baseline: ${elapsedMs.toFixed(0)}ms ` +
         `> ${baselineMs}ms (ceiling ${ceilingMs}ms, +${(REGRESSION_THRESHOLD * 100).toFixed(0)}%)`,
@@ -202,7 +203,7 @@ afterAll(() => {
     },
   };
   writeFileSync(BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`, "utf8");
-  // eslint-disable-next-line no-console
+
   console.info(
     `[stress:large] baseline updated at ${BASELINE_PATH}: ${JSON.stringify(next.large.scenarios)}`,
   );
@@ -218,8 +219,6 @@ afterAll(() => {
 // paginated output. Override with `LEAVE_STRESS_SEED=<int>` to reproduce a
 // reported failure with a different seed while keeping the run deterministic.
 // -----------------------------------------------------------------------------
-const RAW_SEED = Number.parseInt(process.env.LEAVE_STRESS_SEED ?? "", 10);
-const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xc0ffee;
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -232,7 +231,6 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-// eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] seed=0x${SEED.toString(16)}`);
 
 type Row = {
@@ -463,7 +461,6 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
       // under the hard limit. Hard budget: fail the build once elapsed
       // exceeds `timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD)`.
       if (elapsed > PROFILE.timeBudgetMs) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[stress:${PROFILE.name}] scenario C exceeded soft budget: ` +
             `${elapsed.toFixed(0)}ms > ${PROFILE.timeBudgetMs}ms ` +

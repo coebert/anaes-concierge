@@ -1,3 +1,4 @@
+import type { Dyn, MockBuilder, ThenCb } from "@/test-utils/dyn";
 /**
  * End-to-end test for /api/chat: withdrawing an exception must change the
  * assistant's RESPONSE TEXT for a wellbeing question, not merely the raw
@@ -69,7 +70,7 @@ function makeAdminClient() {
       single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
-    const b: any = {};
+    const b: MockBuilder = {};
     b.select = () => b;
     b.eq = (col: string, val: unknown) => {
       (state.eqCols[col] ??= []).push(val);
@@ -95,17 +96,20 @@ function makeAdminClient() {
       select: () => ({
         maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }),
       }),
-      then: (r: any) => Promise.resolve({ data: null, error: null }).then(r),
+      then: (r: ThenCb) => Promise.resolve({ data: null, error: null }).then(r),
     });
     b.update = () => b;
     b.delete = () => b;
-    b.then = (ok: any, err: any) => resolve().then(ok, err);
+    b.then = (ok: ThenCb, err: ThenCb) => resolve().then(ok, err);
     return b;
   };
   return {
     from: (t: string) => build(t),
     // Durable chat quota RPC (take_request_quota) — always within limits here.
-    rpc: async () => ({ data: true, error: null }),
+    rpc: async (name: string) => ({
+      data: name === "acquire_chat_stream_lease" ? "00000000-0000-4000-8000-0000000000aa" : true,
+      error: null,
+    }),
     auth: { getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }) },
   };
 }
@@ -117,10 +121,17 @@ function dataFor(state: QueryState): unknown {
     case "ai_messages":
       return [];
     case "user_roles":
-      return state.single ? null : [];
+      return state.single ? null : [{ role: "staff" }];
     case "profiles":
       return state.single
-        ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null }
+        ? {
+            id: USER_ID,
+            full_name: "Dr Test",
+            grade: "consultant",
+            email: null,
+            active: true,
+            left_at: null,
+          }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
     case "theatres":
       return [];
@@ -169,7 +180,7 @@ vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
   return {
     ...actual,
-    streamText: (opts: { tools: Record<string, any> }) => {
+    streamText: (opts: { tools: Record<string, Dyn> }) => {
       return {
         toUIMessageStreamResponse: async () => {
           const wb = opts.tools?.get_my_wellbeing_score;
@@ -204,9 +215,12 @@ beforeAll(() => {
 });
 afterAll(() => vi.useRealTimers());
 
-async function askChat(): Promise<{ assistantText: string; tool: any }> {
+async function askChat(): Promise<{
+  assistantText: string;
+  tool: { score: number; active_exception_count: number; [k: string]: unknown };
+}> {
   const mod = await import("./chat");
-  const handler = (mod.Route as any).options.server.handlers.POST as (ctx: {
+  const handler = (mod.Route as unknown as Dyn).options.server.handlers.POST as unknown as (ctx: {
     request: Request;
   }) => Promise<Response>;
   const req = new Request("http://x/api/chat", {
@@ -233,7 +247,10 @@ async function askChat(): Promise<{ assistantText: string; tool: any }> {
   });
   const res = await handler({ request: req });
   expect(res.status).toBe(200);
-  return (await res.json()) as { assistantText: string; tool: any };
+  return (await res.json()) as {
+    assistantText: string;
+    tool: { score: number; active_exception_count: number; [k: string]: unknown };
+  };
 }
 
 function makeExceptions(status: string): ExcRow[] {

@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDateWithWeekdayGB } from "@/lib/utils";
+import { formatDateWithWeekdayGB, formatDateTimeGB, formatDateGB } from "@/lib/utils";
 
 const SESSION_LABEL: Record<string, string> = {
   am: "AM",
@@ -67,7 +67,7 @@ export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: st
                 ? ` Next run continues from ${formatDateWithWeekdayGB(data.cursor)}.`
                 : ""}
               {data.lastRunAt
-                ? ` Last run ${new Date(data.lastRunAt).toLocaleString("en-GB")}.`
+                ? ` Last run ${formatDateTimeGB(data.lastRunAt)}.`
                 : " It has not run yet."}
             </p>
             {data.lastError ? (
@@ -94,7 +94,7 @@ export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: st
                   ? ` This week's pass continues from ${formatDateWithWeekdayGB(data.weekly.cursor)}.`
                   : " The current pass is complete."}
                 {data.weekly.nextPassAt
-                  ? ` Next pass due ${new Date(data.weekly.nextPassAt).toLocaleDateString("en-GB")}.`
+                  ? ` Next pass due ${formatDateGB(data.weekly.nextPassAt)}.`
                   : ""}
               </p>
               {data.weekly.pausedReason ? (
