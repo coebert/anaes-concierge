@@ -10,8 +10,18 @@ export type TutorialAuditAlert = {
   audit_count: number;
   created_at: string;
   acknowledged_at: string | null;
-  missingFromAudit: Array<{ staffName: string; session_date: string; session: string; label: string | null }>;
-  extraInAudit: Array<{ staffName: string; session_date: string; session: string; label: string | null }>;
+  missingFromAudit: Array<{
+    staffName: string;
+    session_date: string;
+    session: string;
+    label: string | null;
+  }>;
+  extraInAudit: Array<{
+    staffName: string;
+    session_date: string;
+    session: string;
+    label: string | null;
+  }>;
 };
 
 export type TutorialAuditStatus = {
@@ -35,7 +45,10 @@ export type TutorialAuditStatus = {
   }>;
 };
 
-async function assertCoordinator(context: { supabase: typeof import("@/integrations/supabase/client").supabase; userId: string }) {
+async function assertCoordinator(context: {
+  supabase: typeof import("@/integrations/supabase/client").supabase;
+  userId: string;
+}) {
   const { data: roles, error } = await context.supabase
     .from("user_roles")
     .select("role")
@@ -90,7 +103,8 @@ export const getTutorialAuditStatus = createServerFn({ method: "POST" })
           audit_count: a.audit_count as number,
           created_at: a.created_at as string,
           acknowledged_at: (a.acknowledged_at as string | null) ?? null,
-          missingFromAudit: (details.missingFromAudit ?? []) as TutorialAuditAlert["missingFromAudit"],
+          missingFromAudit: (details.missingFromAudit ??
+            []) as TutorialAuditAlert["missingFromAudit"],
           extraInAudit: (details.extraInAudit ?? []) as TutorialAuditAlert["extraInAudit"],
         };
       }),
@@ -100,7 +114,7 @@ export const getTutorialAuditStatus = createServerFn({ method: "POST" })
 
 export const acknowledgeTutorialAuditAlert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .inputValidator((data) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     await assertCoordinator(context);
     const { error } = await context.supabase

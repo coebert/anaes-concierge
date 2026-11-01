@@ -1,9 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { ChevronLeft, FlaskConical } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import {
-  computeRobustness, riskColor, type ExtraAbsence, type Grade,
+  computeRobustness,
+  riskColor,
+  type ExtraAbsence,
+  type Grade,
 } from "@/features/audit/robustness";
 import { PageLoading } from "@/components/loading";
 
@@ -25,13 +26,19 @@ const WEEKS_VISIBLE = 4;
 function SimulatePage() {
   const [offsetWeeks, setOffsetWeeks] = useState(0);
   const [extra, setExtra] = useState<Record<Grade, number>>({
-    consultant: 0, sas: 0, trainee: 0, unknown: 0,
+    consultant: 0,
+    sas: 0,
+    trainee: 0,
+    unknown: 0,
   });
 
-  const { rangeStart, rangeEnd } = useMemo(() => ({
-    rangeStart: addDaysISO(offsetWeeks * 7),
-    rangeEnd: addDaysISO(offsetWeeks * 7 + WEEKS_VISIBLE * 7 - 1),
-  }), [offsetWeeks]);
+  const { rangeStart, rangeEnd } = useMemo(
+    () => ({
+      rangeStart: addDaysISO(offsetWeeks * 7),
+      rangeEnd: addDaysISO(offsetWeeks * 7 + WEEKS_VISIBLE * 7 - 1),
+    }),
+    [offsetWeeks],
+  );
 
   const absences: ExtraAbsence[] = (Object.entries(extra) as [Grade, number][])
     .filter(([, n]) => n > 0)
@@ -77,8 +84,8 @@ function SimulatePage() {
             What-if simulator
           </h1>
           <p className="text-sm text-muted-foreground">
-            Add hypothetical absences by staff group and see which days tip into
-            shortfall in the next {WEEKS_VISIBLE} weeks.
+            Add hypothetical absences by staff group and see which days tip into shortfall in the
+            next {WEEKS_VISIBLE} weeks.
           </p>
         </div>
         <Badge variant="secondary">
@@ -118,11 +125,21 @@ function SimulatePage() {
       </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => Math.max(0, o - WEEKS_VISIBLE))}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks((o) => Math.max(0, o - WEEKS_VISIBLE))}
+        >
           Earlier
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks(0)}>Today</Button>
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}>
+        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks(0)}>
+          Today
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}
+        >
           Later
         </Button>
       </div>
@@ -147,10 +164,18 @@ function SimulatePage() {
                 <thead className="text-muted-foreground">
                   <tr>
                     <th className="px-2 py-1 text-left font-medium">Date</th>
-                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>AM headroom</th>
-                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>AM SPA <span className="font-normal opacity-70">(separate)</span></th>
-                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>PM headroom</th>
-                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>PM SPA <span className="font-normal opacity-70">(separate)</span></th>
+                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>
+                      AM headroom
+                    </th>
+                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>
+                      AM SPA <span className="font-normal opacity-70">(separate)</span>
+                    </th>
+                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>
+                      PM headroom
+                    </th>
+                    <th className="px-2 py-1 text-center font-medium" colSpan={2}>
+                      PM SPA <span className="font-normal opacity-70">(separate)</span>
+                    </th>
                     <th className="px-2 py-1 text-left font-medium">Verdict</th>
                   </tr>
                   <tr>
@@ -170,38 +195,59 @@ function SimulatePage() {
                   {rows.map(({ base, sim: s }) => {
                     const amTipped = s.am.risk === "shortfall" && base.am.risk !== "shortfall";
                     const pmTipped = s.pm.risk === "shortfall" && base.pm.risk !== "shortfall";
-                    const verdict = amTipped || pmTipped
-                      ? "New shortfall"
-                      : s.am.risk === "shortfall" || s.pm.risk === "shortfall"
-                      ? "Already at risk"
-                      : s.am.risk === "tight" || s.pm.risk === "tight"
-                      ? "Tight"
-                      : "OK";
+                    const verdict =
+                      amTipped || pmTipped
+                        ? "New shortfall"
+                        : s.am.risk === "shortfall" || s.pm.risk === "shortfall"
+                          ? "Already at risk"
+                          : s.am.risk === "tight" || s.pm.risk === "tight"
+                            ? "Tight"
+                            : "OK";
                     return (
                       <tr key={base.date} className="border-t">
                         <td className="px-2 py-1.5">{formatDateGB(base.date)}</td>
                         <td className="px-2 py-1.5 text-center">{base.am.headroom}</td>
                         <td className="px-2 py-1.5 text-center">
-                          <span className={cn("inline-block min-w-[2rem] rounded px-1.5 py-0.5 font-medium", riskColor(s.am.risk))}>
+                          <span
+                            className={cn(
+                              "inline-block min-w-[2rem] rounded px-1.5 py-0.5 font-medium",
+                              riskColor(s.am.risk),
+                            )}
+                          >
                             {s.am.headroom}
                           </span>
                         </td>
-                        <td className="px-2 py-1.5 text-center text-orange-700">{base.am.consultantsOnSpa}</td>
-                        <td className="px-2 py-1.5 text-center text-orange-700">{s.am.consultantsOnSpa}</td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">
+                          {base.am.consultantsOnSpa}
+                        </td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">
+                          {s.am.consultantsOnSpa}
+                        </td>
                         <td className="px-2 py-1.5 text-center">{base.pm.headroom}</td>
                         <td className="px-2 py-1.5 text-center">
-                          <span className={cn("inline-block min-w-[2rem] rounded px-1.5 py-0.5 font-medium", riskColor(s.pm.risk))}>
+                          <span
+                            className={cn(
+                              "inline-block min-w-[2rem] rounded px-1.5 py-0.5 font-medium",
+                              riskColor(s.pm.risk),
+                            )}
+                          >
                             {s.pm.headroom}
                           </span>
                         </td>
-                        <td className="px-2 py-1.5 text-center text-orange-700">{base.pm.consultantsOnSpa}</td>
-                        <td className="px-2 py-1.5 text-center text-orange-700">{s.pm.consultantsOnSpa}</td>
-                        <td className={cn(
-                          "px-2 py-1.5 font-medium",
-                          verdict === "New shortfall" && "text-red-600",
-                          verdict === "Already at risk" && "text-red-500/80",
-                          verdict === "Tight" && "text-warning",
-                        )}>
+                        <td className="px-2 py-1.5 text-center text-orange-700">
+                          {base.pm.consultantsOnSpa}
+                        </td>
+                        <td className="px-2 py-1.5 text-center text-orange-700">
+                          {s.pm.consultantsOnSpa}
+                        </td>
+                        <td
+                          className={cn(
+                            "px-2 py-1.5 font-medium",
+                            verdict === "New shortfall" && "text-red-600",
+                            verdict === "Already at risk" && "text-red-500/80",
+                            verdict === "Tight" && "text-warning",
+                          )}
+                        >
                           {verdict}
                         </td>
                       </tr>

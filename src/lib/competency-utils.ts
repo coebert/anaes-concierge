@@ -28,12 +28,9 @@ export function computeProgress(
     const done_solo = filtered.filter((a) => a.role_on_list === "solo").length;
     const done_supervised = filtered.filter((a) => a.role_on_list === "supervised").length;
     const done_total = done_solo + done_supervised;
-    const requiredTotal =
-      t.required_sessions || t.required_solo + t.required_supervised;
+    const requiredTotal = t.required_sessions || t.required_solo + t.required_supervised;
     const soloPct = t.required_solo ? Math.min(done_solo / t.required_solo, 1) : 1;
-    const supPct = t.required_supervised
-      ? Math.min(done_supervised / t.required_supervised, 1)
-      : 1;
+    const supPct = t.required_supervised ? Math.min(done_supervised / t.required_supervised, 1) : 1;
     const totalPct = requiredTotal ? Math.min(done_total / requiredTotal, 1) : 1;
     const percent = Math.round(((soloPct + supPct + totalPct) / 3) * 100);
     return {

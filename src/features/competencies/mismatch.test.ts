@@ -3,23 +3,40 @@ import { computeCompetencyMismatch } from "./mismatch";
 import type { Competency, CompetencyRequirement, StaffCompetency } from "./competencies";
 
 const comp = (id: string, name = id): Competency => ({
-  id, code: id.toUpperCase(), name, description: null,
-  category: "subspecialty", applies_to_grades: [], active: true, sort_order: 0,
+  id,
+  code: id.toUpperCase(),
+  name,
+  description: null,
+  category: "subspecialty",
+  applies_to_grades: [],
+  active: true,
+  sort_order: 0,
 });
 const req = (
-  specialty_id: string, competency_id: string,
+  specialty_id: string,
+  competency_id: string,
   requirement: "required" | "recommended" = "required",
   applies_to_role: "solo" | "supervising" | "any" = "solo",
 ): CompetencyRequirement => ({
   id: `${specialty_id}-${competency_id}-${applies_to_role}`,
-  specialty_id, competency_id, requirement, applies_to_role,
+  specialty_id,
+  competency_id,
+  requirement,
+  applies_to_role,
 });
 const hold = (
-  staff_id: string, competency_id: string,
+  staff_id: string,
+  competency_id: string,
   overrides: Partial<StaffCompetency> = {},
 ): StaffCompetency => ({
-  id: `${staff_id}-${competency_id}`, staff_id, competency_id, level: null,
-  granted_at: "2020-01-01", expires_at: null, revoked_at: null, notes: null,
+  id: `${staff_id}-${competency_id}`,
+  staff_id,
+  competency_id,
+  level: null,
+  granted_at: "2020-01-01",
+  expires_at: null,
+  revoked_at: null,
+  notes: null,
   ...overrides,
 });
 
@@ -55,7 +72,8 @@ describe("computeCompetencyMismatch", () => {
 
   it("does not block for supervising role with supervised-only holding", () => {
     const out = computeCompetencyMismatch({
-      ...base, role: "supervising",
+      ...base,
+      role: "supervising",
       requirements: [req("spec", "c1", "required", "supervising")],
       staffCompetencies: [hold("s1", "c1", { level: "supervised" })],
     });
@@ -88,10 +106,7 @@ describe("computeCompetencyMismatch", () => {
   it("sorts blockers first, then required, then recommended", () => {
     const out = computeCompetencyMismatch({
       ...base,
-      requirements: [
-        req("spec", "c2", "recommended"),
-        req("spec", "c1", "required"),
-      ],
+      requirements: [req("spec", "c2", "recommended"), req("spec", "c1", "required")],
       staffCompetencies: [hold("s1", "c1", { level: "independent" })],
       // c1 held (ok), c2 missing (but recommended, non-blocking)
     });

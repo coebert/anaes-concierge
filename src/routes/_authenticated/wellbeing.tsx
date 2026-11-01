@@ -19,10 +19,7 @@ import { PulseSurveyDialog, type PulseCycle } from "@/components/wellbeing/Pulse
 import { RecognitionDialog } from "@/components/wellbeing/RecognitionDialog";
 import { HeartHandshake, MessageCircleHeart, Sparkles } from "lucide-react";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
-import {
-  WellbeingMetricGuide,
-  WELLBEING_DRIVER_LABEL,
-} from "@/components/wellbeing/MetricsGuide";
+import { WellbeingMetricGuide, WELLBEING_DRIVER_LABEL } from "@/components/wellbeing/MetricsGuide";
 
 export const Route = createFileRoute("/_authenticated/wellbeing")({
   head: () => ({
@@ -65,7 +62,11 @@ export function WellbeingPage() {
                 .order("session_date", { ascending: true }),
             { budget, source: "rota_assignments" },
           ),
-          fetchAllPaged<{ staff_id: string | null; session_date: string; hours_before_session: number | null }>(
+          fetchAllPaged<{
+            staff_id: string | null;
+            session_date: string;
+            hours_before_session: number | null;
+          }>(
             () =>
               supabase
                 .from("rota_change_log")
@@ -88,7 +89,9 @@ export function WellbeingPage() {
             () =>
               supabase
                 .from("leave_requests")
-                .select("staff_id,type,status,start_date,end_date,decided_at,half_day_start,half_day_end")
+                .select(
+                  "staff_id,type,status,start_date,end_date,decided_at,half_day_start,half_day_end",
+                )
                 .eq("staff_id", user!.id)
                 .order("end_date", { ascending: false }),
             { budget, source: "leave_requests" },
@@ -110,15 +113,10 @@ export function WellbeingPage() {
             .eq("active", true)
             .order("opens_at", { ascending: false })
             .limit(1),
-          supabase
-            .from("pulse_survey_responses")
-            .select("cycle_id")
-            .eq("staff_id", user!.id),
-          supabase
-            .rpc("get_recognition_decrypted", { p_staff_id: user!.id, p_limit: 20 }),
+          supabase.from("pulse_survey_responses").select("cycle_id").eq("staff_id", user!.id),
+          supabase.rpc("get_recognition_decrypted", { p_staff_id: user!.id, p_limit: 20 }),
         ]);
       reportQueryBudget(budget);
-
 
       return {
         assignments,
@@ -140,9 +138,7 @@ export function WellbeingPage() {
 
   const wellbeing = useMemo(() => {
     if (!data || !user) return null;
-    const sickSpells = data.leave.filter(
-      (l) => l.type === "sick" && l.status === "approved",
-    );
+    const sickSpells = data.leave.filter((l) => l.type === "sick" && l.status === "approved");
     const bradford = computeBradfordFactor(
       sickSpells.map((s) => ({
         start_date: s.start_date,
@@ -153,8 +149,16 @@ export function WellbeingPage() {
     );
     return computeWellbeing({
       staffId: user.id,
-      assignments: data.assignments as Array<{ staff_id: string; session_date: string; session: string }>,
-      changes: data.changes as Array<{ staff_id: string; session_date: string; hours_before_session: number | null }>,
+      assignments: data.assignments as Array<{
+        staff_id: string;
+        session_date: string;
+        session: string;
+      }>,
+      changes: data.changes as Array<{
+        staff_id: string;
+        session_date: string;
+        hours_before_session: number | null;
+      }>,
       leave: data.leave,
       exceptions: data.exceptions.map((e) => ({
         staff_id: (e as { trainee_id: string }).trainee_id,
@@ -201,9 +205,7 @@ export function WellbeingPage() {
     );
   }
 
-  const alreadyResponded =
-    data?.openCycle && data.respondedCycleIds.has(data.openCycle.id);
-
+  const alreadyResponded = data?.openCycle && data.respondedCycleIds.has(data.openCycle.id);
 
   return (
     <div className="space-y-6">
@@ -231,8 +233,6 @@ export function WellbeingPage() {
           Refreshing your wellbeing score…
         </div>
       ) : null}
-
-
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -283,19 +283,17 @@ export function WellbeingPage() {
               {data?.openCycle ? (
                 alreadyResponded ? (
                   <p className="text-sm text-muted-foreground">
-                    Thanks — your response for the current cycle is saved. Reopen
-                    the survey to update it.
+                    Thanks — your response for the current cycle is saved. Reopen the survey to
+                    update it.
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    A pulse survey is open until{" "}
-                    {formatDateWithWeekdayGB(data.openCycle.closes_at)}.
+                    A pulse survey is open until {formatDateWithWeekdayGB(data.openCycle.closes_at)}
+                    .
                   </p>
                 )
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No pulse survey open at the moment.
-                </p>
+                <p className="text-sm text-muted-foreground">No pulse survey open at the moment.</p>
               )}
               <Button
                 className="mt-3 w-full"
@@ -320,7 +318,10 @@ export function WellbeingPage() {
           {data && data.recognition.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               No kudos yet — but it only takes a moment to{" "}
-              <a href="/recognition" className="underline">send one to a colleague</a>.
+              <a href="/recognition" className="underline">
+                send one to a colleague
+              </a>
+              .
             </p>
           ) : (
             <div className="space-y-2">
@@ -334,10 +335,14 @@ export function WellbeingPage() {
                       {formatDateWithWeekdayGB(r.created_at.slice(0, 10))}
                     </span>
                     {!r.is_public && (
-                      <Badge variant="outline" className="text-xs">Private</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Private
+                      </Badge>
                     )}
                   </div>
-                  <div>{r.message ?? <em className="text-muted-foreground">Message not available.</em>}</div>
+                  <div>
+                    {r.message ?? <em className="text-muted-foreground">Message not available.</em>}
+                  </div>
                 </div>
               ))}
             </div>
@@ -353,8 +358,6 @@ export function WellbeingPage() {
       </Card>
 
       <WellbeingMetricGuide />
-
-
 
       <PulseSurveyDialog
         open={pulseOpen}

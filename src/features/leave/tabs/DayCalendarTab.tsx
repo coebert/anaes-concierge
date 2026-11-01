@@ -1,13 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -19,11 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { cn, formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
@@ -61,9 +51,7 @@ export function DayCalendarTab({
         const q = nameFilter.trim().toLowerCase();
         return (profile?.full_name ?? "").toLowerCase().includes(q);
       })
-      .sort((a, b) =>
-        compareBySurname(a.profile?.full_name, b.profile?.full_name),
-      );
+      .sort((a, b) => compareBySurname(a.profile?.full_name, b.profile?.full_name));
   }, [activeRows, profileById, pickedIso, nameFilter]);
 
   const breakdown = useMemo(() => {
@@ -233,7 +221,9 @@ export function DayCalendarTab({
                     <TableCell className="capitalize">{row.type}</TableCell>
                     <TableCell className="font-mono text-xs">
                       {formatDateGB(row.start_date)}
-                      {row.half_day_start ? ` (${row.half_day_start === "am" ? "PM only" : "AM only"})` : ""}
+                      {row.half_day_start
+                        ? ` (${row.half_day_start === "am" ? "PM only" : "AM only"})`
+                        : ""}
                       {" → "}
                       {formatDateGB(row.end_date)}
                       {row.half_day_end ? ` (${row.half_day_end} only)` : ""}

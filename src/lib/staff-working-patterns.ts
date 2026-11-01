@@ -68,12 +68,7 @@ export type LocationBucket =
   | "leave"
   | "other";
 
-
-const ICU_DUTIES = new Set<string>([
-  "icu_ct2_plus",
-  "icu_trainee",
-  "icu_consultant_oncall",
-]);
+const ICU_DUTIES = new Set<string>(["icu_ct2_plus", "icu_trainee", "icu_consultant_oncall"]);
 
 const OBSTETRICS_DUTIES = new Set<string>(["obstetrics", "obstetrics_2nd"]);
 
@@ -82,9 +77,7 @@ const CONSULTANT_ONCALL_THEATRE_DUTIES = new Set<string>([
   "consultant_in_charge",
   "nhh_oncall",
 ]);
-const CONSULTANT_ONCALL_ICU_DUTIES = new Set<string>([
-  "icu_consultant_oncall",
-]);
+const CONSULTANT_ONCALL_ICU_DUTIES = new Set<string>(["icu_consultant_oncall"]);
 
 const NON_WORKING_ONCALL = new Set<string>([
   ...CONSULTANT_ONCALL_THEATRE_DUTIES,
@@ -142,7 +135,6 @@ export const LOCATION_ORDER: LocationBucket[] = [
   "leave",
   "other",
 ];
-
 
 export interface StaffSummary {
   staff_id: string;
@@ -294,10 +286,10 @@ export function computeConsultantPattern(
     totalWorkingSessions: totalWorking,
     totalOnCallSessions: totalOnCall,
     totalSpaSessions:
-      spaAmDates.reduce((n, s) => n + s.size, 0) +
-      spaPmDates.reduce((n, s) => n + s.size, 0),
-    spaCountsByWeekday: Array.from({ length: 7 }, (_, d) =>
-      spaAmDates[d].size + spaPmDates[d].size,
+      spaAmDates.reduce((n, s) => n + s.size, 0) + spaPmDates.reduce((n, s) => n + s.size, 0),
+    spaCountsByWeekday: Array.from(
+      { length: 7 },
+      (_, d) => spaAmDates[d].size + spaPmDates[d].size,
     ),
     onCallCountsByWeekday: Array.from({ length: 7 }, (_, d) => onCallDates[d].size),
     regularityThreshold: threshold,
@@ -417,9 +409,7 @@ export function dominantByHalfSession(
     const dow = d.getUTCDay();
     const half = (a.session ?? "").toLowerCase() as "am" | "pm" | "";
     if (half !== "am" && half !== "pm") continue;
-    const session = a.theatre_session_id
-      ? (sessionsById.get(a.theatre_session_id) ?? null)
-      : null;
+    const session = a.theatre_session_id ? (sessionsById.get(a.theatre_session_id) ?? null) : null;
     const bucket = classifyLocation(a, session, theatresById);
 
     const map = buckets[half][dow];
@@ -450,4 +440,3 @@ export function dominantByHalfSession(
   }
   return result;
 }
-

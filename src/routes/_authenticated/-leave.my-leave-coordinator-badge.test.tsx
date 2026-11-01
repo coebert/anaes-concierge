@@ -52,9 +52,7 @@ describe("My leave tab — coordinator/admin scope indicator", () => {
     const trigger = screen.getByRole("tab", { name: /my leave/i });
     expect(within(trigger).queryByText(/personal view/i)).toBeNull();
 
-    expect(
-      screen.getByText("All your leave requests and their current status."),
-    ).toBeTruthy();
+    expect(screen.getByText("All your leave requests and their current status.")).toBeTruthy();
     expect(screen.queryByText(/as a coordinator\/admin/i)).toBeNull();
   });
 
@@ -73,8 +71,6 @@ describe("My leave tab — coordinator/admin scope indicator", () => {
     ).toBeTruthy();
 
     // The neutral copy MUST NOT also appear.
-    expect(
-      screen.queryByText("All your leave requests and their current status."),
-    ).toBeNull();
+    expect(screen.queryByText("All your leave requests and their current status.")).toBeNull();
   });
 });

@@ -64,7 +64,6 @@ function defaultLeaveYearStart(today = new Date()): string {
   return `${beforeApril ? y - 1 : y}-04-01`;
 }
 
-
 export const Route = createFileRoute("/_authenticated/coordinator/leave")({
   head: () => ({ meta: [{ title: "Coordinator — Leave — Salisbury Anaesthetics Rota" }] }),
   component: ApproveLeavePage,
@@ -95,18 +94,22 @@ function ApproveLeavePage() {
           .select("staff_id, leave_year_start, study_days, study_budget_gbp")
           .in("staff_id", staffIds),
       ]);
-      setProfiles(Object.fromEntries(
-        (profRes.data ?? []).map((p) => [
-          p.id,
-          { name: p.full_name || p.email, grade: p.grade ?? null } as StaffProfile,
-        ]),
-      ));
+      setProfiles(
+        Object.fromEntries(
+          (profRes.data ?? []).map((p) => [
+            p.id,
+            { name: p.full_name || p.email, grade: p.grade ?? null } as StaffProfile,
+          ]),
+        ),
+      );
       setAllowances((allowanceRes.data ?? []) as AllowanceRow[]);
     }
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   const filtered = rows.filter((r) =>
     tab === "pending" ? r.status === "pending" : r.status !== "pending",
@@ -114,17 +117,18 @@ function ApproveLeavePage() {
 
   // Rows needed for study-budget aggregation, in the shape the pure helper expects.
   const studyLeaveRows: StudyLeaveRow[] = useMemo(
-    () => rows.map((r) => ({
-      id: r.id,
-      staff_id: r.staff_id,
-      type: r.type,
-      status: r.status,
-      start_date: r.start_date,
-      end_date: r.end_date,
-      half_day_start: r.half_day_start,
-      half_day_end: r.half_day_end,
-      study_cost_gbp: r.study_cost_gbp,
-    })),
+    () =>
+      rows.map((r) => ({
+        id: r.id,
+        staff_id: r.staff_id,
+        type: r.type,
+        status: r.status,
+        start_date: r.start_date,
+        end_date: r.end_date,
+        half_day_start: r.half_day_start,
+        half_day_end: r.half_day_end,
+        study_cost_gbp: r.study_cost_gbp,
+      })),
     [rows],
   );
   const allowanceByStaff = useMemo(() => {
@@ -138,13 +142,17 @@ function ApproveLeavePage() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Approve leave</h1>
-        <p className="text-sm text-muted-foreground">Pending requests with cover-impact analysis.</p>
+        <p className="text-sm text-muted-foreground">
+          Pending requests with cover-impact analysis.
+        </p>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="pending">
-            Pending {rows.filter((r) => r.status === "pending").length > 0 && `(${rows.filter((r) => r.status === "pending").length})`}
+            Pending{" "}
+            {rows.filter((r) => r.status === "pending").length > 0 &&
+              `(${rows.filter((r) => r.status === "pending").length})`}
           </TabsTrigger>
           <TabsTrigger value="decided">Decided</TabsTrigger>
         </TabsList>
@@ -172,7 +180,6 @@ function ApproveLeavePage() {
   );
 }
 
-
 function LeaveCard({
   row,
   profile,
@@ -193,6 +200,8 @@ function LeaveCard({
   const staffName = profile.name;
   const notifyDecided = useServerFn(notifyLeaveDecided);
   const [conflicts, setConflicts] = useState<LeaveConflict[] | null>(null);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictAttempt, setConflictAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [acting, setActing] = useState(false);
@@ -208,21 +217,27 @@ function LeaveCard({
   }, [costInput]);
 
   const baseBudget = useMemo(
-    () => (isStudy
-      ? computeStudyBudget(row.staff_id, studyRows, allowance, yearStart, row.id)
-      : null),
+    () =>
+      isStudy ? computeStudyBudget(row.staff_id, studyRows, allowance, yearStart, row.id) : null,
     [isStudy, row.staff_id, row.id, studyRows, allowance, yearStart],
   );
   const previewBudget = useMemo(
-    () => (baseBudget
-      ? previewAfterDecision(baseBudget, { days: requestDays, costGbp: requestCostGbp }, "approved")
-      : null),
+    () =>
+      baseBudget
+        ? previewAfterDecision(
+            baseBudget,
+            { days: requestDays, costGbp: requestCostGbp },
+            "approved",
+          )
+        : null,
     [baseBudget, requestDays, requestCostGbp],
   );
 
   useEffect(() => {
     if (row.status !== "pending") return;
     setLoading(true);
+    setConflictError(null);
+    setConflicts(null);
     void computeLeaveConflicts(
       row.staff_id,
       row.start_date,
@@ -230,8 +245,11 @@ function LeaveCard({
       (row.half_day_start as "am" | "pm" | null) ?? null,
       (row.half_day_end as "am" | "pm" | null) ?? null,
       row.id,
-    ).then((c) => { setConflicts(c); setLoading(false); });
-  }, [row.id]);
+    )
+      .then((c) => setConflicts(c))
+      .catch((e: unknown) => setConflictError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  }, [row.id, conflictAttempt]);
 
   const persistCost = async (): Promise<boolean> => {
     if (!isStudy) return true;
@@ -242,7 +260,10 @@ function LeaveCard({
       .from("leave_requests")
       .update({ study_cost_gbp: next })
       .eq("id", row.id);
-    if (error) { toast.error(error.message); return false; }
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
     return true;
   };
 
@@ -250,7 +271,10 @@ function LeaveCard({
     if (!user) return;
     setActing(true);
     const costOk = await persistCost();
-    if (!costOk) { setActing(false); return; }
+    if (!costOk) {
+      setActing(false);
+      return;
+    }
     // Optimistic path — patches every mounted wellbeing cache
     // (`["my-wellbeing", ...]` + `["admin-wellbeing"]`) BEFORE the
     // Supabase round-trip so the personal card and admin retention
@@ -267,16 +291,19 @@ function LeaveCard({
         decision_notes: notes || null,
         ...(reserveList ? { reserve_listed_at: reserveListedAt } : {}),
       },
-      supabase: supabase as unknown as Parameters<typeof optimisticUpdateLeaveStatus>[0]["supabase"],
+      supabase: supabase as unknown as Parameters<
+        typeof optimisticUpdateLeaveStatus
+      >[0]["supabase"],
       qc,
     });
     setActing(false);
     if (!result.ok) return toast.error(result.error.message);
     toast.success(reserveList ? "Rejected & placed on reserve list" : `Leave ${status}`);
-    void notifyDecided({ data: { leaveId: row.id } }).catch((e) => console.error("notify failed", e));
+    void notifyDecided({ data: { leaveId: row.id } }).catch((e) =>
+      console.error("notify failed", e),
+    );
     onChanged();
   };
-
 
   const ownConflicts = (conflicts ?? []).filter((c) => c.type === "rota_assignment");
   const otherConflicts = (conflicts ?? []).filter((c) => c.type === "other_leave");
@@ -289,7 +316,9 @@ function LeaveCard({
             <CardTitle className="text-base">{staffName}</CardTitle>
             <div className="text-xs text-muted-foreground mt-1">
               <span className="capitalize">{row.type}</span> · {formatDateGB(row.start_date)}
-              {row.half_day_start ? ` (${row.half_day_start === "am" ? "PM only" : "AM only"})` : ""}
+              {row.half_day_start
+                ? ` (${row.half_day_start === "am" ? "PM only" : "AM only"})`
+                : ""}
               {" → "}
               {formatDateGB(row.end_date)}
               {row.half_day_end ? ` (${row.half_day_end} only)` : ""}
@@ -297,7 +326,13 @@ function LeaveCard({
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge
-              variant={row.status === "approved" ? "default" : row.status === "pending" ? "secondary" : "destructive"}
+              variant={
+                row.status === "approved"
+                  ? "default"
+                  : row.status === "pending"
+                    ? "secondary"
+                    : "destructive"
+              }
               className="capitalize"
             >
               {row.status}
@@ -317,6 +352,22 @@ function LeaveCard({
           <>
             {loading ? (
               <p className="text-xs text-muted-foreground">Checking cover…</p>
+            ) : conflictError || conflicts === null ? (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Cover could not be checked</AlertTitle>
+                <AlertDescription className="text-xs">
+                  Rota conflicts are unknown — this is not the same as "no conflicts".{" "}
+                  {conflictError}{" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => setConflictAttempt((n) => n + 1)}
+                  >
+                    Retry
+                  </button>
+                </AlertDescription>
+              </Alert>
             ) : (
               <>
                 {ownConflicts.length > 0 ? (
@@ -326,7 +377,10 @@ function LeaveCard({
                     <AlertDescription>
                       <ul className="mt-1 list-disc pl-5 text-xs">
                         {ownConflicts.map((c, i) => (
-                          <li key={i}>{formatDateGB(c.date)} · {c.session.toUpperCase()} · {c.theatre ?? "—"} ({c.role})</li>
+                          <li key={i}>
+                            {formatDateGB(c.date)} · {c.session.toUpperCase()} · {c.theatre ?? "—"}{" "}
+                            ({c.role})
+                          </li>
                         ))}
                       </ul>
                     </AlertDescription>
@@ -367,7 +421,8 @@ function LeaveCard({
                     />
                   </div>
                   <div className="text-xs text-muted-foreground sm:text-right">
-                    {requestDays.toFixed(requestDays % 1 === 0 ? 0 : 1)} working day{requestDays === 1 ? "" : "s"} requested
+                    {requestDays.toFixed(requestDays % 1 === 0 ? 0 : 1)} working day
+                    {requestDays === 1 ? "" : "s"} requested
                   </div>
                 </div>
                 <StudyLeaveBudgetCard
@@ -386,15 +441,24 @@ function LeaveCard({
               rows={2}
             />
 
-
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => decide("approved")} disabled={acting}>
                 <Check className="mr-1 h-4 w-4" /> Approve
               </Button>
-              <Button size="sm" variant="destructive" onClick={() => decide("rejected")} disabled={acting}>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => decide("rejected")}
+                disabled={acting}
+              >
                 <X className="mr-1 h-4 w-4" /> Reject
               </Button>
-              <Button size="sm" variant="outline" onClick={() => decide("rejected", true)} disabled={acting}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => decide("rejected", true)}
+                disabled={acting}
+              >
                 Reject & place on reserve list
               </Button>
             </div>
@@ -404,12 +468,21 @@ function LeaveCard({
         {row.status !== "pending" && isStudy && baseBudget && row.study_cost_gbp != null && (
           <div className="text-xs text-muted-foreground">
             <span className="font-medium">Study cost:</span>{" "}
-            {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })
-              .format(Number(row.study_cost_gbp))}
+            {new Intl.NumberFormat("en-GB", {
+              style: "currency",
+              currency: "GBP",
+              maximumFractionDigits: 0,
+            }).format(Number(row.study_cost_gbp))}
             {" · "}
             <span className="font-medium">Budget left this year:</span>{" "}
-            {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 })
-              .format(baseBudget.remainingGbp - (row.status === "approved" ? Number(row.study_cost_gbp) : 0))}
+            {new Intl.NumberFormat("en-GB", {
+              style: "currency",
+              currency: "GBP",
+              maximumFractionDigits: 0,
+            }).format(
+              baseBudget.remainingGbp -
+                (row.status === "approved" ? Number(row.study_cost_gbp) : 0),
+            )}
           </div>
         )}
 

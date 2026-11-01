@@ -92,3 +92,45 @@ CREATE ROLE postgres SUPERUSER NOLOGIN;
 -- Live pre-existing BEFORE UPDATE trigger (function body replaced by migration 0000).
 CREATE FUNCTION enforce_leave_request_update_rules() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$;
 CREATE TRIGGER trg_enforce_leave_request_update_rules BEFORE UPDATE ON leave_requests FOR EACH ROW EXECUTE FUNCTION enforce_leave_request_update_rules();
+-- Live encrypted shadow columns + encryption sync trigger (same name/order as live).
+ALTER TABLE leave_requests ADD COLUMN reason_enc bytea, ADD COLUMN decision_notes_enc bytea, ADD COLUMN conflict_notes_enc bytea, ADD COLUMN study_cost_gbp numeric;
+CREATE FUNCTION encrypt_text(p text) RETURNS bytea LANGUAGE sql IMMUTABLE AS $$ SELECT CASE WHEN p IS NULL THEN NULL ELSE convert_to('ENC:' || p, 'UTF8') END $$;
+CREATE FUNCTION _sync_leave_requests_encryption() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR NEW.reason IS DISTINCT FROM OLD.reason THEN NEW.reason_enc := public.encrypt_text(NEW.reason); END IF;
+  IF TG_OP = 'INSERT' OR NEW.decision_notes IS DISTINCT FROM OLD.decision_notes THEN NEW.decision_notes_enc := public.encrypt_text(NEW.decision_notes); END IF;
+  IF TG_OP = 'INSERT' OR NEW.conflict_notes IS DISTINCT FROM OLD.conflict_notes THEN NEW.conflict_notes_enc := public.encrypt_text(NEW.conflict_notes); END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER leave_requests_sync_encryption BEFORE INSERT OR UPDATE OF reason, decision_notes, conflict_notes ON leave_requests FOR EACH ROW EXECUTE FUNCTION _sync_leave_requests_encryption();
+CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := now(); RETURN NEW; END $$;
+CREATE TRIGGER leave_requests_updated_at BEFORE UPDATE ON leave_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+UPDATE leave_requests SET reason = 'synthetic reason', conflict_notes = 'orig conflict';
+-- Live security_invoker view with non-definer INSTEAD OF trigger.
+CREATE VIEW leave_requests_v WITH (security_invoker = true) AS SELECT id, staff_id, type, start_date, end_date, half_day_start, half_day_end, reason, status, decided_by, decided_at, decision_notes, conflict_notes, created_at, updated_at, reserve_listed_at, clwrota_external_id FROM leave_requests;
+GRANT ALL ON leave_requests_v TO authenticated;
+CREATE FUNCTION _leave_requests_v_update() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  UPDATE public.leave_requests SET staff_id = NEW.staff_id, type = NEW.type, start_date = NEW.start_date, end_date = NEW.end_date,
+    half_day_start = NEW.half_day_start, half_day_end = NEW.half_day_end, reason = NEW.reason, status = NEW.status,
+    decided_by = NEW.decided_by, decided_at = NEW.decided_at, decision_notes = NEW.decision_notes, conflict_notes = NEW.conflict_notes,
+    reserve_listed_at = NEW.reserve_listed_at, clwrota_external_id = NEW.clwrota_external_id, updated_at = now()
+  WHERE id = OLD.id;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER leave_requests_v_update INSTEAD OF UPDATE ON leave_requests_v FOR EACH ROW EXECUTE FUNCTION _leave_requests_v_update();
+-- passkey tables (live shape)
+CREATE TABLE passkey_challenges (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, email_hash bytea, challenge text NOT NULL, purpose text NOT NULL, created_at timestamptz DEFAULT now(), expires_at timestamptz DEFAULT now() + interval '5 minutes');
+CREATE TABLE passkey_credentials (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, credential_id text UNIQUE, public_key text, counter bigint DEFAULT 0, transports text[], device_name text, created_at timestamptz DEFAULT now(), last_used_at timestamptz);
+GRANT ALL ON passkey_challenges, passkey_credentials TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON passkey_credentials TO authenticated;
+ALTER TABLE passkey_credentials ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users insert own passkeys" ON passkey_credentials FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users update own passkeys" ON passkey_credentials FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users read own passkeys" ON passkey_credentials FOR SELECT TO authenticated USING (auth.uid() = user_id);
+INSERT INTO passkey_credentials (user_id, credential_id, public_key) VALUES ('00000000-0000-0000-0000-000000000051', 'cred-s', 'pk');
+INSERT INTO passkey_challenges (id, user_id, challenge, purpose) VALUES
+ ('30000000-0000-0000-0000-000000000001', NULL, 'chal-discoverable', 'authentication'),
+ ('30000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000052', 'chal-for-T', 'authentication');
+INSERT INTO passkey_challenges (id, user_id, challenge, purpose, expires_at) VALUES
+ ('30000000-0000-0000-0000-000000000003', NULL, 'chal-expired', 'authentication', now() - interval '1 minute');

@@ -76,9 +76,7 @@ export function deriveMinRecurrence(threshold: number): number {
  * Reduce the raw rota rows for one staff member into the same shape the
  * card renders and the chat tool returns to the model.
  */
-export function buildCurrentPatternResponse(
-  input: CurrentPatternInput,
-): CurrentPatternResponse {
+export function buildCurrentPatternResponse(input: CurrentPatternInput): CurrentPatternResponse {
   const {
     profile,
     windowDays,
@@ -110,12 +108,7 @@ export function buildCurrentPatternResponse(
         })
       : null;
 
-  const dominant = dominantByHalfSession(
-    assignments,
-    sessionsById,
-    theatresById,
-    minRecurrence,
-  );
+  const dominant = dominantByHalfSession(assignments, sessionsById, theatresById, minRecurrence);
 
   // Mon–Fri only, matching the card's Mon–Fri grid.
   const weeklyGrid = (["am", "pm"] as const).map((half) => ({
@@ -130,18 +123,13 @@ export function buildCurrentPatternResponse(
     }),
   }));
 
-  const locationBreakdown = (
-    Object.entries(summary.byLocation) as [LocationBucket, number][]
-  )
+  const locationBreakdown = (Object.entries(summary.byLocation) as [LocationBucket, number][])
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1])
     .map(([bucket, count]) => ({
       location: LOCATION_LABELS[bucket],
       count,
-      percent:
-        summary.totalSessions > 0
-          ? Math.round((count / summary.totalSessions) * 100)
-          : 0,
+      percent: summary.totalSessions > 0 ? Math.round((count / summary.totalSessions) * 100) : 0,
     }));
 
   const toDays = (arr: number[]) => arr.map((d) => WEEKDAY_LABELS[d]);
@@ -334,11 +322,7 @@ export function expandApprovedLeaveToAssignments(
     const endClipped = row.end_date > windowTo ? windowTo : row.end_date;
     if (startClipped > endClipped) continue;
 
-    for (
-      let iso = startClipped;
-      iso <= endClipped;
-      iso = addDaysIso(iso, 1)
-    ) {
+    for (let iso = startClipped; iso <= endClipped; iso = addDaysIso(iso, 1)) {
       const halves: Array<"am" | "pm"> = ["am", "pm"];
       for (const half of halves) {
         // Honour half-day markers on the first and last day of the request.
@@ -382,4 +366,3 @@ export function applyLeaveOverlay(
   });
   return [...kept, ...leaveAssignments];
 }
-

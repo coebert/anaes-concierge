@@ -3,8 +3,7 @@ import { ensureRotaReportFields } from "./parsing";
 
 describe("ensureRotaReportFields", () => {
   it("appends accepted tutorial fields to an explicit fields= param", () => {
-    const url =
-      "https://central.example/api/rota.json?fields=date,session,person.email,role";
+    const url = "https://central.example/api/rota.json?fields=date,session,person.email,role";
     const out = ensureRotaReportFields(url);
     const params = new URL(out).searchParams.get("fields")!.split(",");
     expect(params).toContain("slot_notes");
@@ -22,11 +21,8 @@ describe("ensureRotaReportFields", () => {
   });
 
   it("is idempotent", () => {
-    const url =
-      "https://central.example/api/rota.json?fields=date,session,notes";
-    expect(ensureRotaReportFields(ensureRotaReportFields(url))).toBe(
-      ensureRotaReportFields(url),
-    );
+    const url = "https://central.example/api/rota.json?fields=date,session,notes";
+    expect(ensureRotaReportFields(ensureRotaReportFields(url))).toBe(ensureRotaReportFields(url));
   });
 
   it("returns the input unchanged when the URL is malformed", () => {

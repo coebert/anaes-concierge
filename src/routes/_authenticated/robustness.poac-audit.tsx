@@ -2,14 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardHeader, CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDateGB, parseDateLocal } from "@/lib/utils";
@@ -29,7 +32,10 @@ import { PageLoading } from "@/components/loading";
 // page count and a `complete` flag (true when the final page was shorter
 // than the page size, proving the cap was not hit).
 async function fetchAllPaged<T>(
-  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  build: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   pageSize = 1000,
 ): Promise<{ rows: T[]; pages: number; complete: boolean }> {
   const out: T[] = [];
@@ -56,8 +62,6 @@ async function fetchAllPaged<T>(
   return { rows: out, pages, complete };
 }
 
-
-
 type DrilldownRow = {
   assignmentId: string;
   sessionId: string | null;
@@ -70,7 +74,6 @@ type DrilldownRow = {
   specialty: string | null;
   surgicalConsultant: string | null;
 };
-
 
 export const Route = createFileRoute("/_authenticated/robustness/poac-audit")({
   head: () => ({ meta: [{ title: "POAC audit — Salisbury Anaesthetics Rota" }] }),
@@ -116,7 +119,6 @@ type WeekRow = {
   additionalConsultant: number;
 };
 
-
 // Match any theatre that represents the Pre-Operative Assessment clinic,
 // regardless of which terminology is in use (POAU, POAC, "pre-op assessment",
 // "preoperative assessment", "pre-assessment", etc.).
@@ -132,7 +134,6 @@ const POAC_THEATRE_FILTER = [
   "name.ilike.%pre-operative%",
   "name.ilike.%preoperative%",
 ].join(",");
-
 
 function PoacAuditPage() {
   const [from, setFrom] = useState<string>(isoDaysAgo(7 * 12));
@@ -160,14 +161,21 @@ function PoacAuditPage() {
       };
       const emptyResult = {
         weeks: [] as WeekRow[],
-        totals: { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
+        totals: {
+          total: 0,
+          additional: 0,
+          consultant: 0,
+          sas: 0,
+          trainee: 0,
+          unknown: 0,
+          additionalConsultant: 0,
+        },
         drilldown: [] as DrilldownRow[],
         baselineViolations: [] as PoacBaselineViolation[],
         coverage: emptyCoverage,
       };
 
       if (!poacTheatreIds.length) return emptyResult;
-
 
       // Track pagination/chunking coverage for the UI status indicator.
       const sessionCov = { chunks: 0, pages: 0, rows: 0, complete: true };
@@ -281,7 +289,6 @@ function PoacAuditPage() {
         staffCov.rows += rows.length;
       }
 
-
       const normGrade = (g: string | null | undefined): DrilldownRow["grade"] =>
         g === "consultant" || g === "sas" || g === "trainee" ? g : "unknown";
 
@@ -372,7 +379,7 @@ function PoacAuditPage() {
           const stat = baselineByWeek.get(k);
           const wedAm = b.wedAm.size;
           const wedPm = b.wedPm.size;
-          const baseline = stat?.baseline ?? ((wedAm > 0 || wedPm > 0) ? 1 : 0);
+          const baseline = stat?.baseline ?? (wedAm > 0 || wedPm > 0 ? 1 : 0);
           const additional = stat?.additional ?? Math.max(0, b.total - baseline);
           return {
             weekStart: k,
@@ -388,10 +395,7 @@ function PoacAuditPage() {
             // The baseline slot is one Wed AM/PM session. If a consultant
             // covered that slot, subtract it from consultant work to get the
             // "additional" consultant sessions.
-            additionalConsultant: Math.max(
-              0,
-              b.consultant - (b.wedHasConsultant ? 1 : 0),
-            ),
+            additionalConsultant: Math.max(0, b.consultant - (b.wedHasConsultant ? 1 : 0)),
           };
         })
         .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
@@ -407,7 +411,6 @@ function PoacAuditPage() {
         })),
       );
 
-
       const totals = weeks.reduce(
         (acc, w) => ({
           total: acc.total + w.total,
@@ -418,8 +421,15 @@ function PoacAuditPage() {
           unknown: acc.unknown + w.unknown,
           additionalConsultant: acc.additionalConsultant + w.additionalConsultant,
         }),
-        { total: 0, additional: 0, consultant: 0, sas: 0, trainee: 0, unknown: 0, additionalConsultant: 0 },
-
+        {
+          total: 0,
+          additional: 0,
+          consultant: 0,
+          sas: 0,
+          trainee: 0,
+          unknown: 0,
+          additionalConsultant: 0,
+        },
       );
 
       return {
@@ -444,7 +454,6 @@ function PoacAuditPage() {
   const baselineViolations: PoacBaselineViolation[] = data?.baselineViolations ?? [];
   const coverage = data?.coverage ?? null;
 
-
   const totals = data?.totals ?? {
     total: 0,
     additional: 0,
@@ -455,24 +464,17 @@ function PoacAuditPage() {
     additionalConsultant: 0,
   };
 
-
-
-
-  const maxTotal = useMemo(
-    () => weeks.reduce((m, w) => Math.max(m, w.total), 0),
-    [weeks],
-  );
+  const maxTotal = useMemo(() => weeks.reduce((m, w) => Math.max(m, w.total), 0), [weeks]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">POAC audit</h1>
         <p className="text-sm text-muted-foreground">
-          Weekly POAC (POAU) clinic sessions covered by anaesthetists.
-          &lsquo;Additional&rsquo; counts anything above the baseline of one
-          consultant on Wednesday (either AM or PM, not both).
+          Weekly POAC (POAU) clinic sessions covered by anaesthetists. &lsquo;Additional&rsquo;
+          counts anything above the baseline of one consultant on Wednesday (either AM or PM, not
+          both).
         </p>
-
       </div>
 
       <Card>
@@ -508,14 +510,9 @@ function PoacAuditPage() {
       <AuditCoverageBadge coverage={coverage} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
         <SummaryCard label="Weeks shown" value={weeks.length} />
         <SummaryCard label="Total POAC sessions" value={totals.total} tone="primary" />
-        <SummaryCard
-          label="Total additional sessions"
-          value={totals.additional}
-          tone="amber"
-        />
+        <SummaryCard label="Total additional sessions" value={totals.additional} tone="amber" />
         <SummaryCard
           label="Total additional consultant sessions"
           value={totals.additionalConsultant}
@@ -523,14 +520,16 @@ function PoacAuditPage() {
         />
       </div>
 
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="Consultant sessions" value={totals.consultant} tone="primary" />
         <SummaryCard label="SAS sessions" value={totals.sas} />
         <SummaryCard label="Trainee sessions" value={totals.trainee} />
-        <SummaryCard label="Unknown grade" value={totals.unknown} tone={totals.unknown ? "amber" : "default"} />
+        <SummaryCard
+          label="Unknown grade"
+          value={totals.unknown}
+          tone={totals.unknown ? "amber" : "default"}
+        />
       </div>
-
 
       <Card
         className={
@@ -540,22 +539,16 @@ function PoacAuditPage() {
         }
       >
         <CardHeader>
-          <CardTitle className="text-base">
-            Baseline rule validation
-          </CardTitle>
+          <CardTitle className="text-base">Baseline rule validation</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           {weeks.length === 0 ? (
-            <p className="text-muted-foreground">
-              No weeks in range — nothing to validate.
-            </p>
+            <p className="text-muted-foreground">No weeks in range — nothing to validate.</p>
           ) : baselineViolations.length === 0 ? (
             <p>
-              <Badge className="bg-success-muted text-success hover:bg-success-muted">
-                PASS
-              </Badge>{" "}
-              All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the
-              rule: at most one Wednesday baseline session (AM or PM, not both).
+              <Badge className="bg-success-muted text-success hover:bg-success-muted">PASS</Badge>{" "}
+              All {weeks.length} week{weeks.length === 1 ? "" : "s"} satisfy the rule: at most one
+              Wednesday baseline session (AM or PM, not both).
             </p>
           ) : (
             <div className="space-y-2">
@@ -583,16 +576,13 @@ function PoacAuditPage() {
 
       <Card>
         <CardHeader>
-
           <CardTitle className="text-base">Weekly breakdown</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <PageLoading />
           ) : !weeks.length ? (
-            <p className="text-sm text-muted-foreground">
-              No POAC sessions found in this range.
-            </p>
+            <p className="text-sm text-muted-foreground">No POAC sessions found in this range.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -615,21 +605,11 @@ function PoacAuditPage() {
                   const addPct = maxTotal ? (w.additional / maxTotal) * 100 : 0;
                   return (
                     <TableRow key={w.weekStart}>
-                      <TableCell className="font-medium">
-                        {formatDateGB(w.weekStart)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {w.total}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {w.consultant}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {w.sas}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {w.trainee}
-                      </TableCell>
+                      <TableCell className="font-medium">{formatDateGB(w.weekStart)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{w.total}</TableCell>
+                      <TableCell className="text-right tabular-nums">{w.consultant}</TableCell>
+                      <TableCell className="text-right tabular-nums">{w.sas}</TableCell>
+                      <TableCell className="text-right tabular-nums">{w.trainee}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">
                         {w.wedAm}
                       </TableCell>
@@ -651,14 +631,8 @@ function PoacAuditPage() {
 
                       <TableCell>
                         <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="bg-primary"
-                            style={{ width: `${basePct}%` }}
-                          />
-                          <div
-                            className="bg-amber-500"
-                            style={{ width: `${addPct}%` }}
-                          />
+                          <div className="bg-primary" style={{ width: `${basePct}%` }} />
+                          <div className="bg-amber-500" style={{ width: `${addPct}%` }} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -676,31 +650,22 @@ function PoacAuditPage() {
         </CardHeader>
         <CardContent>
           <p className="mb-3 text-sm text-muted-foreground">
-            Every matched POAU/POAC session in the selected range, grouped by the
-            covering anaesthetist&rsquo;s grade. &lsquo;Theatre (CLWRota)&rsquo;
-            shows the original terminology stored from the CLWRota feed
-            (e.g. POAU, POAC, pre-op assessment).
+            Every matched POAU/POAC session in the selected range, grouped by the covering
+            anaesthetist&rsquo;s grade. &lsquo;Theatre (CLWRota)&rsquo; shows the original
+            terminology stored from the CLWRota feed (e.g. POAU, POAC, pre-op assessment).
           </p>
           {isLoading ? (
             <PageLoading />
           ) : !drilldown.length ? (
-            <p className="text-sm text-muted-foreground">
-              No POAC sessions found in this range.
-            </p>
+            <p className="text-sm text-muted-foreground">No POAC sessions found in this range.</p>
           ) : (
             <Tabs defaultValue="consultant">
               <TabsList>
-                <TabsTrigger value="consultant">
-                  Consultant ({totals.consultant})
-                </TabsTrigger>
+                <TabsTrigger value="consultant">Consultant ({totals.consultant})</TabsTrigger>
                 <TabsTrigger value="sas">SAS ({totals.sas})</TabsTrigger>
-                <TabsTrigger value="trainee">
-                  Trainee ({totals.trainee})
-                </TabsTrigger>
+                <TabsTrigger value="trainee">Trainee ({totals.trainee})</TabsTrigger>
                 {totals.unknown > 0 ? (
-                  <TabsTrigger value="unknown">
-                    Unknown ({totals.unknown})
-                  </TabsTrigger>
+                  <TabsTrigger value="unknown">Unknown ({totals.unknown})</TabsTrigger>
                 ) : null}
               </TabsList>
               {(["consultant", "sas", "trainee", "unknown"] as const).map((g) => (
@@ -742,7 +707,9 @@ function DrilldownTable({ rows }: { rows: DrilldownRow[] }) {
         <div key={g.key} className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">{g.name}</h3>
-            <Badge variant="secondary">{g.list.length} session{g.list.length === 1 ? "" : "s"}</Badge>
+            <Badge variant="secondary">
+              {g.list.length} session{g.list.length === 1 ? "" : "s"}
+            </Badge>
           </div>
           <Table>
             <TableHeader>
@@ -762,9 +729,7 @@ function DrilldownTable({ rows }: { rows: DrilldownRow[] }) {
                   <TableCell>
                     <Badge variant="outline">{r.theatreName}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.specialty ?? "—"}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">{r.specialty ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.surgicalConsultant ?? "—"}
                   </TableCell>
@@ -778,7 +743,6 @@ function DrilldownTable({ rows }: { rows: DrilldownRow[] }) {
   );
 }
 
-
 function SummaryCard({
   label,
   value,
@@ -789,20 +753,12 @@ function SummaryCard({
   tone?: "default" | "primary" | "amber";
 }) {
   const toneClass =
-    tone === "primary"
-      ? "text-primary"
-      : tone === "amber"
-        ? "text-warning"
-        : "text-foreground";
+    tone === "primary" ? "text-primary" : tone === "amber" ? "text-warning" : "text-foreground";
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {label}
-        </div>
-        <div className={`mt-1 text-3xl font-semibold tabular-nums ${toneClass}`}>
-          {value}
-        </div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className={`mt-1 text-3xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
       </CardContent>
     </Card>
   );

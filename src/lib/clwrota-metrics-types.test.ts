@@ -60,9 +60,7 @@ describe("parseListClwRotaSyncMetricsResponse — client-side safety net", () =>
       days: 30,
       sync_kind: "all",
     });
-    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(
-      /rows\.0\.is_backfill/,
-    );
+    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(/rows\.0\.is_backfill/);
   });
 
   it("rejects when is_backfill is null", async () => {
@@ -71,9 +69,7 @@ describe("parseListClwRotaSyncMetricsResponse — client-side safety net", () =>
       days: 30,
       sync_kind: "all",
     });
-    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(
-      /rows\.0\.is_backfill/,
-    );
+    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(/rows\.0\.is_backfill/);
   });
 
   it("rejects when is_backfill is missing entirely", async () => {
@@ -82,9 +78,7 @@ describe("parseListClwRotaSyncMetricsResponse — client-side safety net", () =>
       days: 30,
       sync_kind: "all",
     });
-    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(
-      /rows\.0\.is_backfill/,
-    );
+    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(/rows\.0\.is_backfill/);
   });
 
   it("rejects when only one row in a batch has a bad is_backfill", async () => {
@@ -97,8 +91,6 @@ describe("parseListClwRotaSyncMetricsResponse — client-side safety net", () =>
       days: 30,
       sync_kind: "all",
     });
-    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(
-      /rows\.1\.is_backfill/,
-    );
+    expect(() => parseListClwRotaSyncMetricsResponse(raw)).toThrow(/rows\.1\.is_backfill/);
   });
 });

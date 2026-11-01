@@ -4,9 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import {
-  Card, CardContent, CardHeader, CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,15 +24,37 @@ import { computeProgress } from "@/lib/competency-utils";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
 import { CalendarCoverageCard } from "@/components/calendar-coverage-card";
 import {
-  Users, GraduationCap, Stethoscope, UserCheck, UserX,
-  CalendarDays, AlertTriangle, Clock, XCircle, ListChecks,
-  ChevronDown, ChevronRight,
+  Users,
+  GraduationCap,
+  Stethoscope,
+  UserCheck,
+  UserX,
+  CalendarDays,
+  AlertTriangle,
+  Clock,
+  XCircle,
+  ListChecks,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
 } from "recharts";
 
 import {
@@ -56,7 +76,6 @@ export const Route = createFileRoute("/_authenticated/admin/dashboard")({
   component: AdminDashboardPage,
 });
 
-
 function AdminDashboardPage() {
   const { hasRole, loading } = useAuth();
   const [date, setDate] = useState(todayISO());
@@ -71,7 +90,9 @@ function AdminDashboardPage() {
           .eq("active", true),
         supabase
           .from("rota_assignments")
-          .select("id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type")
+          .select(
+            "id, staff_id, role_on_list, session, supervisor_id, theatre_session_id, duty_type",
+          )
           .eq("session_date", date),
         supabase
           .from("leave_requests")
@@ -97,17 +118,39 @@ function AdminDashboardPage() {
       const since7 = new Date(Date.now() - 7 * 86400_000).toISOString();
       const since30 = new Date(Date.now() - 30 * 86400_000).toISOString();
       const [late7, late30, rejected7, rejected30, reserve7, reserve30] = await Promise.all([
-        supabase.from("rota_change_log").select("id", { count: "exact", head: true }).gte("changed_at", since7),
-        supabase.from("rota_change_log").select("id", { count: "exact", head: true }).gte("changed_at", since30),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").gte("decided_at", since7),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").gte("decided_at", since30),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true }).not("reserve_listed_at", "is", null).gte("reserve_listed_at", since7),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true }).not("reserve_listed_at", "is", null).gte("reserve_listed_at", since30),
+        supabase
+          .from("rota_change_log")
+          .select("id", { count: "exact", head: true })
+          .gte("changed_at", since7),
+        supabase
+          .from("rota_change_log")
+          .select("id", { count: "exact", head: true })
+          .gte("changed_at", since30),
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "rejected")
+          .gte("decided_at", since7),
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "rejected")
+          .gte("decided_at", since30),
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .not("reserve_listed_at", "is", null)
+          .gte("reserve_listed_at", since7),
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .not("reserve_listed_at", "is", null)
+          .gte("reserve_listed_at", since30),
       ]);
       return {
         lateRota: { d7: late7.count ?? 0, d30: late30.count ?? 0 },
-        rejected:  { d7: rejected7.count ?? 0, d30: rejected30.count ?? 0 },
-        reserve:   { d7: reserve7.count ?? 0, d30: reserve30.count ?? 0 },
+        rejected: { d7: rejected7.count ?? 0, d30: rejected30.count ?? 0 },
+        reserve: { d7: reserve7.count ?? 0, d30: reserve30.count ?? 0 },
       };
     },
   });
@@ -122,7 +165,11 @@ function AdminDashboardPage() {
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
       const [profilesRes, allowRes, leaveRes] = await Promise.all([
-        supabase.from("profiles").select("id, grade, active").in("grade", ["consultant", "trainee"]).eq("active", true),
+        supabase
+          .from("profiles")
+          .select("id, grade, active")
+          .in("grade", ["consultant", "trainee"])
+          .eq("active", true),
         supabase.from("leave_allowances").select("staff_id, annual_days"),
         supabase
           .from("leave_requests")
@@ -155,7 +202,8 @@ function AdminDashboardPage() {
       }
       const allowanceById = new Map<string, number>();
       for (const a of allowRes.data ?? []) {
-        if (a.annual_days && Number(a.annual_days) > 0) allowanceById.set(a.staff_id, Number(a.annual_days));
+        if (a.annual_days && Number(a.annual_days) > 0)
+          allowanceById.set(a.staff_id, Number(a.annual_days));
       }
 
       // days taken per staff per month (weekdays only, with half-day handling)
@@ -174,7 +222,10 @@ function AdminDashboardPage() {
           if (inc <= 0) continue;
           const mk = iso.slice(0, 7);
           let inner = daysTaken.get(l.staff_id);
-          if (!inner) { inner = new Map(); daysTaken.set(l.staff_id, inner); }
+          if (!inner) {
+            inner = new Map();
+            daysTaken.set(l.staff_id, inner);
+          }
           inner.set(mk, (inner.get(mk) ?? 0) + inc);
         }
       }
@@ -193,22 +244,32 @@ function AdminDashboardPage() {
         }
         return {
           label: m.label,
-          consultantPct: acc.consultant.n > 0 ? Math.round((acc.consultant.sumPct / acc.consultant.n) * 10) / 10 : 0,
-          traineePct: acc.trainee.n > 0 ? Math.round((acc.trainee.sumPct / acc.trainee.n) * 10) / 10 : 0,
+          consultantPct:
+            acc.consultant.n > 0
+              ? Math.round((acc.consultant.sumPct / acc.consultant.n) * 10) / 10
+              : 0,
+          traineePct:
+            acc.trainee.n > 0 ? Math.round((acc.trainee.sumPct / acc.trainee.n) * 10) / 10 : 0,
         };
       });
 
       const avg = (key: "consultantPct" | "traineePct") => {
         const vals = chart.map((r) => r[key]);
-        return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : 0;
+        return vals.length
+          ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10
+          : 0;
       };
 
       return {
         chart,
         consultantAvg: avg("consultantPct"),
         traineeAvg: avg("traineePct"),
-        consultantsTracked: Array.from(gradeById.entries()).filter(([id, g]) => g === "consultant" && allowanceById.has(id)).length,
-        traineesTracked: Array.from(gradeById.entries()).filter(([id, g]) => g === "trainee" && allowanceById.has(id)).length,
+        consultantsTracked: Array.from(gradeById.entries()).filter(
+          ([id, g]) => g === "consultant" && allowanceById.has(id),
+        ).length,
+        traineesTracked: Array.from(gradeById.entries()).filter(
+          ([id, g]) => g === "trainee" && allowanceById.has(id),
+        ).length,
       };
     },
   });
@@ -228,12 +289,12 @@ function AdminDashboardPage() {
       const endISO = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 
       const [profilesRes, theatreRes, allRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, full_name, grade, training_level"),
+        supabase.from("profiles").select("id, full_name, grade, training_level"),
         supabase
           .from("rota_assignments")
-          .select("staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id")
+          .select(
+            "staff_id, role_on_list, session, session_date, duty_type, supervisor_id, theatre_session_id",
+          )
           .eq("duty_type", "theatre")
           .in("session", ["am", "pm"])
           .not("theatre_session_id", "is", null)
@@ -281,9 +342,23 @@ function AdminDashboardPage() {
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
       if (!ids.length) {
-        return { trainees: [], assignmentsByStaff: new Map(), futureByStaff: new Map<string, Array<{ duty_type: string | null; session_date: string }>>(), tsSpecMap: new Map<string, string | null>(), specNameMap: new Map<string, string>(), supervisorSessionIds: new Set<string>() };
+        return {
+          trainees: [],
+          assignmentsByStaff: new Map(),
+          futureByStaff: new Map<
+            string,
+            Array<{ duty_type: string | null; session_date: string }>
+          >(),
+          tsSpecMap: new Map<string, string | null>(),
+          specNameMap: new Map<string, string>(),
+          supervisorSessionIds: new Set<string>(),
+        };
       }
-      const [{ data: assignments, error: e2 }, { data: specs, error: e3 }, { data: futureRows, error: eFuture }] = await Promise.all([
+      const [
+        { data: assignments, error: e2 },
+        { data: specs, error: e3 },
+        { data: futureRows, error: eFuture },
+      ] = await Promise.all([
         supabase
           .from("rota_assignments")
           .select("staff_id, role_on_list, session, duty_type, theatre_session_id, session_date")
@@ -318,7 +393,11 @@ function AdminDashboardPage() {
         // truncates and leaves sessions without a specialty.
         const results = await Promise.all(
           chunkIds(tsIds).map((c) =>
-            supabase.from("theatre_sessions").select("id, specialty_id").in("id", c).range(0, 49999),
+            supabase
+              .from("theatre_sessions")
+              .select("id, specialty_id")
+              .in("id", c)
+              .range(0, 49999),
           ),
         );
         for (const { data: ts, error: e4 } of results) {
@@ -351,13 +430,23 @@ function AdminDashboardPage() {
         arr.push(a);
         assignmentsByStaff.set(a.staff_id, arr);
       }
-      const futureByStaff = new Map<string, Array<{ duty_type: string | null; session_date: string }>>();
+      const futureByStaff = new Map<
+        string,
+        Array<{ duty_type: string | null; session_date: string }>
+      >();
       for (const a of futureRows ?? []) {
         const arr = futureByStaff.get(a.staff_id) ?? [];
         arr.push({ duty_type: a.duty_type, session_date: a.session_date });
         futureByStaff.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff, futureByStaff, tsSpecMap, specNameMap, supervisorSessionIds };
+      return {
+        trainees: trainees ?? [],
+        assignmentsByStaff,
+        futureByStaff,
+        tsSpecMap,
+        specNameMap,
+        supervisorSessionIds,
+      };
     },
   });
 
@@ -394,7 +483,6 @@ function AdminDashboardPage() {
   const atRiskPct = rotaRules?.atRiskPct ?? 50;
   const behindPct = rotaRules?.behindPct ?? 75;
 
-
   // Per-trainee progress against curriculum targets (12-month window from traineeMetricsData)
   const progressByStaff = useMemo(() => {
     const out = new Map<
@@ -425,7 +513,7 @@ function AdminDashboardPage() {
       const assigns = (traineeMetricsData.assignmentsByStaff.get(t.id) ?? []).map(
         (a: { theatre_session_id: string | null; role_on_list: string }) => ({
           specialty_id: a.theatre_session_id
-            ? traineeMetricsData.tsSpecMap.get(a.theatre_session_id) ?? null
+            ? (traineeMetricsData.tsSpecMap.get(a.theatre_session_id) ?? null)
             : null,
           role_on_list: a.role_on_list,
         }),
@@ -466,10 +554,12 @@ function AdminDashboardPage() {
       .sort((a, b) => compareBySurname(a.trainee.full_name, b.trainee.full_name));
   }, [traineeMetricsData]);
 
-
   const soloStats = useMemo(() => {
     if (!soloMonthly) return null;
-    const traineeIds = new Map<string, { full_name: string | null; bucket: TraineeBucket | null; level: string | null }>();
+    const traineeIds = new Map<
+      string,
+      { full_name: string | null; bucket: TraineeBucket | null; level: string | null }
+    >();
     const gradeById = new Map<string, string | null>();
     for (const p of soloMonthly.profiles) {
       gradeById.set(p.id, p.grade ?? null);
@@ -493,8 +583,7 @@ function AdminDashboardPage() {
       profilesById,
     );
 
-    const inBucket = (b: TraineeBucket | null) =>
-      bucket === "all" ? b !== null : b === bucket;
+    const inBucket = (b: TraineeBucket | null) => (bucket === "all" ? b !== null : b === bucket);
 
     const monthAgg = new Map<string, { solo: number; total: number }>();
     soloMonthly.months.forEach((m) => monthAgg.set(m, { solo: 0, total: 0 }));
@@ -522,8 +611,12 @@ function AdminDashboardPage() {
       const ma = monthAgg.get(monthKey);
       if (!ma) continue;
       ma.total += 1;
-      const hasConsultant = a.theatre_session_id ? consultantOnSession.has(a.theatre_session_id) : false;
-      const supervisorIsConsultant = a.supervisor_id ? gradeById.get(a.supervisor_id) === "consultant" : false;
+      const hasConsultant = a.theatre_session_id
+        ? consultantOnSession.has(a.theatre_session_id)
+        : false;
+      const supervisorIsConsultant = a.supervisor_id
+        ? gradeById.get(a.supervisor_id) === "consultant"
+        : false;
       const isSolo = isSoloTraineeAssignment(a, consultantOnSession, profilesById);
       if (isSolo) ma.solo += 1;
 
@@ -551,7 +644,6 @@ function AdminDashboardPage() {
       pmt.set(a.staff_id, pmtRow);
     }
 
-
     const chart = soloMonthly.months.map((m) => {
       const ma = monthAgg.get(m)!;
       const pmt = perMonthTrainee.get(m)!;
@@ -568,7 +660,10 @@ function AdminDashboardPage() {
       const [yyyy, mm] = m.split("-");
       // Month-only chart-axis label (e.g. "Jul 26") — not a full date.
       // eslint-disable-next-line no-restricted-syntax
-      const label = new Date(parseInt(yyyy), parseInt(mm) - 1, 1).toLocaleString("en-GB", { month: "short", year: "2-digit" });
+      const label = new Date(parseInt(yyyy), parseInt(mm) - 1, 1).toLocaleString("en-GB", {
+        month: "short",
+        year: "2-digit",
+      });
       return {
         month: m,
         label,
@@ -635,13 +730,18 @@ function AdminDashboardPage() {
     const byGrade = (g: Grade) => validProfiles.filter((p) => p.grade === g);
 
     const assignedByGrade: Record<Grade, number> = { consultant: 0, sas: 0, trainee: 0 };
-    const availableByGrade: Record<Grade, { id: string; full_name: string | null; training_level: string | null }[]> = {
-      consultant: [], sas: [], trainee: [],
+    const availableByGrade: Record<
+      Grade,
+      { id: string; full_name: string | null; training_level: string | null }[]
+    > = {
+      consultant: [],
+      sas: [],
+      trainee: [],
     };
     const leaveByGradeType: Record<Grade, Record<LeaveType, number>> = {
       consultant: { annual: 0, sick: 0, parental: 0, study: 0, compassionate: 0, other: 0 },
-      sas:        { annual: 0, sick: 0, parental: 0, study: 0, compassionate: 0, other: 0 },
-      trainee:    { annual: 0, sick: 0, parental: 0, study: 0, compassionate: 0, other: 0 },
+      sas: { annual: 0, sick: 0, parental: 0, study: 0, compassionate: 0, other: 0 },
+      trainee: { annual: 0, sick: 0, parental: 0, study: 0, compassionate: 0, other: 0 },
     };
 
     for (const g of GRADES) {
@@ -653,7 +753,9 @@ function AdminDashboardPage() {
           assignedByGrade[g] += 1;
         } else {
           availableByGrade[g].push({
-            id: p.id, full_name: p.full_name, training_level: p.training_level,
+            id: p.id,
+            full_name: p.full_name,
+            training_level: p.training_level,
           });
         }
       }
@@ -687,11 +789,10 @@ function AdminDashboardPage() {
       .filter((p): p is NonNullable<typeof p> => !!p);
 
     const totalAssigned = Object.values(assignedByGrade).reduce((a, b) => a + b, 0);
-    const totalOnLeave = Array.from(leaveByStaff.keys())
-      .filter((id) => {
-        const p = profilesById.get(id);
-        return p && (p.grade === "consultant" || p.grade === "sas" || p.grade === "trainee");
-      }).length;
+    const totalOnLeave = Array.from(leaveByStaff.keys()).filter((id) => {
+      const p = profilesById.get(id);
+      return p && (p.grade === "consultant" || p.grade === "sas" || p.grade === "trainee");
+    }).length;
     const totalAvailable = Object.values(availableByGrade).reduce((a, b) => a + b.length, 0);
 
     return {
@@ -757,4 +858,3 @@ function AdminDashboardPage() {
     </div>
   );
 }
-

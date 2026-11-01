@@ -10,18 +10,47 @@ import { Button } from "@/components/ui/button";
 
 import { Input } from "@/components/ui/input";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { auditTcs2016, type AuditAssignment, type AuditResult, type RuleResult, type RuleStatus, type ShiftSummary } from "@/lib/tcs-2016-audit";
+import {
+  auditTcs2016,
+  type AuditAssignment,
+  type AuditOverall,
+  type AuditResult,
+  type RuleResult,
+  type RuleStatus,
+  type ShiftSummary,
+} from "@/lib/tcs-2016-audit";
 import { fetchAllRowsPaged, rotaAssignmentKey } from "@/features/audit/paginate";
 import { formatDateGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
-import { CheckCircle2, AlertTriangle, HelpCircle, ShieldCheck, ShieldAlert, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  ShieldCheck,
+  ShieldAlert,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { StatCard } from "@/components/stat-card";
 import { PageLoading } from "@/components/loading";
 
 export const Route = createFileRoute("/_authenticated/admin/tcs-audit")({
-  head: () => ({ meta: [{ title: "TCS 2016 audit — Salisbury Anaesthetics Rota" }] }),
+  head: () => ({
+    meta: [
+      { title: "TCS 2016 working-hours screening (estimated) — Salisbury Anaesthetics Rota" },
+      {
+        name: "description",
+        content:
+          "Estimated screening of trainee rotas against 2016 TCS working-hours limits. Not a compliance certification.",
+      },
+    ],
+  }),
   component: TcsAuditPage,
 });
 
@@ -56,7 +85,14 @@ function TcsAuditPage() {
         .order("full_name");
       if (e1) throw e1;
       const ids = (trainees ?? []).map((t) => t.id);
-      if (!ids.length) return { trainees: [], assignmentsByStaff: new Map<string, AuditAssignment[]>(), leaveByStaff: new Map<string, Set<string>>(), todayISO, sinceISO: since };
+      if (!ids.length)
+        return {
+          trainees: [],
+          assignmentsByStaff: new Map<string, AuditAssignment[]>(),
+          leaveByStaff: new Map<string, Set<string>>(),
+          todayISO,
+          sinceISO: since,
+        };
 
       // Fetch through the shared paginator: deterministic order +
       // page-boundary overlap detection + dedupe by (staff, date, session).
@@ -71,9 +107,7 @@ function TcsAuditPage() {
         (from, to) => {
           let q = supabase
             .from("rota_assignments")
-            .select(
-              "staff_id, session_date, session, duty_type, role_on_list, theatre_session_id",
-            )
+            .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id")
             .in("staff_id", ids)
             .order("session_date", { ascending: true })
             .order("staff_id", { ascending: true })
@@ -84,7 +118,6 @@ function TcsAuditPage() {
         },
         { rowKey: rotaAssignmentKey, label: "tcs-audit.rota_assignments" },
       );
-
 
       // Pull approved leave so the audit can (a) bridge "consecutive days"
       // runs across leave days and (b) exclude leave days from the WTD
@@ -160,7 +193,13 @@ function TcsAuditPage() {
         });
         map.set(a.staff_id, arr);
       }
-      return { trainees: trainees ?? [], assignmentsByStaff: map, leaveByStaff, todayISO, sinceISO: since };
+      return {
+        trainees: trainees ?? [],
+        assignmentsByStaff: map,
+        leaveByStaff,
+        todayISO,
+        sinceISO: since,
+      };
     },
   });
 
@@ -220,9 +259,9 @@ function TcsAuditPage() {
         );
       })
       .sort((a, b) => {
-        // Non-compliant first, then by surname
+        // Possible breaches first, then incomplete, then by surname
         const rank = (o: string) =>
-          o === "non_compliant" ? 0 : o === "insufficient_data" ? 2 : 1;
+          o === "possible_breach" ? 0 : o === "incomplete" ? 1 : o === "insufficient_data" ? 3 : 2;
         const diff = rank(a.audit.overall) - rank(b.audit.overall);
         if (diff !== 0) return diff;
         return compareBySurname(a.trainee.full_name, b.trainee.full_name);
@@ -232,25 +271,33 @@ function TcsAuditPage() {
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
 
-  const compliantCount = rows.filter((r) => r.audit.overall === "compliant" && !r.reason).length;
-  const breachCount = rows.filter((r) => r.audit.overall === "non_compliant").length;
+  const compliantCount = rows.filter(
+    (r) => r.audit.overall === "no_flags_estimated" && !r.reason,
+  ).length;
+  const breachCount = rows.filter((r) => r.audit.overall === "possible_breach").length;
   const noDataCount = rows.filter((r) => r.reason === "no_sync").length;
-  const preRotationCount = rows.filter((r) => r.reason === "not_started" || r.reason === "rotation_ended").length;
+  const preRotationCount = rows.filter(
+    (r) => r.reason === "not_started" || r.reason === "rotation_ended",
+  ).length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="TCS 2016 compliance audit"
-        description="Checks each trainee's rota against the 2016 Junior Doctor Terms & Conditions of Service. Session times are approximated from AM/PM/eve/night blocks where actual start/end times are not stored."
+        title="TCS 2016 working-hours screening (estimated)"
+        description="An estimated screen of each trainee's rota against 2016 TCS limits — not a compliance certification. Shift times are inferred from AM/PM/eve/night blocks; a definitive check needs actual start/finish times, the full rota cycle and any recorded agreements (e.g. for 5 consecutive long shifts)."
         actions={
           <>
             <div className="w-44">
               <label className="mb-1 block text-xs text-muted-foreground">Reference period</label>
               <Select value={lookback} onValueChange={(v) => setLookback(v as Lookback)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(LOOKBACK_LABEL) as Lookback[]).map((k) => (
-                    <SelectItem key={k} value={k}>{LOOKBACK_LABEL[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {LOOKBACK_LABEL[k]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -270,14 +317,28 @@ function TcsAuditPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-4">
-            <Stat icon={ShieldCheck} tone="ok" label="Compliant" value={compliantCount} />
-            <Stat icon={ShieldAlert} tone="bad" label="Non-compliant" value={breachCount} />
+            <Stat
+              icon={ShieldCheck}
+              tone="ok"
+              label="No flags (estimated)"
+              value={compliantCount}
+            />
+            <Stat icon={ShieldAlert} tone="bad" label="Possible breaches" value={breachCount} />
             <Stat icon={HelpCircle} tone="muted" label="No rota synced" value={noDataCount} />
-            <Stat icon={HelpCircle} tone="muted" label="Pre/post rotation" value={preRotationCount} />
+            <Stat
+              icon={HelpCircle}
+              tone="muted"
+              label="Pre/post rotation"
+              value={preRotationCount}
+            />
           </div>
 
           {rows.length === 0 ? (
-            <Card><CardContent className="p-4 text-sm text-muted-foreground">No trainees on record.</CardContent></Card>
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                No trainees on record.
+              </CardContent>
+            </Card>
           ) : (
             <div className="space-y-4">
               {rows.map(({ trainee, audit, reason, startISO, endISO }) => (
@@ -287,7 +348,9 @@ function TcsAuditPage() {
                       <CardTitle className="text-base">
                         {trainee.full_name || "—"}{" "}
                         {trainee.training_level && (
-                          <Badge variant="secondary" className="ml-2">{trainee.training_level}</Badge>
+                          <Badge variant="secondary" className="ml-2">
+                            {trainee.training_level}
+                          </Badge>
                         )}
                         {audit.ltftFraction < 1 && (
                           <Badge variant="outline" className="ml-2">
@@ -306,10 +369,15 @@ function TcsAuditPage() {
                           : reason === "rotation_ended" && endISO
                             ? `rotation ended ${formatDateGB(endISO)}`
                             : "no rota data synced for this trainee"}
-                      {audit.requestedWindowStart && audit.requestedWindowEnd && audit.windowStart && audit.windowEnd &&
-                        (audit.requestedWindowStart !== audit.windowStart || audit.requestedWindowEnd !== audit.windowEnd) && (
+                      {audit.requestedWindowStart &&
+                        audit.requestedWindowEnd &&
+                        audit.windowStart &&
+                        audit.windowEnd &&
+                        (audit.requestedWindowStart !== audit.windowStart ||
+                          audit.requestedWindowEnd !== audit.windowEnd) && (
                           <span className="ml-1 italic">
-                            (audit window {formatDateGB(audit.requestedWindowStart)} → {formatDateGB(audit.requestedWindowEnd)} — clamped to shift data)
+                            (audit window {formatDateGB(audit.requestedWindowStart)} →{" "}
+                            {formatDateGB(audit.requestedWindowEnd)} — clamped to shift data)
                           </span>
                         )}
                     </p>
@@ -319,6 +387,16 @@ function TcsAuditPage() {
                       <ReasonBanner reason={reason} startISO={startISO} endISO={endISO} />
                     ) : (
                       <>
+                        {audit.caveats.length > 0 && (
+                          <ul
+                            className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground"
+                            aria-label="Why this is an estimate"
+                          >
+                            {audit.caveats.map((c) => (
+                              <li key={c}>{c}</li>
+                            ))}
+                          </ul>
+                        )}
                         <div className="grid gap-2 md:grid-cols-2">
                           {audit.rules.map((r) => (
                             <RuleCard key={r.id} rule={r} />
@@ -340,17 +418,13 @@ function TcsAuditPage() {
 
 type ReasonCode = "not_started" | "rotation_ended" | "no_sync" | null;
 
-function OverallBadge({
-  overall,
-  reason,
-}: {
-  overall: "compliant" | "non_compliant" | "insufficient_data";
-  reason?: ReasonCode;
-}) {
-  if (overall === "compliant")
-    return <Badge className="bg-emerald-600 hover:bg-emerald-600">Compliant</Badge>;
-  if (overall === "non_compliant")
-    return <Badge variant="destructive">Non-compliant</Badge>;
+function OverallBadge({ overall, reason }: { overall: AuditOverall; reason?: ReasonCode }) {
+  if (overall === "no_flags_estimated")
+    return <Badge variant="secondary">No flags (estimated)</Badge>;
+  if (overall === "possible_breach")
+    return <Badge variant="destructive">Possible breach — verify</Badge>;
+  if (overall === "incomplete" && !reason)
+    return <Badge variant="outline">Incomplete — not fully assessed</Badge>;
   if (reason === "not_started") return <Badge variant="outline">Pre-rotation</Badge>;
   if (reason === "rotation_ended") return <Badge variant="outline">Rotation ended</Badge>;
   if (reason === "no_sync") return <Badge variant="outline">No rota synced</Badge>;
@@ -390,7 +464,10 @@ function RuleIcon({ status }: { status: RuleStatus }) {
 }
 
 function Stat({
-  icon: Icon, tone, label, value,
+  icon: Icon,
+  tone,
+  label,
+  value,
 }: {
   icon: typeof CheckCircle2;
   tone: "ok" | "bad" | "muted";
@@ -400,7 +477,6 @@ function Stat({
   const t = tone === "ok" ? "success" : tone === "bad" ? "destructive" : "default";
   return <StatCard icon={Icon} tone={t} label={label} value={value} />;
 }
-
 
 const SESSION_LABEL: Record<ShiftSummary["session"], string> = {
   am: "AM (08:00–13:00)",
@@ -436,11 +512,15 @@ function ShiftRow({ s }: { s: ShiftSummary }) {
     <li className="grid grid-cols-[110px_180px_1fr_auto] items-center gap-2 border-b py-1 text-xs last:border-b-0">
       <span className="font-mono">{formatDateGB(s.date)}</span>
       <span className="text-muted-foreground">{shiftLabel(s)}</span>
-      <span className="truncate" title={s.duty_type}>{s.duty_type || "—"}</span>
+      <span className="truncate" title={s.duty_type}>
+        {s.duty_type || "—"}
+      </span>
       <span className="flex items-center gap-1">
         <span className="tabular-nums">{s.hours} h</span>
         {tags.map((t) => (
-          <Badge key={t} variant="outline" className="px-1 py-0 text-[10px]">{t}</Badge>
+          <Badge key={t} variant="outline" className="px-1 py-0 text-[10px]">
+            {t}
+          </Badge>
         ))}
       </span>
     </li>
@@ -480,7 +560,8 @@ function RuleCard({ rule }: { rule: RuleResult }) {
         <div className="mt-2 rounded-md bg-muted/40 p-2">
           {rule.evidence!.windowStart && rule.evidence!.windowEnd && (
             <div className="mb-1 text-[11px] text-muted-foreground">
-              Window: {formatDateGB(rule.evidence!.windowStart)} → {formatDateGB(rule.evidence!.windowEnd)}
+              Window: {formatDateGB(rule.evidence!.windowStart)} →{" "}
+              {formatDateGB(rule.evidence!.windowEnd)}
             </div>
           )}
           {rule.evidence!.notes && rule.evidence!.notes.length > 0 && (

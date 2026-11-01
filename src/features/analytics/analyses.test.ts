@@ -28,12 +28,48 @@ describe("analytics-pack", () => {
 
   it("allocation fairness computes gini + weekend + on-call", () => {
     const rows = computeAllocationFairness([
-      { staff_id: "a", session_date: "2025-06-02", duty_type: "theatre", role_on_list: "solo", specialty_id: "s1" },
-      { staff_id: "a", session_date: "2025-06-03", duty_type: "theatre", role_on_list: "solo", specialty_id: "s1" },
-      { staff_id: "a", session_date: "2025-06-07", duty_type: "theatre", role_on_list: "solo", specialty_id: "s1" }, // Sat
-      { staff_id: "a", session_date: "2025-06-04", duty_type: "general_consultant_oncall", role_on_list: "on_call", specialty_id: null },
-      { staff_id: "b", session_date: "2025-06-02", duty_type: "theatre", role_on_list: "solo", specialty_id: "s1" },
-      { staff_id: "b", session_date: "2025-06-03", duty_type: "theatre", role_on_list: "solo", specialty_id: "s2" },
+      {
+        staff_id: "a",
+        session_date: "2025-06-02",
+        duty_type: "theatre",
+        role_on_list: "solo",
+        specialty_id: "s1",
+      },
+      {
+        staff_id: "a",
+        session_date: "2025-06-03",
+        duty_type: "theatre",
+        role_on_list: "solo",
+        specialty_id: "s1",
+      },
+      {
+        staff_id: "a",
+        session_date: "2025-06-07",
+        duty_type: "theatre",
+        role_on_list: "solo",
+        specialty_id: "s1",
+      }, // Sat
+      {
+        staff_id: "a",
+        session_date: "2025-06-04",
+        duty_type: "general_consultant_oncall",
+        role_on_list: "on_call",
+        specialty_id: null,
+      },
+      {
+        staff_id: "b",
+        session_date: "2025-06-02",
+        duty_type: "theatre",
+        role_on_list: "solo",
+        specialty_id: "s1",
+      },
+      {
+        staff_id: "b",
+        session_date: "2025-06-03",
+        duty_type: "theatre",
+        role_on_list: "solo",
+        specialty_id: "s2",
+      },
     ]);
     const a = rows.find((r) => r.staff_id === "a")!;
     expect(a.totalSessions).toBe(4);
@@ -46,10 +82,30 @@ describe("analytics-pack", () => {
 
   it("short-notice filters >48h and buckets by action", () => {
     const agg = computeShortNotice([
-      { staff_id: "a", action: "insert", hours_before_session: 12, changed_at: "2025-06-01T00:00:00Z" },
-      { staff_id: "a", action: "delete", hours_before_session: 6, changed_at: "2025-06-02T00:00:00Z" },
-      { staff_id: "a", action: "insert", hours_before_session: 200, changed_at: "2025-06-03T00:00:00Z" }, // dropped
-      { staff_id: "b", action: "insert", hours_before_session: 24, changed_at: "2025-06-04T00:00:00Z" },
+      {
+        staff_id: "a",
+        action: "insert",
+        hours_before_session: 12,
+        changed_at: "2025-06-01T00:00:00Z",
+      },
+      {
+        staff_id: "a",
+        action: "delete",
+        hours_before_session: 6,
+        changed_at: "2025-06-02T00:00:00Z",
+      },
+      {
+        staff_id: "a",
+        action: "insert",
+        hours_before_session: 200,
+        changed_at: "2025-06-03T00:00:00Z",
+      }, // dropped
+      {
+        staff_id: "b",
+        action: "insert",
+        hours_before_session: 24,
+        changed_at: "2025-06-04T00:00:00Z",
+      },
     ]);
     expect(agg[0].staff_id).toBe("a");
     expect(agg[0].totalShortNotice).toBe(2);
@@ -66,9 +122,24 @@ describe("analytics-pack", () => {
 
   it("computeDenials aggregates category + month + grade", () => {
     const out = computeDenials([
-      { status: "rejected", decided_at: "2025-06-05T00:00:00Z", decision_notes: "rota short", grade: "consultant" },
-      { status: "rejected", decided_at: "2025-06-15T00:00:00Z", decision_notes: "clash", grade: "trainee" },
-      { status: "approved", decided_at: "2025-06-20T00:00:00Z", decision_notes: null, grade: "trainee" },
+      {
+        status: "rejected",
+        decided_at: "2025-06-05T00:00:00Z",
+        decision_notes: "rota short",
+        grade: "consultant",
+      },
+      {
+        status: "rejected",
+        decided_at: "2025-06-15T00:00:00Z",
+        decision_notes: "clash",
+        grade: "trainee",
+      },
+      {
+        status: "approved",
+        decided_at: "2025-06-20T00:00:00Z",
+        decision_notes: null,
+        grade: "trainee",
+      },
     ]);
     expect(out.total).toBe(2);
     expect(out.byMonth.find((m) => m.month === "2025-06")!.count).toBe(2);
@@ -144,7 +215,12 @@ describe("analytics-pack", () => {
       sickRows: [{ staff_id: "n1", start_date: "2025-05-10", end_date: "2025-05-12" }],
       exceptionRows: [{ trainee_id: "n1", created_at: "2025-05-20T00:00:00Z" }],
       shortNoticeRows: [
-        { staff_id: "n1", action: "insert", hours_before_session: 12, changed_at: "2025-05-15T00:00:00Z" },
+        {
+          staff_id: "n1",
+          action: "insert",
+          hours_before_session: 12,
+          changed_at: "2025-05-15T00:00:00Z",
+        },
       ],
       now,
     });

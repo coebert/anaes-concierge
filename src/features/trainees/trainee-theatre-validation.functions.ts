@@ -141,7 +141,9 @@ export async function performTraineeTheatreValidation(
 
   // Build the candidate mismatch list first; we only need theatre_session
   // lookups for those trainees' unmatched date/session pairs.
-  type Pending = TraineeTheatreMismatch & { _rows: Array<{ session_date: string; session: string }> };
+  type Pending = TraineeTheatreMismatch & {
+    _rows: Array<{ session_date: string; session: string }>;
+  };
   const pending: Pending[] = [];
   let traineesWithTheatreRows = 0;
   let fullyMatched = 0;
@@ -249,9 +251,7 @@ export async function performTraineeTheatreValidation(
   // their remaining rotation (today → rotation_end_date) is ICU-only. Those
   // trainees aren't expected to have theatre lists, so we move them out of
   // the warning list and surface them separately for transparency.
-  const traineeById = new Map(
-    (trainees ?? []).map((t) => [t.id, t] as const),
-  );
+  const traineeById = new Map((trainees ?? []).map((t) => [t.id, t] as const));
   const onIcuBlock: TraineeOnIcuBlock[] = [];
   const finalMismatches: TraineeTheatreMismatch[] = [];
   if (mismatches.length > 0) {
@@ -280,8 +280,7 @@ export async function performTraineeTheatreValidation(
     for (const m of mismatches) {
       const t = traineeById.get(m.staff_id);
       const rotationEnd =
-        (t as { rotation_end_date?: string | null } | undefined)
-          ?.rotation_end_date ?? null;
+        (t as { rotation_end_date?: string | null } | undefined)?.rotation_end_date ?? null;
       const future = futureByStaff.get(m.staff_id) ?? [];
       if (isIcuBlockOnly(future, todayIso, rotationEnd)) {
         onIcuBlock.push({
@@ -293,9 +292,7 @@ export async function performTraineeTheatreValidation(
         finalMismatches.push(m);
       }
     }
-    onIcuBlock.sort((a, b) =>
-      (a.full_name ?? a.staff_id).localeCompare(b.full_name ?? b.staff_id),
-    );
+    onIcuBlock.sort((a, b) => (a.full_name ?? a.staff_id).localeCompare(b.full_name ?? b.staff_id));
   }
 
   return {
@@ -314,8 +311,14 @@ export const validateTraineeTheatreMatches = createServerFn({ method: "POST" })
   .inputValidator((input: { from?: string; to?: string } | undefined) =>
     z
       .object({
-        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
       })
       .parse(input ?? {}),
   )

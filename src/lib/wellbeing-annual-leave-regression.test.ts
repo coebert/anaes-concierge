@@ -47,7 +47,7 @@ function makeFakeTable(rows: Row[]) {
       return build;
     },
     async range(from: number, to: number) {
-      let source = rows.slice();
+      const source = rows.slice();
       if (orderKey) {
         const k = orderKey;
         const dir = ascending ? 1 : -1;
@@ -67,14 +67,9 @@ function isoDaysAgo(days: number): string {
 /**
  * Same "days since last annual leave" calc the attrition rubric uses.
  */
-function daysSinceLastAnnual(
-  staffId: string,
-  leave: readonly Row[],
-): number | null {
+function daysSinceLastAnnual(staffId: string, leave: readonly Row[]): number | null {
   const approvedAnnual = leave
-    .filter(
-      (l) => l.staff_id === staffId && l.type === "annual" && l.status === "approved",
-    )
+    .filter((l) => l.staff_id === staffId && l.type === "annual" && l.status === "approved")
     .sort((a, b) => b.end_date.localeCompare(a.end_date));
   if (!approvedAnnual[0]) return null;
   const end = new Date(approvedAnnual[0].end_date).getTime();
@@ -91,11 +86,9 @@ function buildDataset() {
   const staffIds = ["staff-a", "staff-b", "staff-c", "staff-d", "staff-e"];
   const rows: Row[] = [];
   let counter = 0;
-  const push = (r: Omit<Row, "id">) =>
-    rows.push({ id: `r-${counter++}`, ...r });
+  const push = (r: Omit<Row, "id">) => rows.push({ id: `r-${counter++}`, ...r });
   const recent: Row[] = [];
-  const pushRecent = (r: Omit<Row, "id">) =>
-    recent.push({ id: `r-${counter++}`, ...r });
+  const pushRecent = (r: Omit<Row, "id">) => recent.push({ id: `r-${counter++}`, ...r });
 
   // Recent approved annual leave for every staff member — held aside and
   // placed AFTER the db-max-rows cap so the legacy unordered read drops them.
@@ -135,9 +128,7 @@ describe("wellbeing 'days since last annual leave' — regression", () => {
     const { staffIds, rows } = buildDataset();
     const table = makeFakeTable(rows);
 
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
 
     expect(fetched.length).toBe(rows.length);
     // Ordered fetch: the newest end_date wins the sort → each staff's
@@ -193,9 +184,7 @@ describe("wellbeing 'days since last annual leave' — regression", () => {
     }
 
     const table = makeFakeTable(rows);
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
     expect(fetched.length).toBe(rows.length);
     for (const s of staffIds) {
       expect(daysSinceLastAnnual(s, fetched)).toBe(21);

@@ -15,6 +15,8 @@
  * half-sessions and are rejected.
  */
 
+import { isValidIsoDate } from "./leave-count";
+
 export type HalfDayMarker = "am" | "pm" | null;
 
 export interface HalfDayRangeInput {
@@ -40,8 +42,6 @@ export type HalfDayValidationResult =
   | { ok: true; halfSessionCount: number }
   | { ok: false; errors: HalfDayValidationError[] };
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 function daysInclusive(startIso: string, endIso: string): number {
   const s = Date.UTC(
     Number(startIso.slice(0, 4)),
@@ -65,15 +65,13 @@ function daysInclusive(startIso: string, endIso: string): number {
  * a single half-day is 1, a multi-day request with both markers is
  * `2 * days - 2`.
  */
-export function validateHalfDayRange(
-  input: HalfDayRangeInput,
-): HalfDayValidationResult {
+export function validateHalfDayRange(input: HalfDayRangeInput): HalfDayValidationResult {
   const errors: HalfDayValidationError[] = [];
 
-  if (!ISO_DATE.test(input.start_date) || !ISO_DATE.test(input.end_date)) {
+  if (!isValidIsoDate(input.start_date) || !isValidIsoDate(input.end_date)) {
     errors.push({
       code: "missing_dates",
-      message: "Start and end dates are required (YYYY-MM-DD).",
+      message: "Start and end dates are required and must be real calendar dates (YYYY-MM-DD).",
     });
     return { ok: false, errors };
   }
@@ -88,15 +86,13 @@ export function validateHalfDayRange(
   if (input.half_day_start !== null && input.half_day_start !== "pm") {
     errors.push({
       code: "invalid_start_marker",
-      message:
-        'half_day_start must be "pm" (leave starts in the afternoon) or null.',
+      message: 'half_day_start must be "pm" (leave starts in the afternoon) or null.',
     });
   }
   if (input.half_day_end !== null && input.half_day_end !== "am") {
     errors.push({
       code: "invalid_end_marker",
-      message:
-        'half_day_end must be "am" (leave ends at lunchtime) or null.',
+      message: 'half_day_end must be "am" (leave ends at lunchtime) or null.',
     });
   }
 

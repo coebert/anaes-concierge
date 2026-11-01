@@ -9,14 +9,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { GraduationCap } from "lucide-react";
 import { computeTraineeExposure } from "@/features/analytics/analyses";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/trainee-exposure",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/trainee-exposure")({
   head: () => ({
     meta: [
       { title: "Trainee educational exposure — HR analytics" },
@@ -34,17 +37,19 @@ function TraineeExposurePage() {
       const yearAgo = new Date();
       yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1);
       const [profRes, rotaRes, tsRes, specRes, targetRes] = await Promise.all([
-        supabase.from("profiles")
+        supabase
+          .from("profiles")
           .select("id,full_name,training_level,active,grade")
-          .eq("grade", "trainee").eq("active", true),
-        supabase.from("rota_assignments")
+          .eq("grade", "trainee")
+          .eq("active", true),
+        supabase
+          .from("rota_assignments")
           .select("staff_id,theatre_session_id")
           .gte("session_date", yearAgo.toISOString().slice(0, 10))
           .range(0, 49999),
         supabase.from("theatre_sessions").select("id,specialty_id").range(0, 49999),
         supabase.from("specialties").select("id,name"),
-        supabase.from("trainee_targets")
-          .select("training_level,specialty_id,required_sessions"),
+        supabase.from("trainee_targets").select("training_level,specialty_id,required_sessions"),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;
@@ -59,7 +64,7 @@ function TraineeExposurePage() {
         trainees: profRes.data ?? [],
         assignments: (rotaRes.data ?? []).map((a) => ({
           staff_id: a.staff_id!,
-          specialty_id: a.theatre_session_id ? tsById.get(a.theatre_session_id) ?? null : null,
+          specialty_id: a.theatre_session_id ? (tsById.get(a.theatre_session_id) ?? null) : null,
         })),
         targets: targetRes.data ?? [],
         specById,
@@ -93,8 +98,11 @@ function TraineeExposurePage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Trainees" value={view.length} icon={GraduationCap} />
         <StatCard label="Under-exposure alerts" value={totalRed} icon={GraduationCap} />
-        <StatCard label="Trainees with any red flag"
-          value={view.filter((r) => r.underexposedCount > 0).length} icon={GraduationCap} />
+        <StatCard
+          label="Trainees with any red flag"
+          value={view.filter((r) => r.underexposedCount > 0).length}
+          icon={GraduationCap}
+        />
       </div>
       <Card>
         <CardContent className="p-0">
@@ -111,7 +119,9 @@ function TraineeExposurePage() {
               {view.map((r) => (
                 <TableRow key={r.staff_id}>
                   <TableCell>{r.name}</TableCell>
-                  <TableCell><Badge variant="outline">{r.training_level ?? "—"}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.training_level ?? "—"}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     {r.underexposedCount > 0 ? (
                       <Badge variant="destructive">{r.underexposedCount}</Badge>
@@ -128,12 +138,12 @@ function TraineeExposurePage() {
                           key={s.specialty_id}
                           variant={s.band === "red" ? "destructive" : "secondary"}
                         >
-                          {specById.get(s.specialty_id) ?? s.specialty_id.slice(0, 4)}: {s.delivered}/{s.required}
+                          {specById.get(s.specialty_id) ?? s.specialty_id.slice(0, 4)}:{" "}
+                          {s.delivered}/{s.required}
                         </Badge>
                       ))}
-                    {r.bySpecialty.filter((s) => s.band === "red" || s.band === "amber").length === 0 && (
-                      <span className="text-muted-foreground text-xs">On target</span>
-                    )}
+                    {r.bySpecialty.filter((s) => s.band === "red" || s.band === "amber").length ===
+                      0 && <span className="text-muted-foreground text-xs">On target</span>}
                   </TableCell>
                 </TableRow>
               ))}

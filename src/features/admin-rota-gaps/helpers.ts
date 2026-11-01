@@ -88,22 +88,20 @@ export function prioritiseSpans(spans: MergedSpan[], priority: SyncPriority): Me
   const sorted = [...spans];
   switch (priority) {
     case "coverage":
-      sorted.sort((a, b) =>
-        b.missingDays - a.missingDays ||
-        (a.startISO < b.startISO ? 1 : a.startISO > b.startISO ? -1 : 0),
+      sorted.sort(
+        (a, b) =>
+          b.missingDays - a.missingDays ||
+          (a.startISO < b.startISO ? 1 : a.startISO > b.startISO ? -1 : 0),
       );
       break;
     case "recency":
-      sorted.sort((a, b) =>
-        (a.endISO < b.endISO ? 1 : a.endISO > b.endISO ? -1 : 0) ||
-        b.missingDays - a.missingDays,
+      sorted.sort(
+        (a, b) =>
+          (a.endISO < b.endISO ? 1 : a.endISO > b.endISO ? -1 : 0) || b.missingDays - a.missingDays,
       );
       break;
     case "trainees":
-      sorted.sort((a, b) =>
-        b.trainees - a.trainees ||
-        b.missingDays - a.missingDays,
-      );
+      sorted.sort((a, b) => b.trainees - a.trainees || b.missingDays - a.missingDays);
       break;
   }
   return sorted;
@@ -139,11 +137,7 @@ function isoFromDate(d: Date): string {
  * days) in `[fromISO, toISO]` that lie inside the trainee's rotation
  * window and have no rota assignment.
  */
-export function countSyncMissingInSpan(
-  snap: GapSnapshot,
-  fromISO: string,
-  toISO: string,
-): number {
+export function countSyncMissingInSpan(snap: GapSnapshot, fromISO: string, toISO: string): number {
   if (fromISO > toISO) return 0;
   const [fy, fm, fd] = fromISO.split("-").map(Number);
   const [ty, tm, td] = toISO.split("-").map(Number);
@@ -155,7 +149,11 @@ export function countSyncMissingInSpan(
     const rotStart = t.start_date ?? null;
     const rotEnd = t.rotation_end_date ?? snap.today;
     const dates = snap.datesByStaff.get(t.id) ?? new Set<string>();
-    for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
+    for (
+      let dt = new Date(from);
+      dt.getTime() <= to.getTime();
+      dt = new Date(dt.getTime() + MS_DAY_LOCAL)
+    ) {
       const iso = isoFromDate(dt);
       if (rotStart && iso < rotStart) continue;
       if (iso > rotEnd) continue;
@@ -184,7 +182,11 @@ export function countSyncMissingForTraineeInSpan(
   const from = new Date(fy, fm - 1, fd);
   const to = new Date(ty, tm - 1, td);
   let missing = 0;
-  for (let dt = new Date(from); dt.getTime() <= to.getTime(); dt = new Date(dt.getTime() + MS_DAY_LOCAL)) {
+  for (
+    let dt = new Date(from);
+    dt.getTime() <= to.getTime();
+    dt = new Date(dt.getTime() + MS_DAY_LOCAL)
+  ) {
     const iso = isoFromDate(dt);
     if (rotStart && iso < rotStart) continue;
     if (iso > rotEnd) continue;

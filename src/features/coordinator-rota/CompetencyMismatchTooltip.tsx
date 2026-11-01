@@ -1,15 +1,15 @@
 import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   computeCompetencyMismatch,
   STATUS_LABEL,
   type MismatchStatus,
 } from "@/features/competencies/mismatch";
 import type {
-  Competency, CompetencyRequirement, StaffCompetency,
+  Competency,
+  CompetencyRequirement,
+  StaffCompetency,
 } from "@/features/competencies/competencies";
 
 /**
@@ -18,8 +18,15 @@ import type {
  * missing, expired, revoked, or supervised-only.
  */
 export function CompetencyMismatchTooltip({
-  staffId, staffName, specialtyId, specialtyName, role, onDate,
-  competencies, requirements, staffCompetencies,
+  staffId,
+  staffName,
+  specialtyId,
+  specialtyName,
+  role,
+  onDate,
+  competencies,
+  requirements,
+  staffCompetencies,
 }: {
   staffId: string;
   staffName?: string;
@@ -32,8 +39,13 @@ export function CompetencyMismatchTooltip({
   staffCompetencies: StaffCompetency[];
 }) {
   const details = computeCompetencyMismatch({
-    staffId, specialtyId, role, onDate,
-    competencies, requirements, staffCompetencies,
+    staffId,
+    specialtyId,
+    role,
+    onDate,
+    competencies,
+    requirements,
+    staffCompetencies,
   });
 
   if (details.rows.length === 0) return null;
@@ -61,7 +73,8 @@ export function CompetencyMismatchTooltip({
             Competency check
             {staffName && specialtyName && (
               <span className="font-normal text-muted-foreground">
-                {" "}— {staffName} · {specialtyName} · {role}
+                {" "}
+                — {staffName} · {specialtyName} · {role}
               </span>
             )}
           </div>
@@ -69,18 +82,20 @@ export function CompetencyMismatchTooltip({
             {heldOk} / {total} required competencies met
             {details.requiredMissing > 0 && (
               <span className="text-destructive font-medium">
-                {" · "}{details.requiredMissing} missing
+                {" · "}
+                {details.requiredMissing} missing
               </span>
             )}
           </div>
           <div className="rounded border divide-y">
             {details.rows.map((r) => (
-              <div key={r.competencyId} className="grid grid-cols-[1fr_auto] gap-2 p-1.5 text-[11px]">
+              <div
+                key={r.competencyId}
+                className="grid grid-cols-[1fr_auto] gap-2 p-1.5 text-[11px]"
+              >
                 <div className="min-w-0">
                   <div className="truncate">
-                    <span className={r.blocking ? "font-semibold" : ""}>
-                      {r.competencyName}
-                    </span>
+                    <span className={r.blocking ? "font-semibold" : ""}>{r.competencyName}</span>
                     <span className="ml-1 font-mono text-[10px] text-muted-foreground">
                       {r.competencyCode}
                     </span>
@@ -88,8 +103,12 @@ export function CompetencyMismatchTooltip({
                   <div className="text-[10px] text-muted-foreground">
                     {r.requirement === "required" ? "Required" : "Recommended"}
                     {r.expiresAt && (
-                      <span> · expires {r.expiresAt}
-                        {r.daysUntilExpiry !== null && r.daysUntilExpiry >= 0 && r.daysUntilExpiry <= 60 &&
+                      <span>
+                        {" "}
+                        · expires {r.expiresAt}
+                        {r.daysUntilExpiry !== null &&
+                          r.daysUntilExpiry >= 0 &&
+                          r.daysUntilExpiry <= 60 &&
                           ` (${r.daysUntilExpiry}d)`}
                       </span>
                     )}

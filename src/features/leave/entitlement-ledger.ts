@@ -1,4 +1,10 @@
 // Pure TS entitlement engine — no DB deps.
+import {
+  countLeaveWorkingDays,
+  leaveYearWindow,
+  prorationFraction,
+  rangeOverlapsWindow,
+} from "./leave-count";
 // Computes per-staff, per-leave-year entitlement, taken, pending and remaining
 // with pro-rating for LTFT fraction and mid-year start/leaver dates.
 
@@ -15,12 +21,7 @@ export type LeaveType =
   | "toil"
   | "other";
 
-export type LeaveStatus =
-  | "pending"
-  | "approved"
-  | "denied"
-  | "cancelled"
-  | "reserve";
+export type LeaveStatus = "pending" | "approved" | "denied" | "cancelled" | "reserve";
 
 export interface AllowanceRow {
   leave_year_start: string; // ISO date
@@ -65,74 +66,38 @@ export interface EntitlementLine {
   label: string;
   unit: EntitlementUnit;
   entitlement: number; // raw before pro-rating
-  prorated: number;    // after LTFT / mid-year
+  prorated: number; // after LTFT / mid-year
   carryOver: number;
   taken: number;
   pending: number;
   remaining: number;
 }
 
-const DAY_MS = 86_400_000;
-
-function toDate(s: string): Date {
-  return new Date(s + (s.length === 10 ? "T00:00:00Z" : ""));
-}
-
-function daysBetweenInclusive(a: string, b: string): number {
-  const d1 = toDate(a).getTime();
-  const d2 = toDate(b).getTime();
-  return Math.max(0, Math.round((d2 - d1) / DAY_MS) + 1);
-}
-
-/** Calendar-day count of a leave request, half-days counted as 0.5. */
-export function leaveDayCount(row: LeaveRow): number {
-  let days = daysBetweenInclusive(row.start_date, row.end_date);
-  if (row.half_day_start) days -= 0.5;
-  if (row.half_day_end && row.start_date !== row.end_date) days -= 0.5;
-  if (row.half_day_start && row.start_date === row.end_date && row.half_day_end) {
-    days = 0.5; // single-day half-day of a half — normalise to 0.5
-  }
-  return Math.max(0, days);
+/**
+ * Working-day count of a leave request (canonical convention, see
+ * leave-count.ts). Optionally clipped to a leave year before counting.
+ */
+export function leaveDayCount(row: LeaveRow, yearStartISO?: string): number {
+  return countLeaveWorkingDays(row, yearStartISO ? leaveYearWindow(yearStartISO) : undefined);
 }
 
 /**
- * Compute the pro-rating fraction for a staff member in a given leave year.
- * Combines LTFT fraction × (days-in-post inside the year / 365).
+ * Pro-rating fraction for a staff member in a given leave year:
+ * LTFT fraction × (days in post within [yearStart, next anniversary) ÷ year
+ * length). `left_at` is treated as the last day in post (inclusive).
  */
-export function proratingFraction(
-  allowance: AllowanceRow,
-  profile: ProfileForProrating,
-): number {
-  const yearStart = toDate(allowance.leave_year_start);
-  const yearEnd = new Date(yearStart.getTime() + 365 * DAY_MS - 1);
-  const startedAt = profile.start_date ? toDate(profile.start_date) : yearStart;
-  const leftAt = profile.left_at ? toDate(profile.left_at) : yearEnd;
-  const effectiveStart = startedAt > yearStart ? startedAt : yearStart;
-  const effectiveEnd = leftAt < yearEnd ? leftAt : yearEnd;
-  const daysInPost = Math.max(
-    0,
-    Math.round((effectiveEnd.getTime() - effectiveStart.getTime()) / DAY_MS) + 1,
-  );
-  const timeFraction = Math.min(1, daysInPost / 365);
-  const ltft = allowance.ltft_fraction ?? 1;
-  return Math.round(timeFraction * ltft * 1000) / 1000;
-}
-
-/**
- * Filter leave rows to those overlapping the given leave-year window.
- * A row overlaps if its date range intersects [yearStart, yearStart+365).
- */
-export function rowsInLeaveYear(
-  rows: LeaveRow[],
-  allowance: AllowanceRow,
-): LeaveRow[] {
-  const start = toDate(allowance.leave_year_start).getTime();
-  const end = start + 365 * DAY_MS;
-  return rows.filter((r) => {
-    const s = toDate(r.start_date).getTime();
-    const e = toDate(r.end_date).getTime();
-    return e >= start && s < end;
+export function proratingFraction(allowance: AllowanceRow, profile: ProfileForProrating): number {
+  return prorationFraction(allowance.leave_year_start, {
+    employmentStart: profile.start_date ?? null,
+    leftAt: profile.left_at ?? null,
+    ltft: allowance.ltft_fraction ?? 1,
   });
+}
+
+/** Rows overlapping [yearStart, next anniversary). */
+export function rowsInLeaveYear(rows: LeaveRow[], allowance: AllowanceRow): LeaveRow[] {
+  const w = leaveYearWindow(allowance.leave_year_start);
+  return rows.filter((r) => rangeOverlapsWindow(r, w));
 }
 
 const TYPE_LABEL: Record<LeaveType, string> = {
@@ -151,13 +116,20 @@ const TYPE_LABEL: Record<LeaveType, string> = {
 
 function entitlementFor(type: LeaveType, a: AllowanceRow): number {
   switch (type) {
-    case "annual": return a.annual_days;
-    case "study": return a.study_days;
-    case "professional": return a.professional_days;
-    case "carers": return a.carers_days;
-    case "parental": return a.parental_days;
-    case "compassionate": return a.compassionate_days;
-    default: return 0;
+    case "annual":
+      return a.annual_days;
+    case "study":
+      return a.study_days;
+    case "professional":
+      return a.professional_days;
+    case "carers":
+      return a.carers_days;
+    case "parental":
+      return a.parental_days;
+    case "compassionate":
+      return a.compassionate_days;
+    default:
+      return 0;
   }
 }
 
@@ -186,12 +158,11 @@ export function computeEntitlementLedger(
     const carryOver = type === "annual" ? allowance.carry_over_days : 0;
     const taken = rowsThisYear
       .filter((r) => r.type === type && r.status === "approved")
-      .reduce((s, r) => s + leaveDayCount(r), 0);
+      .reduce((s, r) => s + leaveDayCount(r, allowance.leave_year_start), 0);
     const pending = rowsThisYear
       .filter((r) => r.type === type && r.status === "pending")
-      .reduce((s, r) => s + leaveDayCount(r), 0);
-    const remaining =
-      Math.round((prorated + carryOver - taken - pending) * 100) / 100;
+      .reduce((s, r) => s + leaveDayCount(r, allowance.leave_year_start), 0);
+    const remaining = Math.round((prorated + carryOver - taken - pending) * 100) / 100;
     return {
       type,
       label: TYPE_LABEL[type],

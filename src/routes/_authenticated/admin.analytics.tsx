@@ -45,57 +45,49 @@ const CARDS: Array<{
   {
     to: "/admin/analytics/allocation-fairness",
     title: "1. Allocation fairness",
-    blurb:
-      "Per-doctor Gini across list types, weekends and on-calls over 12 months.",
+    blurb: "Per-doctor Gini across list types, weekends and on-calls over 12 months.",
     Icon: Scale,
   },
   {
     to: "/admin/analytics/short-notice",
     title: "2. Short-notice changes",
-    blurb:
-      "Who is disproportionately absorbing changes made ≤48h before a session.",
+    blurb: "Who is disproportionately absorbing changes made ≤48h before a session.",
     Icon: Clock,
   },
   {
     to: "/admin/analytics/leave-denials",
     title: "3. Leave denials",
-    blurb:
-      "Denial-reason taxonomy inferred from decision notes, by month and grade.",
+    blurb: "Denial-reason taxonomy inferred from decision notes, by month and grade.",
     Icon: XCircle,
   },
   {
     to: "/admin/analytics/trainee-exposure",
     title: "4. Trainee educational exposure",
-    blurb:
-      "Sessions delivered vs curriculum target per trainee — ARCP under-exposure alerts.",
+    blurb: "Sessions delivered vs curriculum target per trainee — ARCP under-exposure alerts.",
     Icon: GraduationCap,
   },
   {
     to: "/admin/analytics/oncall-inequality",
     title: "5. On-call frequency inequality",
-    blurb:
-      "Consultant on-calls per WTE, banded by LTFT fraction; outlier flags.",
+    blurb: "Consultant on-calls per WTE, banded by LTFT fraction; outlier flags.",
     Icon: Users,
   },
   {
     to: "/admin/analytics/sickness-seasonality",
     title: "6. Sickness seasonality",
-    blurb:
-      "Absence-days by month; Pearson correlation vs rota session density.",
+    blurb: "Absence-days by month; Pearson correlation vs rota session density.",
     Icon: Thermometer,
   },
   {
     to: "/admin/analytics/handover-risk",
     title: "7. Handover-adjacency risk",
-    blurb:
-      "Back-to-back high-acuity sessions for the same consultant on the same day.",
+    blurb: "Back-to-back high-acuity sessions for the same consultant on the same day.",
     Icon: ArrowRightLeft,
   },
   {
     to: "/admin/analytics/new-starters",
     title: "8. New-starter early warning",
-    blurb:
-      "First-90-days sickness, exception reports and short-notice changes.",
+    blurb: "First-90-days sickness, exception reports and short-notice changes.",
     Icon: AlertTriangle,
   },
 ];
@@ -118,9 +110,7 @@ function AnalyticsIndex() {
                 <Icon className="h-5 w-5 text-primary" />
                 <CardTitle className="text-base">{title}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {blurb}
-              </CardContent>
+              <CardContent className="text-sm text-muted-foreground">{blurb}</CardContent>
             </Card>
           </Link>
         ))}

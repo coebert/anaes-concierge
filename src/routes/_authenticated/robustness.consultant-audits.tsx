@@ -3,9 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -20,16 +18,9 @@ import {
 import { AuditCoverageBadge } from "@/components/audit-coverage-badge";
 import { PageLoading } from "@/components/loading";
 
-const REQUIRED_TABLES = [
-  "profiles",
-  "theatres",
-  "theatre_sessions",
-  "rota_assignments",
-] as const;
+const REQUIRED_TABLES = ["profiles", "theatres", "theatre_sessions", "rota_assignments"] as const;
 
-export const Route = createFileRoute(
-  "/_authenticated/robustness/consultant-audits",
-)({
+export const Route = createFileRoute("/_authenticated/robustness/consultant-audits")({
   head: () => ({ meta: [{ title: "Consultant audits — Salisbury Anaesthetics Rota" }] }),
   component: ConsultantAuditsPage,
 });
@@ -109,9 +100,7 @@ function ConsultantAuditsPage() {
         .select("id,name,kind,active")
         .eq("kind", "private");
       if (te) throw te;
-      const privateTheatres = new Map(
-        (theatres ?? []).map((t) => [t.id, t] as const),
-      );
+      const privateTheatres = new Map((theatres ?? []).map((t) => [t.id, t] as const));
 
       // SAG classification for an NHH theatre session.
       //   - sag   : NHH list with is_non_sag = false
@@ -131,9 +120,7 @@ function ConsultantAuditsPage() {
         while (true) {
           const { data: page, error: se } = await supabase
             .from("theatre_sessions")
-            .select(
-              "id,theatre_id,is_non_sag,non_sag_override,session_date",
-            )
+            .select("id,theatre_id,is_non_sag,non_sag_override,session_date")
             .gte("session_date", from)
             .lte("session_date", to)
             .range(offset, offset + PAGE - 1);
@@ -215,9 +202,6 @@ function ConsultantAuditsPage() {
         }
       }
 
-
-
-
       const rows: ConsultantRow[] = (profiles ?? [])
         .map((p) => {
           const c = counts.get(p.id)!;
@@ -256,9 +240,7 @@ function ConsultantAuditsPage() {
     if (!filter) return rows;
     const q = filter.toLowerCase();
     return rows.filter(
-      (r) =>
-        r.full_name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q),
+      (r) => r.full_name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
     );
   }, [data, filter]);
 
@@ -269,10 +251,9 @@ function ConsultantAuditsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Consultant audits</h1>
         <p className="text-sm text-muted-foreground">
-          Per-consultant SPA, SAG and non-SAG session counts within a chosen
-          date range. SAG lists are NHH (private) lists not marked
-          &lsquo;non-SAG&rsquo;; non-SAG lists are NHH lists explicitly tagged
-          as covered under the consultant&rsquo;s NHS job plan.
+          Per-consultant SPA, SAG and non-SAG session counts within a chosen date range. SAG lists
+          are NHH (private) lists not marked &lsquo;non-SAG&rsquo;; non-SAG lists are NHH lists
+          explicitly tagged as covered under the consultant&rsquo;s NHS job plan.
         </p>
       </div>
 
@@ -334,8 +315,7 @@ function ConsultantAuditsPage() {
       ) : grantsCheck.error ? (
         <Card className="border-destructive/40">
           <CardContent className="pt-6 text-sm text-destructive">
-            Data access health check failed:{" "}
-            {(grantsCheck.error as Error).message}
+            Data access health check failed: {(grantsCheck.error as Error).message}
           </CardContent>
         </Card>
       ) : grantsCheck.data && !grantsCheck.data.ok ? (
@@ -346,18 +326,13 @@ function ConsultantAuditsPage() {
             </p>
             <p className="text-muted-foreground">
               Missing GRANTs for the signed-in role on:{" "}
-              <span className="font-mono">
-                {grantsCheck.data.missing.join(", ")}
-              </span>
-              . Ask an administrator to restore the table grants before this
-              page can run.
+              <span className="font-mono">{grantsCheck.data.missing.join(", ")}</span>. Ask an
+              administrator to restore the table grants before this page can run.
             </p>
             {grantsCheck.data.otherErrors.length > 0 && (
               <p className="text-muted-foreground text-xs">
                 Other probe errors:{" "}
-                {grantsCheck.data.otherErrors
-                  .map((e) => `${e.table}: ${e.message}`)
-                  .join("; ")}
+                {grantsCheck.data.otherErrors.map((e) => `${e.table}: ${e.message}`).join("; ")}
               </p>
             )}
           </CardContent>
@@ -386,21 +361,14 @@ function ConsultantAuditsPage() {
                       {r.full_name}
                     </CardTitle>
                     {r.email && (
-                      <CardDescription className="truncate text-xs">
-                        {r.email}
-                      </CardDescription>
+                      <CardDescription className="truncate text-xs">{r.email}</CardDescription>
                     )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Stat label="SPA sessions" value={r.spa} hint="duty_type = SPA" />
-                <Stat
-                  label="SAG sessions"
-                  value={r.sag}
-                  hint="NHH lists (SAG)"
-                  tone="primary"
-                />
+                <Stat label="SAG sessions" value={r.sag} hint="NHH lists (SAG)" tone="primary" />
                 <Stat
                   label="Non-SAG sessions"
                   value={r.nonSag}
@@ -454,22 +422,14 @@ function Stat({
   tone?: "default" | "primary" | "amber";
 }) {
   const toneClass =
-    tone === "primary"
-      ? "text-primary"
-      : tone === "amber"
-        ? "text-warning"
-        : "text-foreground";
+    tone === "primary" ? "text-primary" : tone === "amber" ? "text-warning" : "text-foreground";
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="min-w-0">
         <div className="text-sm font-medium">{label}</div>
-        {hint && (
-          <div className="text-[11px] text-muted-foreground">{hint}</div>
-        )}
+        {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
       </div>
-      <div className={`text-2xl font-semibold tabular-nums ${toneClass}`}>
-        {value}
-      </div>
+      <div className={`text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</div>
     </div>
   );
 }

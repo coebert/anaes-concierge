@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  filterAssignmentsForCell,
-  type CalendarSpaAdminAssignment,
-} from "./me-cell-visibility";
+import { filterAssignmentsForCell, type CalendarSpaAdminAssignment } from "./me-cell-visibility";
 
 const day = "2026-05-26";
 const other = "2026-05-27";

@@ -240,9 +240,9 @@ export function ExceptionSubmitDialog({
         <DialogHeader>
           <DialogTitle>Submit an exception report</DialogTitle>
           <DialogDescription>
-            Raise a variance from your work schedule as required by the 2016
-            Terms &amp; Conditions of Service. Your educational supervisor
-            (or the Guardian of Safe Working for safety concerns) will respond.
+            Raise a variance from your work schedule as required by the 2016 Terms &amp; Conditions
+            of Service. Your educational supervisor (or the Guardian of Safe Working for safety
+            concerns) will respond.
           </DialogDescription>
         </DialogHeader>
 
@@ -279,21 +279,22 @@ export function ExceptionSubmitDialog({
               <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <div>
                 <div>
-                  <span className="font-medium">Rostered that day:</span>{" "}
-                  {plannedSummary.list} · {plannedSummary.startLabel}–
-                  {plannedSummary.endLabel} ({plannedSummary.totalH}h planned)
+                  <span className="font-medium">Rostered that day:</span> {plannedSummary.list} ·{" "}
+                  {plannedSummary.startLabel}–{plannedSummary.endLabel} ({plannedSummary.totalH}h
+                  planned)
                 </div>
                 {restContext ? (
                   <div className="text-muted-foreground">
-                    Next rostered start: {restContext.nextStart} the following day —
-                    planned rest {restContext.plannedRest.toFixed(1)}h (TCS minimum {REST_MIN_HOURS}h).
+                    Next rostered start: {restContext.nextStart} the following day — planned rest{" "}
+                    {restContext.plannedRest.toFixed(1)}h (TCS minimum {REST_MIN_HOURS}h).
                   </div>
                 ) : null}
               </div>
             </div>
           ) : eventDate ? (
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              No rostered sessions found for you on this date — you can still fill the hours below manually.
+              No rostered sessions found for you on this date — you can still fill the hours below
+              manually.
             </div>
           ) : null}
 
@@ -350,7 +351,9 @@ export function ExceptionSubmitDialog({
                 placeholder="e.g. 2"
               />
               {autoTouched.hours ? (
-                <p className="text-xs text-primary">Auto-filled from actual end time — edit if needed.</p>
+                <p className="text-xs text-primary">
+                  Auto-filled from actual end time — edit if needed.
+                </p>
               ) : null}
             </div>
           </div>
@@ -391,7 +394,9 @@ export function ExceptionSubmitDialog({
                 placeholder="e.g. 1.5"
               />
               {autoTouched.rest ? (
-                <p className="text-xs text-primary">Auto-filled from rest taken — edit if needed.</p>
+                <p className="text-xs text-primary">
+                  Auto-filled from rest taken — edit if needed.
+                </p>
               ) : null}
             </div>
           </div>
@@ -405,9 +410,7 @@ export function ExceptionSubmitDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the event, context, and any impact on patient care or your training."
             />
-            <p className="text-xs text-muted-foreground">
-              {description.length}/5000 characters
-            </p>
+            <p className="text-xs text-muted-foreground">{description.length}/5000 characters</p>
           </div>
 
           <label className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
@@ -422,9 +425,8 @@ export function ExceptionSubmitDialog({
                 Immediate patient-safety concern
               </div>
               <p className="text-xs text-muted-foreground">
-                Tick if a patient was harmed or could have been. This escalates
-                the report to the Guardian of Safe Working with a same-working-day
-                response requirement.
+                Tick if a patient was harmed or could have been. This escalates the report to the
+                Guardian of Safe Working with a same-working-day response requirement.
               </p>
             </div>
           </label>

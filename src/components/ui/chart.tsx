@@ -79,7 +79,8 @@ ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
     const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, "");
-    const safeColor = typeof color === "string" && /^[#a-zA-Z0-9(),.%\s/-]+$/.test(color) ? color : null;
+    const safeColor =
+      typeof color === "string" && /^[#a-zA-Z0-9(),.%\s/-]+$/.test(color) ? color : null;
     return safeKey && safeColor ? `  --color-${safeKey}: ${safeColor};` : null;
   })
   .join("\n")}

@@ -210,6 +210,8 @@ function makeAdminClient() {
       state.lteCols[col] = val;
       return b;
     };
+    // exception_reports query filters .neq("status","withdrawn") (added with the wellbeing tool).
+    b.neq = () => b;
     b.range = () => b;
     b.limit = () => b;
     b.order = () => b;
@@ -231,6 +233,8 @@ function makeAdminClient() {
 
   return {
     from: (t: string) => build(t),
+    // Durable chat quota RPC (take_request_quota) — always within limits here.
+    rpc: async () => ({ data: true, error: null }),
     auth: {
       getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }),
     },
@@ -240,9 +244,7 @@ function makeAdminClient() {
 function dataFor(state: QueryState): unknown {
   switch (state.table) {
     case "ai_conversations":
-      return state.single
-        ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" }
-        : [];
+      return state.single ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" } : [];
     case "ai_messages":
       return [];
     case "user_roles":
@@ -291,7 +293,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 
 vi.mock("@/lib/gmail.server", () => ({
@@ -416,24 +418,21 @@ describe("/api/chat e2e — rejected & cancelled leave don't distort rota answer
     },
   );
 
-  it(
-    "does NOT flip onLeaveToday when the request covering today is rejected or cancelled",
-    async () => {
-      futureLeaveFixture = onLeaveTodayNonApprovedLeave;
+  it("does NOT flip onLeaveToday when the request covering today is rejected or cancelled", async () => {
+    futureLeaveFixture = onLeaveTodayNonApprovedLeave;
 
-      const payload = await invokePatternTool();
+    const payload = await invokePatternTool();
 
-      // Both requests literally span TODAY (2026-07-06) but neither is
-      // approved — the assistant must not tell the user they're on leave.
-      const spansToday = payload.leave.upcoming.filter(
-        (r) => r.start_date <= TODAY && r.end_date >= TODAY,
-      );
-      expect(spansToday.map((r) => r.status).sort()).toEqual(["cancelled", "rejected"]);
-      expect(payload.leave.onLeaveToday).toBe(false);
+    // Both requests literally span TODAY (2026-07-06) but neither is
+    // approved — the assistant must not tell the user they're on leave.
+    const spansToday = payload.leave.upcoming.filter(
+      (r) => r.start_date <= TODAY && r.end_date >= TODAY,
+    );
+    expect(spansToday.map((r) => r.status).sort()).toEqual(["cancelled", "rejected"]);
+    expect(payload.leave.onLeaveToday).toBe(false);
 
-      // And, again, neither request contributes to the impact count.
-      expect(payload.leave.overlapsByType.annual).toBe(0);
-      expect(payload.leave.overlapsByType.sick).toBe(0);
-    },
-  );
+    // And, again, neither request contributes to the impact count.
+    expect(payload.leave.overlapsByType.annual).toBe(0);
+    expect(payload.leave.overlapsByType.sick).toBe(0);
+  });
 });

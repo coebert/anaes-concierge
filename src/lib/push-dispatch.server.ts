@@ -71,8 +71,12 @@ function buildBody(
   theatreByRow: Map<string, string>,
   nameById: Map<string, string>,
 ): string {
-  const newTheatre = row.new_theatre_session_id ? theatreByRow.get(row.new_theatre_session_id) : undefined;
-  const prevTheatre = row.prev_theatre_session_id ? theatreByRow.get(row.prev_theatre_session_id) : undefined;
+  const newTheatre = row.new_theatre_session_id
+    ? theatreByRow.get(row.new_theatre_session_id)
+    : undefined;
+  const prevTheatre = row.prev_theatre_session_id
+    ? theatreByRow.get(row.prev_theatre_session_id)
+    : undefined;
 
   if (row.action === "insert") {
     return `You've been added to ${newTheatre ?? "a list"}.`;
@@ -522,4 +526,3 @@ export async function dispatchPendingLeavePushNotifications(): Promise<{
 
   return { scanned: rows.length, sent, failed, pruned };
 }
-

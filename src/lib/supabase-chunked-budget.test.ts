@@ -1,9 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import {
-  fetchAllPaged,
-  createQueryBudget,
-  reportQueryBudget,
-} from "./supabase-chunked";
+import { fetchAllPaged, createQueryBudget, reportQueryBudget } from "./supabase-chunked";
 
 /**
  * The wellbeing pages fan out into 4-6 paginated reads at once. To catch
@@ -93,9 +89,7 @@ describe("query budget instrumentation", () => {
       "return_to_work_interviews",
     ] as const;
     await Promise.all(
-      sources.map((source) =>
-        fetchAllPaged<Row>(() => makeTable(5000), { budget, source }),
-      ),
+      sources.map((source) => fetchAllPaged<Row>(() => makeTable(5000), { budget, source })),
     );
     // 5000 rows = 5 full pages of 1000 + one short/empty page that exits the loop.
     expect(budget.count).toBe(36);

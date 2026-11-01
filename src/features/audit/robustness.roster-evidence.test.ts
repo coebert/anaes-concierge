@@ -11,7 +11,7 @@ interface Fixture {
   specialties: Row[];
 }
 
-let fixture: Fixture = {
+const fixture: Fixture = {
   profiles: [],
   leave_requests: [],
   theatre_sessions: [],
@@ -26,9 +26,7 @@ let fixture: Fixture = {
 
 function chain(table: string) {
   const c: Record<string, unknown> = {};
-  ["select", "eq", "lte", "gte", "in", "order", "range"].forEach(
-    (m) => (c[m] = () => c),
-  );
+  ["select", "eq", "lte", "gte", "in", "order", "range"].forEach((m) => (c[m] = () => c));
   c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
     Promise.resolve({
       data: (fixture as unknown as Record<string, Row[]>)[table] ?? [],
@@ -60,10 +58,22 @@ describe("computeRobustness — requireRosterEvidence (default true)", () => {
     ];
     // Only c1 has an assignment (an AM theatre list) — c2 and c3 are not rostered.
     fixture.theatre_sessions = [
-      { id: "ts1", session_date: DATE, session: "am", specialty_id: null, surgical_consultant: null },
+      {
+        id: "ts1",
+        session_date: DATE,
+        session: "am",
+        specialty_id: null,
+        surgical_consultant: null,
+      },
     ];
     fixture.rota_assignments = [
-      { staff_id: "c1", session_date: DATE, session: "am", duty_type: "theatre", theatre_session_id: "ts1" },
+      {
+        staff_id: "c1",
+        session_date: DATE,
+        session: "am",
+        duty_type: "theatre",
+        theatre_session_id: "ts1",
+      },
     ];
 
     const { days } = await computeRobustness(DATE, DATE);
@@ -80,7 +90,13 @@ describe("computeRobustness — requireRosterEvidence (default true)", () => {
     ];
     fixture.rota_assignments = [
       // Rostered in AM on SPA, nothing in PM — they are at work today.
-      { staff_id: "c1", session_date: DATE, session: "am", duty_type: "spa", theatre_session_id: null },
+      {
+        staff_id: "c1",
+        session_date: DATE,
+        session: "am",
+        duty_type: "spa",
+        theatre_session_id: null,
+      },
     ];
     const { days } = await computeRobustness(DATE, DATE);
     expect(days[0].am.consultantsOnSpa).toBe(1);

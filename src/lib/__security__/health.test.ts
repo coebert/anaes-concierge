@@ -3,22 +3,37 @@ import { parseHealthResponse } from "@/lib/health-response";
 
 describe("parseHealthResponse", () => {
   it("handles minimal liveness 200 without checks/version", () => {
-    const p = parseHealthResponse(200, JSON.stringify({ status: "alive", timestamp: "2026-11-01T00:00:00Z" }));
+    const p = parseHealthResponse(
+      200,
+      JSON.stringify({ status: "alive", timestamp: "2026-11-01T00:00:00Z" }),
+    );
     expect(p.status).toBe("alive");
     expect(p.checks).toBeNull();
     expect(p.version).toBeNull();
   });
   it("handles detailed 503", () => {
-    const p = parseHealthResponse(503, JSON.stringify({ status: "unhealthy", version: "1", checks: [{ name: "Database", status: "error" }] }));
+    const p = parseHealthResponse(
+      503,
+      JSON.stringify({
+        status: "unhealthy",
+        version: "1",
+        checks: [{ name: "Database", status: "error" }],
+      }),
+    );
     expect(p.status).toBe("unhealthy");
     expect(p.checks?.[0]).toMatchObject({ name: "Database", status: "error" });
   });
   it("handles non-JSON bodies and bogus fields without throwing", () => {
     expect(parseHealthResponse(502, "<html>Bad gateway</html>").status).toBe("unhealthy");
     expect(parseHealthResponse(200, "not json").status).toBe("unknown");
-    const p = parseHealthResponse(200, JSON.stringify({ status: 5, checks: [null, { status: "weird" }] }));
+    const p = parseHealthResponse(
+      200,
+      JSON.stringify({ status: 5, checks: [null, { status: "weird" }] }),
+    );
     expect(p.status).toBe("unknown");
-    expect(p.checks).toEqual([{ name: "Unnamed check", status: "error", latencyMs: undefined, message: undefined }]);
+    expect(p.checks).toEqual([
+      { name: "Unnamed check", status: "error", latencyMs: undefined, message: undefined },
+    ]);
   });
 });
 
@@ -46,7 +61,9 @@ describe("/api/public/health handler", () => {
     vi.stubGlobal("fetch", fetchSpy);
     process.env.HEALTH_DETAILS_SECRET = "detail-secret";
     const { handleHealthRequest } = await import("@/routes/api/public/health");
-    const res = await handleHealthRequest(new Request("https://x/api/public/health", { headers: { "x-health-secret": "nope" } }));
+    const res = await handleHealthRequest(
+      new Request("https://x/api/public/health", { headers: { "x-health-secret": "nope" } }),
+    );
     expect((await res.json()).checks).toBeUndefined();
     expect(fetchSpy).not.toHaveBeenCalled();
   });

@@ -27,11 +27,11 @@ import {
 
 // Europe/London: BST starts last Sunday in March, ends last Sunday in October.
 const LONDON_SPRING_FORWARD_2026 = new Date("2026-03-29T01:00:00Z"); // 02:00 BST
-const LONDON_FALL_BACK_2026 = new Date("2026-10-25T01:00:00Z");      // 01:00 GMT after fallback
+const LONDON_FALL_BACK_2026 = new Date("2026-10-25T01:00:00Z"); // 01:00 GMT after fallback
 
 // America/New_York: EDT starts 2nd Sunday March, ends 1st Sunday November.
 const NY_SPRING_FORWARD_2026 = new Date("2026-03-08T07:00:00Z"); // 02→03 local
-const NY_FALL_BACK_2026 = new Date("2026-11-01T06:00:00Z");      // 02→01 local
+const NY_FALL_BACK_2026 = new Date("2026-11-01T06:00:00Z"); // 02→01 local
 
 // Australia/Sydney: AEDT ends 1st Sun April, starts 1st Sun October.
 const SYDNEY_FALL_BACK_2026 = new Date("2026-04-05T16:00:00Z"); // 03→02 local
@@ -99,13 +99,7 @@ describe("DST transitions — same UTC instant under different TZ envs returns t
     else process.env.TZ = originalTz;
   });
 
-  const ZONES = [
-    "UTC",
-    "Europe/London",
-    "America/New_York",
-    "Australia/Sydney",
-    "Pacific/Chatham",
-  ];
+  const ZONES = ["UTC", "Europe/London", "America/New_York", "Australia/Sydney", "Pacific/Chatham"];
 
   for (const [label, instant, expectedStart, expectedEnd] of ALL_TRANSITIONS) {
     for (const tz of ZONES) {
@@ -146,47 +140,32 @@ describe("DST transitions — instants minutes either side of the jump map to th
 describe("leaveOverlapsWindow — DST-adjacent boundary leave rows", () => {
   it("London spring-forward: leave on the transition day itself is in-window", () => {
     const window = computeLeaveWindow(new Date("2026-03-22T12:00:00Z"));
-    expect(
-      leaveOverlapsWindow(
-        { start_date: "2026-03-29", end_date: "2026-03-29" },
-        window,
-      ),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-03-29", end_date: "2026-03-29" }, window)).toBe(
+      true,
+    );
   });
 
   it("London fall-back: leave starting on the fallback day is included at the window-end boundary", () => {
     // Window 2026-10-18 → 2026-11-01. Fall-back is 25 Oct (inside).
     const window = computeLeaveWindow(new Date("2026-10-18T12:00:00Z"));
-    expect(
-      leaveOverlapsWindow(
-        { start_date: "2026-10-25", end_date: "2026-10-25" },
-        window,
-      ),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-10-25", end_date: "2026-10-25" }, window)).toBe(
+      true,
+    );
     // And the boundary day 2026-11-01 itself is still in-window.
-    expect(
-      leaveOverlapsWindow(
-        { start_date: "2026-11-01", end_date: "2026-11-01" },
-        window,
-      ),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-11-01", end_date: "2026-11-01" }, window)).toBe(
+      true,
+    );
     // 2026-11-02 is one calendar day past, regardless of DST.
-    expect(
-      leaveOverlapsWindow(
-        { start_date: "2026-11-02", end_date: "2026-11-02" },
-        window,
-      ),
-    ).toBe(false);
+    expect(leaveOverlapsWindow({ start_date: "2026-11-02", end_date: "2026-11-02" }, window)).toBe(
+      false,
+    );
   });
 
   it("NY spring-forward: a leave row dated on the transition day is in-window when computed from a UTC instant inside the window", () => {
     const window = computeLeaveWindow(new Date("2026-03-01T12:00:00Z"));
     expect(window).toEqual({ window_start: "2026-03-01", window_end: "2026-03-15" });
-    expect(
-      leaveOverlapsWindow(
-        { start_date: "2026-03-08", end_date: "2026-03-08" },
-        window,
-      ),
-    ).toBe(true);
+    expect(leaveOverlapsWindow({ start_date: "2026-03-08", end_date: "2026-03-08" }, window)).toBe(
+      true,
+    );
   });
 });

@@ -12,9 +12,7 @@ describe("computeTraineeMetrics — supervisor-on-same-session reclassification"
   const specSession = new Map<string, string | null>();
   const specNames = new Map<string, string>();
 
-  const baseAssignment = (
-    overrides: Partial<MetricAssignment> = {},
-  ): MetricAssignment => ({
+  const baseAssignment = (overrides: Partial<MetricAssignment> = {}): MetricAssignment => ({
     role_on_list: "solo",
     session: "am",
     duty_type: "theatre",

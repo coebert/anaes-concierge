@@ -191,9 +191,7 @@ function renderWithClient(node: React.ReactElement) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
   });
-  const utils = render(
-    <QueryClientProvider client={qc}>{node}</QueryClientProvider>,
-  );
+  const utils = render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>);
   return { qc, ...utils };
 }
 
@@ -254,9 +252,7 @@ describe("wellbeing page — leave-driver label uses normalised decided_at day",
 
     const { qc } = renderWithClient(<WellbeingPage />);
     await waitForFetchesToSettle(qc);
-    await waitFor(() =>
-      expect(driverLabelText()).toBe("3 rejected/cancelled leave"),
-    );
+    await waitFor(() => expect(driverLabelText()).toBe("3 rejected/cancelled leave"));
   });
 
   it(
@@ -275,9 +271,7 @@ describe("wellbeing page — leave-driver label uses normalised decided_at day",
       ];
       const first = renderWithClient(<WellbeingPage />);
       await waitForFetchesToSettle(first.qc);
-      await waitFor(() =>
-        expect(driverLabelText()).toBe("2 rejected/cancelled leave"),
-      );
+      await waitFor(() => expect(driverLabelText()).toBe("2 rejected/cancelled leave"));
       const firstLabel = driverLabelText();
       cleanup();
 
@@ -296,9 +290,7 @@ describe("wellbeing page — leave-driver label uses normalised decided_at day",
       ];
       const second = renderWithClient(<WellbeingPage />);
       await waitForFetchesToSettle(second.qc);
-      await waitFor(() =>
-        expect(driverLabelText()).toBe("2 rejected/cancelled leave"),
-      );
+      await waitFor(() => expect(driverLabelText()).toBe("2 rejected/cancelled leave"));
       expect(driverLabelText()).toBe(firstLabel);
     },
   );
@@ -344,9 +336,7 @@ describe("wellbeing page — leave-driver label uses normalised decided_at day",
 
       const { qc } = renderWithClient(<WellbeingPage />);
       await waitForFetchesToSettle(qc);
-      await waitFor(() =>
-        expect(driverLabelText()).toBe("2 rejected/cancelled leave"),
-      );
+      await waitFor(() => expect(driverLabelText()).toBe("2 rejected/cancelled leave"));
     },
   );
 });

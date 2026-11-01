@@ -25,8 +25,14 @@ export const Route = createFileRoute("/api/public/hooks/rpc-access-alerts")({
         }
 
         const params = new URL(request.url).searchParams;
-        const windowMinutes = Math.max(1, Math.min(1440, Number(params.get("window") ?? "10") || 10));
-        const threshold = Math.max(1, Math.min(100000, Number(params.get("threshold") ?? "50") || 50));
+        const windowMinutes = Math.max(
+          1,
+          Math.min(1440, Number(params.get("window") ?? "10") || 10),
+        );
+        const threshold = Math.max(
+          1,
+          Math.min(100000, Number(params.get("threshold") ?? "50") || 50),
+        );
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin.rpc(
@@ -34,14 +40,19 @@ export const Route = createFileRoute("/api/public/hooks/rpc-access-alerts")({
           { p_window_minutes: windowMinutes, p_threshold: threshold } as never,
         );
         if (error) {
-          return new Response(
-            JSON.stringify({ ok: false, error: error.message }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: error.message }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
 
         return new Response(
-          JSON.stringify({ ok: true, inserted: data ?? 0, window_minutes: windowMinutes, threshold }),
+          JSON.stringify({
+            ok: true,
+            inserted: data ?? 0,
+            window_minutes: windowMinutes,
+            threshold,
+          }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       },

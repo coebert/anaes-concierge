@@ -3,6 +3,12 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  consumeRegistrationChallenge,
+  verifyAuthenticationCore,
+  type ChallengeRow,
+  type CredentialRow,
+} from "./passkey-core";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -23,6 +29,19 @@ async function loadServer() {
     import("@simplewebauthn/server"),
   ]);
   return { supabaseAdmin, srv };
+}
+
+async function consumeById(
+  supabaseAdmin: any,
+  id: string,
+  purpose: string,
+): Promise<ChallengeRow | null> {
+  const { data, error } = await supabaseAdmin.rpc("consume_passkey_challenge_by_id", {
+    p_id: id,
+    p_purpose: purpose,
+  });
+  if (error) throw new Error("Passkey service is temporarily unavailable.");
+  return ((data as ChallengeRow[] | null) ?? [])[0] ?? null;
 }
 
 async function cleanupExpiredChallenges(supabaseAdmin: any) {
@@ -65,40 +84,41 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
         id: c.credential_id,
         transports: (c.transports ?? undefined) as any,
       })),
-
     });
 
     await cleanupExpiredChallenges(supabaseAdmin);
-    await supabaseAdmin.from("passkey_challenges").insert({
-      user_id: userId,
-      challenge: options.challenge,
-      purpose: "registration",
-    });
+    const { data: chRow, error: chErr } = await supabaseAdmin
+      .from("passkey_challenges")
+      .insert({ user_id: userId, challenge: options.challenge, purpose: "registration" })
+      .select("id")
+      .single();
+    if (chErr || !chRow) throw new Error("Could not start passkey registration. Try again.");
 
-    return options;
+    return { options, ceremonyId: chRow.id as string };
   });
 
 export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { response: any; deviceName?: string }) =>
-    z.object({ response: z.any(), deviceName: z.string().max(80).optional() }).parse(data),
+  .inputValidator((data: { response: any; deviceName?: string; ceremonyId: string }) =>
+    z
+      .object({
+        response: z.any(),
+        deviceName: z.string().max(80).optional(),
+        ceremonyId: z.string().guid(),
+      })
+      .parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, srv } = await loadServer();
     const { rpID, origin } = getRpInfo();
     const userId = context.userId;
 
-    // Atomically consume the latest non-expired registration challenge so a
-    // replay/concurrent request cannot reuse it.
-    const { data: consumed, error: consumeErr } = await supabaseAdmin.rpc(
-      "consume_passkey_challenge" as never,
-      { p_user_id: userId, p_purpose: "registration" } as never,
+    // Consume exactly this ceremony's challenge, once, and only for this user.
+    const challenge = await consumeRegistrationChallenge(
+      { consumeChallenge: (id, purpose) => consumeById(supabaseAdmin, id, purpose) },
+      data.ceremonyId,
+      userId,
     );
-    if (consumeErr) throw new Error(consumeErr.message);
-    const challenge = (consumed as unknown as { challenge: string }[] | null)?.[0]?.challenge;
-    if (!challenge) {
-      throw new Error("Passkey challenge expired. Try again.");
-    }
 
     const verification = await srv.verifyRegistrationResponse({
       response: data.response,
@@ -128,16 +148,13 @@ export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 // ---------------------------------------------------------------------------
 // Authentication (public — no session yet)
 // ---------------------------------------------------------------------------
 
 export const startPasskeyAuthentication = createServerFn({ method: "POST" })
   .inputValidator((data: { email?: string } | undefined) =>
-    z
-      .object({ email: z.string().trim().email().max(255).optional() })
-      .parse(data ?? {}),
+    z.object({ email: z.string().trim().email().max(255).optional() }).parse(data ?? {}),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin, srv } = await loadServer();
@@ -159,9 +176,7 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
           .eq("user_id", userId);
         allow = (creds ?? []).map((c) => ({
           id: c.credential_id as string,
-          transports: (c.transports ?? undefined) as
-            | AuthenticatorTransportFuture[]
-            | undefined,
+          transports: (c.transports ?? undefined) as AuthenticatorTransportFuture[] | undefined,
         }));
       }
     }
@@ -174,25 +189,27 @@ export const startPasskeyAuthentication = createServerFn({ method: "POST" })
     });
 
     await cleanupExpiredChallenges(supabaseAdmin);
-    // Store challenge keyed by user when known; otherwise as a global
-    // (user_id NULL) challenge for the discoverable flow.
-    await supabaseAdmin.from("passkey_challenges").insert({
-      user_id: userId,
-      challenge: options.challenge,
-      purpose: "authentication",
-    });
+    // One row per ceremony; its random id is the only handle that can consume it.
+    // user_id is bound when an email resolved to a user, NULL for usernameless.
+    const { data: chRow, error: chErr } = await supabaseAdmin
+      .from("passkey_challenges")
+      .insert({ user_id: userId, challenge: options.challenge, purpose: "authentication" })
+      .select("id")
+      .single();
+    if (chErr || !chRow) throw new Error("Could not start passkey sign-in. Try again.");
 
     // Do NOT return `hasPasskeys` — that leaks account enumeration. The
     // client always attempts the ceremony; failure surfaces uniformly.
-    return { options };
+    return { options, ceremonyId: chRow.id as string };
   });
 
 export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
-  .inputValidator((data: { email?: string; response: unknown }) =>
+  .inputValidator((data: { email?: string; response: unknown; ceremonyId: string }) =>
     z
       .object({
         email: z.string().trim().email().max(255).optional(),
         response: z.any(),
+        ceremonyId: z.string().guid(),
       })
       .parse(data),
   )
@@ -200,71 +217,65 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
     const { supabaseAdmin, srv } = await loadServer();
     const { rpID, origin } = getRpInfo();
 
-    const credId = (data.response as { id?: string })?.id;
-    if (!credId) throw new Error("Malformed passkey response.");
-
-    // Resolve the credential first so discoverable (usernameless) flows work.
-    const { data: creds } = await supabaseAdmin
-      .from("passkey_credentials")
-      .select("*")
-      .eq("credential_id", credId)
-      .limit(1);
-    const cred = creds?.[0];
-    if (!cred) throw new Error("Unknown passkey.");
-    const userId = cred.user_id as string;
-
-    // If an email was provided, ensure it matches the credential owner.
-    if (data.email) {
-      const { data: expectedId } = await supabaseAdmin.rpc(
-        "find_profile_id_by_email",
-        { p_email: data.email.toLowerCase() },
-      );
-      if (!expectedId || expectedId !== userId) {
-        throw new Error("Passkey does not match this account.");
-      }
-    }
-
-    // Atomically consume the challenge so a concurrent request cannot reuse it.
-    const { data: consumed, error: consumeErr } = await supabaseAdmin.rpc(
-      "consume_passkey_challenge" as never,
-      { p_user_id: userId, p_purpose: "authentication" } as never,
-    );
-    if (consumeErr) throw new Error(consumeErr.message);
-    const challenge = (consumed as unknown as { challenge: string }[] | null)?.[0]
-      ?.challenge;
-    if (!challenge) {
-      throw new Error("Passkey challenge expired. Try again.");
-    }
-
-    const verification = await srv.verifyAuthenticationResponse({
-      response: data.response as never,
-      expectedChallenge: challenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
-      credential: {
-        id: cred.credential_id,
-        publicKey: new Uint8Array(Buffer.from(cred.public_key, "base64")),
-        counter: Number(cred.counter),
-        transports: (cred.transports ?? undefined) as
-          | AuthenticatorTransportFuture[]
-          | undefined,
+    const { userId } = await verifyAuthenticationCore(
+      {
+        insertChallenge: async () => {
+          throw new Error("unused");
+        },
+        consumeChallenge: (id, purpose) => consumeById(supabaseAdmin, id, purpose),
+        findCredential: async (credentialId) => {
+          const { data: rows, error } = await supabaseAdmin
+            .from("passkey_credentials")
+            .select("id, user_id, credential_id, public_key, counter, transports")
+            .eq("credential_id", credentialId)
+            .limit(1);
+          if (error) throw new Error("Passkey sign-in is temporarily unavailable.");
+          return (rows?.[0] as CredentialRow | undefined) ?? null;
+        },
+        findProfileIdByEmail: async (email) => {
+          const { data: id, error } = await supabaseAdmin.rpc("find_profile_id_by_email", {
+            p_email: email,
+          });
+          if (error) throw new Error("Passkey sign-in is temporarily unavailable.");
+          return (id as unknown as string) ?? null;
+        },
+        updateCounter: async (id, counter) => {
+          const { error } = await supabaseAdmin
+            .from("passkey_credentials")
+            .update({ counter, last_used_at: new Date().toISOString() })
+            .eq("id", id);
+          if (error) throw new Error("Passkey sign-in is temporarily unavailable.");
+        },
+        verify: async ({
+          response,
+          expectedChallenge,
+          expectedOrigin,
+          expectedRPID,
+          credential,
+        }) => {
+          const v = await srv.verifyAuthenticationResponse({
+            response: response as never,
+            expectedChallenge,
+            expectedOrigin,
+            expectedRPID,
+            credential: {
+              id: credential.credential_id,
+              publicKey: new Uint8Array(Buffer.from(credential.public_key, "base64")),
+              counter: Number(credential.counter),
+              transports: (credential.transports ?? undefined) as
+                | AuthenticatorTransportFuture[]
+                | undefined,
+            },
+            requireUserVerification: true,
+          });
+          return { verified: v.verified, newCounter: v.authenticationInfo.newCounter };
+        },
       },
-      requireUserVerification: true,
-    });
-
-    if (!verification.verified) throw new Error("Passkey verification failed.");
-
-    await supabaseAdmin
-      .from("passkey_credentials")
-      .update({
-        counter: verification.authenticationInfo.newCounter,
-        last_used_at: new Date().toISOString(),
-      })
-      .eq("id", cred.id);
+      { ceremonyId: data.ceremonyId, email: data.email, response: data.response, origin, rpID },
+    );
 
     // Look up the user's email so we can mint a magic-link session token.
-    const { data: userRec, error: userErr } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+    const { data: userRec, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
     const email = userRec?.user?.email;
     if (userErr || !email) {
       throw new Error(userErr?.message ?? "Could not resolve account email.");
@@ -281,7 +292,6 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
 
     return { tokenHash: link.properties.hashed_token };
   });
-
 
 // ---------------------------------------------------------------------------
 // Manage stored passkeys
@@ -301,9 +311,7 @@ export const listMyPasskeys = createServerFn({ method: "GET" })
 
 export const deleteMyPasskey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string }) =>
-    z.object({ id: z.string().uuid() }).parse(data),
-  )
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("passkey_credentials")

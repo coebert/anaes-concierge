@@ -41,11 +41,7 @@ export type AuditTrainee = {
   full_name: string | null;
   email: string;
   start_date: string | null;
-  decision:
-    | "has_activity"
-    | "has_counted_leave"
-    | "not_yet_started"
-    | "no_signal";
+  decision: "has_activity" | "has_counted_leave" | "not_yet_started" | "no_signal";
   has_activity: boolean;
   activity_count: number;
   predicted_start: string | null;
@@ -85,9 +81,6 @@ export type AuditResult = {
 };
 
 const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
-
-
-
 
 export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -166,9 +159,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       .from("leave_allowances")
       .select("staff_id, leave_year_start")
       .in("staff_id", ids);
-    const allowanceByStaff = new Set<string>(
-      (allowanceRows ?? []).map((r) => r.staff_id),
-    );
+    const allowanceByStaff = new Set<string>((allowanceRows ?? []).map((r) => r.staff_id));
 
     const { data: activityRows, error: aErr } = await supabaseAdmin
       .from("rota_assignments")
@@ -226,8 +217,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
       Array<{ duty_type: string | null; session_date: string }>
     >();
     for (const r of futureRows ?? []) {
-      if (!firstFuture.has(r.staff_id))
-        firstFuture.set(r.staff_id, r.session_date);
+      if (!firstFuture.has(r.staff_id)) firstFuture.set(r.staff_id, r.session_date);
       const list = futureByStaff.get(r.staff_id) ?? [];
       list.push({ duty_type: r.duty_type, session_date: r.session_date });
       futureByStaff.set(r.staff_id, list);
@@ -269,9 +259,7 @@ export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
         has_activity,
         activity_count: aCount,
         predicted_start: predicted,
-        leave_rows: leave.sort((a, b) =>
-          a.start_date.localeCompare(b.start_date),
-        ),
+        leave_rows: leave.sort((a, b) => a.start_date.localeCompare(b.start_date)),
         leave_source_warnings: warnings,
         icu_block_only,
       };

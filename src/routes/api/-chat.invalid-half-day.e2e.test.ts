@@ -19,8 +19,20 @@ const SPECIALTY_ID = "44444444-4444-4444-4444-444444444444";
 const SESSION_ID = "55555555-5555-5555-5555-555555555555";
 
 const rotaAssignments = [
-  { staff_id: USER_ID, duty_type: "theatre", session_date: "2026-06-26", session: "am", theatre_session_id: SESSION_ID },
-  { staff_id: USER_ID, duty_type: "theatre", session_date: "2026-06-26", session: "pm", theatre_session_id: SESSION_ID },
+  {
+    staff_id: USER_ID,
+    duty_type: "theatre",
+    session_date: "2026-06-26",
+    session: "am",
+    theatre_session_id: SESSION_ID,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: "theatre",
+    session_date: "2026-06-26",
+    session: "pm",
+    theatre_session_id: SESSION_ID,
+  },
 ];
 
 const theatreSessions = [
@@ -83,6 +95,8 @@ function makeAdminClient() {
       state.lteCols[col] = val;
       return b;
     };
+    // exception_reports query filters .neq("status","withdrawn") (added with the wellbeing tool).
+    b.neq = () => b;
     b.range = () => b;
     b.limit = () => b;
     b.order = () => b;
@@ -104,6 +118,8 @@ function makeAdminClient() {
 
   return {
     from: (t: string) => build(t),
+    // Durable chat quota RPC (take_request_quota) — always within limits here.
+    rpc: async () => ({ data: true, error: null }),
     auth: {
       getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }),
     },
@@ -152,7 +168,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 
 vi.mock("@/lib/gmail.server", () => ({

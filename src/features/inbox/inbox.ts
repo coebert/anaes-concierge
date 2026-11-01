@@ -98,11 +98,13 @@ export function buildInbox(
   referenceDate: Date = new Date(),
 ): InboxItem[] {
   const items: InboxItem[] = [];
-  const today = new Date(Date.UTC(
-    referenceDate.getUTCFullYear(),
-    referenceDate.getUTCMonth(),
-    referenceDate.getUTCDate(),
-  ));
+  const today = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate(),
+    ),
+  );
 
   // --- Pending leave decisions -------------------------------------------
   for (const r of data.leave) {
@@ -111,15 +113,20 @@ export function buildInbox(
     let priority = 400;
     let severity: InboxItem["severity"] = "info";
     if (daysUntilStart < 0) {
-      priority = 950; severity = "critical";
+      priority = 950;
+      severity = "critical";
     } else if (daysUntilStart <= 7) {
-      priority = 780; severity = "warning";
+      priority = 780;
+      severity = "warning";
     } else if (daysUntilStart <= 21) {
-      priority = 560; severity = "warning";
+      priority = 560;
+      severity = "warning";
     } else if (daysUntilStart <= 42) {
-      priority = 420; severity = "info";
+      priority = 420;
+      severity = "info";
     } else {
-      priority = 320; severity = "info";
+      priority = 320;
+      severity = "info";
     }
     const label = LEAVE_TYPE_LABEL[r.type] ?? "Leave";
     const staffName = data.nameById.get(r.staff_id) ?? "Unknown staff";
@@ -144,13 +151,17 @@ export function buildInbox(
     let priority: number;
     let severity: InboxItem["severity"];
     if (r.immediate_safety_concern) {
-      priority = 1100; severity = "critical";
+      priority = 1100;
+      severity = "critical";
     } else if (daysUntilDue < 0) {
-      priority = 960; severity = "critical";
+      priority = 960;
+      severity = "critical";
     } else if (daysUntilDue <= 2) {
-      priority = 760; severity = "warning";
+      priority = 760;
+      severity = "warning";
     } else {
-      priority = 520; severity = "info";
+      priority = 520;
+      severity = "info";
     }
     const staffName = data.nameById.get(r.trainee_id) ?? "Unknown trainee";
     items.push({
@@ -191,11 +202,14 @@ export function buildInbox(
     let priority: number;
     let severity: InboxItem["severity"];
     if (daysUntil < 0) {
-      priority = 940; severity = "critical";
+      priority = 940;
+      severity = "critical";
     } else if (daysUntil <= 14) {
-      priority = 720; severity = "warning";
+      priority = 720;
+      severity = "warning";
     } else if (daysUntil <= 60) {
-      priority = 340; severity = "info";
+      priority = 340;
+      severity = "info";
     } else {
       continue;
     }
@@ -204,9 +218,10 @@ export function buildInbox(
       id: `competency:${r.id}`,
       kind: "competency",
       title: `${r.competency_name} — ${staffName}`,
-      detail: daysUntil < 0
-        ? `Expired ${r.expires_at} (${-daysUntil}d ago)`
-        : `Expires ${r.expires_at} (in ${daysUntil}d)`,
+      detail:
+        daysUntil < 0
+          ? `Expired ${r.expires_at} (${-daysUntil}d ago)`
+          : `Expires ${r.expires_at} (in ${daysUntil}d)`,
       staffName,
       staffId: r.staff_id,
       dueDate: r.expires_at,

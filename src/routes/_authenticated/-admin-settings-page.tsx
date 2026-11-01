@@ -65,7 +65,12 @@ export function AdminSettingsPage() {
       setStaffUrl(data.settings.staff_report_url ?? "");
       setDaysBack(String(data.settings.sync_days_back ?? 30));
       setDaysAhead(String(data.settings.sync_days_ahead ?? 120));
-      setAutoReclassifySolo(Boolean((data.settings as { auto_reclassify_trainee_solo?: boolean }).auto_reclassify_trainee_solo));
+      setAutoReclassifySolo(
+        Boolean(
+          (data.settings as { auto_reclassify_trainee_solo?: boolean })
+            .auto_reclassify_trainee_solo,
+        ),
+      );
     }
   }, [data?.settings]);
 
@@ -130,22 +135,19 @@ export function AdminSettingsPage() {
     }
     const labels: Record<string, string> = {
       theatre_name_alias_missing: "theatre name alias missing in the mapping table",
-      no_theatre_sessions_on_those_days: "no theatre listing imported for those days (off-site / feed gap)",
+      no_theatre_sessions_on_those_days:
+        "no theatre listing imported for those days (off-site / feed gap)",
       mixed: "a mix of label mismatches and missing theatre listings",
       unknown: "no diagnostic available",
     };
     const sorted = Array.from(counts.entries()).sort((a, b) => b[1].n - a[1].n);
     const top = sorted[0];
     if (!top) return { primary: "unknown", text: "" };
-    const breakdown = sorted
-      .map(([cause, v]) => `${v.n}× ${labels[cause] ?? cause}`)
-      .join("; ");
+    const breakdown = sorted.map(([cause, v]) => `${v.n}× ${labels[cause] ?? cause}`).join("; ");
     return { primary: top[0], text: breakdown, example: top[1].example };
   };
 
-  const buildSignature = (
-    mismatches: ReadonlyArray<{ staff_id: string; unmatched: number }>,
-  ) =>
+  const buildSignature = (mismatches: ReadonlyArray<{ staff_id: string; unmatched: number }>) =>
     mismatches
       .map((m) => `${m.staff_id}:${m.unmatched}`)
       .sort()
@@ -179,8 +181,7 @@ export function AdminSettingsPage() {
 
       const signature = buildSignature(mismatches);
       const causes = summarizeRootCauses(mismatches);
-      const stalled =
-        retryAttempt > 0 && lastMismatchSignature.current === signature;
+      const stalled = retryAttempt > 0 && lastMismatchSignature.current === signature;
 
       // Safeguard: if the previous retry produced the same mismatch set,
       // further re-syncs won't help — surface the likely root cause and stop.
@@ -216,9 +217,7 @@ export function AdminSettingsPage() {
       ) {
         const nextAttempt = retryAttempt + 1;
         setRetryAttempt(nextAttempt);
-        setRetriedTrainees(
-          mismatches.map((m) => m.full_name ?? m.staff_id),
-        );
+        setRetriedTrainees(mismatches.map((m) => m.full_name ?? m.staff_id));
         setStalledCause(null);
         retryInFlight.current = true;
         toast.message(
@@ -245,12 +244,8 @@ export function AdminSettingsPage() {
       retryInFlight.current = false;
       setStalledCause(causes.text);
       const exhausted =
-        retryAttempt >= MAX_AUTO_RETRIES
-          ? ` after ${MAX_AUTO_RETRIES} targeted retries`
-          : "";
-      toast.warning(
-        `Trainee theatre audit${exhausted}: ${summary} Likely cause: ${causes.text}.`,
-      );
+        retryAttempt >= MAX_AUTO_RETRIES ? ` after ${MAX_AUTO_RETRIES} targeted retries` : "";
+      toast.warning(`Trainee theatre audit${exhausted}: ${summary} Likely cause: ${causes.text}.`);
     },
     onError: (e: Error) => {
       retryInFlight.current = false;
@@ -401,9 +396,7 @@ export function AdminSettingsPage() {
     },
     onSuccess: (results) => {
       const failed = results.filter((r) => !r.ok);
-      const summary = results
-        .map((r) => `${r.name}: ${r.ok ? "✓" : "✗"} ${r.message}`)
-        .join(" · ");
+      const summary = results.map((r) => `${r.name}: ${r.ok ? "✓" : "✗"} ${r.message}`).join(" · ");
       if (failed.length === 0) {
         toast.success(`Sync complete — ${summary}`);
       } else if (failed.length === results.length) {
@@ -442,10 +435,6 @@ export function AdminSettingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
-
-
-
   if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center">
@@ -472,8 +461,8 @@ export function AdminSettingsPage() {
                 <Plug className="h-4 w-4" /> CLWRota — pull sync
               </CardTitle>
               <CardDescription>
-                Import rota, leave, and staff data from CLWRota into this app.
-                Credentials are stored as backend secrets.
+                Import rota, leave, and staff data from CLWRota into this app. Credentials are
+                stored as backend secrets.
               </CardDescription>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-success dark:bg-emerald-950/40 dark:text-emerald-400">
                 <CheckCircle2 className="h-3 w-3" />
@@ -500,8 +489,8 @@ export function AdminSettingsPage() {
 
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              In CLWRota, generate a Central API report URL for each dataset
-              and paste it below. Leave blank to skip a dataset.
+              In CLWRota, generate a Central API report URL for each dataset and paste it below.
+              Leave blank to skip a dataset.
             </p>
 
             <div className="space-y-2">
@@ -537,9 +526,9 @@ export function AdminSettingsPage() {
               <div>
                 <div className="text-sm font-medium">Rota sync date window</div>
                 <p className="text-xs text-muted-foreground">
-                  Narrows the rota fetch to a rolling window around today so the
-                  upstream call completes within the gateway timeout. Historical
-                  rows already synced are preserved.
+                  Narrows the rota fetch to a rolling window around today so the upstream call
+                  completes within the gateway timeout. Historical rows already synced are
+                  preserved.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -575,9 +564,9 @@ export function AdminSettingsPage() {
                     Auto-reclassify trainee solo lists
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    During each rota sync, set any trainee marked "solo" on a
-                    theatre session that also has a consultant rostered to
-                    "supervised". Locally-modified rows are preserved.
+                    During each rota sync, set any trainee marked "solo" on a theatre session that
+                    also has a consultant rostered to "supervised". Locally-modified rows are
+                    preserved.
                   </p>
                 </div>
                 <Switch
@@ -666,16 +655,13 @@ export function AdminSettingsPage() {
             />
           )}
 
-          {backfillNonSagMut.data && (
-            <BackfillNonSagResultPanel data={backfillNonSagMut.data} />
-          )}
+          {backfillNonSagMut.data && <BackfillNonSagResultPanel data={backfillNonSagMut.data} />}
 
           {leaveMut.data && <LeaveSyncResultPanel data={leaveMut.data} />}
 
           {rotaMut.data && <RotaSyncResultPanel data={rotaMut.data} />}
 
           {staffMut.data && <StaffSyncResultPanel data={staffMut.data} />}
-
 
           {settings?.last_sync_at && (
             <div className="rounded-md border border-border p-3 text-sm">
@@ -696,13 +682,10 @@ export function AdminSettingsPage() {
                 {settings.last_pulled_rows ?? 0}
               </div>
               {settings.last_error && (
-                <div className="mt-2 text-xs text-destructive">
-                  {settings.last_error}
-                </div>
+                <div className="mt-2 text-xs text-destructive">{settings.last_error}</div>
               )}
             </div>
           )}
-
         </CardContent>
       </Card>
 

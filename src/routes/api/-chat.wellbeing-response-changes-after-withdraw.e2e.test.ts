@@ -62,7 +62,10 @@ interface QueryState {
 function makeAdminClient() {
   const build = (table: string) => {
     const state: QueryState = {
-      table, eqCols: {}, neqCols: {}, single: false,
+      table,
+      eqCols: {},
+      neqCols: {},
+      single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
     const b: any = {};
@@ -82,7 +85,10 @@ function makeAdminClient() {
     b.limit = () => b;
     b.order = () => b;
     b.or = () => b;
-    b.maybeSingle = () => { state.single = true; return b; };
+    b.maybeSingle = () => {
+      state.single = true;
+      return b;
+    };
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({
@@ -97,6 +103,8 @@ function makeAdminClient() {
   };
   return {
     from: (t: string) => build(t),
+    // Durable chat quota RPC (take_request_quota) — always within limits here.
+    rpc: async () => ({ data: true, error: null }),
     auth: { getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }) },
   };
 }
@@ -105,30 +113,42 @@ function dataFor(state: QueryState): unknown {
   switch (state.table) {
     case "ai_conversations":
       return state.single ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" } : [];
-    case "ai_messages": return [];
-    case "user_roles": return state.single ? null : [];
+    case "ai_messages":
+      return [];
+    case "user_roles":
+      return state.single ? null : [];
     case "profiles":
       return state.single
         ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
-    case "theatres": return [];
-    case "specialties": return [];
-    case "rota_assignments": return [];
-    case "theatre_sessions": return [];
-    case "rota_change_log": return [];
-    case "leave_requests": return [];
+    case "theatres":
+      return [];
+    case "specialties":
+      return [];
+    case "rota_assignments":
+      return [];
+    case "theatre_sessions":
+      return [];
+    case "rota_change_log":
+      return [];
+    case "leave_requests":
+      return [];
     case "leave_allowances":
       return state.single
         ? { annual_days: 32, study_days: 10, leave_year_start: "2026-04-01" }
         : [];
-    case "custom_rota_rules": return [];
-    case "pulse_survey_cycles": return [];
-    case "pulse_survey_responses": return [];
+    case "custom_rota_rules":
+      return [];
+    case "pulse_survey_cycles":
+      return [];
+    case "pulse_survey_responses":
+      return [];
     case "exception_reports": {
       const exclude = new Set((state.neqCols.status ?? []) as string[]);
       return exceptionReportsFixture.filter((r) => !exclude.has(r.status));
     }
-    default: return state.single ? null : [];
+    default:
+      return state.single ? null : [];
   }
 }
 
@@ -136,7 +156,7 @@ function dataFor(state: QueryState): unknown {
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => makeAdminClient() }));
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 vi.mock("@/lib/gmail.server", () => ({ sendGmail: vi.fn(async () => ({ ok: true })) }));
 
@@ -158,10 +178,10 @@ vi.mock("ai", async () => {
               `Top driver: ${top?.label ?? "none"} (impact ${top?.impact ?? 0}). ` +
               `You have ${result.active_exception_count} active exception reports.`
             : "No wellbeing data available.";
-          return new Response(
-            JSON.stringify({ assistantText: reply, tool: result }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ assistantText: reply, tool: result }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
         },
       };
     },
@@ -227,60 +247,55 @@ function makeExceptions(status: string): ExcRow[] {
   }));
 }
 
-describe(
-  "/api/chat e2e — assistant reply text changes after withdrawing exceptions",
-  () => {
-    it(
-      "same wellbeing question yields a materially different assistant string " +
-        "once the exceptions are flipped to `withdrawn`",
-      async () => {
-        // Run A — many active exception reports across the 90-day window.
-        exceptionReportsFixture = makeExceptions("submitted");
-        const active = await askChat();
+describe("/api/chat e2e — assistant reply text changes after withdrawing exceptions", () => {
+  it(
+    "same wellbeing question yields a materially different assistant string " +
+      "once the exceptions are flipped to `withdrawn`",
+    async () => {
+      // Run A — many active exception reports across the 90-day window.
+      exceptionReportsFixture = makeExceptions("submitted");
+      const active = await askChat();
 
-        // Sanity: the tool actually returned a payload that reflects the
-        // active reports.
-        expect(active.tool).not.toBeNull();
-        expect(active.tool.active_exception_count).toBe(
-          EXCEPTION_EVENT_DATES.length,
-        );
-        expect(active.assistantText).toMatch(
-          new RegExp(`${EXCEPTION_EVENT_DATES.length} active exception reports`),
-        );
-        const activeScore: number = active.tool.score;
+      // Sanity: the tool actually returned a payload that reflects the
+      // active reports.
+      expect(active.tool).not.toBeNull();
+      expect(active.tool.active_exception_count).toBe(EXCEPTION_EVENT_DATES.length);
+      expect(active.assistantText).toMatch(
+        new RegExp(`${EXCEPTION_EVENT_DATES.length} active exception reports`),
+      );
+      const activeScore: number = active.tool.score;
 
-        // Run B — same reports flipped to withdrawn. The tool must exclude
-        // them, which must in turn change the assistant reply.
-        exceptionReportsFixture = makeExceptions("withdrawn");
-        const withdrawn = await askChat();
+      // Run B — same reports flipped to withdrawn. The tool must exclude
+      // them, which must in turn change the assistant reply.
+      exceptionReportsFixture = makeExceptions("withdrawn");
+      const withdrawn = await askChat();
 
-        expect(withdrawn.tool.active_exception_count).toBe(0);
-        expect(withdrawn.assistantText).toMatch(/0 active exception reports/);
+      expect(withdrawn.tool.active_exception_count).toBe(0);
+      expect(withdrawn.assistantText).toMatch(/0 active exception reports/);
 
-        // The whole assistant reply must not be byte-equal to the pre-withdraw
-        // reply. Withdrawing exceptions is expected to raise the score, so
-        // also assert the numeric direction — a regression that ignored the
-        // status filter would leave the score (and text) unchanged.
-        expect(withdrawn.assistantText).not.toBe(active.assistantText);
-        expect(withdrawn.tool.score).toBeGreaterThan(activeScore);
-      },
-    );
+      // The whole assistant reply must not be byte-equal to the pre-withdraw
+      // reply. Withdrawing exceptions is expected to raise the score, so
+      // also assert the numeric direction — a regression that ignored the
+      // status filter would leave the score (and text) unchanged.
+      expect(withdrawn.assistantText).not.toBe(active.assistantText);
+      expect(withdrawn.tool.score).toBeGreaterThan(activeScore);
+    },
+  );
 
-    it(
-      "withdrawing exceptions ALSO changes the reply when the model asks the " +
-        "same follow-up in a fresh turn (no cached response leaks between runs)",
-      async () => {
-        exceptionReportsFixture = makeExceptions("submitted");
-        const first = await askChat();
-        const secondSameFixture = await askChat();
-        // With the fixture unchanged the reply is deterministic.
-        expect(secondSameFixture.assistantText).toBe(first.assistantText);
+  it(
+    "withdrawing exceptions ALSO changes the reply when the model asks the " +
+      "same follow-up in a fresh turn (no cached response leaks between runs)",
+    async () => {
+      exceptionReportsFixture = makeExceptions("submitted");
+      const first = await askChat();
+      const secondSameFixture = await askChat();
+      // With the fixture unchanged the reply is deterministic.
+      expect(secondSameFixture.assistantText).toBe(first.assistantText);
 
-        exceptionReportsFixture = [];
-        const afterAllGone = await askChat();
-        expect(afterAllGone.assistantText).not.toBe(first.assistantText);
-        expect(afterAllGone.tool.active_exception_count).toBe(0);
-      },
-    );
-  },
-);
+      exceptionReportsFixture = [];
+      const afterAllGone = await askChat();
+      expect(afterAllGone.assistantText).not.toBe(first.assistantText);
+      expect(afterAllGone.tool.active_exception_count).toBe(0);
+    },
+  );
+});

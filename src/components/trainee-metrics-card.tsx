@@ -5,7 +5,6 @@ import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 import type { TraineeMetrics } from "@/features/trainees/trainee-metrics";
 
-
 type Props = {
   metrics: TraineeMetrics;
   startDate: string | null | undefined;
@@ -15,7 +14,14 @@ type Props = {
   subtitle?: string;
 };
 
-export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlockOnly = false, title = "Metrics", subtitle }: Props) {
+export function TraineeMetricsCard({
+  metrics,
+  startDate,
+  rotationEndDate,
+  icuBlockOnly = false,
+  title = "Metrics",
+  subtitle,
+}: Props) {
   const {
     weeksAtSalisbury,
     weeksRemaining,
@@ -35,9 +41,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
 
   // Build a stable signature of the metrics that should trigger an announcement.
   const warningSig = warnings.map((w) => `${w.level}:${w.code}`).join("|");
-  const specialtySig = specialtyBreakdown
-    .map((s) => `${s.name}:${s.count}:${s.percent}`)
-    .join("|");
+  const specialtySig = specialtyBreakdown.map((s) => `${s.name}:${s.count}:${s.percent}`).join("|");
   const announcement = useAnnouncement({
     warnings,
     warningSig,
@@ -61,10 +65,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
         {warnings.length > 0 ? (
-          <ul
-            className="space-y-1.5 list-none p-0"
-            aria-label="Data quality warnings"
-          >
+          <ul className="space-y-1.5 list-none p-0" aria-label="Data quality warnings">
             {warnings.map((w) => (
               <li
                 key={w.code}
@@ -87,11 +88,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
             label="Time at Salisbury"
             value={weeksAtSalisbury === null ? "—" : `${weeksAtSalisbury} wk`}
             valueAria={weeksAtSalisbury === null ? "no data" : `${weeksAtSalisbury} weeks`}
-            sub={
-              startDate
-                ? `since ${formatDateWithWeekdayGB(startDate)}`
-                : "no start date set"
-            }
+            sub={startDate ? `since ${formatDateWithWeekdayGB(startDate)}` : "no start date set"}
           />
           <Metric
             label="Time left"
@@ -121,12 +118,20 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
           <Metric
             label="On-call"
             value={onCallLists.toString()}
-            sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"}
+            sub={
+              onCallPct !== null
+                ? `${onCallPct}% of rostered sessions`
+                : "No sessions — unavailable"
+            }
           />
           <Metric label="Total assignments" value={totalAssignments.toString()} />
         </dl>
         <dl className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
-          <Metric label="ICU shifts" value={icuLists.toString()} sub="whole-day shifts (AM+PM count as 1)" />
+          <Metric
+            label="ICU shifts"
+            value={icuLists.toString()}
+            sub="whole-day shifts (AM+PM count as 1)"
+          />
           <Metric label="Obstetrics shifts" value={obstetricsLists.toString()} sub="labour ward" />
         </dl>
 
@@ -238,12 +243,8 @@ function useAnnouncement({
     const parts: string[] = [];
 
     if (warningSig !== prevWarnSigRef.current) {
-      const prevCodes = new Set(
-        prevWarnSigRef.current.split("|").filter(Boolean),
-      );
-      const added = warnings.filter(
-        (w) => !prevCodes.has(`${w.level}:${w.code}`),
-      );
+      const prevCodes = new Set(prevWarnSigRef.current.split("|").filter(Boolean));
+      const added = warnings.filter((w) => !prevCodes.has(`${w.level}:${w.code}`));
       if (added.length > 0) {
         parts.push(
           `${regionLabel}: ${added
@@ -277,4 +278,3 @@ function useAnnouncement({
 
   return message;
 }
-

@@ -12,6 +12,8 @@
  * parallel.
  */
 
+import { drainPages } from "./paged-fetch-core";
+
 export const SUPABASE_IN_CHUNK = 200;
 
 export function chunkIds<T>(ids: readonly T[], size: number = SUPABASE_IN_CHUNK): T[][] {
@@ -64,7 +66,8 @@ export function createQueryBudget(label: string, max: number): QueryBudget {
  */
 export function reportQueryBudget(budget: QueryBudget): void {
   const isTest =
-    (typeof import.meta !== "undefined" && (import.meta as { env?: { MODE?: string } }).env?.MODE === "test") ||
+    (typeof import.meta !== "undefined" &&
+      (import.meta as { env?: { MODE?: string } }).env?.MODE === "test") ||
     (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
     (typeof process !== "undefined" && !!process.env?.VITEST);
   const isDev =
@@ -87,38 +90,28 @@ export function reportQueryBudget(budget: QueryBudget): void {
 
 export async function fetchAllPaged<T>(
   build: () => {
-    range: (
-      from: number,
-      to: number,
-    ) => PromiseLike<{ data: T[] | null; error: unknown }>;
+    range: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>;
   },
-  pageSizeOrOpts: number | { pageSize?: number; budget?: QueryBudget; source?: string } = 1000,
-  maybeOpts?: { budget?: QueryBudget; source?: string },
+  pageSizeOrOpts:
+    | number
+    | { pageSize?: number; budget?: QueryBudget; source?: string; maxRows?: number } = 1000,
+  maybeOpts?: { budget?: QueryBudget; source?: string; maxRows?: number },
 ): Promise<T[]> {
   const pageSize =
-    typeof pageSizeOrOpts === "number"
-      ? pageSizeOrOpts
-      : pageSizeOrOpts.pageSize ?? 1000;
-  const opts =
-    typeof pageSizeOrOpts === "number" ? maybeOpts : pageSizeOrOpts;
+    typeof pageSizeOrOpts === "number" ? pageSizeOrOpts : (pageSizeOrOpts.pageSize ?? 1000);
+  const opts = typeof pageSizeOrOpts === "number" ? maybeOpts : pageSizeOrOpts;
   const budget = opts?.budget;
   const source = opts?.source ?? "unnamed";
 
-  const out: T[] = [];
-  for (let from = 0; ; from += pageSize) {
-    if (budget) {
-      budget.count += 1;
-      budget.bySource[source] = (budget.bySource[source] ?? 0) + 1;
-    }
-    const { data, error } = await build().range(from, from + pageSize - 1);
-    if (error) {
-      const msg = (error as { message?: string }).message ?? String(error);
-      throw new Error(msg);
-    }
-    const page = data ?? [];
-    out.push(...page);
-    if (page.length < pageSize) break;
-    if (from > 500_000) break; // safety cap
-  }
-  return out;
+  return drainPages<T>((from, to) => build().range(from, to), {
+    pageSize,
+    maxRows: opts?.maxRows ?? 500_000,
+    label: source,
+    onRequest: budget
+      ? () => {
+          budget.count += 1;
+          budget.bySource[source] = (budget.bySource[source] ?? 0) + 1;
+        }
+      : undefined,
+  });
 }

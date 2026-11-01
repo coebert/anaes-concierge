@@ -3,6 +3,7 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "packageManager": "bun@1.4.4",
   "scripts": {
     "dev": "vite dev",
     "build": "node scripts/check-worker-global-scope.mjs && NODE_OPTIONS=--max-old-space-size=8192 vite build",
@@ -14,7 +15,8 @@
     "lint:fix-order:check": "node scripts/fix-use-before-define.mjs --check",
     "check:worker-globals": "node scripts/check-worker-global-scope.mjs",
     "check:deps": "node scripts/check-tanstack-versions.mjs",
-    "check:supply-chain": "node scripts/check-supply-chain.mjs",
+    "check:supply-chain": "node scripts/check-supply-chain.mjs --level=moderate",
+    "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "test:stress": "vitest run src/lib/wellbeing-leave-pagination-stress.test.ts",
     "test:stress:large": "LEAVE_STRESS_PROFILE=large vitest run src/lib/wellbeing-leave-pagination-stress.test.ts",
@@ -96,7 +98,7 @@
     "vite-tsconfig-paths": "^6.0.2",
     "web-push": "^3.6.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^3.24.2"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -120,6 +122,7 @@
     "jsdom": "^29.1.1",
     "postgres": "^4.0.0",
     "prettier": "^3.7.3",
+    "tsx": "4.23.15",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.7",

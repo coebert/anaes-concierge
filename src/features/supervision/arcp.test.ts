@@ -12,8 +12,15 @@ const req = (
   target: number,
   overrides: Partial<ArcpRequirement> = {},
 ): ArcpRequirement => ({
-  id, training_level: "CT1", code: id, label: id, category: "assessment",
-  target_value: target, unit: "count", sort_order: 100, active: true,
+  id,
+  training_level: "CT1",
+  code: id,
+  label: id,
+  category: "assessment",
+  target_value: target,
+  unit: "count",
+  sort_order: 100,
+  active: true,
   ...overrides,
 });
 
@@ -22,8 +29,12 @@ const prog = (
   current: number,
   arcp_date: string | null = null,
 ): ArcpProgress => ({
-  id: `p-${requirement_id}`, trainee_id: "t1", requirement_id,
-  current_value: current, arcp_date, notes: null,
+  id: `p-${requirement_id}`,
+  trainee_id: "t1",
+  requirement_id,
+  current_value: current,
+  arcp_date,
+  notes: null,
 });
 
 describe("monthsBetween", () => {
@@ -38,7 +49,8 @@ describe("monthsBetween", () => {
 describe("classifyRequirement", () => {
   it("complete when current ≥ target", () => {
     const r = classifyRequirement({
-      requirement: req("wbas", 40), progress: prog("wbas", 45, "2026-08-01"),
+      requirement: req("wbas", 40),
+      progress: prog("wbas", 45, "2026-08-01"),
       today: "2026-07-01",
     });
     expect(r.status).toBe("complete");
@@ -47,7 +59,8 @@ describe("classifyRequirement", () => {
 
   it("behind when close to ARCP and far short", () => {
     const r = classifyRequirement({
-      requirement: req("wbas", 40), progress: prog("wbas", 10, "2026-07-15"),
+      requirement: req("wbas", 40),
+      progress: prog("wbas", 10, "2026-07-15"),
       today: "2026-07-01",
     });
     expect(r.status).toBe("behind");
@@ -56,7 +69,8 @@ describe("classifyRequirement", () => {
   it("on_track early in the year with matching pace", () => {
     // 3 months in of 12 → expect ~25%. Actual 30% → on_track.
     const r = classifyRequirement({
-      requirement: req("cases", 300), progress: prog("cases", 90, "2027-07-01"),
+      requirement: req("cases", 300),
+      progress: prog("cases", 90, "2027-07-01"),
       today: "2026-10-01",
     });
     expect(r.status).toBe("on_track");
@@ -65,7 +79,8 @@ describe("classifyRequirement", () => {
   it("at_risk when pace lagging but window remains", () => {
     // 9 months in of 12 → expect ~75%. Actual 50%.
     const r = classifyRequirement({
-      requirement: req("cases", 300), progress: prog("cases", 150, "2026-10-01"),
+      requirement: req("cases", 300),
+      progress: prog("cases", 150, "2026-10-01"),
       today: "2026-07-01",
     });
     expect(r.status).toBe("at_risk");
@@ -73,14 +88,18 @@ describe("classifyRequirement", () => {
 
   it("target zero → unknown status", () => {
     const r = classifyRequirement({
-      requirement: req("todo", 0), progress: null, today: "2026-07-01",
+      requirement: req("todo", 0),
+      progress: null,
+      today: "2026-07-01",
     });
     expect(r.status).toBe("unknown");
   });
 
   it("no progress row treated as zero", () => {
     const r = classifyRequirement({
-      requirement: req("iac", 1), progress: null, today: "2026-07-01",
+      requirement: req("iac", 1),
+      progress: null,
+      today: "2026-07-01",
       fallbackArcpDate: "2026-07-15",
     });
     expect(r.status).toBe("behind");

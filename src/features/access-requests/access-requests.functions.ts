@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { accessRequestQuotaBuckets, clientKeyFromRequest } from "@/lib/request-quota";
 
 const inputSchema = z.object({
   email: z.string().trim().email().max(255),
@@ -8,65 +9,70 @@ const inputSchema = z.object({
   message: z.string().trim().max(1000).optional(),
 });
 
-async function adminEmails(): Promise<string[]> {
-  const { data: roles } = await supabaseAdmin
+/** Every outcome returns the same body so callers can't probe for accounts or limits. */
+const GENERIC = { ok: true as const };
+
+async function adminEmails(supabaseAdmin: any): Promise<string[]> {
+  const { data: roles, error } = await supabaseAdmin
     .from("user_roles")
     .select("user_id")
     .eq("role", "admin");
-  const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
+  if (error) throw error;
+  const ids = [...new Set(((roles ?? []) as Array<{ user_id: string }>).map((r) => r.user_id))];
   if (!ids.length) return [];
-  const { data: profs } = await supabaseAdmin
+  const { data: profs, error: pErr } = await supabaseAdmin
     .from("profiles")
     .select("email")
     .in("id", ids);
-  return [...new Set((profs ?? []).map((p) => p.email).filter((e): e is string => !!e))];
+  if (pErr) throw pErr;
+  return [
+    ...new Set(
+      ((profs ?? []) as Array<{ email: string | null }>)
+        .map((p) => p.email)
+        .filter((e): e is string => !!e),
+    ),
+  ];
 }
 
 export const submitAccessRequest = createServerFn({ method: "POST" })
   .inputValidator((d) => inputSchema.parse(d))
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const email = data.email.toLowerCase();
+    const clientKey = await clientKeyFromRequest(getRequest());
 
-    // Rate-limit: reject if same email submitted in the last hour.
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: recent } = await supabaseAdmin
-      .from("access_requests")
-      .select("id")
-      .eq("email", email)
-      .gte("created_at", oneHourAgo)
-      .limit(1);
-    if (recent && recent.length) {
-      return { ok: true, alreadyRequested: true };
-    }
+    // Durable, atomic quotas (per client, per email, global). The per-email
+    // 1-per-hour bucket also makes concurrent duplicate submits idempotent.
+    const { data: allowed, error: qErr } = await supabaseAdmin.rpc("take_request_quota", {
+      p_buckets: await accessRequestQuotaBuckets(clientKey, email),
+      p_bytes: 0,
+    });
+    if (qErr) throw new Error("Could not submit request. Please try again later.");
+    if (allowed !== true) return GENERIC;
 
     const { data: inserted, error } = await supabaseAdmin
       .from("access_requests")
-      .insert({
-        email,
-        full_name: data.full_name,
-        message: data.message ?? null,
-      })
+      .insert({ email, full_name: data.full_name, message: data.message ?? null })
       .select("id")
       .single();
-    if (error || !inserted) throw new Error("Could not submit request");
+    if (error || !inserted) throw new Error("Could not submit request. Please try again later.");
 
-    // Notify admins (best-effort).
     try {
       const { sendGmail } = await import("@/lib/gmail.server");
-      const recipients = await adminEmails();
+      const recipients = await adminEmails(supabaseAdmin);
       if (recipients.length) {
-        const subject = `Access request: ${data.full_name}`;
+        const subject = `Access request: ${data.full_name.replace(/[\r\n]+/g, " ")}`;
         const text =
           `${data.full_name} (${email}) has requested access to the SDH Rota Coordinator.` +
           (data.message ? `\n\nMessage:\n${data.message}` : "") +
           `\n\nReview pending requests in the admin panel.`;
-        await Promise.allSettled(
-          recipients.map((to) => sendGmail({ to, subject, text })),
-        );
+        await Promise.allSettled(recipients.map((to) => sendGmail({ to, subject, text })));
       }
     } catch (e) {
-      console.error("access-request notification failed", e);
+      console.error(
+        "access-request notification failed",
+        e instanceof Error ? e.message : "unknown",
+      );
     }
-
-    return { ok: true, alreadyRequested: false };
+    return GENERIC;
   });

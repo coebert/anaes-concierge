@@ -51,9 +51,7 @@ async function buildSpecialtyMapChunked(
   sessions: SessionRow[],
   ids: string[],
 ): Promise<Map<string, string | null>> {
-  const results = await Promise.all(
-    chunkIds(ids).map((c) => Promise.resolve(fakeIn(sessions, c))),
-  );
+  const results = await Promise.all(chunkIds(ids).map((c) => Promise.resolve(fakeIn(sessions, c))));
   const map = new Map<string, string | null>();
   for (const rows of results) for (const r of rows) map.set(r.id, r.specialty_id);
   return map;

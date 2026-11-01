@@ -29,11 +29,9 @@ import { spawnSync } from "node:child_process";
 import { describe, it, expect } from "vitest";
 
 function psql(sql: string): string {
-  const r = spawnSync(
-    "psql",
-    ["-v", "ON_ERROR_STOP=1", "-X", "-A", "-t", "-c", sql],
-    { encoding: "utf8" },
-  );
+  const r = spawnSync("psql", ["-v", "ON_ERROR_STOP=1", "-X", "-A", "-t", "-c", sql], {
+    encoding: "utf8",
+  });
   if ((r.status ?? -1) !== 0) {
     throw new Error(r.stderr || `psql exited with status ${r.status}`);
   }
@@ -45,9 +43,7 @@ const d = canRunDbTests ? describe : describe.skip;
 
 d("enforce_specialty_preference_offered trigger — schema contract", () => {
   it("exposes prefer_not_to (and the other levels) on the specialty_preference enum", () => {
-    const values = psql(
-      "SELECT unnest(enum_range(NULL::public.specialty_preference))::text",
-    )
+    const values = psql("SELECT unnest(enum_range(NULL::public.specialty_preference))::text")
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);

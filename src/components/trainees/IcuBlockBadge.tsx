@@ -18,8 +18,7 @@ export function IcuBlockBadge({
     <Badge
       variant="outline"
       className={
-        "text-xs border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-300 " +
-        className
+        "text-xs border-sky-500/60 bg-sky-500/10 text-sky-700 dark:text-sky-300 " + className
       }
       title={title}
     >

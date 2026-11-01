@@ -16,13 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AppLogo } from "@/components/app-logo";
 
@@ -69,30 +63,50 @@ function LoginPage() {
     }
     setBusy(true);
     setRememberMe(remember);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.signInWithPassword(parsed.data);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      // Passkey offer is optional — never block sign-in if the check fails.
+      let offer = false;
+      try {
+        offer = await shouldOfferPasskey(listPk);
+      } catch {
+        offer = false;
+      }
+      if (offer) setOfferPasskey(true);
+      else void navigate({ to: "/" });
+    } catch {
+      toast.error("Couldn't reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
-    const offer = await shouldOfferPasskey(listPk);
-    if (offer) setOfferPasskey(true);
-    else void navigate({ to: "/" });
   };
 
   const handleGoogle = async () => {
     setBusy(true);
     setRememberMe(remember);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setBusy(false);
-      toast.error(result.error.message ?? "Google sign-in failed");
-      return;
+    let redirecting = false;
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? "Google sign-in failed");
+        return;
+      }
+      if (result.redirected) {
+        redirecting = true; // page is navigating away; keep the button busy
+        return;
+      }
+      void navigate({ to: "/" });
+    } catch {
+      toast.error("Couldn't start Google sign-in. Check your connection and try again.");
+    } finally {
+      if (!redirecting) setBusy(false);
     }
-    if (result.redirected) return;
-    void navigate({ to: "/" });
   };
 
   return (
@@ -101,9 +115,7 @@ function LoginPage() {
         <CardHeader className="space-y-2 text-center">
           <AppLogo className="mx-auto h-14 w-14 rounded-xl" />
           <CardTitle className="text-2xl">Salisbury Anaesthetics Rota</CardTitle>
-          <CardDescription>
-            Sign in to manage and view the department rota.
-          </CardDescription>
+          <CardDescription>Sign in to manage and view the department rota.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {offerPasskey ? (
@@ -147,10 +159,7 @@ function LoginPage() {
                     checked={remember}
                     onCheckedChange={(v) => setRemember(v === true)}
                   />
-                  <Label
-                    htmlFor="remember"
-                    className="text-sm font-normal cursor-pointer"
-                  >
+                  <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
                     Keep me signed in
                   </Label>
                 </div>
@@ -189,10 +198,7 @@ function LoginPage() {
 
               <p className="text-center text-sm text-muted-foreground">
                 Need access?{" "}
-                <Link
-                  to="/signup"
-                  className="font-medium text-foreground hover:underline"
-                >
+                <Link to="/signup" className="font-medium text-foreground hover:underline">
                   Request access
                 </Link>
               </p>

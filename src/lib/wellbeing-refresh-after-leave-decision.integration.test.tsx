@@ -128,7 +128,9 @@ async function primeWellbeingQueries(qc: QueryClient) {
       expect(profilesSpy).toHaveBeenCalledTimes(1);
       expect(leaveListSpy).toHaveBeenCalledTimes(1);
     },
-    dispose: () => { for (const u of unsubs) u(); },
+    dispose: () => {
+      for (const u of unsubs) u();
+    },
   };
 }
 
@@ -143,8 +145,12 @@ async function waitCalls(spy: ReturnType<typeof vi.fn>, n: number) {
 
 // --------------------- test setup ---------------------
 
-beforeEach(() => { supabaseCalls.length = 0; });
-afterEach(() => { vi.restoreAllMocks(); });
+beforeEach(() => {
+  supabaseCalls.length = 0;
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // --------------------- tests ---------------------
 
@@ -157,9 +163,11 @@ describe("leave decision → both wellbeing dashboards refresh immediately", () 
     // Mirrors `_authenticated/leave.tsx` cancel handler.
     const { supabase } = await import("@/integrations/supabase/client");
     const cancelLeave = async (id: string) => {
-      const { error } = await (supabase.from("leave_requests") as unknown as {
-        update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-      })
+      const { error } = await (
+        supabase.from("leave_requests") as unknown as {
+          update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
+        }
+      )
         .update({ status: "cancelled" })
         .eq("id", id);
       if (error) throw error;
@@ -194,9 +202,11 @@ describe("leave decision → both wellbeing dashboards refresh immediately", () 
     // handler — status + decided_by/decided_at + optional decision_notes.
     const { supabase } = await import("@/integrations/supabase/client");
     const rejectLeave = async (id: string, notes: string | null) => {
-      const { error } = await (supabase.from("leave_requests") as unknown as {
-        update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-      })
+      const { error } = await (
+        supabase.from("leave_requests") as unknown as {
+          update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
+        }
+      )
         .update({
           status: "rejected",
           decided_by: ADMIN_ID,
@@ -217,14 +227,14 @@ describe("leave decision → both wellbeing dashboards refresh immediately", () 
         (c.patch as { status: string }).status === "rejected" &&
         (c.where as { id: string }).id === LEAVE_REQUEST_ID,
     );
-    expect(rejectCall, "reject path did not issue the expected leave_requests UPDATE")
-      .toBeDefined();
+    expect(
+      rejectCall,
+      "reject path did not issue the expected leave_requests UPDATE",
+    ).toBeDefined();
     // Decision metadata is stamped too — this is what the wellbeing engine
     // uses to anchor the driver at `decided_at`, so guard the payload shape.
     expect((rejectCall!.patch as { decided_by: string }).decided_by).toBe(ADMIN_ID);
-    expect((rejectCall!.patch as { decided_at: string }).decided_at).toMatch(
-      /^\d{4}-\d{2}-\d{2}T/,
-    );
+    expect((rejectCall!.patch as { decided_at: string }).decided_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
     // Both wellbeing queries refetched — critically, admin AND my
     // (not just admin, which is the tempting scoping mistake for a
@@ -246,17 +256,21 @@ describe("leave decision → both wellbeing dashboards refresh immediately", () 
     // wellbeing queries must have refetched — 2 each — with no timer
     // advancement, no window focus, and no manual refresh.
     const doCancel = async () => {
-      await (supabase.from("leave_requests") as unknown as {
-        update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-      })
+      await (
+        supabase.from("leave_requests") as unknown as {
+          update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
+        }
+      )
         .update({ status: "cancelled" })
         .eq("id", "leave-a");
       invalidateWellbeing(qc, "leave.cancel");
     };
     const doReject = async () => {
-      await (supabase.from("leave_requests") as unknown as {
-        update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
-      })
+      await (
+        supabase.from("leave_requests") as unknown as {
+          update: (p: unknown) => { eq: (c: string, v: string) => Promise<{ error: null }> };
+        }
+      )
         .update({
           status: "rejected",
           decided_by: ADMIN_ID,

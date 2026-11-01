@@ -64,37 +64,34 @@ describe("navigation — test files reference only known NAV_ITEMS ids", () => {
     }
   });
 
-  it.each(NAV_ID_TEST_FILES)(
-    "%s references only ids that exist in NAV_ITEMS",
-    (file) => {
-      const source = readFileSync(join(HERE, file), "utf8");
-      const slugs = collectQuotedSlugs(source);
+  it.each(NAV_ID_TEST_FILES)("%s references only ids that exist in NAV_ITEMS", (file) => {
+    const source = readFileSync(join(HERE, file), "utf8");
+    const slugs = collectQuotedSlugs(source);
 
-      // A slug looks like a nav id only if it's the first argument to a
-      // NAV_ITEMS lookup or appears in a MOVED_IDS-style list. We heuristically
-      // treat any kebab-case string as a candidate and filter by cross-check:
-      // if NAV_ITEMS also contains a matching id, that reference must resolve.
-      // Anything else (e.g. `"data-lovable"` in a keyword list) is ignored.
-      const unknown: string[] = [];
-      for (const slug of slugs) {
-        // Only flag a slug when it plausibly names a NAV_ITEMS id — i.e. the
-        // test uses it in an id-lookup context. We approximate that by
-        // requiring the slug to be listed in an array of literal ids or
-        // compared to `i.id ===`. Detect via a per-file substring search.
-        const isIdContext =
-          new RegExp(`\\.id\\s*===\\s*"${slug}"`).test(source) ||
-          new RegExp(`\\{\\s*id:\\s*"${slug}"`).test(source) ||
-          new RegExp(`byId[^\\n]*\\.get\\("${slug}"\\)`).test(source) ||
-          new RegExp(`MOVED_IDS\\s*=\\s*\\[[^\\]]*"${slug}"`).test(source) ||
-          new RegExp(`AUDITS_EXPECTED\\s*=\\s*\\[[^\\]]*"${slug}"`).test(source);
-        if (!isIdContext) continue;
-        if (!knownIds.has(slug)) unknown.push(slug);
-      }
+    // A slug looks like a nav id only if it's the first argument to a
+    // NAV_ITEMS lookup or appears in a MOVED_IDS-style list. We heuristically
+    // treat any kebab-case string as a candidate and filter by cross-check:
+    // if NAV_ITEMS also contains a matching id, that reference must resolve.
+    // Anything else (e.g. `"data-lovable"` in a keyword list) is ignored.
+    const unknown: string[] = [];
+    for (const slug of slugs) {
+      // Only flag a slug when it plausibly names a NAV_ITEMS id — i.e. the
+      // test uses it in an id-lookup context. We approximate that by
+      // requiring the slug to be listed in an array of literal ids or
+      // compared to `i.id ===`. Detect via a per-file substring search.
+      const isIdContext =
+        new RegExp(`\\.id\\s*===\\s*"${slug}"`).test(source) ||
+        new RegExp(`\\{\\s*id:\\s*"${slug}"`).test(source) ||
+        new RegExp(`byId[^\\n]*\\.get\\("${slug}"\\)`).test(source) ||
+        new RegExp(`MOVED_IDS\\s*=\\s*\\[[^\\]]*"${slug}"`).test(source) ||
+        new RegExp(`AUDITS_EXPECTED\\s*=\\s*\\[[^\\]]*"${slug}"`).test(source);
+      if (!isIdContext) continue;
+      if (!knownIds.has(slug)) unknown.push(slug);
+    }
 
-      expect(
-        unknown,
-        `${file} references nav ids missing from NAV_ITEMS: ${unknown.join(", ")}`,
-      ).toEqual([]);
-    },
-  );
+    expect(
+      unknown,
+      `${file} references nav ids missing from NAV_ITEMS: ${unknown.join(", ")}`,
+    ).toEqual([]);
+  });
 });

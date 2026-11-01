@@ -94,14 +94,15 @@ async function primeAndObserve(qc: QueryClient) {
 
   return {
     dispose: () => unsubs.forEach((u) => u()),
-    adminData: () =>
-      qc.getQueryData<WellbeingResult>(["admin-wellbeing"]),
-    mineData: () =>
-      qc.getQueryData<WellbeingResult>(["my-wellbeing", STAFF]),
+    adminData: () => qc.getQueryData<WellbeingResult>(["admin-wellbeing"]),
+    mineData: () => qc.getQueryData<WellbeingResult>(["my-wellbeing", STAFF]),
   };
 }
 
-async function waitForResult(read: () => WellbeingResult | undefined, predicate: (r: WellbeingResult) => boolean) {
+async function waitForResult(
+  read: () => WellbeingResult | undefined,
+  predicate: (r: WellbeingResult) => boolean,
+) {
   const deadline = Date.now() + 2000;
   while (Date.now() < deadline) {
     const r = read();
@@ -109,9 +110,7 @@ async function waitForResult(read: () => WellbeingResult | undefined, predicate:
     await new Promise((res) => setTimeout(res, 5));
   }
   const final = read();
-  throw new Error(
-    `wellbeing result never matched predicate; last value: ${JSON.stringify(final)}`,
-  );
+  throw new Error(`wellbeing result never matched predicate; last value: ${JSON.stringify(final)}`);
 }
 
 function leaveDriverCount(r: WellbeingResult): number {

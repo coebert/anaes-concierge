@@ -1,14 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
-import { loadLeavePressure, pressureColor, type DayPressure } from "@/features/audit/leave-pressure";
+import {
+  loadLeavePressure,
+  pressureColor,
+  type DayPressure,
+} from "@/features/audit/leave-pressure";
 import { LeaveMonthlyCalendar } from "@/components/leave-monthly-calendar";
 import { PageLoading } from "@/components/loading";
 
@@ -78,21 +80,31 @@ function LeaveForecastPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Leave pressure forecast</h1>
           <p className="text-sm text-muted-foreground">
-            Approved + pending leave across the next {WEEKS_VISIBLE} weeks. Use this to
-            spot surge weeks before they bite.
+            Approved + pending leave across the next {WEEKS_VISIBLE} weeks. Use this to spot surge
+            weeks before they bite.
           </p>
         </div>
-        <Badge variant="secondary">{formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}</Badge>
+        <Badge variant="secondary">
+          {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
+        </Badge>
       </header>
 
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}
+        >
           <ChevronLeft className="mr-1 h-4 w-4" /> Earlier
         </Button>
         <Button variant="outline" size="sm" onClick={() => setOffsetWeeks(0)}>
           Today
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}
+        >
           Later <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
@@ -104,8 +116,8 @@ function LeaveForecastPage() {
         <CardHeader>
           <CardTitle className="text-base">Weekly heatmap</CardTitle>
           <CardDescription>
-            Each cell shows the number of staff on leave that weekday. Hover for names.
-            Peak this window: {peak}.
+            Each cell shows the number of staff on leave that weekday. Hover for names. Peak this
+            window: {peak}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -167,14 +179,17 @@ function LeaveForecastPage() {
               <div className="text-sm text-muted-foreground">No leave booked in this window.</div>
             )}
             {topWeeks.map((w) => (
-              <div key={w.weekStart} className="flex items-center justify-between rounded-md border p-2 text-sm">
+              <div
+                key={w.weekStart}
+                className="flex items-center justify-between rounded-md border p-2 text-sm"
+              >
                 <div>
                   <div className="font-medium">w/c {formatDateGB(w.weekStart)}</div>
                   <div className="text-xs text-muted-foreground">
                     Peak {w.peak} on {formatDateGB(w.peakDay)}
                   </div>
                 </div>
-                <Badge variant={w.peak >= (peak * 0.65) ? "destructive" : "secondary"}>
+                <Badge variant={w.peak >= peak * 0.65 ? "destructive" : "secondary"}>
                   {w.total} off-days
                 </Badge>
               </div>
@@ -204,7 +219,9 @@ function LeaveForecastPage() {
                   <div key={grade} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
                       <span className="capitalize">{grade}</span>
-                      <span className="text-muted-foreground">{n} ({pct}%)</span>
+                      <span className="text-muted-foreground">
+                        {n} ({pct}%)
+                      </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded bg-muted">
                       <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
@@ -217,7 +234,9 @@ function LeaveForecastPage() {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        <Link to="/leave" className="underline">Back to leave</Link>
+        <Link to="/leave" className="underline">
+          Back to leave
+        </Link>
         {" · "}
         Weekends excluded. Pending leave is included so you can pre-empt approval pressure.
       </div>

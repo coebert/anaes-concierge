@@ -122,9 +122,8 @@ export async function runWeeklyTutorialAuditJob(opts?: {
 
     while (slicesProcessed < maxSlices && cursor <= horizon) {
       const sliceStart = cursor;
-      const sliceEnd = addDays(sliceStart, sliceDays - 1) > horizon
-        ? horizon
-        : addDays(sliceStart, sliceDays - 1);
+      const sliceEnd =
+        addDays(sliceStart, sliceDays - 1) > horizon ? horizon : addDays(sliceStart, sliceDays - 1);
 
       const backfill = await runTutorialBackfill({
         startIso: sliceStart,

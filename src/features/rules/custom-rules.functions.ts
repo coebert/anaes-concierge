@@ -5,7 +5,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 
 const CheckInput = z.object({
-  staffId: z.string().uuid(),
+  staffId: z.string().guid(),
   date: z.string(),
   session: z.enum(["am", "pm"]),
   role: z.string(),
@@ -79,10 +79,12 @@ Staff member: ${profile.full_name} (grade: ${profile.grade ?? "unknown"})
 Proposed assignment: date ${data.date}, session ${data.session.toUpperCase()}, role ${data.role}
 
 Surrounding assignments for this staff member (date, session, role):
-${data.contextAssignments
-  .sort((a, b) => (a.session_date < b.session_date ? -1 : 1))
-  .map((a) => `- ${a.session_date} ${a.session.toUpperCase()} ${a.role_on_list}`)
-  .join("\n") || "(none)"}
+${
+  data.contextAssignments
+    .sort((a, b) => (a.session_date < b.session_date ? -1 : 1))
+    .map((a) => `- ${a.session_date} ${a.session.toUpperCase()} ${a.role_on_list}`)
+    .join("\n") || "(none)"
+}
 
 Active custom rules to check (id | summary | rule):
 ${applicable.map((r) => `${r.id} | ${r.summary} | ${r.rule_text}`).join("\n")}

@@ -167,7 +167,7 @@ export const listTutorialAuditSessions = createServerFn({ method: "POST" })
         const staff = staffMap.get(row.staff_id);
         if (!staff) return [];
         const theatreName = row.theatre_session_id
-          ? theatreNames.get(row.theatre_session_id) ?? null
+          ? (theatreNames.get(row.theatre_session_id) ?? null)
           : null;
         if (!isTutorialAuditCandidate({ ...row, theatreName })) return [];
         return [

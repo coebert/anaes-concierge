@@ -88,8 +88,7 @@ vi.mock("@/integrations/supabase/client", () => {
       // Only leave_requests carries fixture data; every other table
       // paginates as empty so the wellbeing driver we care about is the
       // ONLY one that can move between snapshots.
-      const data =
-        table === "leave_requests" ? (state.leaveRows as unknown[]) : [];
+      const data = table === "leave_requests" ? (state.leaveRows as unknown[]) : [];
       return Promise.resolve({ data, error: null });
     };
     (api as Record<string, unknown>).then = (
@@ -190,7 +189,11 @@ async function primeUnrelated(qc: QueryClient) {
     { queryKey: ["rota", "week", "2026-07-06"], queryFn: spies.rota, staleTime: Infinity },
     { queryKey: ["profiles"], queryFn: spies.profiles, staleTime: Infinity },
     { queryKey: ["coordinator-leave"], queryFn: spies.coordinatorLeave, staleTime: Infinity },
-    { queryKey: ["my-wellbeing-history", USER_ID], queryFn: spies.myWellbeingHistory, staleTime: Infinity },
+    {
+      queryKey: ["my-wellbeing-history", USER_ID],
+      queryFn: spies.myWellbeingHistory,
+      staleTime: Infinity,
+    },
   ];
   for (const o of opts) await qc.prefetchQuery(o);
   // staleTime: Infinity on the observer too — otherwise a fresh subscribe
@@ -215,7 +218,9 @@ async function primeUnrelated(qc: QueryClient) {
       expect(spies.coordinatorLeave).toHaveBeenCalledTimes(1);
       expect(spies.myWellbeingHistory).toHaveBeenCalledTimes(1);
     },
-    dispose: () => { for (const u of unsubs) u(); },
+    dispose: () => {
+      for (const u of unsubs) u();
+    },
   };
 }
 
@@ -260,118 +265,119 @@ afterEach(() => {
 
 // --------------------- tests ---------------------
 
-describe(
-  "wellbeing page reflects decided_at-based score immediately after cancel/reject",
-  () => {
-    it(
-      "cancelling a leave request: after invalidation the leave driver counts the row " +
-        "by its decided_at (in-window) even when start_date has been shifted out of window",
-      async () => {
-        // Baseline: a pending leave inside the window. It does NOT count
-        // (only rejected/cancelled feed the leave driver), so the driver
-        // starts at 0.
-        state.leaveRows = [pendingRow()];
+describe("wellbeing page reflects decided_at-based score immediately after cancel/reject", () => {
+  it(
+    "cancelling a leave request: after invalidation the leave driver counts the row " +
+      "by its decided_at (in-window) even when start_date has been shifted out of window",
+    async () => {
+      // Baseline: a pending leave inside the window. It does NOT count
+      // (only rejected/cancelled feed the leave driver), so the driver
+      // starts at 0.
+      state.leaveRows = [pendingRow()];
 
-        const { qc } = renderPage();
-        await waitForInitialLoad(qc);
-        // Prime unrelated caches AFTER the page's own queries have loaded,
-        // so their `dataUpdatedAt` is close to the invalidation moment —
-        // if the (buggy) invalidation broadened, they'd refetch and the
-        // spy counts would tick up.
-        const unrelated = await primeUnrelated(qc);
-        expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
+      const { qc } = renderPage();
+      await waitForInitialLoad(qc);
+      // Prime unrelated caches AFTER the page's own queries have loaded,
+      // so their `dataUpdatedAt` is close to the invalidation moment —
+      // if the (buggy) invalidation broadened, they'd refetch and the
+      // spy counts would tick up.
+      const unrelated = await primeUnrelated(qc);
+      expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
 
-        // Simulate the cancel handler in `_authenticated/leave.tsx`:
-        //   1) DB row flips to status=cancelled and gets a decided_at.
-        //   2) The route calls `invalidateWellbeing(qc, "leave.cancel")`.
-        // The critical assertion is that the anchor used to include this
-        // row in the count is the NEW decided_at, not start_date — we
-        // move start_date OUT of the window so a start_date-based recount
-        // would go to 0, but the decided_at-based count must be 1.
-        state.leaveRows = [
-          pendingRow({
-            status: "cancelled",
-            start_date: OUT_WINDOW_DAY,
-            end_date: OUT_WINDOW_DAY,
-            decided_at: IN_WINDOW_TS,
-          }),
-        ];
+      // Simulate the cancel handler in `_authenticated/leave.tsx`:
+      //   1) DB row flips to status=cancelled and gets a decided_at.
+      //   2) The route calls `invalidateWellbeing(qc, "leave.cancel")`.
+      // The critical assertion is that the anchor used to include this
+      // row in the count is the NEW decided_at, not start_date — we
+      // move start_date OUT of the window so a start_date-based recount
+      // would go to 0, but the decided_at-based count must be 1.
+      state.leaveRows = [
+        pendingRow({
+          status: "cancelled",
+          start_date: OUT_WINDOW_DAY,
+          end_date: OUT_WINDOW_DAY,
+          decided_at: IN_WINDOW_TS,
+        }),
+      ];
 
-        // Use the real helper the cancel handler calls — this test now
-        // also proves it does NOT fan out to unrelated caches.
-        await act(async () => {
-          invalidateWellbeing(qc, "test.leave.cancel");
-          await qc.getQueryCache().find({ queryKey: ["my-wellbeing"] })
-            ?.fetch();
-        });
+      // Use the real helper the cancel handler calls — this test now
+      // also proves it does NOT fan out to unrelated caches.
+      await act(async () => {
+        invalidateWellbeing(qc, "test.leave.cancel");
+        await qc
+          .getQueryCache()
+          .find({ queryKey: ["my-wellbeing"] })
+          ?.fetch();
+      });
 
-        await waitFor(() => {
-          expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
-        });
-        // Scoped invalidation contract: rota / profiles / coordinator-leave
-        // / my-wellbeing-history caches are untouched — a regression that
-        // broadened `invalidateWellbeing` to `qc.invalidateQueries()` (no
-        // filter) would refetch all four here.
-        unrelated.expectUnrelatedUntouched();
-        unrelated.dispose();
-      },
-    );
+      await waitFor(() => {
+        expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
+      });
+      // Scoped invalidation contract: rota / profiles / coordinator-leave
+      // / my-wellbeing-history caches are untouched — a regression that
+      // broadened `invalidateWellbeing` to `qc.invalidateQueries()` (no
+      // filter) would refetch all four here.
+      unrelated.expectUnrelatedUntouched();
+      unrelated.dispose();
+    },
+  );
 
-    it(
-      "rejecting a leave request: after invalidation the driver counts it via decided_at, " +
-        "and a late-UTC decided_at still slices to its calendar day",
-      async () => {
-        state.leaveRows = [pendingRow()];
-        const { qc } = renderPage();
-        await waitForInitialLoad(qc);
-        const unrelated = await primeUnrelated(qc);
-        expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
+  it(
+    "rejecting a leave request: after invalidation the driver counts it via decided_at, " +
+      "and a late-UTC decided_at still slices to its calendar day",
+    async () => {
+      state.leaveRows = [pendingRow()];
+      const { qc } = renderPage();
+      await waitForInitialLoad(qc);
+      const unrelated = await primeUnrelated(qc);
+      expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
 
-        // Reject flow: status → rejected, DB stamps decided_at at end of
-        // the calendar day. If a regression compared the full ISO string
-        // to the window bounds (instead of slicing to yyyy-mm-dd), the
-        // late-UTC timestamp could miscompare.
-        state.leaveRows = [
-          pendingRow({
-            status: "rejected",
-            start_date: OUT_WINDOW_DAY,
-            end_date: OUT_WINDOW_DAY,
-            decided_at: IN_WINDOW_LATE_TS,
-          }),
-        ];
-        await act(async () => {
-          invalidateWellbeing(qc, "test.leave.reject");
-          await qc.getQueryCache().find({ queryKey: ["my-wellbeing"] })
-            ?.fetch();
-        });
-        await waitFor(() => {
-          expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
-        });
-        unrelated.expectUnrelatedUntouched();
-        unrelated.dispose();
-      },
-    );
+      // Reject flow: status → rejected, DB stamps decided_at at end of
+      // the calendar day. If a regression compared the full ISO string
+      // to the window bounds (instead of slicing to yyyy-mm-dd), the
+      // late-UTC timestamp could miscompare.
+      state.leaveRows = [
+        pendingRow({
+          status: "rejected",
+          start_date: OUT_WINDOW_DAY,
+          end_date: OUT_WINDOW_DAY,
+          decided_at: IN_WINDOW_LATE_TS,
+        }),
+      ];
+      await act(async () => {
+        invalidateWellbeing(qc, "test.leave.reject");
+        await qc
+          .getQueryCache()
+          .find({ queryKey: ["my-wellbeing"] })
+          ?.fetch();
+      });
+      await waitFor(() => {
+        expect(leaveDriverLabel()).toBe("1 rejected/cancelled leave");
+      });
+      unrelated.expectUnrelatedUntouched();
+      unrelated.dispose();
+    },
+  );
 
-    it(
-      "a cancelled row whose decided_at is outside the window (start_date inside) does " +
-        "NOT count — proves the page reads the decided_at anchor, not start_date",
-      async () => {
-        // Straight to the "after mutation" state: the row is cancelled,
-        // start_date is IN window (would count under a naive start-date
-        // filter), but decided_at is OUT of window. The engine must
-        // prefer decided_at → count = 0.
-        state.leaveRows = [
-          pendingRow({
-            status: "cancelled",
-            start_date: IN_WINDOW_DAY,
-            end_date: IN_WINDOW_DAY,
-            decided_at: "2020-01-01T09:00:00Z",
-          }),
-        ];
-        const { qc } = renderPage();
-        await waitForInitialLoad(qc);
-        expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
-      },
-    );
-  },
-);
+  it(
+    "a cancelled row whose decided_at is outside the window (start_date inside) does " +
+      "NOT count — proves the page reads the decided_at anchor, not start_date",
+    async () => {
+      // Straight to the "after mutation" state: the row is cancelled,
+      // start_date is IN window (would count under a naive start-date
+      // filter), but decided_at is OUT of window. The engine must
+      // prefer decided_at → count = 0.
+      state.leaveRows = [
+        pendingRow({
+          status: "cancelled",
+          start_date: IN_WINDOW_DAY,
+          end_date: IN_WINDOW_DAY,
+          decided_at: "2020-01-01T09:00:00Z",
+        }),
+      ];
+      const { qc } = renderPage();
+      await waitForInitialLoad(qc);
+      expect(leaveDriverLabel()).toBe("0 rejected/cancelled leave");
+    },
+  );
+});

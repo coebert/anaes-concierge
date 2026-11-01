@@ -67,10 +67,7 @@ function refOverlaps(
 ): boolean {
   // Two closed intervals [a,b] and [c,d] overlap iff a<=d && c<=b. Using
   // ISO YYYY-MM-DD strings, lexicographic compare == calendar compare.
-  return (
-    leave.start_date <= window.window_end &&
-    window.window_start <= leave.end_date
-  );
+  return leave.start_date <= window.window_end && window.window_start <= leave.end_date;
 }
 
 // -- Sample generators ---------------------------------------------------
@@ -83,7 +80,10 @@ function randomInstant(rng: () => number): Date {
   return new Date(epoch);
 }
 
-function randomLeaveAround(rng: () => number, anchor: Date): { start_date: string; end_date: string } {
+function randomLeaveAround(
+  rng: () => number,
+  anchor: Date,
+): { start_date: string; end_date: string } {
   // Sample a leave interval whose start lies within ±60 days of the
   // anchor's UTC day, with width 0..30 days. This concentrates samples
   // around the boundary where overlap behaviour matters.
@@ -108,8 +108,7 @@ describe("property: window_start always equals reference UTC date of `now`", () 
         const ref = refUtcDate(now);
         if (w.window_start !== ref) {
           throw new Error(
-            `seed=${seed} i=${i} now=${now.toISOString()} ` +
-              `prod=${w.window_start} ref=${ref}`,
+            `seed=${seed} i=${i} now=${now.toISOString()} ` + `prod=${w.window_start} ref=${ref}`,
           );
         }
         expect(w.window_start).toBe(ref);
@@ -229,10 +228,7 @@ describe("property: structural invariants of the overlap predicate", () => {
       const w = computeLeaveWindow(now);
       // touch at window_start
       expect(
-        leaveOverlapsWindow(
-          { start_date: refOffset(now, -10), end_date: w.window_start },
-          w,
-        ),
+        leaveOverlapsWindow({ start_date: refOffset(now, -10), end_date: w.window_start }, w),
       ).toBe(true);
       // touch at window_end
       expect(

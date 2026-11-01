@@ -59,7 +59,9 @@ describe("theatre-grid-dates: local-date parsing", () => {
     expect(weekdayShort(null)).toBe("");
     expect(weekdayShort("garbage")).toBe("");
     expect(warn).toHaveBeenCalled();
-    expect(warn.mock.calls.some((c: unknown[]) => String(c[0]).includes("[theatre-grid]"))).toBe(true);
+    expect(warn.mock.calls.some((c: unknown[]) => String(c[0]).includes("[theatre-grid]"))).toBe(
+      true,
+    );
   });
 });
 
@@ -76,23 +78,22 @@ describe("theatre-grid-dates: cross-timezone consistency", () => {
       const out = { iso: isoDate("2026-01-31"), weekday: weekdayShort("2026-01-31") };
       process.stdout.write(JSON.stringify(out));
     `;
-    const stdout = execFileSync(
-      process.execPath,
-      ["--import", "tsx", "-e", script],
-      { env: { ...process.env, TZ: tz }, encoding: "utf8" },
-    );
+    const stdout = execFileSync(process.execPath, ["--import", "tsx", "-e", script], {
+      env: { ...process.env, TZ: tz },
+      encoding: "utf8",
+    });
     return JSON.parse(stdout);
   };
 
   const timezones = [
     "UTC",
     "Europe/London",
-    "Europe/Berlin",      // UTC+1 in January
-    "Asia/Tokyo",         // UTC+9
-    "Pacific/Auckland",   // UTC+13 in January (DST)
-    "America/New_York",   // UTC-5
-    "America/Los_Angeles",// UTC-8
-    "Pacific/Honolulu",   // UTC-10
+    "Europe/Berlin", // UTC+1 in January
+    "Asia/Tokyo", // UTC+9
+    "Pacific/Auckland", // UTC+13 in January (DST)
+    "America/New_York", // UTC-5
+    "America/Los_Angeles", // UTC-8
+    "Pacific/Honolulu", // UTC-10
   ];
 
   for (const tz of timezones) {

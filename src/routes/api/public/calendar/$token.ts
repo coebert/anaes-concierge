@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { calendarLeaveLabel } from "@/lib/calendar-feed-privacy";
+import { escapeIcsText, foldIcsLine } from "@/lib/ics";
+
+const unavailable = () =>
+  new Response("Calendar temporarily unavailable", {
+    status: 503,
+    headers: { "Cache-Control": "no-store", "Retry-After": "300" },
+  });
 
 // Apple Calendar / iCal subscription feed.
 // URL: /api/public/calendar/<token>.ics
@@ -35,31 +42,12 @@ function fmtDatePlus(yyyy_mm_dd: string, days: number) {
   const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + days);
-  return (
-    dt.getUTCFullYear() + pad(dt.getUTCMonth() + 1) + pad(dt.getUTCDate())
-  );
+  return dt.getUTCFullYear() + pad(dt.getUTCMonth() + 1) + pad(dt.getUTCDate());
 }
-function escapeText(s: string) {
-  return s
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/,/g, "\\,")
-    .replace(/;/g, "\\;");
-}
-// Fold lines at 75 octets per RFC 5545
-function fold(line: string) {
-  if (line.length <= 75) return line;
-  const out: string[] = [];
-  let i = 0;
-  while (i < line.length) {
-    out.push((i === 0 ? "" : " ") + line.slice(i, i + 73));
-    i += 73;
-  }
-  return out.join("\r\n");
-}
+const escapeText = escapeIcsText;
+const fold = foldIcsLine;
 
-const TITLE_CASE = (s: string) =>
-  s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const TITLE_CASE = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const Route = createFileRoute("/api/public/calendar/$token")({
   server: {
@@ -74,13 +62,21 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         const sb = admin();
         const { data: profile, error: pErr } = await sb
           .from("profiles")
-          .select("id, full_name")
+          .select("id, full_name, active")
           .eq("calendar_feed_token", token)
           .maybeSingle();
-        if (pErr) return new Response("Server error", { status: 500 });
-        if (!profile) return new Response("Not found", { status: 404 });
-
+        if (pErr) return unavailable();
+        // Revocation: departed/inactive staff or accounts without any app role
+        // lose the feed even if they still hold an old link.
+        if (!profile || profile.active !== true) return new Response("Not found", { status: 404 });
         const staffId = profile.id as string;
+        const { data: roleRows, error: rErr } = await sb
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", staffId)
+          .limit(1);
+        if (rErr) return unavailable();
+        if (!roleRows?.length) return new Response("Not found", { status: 404 });
 
         // 60 days back, 13 months forward so a full year of on-calls shows.
         const today = new Date();
@@ -109,6 +105,9 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
               .order("id")
               .range(offset, offset + PAGE - 1);
             if (error) return { data: all, error };
+            if (offset + PAGE >= 20000 && data && data.length === PAGE) {
+              return { data: all, error: new Error("too many rows") };
+            }
             all.push(...(data ?? []));
             if (!data || data.length < PAGE) break;
           }
@@ -127,41 +126,40 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
             .gte("end_date", fromStr)
             .lte("start_date", toStr),
         ]);
+        // Fail closed: a partial feed would silently delete events from
+        // subscribers' calendars, so any source error returns 503 instead.
+        if (assignmentsRes.error || leaveRes.error) return unavailable();
 
         // Resolve theatre sessions in batch
         const tsIds = Array.from(
           new Set(
-            (assignmentsRes.data ?? [])
-              .map((a: any) => a.theatre_session_id)
-              .filter(Boolean),
+            (assignmentsRes.data ?? []).map((a: any) => a.theatre_session_id).filter(Boolean),
           ),
         ) as string[];
-        let tsMap = new Map<string, any>();
+        const tsMap = new Map<string, any>();
         if (tsIds.length) {
           for (let i = 0; i < tsIds.length; i += 150) {
-            const { data: ts } = await sb
+            const { data: ts, error: tsErr } = await sb
               .from("theatre_sessions")
               .select(
                 "id, theatre_id, specialty_id, surgical_consultant, notes, theatres(name), specialties(name)",
               )
               .in("id", tsIds.slice(i, i + 150));
+            if (tsErr) return unavailable();
             (ts ?? []).forEach((row: any) => tsMap.set(row.id, row));
           }
         }
         // Resolve supervisor names
         const supIds = Array.from(
-          new Set(
-            (assignmentsRes.data ?? [])
-              .map((a: any) => a.supervisor_id)
-              .filter(Boolean),
-          ),
+          new Set((assignmentsRes.data ?? []).map((a: any) => a.supervisor_id).filter(Boolean)),
         ) as string[];
-        let supMap = new Map<string, string>();
+        const supMap = new Map<string, string>();
         if (supIds.length) {
-          const { data: sups } = await sb
+          const { data: sups, error: supErr } = await sb
             .from("profiles")
             .select("id, full_name")
             .in("id", supIds);
+          if (supErr) return unavailable();
           (sups ?? []).forEach((p: any) => supMap.set(p.id, p.full_name));
         }
 
@@ -171,11 +169,7 @@ export const Route = createFileRoute("/api/public/calendar/$token")({
         lines.push("PRODID:-//Anaes Concierge//Rota Feed//EN");
         lines.push("CALSCALE:GREGORIAN");
         lines.push("METHOD:PUBLISH");
-        lines.push(
-          fold(
-            `X-WR-CALNAME:${escapeText(profile.full_name ?? "My")} – Rota`,
-          ),
-        );
+        lines.push(fold(`X-WR-CALNAME:${escapeText(profile.full_name ?? "My")} – Rota`));
         lines.push("X-WR-TIMEZONE:Europe/London");
         // 15-minute hint — Apple Calendar uses this to pick a poll cadence.
         lines.push("REFRESH-INTERVAL;VALUE=DURATION:PT15M");

@@ -25,9 +25,7 @@ function makeChain(table: keyof Fixture) {
     lte: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     gte: () => chain,
@@ -69,11 +67,28 @@ beforeEach(() => {
 describe("list feasibility working patterns — CLWRota off-day labels", () => {
   it("does not count 'Surgeon: Off Day' rows as Friday clinical availability", async () => {
     const dates = [
-      "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
-      "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12",
-      "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-19",
-      "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26",
-      "2026-06-29", "2026-06-30",
+      "2026-06-01",
+      "2026-06-02",
+      "2026-06-03",
+      "2026-06-04",
+      "2026-06-05",
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-15",
+      "2026-06-16",
+      "2026-06-17",
+      "2026-06-18",
+      "2026-06-19",
+      "2026-06-22",
+      "2026-06-23",
+      "2026-06-24",
+      "2026-06-25",
+      "2026-06-26",
+      "2026-06-29",
+      "2026-06-30",
     ];
 
     for (const date of dates) {

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getActiveMembership } from "@/lib/app-membership";
 
 /**
  * Coordinator/admin-elevated reads of the staff directory.
@@ -41,12 +42,11 @@ function toSafe(p: {
 /** Active staff with safe columns — visible to any authenticated user. */
 export const listActiveStaffSafe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async (): Promise<SafeStaff[]> => {
+  .handler(async ({ context }): Promise<SafeStaff[]> => {
+    await getActiveMembership(context.supabase, context.userId);
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
-    const rows = (data ?? [])
-      .filter((p) => p.active === true)
-      .map(toSafe);
+    const rows = (data ?? []).filter((p) => p.active === true).map(toSafe);
     rows.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
     return rows;
   });
@@ -54,10 +54,9 @@ export const listActiveStaffSafe = createServerFn({ method: "GET" })
 /** Lookup safe staff rows by ids — visible to any authenticated user. */
 export const listStaffByIdsSafe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) =>
-    z.object({ ids: z.array(z.string().uuid()).max(500) }).parse(d),
-  )
-  .handler(async ({ data }): Promise<SafeStaff[]> => {
+  .inputValidator((d) => z.object({ ids: z.array(z.string().guid()).max(500) }).parse(d))
+  .handler(async ({ data, context }): Promise<SafeStaff[]> => {
+    await getActiveMembership(context.supabase, context.userId);
     if (!data.ids.length) return [];
     const { data: rows, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
@@ -69,15 +68,11 @@ async function getCallerAccess(
   supabase: any,
   userId: string,
 ): Promise<{ isAdmin: boolean; isCoordinator: boolean; isTrainee: boolean }> {
-  const [{ data: roles }, { data: profile }] = await Promise.all([
-    supabase.from("user_roles").select("role").eq("user_id", userId),
-    supabase.from("profiles").select("grade").eq("id", userId).maybeSingle(),
-  ]);
-  const roleSet = new Set((roles ?? []).map((r: { role: string }) => r.role));
+  const { roles: roleSet, grade } = await getActiveMembership(supabase, userId);
   return {
     isAdmin: roleSet.has("admin"),
     isCoordinator: roleSet.has("rota_coordinator"),
-    isTrainee: profile?.grade === "trainee",
+    isTrainee: grade === "trainee",
   };
 }
 
@@ -98,9 +93,7 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
     if (error) throw new Error(error.message);
     const rows = (data ?? [])
-      .filter(
-        (p) => p.grade === "trainee" && (p.active === true || p.left_at !== null),
-      )
+      .filter((p) => p.grade === "trainee" && (p.active === true || p.left_at !== null))
       .map((p) => ({
         id: p.id,
         full_name: p.full_name,
@@ -122,8 +115,8 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
   .inputValidator((d) =>
     z
       .object({
-        staffId: z.string().uuid(),
-        supervisorIds: z.array(z.string().uuid()).max(500).default([]),
+        staffId: z.string().guid(),
+        supervisorIds: z.array(z.string().guid()).max(500).default([]),
       })
       .parse(d),
   )

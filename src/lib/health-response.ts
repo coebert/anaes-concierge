@@ -31,16 +31,28 @@ export function parseHealthResponse(httpStatus: number, bodyText: string): Parse
   }
   const obj = json && typeof json === "object" ? (json as Record<string, unknown>) : null;
   if (!obj) {
-    return { status: httpStatus >= 500 ? "unhealthy" : "unknown", timestamp: null, version: null, checks: null, httpStatus };
+    return {
+      status: httpStatus >= 500 ? "unhealthy" : "unknown",
+      timestamp: null,
+      version: null,
+      checks: null,
+      httpStatus,
+    };
   }
-  const rawStatus = typeof obj.status === "string" && OVERALL.has(obj.status) ? (obj.status as OverallStatus) : "unknown";
-  const status: OverallStatus = rawStatus === "unknown" && httpStatus >= 500 ? "unhealthy" : rawStatus;
+  const rawStatus =
+    typeof obj.status === "string" && OVERALL.has(obj.status)
+      ? (obj.status as OverallStatus)
+      : "unknown";
+  const status: OverallStatus =
+    rawStatus === "unknown" && httpStatus >= 500 ? "unhealthy" : rawStatus;
   const checks = Array.isArray(obj.checks)
     ? obj.checks
         .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
         .map((c) => ({
           name: typeof c.name === "string" ? c.name : "Unnamed check",
-          status: (typeof c.status === "string" && CHECK.has(c.status) ? c.status : "error") as CheckStatus,
+          status: (typeof c.status === "string" && CHECK.has(c.status)
+            ? c.status
+            : "error") as CheckStatus,
           latencyMs: typeof c.latencyMs === "number" ? c.latencyMs : undefined,
           message: typeof c.message === "string" ? c.message : undefined,
         }))

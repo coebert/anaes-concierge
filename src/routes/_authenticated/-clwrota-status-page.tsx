@@ -19,13 +19,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -140,9 +134,7 @@ export function ClwRotaStatusPage() {
       <div className="p-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-destructive">
-              Couldn't load CLWRota sync status
-            </CardTitle>
+            <CardTitle className="text-destructive">Couldn't load CLWRota sync status</CardTitle>
             <CardDescription>{(error as Error).message}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -177,8 +169,8 @@ export function ClwRotaStatusPage() {
         <CardHeader>
           <CardTitle>Current sync state</CardTitle>
           <CardDescription>
-            The `last_successful_rota_sync_at` timestamp is the high-water mark
-            used by incremental rota syncs to compute their date window.
+            The `last_successful_rota_sync_at` timestamp is the high-water mark used by incremental
+            rota syncs to compute their date window.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -190,9 +182,7 @@ export function ClwRotaStatusPage() {
             </div>
             <div>
               <dt className="text-muted-foreground">Last successful rota sync</dt>
-              <dd className="font-medium">
-                {fmtDate(state?.last_successful_rota_sync_at)}
-              </dd>
+              <dd className="font-medium">{fmtDate(state?.last_successful_rota_sync_at)}</dd>
               <dd className="text-xs text-muted-foreground">
                 {relativeFrom(state?.last_successful_rota_sync_at)}
               </dd>
@@ -214,8 +204,8 @@ export function ClwRotaStatusPage() {
             <div>
               <dt className="text-muted-foreground">Incremental sync window</dt>
               <dd className="font-medium">
-                {state?.incremental_days_back ?? "—"}d back ·{" "}
-                {state?.incremental_days_ahead ?? "—"}d ahead
+                {state?.incremental_days_back ?? "—"}d back · {state?.incremental_days_ahead ?? "—"}
+                d ahead
               </dd>
             </div>
           </dl>
@@ -239,15 +229,12 @@ export function ClwRotaStatusPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="capitalize text-base">{kind} sync — recent runs</CardTitle>
                 <CardDescription>
-                  Latest entries from{" "}
-                  <code className="text-xs">clwrota_sync_metrics</code>.
+                  Latest entries from <code className="text-xs">clwrota_sync_metrics</code>.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {rows.length === 0 ? (
-                  <p className="px-6 pb-6 text-sm text-muted-foreground">
-                    No runs recorded yet.
-                  </p>
+                  <p className="px-6 pb-6 text-sm text-muted-foreground">No runs recorded yet.</p>
                 ) : (
                   <Table>
                     <TableHeader>
@@ -264,9 +251,7 @@ export function ClwRotaStatusPage() {
                         <TableRow key={r.id}>
                           <TableCell className="whitespace-nowrap text-xs">
                             <div>{fmtDate(r.run_at)}</div>
-                            <div className="text-muted-foreground">
-                              {relativeFrom(r.run_at)}
-                            </div>
+                            <div className="text-muted-foreground">{relativeFrom(r.run_at)}</div>
                           </TableCell>
                           <TableCell>
                             {r.ok ? (
@@ -276,7 +261,9 @@ export function ClwRotaStatusPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{r.rows_pulled}</TableCell>
-                          <TableCell className="text-right tabular-nums">{r.rows_upserted}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {r.rows_upserted}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {r.rows_failed + r.rows_skipped_validation}
                           </TableCell>
@@ -297,8 +284,8 @@ export function ClwRotaStatusPage() {
           <CardTitle>Scheduled cron jobs</CardTitle>
           <CardDescription>
             Latest invocations of each <code className="text-xs">clwrota%</code> pg_cron job.
-            "Succeeded" here means postgres dispatched the HTTP call without erroring; the
-            HTTP response body is recorded in the metrics table above.
+            "Succeeded" here means postgres dispatched the HTTP call without erroring; the HTTP
+            response body is recorded in the metrics table above.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -356,7 +343,10 @@ export function ClwRotaStatusPage() {
                               <TableCell>{statusBadge(r.status)}</TableCell>
                               <TableCell className="text-xs tabular-nums">{dur}</TableCell>
                               <TableCell className="max-w-[420px]">
-                                <div className="truncate text-xs text-muted-foreground" title={r.return_message ?? ""}>
+                                <div
+                                  className="truncate text-xs text-muted-foreground"
+                                  title={r.return_message ?? ""}
+                                >
                                   {r.return_message ?? "—"}
                                 </div>
                               </TableCell>
@@ -370,9 +360,7 @@ export function ClwRotaStatusPage() {
             );
           })}
           {cronByJob.size === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No CLWRota cron jobs are scheduled.
-            </p>
+            <p className="text-sm text-muted-foreground">No CLWRota cron jobs are scheduled.</p>
           ) : null}
         </CardContent>
       </Card>

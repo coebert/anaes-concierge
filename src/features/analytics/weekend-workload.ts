@@ -14,9 +14,7 @@ export type WeekendWorkloadRow = {
   session_date: string | null;
   is_non_sag: boolean | null;
   extra_type: string | null;
-  theatre_sessions:
-    | { is_non_sag: boolean | null; theatres: { kind: string | null } | null }
-    | null;
+  theatre_sessions: { is_non_sag: boolean | null; theatres: { kind: string | null } | null } | null;
 };
 
 export function isWeekendISO(isoDate: string): boolean {
@@ -28,8 +26,7 @@ export function isWeekendISO(isoDate: string): boolean {
 /** True when the row is a SAG (private) list that must be excluded. */
 export function isExcludedSagRow(row: WeekendWorkloadRow): boolean {
   const kind = row.theatre_sessions?.theatres?.kind ?? null;
-  const rowNonSag =
-    row.is_non_sag || row.theatre_sessions?.is_non_sag || false;
+  const rowNonSag = row.is_non_sag || row.theatre_sessions?.is_non_sag || false;
   return kind === "private" && !rowNonSag;
 }
 
@@ -44,9 +41,7 @@ export type WeekendCount = {
  * Count distinct Sat/Sun dates per staff member from a set of rota rows,
  * applying the job-plan exclusions (extras/locum/WLI + SAG private).
  */
-export function countWeekendDates(
-  rows: readonly WeekendWorkloadRow[],
-): WeekendCount[] {
+export function countWeekendDates(rows: readonly WeekendWorkloadRow[]): WeekendCount[] {
   const datesByStaff = new Map<string, Set<string>>();
 
   for (const r of rows) {
@@ -89,9 +84,7 @@ export type ExtraCategory = "extra" | "locum" | "wli" | "sag";
  * - A row with no extra_type but on a SAG private list
  *   (theatre.kind === "private" AND not flagged non_sag) is bucketed as "sag".
  */
-export function classifyExtraCategory(
-  row: WeekendWorkloadRow,
-): ExtraCategory | null {
+export function classifyExtraCategory(row: WeekendWorkloadRow): ExtraCategory | null {
   const raw = row.extra_type?.trim().toLowerCase() ?? "";
   if (raw) {
     if (raw === "locum") return "locum";
@@ -121,9 +114,7 @@ export type WeekendExtraCounts = {
  * that kind on the same day. Different categories on the same date are
  * counted independently.
  */
-export function countWeekendExtras(
-  rows: readonly WeekendWorkloadRow[],
-): WeekendExtraCounts[] {
+export function countWeekendExtras(rows: readonly WeekendWorkloadRow[]): WeekendExtraCounts[] {
   const perStaff = new Map<string, Record<ExtraCategory, Set<string>>>();
 
   for (const r of rows) {
@@ -152,4 +143,3 @@ export function countWeekendExtras(
   }
   return out;
 }
-

@@ -1,17 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ChevronLeft, AlertTriangle, ClipboardList, UserMinus, Briefcase, Coffee } from "lucide-react";
+  ChevronLeft,
+  AlertTriangle,
+  ClipboardList,
+  UserMinus,
+  Briefcase,
+  Coffee,
+} from "lucide-react";
 import { formatDateGB, cn } from "@/lib/utils";
 import {
-  loadDayDetail, riskColor, riskLabel,
-  type DayDetailSession, type HalfDayCapacity, type OtherDutyDetail,
+  loadDayDetail,
+  riskColor,
+  riskLabel,
+  type DayDetailSession,
+  type HalfDayCapacity,
+  type OtherDutyDetail,
 } from "@/features/audit/robustness";
 import { BreakdownCard } from "@/components/robustness/BreakdownCard";
 import { SessionChip } from "@/components/rota-views";
@@ -50,12 +57,10 @@ function DayDetailPage() {
               Back to robustness report
             </Link>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {formatDateGB(data.date)}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{formatDateGB(data.date)}</h1>
           <p className="text-sm text-muted-foreground">
-            Per-session coverage. Lists need a consultant (or ST6/ST7 solo).
-            SAS and junior trainees pair with a consultant but cannot solo-cover.
+            Per-session coverage. Lists need a consultant (or ST6/ST7 solo). SAS and junior trainees
+            pair with a consultant but cannot solo-cover.
           </p>
         </header>
 
@@ -69,12 +74,10 @@ function DayDetailPage() {
           <BreakdownCard label="PM staff breakdown" breakdown={data.pmBreakdown} h={data.pm} />
         </div>
 
-
         <div className="grid gap-4 lg:grid-cols-2">
           <SessionsCard title="AM theatre lists" sessions={amSessions} />
           <SessionsCard title="PM theatre lists" sessions={pmSessions} />
         </div>
-
 
         {totalUnfilled > 0 && (
           <div className="rounded-md border border-warning/40 bg-warning-muted/40 p-3 text-sm dark:bg-amber-950/20">
@@ -91,8 +94,8 @@ function DayDetailPage() {
                 Consultants on SPA (flexible cover)
               </CardTitle>
               <CardDescription>
-                Could be redeployed onto a list, but pulling them disrupts their
-                SPA time and should be flagged.
+                Could be redeployed onto a list, but pulling them disrupts their SPA time and should
+                be flagged.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -113,11 +116,16 @@ function DayDetailPage() {
             ) : (
               <ul className="space-y-1 text-sm">
                 {data.onLeave.map((l) => (
-                  <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
+                  <li
+                    key={l.staffId}
+                    className="flex items-center justify-between rounded border px-2 py-1"
+                  >
                     <span>{l.staffName}</span>
                     <span className="flex items-center gap-1.5 text-xs">
                       <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
-                      <Badge variant="secondary" className="text-[10px]">{l.type}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {l.type}
+                      </Badge>
                     </span>
                   </li>
                 ))}
@@ -135,11 +143,16 @@ function DayDetailPage() {
             ) : (
               <ul className="space-y-1 text-sm">
                 {data.onOtherDuty.map((l) => (
-                  <li key={l.staffId + l.duty} className="flex items-center justify-between rounded border px-2 py-1">
+                  <li
+                    key={l.staffId + l.duty}
+                    className="flex items-center justify-between rounded border px-2 py-1"
+                  >
                     <span>{l.staffName}</span>
                     <span className="flex items-center gap-1.5 text-xs">
                       <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
-                      <Badge variant="outline" className="text-[10px] capitalize">{formatDuty(l.duty)}</Badge>
+                      <Badge variant="outline" className="text-[10px] capitalize">
+                        {formatDuty(l.duty)}
+                      </Badge>
                     </span>
                   </li>
                 ))}
@@ -157,7 +170,10 @@ function DayDetailPage() {
             ) : (
               <ul className="space-y-1 text-sm">
                 {data.ltftOff.map((l) => (
-                  <li key={l.staffId} className="flex items-center justify-between rounded border px-2 py-1">
+                  <li
+                    key={l.staffId}
+                    className="flex items-center justify-between rounded border px-2 py-1"
+                  >
                     <span>{l.staffName}</span>
                     <GradeBadge grade={l.grade} trainingLevel={l.trainingLevel} />
                   </li>
@@ -177,7 +193,11 @@ function Empty() {
 
 function GradeBadge({ grade, trainingLevel }: { grade: string; trainingLevel: string | null }) {
   const label = grade === "trainee" && trainingLevel ? trainingLevel : grade;
-  return <Badge variant="outline" className="text-[10px] capitalize">{label}</Badge>;
+  return (
+    <Badge variant="outline" className="text-[10px] capitalize">
+      {label}
+    </Badge>
+  );
 }
 
 function SpaList({ label, people }: { label: string; people: OtherDutyDetail[] }) {
@@ -189,7 +209,10 @@ function SpaList({ label, people }: { label: string; people: OtherDutyDetail[] }
       ) : (
         <ul className="space-y-1 text-sm">
           {people.map((p) => (
-            <li key={p.staffId} className="rounded border border-orange-500/30 bg-orange-500/5 px-2 py-1">
+            <li
+              key={p.staffId}
+              className="rounded border border-orange-500/30 bg-orange-500/5 px-2 py-1"
+            >
               {p.staffName}
             </li>
           ))}
@@ -200,7 +223,10 @@ function SpaList({ label, people }: { label: string; people: OtherDutyDetail[] }
 }
 
 function PeopleCard({
-  title, icon, description, children,
+  title,
+  icon,
+  description,
+  children,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -210,7 +236,10 @@ function PeopleCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">{icon}{title}</CardTitle>
+        <CardTitle className="text-base flex items-center gap-2">
+          {icon}
+          {title}
+        </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
@@ -227,16 +256,24 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
           <SessionChip half={half} active />
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={cn("rounded px-2 py-0.5 text-xs font-medium cursor-help", riskColor(h.risk))}>
+              <span
+                className={cn(
+                  "rounded px-2 py-0.5 text-xs font-medium cursor-help",
+                  riskColor(h.risk),
+                )}
+              >
                 {riskLabel(h.risk)} · headroom {h.headroom}
               </span>
             </TooltipTrigger>
             <TooltipContent side="top">
               <p className="max-w-[18rem]">
                 {riskLabel(h.risk)}: {h.soloCapable} solo-capable staff vs {h.required} lists.
-                {h.consultantsOnSpa > 0 && ` ${h.consultantsOnSpa} consultant(s) on SPA could be flexed.`}
-                {h.risk === "spa_required" && " A consultant currently on SPA would need to be pulled onto a list to fill the gap."}
-                {h.risk === "shortfall" && " Even redeploying all SPA consultants would not cover every list."}
+                {h.consultantsOnSpa > 0 &&
+                  ` ${h.consultantsOnSpa} consultant(s) on SPA could be flexed.`}
+                {h.risk === "spa_required" &&
+                  " A consultant currently on SPA would need to be pulled onto a list to fill the gap."}
+                {h.risk === "shortfall" &&
+                  " Even redeploying all SPA consultants would not cover every list."}
               </p>
             </TooltipContent>
           </Tooltip>
@@ -245,15 +282,39 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
 
       <CardContent className="space-y-2">
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <Stat label="Lists" value={h.required} tooltip="Theatre lists scheduled for this half-day." />
-          <Stat label="Solo-capable" value={h.soloCapable} tooltip="Free consultants + ST6/7/8 trainees not already on a list. Only these can lead a new list alone." />
+          <Stat
+            label="Lists"
+            value={h.required}
+            tooltip="Theatre lists scheduled for this half-day."
+          />
+          <Stat
+            label="Solo-capable"
+            value={h.soloCapable}
+            tooltip="Free consultants + ST6/7/8 trainees not already on a list. Only these can lead a new list alone."
+          />
           <Stat label="Unfilled" value={h.unfilled} tooltip="Lists with no staff assigned yet." />
         </div>
         <div className="grid grid-cols-4 gap-2 text-center text-[11px]">
-          <Stat label="Consultants" value={h.consultantsAvailable} tooltip="Consultants free to deploy — not on leave, other duties, SPA, or already covering a list (theatre / POAC / pain clinic / any other clinical activity)." />
-          <Stat label="ST6/7/8" value={h.seniorTraineesAvailable} tooltip="Senior trainees free to deploy — count as solo-capable. Trainees already covering a list or on ICU/obstetrics are excluded." />
-          <Stat label="SAS" value={h.sasAvailable} tooltip="SAS doctors free to deploy — do not count toward headroom (cannot solo-cover)." />
-          <Stat label="Jr trainees" value={h.juniorTraineesAvailable} tooltip="Junior trainees (ST1–ST5) free to deploy — can pair with a consultant but cannot lead a list alone." />
+          <Stat
+            label="Consultants"
+            value={h.consultantsAvailable}
+            tooltip="Consultants free to deploy — not on leave, other duties, SPA, or already covering a list (theatre / POAC / pain clinic / any other clinical activity)."
+          />
+          <Stat
+            label="ST6/7/8"
+            value={h.seniorTraineesAvailable}
+            tooltip="Senior trainees free to deploy — count as solo-capable. Trainees already covering a list or on ICU/obstetrics are excluded."
+          />
+          <Stat
+            label="SAS"
+            value={h.sasAvailable}
+            tooltip="SAS doctors free to deploy — do not count toward headroom (cannot solo-cover)."
+          />
+          <Stat
+            label="Jr trainees"
+            value={h.juniorTraineesAvailable}
+            tooltip="Junior trainees (ST1–ST5) free to deploy — can pair with a consultant but cannot lead a list alone."
+          />
         </div>
         {h.consultantsOnSpa > 0 && (
           <div className="rounded border border-orange-500/40 bg-orange-500/10 px-2 py-1 text-xs">
@@ -312,7 +373,9 @@ function SessionsCard({ title, sessions }: { title: string; sessions: DayDetailS
               <div className="flex items-center justify-between">
                 <div className="font-medium">{s.theatreName}</div>
                 {s.unfilled ? (
-                  <Badge variant="destructive" className="text-[10px]">UNFILLED</Badge>
+                  <Badge variant="destructive" className="text-[10px]">
+                    UNFILLED
+                  </Badge>
                 ) : (
                   <Badge variant="secondary" className="text-[10px]">
                     {s.assignments.length} assigned

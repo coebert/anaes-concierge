@@ -1,8 +1,5 @@
 import { looksLikeTutorialLabel } from "./parsing";
-import {
-  getTutorialEvidenceLabel,
-  isTutorialAttendeeAssignment,
-} from "./tutorial-audit";
+import { getTutorialEvidenceLabel, isTutorialAttendeeAssignment } from "./tutorial-audit";
 import { fetchAllPaged } from "@/lib/supabase-chunked";
 
 type BackfillAssignmentRow = {
@@ -68,7 +65,6 @@ async function refreshSourceRowsInSlices(opts: {
     truncated: false,
   };
 
-
   for (let cursorMs = start.getTime(); cursorMs <= end.getTime(); ) {
     if (slices >= maxSlices) {
       summary.truncated = true;
@@ -76,9 +72,7 @@ async function refreshSourceRowsInSlices(opts: {
     }
     slices += 1;
     const sliceStart = new Date(cursorMs);
-    const sliceEnd = new Date(
-      Math.min(end.getTime(), cursorMs + (sliceDays - 1) * DAY_MS),
-    );
+    const sliceEnd = new Date(Math.min(end.getTime(), cursorMs + (sliceDays - 1) * DAY_MS));
     const from = formatIsoDate(sliceStart);
     const to = formatIsoDate(sliceEnd);
     const syncResult = await performRotaSync({ from, to });
@@ -135,9 +129,7 @@ export async function runTutorialBackfill(opts: {
   maxSlices?: number;
 }): Promise<TutorialBackfillResult> {
   const dryRun = opts.dryRun ?? false;
-  const { supabaseAdmin } = await import(
-    "@/integrations/supabase/client.server"
-  );
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   let sourceRowsRefreshed = 0;
   let sourceAssignmentsInserted = 0;
@@ -156,9 +148,7 @@ export async function runTutorialBackfill(opts: {
     const end = parseIsoDate(opts.endIso);
     const earliest = parseIsoDate(opts.startIso);
     const budgetStartMs = end.getTime() - (budgetDays - 1) * DAY_MS;
-    const refreshStart = new Date(
-      Math.max(earliest.getTime(), budgetStartMs),
-    );
+    const refreshStart = new Date(Math.max(earliest.getTime(), budgetStartMs));
     refreshWindowStart = formatIsoDate(refreshStart);
     refreshWindowEnd = opts.endIso;
     const syncResult = await refreshSourceRowsInSlices({
@@ -170,8 +160,7 @@ export async function runTutorialBackfill(opts: {
     sourceRowsRefreshed = syncResult.total;
     sourceAssignmentsInserted = syncResult.assignmentsInserted;
     sourceAssignmentsUpdated = syncResult.assignmentsUpdated;
-    refreshTruncated =
-      syncResult.truncated || refreshWindowStart > opts.startIso;
+    refreshTruncated = syncResult.truncated || refreshWindowStart > opts.startIso;
   }
 
   // Consultant/SAS profiles we're prepared to promote.
@@ -240,7 +229,7 @@ export async function runTutorialBackfill(opts: {
     result.scanned += 1;
 
     const theatreName = row.theatre_session_id
-      ? theatreNames.get(row.theatre_session_id as string) ?? null
+      ? (theatreNames.get(row.theatre_session_id as string) ?? null)
       : null;
     const tutorialEvidence = getTutorialEvidenceLabel({
       notes: row.notes,
@@ -264,12 +253,8 @@ export async function runTutorialBackfill(opts: {
     const currentNote = (row.notes ?? "").trim();
     const hasTutorialPrefix = /^tutorial\s*:/i.test(currentNote);
     const labelSource =
-      (row.notes && !hasTutorialPrefix ? row.notes : null) ??
-      tutorialEvidence ??
-      "session";
-    const newNote = hasTutorialPrefix
-      ? currentNote
-      : `Tutorial: ${labelSource.trim()}`;
+      (row.notes && !hasTutorialPrefix ? row.notes : null) ?? tutorialEvidence ?? "session";
+    const newNote = hasTutorialPrefix ? currentNote : `Tutorial: ${labelSource.trim()}`;
     const needsNoteChange = newNote !== (row.notes ?? "");
 
     if (!needsDutyChange && !needsNoteChange) continue;

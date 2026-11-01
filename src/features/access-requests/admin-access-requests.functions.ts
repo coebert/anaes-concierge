@@ -3,7 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/require-admin";
 
-
 export const listAccessRequests = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async ({ context }) => {
@@ -18,7 +17,7 @@ export const listAccessRequests = createServerFn({ method: "GET" })
   });
 
 const DecideSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   decision: z.enum(["approved", "declined"]),
   notes: z.string().trim().max(1000).optional(),
   send_invite: z.boolean().default(true),
@@ -49,10 +48,9 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
     if (updErr) return { error: updErr.message };
 
     if (data.decision === "approved" && data.send_invite) {
-      const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-        req.email,
-        { data: { full_name: req.full_name } },
-      );
+      const { error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(req.email, {
+        data: { full_name: req.full_name },
+      });
       if (inviteErr) return { ok: true, inviteError: inviteErr.message };
     }
 
@@ -61,7 +59,7 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
 
 export const deleteAccessRequest = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d) => z.object({ id: z.string().guid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("access_requests").delete().eq("id", data.id);

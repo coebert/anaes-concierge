@@ -46,11 +46,7 @@ const AUDIT_TABLES: Array<{
 ];
 
 function psql(sql: string): string {
-  const r = spawnSync(
-    "psql",
-    ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8" },
-  );
+  const r = spawnSync("psql", ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql], { encoding: "utf8" });
   if (r.status !== 0) {
     throw new Error(`psql failed (${r.status}): ${r.stderr || r.stdout}`);
   }
@@ -63,9 +59,7 @@ const dbAvailable =
 
 describe.skipIf(!dbAvailable)("audit / log tables RLS", () => {
   it("service_role has BYPASSRLS (trusted server writers always succeed)", () => {
-    const bypass = psql(
-      `SELECT rolbypassrls FROM pg_roles WHERE rolname = 'service_role'`,
-    );
+    const bypass = psql(`SELECT rolbypassrls FROM pg_roles WHERE rolname = 'service_role'`);
     expect(bypass).toBe("t");
   });
 
@@ -106,10 +100,7 @@ describe.skipIf(!dbAvailable)("audit / log tables RLS", () => {
           WHERE schemaname = 'public' AND tablename = '${table}'
             AND (roles::text ILIKE '%anon%' OR roles::text = '{public}')`,
       );
-      expect(
-        anonRefs,
-        `${table} exposes rows to anon or PUBLIC`,
-      ).toBe("0");
+      expect(anonRefs, `${table} exposes rows to anon or PUBLIC`).toBe("0");
     });
 
     it("no permissive policy uses `true` as its qual (broad open policies)", () => {
@@ -123,17 +114,12 @@ describe.skipIf(!dbAvailable)("audit / log tables RLS", () => {
             AND (btrim(coalesce(qual, '')) = 'true'
                  OR btrim(coalesce(with_check, '')) = 'true')`,
       );
-      expect(
-        trivial,
-        `${table} has a permissive policy with a trivial 'true' predicate`,
-      ).toBe("0");
+      expect(trivial, `${table} has a permissive policy with a trivial 'true' predicate`).toBe("0");
     });
   });
 
   it("SECURITY DEFINER writer functions exist and are marked SECURITY DEFINER", () => {
-    const definerFns = AUDIT_TABLES
-      .map((t) => t.writerFn)
-      .filter((w) => w.startsWith("public."));
+    const definerFns = AUDIT_TABLES.map((t) => t.writerFn).filter((w) => w.startsWith("public."));
     for (const fn of definerFns) {
       const bareName = fn.replace(/^public\./, "");
       const secdef = psql(

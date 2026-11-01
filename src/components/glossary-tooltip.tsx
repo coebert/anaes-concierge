@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { lookupGlossary, GLOSSARY } from "@/lib/glossary";
 import { HelpCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -73,9 +68,7 @@ export function GlossaryText({ children }: { children: string }) {
   if (!patterns.acronyms.length) return <>{children}</>;
 
   // Build a regex that matches any acronym with word boundaries
-  const escaped = patterns.acronyms.map((a) =>
-    a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  );
+  const escaped = patterns.acronyms.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const regex = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
 
   const parts: React.ReactNode[] = [];
@@ -88,11 +81,7 @@ export function GlossaryText({ children }: { children: string }) {
       parts.push(children.slice(lastIndex, match.index));
     }
     // Push wrapped match
-    parts.push(
-      <GlossaryTerm key={`${match.index}-${match[1]}`}>
-        {match[1]}
-      </GlossaryTerm>
-    );
+    parts.push(<GlossaryTerm key={`${match.index}-${match[1]}`}>{match[1]}</GlossaryTerm>);
     lastIndex = regex.lastIndex;
   }
   // Push remaining text

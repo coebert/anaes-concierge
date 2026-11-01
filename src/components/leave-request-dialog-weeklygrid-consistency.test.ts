@@ -53,7 +53,13 @@ function theatre(date: string, half: "am" | "pm"): AssignmentLite {
 }
 
 const WEEKDAY_INDEX: Record<string, number> = {
-  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
 };
 const dowName = (iso: string): string => {
   const dow = new Date(`${iso}T00:00:00Z`).getUTCDay();
@@ -63,9 +69,27 @@ const dowName = (iso: string): string => {
 describe("Leave dialog impact preview vs /api/chat weeklyGrid — consistency", () => {
   // Three consecutive weeks with Mon–Fri AM+PM theatre.
   const WEEKS = [
-    { mon: "2026-01-05", tue: "2026-01-06", wed: "2026-01-07", thu: "2026-01-08", fri: "2026-01-09" },
-    { mon: "2026-01-12", tue: "2026-01-13", wed: "2026-01-14", thu: "2026-01-15", fri: "2026-01-16" },
-    { mon: "2026-01-19", tue: "2026-01-20", wed: "2026-01-21", thu: "2026-01-22", fri: "2026-01-23" },
+    {
+      mon: "2026-01-05",
+      tue: "2026-01-06",
+      wed: "2026-01-07",
+      thu: "2026-01-08",
+      fri: "2026-01-09",
+    },
+    {
+      mon: "2026-01-12",
+      tue: "2026-01-13",
+      wed: "2026-01-14",
+      thu: "2026-01-15",
+      fri: "2026-01-16",
+    },
+    {
+      mon: "2026-01-19",
+      tue: "2026-01-20",
+      wed: "2026-01-21",
+      thu: "2026-01-22",
+      fri: "2026-01-23",
+    },
   ];
   const baseAssignments: AssignmentLite[] = WEEKS.flatMap((w) =>
     [w.mon, w.tue, w.wed, w.thu, w.fri].flatMap((d) => [theatre(d, "am"), theatre(d, "pm")]),
@@ -102,12 +126,7 @@ describe("Leave dialog impact preview vs /api/chat weeklyGrid — consistency", 
       reason: null,
       decision_notes: null,
     }));
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      leaveRows,
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const effective = applyLeaveOverlay(baseAssignments, overlay);
     const res = buildCurrentPatternResponse({
       profile: STAFF,
@@ -165,14 +184,7 @@ describe("Leave dialog impact preview vs /api/chat weeklyGrid — consistency", 
   it("preview 'On leave' dates map to weeklyGrid 'On leave' weekday-halves — Fri-PM → Mon-AM weekend boundary", () => {
     const previewStart = WEEKS[1].fri;
     const previewEnd = WEEKS[2].mon;
-    const preview = buildImpactPreview(
-      previewStart,
-      previewEnd,
-      "pm",
-      "am",
-      [],
-      true,
-    );
+    const preview = buildImpactPreview(previewStart, previewEnd, "pm", "am", [], true);
 
     const leaveRows: LeaveRowLite[] = WEEKS.slice(0, 2).map((_w, i) => ({
       type: "annual",
@@ -190,7 +202,7 @@ describe("Leave dialog impact preview vs /api/chat weeklyGrid — consistency", 
       type: "annual",
       status: "approved",
       start_date: "2026-01-23", // Fri wk3
-      end_date: "2026-01-26",   // Mon after wk3
+      end_date: "2026-01-26", // Mon after wk3
       half_day_start: "pm",
       half_day_end: "am",
       reason: null,
@@ -203,12 +215,7 @@ describe("Leave dialog impact preview vs /api/chat weeklyGrid — consistency", 
       theatre("2026-01-26", "am"),
       theatre("2026-01-26", "pm"),
     ];
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      leaveRows,
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const effective = applyLeaveOverlay(extendedAssignments, overlay);
     const res = buildCurrentPatternResponse({
       profile: STAFF,

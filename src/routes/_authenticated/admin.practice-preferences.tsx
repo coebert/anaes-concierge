@@ -11,13 +11,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { compareBySurname } from "@/lib/name-sort";
@@ -27,7 +41,6 @@ import {
   preferenceMatches,
   isPreferred,
 } from "@/features/coordinator-rota/preferences";
-
 
 export const Route = createFileRoute("/_authenticated/admin/practice-preferences")({
   head: () => ({
@@ -103,8 +116,7 @@ function PracticePreferencesPage() {
   const { data: specialties } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties").select("id,name").order("name");
+      const { data, error } = await supabase.from("specialties").select("id,name").order("name");
       if (error) throw error;
       // SDH does not offer vascular or cardiac/cardiothoracic surgery,
       // so those specialties are hidden from the practice preferences list.
@@ -154,8 +166,7 @@ function PracticePreferencesPage() {
 
   const filteredStaff = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const rows = (staff ?? []).slice().sort((a, b) =>
-      compareBySurname(a.full_name, b.full_name));
+    const rows = (staff ?? []).slice().sort((a, b) => compareBySurname(a.full_name, b.full_name));
     if (!q) return rows;
     return rows.filter((s) => s.full_name.toLowerCase().includes(q));
   }, [staff, query]);
@@ -288,9 +299,11 @@ function PracticePreferencesPage() {
                             <Smile className="h-3 w-3" /> Cleft palate
                           </Badge>
                         )}
-                        {!pp?.covers_obstetrics && !pp?.covers_paediatrics && !pp?.covers_cleft_palate && (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        {!pp?.covers_obstetrics &&
+                          !pp?.covers_paediatrics &&
+                          !pp?.covers_cleft_palate && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -299,14 +312,17 @@ function PracticePreferencesPage() {
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {preferred.map((name) => (
-                            <Badge key={name} variant="outline">{name}</Badge>
+                            <Badge key={name} variant="outline">
+                              {name}
+                            </Badge>
                           ))}
                         </div>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
-                        size="sm" variant="ghost"
+                        size="sm"
+                        variant="ghost"
                         onClick={() => setEditing(s)}
                         aria-label={`Edit preferences for ${s.full_name}`}
                       >
@@ -342,7 +358,11 @@ function PracticePreferencesPage() {
 }
 
 function EditPreferencesDialog({
-  staff, specialties, practicePref, specialtyPrefs, onClose,
+  staff,
+  specialties,
+  practicePref,
+  specialtyPrefs,
+  onClose,
 }: {
   staff: StaffRow;
   specialties: Specialty[];
@@ -365,15 +385,13 @@ function EditPreferencesDialog({
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error: e1 } = await supabase
-        .from("staff_practice_preferences")
-        .upsert({
-          staff_id: staff.id,
-          covers_obstetrics: obstetrics,
-          covers_paediatrics: paediatrics,
-          covers_cleft_palate: cleft,
-          notes: notes.trim() ? notes.trim() : null,
-        });
+      const { error: e1 } = await supabase.from("staff_practice_preferences").upsert({
+        staff_id: staff.id,
+        covers_obstetrics: obstetrics,
+        covers_paediatrics: paediatrics,
+        covers_cleft_palate: cleft,
+        notes: notes.trim() ? notes.trim() : null,
+      });
       if (e1) throw e1;
 
       const rows = specialties.map((s) => ({
@@ -407,7 +425,8 @@ function EditPreferencesDialog({
         <DialogHeader>
           <DialogTitle>{staff.full_name}</DialogTitle>
           <DialogDescription>
-            Specialty preferences and coverage flags. Advisory only — does not block rota assignments.
+            Specialty preferences and coverage flags. Advisory only — does not block rota
+            assignments.
           </DialogDescription>
         </DialogHeader>
 
@@ -416,24 +435,15 @@ function EditPreferencesDialog({
             <h3 className="text-sm font-semibold">Coverage</h3>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <label className="flex items-center gap-2 rounded border border-border p-2 cursor-pointer">
-                <Checkbox
-                  checked={obstetrics}
-                  onCheckedChange={(v) => setObstetrics(!!v)}
-                />
+                <Checkbox checked={obstetrics} onCheckedChange={(v) => setObstetrics(!!v)} />
                 <span className="text-sm">Covers obstetrics</span>
               </label>
               <label className="flex items-center gap-2 rounded border border-border p-2 cursor-pointer">
-                <Checkbox
-                  checked={paediatrics}
-                  onCheckedChange={(v) => setPaediatrics(!!v)}
-                />
+                <Checkbox checked={paediatrics} onCheckedChange={(v) => setPaediatrics(!!v)} />
                 <span className="text-sm">Covers paediatrics</span>
               </label>
               <label className="flex items-center gap-2 rounded border border-border p-2 cursor-pointer">
-                <Checkbox
-                  checked={cleft}
-                  onCheckedChange={(v) => setCleft(!!v)}
-                />
+                <Checkbox checked={cleft} onCheckedChange={(v) => setCleft(!!v)} />
                 <span className="text-sm">Does cleft palate lists</span>
               </label>
             </div>
@@ -447,13 +457,18 @@ function EditPreferencesDialog({
               </p>
               <ul className="mb-2 space-y-0.5 text-muted-foreground">
                 <li>
-                  <span className="font-medium text-foreground">★ Preferred</span> — actively enjoys or requests these lists. Sorted to the top of the staff picker.
+                  <span className="font-medium text-foreground">★ Preferred</span> — actively enjoys
+                  or requests these lists. Sorted to the top of the staff picker.
                 </li>
                 <li>
-                  <span className="font-medium text-foreground">✓ Willing</span> — happy to cover as part of normal practice.
+                  <span className="font-medium text-foreground">✓ Willing</span> — happy to cover as
+                  part of normal practice.
                 </li>
                 <li>
-                  <span className="font-medium text-foreground">~ Prefer not to</span> — would rather not, but <span className="italic">is able to cover if needed</span>. Soft preference: still eligible, just sorted below "Willing" and flagged with an amber note in the picker so the coordinator knows to try other options first.
+                  <span className="font-medium text-foreground">~ Prefer not to</span> — would
+                  rather not, but <span className="italic">is able to cover if needed</span>. Soft
+                  preference: still eligible, just sorted below "Willing" and flagged with an amber
+                  note in the picker so the coordinator knows to try other options first.
                 </li>
               </ul>
               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
@@ -461,18 +476,24 @@ function EditPreferencesDialog({
               </p>
               <ul className="space-y-0.5 text-muted-foreground">
                 <li>
-                  <span className="font-medium text-foreground">! Does not cover</span> — should not be assigned to this specialty at all (e.g. lack of experience or a formal decision not to practise).
+                  <span className="font-medium text-foreground">! Does not cover</span> — should not
+                  be assigned to this specialty at all (e.g. lack of experience or a formal decision
+                  not to practise).
                 </li>
               </ul>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {specialties.map((s) => (
-                <div key={s.id} className="flex items-center justify-between gap-3 rounded border border-border p-2">
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-3 rounded border border-border p-2"
+                >
                   <span className="text-sm">{s.name}</span>
                   <Select
                     value={prefs[s.id] ?? "willing"}
                     onValueChange={(v: PreferenceLevel) =>
-                      setPrefs((prev) => ({ ...prev, [s.id]: v }))}
+                      setPrefs((prev) => ({ ...prev, [s.id]: v }))
+                    }
                   >
                     <SelectTrigger className="h-8 w-52">
                       <SelectValue />
@@ -481,7 +502,9 @@ function EditPreferencesDialog({
                       <SelectItem value="preferred">
                         <span className="flex flex-col">
                           <span>★ Preferred</span>
-                          <span className="text-[10px] text-muted-foreground">Enjoys / requests</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            Enjoys / requests
+                          </span>
                         </span>
                       </SelectItem>
                       <SelectItem value="willing">
@@ -493,13 +516,17 @@ function EditPreferencesDialog({
                       <SelectItem value="prefer_not_to">
                         <span className="flex flex-col">
                           <span>~ Prefer not to</span>
-                          <span className="text-[10px] text-muted-foreground">Soft — still assignable if needed</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            Soft — still assignable if needed
+                          </span>
                         </span>
                       </SelectItem>
                       <SelectItem value="none">
                         <span className="flex flex-col">
                           <span>! Does not cover</span>
-                          <span className="text-[10px] text-muted-foreground">Hard exclusion — do not assign</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            Hard exclusion — do not assign
+                          </span>
                         </span>
                       </SelectItem>
                     </SelectContent>
@@ -530,11 +557,12 @@ function EditPreferencesDialog({
               rows={3}
             />
           </section>
-
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={save.isPending}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={save.isPending}>
+            Cancel
+          </Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? "Saving…" : "Save preferences"}
           </Button>
@@ -563,9 +591,7 @@ function PreviewSection({
   // coverage requirement, so the admin immediately sees how obs/paeds/cleft
   // flags interact. Falls back to the first specialty.
   const defaultId = useMemo(() => {
-    const trigger = specialties.find((s) =>
-      /\bobstet|\bpaed|\bpediat|\bcleft/i.test(s.name),
-    );
+    const trigger = specialties.find((s) => /\bobstet|\bpaed|\bpediat|\bcleft/i.test(s.name));
     return (trigger ?? specialties[0])?.id ?? "";
   }, [specialties]);
   const [previewId, setPreviewId] = useState<string>(defaultId);
@@ -611,7 +637,9 @@ function PreviewSection({
           </SelectTrigger>
           <SelectContent>
             {specialties.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -622,9 +650,7 @@ function PreviewSection({
           Preferences only affect warnings for consultants and SAS grade doctors.
         </p>
       ) : !previewSpec ? (
-        <p className="text-xs text-muted-foreground">
-          Add a specialty above to preview warnings.
-        </p>
+        <p className="text-xs text-muted-foreground">Add a specialty above to preview warnings.</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -634,11 +660,17 @@ function PreviewSection({
               </Badge>
             )}
             {matches ? (
-              <Badge variant="outline" className="gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-500/40">
+              <Badge
+                variant="outline"
+                className="gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-500/40"
+              >
                 <CheckCircle2 className="h-3 w-3" /> Matches list requirements
               </Badge>
             ) : (
-              <Badge variant="outline" className="gap-1 text-amber-700 dark:text-amber-400 border-amber-500/40">
+              <Badge
+                variant="outline"
+                className="gap-1 text-amber-700 dark:text-amber-400 border-amber-500/40"
+              >
                 <AlertTriangle className="h-3 w-3" /> Would trigger warnings
               </Badge>
             )}
@@ -664,4 +696,3 @@ function PreviewSection({
     </section>
   );
 }
-

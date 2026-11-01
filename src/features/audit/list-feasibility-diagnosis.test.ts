@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  diagnoseValidationCell,
-  diagnoseValidationReport,
-} from "./list-feasibility-diagnosis";
+import { diagnoseValidationCell, diagnoseValidationReport } from "./list-feasibility-diagnosis";
 import type {
   ValidationCell,
   ValidationReport,
@@ -74,9 +71,9 @@ describe("diagnoseValidationCell", () => {
     });
     const d = diagnoseValidationCell(c);
     expect(d.some((x) => x.code === "non_theatre_clinical_label")).toBe(true);
-    expect(
-      d.find((x) => x.code === "non_theatre_clinical_label")?.remediation.href,
-    ).toBe("/admin/duty-mappings");
+    expect(d.find((x) => x.code === "non_theatre_clinical_label")?.remediation.href).toBe(
+      "/admin/duty-mappings",
+    );
   });
 
   it("flags off-day cells that nevertheless show clinical activity", () => {
@@ -100,9 +97,7 @@ describe("diagnoseValidationCell", () => {
       noRecord: 3,
       delta: 40,
     });
-    expect(
-      diagnoseValidationCell(c).some((x) => x.code === "sparse_data"),
-    ).toBe(true);
+    expect(diagnoseValidationCell(c).some((x) => x.code === "sparse_data")).toBe(true);
   });
 });
 
@@ -139,9 +134,7 @@ describe("diagnoseValidationReport", () => {
     };
     const d = diagnoseValidationReport(report);
     expect(d.causeTally.length).toBeGreaterThan(0);
-    expect(d.consultants[0].topDiagnosis?.code).toBe(
-      "off_day_with_clinical_activity",
-    );
+    expect(d.consultants[0].topDiagnosis?.code).toBe("off_day_with_clinical_activity");
     expect(d.consultants[0].cells[0].diagnoses.length).toBeGreaterThan(0);
   });
 });

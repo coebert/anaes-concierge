@@ -15,9 +15,7 @@ describe("navigation group metadata", () => {
   const validGroupIds = new Set<NavGroupId>(NAV_GROUPS.map((g) => g.id));
 
   it("every nav item declares a group that exists in NAV_GROUPS", () => {
-    const missing = NAV_ITEMS.filter(
-      (item) => !item.group || !validGroupIds.has(item.group),
-    );
+    const missing = NAV_ITEMS.filter((item) => !item.group || !validGroupIds.has(item.group));
     expect(
       missing,
       `Items with missing/unknown group: ${missing.map((i) => i.id).join(", ")}`,
@@ -35,10 +33,7 @@ describe("navigation group metadata", () => {
         seen.set(item.id, item.group);
       }
     }
-    expect(
-      duplicates,
-      `Duplicated ids across groups: ${JSON.stringify(duplicates)}`,
-    ).toEqual([]);
+    expect(duplicates, `Duplicated ids across groups: ${JSON.stringify(duplicates)}`).toEqual([]);
   });
 
   it("no route destination appears in more than one nav item", () => {
@@ -49,24 +44,16 @@ describe("navigation group metadata", () => {
       byRoute.set(item.to, list);
     }
     const dupes = [...byRoute.entries()].filter(([, ids]) => ids.length > 1);
-    expect(
-      dupes,
-      `Routes bound to multiple nav items: ${JSON.stringify(dupes)}`,
-    ).toEqual([]);
+    expect(dupes, `Routes bound to multiple nav items: ${JSON.stringify(dupes)}`).toEqual([]);
   });
 
   it("staff/audits groups are mutually exclusive per item", () => {
     // For every item currently marked staff or audits, assert it is not
     // simultaneously classified as the other. This catches a copy-paste
     // regression where an item is added under both headings.
-    const staffIds = new Set(
-      NAV_ITEMS.filter((i) => i.group === "staff").map((i) => i.id),
-    );
-    const auditIds = new Set(
-      NAV_ITEMS.filter((i) => i.group === "audits").map((i) => i.id),
-    );
+    const staffIds = new Set(NAV_ITEMS.filter((i) => i.group === "staff").map((i) => i.id));
+    const auditIds = new Set(NAV_ITEMS.filter((i) => i.group === "audits").map((i) => i.id));
     const overlap = [...staffIds].filter((id) => auditIds.has(id));
-    expect(overlap, `Ids in both staff and audits: ${overlap.join(", ")}`)
-      .toEqual([]);
+    expect(overlap, `Ids in both staff and audits: ${overlap.join(", ")}`).toEqual([]);
   });
 });

@@ -55,8 +55,18 @@ function gridEnd(d: Date): Date {
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export function LeaveMonthlyCalendar() {
@@ -154,7 +164,9 @@ export function LeaveMonthlyCalendar() {
         <Legend />
         <div className="mt-3 grid grid-cols-7 gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
           {WEEKDAYS.map((w) => (
-            <div key={w} className="text-center">{w}</div>
+            <div key={w} className="text-center">
+              {w}
+            </div>
           ))}
         </div>
         <div className="mt-1 grid grid-cols-7 gap-1">
@@ -175,9 +187,7 @@ export function LeaveMonthlyCalendar() {
                 )}
                 title={
                   entries.length
-                    ? entries
-                        .map((e) => `${e.staffName} — ${e.type} (${e.status})`)
-                        .join("\n")
+                    ? entries.map((e) => `${e.staffName} — ${e.type} (${e.status})`).join("\n")
                     : undefined
                 }
               >
@@ -210,9 +220,7 @@ export function LeaveMonthlyCalendar() {
             );
           })}
         </div>
-        {isLoading && (
-          <div className="mt-3 text-xs text-muted-foreground">Loading leave…</div>
-        )}
+        {isLoading && <div className="mt-3 text-xs text-muted-foreground">Loading leave…</div>}
       </CardContent>
     </Card>
   );

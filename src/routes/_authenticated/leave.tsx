@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,22 +12,16 @@ import { invalidateWellbeing } from "@/features/wellbeing/invalidate";
 import { optimisticCancelLeave } from "@/features/leave/optimistic-cancel-leave";
 import { LeaveRequestDialog } from "@/components/leave-request-dialog";
 import { toast } from "sonner";
+import { fetchAllRowsPaged, idKey } from "@/features/audit/paginate";
+import { leaveYearWindow } from "@/features/leave/leave-count";
 
 import { type AllowanceLike as AllowanceRow } from "@/features/leave/leave-allowances";
-import {
-  ACTIVE_STATUSES,
-  type LeaveRow,
-  type ProfileRow,
-} from "@/features/leave/tabs/shared";
+import { ACTIVE_STATUSES, type LeaveRow, type ProfileRow } from "@/features/leave/tabs/shared";
 import { DayCalendarTab } from "@/features/leave/tabs/DayCalendarTab";
 import { UpcomingLeaveTab } from "@/features/leave/tabs/UpcomingLeaveTab";
 import { SickLeaveTab, type SickRow } from "@/features/leave/tabs/SickLeaveTab";
 import { AllowancesTab } from "@/features/leave/tabs/AllowancesTab";
-import {
-  MyLeaveTab,
-  MyLeaveTabLabel,
-  MyLeaveDescription,
-} from "@/features/leave/tabs/MyLeaveTab";
+import { MyLeaveTab, MyLeaveTabLabel, MyLeaveDescription } from "@/features/leave/tabs/MyLeaveTab";
 
 // Re-exported so existing UI tests continue to import from "./leave".
 export { MyLeaveTabLabel, MyLeaveDescription };
@@ -56,71 +50,123 @@ function LeavePage() {
 
   const [selectedYearStartISO, setSelectedYearStartISO] = useState<string>(defaultYearStartISO);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [yearError, setYearError] = useState<string | null>(null);
+  const [yearLoading, setYearLoading] = useState(false);
+  const yearReq = useRef(0);
+
+  const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
+
+  // Page with a stable (start_date, id) order — the API caps each response
+  // at 1000 rows, so a single wide .range() silently truncated totals.
   const load = async () => {
     if (!user) return;
     setLoading(true);
+    setLoadError(null);
     const today = new Date();
     const windowStart = new Date(today);
     windowStart.setDate(windowStart.getDate() - 400);
     const windowEnd = new Date(today);
     windowEnd.setFullYear(windowEnd.getFullYear() + 2);
-    const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
-
-    const [leaveRes, profRes, allowRes] = await Promise.all([
-      supabase
-        .from("leave_requests")
-        .select("*")
-        .gte("end_date", fmtIso(windowStart))
-        .lte("start_date", fmtIso(windowEnd))
-        .order("start_date", { ascending: true })
-        .range(0, 4999),
-      supabase
-        .from("profiles")
-        .select("id, full_name, grade")
-        .eq("active", true),
-      supabase
-        .from("leave_allowances")
-        .select("staff_id, leave_year_start, annual_days, study_days, professional_days"),
-    ]);
-    if (leaveRes.error) toast.error(leaveRes.error.message);
-    if (profRes.error) toast.error(profRes.error.message);
-    if (allowRes.error) toast.error(allowRes.error.message);
-    setRows((leaveRes.data ?? []) as LeaveRow[]);
-    setProfiles((profRes.data ?? []) as ProfileRow[]);
-    setAllowances((allowRes.data ?? []) as AllowanceRow[]);
-
-    const mineRes = await supabase
-      .from("leave_requests")
-      .select("*")
-      .eq("staff_id", user.id)
-      .order("start_date", { ascending: false })
-      .range(0, 4999);
-    if (mineRes.error) toast.error(mineRes.error.message);
-    setMyLeave((mineRes.data ?? []) as LeaveRow[]);
-
-    setLoading(false);
+    try {
+      const [leave, profRes, allowances, mine] = await Promise.all([
+        fetchAllRowsPaged<LeaveRow>(
+          (from, to) =>
+            supabase
+              .from("leave_requests")
+              .select("*")
+              .gte("end_date", fmtIso(windowStart))
+              .lte("start_date", fmtIso(windowEnd))
+              .order("start_date", { ascending: true })
+              .order("id", { ascending: true })
+              .range(from, to) as never,
+          { label: "Department leave", rowKey: idKey as never },
+        ),
+        supabase.from("profiles").select("id, full_name, grade").eq("active", true),
+        fetchAllRowsPaged<AllowanceRow>(
+          (from, to) =>
+            supabase
+              .from("leave_allowances")
+              .select("id, staff_id, leave_year_start, annual_days, study_days, professional_days")
+              .order("staff_id")
+              .order("leave_year_start")
+              .order("id")
+              .range(from, to) as never,
+          { label: "Leave allowances" },
+        ),
+        fetchAllRowsPaged<LeaveRow>(
+          (from, to) =>
+            supabase
+              .from("leave_requests")
+              .select("*")
+              .eq("staff_id", user.id)
+              .order("start_date", { ascending: false })
+              .order("id", { ascending: true })
+              .range(from, to) as never,
+          { label: "My leave", rowKey: idKey as never },
+        ),
+      ]);
+      if (profRes.error) throw new Error(profRes.error.message);
+      setRows(leave);
+      setProfiles((profRes.data ?? []) as ProfileRow[]);
+      setAllowances(allowances);
+      setMyLeave(mine);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not load leave.";
+      setLoadError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { void load(); }, [user?.id]);
+  const loadYear = async (yearStartISO: string) => {
+    if (!user) return;
+    const req = ++yearReq.current;
+    // Clear the previous year's totals so they are never shown under the new year label.
+    setYearLeave([]);
+    setYearError(null);
+    setYearLoading(true);
+    const w = leaveYearWindow(yearStartISO);
+    try {
+      const data = await fetchAllRowsPaged<LeaveRow>(
+        (from, to) =>
+          supabase
+            .from("leave_requests")
+            .select(
+              "id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end",
+            )
+            .in("status", ["approved", "pending"])
+            .lt("start_date", w.endExclusive)
+            .gte("end_date", w.start)
+            .order("start_date", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to) as never,
+        { label: "Leave year totals", rowKey: idKey as never },
+      );
+      if (req !== yearReq.current) return; // stale response for a previous year
+      setYearLeave(data);
+    } catch (e) {
+      if (req !== yearReq.current) return;
+      const msg = e instanceof Error ? e.message : "Could not load leave totals.";
+      setYearError(msg);
+      toast.error(msg);
+    } finally {
+      if (req === yearReq.current) setYearLoading(false);
+    }
+  };
+
+  const reloadAll = () => {
+    void load();
+    void loadYear(selectedYearStartISO);
+  };
 
   useEffect(() => {
-    if (!user) return;
-    const yStart = new Date(selectedYearStartISO + "T00:00:00Z");
-    const yEnd = new Date(yStart);
-    yEnd.setUTCFullYear(yEnd.getUTCFullYear() + 1);
-    const fmtIso = (d: Date) => format(d, "yyyy-MM-dd");
-    void supabase
-      .from("leave_requests")
-      .select("id, staff_id, type, status, start_date, end_date, half_day_start, half_day_end")
-      .in("status", ["approved", "pending"])
-      .lte("start_date", fmtIso(yEnd))
-      .gte("end_date", fmtIso(yStart))
-      .order("start_date", { ascending: true })
-      .range(0, 9999)
-      .then(({ data, error }) => {
-        if (error) toast.error(error.message);
-        else setYearLeave((data ?? []) as LeaveRow[]);
-      });
+    void load();
+  }, [user?.id]);
+
+  useEffect(() => {
+    void loadYear(selectedYearStartISO);
   }, [user?.id, selectedYearStartISO]);
 
   const cancel = async (id: string) => {
@@ -138,9 +184,9 @@ function LeavePage() {
       return;
     }
     toast.success("Request cancelled");
-    // Reconcile local row arrays with server truth (invalidateWellbeing
-    // inside the helper handles the wellbeing caches).
-    void load();
+    // Reconcile local row arrays AND year totals with server truth
+    // (invalidateWellbeing inside the helper handles the wellbeing caches).
+    reloadAll();
   };
 
   const profileById = useMemo(() => {
@@ -149,10 +195,7 @@ function LeavePage() {
     return m;
   }, [profiles]);
 
-  const activeRows = useMemo(
-    () => rows.filter((r) => ACTIVE_STATUSES.has(r.status)),
-    [rows],
-  );
+  const activeRows = useMemo(() => rows.filter((r) => ACTIVE_STATUSES.has(r.status)), [rows]);
 
   const myRows = useMemo(
     () => (user ? myLeave.filter((r) => r.staff_id === user.id) : []),
@@ -196,6 +239,19 @@ function LeavePage() {
         }
       />
 
+      {loadError && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          <span>
+            Leave could not be fully loaded, so totals below may be incomplete: {loadError}
+          </span>
+          <Button size="sm" variant="outline" onClick={reloadAll}>
+            Retry
+          </Button>
+        </div>
+      )}
       <Tabs defaultValue="calendar" className="space-y-4">
         <TabsList>
           <TabsTrigger value="calendar">Department calendar</TabsTrigger>
@@ -208,19 +264,11 @@ function LeavePage() {
         </TabsList>
 
         <TabsContent value="calendar">
-          <DayCalendarTab
-            loading={loading}
-            activeRows={activeRows}
-            profileById={profileById}
-          />
+          <DayCalendarTab loading={loading} activeRows={activeRows} profileById={profileById} />
         </TabsContent>
 
         <TabsContent value="upcoming">
-          <UpcomingLeaveTab
-            loading={loading}
-            allUpcoming={allUpcoming}
-            profileById={profileById}
-          />
+          <UpcomingLeaveTab loading={loading} allUpcoming={allUpcoming} profileById={profileById} />
         </TabsContent>
 
         <TabsContent value="sick">
@@ -233,8 +281,25 @@ function LeavePage() {
         </TabsContent>
 
         <TabsContent value="allowances">
+          {yearError && (
+            <div
+              role="alert"
+              className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              <span>
+                Totals for this leave year could not be loaded and are not shown: {yearError}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void loadYear(selectedYearStartISO)}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
           <AllowancesTab
-            loading={loading}
+            loading={loading || yearLoading || !!yearError}
             profiles={profiles}
             yearLeave={yearLeave}
             allowances={allowances}
@@ -254,7 +319,7 @@ function LeavePage() {
         </TabsContent>
       </Tabs>
 
-      <LeaveRequestDialog open={open} onOpenChange={setOpen} onSubmitted={load} />
+      <LeaveRequestDialog open={open} onOpenChange={setOpen} onSubmitted={reloadAll} />
     </div>
   );
 }

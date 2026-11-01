@@ -23,10 +23,7 @@ import { render, screen, within, cleanup } from "@testing-library/react";
 import React from "react";
 
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
-import {
-  computeTraineeMetrics,
-  type MetricAssignment,
-} from "@/features/trainees/trainee-metrics";
+import { computeTraineeMetrics, type MetricAssignment } from "@/features/trainees/trainee-metrics";
 
 // --- In-memory rota store (mocked supabase) -----------------------------
 
@@ -94,11 +91,7 @@ function renderCardFromStore() {
     false,
   );
   return render(
-    <TraineeMetricsCard
-      metrics={metrics}
-      startDate={WINDOW_START}
-      title="ICU trainee"
-    />,
+    <TraineeMetricsCard metrics={metrics} startDate={WINDOW_START} title="ICU trainee" />,
   );
 }
 
@@ -168,12 +161,14 @@ describe("e2e: rota import with partial ICU sessions → rendered tiles", () => 
   it("imports a mixed-partial week → tiles show one shift per date", () => {
     // Five distinct ICU dates, each with a different partial-coverage shape.
     importRota([
-      icuRow("am", "2026-06-08"),                                 // AM only
-      icuRow("pm", "2026-06-09"),                                 // PM only
-      icuRow("eve", "2026-06-10"),                                // eve only
-      icuRow("am", "2026-06-11"), icuRow("eve", "2026-06-11"),    // AM + eve
-      icuRow("am", "2026-06-12"), icuRow("pm", "2026-06-12"),
-        icuRow("eve", "2026-06-12"),                              // full day
+      icuRow("am", "2026-06-08"), // AM only
+      icuRow("pm", "2026-06-09"), // PM only
+      icuRow("eve", "2026-06-10"), // eve only
+      icuRow("am", "2026-06-11"),
+      icuRow("eve", "2026-06-11"), // AM + eve
+      icuRow("am", "2026-06-12"),
+      icuRow("pm", "2026-06-12"),
+      icuRow("eve", "2026-06-12"), // full day
     ]);
     renderCardFromStore();
     expect(tileValue("ICU shifts")).toBe("5");
@@ -188,7 +183,7 @@ describe("e2e: rota import with partial ICU sessions → rendered tiles", () => 
       icuRow("pm", "2026-06-15"),
       icuRow("eve", "2026-06-15"),
     ]);
-    let view = renderCardFromStore();
+    const view = renderCardFromStore();
     expect(tileValue("ICU shifts")).toBe("1");
     expect(tileValue("On-call")).toBe("1");
     view.unmount();

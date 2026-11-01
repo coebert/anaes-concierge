@@ -24,9 +24,7 @@ export interface ProfileRow {
 
 export const ACTIVE_STATUSES = new Set(["approved", "pending"]);
 
-export function statusVariant(
-  s: string,
-): "default" | "secondary" | "destructive" | "outline" {
+export function statusVariant(s: string): "default" | "secondary" | "destructive" | "outline" {
   if (s === "approved") return "default";
   if (s === "rejected" || s === "cancelled") return "destructive";
   return "secondary";
@@ -45,15 +43,7 @@ export function gradeLabel(grade: string | null | undefined): string {
   return grade;
 }
 
-export function Stat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent?: boolean;
-}) {
+export function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div
       className={cn(

@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { PasskeyManager } from "@/components/passkey-manager";
 import { PushNotificationsCard } from "@/components/push-notifications-card";
 
-
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({ meta: [{ title: "Account — Salisbury Anaesthetics Rota" }] }),
   component: AccountPage,

@@ -126,7 +126,5 @@ export function tallyPaByConsultant(
     });
   }
 
-  return out.sort(
-    (a, b) => b.totalPas - a.totalPas || a.staffId.localeCompare(b.staffId),
-  );
+  return out.sort((a, b) => b.totalPas - a.totalPas || a.staffId.localeCompare(b.staffId));
 }

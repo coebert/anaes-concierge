@@ -9,7 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle, Check, ShieldCheck, UserCheck } from "lucide-react";
 import {
@@ -82,8 +87,7 @@ function ProgressTab({ staffId }: { staffId: string }) {
   const { data: specialties } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties").select("id,name").order("name");
+      const { data, error } = await supabase.from("specialties").select("id,name").order("name");
       if (error) throw error;
       return (data ?? []) as { id: string; name: string }[];
     },
@@ -123,8 +127,12 @@ function ProgressTab({ staffId }: { staffId: string }) {
   }, [comps, specialties, reqs, myHoldings, staffId]);
 
   const totals = useMemo(() => {
-    let total = 0, held = 0;
-    for (const s of progress) { total += s.requiredTotal; held += s.requiredHeld; }
+    let total = 0,
+      held = 0;
+    for (const s of progress) {
+      total += s.requiredTotal;
+      held += s.requiredHeld;
+    }
     return { total, held };
   }, [progress]);
 
@@ -171,9 +179,8 @@ function ProgressTab({ staffId }: { staffId: string }) {
 }
 
 function SpecialtyProgressCard({ spec }: { spec: SpecialtyProgress }) {
-  const pct = spec.requiredTotal > 0
-    ? Math.round((spec.requiredHeld / spec.requiredTotal) * 100)
-    : 100;
+  const pct =
+    spec.requiredTotal > 0 ? Math.round((spec.requiredHeld / spec.requiredTotal) * 100) : 100;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -200,9 +207,7 @@ function SpecialtyProgressCard({ spec }: { spec: SpecialtyProgress }) {
               <TableRow key={it.competencyId}>
                 <TableCell>
                   <div>{it.competencyName}</div>
-                  <div className="text-xs text-muted-foreground font-mono">
-                    {it.competencyCode}
-                  </div>
+                  <div className="text-xs text-muted-foreground font-mono">{it.competencyCode}</div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={it.requirement === "required" ? "default" : "outline"}>
@@ -227,7 +232,9 @@ function SpecialtyProgressCard({ spec }: { spec: SpecialtyProgress }) {
 }
 
 function StatusBadge({
-  status, level, daysUntilExpiry,
+  status,
+  level,
+  daysUntilExpiry,
 }: {
   status: SignoffStatus;
   level: "independent" | "supervised" | "aware" | null;
@@ -264,7 +271,11 @@ function StatusBadge({
       return <Badge variant="destructive">Revoked</Badge>;
     case "missing":
     default:
-      return <Badge variant="outline" className="text-muted-foreground">Not yet signed off</Badge>;
+      return (
+        <Badge variant="outline" className="text-muted-foreground">
+          Not yet signed off
+        </Badge>
+      );
   }
 }
 
@@ -295,11 +306,14 @@ function EligibilityTab() {
   });
 
   const grouped = useMemo(() => {
-    const map = new Map<string, {
-      name: string;
-      solo: EligibilityRow[];
-      supervising: EligibilityRow[];
-    }>();
+    const map = new Map<
+      string,
+      {
+        name: string;
+        solo: EligibilityRow[];
+        supervising: EligibilityRow[];
+      }
+    >();
     for (const row of data ?? []) {
       if (!row.eligible_solo && !row.eligible_supervising) continue;
       let entry = map.get(row.specialty_id);
@@ -331,8 +345,8 @@ function EligibilityTab() {
     return (
       <Card>
         <CardContent className="p-6 text-sm text-muted-foreground">
-          No specialty has eligible staff yet — either no requirements are
-          configured or no sign-offs have been recorded.
+          No specialty has eligible staff yet — either no requirements are configured or no
+          sign-offs have been recorded.
         </CardContent>
       </Card>
     );

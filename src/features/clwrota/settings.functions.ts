@@ -12,7 +12,6 @@ export function getEnv() {
   return { apiKey, baseUrl: baseUrl.replace(/\/+$/, "") };
 }
 
-
 /** Verify the API key + base URL work by hitting a real Central API endpoint. */
 export const testClwRotaConnection = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
@@ -88,9 +87,7 @@ export const saveClwRotaSettings = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .inputValidator((input) => SettingsSchema.parse(input))
   .handler(async ({ context, data }) => {
-    const { error } = await supabaseAdmin
-      .from("clwrota_sync_state")
-      .upsert({ id: 1, ...data });
+    const { error } = await supabaseAdmin.from("clwrota_sync_state").upsert({ id: 1, ...data });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

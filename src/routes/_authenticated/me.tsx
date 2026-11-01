@@ -6,7 +6,15 @@ import { StaffWeekView } from "@/components/rota-views";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Copy, RefreshCw, Check, FlaskConical, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Calendar,
+  Copy,
+  RefreshCw,
+  Check,
+  FlaskConical,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   getCalendarFeedToken,
@@ -22,7 +30,9 @@ function MyRotaPage() {
   const { user } = useAuth();
   if (!user) {
     return (
-      <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading…</CardContent></Card>
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">Loading…</CardContent>
+      </Card>
     );
   }
   return (
@@ -91,7 +101,12 @@ function CalendarSubscribeCard() {
   }
 
   async function regenerate() {
-    if (!confirm("Regenerate the calendar link? Any existing calendar subscriptions will stop updating.")) return;
+    if (
+      !confirm(
+        "Regenerate the calendar link? Any existing calendar subscriptions will stop updating.",
+      )
+    )
+      return;
     setBusy(true);
     try {
       const res = await regen();
@@ -164,7 +179,6 @@ function CalendarSubscribeCard() {
     }
   }
 
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -172,8 +186,8 @@ function CalendarSubscribeCard() {
           <Calendar className="h-4 w-4" /> Subscribe in Apple Calendar
         </CardTitle>
         <CardDescription>
-          Adds your rota (sessions, on-call, leave) to Apple Calendar as a live subscription. Apple refreshes the feed
-          automatically — changes flow through without re-importing.
+          Adds your rota (sessions, on-call, leave) to Apple Calendar as a live subscription. Apple
+          refreshes the feed automatically — changes flow through without re-importing.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -197,10 +211,15 @@ function CalendarSubscribeCard() {
         </div>
         {token && (
           <div className="space-y-1">
-            <Input readOnly value={httpUrl} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+            <Input
+              readOnly
+              value={httpUrl}
+              className="font-mono text-xs"
+              onFocus={(e) => e.currentTarget.select()}
+            />
             <p className="text-xs text-muted-foreground">
-              On iPhone/iPad: tap the link above. On a Mac: File → New Calendar Subscription, paste the link. Keep this URL
-              private — anyone with it can read your rota.
+              On iPhone/iPad: tap the link above. On a Mac: File → New Calendar Subscription, paste
+              the link. Keep this URL private — anyone with it can read your rota.
             </p>
           </div>
         )}
@@ -219,7 +238,9 @@ function CalendarSubscribeCard() {
                 <XCircle className="h-4 w-4 text-destructive" />
               )}
               {testResult.parses ? "Feed OK" : "Feed failed"}
-              <span className="ml-auto font-mono text-muted-foreground">{testResult.durationMs}ms</span>
+              <span className="ml-auto font-mono text-muted-foreground">
+                {testResult.durationMs}ms
+              </span>
             </div>
             <div className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-0.5 font-mono">
               <span className="text-muted-foreground">HTTP status</span>
@@ -245,7 +266,6 @@ function CalendarSubscribeCard() {
             </div>
           </div>
         )}
-
       </CardContent>
     </Card>
   );

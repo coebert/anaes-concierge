@@ -3,17 +3,25 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  CalendarDays, ClipboardList, GraduationCap, MessageSquare,
-  Briefcase, CalendarRange, Stethoscope, Activity, AlertTriangle,
-  RefreshCw, ShieldAlert, Users,
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  MessageSquare,
+  Briefcase,
+  CalendarRange,
+  Stethoscope,
+  Activity,
+  AlertTriangle,
+  RefreshCw,
+  ShieldAlert,
+  Users,
 } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { TodayInHospital } from "@/components/today-in-hospital";
 import { StatCard } from "@/components/stat-card";
 import { PageLoading } from "@/components/loading";
@@ -38,14 +46,14 @@ function Header({ subtitle }: { subtitle: string }) {
   const roleLabel = roles.includes("admin")
     ? "Admin"
     : roles.includes("rota_coordinator")
-    ? "Coordinator"
-    : grade === "trainee"
-    ? "Trainee"
-    : grade === "consultant"
-    ? "Consultant"
-    : grade === "sas"
-    ? "SAS doctor"
-    : "Staff";
+      ? "Coordinator"
+      : grade === "trainee"
+        ? "Trainee"
+        : grade === "consultant"
+          ? "Consultant"
+          : grade === "sas"
+            ? "SAS doctor"
+            : "Staff";
 
   return (
     <PageHeader
@@ -61,20 +69,38 @@ function AuditDashboard() {
   const today = todayISO();
   const in90 = addDaysISO(90);
 
-  const { data } = useQuery({
+  const {
+    data,
+    error: loadError,
+    refetch,
+  } = useQuery({
     queryKey: ["audit-dashboard"],
     queryFn: async () => {
       const [trainees, leaveSoon, sync, rotaRows] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true })
-          .eq("active", true).eq("grade", "trainee"),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true })
+        supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("active", true)
+          .eq("grade", "trainee"),
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
           .in("status", ["approved", "pending"])
-          .lte("start_date", in90).gte("end_date", today),
-        supabase.from("clwrota_sync_state").select("last_sync_at, last_status, last_error")
-          .eq("id", 1).maybeSingle(),
-        supabase.from("rota_assignments").select("id", { count: "exact", head: true })
-          .gte("session_date", today).lte("session_date", in90),
+          .lte("start_date", in90)
+          .gte("end_date", today),
+        supabase
+          .from("clwrota_sync_state")
+          .select("last_sync_at, last_status, last_error")
+          .eq("id", 1)
+          .maybeSingle(),
+        supabase
+          .from("rota_assignments")
+          .select("id", { count: "exact", head: true })
+          .gte("session_date", today)
+          .lte("session_date", in90),
       ]);
+      // A failed count must not be shown as 0.
+      for (const r of [trainees, leaveSoon, sync, rotaRows]) if (r.error) throw r.error;
       return {
         trainees: trainees.count ?? 0,
         leaveSoon: leaveSoon.count ?? 0,
@@ -90,13 +116,29 @@ function AuditDashboard() {
   return (
     <div className="space-y-6">
       <Header subtitle="Audit workspace — synced from CLWRota" />
+      {loadError ? (
+        <QueryErrorNotice
+          error={loadError}
+          stale={!!data}
+          what="the audit summary"
+          onRetry={() => void refetch()}
+        />
+      ) : null}
 
       {/* Sync freshness banner */}
-      <Card className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}>
+      <Card
+        className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}
+      >
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-success-muted text-success"}`}>
-              {syncWarning ? <AlertTriangle className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-md ${syncWarning ? "bg-amber-500/15 text-warning" : "bg-success-muted text-success"}`}
+            >
+              {syncWarning ? (
+                <AlertTriangle className="h-5 w-5" />
+              ) : (
+                <RefreshCw className="h-5 w-5" />
+              )}
             </div>
             <div>
               <div className="text-sm font-medium">
@@ -147,7 +189,6 @@ function AuditDashboard() {
             body="Coverage headroom per session; what-if simulator for sickness scenarios and trainee displacement."
             stat="Forward-looking risk report"
           />
-
         </div>
       </section>
 
@@ -157,7 +198,11 @@ function AuditDashboard() {
           At-a-glance
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Synced rota items (next 90d)" value={data?.rotaRows ?? "—"} icon={Activity} />
+          <Stat
+            label="Synced rota items (next 90d)"
+            value={data?.rotaRows ?? "—"}
+            icon={Activity}
+          />
           <Stat label="Active trainees" value={data?.trainees ?? "—"} icon={GraduationCap} />
           <Stat label="Leave next 90d" value={data?.leaveSoon ?? "—"} icon={ClipboardList} />
           <Stat label="Sync status" value={syncOk ? "Healthy" : "Check"} icon={RefreshCw} />
@@ -170,12 +215,24 @@ function AuditDashboard() {
           Coordinator tools
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ActionCard to="/coordinator/rota" icon={CalendarRange}
-            title="Rota editor" body="Manual edits and AI-assisted candidate suggestions." />
-          <ActionCard to="/coordinator/leave" icon={ClipboardList}
-            title="Approve leave" body="Review and decide pending leave requests." />
-          <ActionCard to="/chat" icon={MessageSquare}
-            title="AI assistant" body="Plain-English questions about rotas, leave and training." />
+          <ActionCard
+            to="/coordinator/rota"
+            icon={CalendarRange}
+            title="Rota editor"
+            body="Manual edits and AI-assisted candidate suggestions."
+          />
+          <ActionCard
+            to="/coordinator/leave"
+            icon={ClipboardList}
+            title="Approve leave"
+            body="Review and decide pending leave requests."
+          />
+          <ActionCard
+            to="/chat"
+            icon={MessageSquare}
+            title="AI assistant"
+            body="Plain-English questions about rotas, leave and training."
+          />
         </div>
       </section>
     </div>
@@ -185,7 +242,11 @@ function AuditDashboard() {
 /* ---------- CONSULTANT / SAS ---------- */
 function ConsultantSasDashboard() {
   const { user } = useAuth();
-  const { data } = useQuery({
+  const {
+    data,
+    error: loadError,
+    refetch,
+  } = useQuery({
     enabled: !!user?.id,
     queryKey: ["consultant-dashboard", user?.id],
     queryFn: async () => {
@@ -209,6 +270,8 @@ function ConsultantSasDashboard() {
           .eq("staff_id", user!.id)
           .maybeSingle(),
       ]);
+      // A failed count must not be shown as 0.
+      for (const r of [upcoming, pendingLeave, jobPlan]) if (r.error) throw r.error;
       return {
         upcoming: upcoming.count ?? 0,
         pendingLeave: pendingLeave.count ?? 0,
@@ -220,6 +283,14 @@ function ConsultantSasDashboard() {
   return (
     <div className="space-y-6">
       <Header subtitle="Your clinical workspace" />
+      {loadError ? (
+        <QueryErrorNotice
+          error={loadError}
+          stale={!!data}
+          what="your summary"
+          onRetry={() => void refetch()}
+        />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Sessions next 14 days" value={data?.upcoming ?? "—"} icon={CalendarRange} />
@@ -231,14 +302,30 @@ function ConsultantSasDashboard() {
       <TodayInHospital />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <ActionCard to="/me" icon={CalendarRange}
-          title="My rota" body="Your upcoming theatre, on-call and SPA sessions." />
-        <ActionCard to="/calendar" icon={CalendarDays}
-          title="Global calendar" body="See the full department theatre grid." />
-        <ActionCard to="/leave" icon={ClipboardList}
-          title="Leave" body="Request annual, study or compassionate leave." />
-        <ActionCard to="/chat" icon={MessageSquare}
-          title="AI assistant" body="Ask about your rota, swaps or job plan." />
+        <ActionCard
+          to="/me"
+          icon={CalendarRange}
+          title="My rota"
+          body="Your upcoming theatre, on-call and SPA sessions."
+        />
+        <ActionCard
+          to="/calendar"
+          icon={CalendarDays}
+          title="Global calendar"
+          body="See the full department theatre grid."
+        />
+        <ActionCard
+          to="/leave"
+          icon={ClipboardList}
+          title="Leave"
+          body="Request annual, study or compassionate leave."
+        />
+        <ActionCard
+          to="/chat"
+          icon={MessageSquare}
+          title="AI assistant"
+          body="Ask about your rota, swaps or job plan."
+        />
       </div>
     </div>
   );
@@ -247,22 +334,38 @@ function ConsultantSasDashboard() {
 /* ---------- TRAINEE ---------- */
 function TraineeDashboard() {
   const { user } = useAuth();
-  const { data } = useQuery({
+  const {
+    data,
+    error: loadError,
+    refetch,
+  } = useQuery({
     enabled: !!user?.id,
     queryKey: ["trainee-dashboard", user?.id],
     queryFn: async () => {
       const today = todayISO();
       const in14 = addDaysISO(14);
       const [upcoming, pendingLeave, pastLogged, profile] = await Promise.all([
-        supabase.from("rota_assignments").select("id", { count: "exact", head: true })
-          .eq("staff_id", user!.id).gte("session_date", today).lte("session_date", in14),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true })
-          .eq("staff_id", user!.id).eq("status", "pending"),
-        supabase.from("rota_assignments").select("id", { count: "exact", head: true })
-          .eq("staff_id", user!.id).lte("session_date", today)
+        supabase
+          .from("rota_assignments")
+          .select("id", { count: "exact", head: true })
+          .eq("staff_id", user!.id)
+          .gte("session_date", today)
+          .lte("session_date", in14),
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("staff_id", user!.id)
+          .eq("status", "pending"),
+        supabase
+          .from("rota_assignments")
+          .select("id", { count: "exact", head: true })
+          .eq("staff_id", user!.id)
+          .lte("session_date", today)
           .in("role_on_list", ["solo", "supervised"]),
         supabase.from("profiles").select("training_level").eq("id", user!.id).maybeSingle(),
       ]);
+      // A failed count must not be shown as 0.
+      for (const r of [upcoming, pendingLeave, pastLogged, profile]) if (r.error) throw r.error;
       return {
         upcoming: upcoming.count ?? 0,
         pendingLeave: pendingLeave.count ?? 0,
@@ -275,6 +378,14 @@ function TraineeDashboard() {
   return (
     <div className="space-y-6">
       <Header subtitle="Your training workspace" />
+      {loadError ? (
+        <QueryErrorNotice
+          error={loadError}
+          stale={!!data}
+          what="your summary"
+          onRetry={() => void refetch()}
+        />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Sessions next 14 days" value={data?.upcoming ?? "—"} icon={CalendarRange} />
@@ -286,14 +397,30 @@ function TraineeDashboard() {
       <TodayInHospital />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <ActionCard to="/me" icon={CalendarRange}
-          title="My rota" body="Your upcoming sessions and supervisors." />
-        <ActionCard to="/trainees" icon={GraduationCap}
-          title="Trainee progress" body="Detailed subspecialty exposure tracker." />
-        <ActionCard to="/leave" icon={ClipboardList}
-          title="Leave" body="Request study, annual or compassionate leave." />
-        <ActionCard to="/chat" icon={MessageSquare}
-          title="AI assistant" body="Ask about rotas, supervisors and curriculum." />
+        <ActionCard
+          to="/me"
+          icon={CalendarRange}
+          title="My rota"
+          body="Your upcoming sessions and supervisors."
+        />
+        <ActionCard
+          to="/trainees"
+          icon={GraduationCap}
+          title="Trainee progress"
+          body="Detailed subspecialty exposure tracker."
+        />
+        <ActionCard
+          to="/leave"
+          icon={ClipboardList}
+          title="Leave"
+          body="Request study, annual or compassionate leave."
+        />
+        <ActionCard
+          to="/chat"
+          icon={MessageSquare}
+          title="AI assistant"
+          body="Ask about rotas, supervisors and curriculum."
+        />
       </div>
     </div>
   );
@@ -303,8 +430,16 @@ function TraineeDashboard() {
 const Stat = StatCard;
 
 function ActionCard({
-  to, icon: Icon, title, body,
-}: { to: string; icon: typeof Users; title: React.ReactNode; body: React.ReactNode }) {
+  to,
+  icon: Icon,
+  title,
+  body,
+}: {
+  to: string;
+  icon: typeof Users;
+  title: React.ReactNode;
+  body: React.ReactNode;
+}) {
   return (
     <Link to={to} className="group">
       <Card className="h-full transition-colors group-hover:border-primary/40">
@@ -325,8 +460,18 @@ function ActionCard({
 }
 
 function PillarCard({
-  to, icon: Icon, title, body, stat,
-}: { to: string; icon: typeof Users; title: string; body: string; stat: string }) {
+  to,
+  icon: Icon,
+  title,
+  body,
+  stat,
+}: {
+  to: string;
+  icon: typeof Users;
+  title: string;
+  body: string;
+  stat: string;
+}) {
   return (
     <Link to={to} className="group">
       <Card className="h-full transition-all group-hover:border-primary/60 group-hover:shadow-sm">
@@ -348,4 +493,3 @@ function PillarCard({
     </Link>
   );
 }
-

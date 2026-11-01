@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -15,12 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateGB } from "@/lib/utils";
-import {
-  gradeLabel,
-  statusVariant,
-  type LeaveRow,
-  type ProfileRow,
-} from "./shared";
+import { gradeLabel, statusVariant, type LeaveRow, type ProfileRow } from "./shared";
 import { PageLoading } from "@/components/loading";
 
 export function UpcomingLeaveTab({
@@ -36,9 +25,7 @@ export function UpcomingLeaveTab({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">All upcoming leave</CardTitle>
-        <CardDescription>
-          Every approved or pending request ending today or later.
-        </CardDescription>
+        <CardDescription>Every approved or pending request ending today or later.</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (

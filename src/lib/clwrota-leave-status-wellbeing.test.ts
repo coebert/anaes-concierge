@@ -32,10 +32,7 @@ import "@/test/assert-utc-hook";
 import { describe, expect, it } from "vitest";
 
 import { classifyLeaveStatus } from "@/lib/clwrota-leave-classify";
-import {
-  computeWellbeing,
-  type LeaveLite,
-} from "@/features/wellbeing/wellbeing-score";
+import { computeWellbeing, type LeaveLite } from "@/features/wellbeing/wellbeing-score";
 
 const ENUM_VALUES = ["pending", "approved", "rejected", "cancelled"] as const;
 type EnumStatus = (typeof ENUM_VALUES)[number];
@@ -148,12 +145,9 @@ describe("classifyLeaveStatus → DB enum totality", () => {
     }
   });
 
-  it.each(RAW_INPUTS)(
-    "maps $raw → $expected",
-    ({ raw, expected }) => {
-      expect(classifyLeaveStatus(raw)).toBe(expected);
-    },
-  );
+  it.each(RAW_INPUTS)("maps $raw → $expected", ({ raw, expected }) => {
+    expect(classifyLeaveStatus(raw)).toBe(expected);
+  });
 
   it("never returns null / undefined / empty string", () => {
     for (const { raw } of RAW_INPUTS) {

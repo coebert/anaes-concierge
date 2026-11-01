@@ -55,10 +55,7 @@ describe("isSupervisorCapableGrade", () => {
 
 describe("computeSoloCorrections — category 1: consultant/SAS on same session", () => {
   it("flags a trainee solo when a consultant is on the same theatre_session", () => {
-    const assignments = [
-      a("a1", "cons-1", "ts-1"),
-      a("a2", "train-1", "ts-1"),
-    ];
+    const assignments = [a("a1", "cons-1", "ts-1"), a("a2", "train-1", "ts-1")];
     const out = computeSoloCorrections({
       assignments,
       profilesById: profiles,
@@ -171,17 +168,19 @@ describe("computeSoloCorrections — category 2: unmatched_theatre_solo", () => 
 
 describe("computeSoloCorrections — category 3: non_training_label", () => {
   const ts = new Map<string, InvestigateTheatreSession>([
-    [
-      "ts-off",
-      { id: "ts-off", specialty_name: "Off Day", surgical_consultant: null, notes: null },
-    ],
+    ["ts-off", { id: "ts-off", specialty_name: "Off Day", surgical_consultant: null, notes: null }],
     [
       "ts-avail",
       { id: "ts-avail", specialty_name: null, surgical_consultant: "Available", notes: null },
     ],
     [
       "ts-real",
-      { id: "ts-real", specialty_name: "Orthopaedics", surgical_consultant: "Mr Bone", notes: null },
+      {
+        id: "ts-real",
+        specialty_name: "Orthopaedics",
+        surgical_consultant: "Mr Bone",
+        notes: null,
+      },
     ],
     [
       "ts-custom",
@@ -234,10 +233,7 @@ describe("computeSoloCorrections — category 3: non_training_label", () => {
     // Even if a consultant is also on the off-day placeholder row, the
     // label is the dominant signal — the row should not be auto-converted.
     const out = computeSoloCorrections({
-      assignments: [
-        a("a1", "cons-1", "ts-off"),
-        a("a2", "train-1", "ts-off"),
-      ],
+      assignments: [a("a1", "cons-1", "ts-off"), a("a2", "train-1", "ts-off")],
       profilesById: profiles,
       theatreSessionsById: ts,
     });
@@ -274,12 +270,7 @@ describe("computeSoloCorrections — integration: mixed realistic batch", () => 
     a("ax8", "train-2", "ts-ent", { role_on_list: "supervised" }),
     // 7) locally_modified solo trainee with consultant on same session — never flagged
     a("ax9", "cons-2", "ts-ortho-am", { session_date: "2026-06-05" }),
-    a(
-      "ax10",
-      "train-1",
-      "ts-ortho-am",
-      { session_date: "2026-06-05", locally_modified: true },
-    ),
+    a("ax10", "train-1", "ts-ortho-am", { session_date: "2026-06-05", locally_modified: true }),
   ];
 
   const corrections = computeSoloCorrections({
@@ -289,9 +280,7 @@ describe("computeSoloCorrections — integration: mixed realistic batch", () => 
   });
 
   it("returns exactly the four expected corrections", () => {
-    const summary = corrections
-      .map((c) => `${c.assignment_id}:${c.category}`)
-      .sort();
+    const summary = corrections.map((c) => `${c.assignment_id}:${c.category}`).sort();
     expect(summary).toEqual([
       "ax2:consultant_or_sas_on_session",
       "ax4:consultant_or_sas_on_session",

@@ -33,6 +33,8 @@
  * dedupe alone cannot recover rows that pagination *skipped*.
  */
 
+import { drainPages } from "@/lib/paged-fetch-core";
+
 const PAGE_SIZE = 1000;
 const SAFETY_CAP = 100_000;
 
@@ -61,62 +63,29 @@ export async function fetchAllRowsPaged<T>(
 ): Promise<T[]> {
   const pageSize = opts.pageSize ?? PAGE_SIZE;
   const safetyCap = opts.safetyCap ?? SAFETY_CAP;
+  const label = opts.label ?? "audit query";
+  // drainPages throws on any page error and on exceeding the cap (with a
+  // one-row probe when the cap lands exactly on a full page).
+  const raw = await drainPages<T>(build as never, { pageSize, maxRows: safetyCap, label });
+  if (!opts.rowKey) return raw;
+  const seen = new Set<string>();
   const out: T[] = [];
-  const seen = opts.rowKey ? new Set<string>() : null;
-  let lastPageLastKey: string | null = null;
-
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await build(from, from + pageSize - 1);
-    if (error) {
-      const msg =
-        (error as { message?: string })?.message ?? String(error);
-      throw new Error(msg);
+  let overlaps = 0;
+  for (const row of raw) {
+    const key = opts.rowKey(row);
+    if (seen.has(key)) {
+      overlaps++;
+      continue;
     }
-    const page = (data ?? []) as T[];
-
-    // Page-boundary consistency check: if the first row of this page
-    // matches the last row of the previous page, the upstream order is
-    // not unique enough — warn so we don't silently double-count.
-    if (seen && opts.rowKey && page.length > 0 && lastPageLastKey) {
-      const firstKey = opts.rowKey(page[0]);
-      if (firstKey === lastPageLastKey) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          `[paginate${opts.label ? ` ${opts.label}` : ""}] page boundary overlap at offset ${from} (key=${firstKey}). ` +
-            `Dedupe will drop it, but the underlying query order is not unique — add a tiebreaker column.`,
-        );
-      }
-    }
-
-    let appended = 0;
-    for (const row of page) {
-      if (seen && opts.rowKey) {
-        const key = opts.rowKey(row);
-        if (seen.has(key)) continue;
-        seen.add(key);
-      }
-      out.push(row);
-      appended++;
-    }
-
-    if (page.length > 0 && opts.rowKey) {
-      lastPageLastKey = opts.rowKey(page[page.length - 1]);
-    }
-
-    // Short page = end of result set.
-    if (page.length < pageSize) break;
-    if (out.length >= safetyCap) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[paginate${opts.label ? ` ${opts.label}` : ""}] hit safety cap of ${safetyCap} rows; truncating.`,
-      );
-      break;
-    }
-    // Defensive: if a whole page was deduped out, keep advancing so we
-    // don't loop forever on a pathological response.
-    void appended;
+    seen.add(key);
+    out.push(row);
   }
-
+  if (overlaps > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[paginate ${label}] dropped ${overlaps} duplicate row(s) across page boundaries — the query order is not unique; add a tiebreaker column.`,
+    );
+  }
   return out;
 }
 

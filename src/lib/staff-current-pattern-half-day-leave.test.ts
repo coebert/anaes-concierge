@@ -85,9 +85,7 @@ describe("half-day partial leave — overlay", () => {
     // Both halves have theatre — only PM should be replaced.
     const assignments = [theatre("2025-01-06", "am"), theatre("2025-01-06", "pm")];
     const merged = applyLeaveOverlay(assignments, overlay);
-    const summary = merged
-      .map((a) => `${a.session_date}|${a.session}|${a.duty_type}`)
-      .sort();
+    const summary = merged.map((a) => `${a.session_date}|${a.session}|${a.duty_type}`).sort();
     expect(summary).toEqual([
       "2025-01-06|am|theatre", // untouched
       "2025-01-06|pm|leave", // replaced
@@ -95,9 +93,7 @@ describe("half-day partial leave — overlay", () => {
   });
 
   it("AM-only single-day leave (half_day_end='am') blocks AM but leaves PM available", () => {
-    const rows = [
-      leave({ start_date: "2025-01-06", end_date: "2025-01-06", half_day_end: "am" }),
-    ];
+    const rows = [leave({ start_date: "2025-01-06", end_date: "2025-01-06", half_day_end: "am" })];
     const overlay = expandApprovedLeaveToAssignments(STAFF.id, rows, WINDOW_FROM, WINDOW_TO);
     expect(overlay.map((a) => a.session)).toEqual(["am"]);
 
@@ -136,17 +132,11 @@ describe("half-day partial leave — overlay", () => {
       theatre("2025-01-07", "am"),
     ];
     const merged = applyLeaveOverlay(assignments, overlay);
-    const mon06Am = merged.find(
-      (a) => a.session_date === "2025-01-06" && a.session === "am",
-    );
+    const mon06Am = merged.find((a) => a.session_date === "2025-01-06" && a.session === "am");
     expect(mon06Am?.duty_type).toBe("theatre");
     // But Mon-06 PM and Tue-07 AM were replaced by leave.
-    const mon06Pm = merged.find(
-      (a) => a.session_date === "2025-01-06" && a.session === "pm",
-    );
-    const tue07Am = merged.find(
-      (a) => a.session_date === "2025-01-07" && a.session === "am",
-    );
+    const mon06Pm = merged.find((a) => a.session_date === "2025-01-06" && a.session === "pm");
+    const tue07Am = merged.find((a) => a.session_date === "2025-01-07" && a.session === "am");
     expect(mon06Pm?.duty_type).toBe("leave");
     expect(tue07Am?.duty_type).toBe("leave");
   });
@@ -183,12 +173,7 @@ describe("half-day partial leave — dominant grid", () => {
     const leaveRows: LeaveRowLite[] = MONDAYS.map((d) =>
       leave({ start_date: d, end_date: d, half_day_start: "pm" }),
     );
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      leaveRows,
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const effective = applyLeaveOverlay(baseAssignments, overlay);
     const grid = dominantByHalfSession(effective, sessionsById, theatresById, 2);
 
@@ -234,12 +219,7 @@ describe("half-day partial leave — dominant grid", () => {
       leave({ start_date: "2025-01-06", end_date: "2025-01-06", half_day_end: "am" }),
       leave({ start_date: "2025-01-06", end_date: "2025-01-06", half_day_start: "pm" }),
     ];
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      leaveRows,
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const halves = overlay.map((a) => a.session).sort();
     expect(halves).toEqual(["am", "pm"]);
     // Both theatre halves get replaced.

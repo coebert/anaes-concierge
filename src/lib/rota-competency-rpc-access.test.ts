@@ -63,11 +63,7 @@ const RPCS: Rpc[] = [
 ];
 
 function psql(sql: string): string {
-  const r = spawnSync(
-    "psql",
-    ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8" },
-  );
+  const r = spawnSync("psql", ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql], { encoding: "utf8" });
   if (r.status !== 0) {
     throw new Error(`psql failed (${r.status}): ${r.stderr || r.stdout}`);
   }
@@ -81,16 +77,12 @@ const dbAvailable =
 describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", () => {
   describe.each(RPCS)("$signature", ({ signature, guardMatch, authenticatedAllowed }) => {
     it("is defined as SECURITY DEFINER", () => {
-      const out = psql(
-        `SELECT prosecdef FROM pg_proc WHERE oid = '${signature}'::regprocedure`,
-      );
+      const out = psql(`SELECT prosecdef FROM pg_proc WHERE oid = '${signature}'::regprocedure`);
       expect(out).toBe("t");
     });
 
     it("contains an explicit in-body access check that raises insufficient_privilege", () => {
-      const def = psql(
-        `SELECT pg_get_functiondef('${signature}'::regprocedure)`,
-      );
+      const def = psql(`SELECT pg_get_functiondef('${signature}'::regprocedure)`);
       expect(
         guardMatch.test(def),
         `${signature} is missing its in-body access check.\n\nFunction body:\n${def}`,
@@ -103,16 +95,13 @@ describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", ()
            FROM pg_proc WHERE oid = '${signature}'::regprocedure`,
       );
       expect(acl, `${signature} still has default (PUBLIC) EXECUTE`).not.toBe("");
-      expect(
-        /(^|,)=X\//.test(acl),
-        `${signature} ACL grants EXECUTE to PUBLIC: ${acl}`,
-      ).toBe(false);
+      expect(/(^|,)=X\//.test(acl), `${signature} ACL grants EXECUTE to PUBLIC: ${acl}`).toBe(
+        false,
+      );
     });
 
     it("does not grant EXECUTE to anon", () => {
-      const hasExec = psql(
-        `SELECT has_function_privilege('anon', '${signature}', 'EXECUTE')`,
-      );
+      const hasExec = psql(`SELECT has_function_privilege('anon', '${signature}', 'EXECUTE')`);
       expect(hasExec, `anon unexpectedly has EXECUTE on ${signature}`).toBe("f");
     });
 
@@ -153,18 +142,20 @@ describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", ()
       return probe.status === 0;
     })();
 
-  describe.skipIf(!canSetRole)("runtime guard behaviour (calls under anon / authenticated roles)", () => {
-    /**
-     * Drive a single transaction: SET LOCAL role, call the RPC, catch
-     * the error, ROLLBACK. We assert the error code is 42501
-     * (insufficient_privilege). auth.uid() reads a request GUC that is
-     * not set outside a real PostgREST request, so it returns NULL —
-     * exactly the state the guard is designed to reject for
-     * get_competency_eligibility, and the admin-check RPCs also fail
-     * because has_role(NULL, 'admin') is false.
-     */
-    function callAsRoleExpectingReject(role: "anon" | "authenticated", call: string): string {
-      const sql = `
+  describe.skipIf(!canSetRole)(
+    "runtime guard behaviour (calls under anon / authenticated roles)",
+    () => {
+      /**
+       * Drive a single transaction: SET LOCAL role, call the RPC, catch
+       * the error, ROLLBACK. We assert the error code is 42501
+       * (insufficient_privilege). auth.uid() reads a request GUC that is
+       * not set outside a real PostgREST request, so it returns NULL —
+       * exactly the state the guard is designed to reject for
+       * get_competency_eligibility, and the admin-check RPCs also fail
+       * because has_role(NULL, 'admin') is false.
+       */
+      function callAsRoleExpectingReject(role: "anon" | "authenticated", call: string): string {
+        const sql = `
         BEGIN;
         SET LOCAL role ${role};
         DO $$
@@ -180,53 +171,50 @@ describe.skipIf(!dbAvailable)("rota/competency validation RPC access checks", ()
         END $$;
         ROLLBACK;
       `.trim();
-      const r = spawnSync(
-        "psql",
-        ["-v", "ON_ERROR_STOP=1", "-c", sql],
-        { encoding: "utf8" },
-      );
-      // psql prints RAISE NOTICE to stderr.
-      const combined = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
-      const m = combined.match(/NOTICE:\s*(NO_ERROR|INSUFFICIENT_PRIVILEGE|OTHER:[A-Z0-9]+)/);
-      return m ? m[1] : `UNKNOWN(${combined.slice(0, 200)})`;
-    }
+        const r = spawnSync("psql", ["-v", "ON_ERROR_STOP=1", "-c", sql], { encoding: "utf8" });
+        // psql prints RAISE NOTICE to stderr.
+        const combined = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
+        const m = combined.match(/NOTICE:\s*(NO_ERROR|INSUFFICIENT_PRIVILEGE|OTHER:[A-Z0-9]+)/);
+        return m ? m[1] : `UNKNOWN(${combined.slice(0, 200)})`;
+      }
 
-    it("get_competency_eligibility rejects anon with insufficient_privilege", () => {
-      const outcome = callAsRoleExpectingReject(
-        "anon",
-        "public.get_competency_eligibility(CURRENT_DATE)",
-      );
-      // anon has no EXECUTE grant, so the reject may come from the ACL
-      // layer (also insufficient_privilege / 42501) OR from the body
-      // guard. Either way it must be insufficient_privilege.
-      expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
-    });
+      it("get_competency_eligibility rejects anon with insufficient_privilege", () => {
+        const outcome = callAsRoleExpectingReject(
+          "anon",
+          "public.get_competency_eligibility(CURRENT_DATE)",
+        );
+        // anon has no EXECUTE grant, so the reject may come from the ACL
+        // layer (also insufficient_privilege / 42501) OR from the body
+        // guard. Either way it must be insufficient_privilege.
+        expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
+      });
 
-    it("trigger_clwrota_sync rejects authenticated (non-admin) with insufficient_privilege", () => {
-      // authenticated has EXECUTE (for admins), so this exercises the
-      // in-body guard specifically — auth.uid() is NULL here so
-      // has_role(...) is false.
-      const outcome = callAsRoleExpectingReject(
-        "authenticated",
-        "public.trigger_clwrota_sync('staff')",
-      );
-      expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
-    });
+      it("trigger_clwrota_sync rejects authenticated (non-admin) with insufficient_privilege", () => {
+        // authenticated has EXECUTE (for admins), so this exercises the
+        // in-body guard specifically — auth.uid() is NULL here so
+        // has_role(...) is false.
+        const outcome = callAsRoleExpectingReject(
+          "authenticated",
+          "public.trigger_clwrota_sync('staff')",
+        );
+        expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
+      });
 
-    it("list_clwrota_cron_runs rejects authenticated (non-admin) with insufficient_privilege", () => {
-      const outcome = callAsRoleExpectingReject(
-        "authenticated",
-        "public.list_clwrota_cron_runs(10)",
-      );
-      expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
-    });
+      it("list_clwrota_cron_runs rejects authenticated (non-admin) with insufficient_privilege", () => {
+        const outcome = callAsRoleExpectingReject(
+          "authenticated",
+          "public.list_clwrota_cron_runs(10)",
+        );
+        expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
+      });
 
-    it("trigger_clwrota_sync_all_rate_limited rejects authenticated (non-admin)", () => {
-      const outcome = callAsRoleExpectingReject(
-        "authenticated",
-        "public.trigger_clwrota_sync_all_rate_limited()",
-      );
-      expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
-    });
-  });
+      it("trigger_clwrota_sync_all_rate_limited rejects authenticated (non-admin)", () => {
+        const outcome = callAsRoleExpectingReject(
+          "authenticated",
+          "public.trigger_clwrota_sync_all_rate_limited()",
+        );
+        expect(outcome).toBe("INSUFFICIENT_PRIVILEGE");
+      });
+    },
+  );
 });

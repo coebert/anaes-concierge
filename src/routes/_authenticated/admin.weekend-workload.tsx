@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { CalendarClock, Users } from "lucide-react";
 import { splitName } from "@/lib/utils";
@@ -25,9 +30,7 @@ const searchSchema = z.object({
   to: fallback(z.string(), "").default(""),
 });
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/weekend-workload",
-)({
+export const Route = createFileRoute("/_authenticated/admin/weekend-workload")({
   validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
@@ -50,9 +53,7 @@ type Row = {
   session_date: string | null;
   is_non_sag: boolean | null;
   extra_type: string | null;
-  theatre_sessions:
-    | { is_non_sag: boolean | null; theatres: { kind: string | null } | null }
-    | null;
+  theatre_sessions: { is_non_sag: boolean | null; theatres: { kind: string | null } | null } | null;
 };
 
 function isoDaysAgo(n: number) {
@@ -129,9 +130,7 @@ function WeekendWorkloadPage() {
 
   const view = useMemo(() => {
     if (!data) return null;
-    const nameById = new Map(
-      data.profiles.map((p) => [p.id, p.full_name || "Unknown"]),
-    );
+    const nameById = new Map(data.profiles.map((p) => [p.id, p.full_name || "Unknown"]));
     const gradeById = new Map(data.profiles.map((p) => [p.id, p.grade]));
 
     const weekendDatesByStaff = new Map<string, Set<string>>();
@@ -153,36 +152,40 @@ function WeekendWorkloadPage() {
       set.add(r.session_date);
     }
 
-    const extraCountsById = new Map(
-      countWeekendExtras(data.rows).map((c) => [c.staff_id, c]),
-    );
+    const extraCountsById = new Map(countWeekendExtras(data.rows).map((c) => [c.staff_id, c]));
 
-    const rows = Array.from(nameById.keys()).map((id) => {
-      const dates = weekendDatesByStaff.get(id) ?? new Set<string>();
-      let sat = 0;
-      let sun = 0;
-      for (const iso of dates) {
-        const dow = new Date(`${iso}T12:00:00Z`).getUTCDay();
-        if (dow === 6) sat++;
-        else if (dow === 0) sun++;
-      }
-      const extras = extraCountsById.get(id) ?? {
-        staff_id: id, extra: 0, locum: 0, wli: 0, sag: 0,
-      };
-      return {
-        staff_id: id,
-        name: nameById.get(id) ?? "Unknown",
-        grade: gradeById.get(id) ?? null,
-        total: dates.size,
-        sat,
-        sun,
-        extra: extras.extra,
-        locum: extras.locum,
-        wli: extras.wli,
-        sag: extras.sag,
-        ...splitName(nameById.get(id) ?? ""),
-      };
-    }).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+    const rows = Array.from(nameById.keys())
+      .map((id) => {
+        const dates = weekendDatesByStaff.get(id) ?? new Set<string>();
+        let sat = 0;
+        let sun = 0;
+        for (const iso of dates) {
+          const dow = new Date(`${iso}T12:00:00Z`).getUTCDay();
+          if (dow === 6) sat++;
+          else if (dow === 0) sun++;
+        }
+        const extras = extraCountsById.get(id) ?? {
+          staff_id: id,
+          extra: 0,
+          locum: 0,
+          wli: 0,
+          sag: 0,
+        };
+        return {
+          staff_id: id,
+          name: nameById.get(id) ?? "Unknown",
+          grade: gradeById.get(id) ?? null,
+          total: dates.size,
+          sat,
+          sun,
+          extra: extras.extra,
+          locum: extras.locum,
+          wli: extras.wli,
+          sag: extras.sag,
+          ...splitName(nameById.get(id) ?? ""),
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 
     const totalDays = rows.reduce((n, r) => n + r.total, 0);
     const workedStaff = rows.filter((r) => r.total > 0).length;
@@ -190,7 +193,6 @@ function WeekendWorkloadPage() {
 
     return { rows, totalDays, workedStaff, mean };
   }, [data]);
-
 
   if (loading) return <PageLoading />;
   if (!hasRole("admin")) return <Navigate to="/" />;
@@ -229,11 +231,7 @@ function WeekendWorkloadPage() {
             </div>
             <Button
               onClick={() => applyRange(fromInput, toInput)}
-              disabled={
-                !ISO_RE.test(fromInput) ||
-                !ISO_RE.test(toInput) ||
-                fromInput > toInput
-              }
+              disabled={!ISO_RE.test(fromInput) || !ISO_RE.test(toInput) || fromInput > toInput}
             >
               Apply
             </Button>
@@ -265,8 +263,16 @@ function WeekendWorkloadPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Permanent staff" value={view.rows.length} icon={Users} />
             <StatCard label="Worked ≥1 weekend day" value={view.workedStaff} icon={Users} />
-            <StatCard label="Total weekend days (job plan only)" value={view.totalDays} icon={CalendarClock} />
-            <StatCard label="Mean per staff member" value={view.mean.toFixed(1)} icon={CalendarClock} />
+            <StatCard
+              label="Total weekend days (job plan only)"
+              value={view.totalDays}
+              icon={CalendarClock}
+            />
+            <StatCard
+              label="Mean per staff member"
+              value={view.mean.toFixed(1)}
+              icon={CalendarClock}
+            />
           </div>
           <Card>
             <CardContent className="p-4">
@@ -281,24 +287,36 @@ function WeekendWorkloadPage() {
                       className="text-right"
                       title="Job-planned weekend days only — excludes extra, locum, WLI, and SAG (private) sessions, which are shown separately in the columns to the right."
                     >
-                      Total weekend days<br />
+                      Total weekend days
+                      <br />
                       <span className="text-[10px] font-normal text-muted-foreground">
                         (job plan only — excl. extra/locum/WLI/SAG)
                       </span>
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked as extra sessions (not included in Total)">
+                    <TableHead
+                      className="text-right"
+                      title="Weekend days worked as extra sessions (not included in Total)"
+                    >
                       Extra
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked as locum (not included in Total)">
+                    <TableHead
+                      className="text-right"
+                      title="Weekend days worked as locum (not included in Total)"
+                    >
                       Locum
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked as Waiting-List Initiative (not included in Total)">
+                    <TableHead
+                      className="text-right"
+                      title="Weekend days worked as Waiting-List Initiative (not included in Total)"
+                    >
                       WLI
                     </TableHead>
-                    <TableHead className="text-right" title="Weekend days worked on SAG (private) lists (not included in Total)">
+                    <TableHead
+                      className="text-right"
+                      title="Weekend days worked on SAG (private) lists (not included in Total)"
+                    >
                       SAG
                     </TableHead>
-
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -313,14 +331,21 @@ function WeekendWorkloadPage() {
                       <TableCell className="text-right tabular-nums font-semibold">
                         {r.total}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.extra}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.locum}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.wli}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{r.sag}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {r.extra}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {r.locum}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {r.wli}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {r.sag}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
-
               </Table>
             </CardContent>
           </Card>

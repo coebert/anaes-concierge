@@ -24,9 +24,8 @@ export const Route = createFileRoute("/api/public/hooks/tutorial-weekly-audit")(
         const force = params.get("force") === "true";
 
         try {
-          const { runWeeklyTutorialAuditJob } = await import(
-            "@/features/clwrota/tutorial-weekly-job.server"
-          );
+          const { runWeeklyTutorialAuditJob } =
+            await import("@/features/clwrota/tutorial-weekly-job.server");
           const result = await runWeeklyTutorialAuditJob({
             maxSlices,
             sliceDays,

@@ -5,9 +5,7 @@
  */
 import { z, type ZodSchema } from "zod";
 
-export type ParseResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string };
+export type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 /** Parse a JSON string and validate against `schema`. Never throws. */
 export function safeParseJson<T>(text: string, schema: ZodSchema<T>): ParseResult<T> {
@@ -37,7 +35,7 @@ export function assertJson<T>(value: unknown, schema: ZodSchema<T>, label = "pay
 }
 
 function formatZodError(err: z.ZodError): string {
-  return err.errors
+  return err.issues
     .slice(0, 5)
     .map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`)
     .join("; ");

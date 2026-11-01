@@ -169,10 +169,16 @@ export async function verifyTutorialWindow(opts: {
       "staff_id",
     ]);
     const nameRaw =
-      pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
-      [pick(row, ["person.first_name"]), pick(row, ["person.last_name"])]
-        .filter(Boolean)
-        .join(" ");
+      pick(row, [
+        "person.rota_name",
+        "person",
+        "person_name",
+        "name",
+        "staff",
+        "Name",
+        "full_name",
+      ]) ??
+      [pick(row, ["person.first_name"]), pick(row, ["person.last_name"])].filter(Boolean).join(" ");
 
     const staffId =
       (email ? byEmail.get(email.toLowerCase()) : undefined) ??
@@ -190,7 +196,7 @@ export async function verifyTutorialWindow(opts: {
         staffName: nameById.get(staffId) ?? String(nameRaw ?? staffId),
         session_date,
         session,
-        label: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+        label: matchedIdx >= 0 ? (labels[matchedIdx] ?? null) : null,
       });
       evidence.set(key, {
         staffId,
@@ -200,9 +206,11 @@ export async function verifyTutorialWindow(opts: {
         // rota_assignments.clwrota_external_id.
         clwrotaExternalId:
           pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
-          (extId ? `${extId}|${pick(row, ["date", "session_date", "Date", "rota_date", "day"]) ?? ""}|${pick(row, ["session.rota_label", "shift.rota_label", "session", "session_half"]) ?? ""}` : null),
-        matchedField: matchedIdx >= 0 ? NOTE_KEYS[matchedIdx] ?? null : null,
-        matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+          (extId
+            ? `${extId}|${pick(row, ["date", "session_date", "Date", "rota_date", "day"]) ?? ""}|${pick(row, ["session.rota_label", "shift.rota_label", "session", "session_half"]) ?? ""}`
+            : null),
+        matchedField: matchedIdx >= 0 ? (NOTE_KEYS[matchedIdx] ?? null) : null,
+        matchedValue: matchedIdx >= 0 ? (labels[matchedIdx] ?? null) : null,
         placeName: pick(row, ["place.name"]) ?? null,
         slotTitles: pick(row, ["slot_titles"]) ?? null,
         roleLabel: pick(row, ["role.name", "assignment_type.name"]) ?? null,
@@ -259,7 +267,7 @@ export async function verifyTutorialWindow(opts: {
   for (const row of auditRows) {
     if (!nameById.has(row.staff_id)) continue;
     const theatreName = row.theatre_session_id
-      ? theatreNames.get(row.theatre_session_id) ?? null
+      ? (theatreNames.get(row.theatre_session_id) ?? null)
       : null;
     if (
       !isTutorialAuditCandidate({

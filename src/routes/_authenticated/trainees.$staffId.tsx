@@ -9,12 +9,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { computeProgress } from "@/lib/competency-utils";
-import { computeFullAudit, isIcuBlockOnly, type AuditAssignment, type AuditTheatreSession, type AuditTarget } from "@/features/audit/trainee-audit";
+import {
+  computeFullAudit,
+  isIcuBlockOnly,
+  type AuditAssignment,
+  type AuditTheatreSession,
+  type AuditTarget,
+} from "@/features/audit/trainee-audit";
 import { IcuBlockBadge } from "@/components/trainees/IcuBlockBadge";
-import { ArrowLeft, AlertTriangle, Sparkles, Users, FileWarning, HeartPulse, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  AlertTriangle,
+  Sparkles,
+  Users,
+  FileWarning,
+  HeartPulse,
+  CheckCircle2,
+} from "lucide-react";
 import { formatDateWithWeekdayGB, todayISO } from "@/lib/utils";
 import { PageLoading } from "@/components/loading";
 import { STATUS_LABEL, type ExceptionStatus } from "@/features/exceptions/types";
@@ -81,14 +100,10 @@ function TraineeDetailPage() {
       if (e4) throw e4;
 
       const tsIds = Array.from(
-        new Set(
-          (assignments ?? []).map((a) => a.theatre_session_id).filter(Boolean) as string[],
-        ),
+        new Set((assignments ?? []).map((a) => a.theatre_session_id).filter(Boolean) as string[]),
       );
       const supIds = Array.from(
-        new Set(
-          (assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[],
-        ),
+        new Set((assignments ?? []).map((a) => a.supervisor_id).filter(Boolean) as string[]),
       );
       const [{ profile, supervisors: sups }, ts] = await Promise.all([
         fetchProfile({ data: { staffId, supervisorIds: supIds } }),
@@ -105,12 +120,14 @@ function TraineeDetailPage() {
                 .in("id", tsIds)
                 .order("id", { ascending: true }),
             )
-          : Promise.resolve([] as Array<{
-              id: string;
-              specialty_id: string | null;
-              surgical_consultant: string | null;
-              theatre_id: string | null;
-            }>),
+          : Promise.resolve(
+              [] as Array<{
+                id: string;
+                specialty_id: string | null;
+                surgical_consultant: string | null;
+                theatre_id: string | null;
+              }>,
+            ),
       ]);
       const theatreIds = Array.from(
         new Set((ts ?? []).map((t) => t.theatre_id).filter(Boolean) as string[]),
@@ -125,16 +142,15 @@ function TraineeDetailPage() {
       // overview's solo/supervised counts and curriculum-progress percentages.
       const supervisorSessionIds = new Set<string>();
       if (tsIds.length) {
-        const tsAssigns = await fetchAllPaged<{ theatre_session_id: string | null }>(
-          () =>
-            supabase
-              .from("rota_assignments")
-              .select(
-                "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
-              )
-              .in("theatre_session_id", tsIds)
-              .in("profiles.grade", ["consultant", "sas"])
-              .order("theatre_session_id", { ascending: true }),
+        const tsAssigns = await fetchAllPaged<{ theatre_session_id: string | null }>(() =>
+          supabase
+            .from("rota_assignments")
+            .select(
+              "theatre_session_id,staff_id,profiles!rota_assignments_staff_id_fkey!inner(grade)",
+            )
+            .in("theatre_session_id", tsIds)
+            .in("profiles.grade", ["consultant", "sas"])
+            .order("theatre_session_id", { ascending: true }),
         );
         for (const r of tsAssigns) {
           if (r.theatre_session_id) supervisorSessionIds.add(r.theatre_session_id);
@@ -172,7 +188,6 @@ function TraineeDetailPage() {
     },
   });
 
-
   const progress = useMemo(() => {
     if (!data?.profile) return [];
     const targetsForLevel = data.targets.filter(
@@ -190,7 +205,7 @@ function TraineeDetailPage() {
         .filter((a) => ["solo", "supervised"].includes(a.role_on_list ?? ""))
         .map((a) => ({
           specialty_id: a.theatre_session_id
-            ? data.tsMap.get(a.theatre_session_id)?.specialty_id ?? null
+            ? (data.tsMap.get(a.theatre_session_id)?.specialty_id ?? null)
             : null,
           role_on_list: a.role_on_list ?? "",
         })),
@@ -211,8 +226,7 @@ function TraineeDetailPage() {
 
   if (isLoading) return <PageLoading />;
   if (error) {
-    const restricted =
-      error instanceof Error && error.message.startsWith("Forbidden");
+    const restricted = error instanceof Error && error.message.startsWith("Forbidden");
     return (
       <div className="space-y-6">
         <Link
@@ -243,13 +257,8 @@ function TraineeDetailPage() {
   );
 
   const rotationEnd =
-    (data.profile as { rotation_end_date?: string | null }).rotation_end_date ??
-    null;
-  const icuOnly = isIcuBlockOnly(
-    data.futureAssignments,
-    todayISO(),
-    rotationEnd,
-  );
+    (data.profile as { rotation_end_date?: string | null }).rotation_end_date ?? null;
+  const icuOnly = isIcuBlockOnly(data.futureAssignments, todayISO(), rotationEnd);
 
   return (
     <div className="space-y-6">
@@ -273,9 +282,8 @@ function TraineeDetailPage() {
 
       {icuOnly ? (
         <div className="rounded-md border border-sky-500/40 bg-sky-500/5 px-3 py-2 text-sm text-sky-800 dark:text-sky-200">
-          This trainee is currently on an ICU block. No theatre lists are
-          expected for the remainder of their rotation, so any "no matched
-          theatre list" warnings can be safely ignored.
+          This trainee is currently on an ICU block. No theatre lists are expected for the remainder
+          of their rotation, so any "no matched theatre list" warnings can be safely ignored.
         </div>
       ) : null}
 
@@ -291,13 +299,6 @@ function TraineeDetailPage() {
       {data.profile.grade === "consultant" || data.profile.grade === "sas" ? (
         <IcuAppraisalCard staffId={staffId} />
       ) : null}
-
-
-
-
-
-
-
 
       <Card>
         <CardHeader>
@@ -315,16 +316,20 @@ function TraineeDetailPage() {
                   <div className="flex items-baseline justify-between">
                     <div className="font-medium">{p.specialty_name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {p.done_total}/{p.required_sessions || p.required_solo + p.required_supervised} sessions · {p.percent}%
+                      {p.done_total}/
+                      {p.required_sessions || p.required_solo + p.required_supervised} sessions ·{" "}
+                      {p.percent}%
                     </div>
                   </div>
                   <Progress value={p.percent} className="h-2" />
                   <div className="flex gap-3 text-xs text-muted-foreground">
                     <span>
-                      Solo: <strong className="text-foreground">{p.done_solo}</strong>/{p.required_solo}
+                      Solo: <strong className="text-foreground">{p.done_solo}</strong>/
+                      {p.required_solo}
                     </span>
                     <span>
-                      Supervised: <strong className="text-foreground">{p.done_supervised}</strong>/{p.required_supervised}
+                      Supervised: <strong className="text-foreground">{p.done_supervised}</strong>/
+                      {p.required_supervised}
                     </span>
                   </div>
                 </div>
@@ -360,9 +365,11 @@ function TraineeDetailPage() {
                     <TableRow key={a.id}>
                       <TableCell>{formatDateWithWeekdayGB(a.session_date)}</TableCell>
                       <TableCell className="capitalize">{a.session}</TableCell>
-                      <TableCell>{ts ? data.theatreMap.get(ts.theatre_id) ?? "—" : "—"}</TableCell>
                       <TableCell>
-                        {ts?.specialty_id ? data.specMap.get(ts.specialty_id) ?? "—" : "—"}
+                        {ts ? (data.theatreMap.get(ts.theatre_id) ?? "—") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {ts?.specialty_id ? (data.specMap.get(ts.specialty_id) ?? "—") : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={a.role_on_list === "solo" ? "default" : "secondary"}>
@@ -370,7 +377,7 @@ function TraineeDetailPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {a.supervisor_id ? data.supMap.get(a.supervisor_id) ?? "—" : "—"}
+                        {a.supervisor_id ? (data.supMap.get(a.supervisor_id) ?? "—") : "—"}
                       </TableCell>
                     </TableRow>
                   );
@@ -399,7 +406,8 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
             <Sparkles className="h-4 w-4 text-primary" /> Specialty breadth
           </CardTitle>
           <CardDescription className="text-xs">
-            {deficits.length} deficit · {overs.length} over-exposed · {breadth.length - deficits.length - overs.length} on track
+            {deficits.length} deficit · {overs.length} over-exposed ·{" "}
+            {breadth.length - deficits.length - overs.length} on track
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -411,7 +419,13 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
                 <li key={b.specialty_id} className="flex items-center justify-between gap-2">
                   <span className="truncate">{b.specialty_name}</span>
                   <Badge
-                    variant={b.status === "deficit" ? "destructive" : b.status === "over" ? "secondary" : "default"}
+                    variant={
+                      b.status === "deficit"
+                        ? "destructive"
+                        : b.status === "over"
+                          ? "secondary"
+                          : "default"
+                    }
                     className="shrink-0"
                   >
                     {b.done}/{b.target} · {b.percent}%
@@ -433,9 +447,17 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
         <CardContent className="space-y-2">
           <Progress value={soloPct} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Solo: <strong className="text-foreground">{soloMix.solo}</strong></span>
-            <span>Supervised: <strong className="text-foreground">{soloMix.supervised}</strong></span>
-            <span className={soloMix.gap < -0.1 ? "text-warning" : soloMix.gap > 0.15 ? "text-warning" : ""}>
+            <span>
+              Solo: <strong className="text-foreground">{soloMix.solo}</strong>
+            </span>
+            <span>
+              Supervised: <strong className="text-foreground">{soloMix.supervised}</strong>
+            </span>
+            <span
+              className={
+                soloMix.gap < -0.1 ? "text-warning" : soloMix.gap > 0.15 ? "text-warning" : ""
+              }
+            >
               Gap: {(soloMix.gap * 100).toFixed(0)}%
             </span>
           </div>
@@ -448,7 +470,8 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
             <Users className="h-4 w-4 text-primary" /> Supervisor exposure
           </CardTitle>
           <CardDescription className="text-xs">
-            {supervisorExposure.distinctSupervisors} distinct · {supervisorExposure.totalSupervisedSessions} supervised sessions
+            {supervisorExposure.distinctSupervisors} distinct ·{" "}
+            {supervisorExposure.totalSupervisedSessions} supervised sessions
             {supervisorExposure.narrowExposure && (
               <span className="ml-2 inline-flex items-center gap-1 text-warning">
                 <AlertTriangle className="h-3 w-3" /> narrow exposure
@@ -478,12 +501,15 @@ function AuditLenses({ audit }: { audit: ReturnType<typeof computeFullAudit> }) 
             <AlertTriangle className="h-4 w-4 text-warning" /> Training-list displacement
           </CardTitle>
           <CardDescription className="text-xs">
-            {displacement.displacedSessions} displaced · ~{displacement.approxHoursLost}h of training lost
+            {displacement.displacedSessions} displaced · ~{displacement.approxHoursLost}h of
+            training lost
           </CardDescription>
         </CardHeader>
         <CardContent>
           {displacement.recentDisplacements.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No displacement detected in this window.</p>
+            <p className="text-xs text-muted-foreground">
+              No displacement detected in this window.
+            </p>
           ) : (
             <ul className="space-y-1 text-xs">
               {displacement.recentDisplacements.map((d, i) => (
@@ -516,7 +542,9 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
       }>(() =>
         supabase
           .from("exception_reports")
-          .select("id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at")
+          .select(
+            "id,status,category,event_date,immediate_safety_concern,due_by,resolved_at,created_at",
+          )
           .eq("trainee_id", staffId)
           .order("created_at", { ascending: false }),
       );
@@ -539,7 +567,12 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
     return acc;
   }, {});
   const now = Date.now();
-  const openStatuses: ExceptionStatus[] = ["submitted", "acknowledged", "under_review", "escalated"];
+  const openStatuses: ExceptionStatus[] = [
+    "submitted",
+    "acknowledged",
+    "under_review",
+    "escalated",
+  ];
   const open = rows.filter((r) => openStatuses.includes(r.status));
   const overdue = open.filter((r) => new Date(r.due_by).getTime() < now).length;
   const safety = rows.filter((r) => r.immediate_safety_concern).length;
@@ -573,11 +606,7 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
                   <Badge
                     key={s}
                     variant={
-                      s === "resolved"
-                        ? "default"
-                        : s === "escalated"
-                          ? "destructive"
-                          : "secondary"
+                      s === "resolved" ? "default" : s === "escalated" ? "destructive" : "secondary"
                     }
                   >
                     {STATUS_LABEL[s]}: {byStatus[s]}
@@ -617,7 +646,11 @@ function ExceptionReportsCard({ staffId }: { staffId: string }) {
 }
 
 function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: string | null }) {
-  const [rtwSpell, setRtwSpell] = useState<{ id: string; start_date: string; end_date: string } | null>(null);
+  const [rtwSpell, setRtwSpell] = useState<{
+    id: string;
+    start_date: string;
+    end_date: string;
+  } | null>(null);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["trainee-absence", staffId],
     queryFn: async () => {
@@ -634,7 +667,9 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
         fetchAllPaged<RtwRow>(() =>
           supabase
             .from("return_to_work_interviews")
-            .select("leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date")
+            .select(
+              "leave_request_id,conducted_at,fitness_confirmed,follow_up_required,follow_up_date",
+            )
             .eq("staff_id", staffId)
             .order("conducted_at", { ascending: false }),
         ),
@@ -679,9 +714,7 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
       </CardHeader>
       <CardContent>
         {b.spellCount === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            No sickness spells in the last 12 months.
-          </p>
+          <p className="text-xs text-muted-foreground">No sickness spells in the last 12 months.</p>
         ) : (
           <div className="space-y-2">
             <div className="flex flex-wrap gap-1.5 text-xs">
@@ -704,8 +737,8 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
               {recent.map((s) => (
                 <li key={s.id} className="flex items-center justify-between gap-2">
                   <span className="truncate">
-                    {formatDateWithWeekdayGB(s.start_date)} → {formatDateWithWeekdayGB(s.end_date)} ·{" "}
-                    {s.days}d
+                    {formatDateWithWeekdayGB(s.start_date)} → {formatDateWithWeekdayGB(s.end_date)}{" "}
+                    · {s.days}d
                     {s.postWeekend ? (
                       <Badge variant="outline" className="ml-1.5 text-[10px]">
                         Post-weekend
@@ -767,8 +800,8 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
                 </div>
                 <div className="text-muted-foreground">
                   Filter: leave rows where <code>type = &quot;sick&quot;</code> AND{" "}
-                  <code>status = &quot;approved&quot;</code>. Other statuses
-                  (pending, rejected, cancelled) and non-sick leave are excluded.
+                  <code>status = &quot;approved&quot;</code>. Other statuses (pending, rejected,
+                  cancelled) and non-sick leave are excluded.
                 </div>
                 <div>
                   <div className="pb-1 font-medium text-foreground">
@@ -820,8 +853,8 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
                     ))}
                   </ol>
                   <div className="pt-1.5 text-[10px] text-muted-foreground">
-                    Totals: S = {b.spellCount} spell{b.spellCount === 1 ? "" : "s"},
-                    D = {b.totalDays}d.
+                    Totals: S = {b.spellCount} spell{b.spellCount === 1 ? "" : "s"}, D ={" "}
+                    {b.totalDays}d.
                   </div>
                 </div>
               </div>
@@ -849,6 +882,3 @@ function AbsenceCard({ staffId, staffName }: { staffId: string; staffName: strin
     </Card>
   );
 }
-
-
-

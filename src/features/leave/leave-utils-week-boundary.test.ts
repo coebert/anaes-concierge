@@ -71,14 +71,10 @@ function makeChain(table: keyof Fixture) {
       rows = rows.filter((r) => (r as Record<string, unknown>)[col] !== val);
     }
     for (const [col, val] of filters.gte) {
-      rows = rows.filter(
-        (r) => String((r as Record<string, unknown>)[col]) >= val,
-      );
+      rows = rows.filter((r) => String((r as Record<string, unknown>)[col]) >= val);
     }
     for (const [col, val] of filters.lte) {
-      rows = rows.filter(
-        (r) => String((r as Record<string, unknown>)[col]) <= val,
-      );
+      rows = rows.filter((r) => String((r as Record<string, unknown>)[col]) <= val);
     }
     for (const [col, vals] of filters.in) {
       const set = new Set(vals);
@@ -93,8 +89,10 @@ function makeChain(table: keyof Fixture) {
     gte: (c: string, v: string) => (filters.gte.push([c, v]), chain),
     lte: (c: string, v: string) => (filters.lte.push([c, v]), chain),
     in: (c: string, v: unknown[]) => (filters.in.push([c, v]), chain),
-    then: (onFulfilled: any, onRejected?: any) =>
-      resolve().then(onFulfilled, onRejected),
+    // ordering/paging are no-ops for this in-memory fixture
+    order: () => chain,
+    range: () => chain,
+    then: (onFulfilled: any, onRejected?: any) => resolve().then(onFulfilled, onRejected),
   };
   return chain;
 }
@@ -202,10 +200,7 @@ describe("computeLeaveConflicts across a week boundary — rota conflicts", () =
   it("with half_day_start='pm' + half_day_end='am', only Fri PM and Mon AM conflict", async () => {
     const conflicts = await computeLeaveConflicts(STAFF_ID, FRI, MON, "pm", "am");
     const rota = conflicts.filter((c) => c.type === "rota_assignment");
-    expect(rota.map((c) => `${c.date}|${c.session}`).sort()).toEqual([
-      `${FRI}|pm`,
-      `${MON}|am`,
-    ]);
+    expect(rota.map((c) => `${c.date}|${c.session}`).sort()).toEqual([`${FRI}|pm`, `${MON}|am`]);
   });
 
   it("half-day markers do not affect intermediate days (there are none for a Fri→Mon range)", async () => {
@@ -213,9 +208,7 @@ describe("computeLeaveConflicts across a week boundary — rota conflicts", () =
     // guarding against regressions where midway days are mis-clipped.
     const conflicts = await computeLeaveConflicts(STAFF_ID, FRI, MON, "pm", "am");
     const midway = conflicts.filter(
-      (c) =>
-        c.type === "rota_assignment" &&
-        (c.date === SAT || c.date === SUN),
+      (c) => c.type === "rota_assignment" && (c.date === SAT || c.date === SUN),
     );
     expect(midway).toEqual([]);
   });

@@ -122,4 +122,3 @@ export const listIcuTraces = createServerFn({ method: "POST" })
       sourceRow: JSON.stringify(r.source_row, null, 2),
     }));
   });
-

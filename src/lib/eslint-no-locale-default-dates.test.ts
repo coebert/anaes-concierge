@@ -30,11 +30,10 @@ export { a, b, c, d };
 `;
 
 function runEslintOn(filePath: string) {
-  const res = spawnSync(
-    "bunx",
-    ["eslint", "--format", "json", "--no-inline-config", filePath],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
+  const res = spawnSync("bunx", ["eslint", "--format", "json", "--no-inline-config", filePath], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
   // ESLint exits 1 when there are errors; stdout still contains the JSON report.
   const parsed = JSON.parse(res.stdout || "[]") as Array<{
     messages: Array<{ ruleId: string | null; message: string }>;
@@ -50,9 +49,7 @@ describe("eslint: no locale-default date formatting", () => {
     writeFileSync(file, FIXTURE, "utf8");
     try {
       const messages = runEslintOn(file);
-      const restricted = messages.filter(
-        (m) => m.ruleId === "no-restricted-syntax",
-      );
+      const restricted = messages.filter((m) => m.ruleId === "no-restricted-syntax");
 
       // Four banned constructs in the fixture — the rule must catch all of them.
       // (The `.toLocaleString("en-GB")` line trips two selectors: the generic
@@ -82,9 +79,7 @@ export const b = formatDateTimeGB(new Date());
     );
     try {
       const messages = runEslintOn(file);
-      const restricted = messages.filter(
-        (m) => m.ruleId === "no-restricted-syntax",
-      );
+      const restricted = messages.filter((m) => m.ruleId === "no-restricted-syntax");
       expect(restricted).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });

@@ -63,10 +63,9 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/features/leave/leave-utils", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/features/leave/leave-utils")>(
-      "@/features/leave/leave-utils",
-    );
+  const actual = await vi.importActual<typeof import("@/features/leave/leave-utils")>(
+    "@/features/leave/leave-utils",
+  );
   return { ...actual, computeLeaveConflicts: vi.fn(async () => []) };
 });
 
@@ -150,9 +149,7 @@ async function setDates(startVal: string, endVal: string) {
 // The <Label> in shadcn/ui is not always associated with the sibling
 // Input via htmlFor. Fall back to querying inputs directly by type.
 function fallbackDateInputs() {
-  const inputs = Array.from(
-    document.querySelectorAll('input[type="date"]'),
-  ) as HTMLInputElement[];
+  const inputs = Array.from(document.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
   return { start: inputs[0], end: inputs[1] };
 }
 
@@ -160,10 +157,7 @@ async function setDatesResilient(startVal: string, endVal: string) {
   const user = userEvent.setup();
   const { start, end } = fallbackDateInputs();
   // Programmatic assign is more reliable than typing into a date input in jsdom.
-  const nativeSetter = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
-    "value",
-  )!.set!;
+  const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   nativeSetter.call(start, startVal);
   start.dispatchEvent(new Event("input", { bubbles: true }));
   start.dispatchEvent(new Event("change", { bubbles: true }));
@@ -184,9 +178,7 @@ afterEach(() => cleanup());
 describe("LeaveRequestDialog — week-boundary half-day range", () => {
   it("Fri (PM only) → Mon (AM only) shows the working-days confirmation and inserts with pm/am markers", async () => {
     const user = userEvent.setup();
-    render(
-      <LeaveRequestDialog open onOpenChange={() => {}} onSubmitted={() => {}} />,
-    );
+    render(<LeaveRequestDialog open onOpenChange={() => {}} onSubmitted={() => {}} />);
 
     await setDatesResilient(FRI, MON);
 
@@ -217,9 +209,7 @@ describe("LeaveRequestDialog — week-boundary half-day range", () => {
 
   it("Same-day PM-start + AM-end (reversed single day) surfaces a validation error and does not insert", async () => {
     const user = userEvent.setup();
-    render(
-      <LeaveRequestDialog open onOpenChange={() => {}} onSubmitted={() => {}} />,
-    );
+    render(<LeaveRequestDialog open onOpenChange={() => {}} onSubmitted={() => {}} />);
 
     await setDatesResilient(FRI, FRI);
 
@@ -237,9 +227,7 @@ describe("LeaveRequestDialog — week-boundary half-day range", () => {
 
   it("Reversed dates (end < start) surface a validation error and do not insert", async () => {
     const user = userEvent.setup();
-    render(
-      <LeaveRequestDialog open onOpenChange={() => {}} onSubmitted={() => {}} />,
-    );
+    render(<LeaveRequestDialog open onOpenChange={() => {}} onSubmitted={() => {}} />);
 
     await setDatesResilient(MON, FRI);
 
@@ -247,8 +235,6 @@ describe("LeaveRequestDialog — week-boundary half-day range", () => {
 
     expect(insertSpy).not.toHaveBeenCalled();
     expect(toastError).toHaveBeenCalledTimes(1);
-    expect(String(toastError.mock.calls[0][0])).toMatch(
-      /end date must be on or after start date/i,
-    );
+    expect(String(toastError.mock.calls[0][0])).toMatch(/end date must be on or after start date/i);
   });
 });

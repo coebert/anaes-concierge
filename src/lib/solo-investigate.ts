@@ -57,10 +57,7 @@ export type SoloCorrection = {
   staff_id: string;
   staff_name: string;
   session_date: string | null;
-  category:
-    | "consultant_or_sas_on_session"
-    | "unmatched_theatre_solo"
-    | "non_training_label";
+  category: "consultant_or_sas_on_session" | "unmatched_theatre_solo" | "non_training_label";
   /** Proposed supervisor when category=consultant_or_sas_on_session and one is unambiguous. */
   proposed_supervisor_id?: string | null;
   /** Only true for category 1 — the other two are surfaced as review items. */
@@ -149,9 +146,10 @@ export function computeSoloCorrections(args: {
       category: "consultant_or_sas_on_session",
       proposed_supervisor_id: proposedSupervisorId,
       auto_applicable: true,
-      reason: supervisors.length === 1
-        ? `${supervisors[0].grade} on same theatre_session_id`
-        : "consultant/SAS on same theatre_session_id",
+      reason:
+        supervisors.length === 1
+          ? `${supervisors[0].grade} on same theatre_session_id`
+          : "consultant/SAS on same theatre_session_id",
     });
   }
 

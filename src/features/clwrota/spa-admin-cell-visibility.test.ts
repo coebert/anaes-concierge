@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  filterAssignmentsForCell,
-  type CalendarSpaAdminAssignment,
-} from "./me-cell-visibility";
+import { filterAssignmentsForCell, type CalendarSpaAdminAssignment } from "./me-cell-visibility";
 
 /**
  * AM/PM visibility contract for SPA and Admin rows on the global calendar.
@@ -26,34 +23,31 @@ const mk = (
   session,
 });
 
-describe.each(["spa", "admin"] as const)(
-  "%s AM/PM cell visibility",
-  (duty) => {
-    it("renders an AM session only in the AM cell", () => {
-      const rows = [mk(duty, "am")];
-      expect(filterAssignmentsForCell(rows, duty, day, "am")).toHaveLength(1);
-      expect(filterAssignmentsForCell(rows, duty, day, "pm")).toHaveLength(0);
-    });
+describe.each(["spa", "admin"] as const)("%s AM/PM cell visibility", (duty) => {
+  it("renders an AM session only in the AM cell", () => {
+    const rows = [mk(duty, "am")];
+    expect(filterAssignmentsForCell(rows, duty, day, "am")).toHaveLength(1);
+    expect(filterAssignmentsForCell(rows, duty, day, "pm")).toHaveLength(0);
+  });
 
-    it("renders a PM session only in the PM cell", () => {
-      const rows = [mk(duty, "pm")];
-      expect(filterAssignmentsForCell(rows, duty, day, "pm")).toHaveLength(1);
-      expect(filterAssignmentsForCell(rows, duty, day, "am")).toHaveLength(0);
-    });
+  it("renders a PM session only in the PM cell", () => {
+    const rows = [mk(duty, "pm")];
+    expect(filterAssignmentsForCell(rows, duty, day, "pm")).toHaveLength(1);
+    expect(filterAssignmentsForCell(rows, duty, day, "am")).toHaveLength(0);
+  });
 
-    it("renders a split all-day pair in both cells without doubling up", () => {
-      const rows = [mk(duty, "am"), mk(duty, "pm")];
-      expect(filterAssignmentsForCell(rows, duty, day, "am")).toEqual([rows[0]]);
-      expect(filterAssignmentsForCell(rows, duty, day, "pm")).toEqual([rows[1]]);
-    });
+  it("renders a split all-day pair in both cells without doubling up", () => {
+    const rows = [mk(duty, "am"), mk(duty, "pm")];
+    expect(filterAssignmentsForCell(rows, duty, day, "am")).toEqual([rows[0]]);
+    expect(filterAssignmentsForCell(rows, duty, day, "pm")).toEqual([rows[1]]);
+  });
 
-    it("does not bleed onto a neighbouring day", () => {
-      const rows = [mk(duty, "am"), mk(duty, "pm")];
-      expect(filterAssignmentsForCell(rows, duty, other, "am")).toHaveLength(0);
-      expect(filterAssignmentsForCell(rows, duty, other, "pm")).toHaveLength(0);
-    });
-  },
-);
+  it("does not bleed onto a neighbouring day", () => {
+    const rows = [mk(duty, "am"), mk(duty, "pm")];
+    expect(filterAssignmentsForCell(rows, duty, other, "am")).toHaveLength(0);
+    expect(filterAssignmentsForCell(rows, duty, other, "pm")).toHaveLength(0);
+  });
+});
 
 describe("SPA vs Admin cross-leak protection", () => {
   it("keeps SPA rows out of Admin cells for the same day/half", () => {

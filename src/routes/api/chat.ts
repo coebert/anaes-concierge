@@ -1,15 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  convertToModelMessages,
-  stepCountIs,
-  streamText,
-  tool,
-  type UIMessage,
-} from "ai";
+import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { sendGmail } from "@/lib/gmail.server";
+import { CHAT_LIMITS, chatQuotaBuckets } from "@/lib/request-quota";
 import {
   type AssignmentLite,
   type SessionLite,
@@ -25,13 +20,8 @@ import {
   mergeLeaveAvailability,
   type LeaveRowLite,
 } from "@/lib/staff-current-pattern";
-import {
-  computeWellbeing,
-  WELLBEING_BAND_LABEL,
-} from "@/features/wellbeing/wellbeing-score";
+import { computeWellbeing, WELLBEING_BAND_LABEL } from "@/features/wellbeing/wellbeing-score";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
-
-
 
 const SYSTEM_PROMPT = `You are the AI assistant for the Salisbury DGH Anaesthetics Department rota app.
 You help staff understand their rota, leave entitlement, leave requests and trainee progress.
@@ -72,8 +62,6 @@ attrition risk, or "why did my score change after withdrawing an exception?", ca
 withdrawn exception reports, so updating or withdrawing an exception recalculates the score
 and the driver mapping on the next call. Cite the returned \`score\`, \`band_label\`, and top
 drivers by their \`label\` when answering; do not guess a score without calling the tool.`;
-
-
 
 function getAdminClient() {
   const url = process.env.SUPABASE_URL!;
@@ -147,14 +135,14 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Create a single rota assignment for a staff member on a specific date/session. The DB unique constraint prevents double-booking the same staff member on the same date+session.",
       inputSchema: z.object({
-        staff_id: z.string().uuid(),
+        staff_id: z.string().guid(),
         session_date: z.string().describe("ISO date YYYY-MM-DD"),
         session: z.enum(["am", "pm", "eve", "night", "long_day"]).describe("Session slot"),
         role_on_list: z
           .enum(["solo", "supervised", "supervisor", "on_call", "teaching", "admin"])
           .optional(),
-        theatre_session_id: z.string().uuid().optional(),
-        supervisor_id: z.string().uuid().optional(),
+        theatre_session_id: z.string().guid().optional(),
+        supervisor_id: z.string().guid().optional(),
         notes: z.string().max(500).optional(),
       }),
       execute: async (input) => {
@@ -181,21 +169,19 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Update an existing rota assignment (e.g. move it to a different theatre, change role, reassign to another staff member, change notes).",
       inputSchema: z.object({
-        id: z.string().uuid(),
-        staff_id: z.string().uuid().optional(),
+        id: z.string().guid(),
+        staff_id: z.string().guid().optional(),
         session_date: z.string().optional(),
         session: z.enum(["am", "pm", "eve", "night", "long_day"]).optional(),
         role_on_list: z
           .enum(["solo", "supervised", "supervisor", "on_call", "teaching", "admin"])
           .optional(),
-        theatre_session_id: z.string().uuid().nullable().optional(),
-        supervisor_id: z.string().uuid().nullable().optional(),
+        theatre_session_id: z.string().guid().nullable().optional(),
+        supervisor_id: z.string().guid().nullable().optional(),
         notes: z.string().max(500).nullable().optional(),
       }),
       execute: async ({ id, ...patch }) => {
-        const clean = Object.fromEntries(
-          Object.entries(patch).filter(([, v]) => v !== undefined),
-        );
+        const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
         if (!Object.keys(clean).length) return { error: "No fields to update" };
         const { error } = await admin.from("rota_assignments").update(clean).eq("id", id);
         if (error) return { error: error.message };
@@ -205,7 +191,7 @@ function buildAdminTools() {
 
     delete_rota_assignment: tool({
       description: "ADMIN ONLY. Delete a rota assignment by id.",
-      inputSchema: z.object({ id: z.string().uuid() }),
+      inputSchema: z.object({ id: z.string().guid() }),
       execute: async ({ id }) => {
         const { error } = await admin.from("rota_assignments").delete().eq("id", id);
         if (error) return { error: error.message };
@@ -217,7 +203,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Look up rota assignments by staff_id and/or date range to find the id needed for update/delete.",
       inputSchema: z.object({
-        staff_id: z.string().uuid().optional(),
+        staff_id: z.string().guid().optional(),
         from: z.string().describe("ISO date YYYY-MM-DD"),
         to: z.string().describe("ISO date YYYY-MM-DD"),
       }),
@@ -239,7 +225,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Update a staff member's current job plan: total/DCC/SPA PAs, LTFT status and percentage, on-call commitment, notes. Updates the most recent active job plan; if none exists a new one is created.",
       inputSchema: z.object({
-        staff_id: z.string().uuid(),
+        staff_id: z.string().guid(),
         total_pas: z.number().min(0).max(20).optional(),
         dcc_pas: z.number().min(0).max(20).optional(),
         spa_pas: z.number().min(0).max(20).optional(),
@@ -249,9 +235,7 @@ function buildAdminTools() {
         notes: z.string().max(500).nullable().optional(),
       }),
       execute: async ({ staff_id, ...patch }) => {
-        const clean = Object.fromEntries(
-          Object.entries(patch).filter(([, v]) => v !== undefined),
-        );
+        const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
         if (!Object.keys(clean).length) return { error: "No fields to update" };
         const today = todayISO();
         const { data: existing } = await admin
@@ -282,19 +266,30 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Update a staff member's profile fields: grade (consultant/sas/trainee), training_level (e.g. ST4), full_name, active flag.",
       inputSchema: z.object({
-        staff_id: z.string().uuid(),
+        staff_id: z.string().guid(),
         full_name: z.string().min(1).max(200).optional(),
         grade: z.enum(["consultant", "sas", "trainee"]).nullable().optional(),
         training_level: z
-          .enum(["CT1", "CT2", "CT3", "ACCS1", "ACCS2", "ACCS3", "ST4", "ST5", "ST6", "ST7", "ST8", "ST8+"])
+          .enum([
+            "CT1",
+            "CT2",
+            "CT3",
+            "ACCS1",
+            "ACCS2",
+            "ACCS3",
+            "ST4",
+            "ST5",
+            "ST6",
+            "ST7",
+            "ST8",
+            "ST8+",
+          ])
           .nullable()
           .optional(),
         active: z.boolean().optional(),
       }),
       execute: async ({ staff_id, ...patch }) => {
-        const clean = Object.fromEntries(
-          Object.entries(patch).filter(([, v]) => v !== undefined),
-        );
+        const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
         if (!Object.keys(clean).length) return { error: "No fields to update" };
         const { error } = await admin.from("profiles").update(clean).eq("id", staff_id);
         if (error) return { error: error.message };
@@ -306,7 +301,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. List the active custom working-pattern rules. Optionally filter by staff_id or grade.",
       inputSchema: z.object({
-        staff_id: z.string().uuid().optional(),
+        staff_id: z.string().guid().optional(),
         grade: z.enum(["consultant", "sas", "trainee"]).optional(),
       }),
       execute: async ({ staff_id, grade }) => {
@@ -328,7 +323,7 @@ function buildAdminTools() {
         "ADMIN ONLY. Persist a new custom working-pattern rule so it is remembered across sessions and factored into future rota work. Scope is 'staff' (one person), 'grade' (e.g. all trainees), or 'department' (everyone). Provide a short `summary` (≤80 chars) for display and the full `rule_text` capturing the rule.",
       inputSchema: z.object({
         scope: z.enum(["staff", "grade", "department"]),
-        staff_id: z.string().uuid().optional(),
+        staff_id: z.string().guid().optional(),
         grade: z.enum(["consultant", "sas", "trainee"]).optional(),
         summary: z.string().min(3).max(120),
         rule_text: z.string().min(5).max(1000),
@@ -355,18 +350,15 @@ function buildAdminTools() {
     }),
 
     update_custom_rule: tool({
-      description:
-        "ADMIN ONLY. Edit an existing custom rule (summary, rule_text, active flag).",
+      description: "ADMIN ONLY. Edit an existing custom rule (summary, rule_text, active flag).",
       inputSchema: z.object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         summary: z.string().min(3).max(120).optional(),
         rule_text: z.string().min(5).max(1000).optional(),
         active: z.boolean().optional(),
       }),
       execute: async ({ id, ...patch }) => {
-        const clean = Object.fromEntries(
-          Object.entries(patch).filter(([, v]) => v !== undefined),
-        );
+        const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
         if (!Object.keys(clean).length) return { error: "No fields to update" };
         const { error } = await admin.from("custom_rota_rules").update(clean).eq("id", id);
         if (error) return { error: error.message };
@@ -376,7 +368,7 @@ function buildAdminTools() {
 
     delete_custom_rule: tool({
       description: "ADMIN ONLY. Remove a custom working-pattern rule by id.",
-      inputSchema: z.object({ id: z.string().uuid() }),
+      inputSchema: z.object({ id: z.string().guid() }),
       execute: async ({ id }) => {
         const { error } = await admin.from("custom_rota_rules").delete().eq("id", id);
         if (error) return { error: error.message };
@@ -400,10 +392,7 @@ async function buildAdminCustomRulesPreamble(): Promise<string> {
   );
   const nameMap = new Map<string, string>();
   if (staffIds.length) {
-    const { data: profs } = await admin
-      .from("profiles")
-      .select("id,full_name")
-      .in("id", staffIds);
+    const { data: profs } = await admin.from("profiles").select("id,full_name").in("id", staffIds);
     for (const p of profs ?? []) nameMap.set(p.id, p.full_name);
   }
   const lines = data.map((r) => {
@@ -432,11 +421,7 @@ async function computeCurrentPatternForStaff(
   const from = addDays(to, -windowDays);
 
   const [profileRes, theatresRes, specialtiesRes] = await Promise.all([
-    admin
-      .from("profiles")
-      .select("id, full_name, grade")
-      .eq("id", staffId)
-      .maybeSingle(),
+    admin.from("profiles").select("id, full_name, grade").eq("id", staffId).maybeSingle(),
     admin.from("theatres").select("id, name, kind"),
     admin.from("specialties").select("id, name"),
   ]);
@@ -513,9 +498,7 @@ async function computeCurrentPatternForStaff(
   // rows, so the dominant-per-half-session calculation matches the card.
   const { data: leaveRowsRaw, error: leaveErr } = await admin
     .from("leave_requests")
-    .select(
-      "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
-    )
+    .select("type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes")
     .eq("staff_id", staffId)
     .eq("status", "approved")
     .lte("start_date", to)
@@ -557,9 +540,6 @@ async function computeCurrentPatternForStaff(
   });
 }
 
-
-
-
 function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: boolean) {
   const admin = getAdminClient();
   const baseTools = {
@@ -574,23 +554,17 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         const to = addDays(from, days ?? 14);
         const { data, error } = await admin
           .from("rota_assignments")
-          .select(
-            "session_date,session,role_on_list,notes,theatre_session_id,supervisor_id",
-          )
+          .select("session_date,session,role_on_list,notes,theatre_session_id,supervisor_id")
           .eq("staff_id", userId)
           .gte("session_date", from)
           .lte("session_date", to)
           .order("session_date");
         if (error) return { error: error.message };
         const tsIds = Array.from(
-          new Set(
-            (data ?? []).map((r) => r.theatre_session_id).filter(Boolean) as string[],
-          ),
+          new Set((data ?? []).map((r) => r.theatre_session_id).filter(Boolean) as string[]),
         );
         const supIds = Array.from(
-          new Set(
-            (data ?? []).map((r) => r.supervisor_id).filter(Boolean) as string[],
-          ),
+          new Set((data ?? []).map((r) => r.supervisor_id).filter(Boolean) as string[]),
         );
         // Active (non-withdrawn) exception reports the user has raised for any
         // session in the window. Withdrawn reports are excluded so that
@@ -636,10 +610,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         // reports raised without a session half.
         const excByKey = new Map<string, any[]>();
         for (const e of (excRows ?? []) as any[]) {
-          const keys = [
-            `${e.event_date}::${e.event_session ?? ""}`,
-            `${e.event_date}::`,
-          ];
+          const keys = [`${e.event_date}::${e.event_session ?? ""}`, `${e.event_date}::`];
           for (const k of keys) {
             const arr = excByKey.get(k) ?? [];
             arr.push(e);
@@ -651,10 +622,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           assignments: (data ?? []).map((a) => {
             const ts = a.theatre_session_id ? tsMap.get(a.theatre_session_id) : null;
             const excMatches = new Map<string, any>();
-            for (const k of [
-              `${a.session_date}::${a.session ?? ""}`,
-              `${a.session_date}::`,
-            ]) {
+            for (const k of [`${a.session_date}::${a.session ?? ""}`, `${a.session_date}::`]) {
               for (const e of excByKey.get(k) ?? []) excMatches.set(e.id, e);
             }
             const exceptions = Array.from(excMatches.values()).map((e) => ({
@@ -668,12 +636,12 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               date: a.session_date,
               session: a.session,
               role: a.role_on_list,
-              theatre: ts ? theatreMap.get(ts.theatre_id) ?? null : null,
-              specialty: ts?.specialty_id ? specMap.get(ts.specialty_id) ?? null : null,
+              theatre: ts ? (theatreMap.get(ts.theatre_id) ?? null) : null,
+              specialty: ts?.specialty_id ? (specMap.get(ts.specialty_id) ?? null) : null,
               surgeon: ts?.surgical_consultant ?? null,
               supervisor: a.supervisor_id
                 ? canSeeColleagueNames
-                  ? supMap.get(a.supervisor_id) ?? null
+                  ? (supMap.get(a.supervisor_id) ?? null)
                   : "Withheld"
                 : null,
               notes: a.notes,
@@ -682,7 +650,6 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           }),
         };
       },
-
     }),
 
     get_my_leave_summary: tool({
@@ -698,7 +665,9 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
             .maybeSingle(),
           admin
             .from("leave_requests")
-            .select("type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes")
+            .select(
+              "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+            )
             .eq("staff_id", userId)
             .order("start_date", { ascending: false })
             .limit(50),
@@ -713,7 +682,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
       inputSchema: z.object({
         staff_id: z
           .string()
-          .uuid()
+          .guid()
           .optional()
           .describe("Target staff. Omit to summarise the signed-in user."),
         windowDays: z
@@ -741,11 +710,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
         }
 
         try {
-          const pattern = await computeCurrentPatternForStaff(
-            admin,
-            targetId,
-            windowDays ?? 90,
-          );
+          const pattern = await computeCurrentPatternForStaff(admin, targetId, windowDays ?? 90);
           if (!pattern) return { error: "Staff member not found." };
 
           // Leave availability: allowance + relevant leave requests in the
@@ -754,37 +719,34 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           const today = todayISO();
           const until = addDays(today, lookahead);
           const windowStart = addDays(today, -(windowDays ?? 90));
-          const [{ data: allowance }, { data: leaveRows }, { data: excRows }] =
-            await Promise.all([
-              admin
-                .from("leave_allowances")
-                .select("annual_days,study_days,leave_year_start")
-                .eq("staff_id", targetId)
-                .maybeSingle(),
-              admin
-                .from("leave_requests")
-                .select(
-                  "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
-                )
-                .eq("staff_id", targetId)
-                .lte("start_date", until)
-                .gte("end_date", today)
-                .order("start_date"),
-              // Active (non-withdrawn) exception reports for this staff member
-              // across the pattern window + lookahead. Withdrawn reports are
-              // excluded so a status flip to `withdrawn` causes the tool
-              // payload to recalculate on the next call.
-              admin
-                .from("exception_reports")
-                .select(
-                  "id,event_date,event_session,category,status,immediate_safety_concern,due_by",
-                )
-                .eq("trainee_id", targetId)
-                .neq("status", "withdrawn")
-                .gte("event_date", windowStart)
-                .lte("event_date", until)
-                .order("event_date"),
-            ]);
+          const [{ data: allowance }, { data: leaveRows }, { data: excRows }] = await Promise.all([
+            admin
+              .from("leave_allowances")
+              .select("annual_days,study_days,leave_year_start")
+              .eq("staff_id", targetId)
+              .maybeSingle(),
+            admin
+              .from("leave_requests")
+              .select(
+                "type,start_date,end_date,status,half_day_start,half_day_end,reason,decision_notes",
+              )
+              .eq("staff_id", targetId)
+              .lte("start_date", until)
+              .gte("end_date", today)
+              .order("start_date"),
+            // Active (non-withdrawn) exception reports for this staff member
+            // across the pattern window + lookahead. Withdrawn reports are
+            // excluded so a status flip to `withdrawn` causes the tool
+            // payload to recalculate on the next call.
+            admin
+              .from("exception_reports")
+              .select("id,event_date,event_session,category,status,immediate_safety_concern,due_by")
+              .eq("trainee_id", targetId)
+              .neq("status", "withdrawn")
+              .gte("event_date", windowStart)
+              .lte("event_date", until)
+              .order("event_date"),
+          ]);
 
           // Strip free-text fields when the caller shouldn't see colleague PII,
           // and surface every overlapping leave type (annual/study/compassionate/…)
@@ -812,8 +774,6 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
               due_by: e.due_by,
             })),
           };
-
-
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to compute pattern.",
@@ -883,9 +843,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           half_day_start: string | null;
           half_day_end: string | null;
         }>;
-        const sickSpells = leaveRows.filter(
-          (l) => l.type === "sick" && l.status === "approved",
-        );
+        const sickSpells = leaveRows.filter((l) => l.type === "sick" && l.status === "approved");
         const bradford = computeBradfordFactor(
           sickSpells.map((s) => ({
             start_date: s.start_date,
@@ -952,14 +910,10 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
       },
     }),
 
-
-
-
     get_team_on_call_today: tool({
-      description:
-        canSeeColleagueNames
-          ? "Find who is on-call across the department today (names, grades, sessions)."
-          : "Count on-call cover across the department today. Returns grades and sessions only — colleague names are restricted to coordinators/admins.",
+      description: canSeeColleagueNames
+        ? "Find who is on-call across the department today (names, grades, sessions)."
+        : "Count on-call cover across the department today. Returns grades and sessions only — colleague names are restricted to coordinators/admins.",
       inputSchema: z.object({}),
       execute: async () => {
         const today = todayISO();
@@ -978,7 +932,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
           date: today,
           on_call: (data ?? []).map((r) => ({
             name: canSeeColleagueNames
-              ? pmap.get(r.staff_id)?.full_name ?? "Unknown"
+              ? (pmap.get(r.staff_id)?.full_name ?? "Unknown")
               : "Withheld",
             grade: pmap.get(r.staff_id)?.grade ?? null,
             session: r.session,
@@ -991,31 +945,69 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
   return isAdminUser ? { ...baseTools, ...buildAdminTools() } : baseTools;
 }
 
+const ChatPart = z
+  .object({
+    type: z.string().max(64),
+    text: z.string().max(CHAT_LIMITS.maxTextCharsPerMessage).optional(),
+  })
+  .passthrough();
 
-const ChatMessage = z.object({
-  id: z.string().optional(),
-  role: z.enum(["user", "assistant"]),
-  parts: z.array(z.record(z.any())).optional(),
-  content: z.string().optional(),
-}).passthrough();
+const ChatMessage = z
+  .object({
+    id: z.string().max(128).optional(),
+    role: z.enum(["user", "assistant"]),
+    parts: z.array(ChatPart).max(CHAT_LIMITS.maxPartsPerMessage).optional(),
+    content: z.string().max(CHAT_LIMITS.maxTextCharsPerMessage).optional(),
+  })
+  .passthrough();
 
-const ChatBody = z.object({
-  messages: z.array(ChatMessage)
+export const ChatBody = z.object({
+  messages: z
+    .array(ChatMessage)
     .min(1, "Please type a message before sending.")
-    .max(500, "This conversation is too long — please start a new chat."),
-  conversationId: z.string({
-    required_error: "Missing conversation — please open or start a chat first.",
-    invalid_type_error: "Missing conversation — please open or start a chat first.",
-  }).uuid("The conversation reference is invalid — please start a new chat."),
+    .max(CHAT_LIMITS.maxMessages, "This conversation is too long — please start a new chat."),
+  conversationId: z
+    .string({
+      // zod 4: one `error` param replaces required_error / invalid_type_error.
+      error: "Missing conversation — please open or start a chat first.",
+    })
+    .guid("The conversation reference is invalid — please start a new chat."),
+  /** Email the reply to the signed-in user. Off unless the client explicitly asks. */
+  emailReply: z.boolean().optional().default(false),
 });
+
+/** Reads the body with a hard byte cap (Content-Length is advisory only). */
+export async function readBoundedBody(request: Request, maxBytes: number): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.byteLength;
+  }
+  return new TextDecoder().decode(buf);
+}
 
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const userId = await getAuthenticatedUserId(
-          request.headers.get("authorization"),
-        );
+        const userId = await getAuthenticatedUserId(request.headers.get("authorization"));
         if (!userId) return new Response("Unauthorized", { status: 401 });
 
         const apiKey = process.env.LOVABLE_API_KEY;
@@ -1024,23 +1016,58 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         let body: z.infer<typeof ChatBody>;
+        let rawText: string | null;
         try {
-          const raw = await request.json();
+          rawText = await readBoundedBody(request, CHAT_LIMITS.maxRequestBytes);
+        } catch {
+          return new Response("We couldn't read your message. Please try again.", { status: 400 });
+        }
+        if (rawText === null) {
+          return new Response("This conversation is too large — please start a new chat.", {
+            status: 413,
+          });
+        }
+        try {
+          const raw = JSON.parse(rawText);
           body = ChatBody.parse(raw);
         } catch (e) {
-          const friendly = e instanceof z.ZodError
-            ? e.errors.slice(0, 3).map((x) => {
-                const field = x.path.join(".") || "request";
-                return `“${field}”: ${x.message}`;
-              }).join("; ")
-            : "The request body wasn't valid JSON.";
+          const friendly =
+            e instanceof z.ZodError
+              ? e.issues
+                  .slice(0, 3)
+                  .map((x) => {
+                    const field = x.path.join(".") || "request";
+                    return `“${field}”: ${x.message}`;
+                  })
+                  .join("; ")
+              : "The request body wasn't valid JSON.";
           return new Response(`We couldn't send your message. ${friendly}`, { status: 400 });
         }
 
-        const { messages, conversationId } = body;
+        const { messages, conversationId, emailReply } = body;
         const uiMessages = messages as unknown as UIMessage[];
 
         const admin = getAdminClient();
+        // Durable per-user + global hourly quotas (requests and bytes).
+        const { data: allowed, error: quotaErr } = await admin.rpc("take_request_quota", {
+          p_buckets: chatQuotaBuckets(userId),
+          p_bytes: new TextEncoder().encode(rawText).byteLength,
+        });
+        if (quotaErr) {
+          return new Response(
+            "The assistant is temporarily unavailable. Please try again shortly.",
+            { status: 503 },
+          );
+        }
+        if (allowed !== true) {
+          return new Response(
+            "You've reached the hourly assistant limit. Please try again later.",
+            {
+              status: 429,
+              headers: { "Retry-After": "900" },
+            },
+          );
+        }
         // Confirm conversation belongs to user
         const { data: conv } = await admin
           .from("ai_conversations")
@@ -1095,7 +1122,6 @@ export const Route = createFileRoute("/api/chat")({
           stopWhen: stepCountIs(50),
         });
 
-
         return result.toUIMessageStreamResponse({
           originalMessages: uiMessages,
           onFinish: async ({ responseMessage }) => {
@@ -1114,7 +1140,8 @@ export const Route = createFileRoute("/api/chat")({
               console.error("Failed to persist assistant message", e);
             }
 
-            // Email the assistant's text reply to the user
+            // Email the assistant's text reply only when the user asked for it.
+            if (!emailReply) return;
             try {
               const text = (responseMessage.parts ?? [])
                 .filter((p: any) => p.type === "text")
@@ -1131,9 +1158,7 @@ export const Route = createFileRoute("/api/chat")({
               const recipient = prof?.email;
               if (!recipient) return;
 
-              const lastUser = [...uiMessages]
-                .reverse()
-                .find((m: any) => m.role === "user");
+              const lastUser = [...uiMessages].reverse().find((m: any) => m.role === "user");
               const question = ((lastUser?.parts ?? []) as any[])
                 .filter((p) => p.type === "text")
                 .map((p) => p.text as string)

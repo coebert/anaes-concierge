@@ -22,15 +22,11 @@ const CLIENT_ROLES = ["anon", "authenticated"] as const;
 const PRIVILEGED_ROLE = "service_role";
 
 function psql(sql: string): string {
-  const result = spawnSync(
-    "psql",
-    ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8" },
-  );
+  const result = spawnSync("psql", ["-tA", "-v", "ON_ERROR_STOP=1", "-c", sql], {
+    encoding: "utf8",
+  });
   if (result.status !== 0) {
-    throw new Error(
-      `psql failed (exit ${result.status}): ${result.stderr || result.stdout}`,
-    );
+    throw new Error(`psql failed (exit ${result.status}): ${result.stderr || result.stdout}`);
   }
   return (result.stdout ?? "").trim();
 }
@@ -40,33 +36,17 @@ const dbAvailable =
   spawnSync("psql", ["-tA", "-c", "SELECT 1"], { encoding: "utf8" }).status === 0;
 
 describe.skipIf(!dbAvailable)("decryption RPC grants", () => {
-  it.each(RPCS)(
-    "denies anon and authenticated EXECUTE on %s",
-    (fn) => {
-      for (const role of CLIENT_ROLES) {
-        const out = psql(
-          `SELECT has_function_privilege('${role}', '${fn}', 'EXECUTE')`,
-        );
-        expect(
-          out,
-          `${role} unexpectedly has EXECUTE on ${fn}`,
-        ).toBe("f");
-      }
-    },
-  );
+  it.each(RPCS)("denies anon and authenticated EXECUTE on %s", (fn) => {
+    for (const role of CLIENT_ROLES) {
+      const out = psql(`SELECT has_function_privilege('${role}', '${fn}', 'EXECUTE')`);
+      expect(out, `${role} unexpectedly has EXECUTE on ${fn}`).toBe("f");
+    }
+  });
 
-  it.each(RPCS)(
-    "allows service_role EXECUTE on %s",
-    (fn) => {
-      const out = psql(
-        `SELECT has_function_privilege('${PRIVILEGED_ROLE}', '${fn}', 'EXECUTE')`,
-      );
-      expect(
-        out,
-        `${PRIVILEGED_ROLE} is missing EXECUTE on ${fn}`,
-      ).toBe("t");
-    },
-  );
+  it.each(RPCS)("allows service_role EXECUTE on %s", (fn) => {
+    const out = psql(`SELECT has_function_privilege('${PRIVILEGED_ROLE}', '${fn}', 'EXECUTE')`);
+    expect(out, `${PRIVILEGED_ROLE} is missing EXECUTE on ${fn}`).toBe("t");
+  });
 
   it("has an explicit ACL (no default PUBLIC EXECUTE) on every RPC", () => {
     for (const fn of RPCS) {
@@ -76,15 +56,10 @@ describe.skipIf(!dbAvailable)("decryption RPC grants", () => {
         `SELECT COALESCE(proacl::text, '') FROM pg_proc
            WHERE oid = '${fn}'::regprocedure`,
       );
-      expect(acl, `${fn} still has default (PUBLIC) EXECUTE grants`).not.toBe(
-        "",
-      );
+      expect(acl, `${fn} still has default (PUBLIC) EXECUTE grants`).not.toBe("");
       // Explicit PUBLIC grants appear as an ACL entry with an empty
       // grantee, e.g. "=X/owner". Reject those.
-      expect(
-        /(^|,)=X\//.test(acl),
-        `${fn} ACL grants EXECUTE to PUBLIC: ${acl}`,
-      ).toBe(false);
+      expect(/(^|,)=X\//.test(acl), `${fn} ACL grants EXECUTE to PUBLIC: ${acl}`).toBe(false);
     }
   });
 });

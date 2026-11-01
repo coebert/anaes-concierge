@@ -9,21 +9,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle } from "lucide-react";
-import {
-  computeNewStarterWarnings,
-  type ShortNoticeRow,
-} from "@/features/analytics/analyses";
+import { computeNewStarterWarnings, type ShortNoticeRow } from "@/features/analytics/analyses";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/new-starters",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/new-starters")({
   head: () => ({
     meta: [
       { title: "New-starter early warning — HR analytics" },
-      { name: "description", content: "First-90-days sickness, exception reports, and short-notice changes for new joiners." },
+      {
+        name: "description",
+        content:
+          "First-90-days sickness, exception reports, and short-notice changes for new joiners.",
+      },
     ],
   }),
   component: NewStartersPage,
@@ -38,20 +42,25 @@ function NewStartersPage() {
       cutoff.setUTCDate(cutoff.getUTCDate() - 90);
       const cutoffIso = cutoff.toISOString().slice(0, 10);
       const [profRes, sickRes, exRes, changeRes] = await Promise.all([
-        supabase.from("profiles")
+        supabase
+          .from("profiles")
           .select("id,full_name,grade,start_date,active,training_level")
           .gte("start_date", cutoffIso)
           .eq("active", true),
-        supabase.from("leave_requests")
+        supabase
+          .from("leave_requests")
           .select("staff_id,start_date,end_date")
-          .eq("type", "sick").eq("status", "approved")
+          .eq("type", "sick")
+          .eq("status", "approved")
           .gte("start_date", cutoffIso)
           .range(0, 9999),
-        supabase.from("exception_reports")
+        supabase
+          .from("exception_reports")
           .select("trainee_id,created_at")
           .gte("created_at", cutoff.toISOString())
           .range(0, 9999),
-        supabase.from("rota_change_log")
+        supabase
+          .from("rota_change_log")
           .select("staff_id,action,hours_before_session,changed_at")
           .gte("changed_at", cutoff.toISOString())
           .lte("hours_before_session", 48)
@@ -106,10 +115,16 @@ function NewStartersPage() {
       />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="New starters (90d)" value={view.length} icon={AlertTriangle} />
-        <StatCard label="With any signal"
-          value={view.filter((r) => r.score > 0).length} icon={AlertTriangle} />
-        <StatCard label="Highest score"
-          value={view.length ? view[0].score : 0} icon={AlertTriangle} />
+        <StatCard
+          label="With any signal"
+          value={view.filter((r) => r.score > 0).length}
+          icon={AlertTriangle}
+        />
+        <StatCard
+          label="Highest score"
+          value={view.length ? view[0].score : 0}
+          icon={AlertTriangle}
+        />
       </div>
       <Card>
         <CardContent className="p-0">
@@ -129,13 +144,19 @@ function NewStartersPage() {
               {view.map((r) => (
                 <TableRow key={r.staff_id}>
                   <TableCell>{r.name}</TableCell>
-                  <TableCell><Badge variant="outline">{r.grade ?? "—"}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.grade ?? "—"}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">{r.daysSinceStart}</TableCell>
                   <TableCell className="text-right">{r.sicknessDays}</TableCell>
                   <TableCell className="text-right">{r.exceptionReports}</TableCell>
                   <TableCell className="text-right">{r.shortNoticeReceived}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant={r.score >= 10 ? "destructive" : r.score >= 4 ? "secondary" : "outline"}>
+                    <Badge
+                      variant={
+                        r.score >= 10 ? "destructive" : r.score >= 4 ? "secondary" : "outline"
+                      }
+                    >
                       {r.score}
                     </Badge>
                   </TableCell>

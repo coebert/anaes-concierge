@@ -165,7 +165,9 @@ describe("wellbeing-score API pipeline — DB leave_status enum conformance", ()
     const statuses = new Set(fetched.map((r) => r.status));
     // No coercion, no filtering — all four values arrive intact.
     for (const enumValue of DB_LEAVE_STATUS_ENUM) {
-      expect(statuses.has(enumValue), `enum value "${enumValue}" was dropped or renamed`).toBe(true);
+      expect(statuses.has(enumValue), `enum value "${enumValue}" was dropped or renamed`).toBe(
+        true,
+      );
     }
     expect(fetched).toHaveLength(DB_LEAVE_STATUS_ENUM.length);
   });
@@ -178,14 +180,14 @@ describe("wellbeing-score API pipeline — DB leave_status enum conformance", ()
       row("rejected", { start_date: "2026-06-02", end_date: "2026-06-02" }),
       row("cancelled", { start_date: "2026-06-03", end_date: "2026-06-03" }),
       row("cancelled", { start_date: "2026-06-04", end_date: "2026-06-04" }),
-      row("pending",   { start_date: "2026-06-05", end_date: "2026-06-05" }),
-      row("approved",  { start_date: "2026-06-06", end_date: "2026-06-06" }),
+      row("pending", { start_date: "2026-06-05", end_date: "2026-06-05" }),
+      row("approved", { start_date: "2026-06-06", end_date: "2026-06-06" }),
     ];
     const { driver } = await runLeavePipeline(rows);
     expect(driver.value).toBe(4);
     // capAt = 3 → normalised clamps at 1.
     expect(driver.normalised).toBe(1);
-    expect(driver.weight).toBe(0.10);
+    expect(driver.weight).toBe(0.1);
   });
 
   it("treats rejected and cancelled identically end-to-end", async () => {
@@ -209,10 +211,10 @@ describe("wellbeing-score API pipeline — DB leave_status enum conformance", ()
     // These are NOT valid DB enum values. If any of them ever leaks into
     // the count, the mapping has diverged from the enum.
     const rows: LeaveApiRow[] = [
-      row("denied",  { start_date: "2026-06-01", end_date: "2026-06-01" }),
+      row("denied", { start_date: "2026-06-01", end_date: "2026-06-01" }),
       row("refused", { start_date: "2026-06-02", end_date: "2026-06-02" }),
       row("revoked", { start_date: "2026-06-03", end_date: "2026-06-03" }),
-      row("",        { start_date: "2026-06-04", end_date: "2026-06-04" }),
+      row("", { start_date: "2026-06-04", end_date: "2026-06-04" }),
     ];
     const { fetched, driver } = await runLeavePipeline(rows);
     // The pager returns them (it must — that's how we'd notice a DB drift)
@@ -233,7 +235,9 @@ describe("wellbeing-score API pipeline — DB leave_status enum conformance", ()
       const { driver } = await runLeavePipeline([
         row(status, { ...OUTSIDE, decided_at: decidedInside }),
       ]);
-      expect(driver.value, `${status}: decided_at inside should rescue an outside start_date`).toBe(1);
+      expect(driver.value, `${status}: decided_at inside should rescue an outside start_date`).toBe(
+        1,
+      );
     }
 
     // Dropped by decided_at (start_date inside, decided_at outside).
@@ -246,9 +250,7 @@ describe("wellbeing-score API pipeline — DB leave_status enum conformance", ()
 
     // Falls back to start_date when decided_at is null.
     for (const status of ["rejected", "cancelled"] as const) {
-      const { driver } = await runLeavePipeline([
-        row(status, { ...INSIDE, decided_at: null }),
-      ]);
+      const { driver } = await runLeavePipeline([row(status, { ...INSIDE, decided_at: null })]);
       expect(driver.value, `${status}: null decided_at must fall back to start_date`).toBe(1);
     }
   });

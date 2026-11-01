@@ -32,9 +32,7 @@ export const backfillTutorialDetection = createServerFn({ method: "POST" })
       .in("role", ["admin", "rota_coordinator"]);
     if (roleError) throw new Error(roleError.message);
     if (!roles || roles.length === 0) {
-      throw new Error(
-        "Forbidden: tutorial backfill requires admin or rota coordinator access.",
-      );
+      throw new Error("Forbidden: tutorial backfill requires admin or rota coordinator access.");
     }
 
     const { runTutorialBackfill } = await import("./tutorial-backfill.server");

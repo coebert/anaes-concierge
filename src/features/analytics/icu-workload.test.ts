@@ -26,10 +26,7 @@ function row(p: Partial<IcuRow>): IcuRow {
 
 describe("icu-workload", () => {
   it("collapses AM + PM on the same day into one ICU day but two sessions", () => {
-    const [t] = tallyIcuWorkload(
-      [row({ session: "am" }), row({ session: "pm" })],
-      RULES,
-    );
+    const [t] = tallyIcuWorkload([row({ session: "am" }), row({ session: "pm" })], RULES);
     expect(t.days).toBe(1);
     expect(t.sessions).toBe(2);
     expect(t.amSessions).toBe(1);
@@ -38,10 +35,7 @@ describe("icu-workload", () => {
   });
 
   it("collapses evening + night on the same date into one on-call", () => {
-    const [t] = tallyIcuWorkload(
-      [row({ session: "eve" }), row({ session: "night" })],
-      RULES,
-    );
+    const [t] = tallyIcuWorkload([row({ session: "eve" }), row({ session: "night" })], RULES);
     expect(t.onCalls).toBe(1);
     expect(t.days).toBe(0);
     expect(t.plannedPas).toBe(1.5);
@@ -66,10 +60,7 @@ describe("icu-workload", () => {
 
   it("weekend on-call is worth the weekend credit only, not on-call + weekend", () => {
     // Sunday on-call: 3 PAs, not 1.5 + 3.
-    const [t] = tallyIcuWorkload(
-      [row({ session_date: "2026-06-07", session: "night" })],
-      RULES,
-    );
+    const [t] = tallyIcuWorkload([row({ session_date: "2026-06-07", session: "night" })], RULES);
     expect(t.onCalls).toBe(1);
     expect(t.weekendDays).toBe(1);
     expect(t.plannedPas).toBe(3);
@@ -77,10 +68,7 @@ describe("icu-workload", () => {
 
   it("keeps extra/locum/WLI/SAG work out of job-planned totals", () => {
     for (const tag of ["extra", "locum", "WLI", "SAG"]) {
-      const [t] = tallyIcuWorkload(
-        [row({ extra_type: tag }), row({ session: "pm" })],
-        RULES,
-      );
+      const [t] = tallyIcuWorkload([row({ extra_type: tag }), row({ session: "pm" })], RULES);
       expect(t.sessions).toBe(1);
       expect(t.extraSessions).toBe(1);
       expect(t.extraDays).toBe(1);

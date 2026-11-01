@@ -124,8 +124,14 @@ describe("classifyLeaveOverlap — property: structural invariants", () => {
 
   it("case variants of 'approved' and 'pending' yield counted = true", () => {
     const variants = [
-      "Approved", "APPROVED", "ApPrOvEd", "aPpRoVeD",
-      "Pending", "PENDING", "PeNdInG", "pEnDiNg",
+      "Approved",
+      "APPROVED",
+      "ApPrOvEd",
+      "aPpRoVeD",
+      "Pending",
+      "PENDING",
+      "PeNdInG",
+      "pEnDiNg",
     ];
     for (const v of variants) {
       expect(classifyLeaveOverlap(v).counted).toBe(true);

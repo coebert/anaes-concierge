@@ -31,35 +31,28 @@ export const Route = createFileRoute("/api/public/hooks/tutorial-backfill")({
         const from = params.get("from");
         const to = params.get("to");
         if ((from && !DATE_RE.test(from)) || (to && !DATE_RE.test(to))) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "from/to must be YYYY-MM-DD." }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "from/to must be YYYY-MM-DD." }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
         }
 
-        const days = Math.min(
-          365,
-          Math.max(1, Number(params.get("days")) || 14),
-        );
-        const ahead = Math.min(
-          365,
-          Math.max(0, Number(params.get("ahead")) || 14),
-        );
+        const days = Math.min(365, Math.max(1, Number(params.get("days")) || 14));
+        const ahead = Math.min(365, Math.max(0, Number(params.get("ahead")) || 14));
         const startIso = from ?? isoOffsetDays(-days);
         const endIso = to ?? isoOffsetDays(ahead);
         const dryRun = params.get("dryRun") === "true";
 
         if (startIso > endIso) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "from must be before to." }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "from must be before to." }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
         }
 
         try {
-          const { runTutorialBackfill } = await import(
-            "@/features/clwrota/tutorial-backfill.server"
-          );
+          const { runTutorialBackfill } =
+            await import("@/features/clwrota/tutorial-backfill.server");
           // One upstream CLWRota download per invocation keeps the Worker
           // inside its memory budget; the detection re-scan still covers the
           // whole requested window from rows already in the database.

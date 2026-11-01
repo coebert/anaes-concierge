@@ -51,9 +51,7 @@ describe("POAC baseline rule", () => {
   });
 
   it("baseline is 1 for Wed PM only", () => {
-    const w = computePoacWeeklyStats([
-      { date: "2026-01-07", session: "pm" },
-    ]);
+    const w = computePoacWeeklyStats([{ date: "2026-01-07", session: "pm" }]);
     expect(w[0]).toMatchObject({ baseline: 1, total: 1, additional: 0 });
   });
 

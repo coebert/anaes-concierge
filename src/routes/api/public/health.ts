@@ -32,7 +32,11 @@ async function checkDatabase(): Promise<HealthCheck> {
   const started = Date.now();
   try {
     const admin = getAdminClient();
-    const { error } = await admin.from("profiles").select("id").limit(1).abortSignal(AbortSignal.timeout(CHECK_TIMEOUT_MS));
+    const { error } = await admin
+      .from("profiles")
+      .select("id")
+      .limit(1)
+      .abortSignal(AbortSignal.timeout(CHECK_TIMEOUT_MS));
     if (error) {
       console.error("[health] database check failed", error);
       return {
@@ -234,7 +238,6 @@ async function checkKeyTables(): Promise<HealthCheck> {
     };
   }
 }
-
 
 let cachedDetail: { at: number; promise: Promise<HealthCheck[]> } | null = null;
 

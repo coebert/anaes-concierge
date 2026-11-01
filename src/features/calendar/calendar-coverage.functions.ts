@@ -37,9 +37,7 @@ export type CalendarCoverageResult = {
   inactiveTotal: number;
 };
 
-const DateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "start/end must be ISO yyyy-mm-dd");
+const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "start/end must be ISO yyyy-mm-dd");
 
 function eachDate(start: string, end: string): string[] {
   const out: string[] = [];
@@ -57,11 +55,14 @@ export const checkCalendarStaffCoverage = createServerFn({ method: "POST" })
     z
       .object({ start: DateSchema, end: DateSchema })
       .refine((v) => v.start <= v.end, { message: "start must be <= end" })
-      .refine((v) => {
-        const s = new Date(v.start + "T00:00:00Z").getTime();
-        const e = new Date(v.end + "T00:00:00Z").getTime();
-        return (e - s) / 86400_000 <= 92;
-      }, { message: "range must be <= 92 days" })
+      .refine(
+        (v) => {
+          const s = new Date(v.start + "T00:00:00Z").getTime();
+          const e = new Date(v.end + "T00:00:00Z").getTime();
+          return (e - s) / 86400_000 <= 92;
+        },
+        { message: "range must be <= 92 days" },
+      )
       .parse(d),
   )
   .handler(async ({ data, context }): Promise<CalendarCoverageResult> => {
@@ -99,10 +100,7 @@ export const checkCalendarStaffCoverage = createServerFn({ method: "POST" })
       }
     }
 
-    const perDate = new Map<
-      string,
-      { staff: Set<string>; count: number }
-    >();
+    const perDate = new Map<string, { staff: Set<string>; count: number }>();
     for (const iso of eachDate(data.start, data.end)) {
       perDate.set(iso, { staff: new Set(), count: 0 });
     }

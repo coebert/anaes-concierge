@@ -43,7 +43,7 @@ SELECT t('leave: coordinator forges decided_by without status change', :C, $q$UP
 
 -- 2. Profiles
 SELECT t('profile: staff changes own display name', :S, $q$UPDATE profiles SET full_name='Dr S' WHERE id='00000000-0000-0000-0000-000000000051'; SELECT assert_true((SELECT full_name FROM profiles WHERE id='00000000-0000-0000-0000-000000000051')='Dr S','name')$q$, 'allowed');
-SELECT t('profile: staff rotates own calendar token', :S, $q$UPDATE profiles SET calendar_feed_token='x' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'allowed');
+SELECT t('profile: staff sets own calendar token (server-owned)', :S, $q$UPDATE profiles SET calendar_feed_token='x' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
 SELECT t('profile: staff changes own grade', :S, $q$UPDATE profiles SET grade='consultant' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
 SELECT t('profile: staff reactivates/changes active', :S, $q$UPDATE profiles SET active=false WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
 SELECT t('profile: staff changes rotation_end_date', :S, $q$UPDATE profiles SET rotation_end_date='2030-01-01' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'denied');
@@ -80,3 +80,43 @@ SELECT t('push: http scheme', :S, format($q$INSERT INTO push_subscriptions(user_
 SELECT t('push: lookalike host', :S, format($q$INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth) VALUES ('00000000-0000-0000-0000-000000000051','https://fcm.googleapis.com.evil.example/x',%s,'cccccccccccccccccccccc')$q$, quote_literal(:K)), 'denied');
 SELECT t('push: oversized auth key', :S, format($q$INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth) VALUES ('00000000-0000-0000-0000-000000000051','https://fcm.googleapis.com/fcm/send/abc',%s,repeat('c',500))$q$, quote_literal(:K)), 'denied');
 SELECT t('push: service role cannot bypass endpoint check', NULL, format($q$INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth) VALUES ('00000000-0000-0000-0000-000000000051','https://127.0.0.1/x',%s,'cccccccccccccccccccccc')$q$, quote_literal(:K)), 'denied');
+
+-- 6. Follow-up: trigger ordering vs encryption, shadow fields, view path
+SELECT t('leave-enc: guard trigger sorts before encryption trigger', NULL, $q$SELECT assert_true((SELECT array_agg(tgname::text ORDER BY tgname) FROM pg_trigger WHERE tgrelid='leave_requests'::regclass AND NOT tgisinternal AND tgname IN ('a10_enforce_leave_request_update_rules','leave_requests_sync_encryption')) = ARRAY['a10_enforce_leave_request_update_rules','leave_requests_sync_encryption'],'order')$q$, 'allowed');
+SELECT t('leave-enc: staff forges conflict_notes on own pending (plaintext)', :S, $q$UPDATE leave_requests SET conflict_notes='forged' WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-enc: staff forges conflict ciphertext only stays unchanged', :S, $q$UPDATE leave_requests SET conflict_notes_enc=convert_to('ENC:forged','UTF8') WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-enc: staff writes reason_enc directly', :S, $q$UPDATE leave_requests SET reason_enc=convert_to('x','UTF8') WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-enc: staff inserts with decision_notes_enc', :S, $q$INSERT INTO leave_requests(staff_id,start_date,end_date,decision_notes_enc) VALUES ('00000000-0000-0000-0000-000000000051','2027-06-01','2027-06-02',convert_to('ENC:approved by admin','UTF8'))$q$, 'denied');
+SELECT t('leave-enc: staff edits own pending reason, ciphertext re-encrypted', :S, $q$UPDATE leave_requests SET reason='new reason' WHERE id='10000000-0000-0000-0000-000000000001'; SELECT assert_true((SELECT convert_from(reason_enc,'UTF8') FROM leave_requests WHERE id='10000000-0000-0000-0000-000000000001')='ENC:new reason','re-encrypted')$q$, 'allowed');
+SELECT t('leave-enc: insert encrypts reason and conflict notes', :S, $q$INSERT INTO leave_requests(id,staff_id,start_date,end_date,reason,conflict_notes) VALUES ('10000000-0000-0000-0000-0000000000ee','00000000-0000-0000-0000-000000000051','2027-06-01','2027-06-02','r1','c1'); SELECT assert_true((SELECT convert_from(conflict_notes_enc,'UTF8') FROM leave_requests WHERE id='10000000-0000-0000-0000-0000000000ee')='ENC:c1','enc')$q$, 'allowed');
+SELECT t('leave-enc: staff backdates created_at', :S, $q$UPDATE leave_requests SET created_at='2020-01-01' WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-enc: insert created_at forced to now', :S, $q$INSERT INTO leave_requests(id,staff_id,start_date,end_date,created_at) VALUES ('10000000-0000-0000-0000-0000000000ed','00000000-0000-0000-0000-000000000051','2027-06-01','2027-06-02','2020-01-01'); SELECT assert_true((SELECT created_at > now() - interval '1 minute' FROM leave_requests WHERE id='10000000-0000-0000-0000-0000000000ed'),'now')$q$, 'allowed');
+SELECT t('leave-enc: staff sets own study_cost_gbp', :S, $q$UPDATE leave_requests SET study_cost_gbp=1 WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-enc: coordinator sets study cost on staff leave', :C, $q$UPDATE leave_requests SET study_cost_gbp=250 WHERE id='10000000-0000-0000-0000-000000000002'$q$, 'allowed');
+SELECT t('leave-enc: coordinator edits conflict notes, re-encrypted', :C, $q$UPDATE leave_requests SET conflict_notes='coord note' WHERE id='10000000-0000-0000-0000-000000000002'; SELECT assert_true((SELECT convert_from(conflict_notes_enc,'UTF8') FROM leave_requests WHERE id='10000000-0000-0000-0000-000000000002')='ENC:coord note','enc')$q$, 'allowed');
+SELECT t('leave-enc: coordinator changes clwrota_external_id', :C, $q$UPDATE leave_requests SET clwrota_external_id='hijack' WHERE id='10000000-0000-0000-0000-000000000002'$q$, 'denied');
+SELECT t('leave-enc: coordinator reassigns leave owner', :C, $q$UPDATE leave_requests SET staff_id='00000000-0000-0000-0000-000000000052' WHERE id='10000000-0000-0000-0000-000000000002'$q$, 'denied');
+SELECT t('leave-view: staff self-approves via leave_requests_v', :S, $q$UPDATE leave_requests_v SET status='approved' WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-view: staff forges conflict notes via view', :S, $q$UPDATE leave_requests_v SET conflict_notes='via view' WHERE id='10000000-0000-0000-0000-000000000001'$q$, 'denied');
+SELECT t('leave-view: staff cancels own pending via view', :S, $q$UPDATE leave_requests_v SET status='cancelled' WHERE id='10000000-0000-0000-0000-000000000001'; SELECT assert_true((SELECT status FROM leave_requests WHERE id='10000000-0000-0000-0000-000000000001')='cancelled','c')$q$, 'allowed');
+SELECT t('leave: sync (service role) still sets import id', NULL, $q$UPDATE leave_requests SET clwrota_external_id='ext-2' WHERE id='10000000-0000-0000-0000-000000000002'$q$, 'allowed');
+SELECT t('profile: admin/server path rotates calendar token', NULL, $q$UPDATE profiles SET calendar_feed_token='server-random' WHERE id='00000000-0000-0000-0000-000000000051'$q$, 'allowed');
+
+-- 7. Passkey ceremony binding
+SELECT t('passkey: consume discoverable challenge by exact id once', NULL, $q$SELECT assert_true((SELECT count(*) FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000001','authentication'))=1,'first'); SELECT assert_true((SELECT count(*) FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000001','authentication'))=0,'replay')$q$, 'allowed');
+SELECT t('passkey: expired challenge not consumable', NULL, $q$SELECT assert_true((SELECT count(*) FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000003','authentication'))=0,'expired')$q$, 'allowed');
+SELECT t('passkey: wrong purpose not consumable', NULL, $q$SELECT assert_true((SELECT count(*) FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','registration'))=0,'purpose')$q$, 'allowed');
+SELECT t('passkey: bound challenge returns its user for cross-user check', NULL, $q$SELECT assert_true((SELECT user_id FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','authentication'))='00000000-0000-0000-0000-000000000052','user')$q$, 'allowed');
+SELECT t('passkey: authenticated cannot call consume rpc', :S, $q$SELECT * FROM consume_passkey_challenge_by_id('30000000-0000-0000-0000-000000000002','authentication')$q$, 'denied');
+SELECT t('passkey: user cannot insert own credential directly', :S, $q$INSERT INTO passkey_credentials(user_id,credential_id,public_key) VALUES ('00000000-0000-0000-0000-000000000051','attacker','pk')$q$, 'denied');
+SELECT t('passkey: user cannot reset counter directly', :S, $q$UPDATE passkey_credentials SET counter=0 WHERE credential_id='cred-s'$q$, 'denied');
+
+-- 8. Quotas
+SELECT t('quota: within limits allowed', NULL, $q$SELECT assert_true(take_request_quota(ARRAY['h:a|3600|2|','h:g|3600|10|'],0),'ok')$q$, 'allowed');
+SELECT t('quota: third hit in window refused and nothing counted', NULL, $q$SELECT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); SELECT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); SELECT assert_true(NOT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0),'refused'); SELECT assert_true((SELECT hits FROM request_quota_buckets WHERE bucket='q:g')=2,'atomic')$q$, 'allowed');
+SELECT t('quota: byte cap enforced', NULL, $q$SELECT assert_true(NOT take_request_quota(ARRAY['b:a|3600|100|1000'],5000),'bytes')$q$, 'allowed');
+SELECT t('quota: authenticated cannot call', :S, $q$SELECT take_request_quota(ARRAY['x|60|1|'],0)$q$, 'denied');
+SELECT t('quota: zero window rejected (no divide-by-zero)', NULL, $q$SELECT take_request_quota(ARRAY['z:a|0|5|'],0)$q$, 'denied');
+SELECT t('quota: malformed spec rejected', NULL, $q$SELECT take_request_quota(ARRAY['bad key with spaces|60|1|'],0)$q$, 'denied');
+SELECT t('quota: negative bytes rejected', NULL, $q$SELECT take_request_quota(ARRAY['n:a|60|5|'],-1)$q$, 'denied');
+SELECT t('quota: zero max rejected', NULL, $q$SELECT take_request_quota(ARRAY['m:a|60|0|'],0)$q$, 'denied');

@@ -64,7 +64,10 @@ function RequestAccessPage() {
         <CardContent>
           {sent ? (
             <div className="space-y-4 text-center text-sm text-muted-foreground">
-              <p>Your request has been sent to the rota admins. You will receive an invitation email once it is approved.</p>
+              <p>
+                Your request has been sent to the rota admins. You will receive an invitation email
+                once it is approved.
+              </p>
               <Button asChild className="w-full">
                 <Link to="/login">Back to sign in</Link>
               </Button>
@@ -73,7 +76,12 @@ function RequestAccessPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full name</Label>
-                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                <Input
+                  id="name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Work email</Label>

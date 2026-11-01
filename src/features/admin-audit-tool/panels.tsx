@@ -11,11 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import {
   BarChart,
   Bar,
@@ -117,7 +113,10 @@ export function ChatBubble({ message }: { message: UIMessage }) {
             const out = (p as { output?: unknown }).output as ReportOutput | undefined;
             if (p.state && p.state !== "output-available") {
               return (
-                <div key={i} className="my-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div
+                  key={i}
+                  className="my-1 flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
                   <FileText className="h-3 w-3" />
                   <span>Drafting report…</span>
                 </div>
@@ -151,11 +150,7 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
             </div>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void downloadReportPdf(report)}
-        >
+        <Button variant="outline" size="sm" onClick={() => void downloadReportPdf(report)}>
           <Download className="mr-1.5 h-3.5 w-3.5" />
           PDF
         </Button>
@@ -179,9 +174,7 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
             {report.key_findings.map((f, i) => (
               <li key={i} className="leading-snug">
                 <span className="prose prose-sm inline max-w-none dark:prose-invert">
-                  <ReactMarkdown
-                    components={{ p: ({ children }) => <>{children}</> }}
-                  >
+                  <ReactMarkdown components={{ p: ({ children }) => <>{children}</> }}>
                     {f}
                   </ReactMarkdown>
                 </span>
@@ -192,9 +185,7 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
 
         {report.sections.map((s, i) => (
           <section key={i}>
-            <h3 className="mb-1.5 text-sm font-semibold text-foreground">
-              {s.heading}
-            </h3>
+            <h3 className="mb-1.5 text-sm font-semibold text-foreground">{s.heading}</h3>
             {s.prose && (
               <div className="prose prose-sm max-w-none text-foreground dark:prose-invert">
                 <ReactMarkdown>{s.prose}</ReactMarkdown>
@@ -203,7 +194,9 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
             {s.bullets && s.bullets.length > 0 && (
               <ul className="mt-2 list-disc space-y-1 pl-5 text-foreground">
                 {s.bullets.map((b, j) => (
-                  <li key={j} className="leading-snug">{b}</li>
+                  <li key={j} className="leading-snug">
+                    {b}
+                  </li>
                 ))}
               </ul>
             )}
@@ -222,7 +215,9 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
             </h3>
             <ul className="list-disc space-y-1 pl-5 text-foreground">
               {report.recommendations.map((r, i) => (
-                <li key={i} className="leading-snug">{r}</li>
+                <li key={i} className="leading-snug">
+                  {r}
+                </li>
               ))}
             </ul>
           </section>
@@ -235,7 +230,9 @@ export function ReportDocument({ report }: { report: ReportOutput }) {
             </h3>
             <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
               {report.caveats.map((c, i) => (
-                <li key={i} className="leading-snug">{c}</li>
+                <li key={i} className="leading-snug">
+                  {c}
+                </li>
               ))}
             </ul>
           </section>
@@ -332,9 +329,7 @@ async function downloadReportPdf(report: ReportOutput) {
       }
       const lines: string[] = [];
       s.chart.labels.forEach((label, li) => {
-        const parts = s.chart!.datasets.map(
-          (ds) => `${ds.label}: ${ds.data[li] ?? "-"}`,
-        );
+        const parts = s.chart!.datasets.map((ds) => `${ds.label}: ${ds.data[li] ?? "-"}`);
         lines.push(`${label} — ${parts.join(", ")}`);
       });
       writeBullets(lines);
@@ -355,7 +350,6 @@ async function downloadReportPdf(report: ReportOutput) {
   doc.save(`${filename}.pdf`);
 }
 
-
 export function ReportCard({ output }: { output: RunSqlOutput }) {
   if (output.error) {
     return (
@@ -369,9 +363,7 @@ export function ReportCard({ output }: { output: RunSqlOutput }) {
             <div className="min-w-0 break-words">{output.error}</div>
           </div>
           {output.sql && (
-            <pre className="overflow-x-auto rounded-md bg-muted p-2 text-[11px]">
-              {output.sql}
-            </pre>
+            <pre className="overflow-x-auto rounded-md bg-muted p-2 text-[11px]">{output.sql}</pre>
           )}
         </CardContent>
       </Card>
@@ -401,24 +393,27 @@ export function ReportCard({ output }: { output: RunSqlOutput }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => downloadCsv(rows, columns, output.title ?? "report")}>
+              <DropdownMenuItem
+                onClick={() => downloadCsv(rows, columns, output.title ?? "report")}
+              >
                 CSV (.csv)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadExcel(rows, columns, output.title ?? "report")}>
+              <DropdownMenuItem
+                onClick={() => downloadExcel(rows, columns, output.title ?? "report")}
+              >
                 Excel (.xlsx)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => downloadPdf(rows, columns, output.title ?? "report", output.sql)}>
+              <DropdownMenuItem
+                onClick={() => downloadPdf(rows, columns, output.title ?? "report", output.sql)}
+              >
                 PDF (.pdf)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {output.chart && rows.length > 0 && (
-          <ChartView chart={output.chart} rows={rows} />
-        )}
+        {output.chart && rows.length > 0 && <ChartView chart={output.chart} rows={rows} />}
         {rows.length === 0 ? (
           <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
             No rows returned.
@@ -449,7 +444,8 @@ export function ReportCard({ output }: { output: RunSqlOutput }) {
             </Table>
             {rows.length > 200 && (
               <div className="border-t bg-muted/50 px-3 py-1.5 text-[11px] text-muted-foreground">
-                Showing first 200 of {rows.length.toLocaleString()} rows — download CSV for full data.
+                Showing first 200 of {rows.length.toLocaleString()} rows — download CSV for full
+                data.
               </div>
             )}
           </div>
@@ -479,11 +475,11 @@ const CHART_COLORS = [
   "var(--chart-4)",
   "var(--chart-5)",
   "oklch(0.62 0.21 145)", // emerald
-  "oklch(0.65 0.19 25)",  // coral
+  "oklch(0.65 0.19 25)", // coral
   "oklch(0.58 0.22 295)", // violet
-  "oklch(0.72 0.16 90)",  // amber
+  "oklch(0.72 0.16 90)", // amber
   "oklch(0.55 0.18 220)", // azure
-  "oklch(0.6 0.2 340)",   // magenta
+  "oklch(0.6 0.2 340)", // magenta
   "oklch(0.68 0.15 180)", // teal
 ];
 
@@ -528,9 +524,7 @@ function ChartView({
 
   return (
     <div className="space-y-2">
-      {chart.title && (
-        <div className="text-sm font-medium text-foreground">{chart.title}</div>
-      )}
+      {chart.title && <div className="text-sm font-medium text-foreground">{chart.title}</div>}
       <ChartContainer config={config} className="w-full" style={{ height: chartHeight }}>
         {chart.type === "bar" ? (
           <BarChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: isLong ? 48 : 16 }}>
@@ -561,7 +555,10 @@ function ChartView({
               tickFormatter={(v) => formatTick(v)}
               width={48}
             />
-            <ChartTooltip cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }} content={<ChartTooltipContent />} />
+            <ChartTooltip
+              cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+              content={<ChartTooltipContent />}
+            />
             {chart.yKeys.length > 1 && (
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
             )}
@@ -619,7 +616,11 @@ function ChartView({
                 strokeWidth={2.25}
                 fill={`url(#line-grad-${i})`}
                 activeDot={{ r: 5, strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                dot={data.length <= 30 ? { r: 3, strokeWidth: 1.5, stroke: "hsl(var(--background))", fill: colorAt(i) } : false}
+                dot={
+                  data.length <= 30
+                    ? { r: 3, strokeWidth: 1.5, stroke: "hsl(var(--background))", fill: colorAt(i) }
+                    : false
+                }
               />
             ))}
           </AreaChart>
@@ -650,7 +651,11 @@ function ChartView({
               {data.map((_, i) => (
                 <Cell key={i} fill={colorAt(i)} />
               ))}
-              <LabelList dataKey={chart.xKey} position="outside" style={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <LabelList
+                dataKey={chart.xKey}
+                position="outside"
+                style={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              />
             </Pie>
           </PieChart>
         )}
@@ -666,11 +671,7 @@ function formatCell(v: unknown): string {
   return String(v);
 }
 
-function downloadCsv(
-  rows: Array<Record<string, unknown>>,
-  columns: string[],
-  filename: string,
-) {
+function downloadCsv(rows: Array<Record<string, unknown>>, columns: string[], filename: string) {
   const escape = (v: unknown): string => {
     if (v == null) return "";
     const s = typeof v === "object" ? JSON.stringify(v) : String(v);
@@ -695,10 +696,7 @@ function safeName(name: string): string {
   return name.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60) || "report";
 }
 
-function rowsToAOA(
-  rows: Array<Record<string, unknown>>,
-  columns: string[],
-): unknown[][] {
+function rowsToAOA(rows: Array<Record<string, unknown>>, columns: string[]): unknown[][] {
   const header = columns;
   const body = rows.map((r) =>
     columns.map((c) => {
@@ -729,18 +727,14 @@ export async function downloadAllExcel(reports: Array<{ id: string; output: RunS
   const used = new Set<string>();
   reports.forEach((r, i) => {
     const rows = r.output.rows ?? r.output.rowsPreview ?? [];
-    const columns =
-      r.output.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
+    const columns = r.output.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
     const aoa =
-      rows.length === 0
-        ? [[r.output.error ?? "No rows returned."]]
-        : rowsToAOA(rows, columns);
+      rows.length === 0 ? [[r.output.error ?? "No rows returned."]] : rowsToAOA(rows, columns);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     // Excel sheet names: max 31 chars, no []:*?/\
-    let base =
-      (r.output.title ?? `Report ${i + 1}`)
-        .replace(/[[\]:*?/\\]/g, "")
-        .slice(0, 28) || `Report ${i + 1}`;
+    const base =
+      (r.output.title ?? `Report ${i + 1}`).replace(/[[\]:*?/\\]/g, "").slice(0, 28) ||
+      `Report ${i + 1}`;
     let name = base;
     let n = 2;
     while (used.has(name)) name = `${base} ${n++}`.slice(0, 31);
@@ -786,8 +780,7 @@ async function downloadPdf(
   });
   if (sql) {
     const lastY =
-      (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
-        ?.finalY ?? 72;
+      (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 72;
     doc.setFontSize(8);
     doc.setTextColor(120);
     doc.text("SQL:", 40, lastY + 20);
@@ -812,17 +805,12 @@ export async function downloadAllPdf(reports: Array<{ id: string; output: RunSql
     if (i > 0) doc.addPage();
     const startY = i === 0 ? 80 : 40;
     const rows = r.output.rows ?? r.output.rowsPreview ?? [];
-    const columns =
-      r.output.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
+    const columns = r.output.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
     doc.setFontSize(12);
     doc.text(r.output.title ?? `Report ${i + 1}`, 40, startY);
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text(
-      `${rows.length} ${rows.length === 1 ? "row" : "rows"}`,
-      40,
-      startY + 14,
-    );
+    doc.text(`${rows.length} ${rows.length === 1 ? "row" : "rows"}`, 40, startY + 14);
     doc.setTextColor(0);
     if (r.output.error) {
       doc.setTextColor(180, 0, 0);
@@ -873,9 +861,7 @@ function ReportChart({ chart }: { chart: NonNullable<ReportSection["chart"]> }) 
 
   return (
     <div className="space-y-2">
-      {chart.title && (
-        <div className="text-sm font-medium text-foreground">{chart.title}</div>
-      )}
+      {chart.title && <div className="text-sm font-medium text-foreground">{chart.title}</div>}
       <ChartContainer config={config} className="w-full" style={{ height }}>
         {isPie ? (
           <PieChart>

@@ -11,13 +11,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -40,9 +34,6 @@ import {
   type ClwRotaSyncMetricRow,
 } from "@/lib/clwrota-metrics-types";
 import { formatDateGB, formatDateTimeGB } from "@/lib/utils";
-
-
-
 
 type MetricRow = ClwRotaSyncMetricRow;
 
@@ -202,17 +193,12 @@ export function ClwRotaMetricsPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading metrics…
         </div>
       ) : query.isError ? (
-        <Card
-          data-testid="clwrota-metrics-error"
-          className="border-destructive/50"
-        >
+        <Card data-testid="clwrota-metrics-error" className="border-destructive/50">
           <CardHeader>
-            <CardTitle className="text-destructive">
-              Couldn't load sync metrics
-            </CardTitle>
+            <CardTitle className="text-destructive">Couldn't load sync metrics</CardTitle>
             <CardDescription>
-              The metrics response failed validation, so rows are not being
-              rendered to avoid showing unclassified data.
+              The metrics response failed validation, so rows are not being rendered to avoid
+              showing unclassified data.
               {query.error instanceof Error ? ` (${query.error.message})` : null}
             </CardDescription>
           </CardHeader>
@@ -231,7 +217,11 @@ export function ClwRotaMetricsPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5 lg:grid-cols-9">
             <Stat label="Runs" value={totals.runs} />
             <Stat label="OK" value={totals.ok} tone="success" />
-            <Stat label="Failed runs" value={totals.failed} tone={totals.failed > 0 ? "danger" : undefined} />
+            <Stat
+              label="Failed runs"
+              value={totals.failed}
+              tone={totals.failed > 0 ? "danger" : undefined}
+            />
             <Stat label="Upserted" value={totals.upserted} tone="success" />
             <Stat label="Deleted" value={totals.deleted} tone="info" />
             <Stat label="Non-working cleaned" value={totals.cleaned} tone="info" />
@@ -244,25 +234,69 @@ export function ClwRotaMetricsPage() {
             <CardHeader>
               <CardTitle>Rows over time</CardTitle>
               <CardDescription>
-                Upserted, deleted, non-working cleaned, skipped (validation), and failed (write) per run day.
+                Upserted, deleted, non-working cleaned, skipped (validation), and failed (write) per
+                run day.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RLineChart data={perDay} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="date" tickFormatter={(d: string) => formatDateGB(d)} fontSize={11} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => formatDateGB(d)}
+                    fontSize={11}
+                  />
                   <YAxis fontSize={11} allowDecimals={false} />
                   <Tooltip
                     labelFormatter={(d: string) => formatDateGB(d)}
-                    contentStyle={{ background: "hsl(var(--background))", borderColor: "hsl(var(--border))" }}
+                    contentStyle={{
+                      background: "hsl(var(--background))",
+                      borderColor: "hsl(var(--border))",
+                    }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="rows_upserted" stroke="#10b981" name="Upserted" dot={false} strokeWidth={2} />
-                  <Line type="monotone" dataKey="non_working_cleaned" stroke="#0ea5e9" name="Non-working cleaned" dot={false} strokeWidth={2} />
-                  <Line type="monotone" dataKey="rows_deleted" stroke="#a855f7" name="Deleted (total)" dot={false} strokeWidth={2} strokeDasharray="4 2" />
-                  <Line type="monotone" dataKey="rows_skipped" stroke="#3b82f6" name="Skipped" dot={false} strokeWidth={2} />
-                  <Line type="monotone" dataKey="rows_failed" stroke="#ef4444" name="Failed" dot={false} strokeWidth={2} />
+                  <Line
+                    type="monotone"
+                    dataKey="rows_upserted"
+                    stroke="#10b981"
+                    name="Upserted"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="non_working_cleaned"
+                    stroke="#0ea5e9"
+                    name="Non-working cleaned"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rows_deleted"
+                    stroke="#a855f7"
+                    name="Deleted (total)"
+                    dot={false}
+                    strokeWidth={2}
+                    strokeDasharray="4 2"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rows_skipped"
+                    stroke="#3b82f6"
+                    name="Skipped"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rows_failed"
+                    stroke="#ef4444"
+                    name="Failed"
+                    dot={false}
+                    strokeWidth={2}
+                  />
                 </RLineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -272,18 +306,26 @@ export function ClwRotaMetricsPage() {
             <CardHeader>
               <CardTitle>Run outcome per day</CardTitle>
               <CardDescription>
-                Stacked bar of ok vs. failed runs. A spike in red indicates the historical safeguard or another error tripped.
+                Stacked bar of ok vs. failed runs. A spike in red indicates the historical safeguard
+                or another error tripped.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={perDay} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="date" tickFormatter={(d: string) => formatDateGB(d)} fontSize={11} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => formatDateGB(d)}
+                    fontSize={11}
+                  />
                   <YAxis fontSize={11} allowDecimals={false} />
                   <Tooltip
                     labelFormatter={(d: string) => formatDateGB(d)}
-                    contentStyle={{ background: "hsl(var(--background))", borderColor: "hsl(var(--border))" }}
+                    contentStyle={{
+                      background: "hsl(var(--background))",
+                      borderColor: "hsl(var(--border))",
+                    }}
                   />
                   <Legend />
                   <Bar dataKey="ok_runs" stackId="r" fill="#10b981" name="ok" />
@@ -293,28 +335,40 @@ export function ClwRotaMetricsPage() {
             </CardContent>
           </Card>
 
-
           <Card>
             <CardHeader>
               <CardTitle>Chunk outcomes per day</CardTitle>
               <CardDescription>
-                First-try wins vs. retried vs. fell-back-to-per-row. Stacked bar = total chunks for that day.
+                First-try wins vs. retried vs. fell-back-to-per-row. Stacked bar = total chunks for
+                that day.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={perDay} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="date" tickFormatter={(d: string) => formatDateGB(d)} fontSize={11} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => formatDateGB(d)}
+                    fontSize={11}
+                  />
                   <YAxis fontSize={11} allowDecimals={false} />
                   <Tooltip
                     labelFormatter={(d: string) => formatDateGB(d)}
-                    contentStyle={{ background: "hsl(var(--background))", borderColor: "hsl(var(--border))" }}
+                    contentStyle={{
+                      background: "hsl(var(--background))",
+                      borderColor: "hsl(var(--border))",
+                    }}
                   />
                   <Legend />
                   <Bar dataKey="chunks_first_try" stackId="c" fill="#10b981" name="First try" />
                   <Bar dataKey="chunks_retried" stackId="c" fill="#f59e0b" name="Retried (won)" />
-                  <Bar dataKey="chunks_fell_back" stackId="c" fill="#ef4444" name="Fell back to per-row" />
+                  <Bar
+                    dataKey="chunks_fell_back"
+                    stackId="c"
+                    fill="#ef4444"
+                    name="Fell back to per-row"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -324,23 +378,52 @@ export function ClwRotaMetricsPage() {
             <CardHeader>
               <CardTitle>Write retries &amp; per-row failures per day</CardTitle>
               <CardDescription>
-                Background pressure indicator: total upsert retries and rows that failed every retry.
+                Background pressure indicator: total upsert retries and rows that failed every
+                retry.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RLineChart data={perDay} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="date" tickFormatter={(d: string) => formatDateGB(d)} fontSize={11} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(d: string) => formatDateGB(d)}
+                    fontSize={11}
+                  />
                   <YAxis fontSize={11} allowDecimals={false} />
                   <Tooltip
                     labelFormatter={(d: string) => formatDateGB(d)}
-                    contentStyle={{ background: "hsl(var(--background))", borderColor: "hsl(var(--border))" }}
+                    contentStyle={{
+                      background: "hsl(var(--background))",
+                      borderColor: "hsl(var(--border))",
+                    }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="upsert_retries" stroke="#f59e0b" name="Write retries" dot={false} strokeWidth={2} />
-                  <Line type="monotone" dataKey="per_row_failed" stroke="#ef4444" name="Per-row failed" dot={false} strokeWidth={2} />
-                  <Line type="monotone" dataKey="errors" stroke="#7c3aed" name="Errors logged" dot={false} strokeWidth={2} />
+                  <Line
+                    type="monotone"
+                    dataKey="upsert_retries"
+                    stroke="#f59e0b"
+                    name="Write retries"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="per_row_failed"
+                    stroke="#ef4444"
+                    name="Per-row failed"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="errors"
+                    stroke="#7c3aed"
+                    name="Errors logged"
+                    dot={false}
+                    strokeWidth={2}
+                  />
                 </RLineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -349,7 +432,9 @@ export function ClwRotaMetricsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Recent runs</CardTitle>
-              <CardDescription>Newest first. Most recent {Math.min(rows.length, 50)} of {rows.length}.</CardDescription>
+              <CardDescription>
+                Newest first. Most recent {Math.min(rows.length, 50)} of {rows.length}.
+              </CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -370,38 +455,58 @@ export function ClwRotaMetricsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.slice().reverse().slice(0, 50).map((r) => {
-                    const isBackfill = isBackfillMetricRow(r);
-                    return (
-                      <tr key={r.id} className={`border-t border-border ${isBackfill ? "bg-amber-50/40" : ""}`}>
-                        <td className="py-1.5 pr-3 whitespace-nowrap">
-                          {formatDateTimeGB(r.run_at)}
-                          {isBackfill && (
-                            <Badge variant="outline" className="ml-2 text-warning border-amber-300 bg-amber-100">
-                              Backfill
+                  {rows
+                    .slice()
+                    .reverse()
+                    .slice(0, 50)
+                    .map((r) => {
+                      const isBackfill = isBackfillMetricRow(r);
+                      return (
+                        <tr
+                          key={r.id}
+                          className={`border-t border-border ${isBackfill ? "bg-amber-50/40" : ""}`}
+                        >
+                          <td className="py-1.5 pr-3 whitespace-nowrap">
+                            {formatDateTimeGB(r.run_at)}
+                            {isBackfill && (
+                              <Badge
+                                variant="outline"
+                                className="ml-2 text-warning border-amber-300 bg-amber-100"
+                              >
+                                Backfill
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="py-1.5 pr-3">{r.sync_kind}</td>
+                          <td className="py-1.5 pr-3">
+                            <Badge variant={r.ok ? "secondary" : "destructive"}>
+                              {r.ok ? "ok" : "errors"}
                             </Badge>
-                          )}
-                        </td>
-                        <td className="py-1.5 pr-3">{r.sync_kind}</td>
-                        <td className="py-1.5 pr-3">
-                          <Badge variant={r.ok ? "secondary" : "destructive"}>
-                            {r.ok ? "ok" : "errors"}
-                          </Badge>
-                        </td>
-                        <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
-                        <td className="py-1.5 pr-3 text-right text-success">{r.rows_upserted}</td>
-                        <td className="py-1.5 pr-3 text-right text-blue-600">{r.rows_skipped_validation}</td>
-                        <td className="py-1.5 pr-3 text-right text-purple-600">{r.rows_deleted}</td>
-                        <td className="py-1.5 pr-3 text-right text-sky-600">{r.non_working_cleaned}</td>
-                        <td className="py-1.5 pr-3 text-right text-destructive">{r.rows_failed}</td>
-                        <td className="py-1.5 pr-3 text-right">{r.upsert_retries_total}</td>
-                        <td className="py-1.5 pr-3 text-right">{r.chunks_fell_back_to_per_row}</td>
-                        <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                          {r.duration_ms == null ? "—" : `${(r.duration_ms / 1000).toFixed(1)}s`}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right">{r.rows_pulled}</td>
+                          <td className="py-1.5 pr-3 text-right text-success">{r.rows_upserted}</td>
+                          <td className="py-1.5 pr-3 text-right text-blue-600">
+                            {r.rows_skipped_validation}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right text-purple-600">
+                            {r.rows_deleted}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right text-sky-600">
+                            {r.non_working_cleaned}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right text-destructive">
+                            {r.rows_failed}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right">{r.upsert_retries_total}</td>
+                          <td className="py-1.5 pr-3 text-right">
+                            {r.chunks_fell_back_to_per_row}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right text-muted-foreground">
+                            {r.duration_ms == null ? "—" : `${(r.duration_ms / 1000).toFixed(1)}s`}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </CardContent>

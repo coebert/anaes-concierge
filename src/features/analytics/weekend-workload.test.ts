@@ -99,12 +99,7 @@ describe("weekend-workload", () => {
     });
     expect(isExcludedSagRow(nhsRow)).toBe(false);
 
-    const counts = countWeekendDates([
-      sagRow,
-      nonSagRowFlag,
-      nonSagRowSession,
-      nhsRow,
-    ]);
+    const counts = countWeekendDates([sagRow, nonSagRowFlag, nonSagRowSession, nhsRow]);
     // Only the three non-excluded weekend dates count.
     expect(counts[0].total).toBe(3);
   });

@@ -63,20 +63,21 @@ export function PushNotificationsCard() {
       <CardHeader>
         <CardTitle>Push notifications</CardTitle>
         <CardDescription>
-          Get a browser notification when one of your scheduled lists changes within 48 hours of the session
-          (added, removed, swapped, or details edited).
+          Get a browser notification when one of your scheduled lists changes within 48 hours of the
+          session (added, removed, swapped, or details edited).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {!supported && (
           <p className="text-sm text-muted-foreground">
-            This browser does not support web push notifications. On iPhone, add this site to your Home Screen
-            first, then open it from there.
+            This browser does not support web push notifications. On iPhone, add this site to your
+            Home Screen first, then open it from there.
           </p>
         )}
         {supported && permission === "denied" && (
           <p className="text-sm text-muted-foreground">
-            Notifications are blocked for this site in your browser settings. Allow notifications and try again.
+            Notifications are blocked for this site in your browser settings. Allow notifications
+            and try again.
           </p>
         )}
         {supported && permission !== "denied" && (

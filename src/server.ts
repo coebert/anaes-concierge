@@ -22,7 +22,7 @@ type ReactStartServerModule = {
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => ((m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry)),
+      (m) => (m as { default?: ServerEntry }).default ?? (m as unknown as ServerEntry),
     );
   }
   return serverEntryPromise;
@@ -165,9 +165,7 @@ async function normalizeCatastrophicSsrResponseWithObservedError(
 
   const capturedError = observedError ?? consumeLastCapturedError();
   if (isStaleRouterEntryError(capturedError)) {
-    throw capturedError instanceof Error
-      ? capturedError
-      : new Error(String(capturedError));
+    throw capturedError instanceof Error ? capturedError : new Error(String(capturedError));
   }
 
   console.error(capturedError ?? new Error(`h3 swallowed SSR error: ${body}`));

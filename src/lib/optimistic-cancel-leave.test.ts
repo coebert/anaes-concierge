@@ -129,10 +129,7 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
 
     // (b) Wellbeing caches show the cancellation, and the recomputed
     //     score has the `leave` driver at 1 (0 before).
-    const cachedMine = qc.getQueryData<{ leave: typeof seedLeave }>([
-      "my-wellbeing",
-      STAFF,
-    ])!;
+    const cachedMine = qc.getQueryData<{ leave: typeof seedLeave }>(["my-wellbeing", STAFF])!;
     expect(cachedMine.leave[0].status).toBe("cancelled");
     expect(cachedMine.leave[0].decided_at).toBe(NOW.toISOString());
 
@@ -226,10 +223,7 @@ describe("optimisticCancelLeave — immediate wellbeing recalculation", () => {
 
     // Wellbeing cache restored — the leave row is `pending` again, and
     // recomputing yields a `leave` driver of 0.
-    const cached = qc.getQueryData<{ leave: typeof originalLeave }>([
-      "my-wellbeing",
-      STAFF,
-    ])!;
+    const cached = qc.getQueryData<{ leave: typeof originalLeave }>(["my-wellbeing", STAFF])!;
     expect(cached.leave[0].status).toBe("pending");
     expect(cached.leave[0].decided_at).toBeNull();
 

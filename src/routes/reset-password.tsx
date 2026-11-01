@@ -143,9 +143,7 @@ function describeLinkError(code: string | null, description: string | null): str
 
 function getResetLinkState(href: string): ResetLinkState {
   const url = new URL(href);
-  const hashParams = new URLSearchParams(
-    url.hash.startsWith("#") ? url.hash.slice(1) : "",
-  );
+  const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : "");
 
   const errorCode =
     url.searchParams.get("error") ??
@@ -209,8 +207,7 @@ function hasResetSessionReadyFlag(): boolean {
  * so a child component effect that reads `window.location.href` can miss the
  * recovery indicators. Reading once here guarantees we see the original link.
  */
-const INITIAL_RESET_URL =
-  typeof window !== "undefined" ? window.location.href : "";
+const INITIAL_RESET_URL = typeof window !== "undefined" ? window.location.href : "";
 
 if (typeof window !== "undefined") {
   trace("reset-password.module.init", {
@@ -399,7 +396,10 @@ function ResetPasswordPage() {
           if (cancelled) return;
           iterations = i + 1;
           const { data } = await supabase.auth.getSession();
-          if (data.session) { found = true; break; }
+          if (data.session) {
+            found = true;
+            break;
+          }
           await new Promise((r) => setTimeout(r, 100));
         }
         trace("reset-password.exchange.recovery_session.result", { found, iterations });
@@ -506,8 +506,7 @@ function ResetPasswordPage() {
     dispatch({ type: "USER_START_OVER" });
   };
 
-  const isChecking =
-    mode === "initializing" || mode === "probing" || mode === "verifying";
+  const isChecking = mode === "initializing" || mode === "probing" || mode === "verifying";
   const title =
     mode === "request"
       ? "Reset password"
@@ -537,7 +536,13 @@ function ResetPasswordPage() {
             <form onSubmit={handleRequest} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
               <Button type="submit" className="w-full" disabled={busy}>
                 {busy ? "Sending…" : "Send reset link"}
@@ -549,7 +554,10 @@ function ResetPasswordPage() {
               </p>
             </form>
           ) : isChecking ? (
-            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground" role="status">
+            <div
+              className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground"
+              role="status"
+            >
               Verifying your reset link…
             </div>
           ) : mode === "update" ? (
@@ -623,7 +631,12 @@ function ResetPasswordPage() {
               </Button>
             </form>
           ) : (
-            <div className="space-y-4" role="alert" aria-live="polite" data-testid="reset-link-error">
+            <div
+              className="space-y-4"
+              role="alert"
+              aria-live="polite"
+              data-testid="reset-link-error"
+            >
               <div className="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <p>{errorMessage ?? "We couldn't verify this password reset link."}</p>

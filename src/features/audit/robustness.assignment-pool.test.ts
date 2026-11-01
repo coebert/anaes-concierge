@@ -53,9 +53,7 @@ function makeChain(table: string) {
     in: () => typeof chain;
     order: () => typeof chain;
     range: () => typeof chain;
-    then: (
-      onfulfilled: (v: { data: Row[]; error: null }) => unknown,
-    ) => Promise<unknown>;
+    then: (onfulfilled: (v: { data: Row[]; error: null }) => unknown) => Promise<unknown>;
   } = {
     select: () => chain,
     eq: () => chain,
@@ -124,11 +122,7 @@ const ts = (id: string, session: "am" | "pm") => ({
   specialty_id: null,
 });
 
-const theatreAsn = (
-  staff_id: string,
-  session: "am" | "pm",
-  theatre_session_id: string,
-) => ({
+const theatreAsn = (staff_id: string, session: "am" | "pm", theatre_session_id: string) => ({
   staff_id,
   session_date: DATE,
   session,
@@ -256,10 +250,7 @@ describe("Headroom pool — anyone on a theatre_session is excluded", () => {
     // Pathological data: same consultant flagged as both theatre AND spa
     // for the same half. The theatre assignment must win — they are
     // physically on a list, not on SPA available for redeployment.
-    fixture.rota_assignments = [
-      theatreAsn("c1", "am", "t-am"),
-      spaAsn("c1", "am"),
-    ];
+    fixture.rota_assignments = [theatreAsn("c1", "am", "t-am"), spaAsn("c1", "am")];
 
     const am = await half("am");
     // The order of inserts puts spa last, which currently sets state='spa'.
@@ -275,10 +266,7 @@ describe("Headroom pool — anyone on a theatre_session is excluded", () => {
   it("consultant on SPA AM + theatre PM: free pool gets neither half", async () => {
     fixture.profiles = [CONS("c1")];
     fixture.theatre_sessions = [ts("t-pm", "pm")];
-    fixture.rota_assignments = [
-      spaAsn("c1", "am"),
-      theatreAsn("c1", "pm", "t-pm"),
-    ];
+    fixture.rota_assignments = [spaAsn("c1", "am"), theatreAsn("c1", "pm", "t-pm")];
 
     const am = await half("am");
     const pm = await half("pm");
@@ -293,10 +281,7 @@ describe("Headroom pool — anyone on a theatre_session is excluded", () => {
   it("consultant on theatre AM + SPA PM: AM excluded entirely, PM is SPA-only", async () => {
     fixture.profiles = [CONS("c1")];
     fixture.theatre_sessions = [ts("t-am", "am")];
-    fixture.rota_assignments = [
-      theatreAsn("c1", "am", "t-am"),
-      spaAsn("c1", "pm"),
-    ];
+    fixture.rota_assignments = [theatreAsn("c1", "am", "t-am"), spaAsn("c1", "pm")];
 
     const am = await half("am");
     const pm = await half("pm");

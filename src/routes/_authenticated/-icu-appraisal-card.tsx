@@ -67,14 +67,16 @@ export function IcuAppraisalCard({ staffId }: { staffId: string }) {
           <Stethoscope className="h-4 w-4 text-primary" /> Intensive care — appraisal evidence
         </CardTitle>
         <CardDescription className="text-xs">
-          Intensive care days, on-calls and PAs from CLWRota for the chosen period, ready to
-          attach to appraisal or revalidation.
+          Intensive care days, on-calls and PAs from CLWRota for the chosen period, ready to attach
+          to appraisal or revalidation.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label htmlFor="icu-appraisal-from" className="text-xs">From</Label>
+            <Label htmlFor="icu-appraisal-from" className="text-xs">
+              From
+            </Label>
             <Input
               id="icu-appraisal-from"
               type="date"
@@ -84,7 +86,9 @@ export function IcuAppraisalCard({ staffId }: { staffId: string }) {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="icu-appraisal-to" className="text-xs">To</Label>
+            <Label htmlFor="icu-appraisal-to" className="text-xs">
+              To
+            </Label>
             <Input
               id="icu-appraisal-to"
               type="date"
@@ -174,8 +178,8 @@ export function IcuAppraisalCard({ staffId }: { staffId: string }) {
                 <ul className="mt-1.5 space-y-0.5 text-muted-foreground">
                   {data.discrepancies.slice(0, 3).map((d, i) => (
                     <li key={`${d.sessionDate}-${d.session}-${i}`}>
-                      {formatDateWithWeekdayGB(d.sessionDate)} · {SESSION_LABEL[d.session] ?? d.session}{" "}
-                      — {d.detail}
+                      {formatDateWithWeekdayGB(d.sessionDate)} ·{" "}
+                      {SESSION_LABEL[d.session] ?? d.session} — {d.detail}
                     </li>
                   ))}
                 </ul>
@@ -191,7 +195,10 @@ export function IcuAppraisalCard({ staffId }: { staffId: string }) {
                       {SESSION_LABEL[s.session] ?? s.session}
                       {s.placeName ? ` · ${s.placeName}` : ""}
                     </span>
-                    <Badge variant={s.paCredit == null ? "outline" : "secondary"} className="shrink-0">
+                    <Badge
+                      variant={s.paCredit == null ? "outline" : "secondary"}
+                      className="shrink-0"
+                    >
                       {s.paCredit == null ? "PA estimated" : `${s.paCredit} PA`}
                     </Badge>
                   </li>

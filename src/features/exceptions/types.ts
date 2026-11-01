@@ -55,7 +55,8 @@ export const CATEGORY_LABEL: Record<ExceptionCategory, string> = {
 export const CATEGORY_DESCRIPTION: Record<ExceptionCategory, string> = {
   hours: "Worked beyond rostered hours — extra sessions, overrunning shift, additional on-call.",
   rest: "Natural breaks or minimum rest between shifts not achieved.",
-  education: "Missed teaching, training list, study leave, or clinic exposure required by the curriculum.",
+  education:
+    "Missed teaching, training list, study leave, or clinic exposure required by the curriculum.",
   service_support: "Rota gap or workload meant service delivery was compromised.",
   patient_safety: "A situation that put, or could have put, patients at risk.",
 };
@@ -87,8 +88,6 @@ export const RESPONSE_SLA_DAYS = 7;
 export const SAFETY_SLA_HOURS = 24;
 
 export function computeDueBy(now: Date, immediateSafety: boolean): Date {
-  const ms = immediateSafety
-    ? SAFETY_SLA_HOURS * 3_600_000
-    : RESPONSE_SLA_DAYS * 86_400_000;
+  const ms = immediateSafety ? SAFETY_SLA_HOURS * 3_600_000 : RESPONSE_SLA_DAYS * 86_400_000;
   return new Date(now.getTime() + ms);
 }

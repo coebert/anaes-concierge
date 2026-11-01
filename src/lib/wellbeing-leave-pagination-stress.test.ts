@@ -89,22 +89,17 @@ const PROFILES: Record<"small" | "large", Profile> = {
 };
 
 const PROFILE: Profile =
-  PROFILES[(process.env.LEAVE_STRESS_PROFILE as "small" | "large") ?? "small"] ??
-  PROFILES.small;
+  PROFILES[(process.env.LEAVE_STRESS_PROFILE as "small" | "large") ?? "small"] ?? PROFILES.small;
 
 // Small overrun the wall-clock assertion tolerates before failing the build.
 // The profile's `timeBudgetMs` is the *target* — a small buffer absorbs
 // legitimate CI noise (cold caches, shared-runner jitter) while still failing
 // hard on real regressions. Override with `LEAVE_STRESS_TIME_THRESHOLD` if
 // tuning is needed (e.g. `0.25` = 25%). Default 15%.
-const RAW_THRESHOLD = Number.parseFloat(
-  process.env.LEAVE_STRESS_TIME_THRESHOLD ?? "0.15",
-);
+const RAW_THRESHOLD = Number.parseFloat(process.env.LEAVE_STRESS_TIME_THRESHOLD ?? "0.15");
 const TIME_OVERRUN_THRESHOLD =
   Number.isFinite(RAW_THRESHOLD) && RAW_THRESHOLD >= 0 ? RAW_THRESHOLD : 0.15;
-const HARD_TIME_LIMIT_MS = Math.round(
-  PROFILE.timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD),
-);
+const HARD_TIME_LIMIT_MS = Math.round(PROFILE.timeBudgetMs * (1 + TIME_OVERRUN_THRESHOLD));
 
 // eslint-disable-next-line no-console
 console.info(`[leave-pagination-stress] profile=${PROFILE.name}`);
@@ -142,16 +137,11 @@ type Baseline = {
   };
 };
 
-const BASELINE_URL = new URL(
-  "./wellbeing-leave-pagination-stress.baseline.json",
-  import.meta.url,
-);
+const BASELINE_URL = new URL("./wellbeing-leave-pagination-stress.baseline.json", import.meta.url);
 const BASELINE_PATH = fileURLToPath(BASELINE_URL);
 const BASELINE: Baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
 
-const RAW_REGRESSION = Number.parseFloat(
-  process.env.LEAVE_STRESS_REGRESSION_THRESHOLD ?? "",
-);
+const RAW_REGRESSION = Number.parseFloat(process.env.LEAVE_STRESS_REGRESSION_THRESHOLD ?? "");
 const REGRESSION_THRESHOLD =
   Number.isFinite(RAW_REGRESSION) && RAW_REGRESSION >= 0
     ? RAW_REGRESSION
@@ -205,8 +195,7 @@ afterAll(() => {
         },
         daysSinceLastAnnual: {
           ms: Math.round(
-            recordedRuntimes.daysSinceLastAnnual ??
-              BASELINE.large.scenarios.daysSinceLastAnnual.ms,
+            recordedRuntimes.daysSinceLastAnnual ?? BASELINE.large.scenarios.daysSinceLastAnnual.ms,
           ),
         },
       },
@@ -219,7 +208,6 @@ afterAll(() => {
   );
 });
 
-
 // -----------------------------------------------------------------------------
 // Deterministic pseudo-random source.
 //
@@ -231,12 +219,12 @@ afterAll(() => {
 // reported failure with a different seed while keeping the run deterministic.
 // -----------------------------------------------------------------------------
 const RAW_SEED = Number.parseInt(process.env.LEAVE_STRESS_SEED ?? "", 10);
-const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xC0FFEE;
+const SEED = Number.isFinite(RAW_SEED) && RAW_SEED > 0 ? RAW_SEED : 0xc0ffee;
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6D2B79F5) >>> 0;
+    a = (a + 0x6d2b79f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -306,9 +294,7 @@ function generateLeaveRows(staffCount: number, rowsPerStaff: number, seed = SEED
     const staffId = `staff-${String(s).padStart(4, "0")}`;
     for (let i = 0; i < rowsPerStaff; i++) {
       const dayOffset = s * 3 + i * 7; // spread evenly, no dup dates per staff
-      const d = new Date(base + dayOffset * 86_400_000)
-        .toISOString()
-        .slice(0, 10);
+      const d = new Date(base + dayOffset * 86_400_000).toISOString().slice(0, 10);
       rows.push({
         id: `${staffId}-${i}`,
         staff_id: staffId,
@@ -333,7 +319,10 @@ function generateLeaveRows(staffCount: number, rowsPerStaff: number, seed = SEED
 
 /** ceil(rows/pageSize) with an extra "stop" page when rows is a multiple of pageSize. */
 function expectedRangeCalls(rows: number, pageSize: number): number {
-  return Math.floor(rows / pageSize) + (rows % pageSize === 0 ? 1 : Math.ceil((rows % pageSize) / pageSize));
+  return (
+    Math.floor(rows / pageSize) +
+    (rows % pageSize === 0 ? 1 : Math.ceil((rows % pageSize) / pageSize))
+  );
 }
 
 // Any single test must be allowed to run for the profile's hard time limit
@@ -348,107 +337,110 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     // date-derived assertions below can't silently drift on a non-UTC
     // runner. `getTimezoneOffset()` returns 0 for UTC on every Node
     // build we support.
-    expect(
-      process.env.TZ,
-      "stress test requires TZ=UTC for deterministic date reasoning",
-    ).toBe("UTC");
+    expect(process.env.TZ, "stress test requires TZ=UTC for deterministic date reasoning").toBe(
+      "UTC",
+    );
     expect(
       new Date("2026-07-10T00:00:00Z").getTimezoneOffset(),
       "Date is not resolving to UTC — CI runner timezone leaked in",
     ).toBe(0);
   });
 
-  it("returns every row in deterministic end_date-desc order", { timeout: TEST_TIMEOUT_MS }, async () => {
-    const t0 = performance.now();
-    const { staff, perStaff } = PROFILE.scenarioA;
-    const rows = generateLeaveRows(staff, perStaff);
-    const table = makeFakeLeaveTable(rows);
+  it(
+    "returns every row in deterministic end_date-desc order",
+    { timeout: TEST_TIMEOUT_MS },
+    async () => {
+      const t0 = performance.now();
+      const { staff, perStaff } = PROFILE.scenarioA;
+      const rows = generateLeaveRows(staff, perStaff);
+      const table = makeFakeLeaveTable(rows);
 
-    const out = await fetchAllPaged<Row>(
-      () => table.order("end_date", { ascending: false }),
-      PAGE_SIZE,
-    );
+      const out = await fetchAllPaged<Row>(
+        () => table.order("end_date", { ascending: false }),
+        PAGE_SIZE,
+      );
 
-    // Build the canonical expected sequence directly from the input rows
-    // using the same total order the fake table applies: end_date DESC,
-    // then id ASC. Comparing the entire array (not just relative
-    // positions) means a TZ quirk anywhere — a `Date.toISOString()` on a
-    // non-UTC runner, a locale-aware string compare — would shift dates
-    // and diverge the two arrays instead of silently satisfying a
-    // pairwise `prev > cur` check.
-    const expected = rows.slice().sort((a, b) => {
-      if (a.end_date !== b.end_date) return a.end_date < b.end_date ? 1 : -1;
-      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    });
-    expect(out.map((r) => r.id)).toEqual(expected.map((r) => r.id));
-    expect(out.map((r) => r.end_date)).toEqual(expected.map((r) => r.end_date));
+      // Build the canonical expected sequence directly from the input rows
+      // using the same total order the fake table applies: end_date DESC,
+      // then id ASC. Comparing the entire array (not just relative
+      // positions) means a TZ quirk anywhere — a `Date.toISOString()` on a
+      // non-UTC runner, a locale-aware string compare — would shift dates
+      // and diverge the two arrays instead of silently satisfying a
+      // pairwise `prev > cur` check.
+      const expected = rows.slice().sort((a, b) => {
+        if (a.end_date !== b.end_date) return a.end_date < b.end_date ? 1 : -1;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+      expect(out.map((r) => r.id)).toEqual(expected.map((r) => r.id));
+      expect(out.map((r) => r.end_date)).toEqual(expected.map((r) => r.end_date));
 
-    // Explicit UTC anchor rows — the generator seeds from
-    // 2020-01-01T00:00:00Z + N * 86_400_000ms and slices `toISOString()`,
-    // so on any UTC runner the first and last rows have exact, known
-    // calendar dates. On a non-UTC runner the ISO slice would shift by
-    // one day and these fail immediately.
-    const maxOffset = (staff - 1) * 3 + (perStaff - 1) * 7;
-    const firstExpectedEnd = new Date(
-      Date.UTC(2020, 0, 1) + maxOffset * 86_400_000,
-    )
-      .toISOString()
-      .slice(0, 10);
-    const lastExpectedEnd = "2020-01-01";
-    expect(out[0]!.end_date).toBe(firstExpectedEnd);
-    expect(out[out.length - 1]!.end_date).toBe(lastExpectedEnd);
+      // Explicit UTC anchor rows — the generator seeds from
+      // 2020-01-01T00:00:00Z + N * 86_400_000ms and slices `toISOString()`,
+      // so on any UTC runner the first and last rows have exact, known
+      // calendar dates. On a non-UTC runner the ISO slice would shift by
+      // one day and these fail immediately.
+      const maxOffset = (staff - 1) * 3 + (perStaff - 1) * 7;
+      const firstExpectedEnd = new Date(Date.UTC(2020, 0, 1) + maxOffset * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const lastExpectedEnd = "2020-01-01";
+      expect(out[0]!.end_date).toBe(firstExpectedEnd);
+      expect(out[out.length - 1]!.end_date).toBe(lastExpectedEnd);
 
-    expect(new Set(out.map((r) => r.id))).toEqual(new Set(rows.map((r) => r.id)));
+      expect(new Set(out.map((r) => r.id))).toEqual(new Set(rows.map((r) => r.id)));
 
-    // Repeatability: a second independent run with the same SEED must
-    // produce a bit-for-bit identical id sequence. This is what "stable"
-    // buys us — any accidental Date.now()/Math.random() creeping back in
-    // would diverge the two sequences and fail here.
-    const rows2 = generateLeaveRows(staff, perStaff);
-    const table2 = makeFakeLeaveTable(rows2);
-    const out2 = await fetchAllPaged<Row>(
-      () => table2.order("end_date", { ascending: false }),
-      PAGE_SIZE,
-    );
-    expect(out2.map((r) => r.id)).toEqual(out.map((r) => r.id));
-    recordAndAssert("orderedRead", performance.now() - t0);
-  });
+      // Repeatability: a second independent run with the same SEED must
+      // produce a bit-for-bit identical id sequence. This is what "stable"
+      // buys us — any accidental Date.now()/Math.random() creeping back in
+      // would diverge the two sequences and fail here.
+      const rows2 = generateLeaveRows(staff, perStaff);
+      const table2 = makeFakeLeaveTable(rows2);
+      const out2 = await fetchAllPaged<Row>(
+        () => table2.order("end_date", { ascending: false }),
+        PAGE_SIZE,
+      );
+      expect(out2.map((r) => r.id)).toEqual(out.map((r) => r.id));
+      recordAndAssert("orderedRead", performance.now() - t0);
+    },
+  );
 
-  it("issues exactly ceil(rows/pageSize) requests, never per-row", { timeout: TEST_TIMEOUT_MS }, async () => {
-    const t0 = performance.now();
-    const { staff, perStaff } = PROFILE.scenarioA;
-    const rows = generateLeaveRows(staff, perStaff);
-    const table = makeFakeLeaveTable(rows);
-    await fetchAllPaged<Row>(
-      () => table.order("end_date", { ascending: false }),
-      PAGE_SIZE,
-    );
-    expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
-    expect(table.rangeCalls).toBeLessThan(rows.length);
-    recordAndAssert("requestCount", performance.now() - t0);
-  });
+  it(
+    "issues exactly ceil(rows/pageSize) requests, never per-row",
+    { timeout: TEST_TIMEOUT_MS },
+    async () => {
+      const t0 = performance.now();
+      const { staff, perStaff } = PROFILE.scenarioA;
+      const rows = generateLeaveRows(staff, perStaff);
+      const table = makeFakeLeaveTable(rows);
+      await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }), PAGE_SIZE);
+      expect(table.rangeCalls).toBe(expectedRangeCalls(rows.length, PAGE_SIZE));
+      expect(table.rangeCalls).toBeLessThan(rows.length);
+      recordAndAssert("requestCount", performance.now() - t0);
+    },
+  );
 
-  it("keeps request count bounded when a staff filter is applied", { timeout: TEST_TIMEOUT_MS }, async () => {
-    const t0 = performance.now();
-    const { staff, perStaff } = PROFILE.scenarioB;
-    const rows = generateLeaveRows(staff, perStaff);
-    const table = makeFakeLeaveTable(rows);
+  it(
+    "keeps request count bounded when a staff filter is applied",
+    { timeout: TEST_TIMEOUT_MS },
+    async () => {
+      const t0 = performance.now();
+      const { staff, perStaff } = PROFILE.scenarioB;
+      const rows = generateLeaveRows(staff, perStaff);
+      const table = makeFakeLeaveTable(rows);
 
-    const targetStaff = "staff-0007";
-    const out = await fetchAllPaged<Row>(
-      () =>
-        table
-          .eq("staff_id", targetStaff)
-          .order("end_date", { ascending: false }),
-      PAGE_SIZE,
-    );
+      const targetStaff = "staff-0007";
+      const out = await fetchAllPaged<Row>(
+        () => table.eq("staff_id", targetStaff).order("end_date", { ascending: false }),
+        PAGE_SIZE,
+      );
 
-    // One page per <= PAGE_SIZE rows for that staff.
-    expect(out).toHaveLength(perStaff);
-    expect(table.rangeCalls).toBe(expectedRangeCalls(perStaff, PAGE_SIZE));
-    expect(out.every((r) => r.staff_id === targetStaff)).toBe(true);
-    recordAndAssert("filteredRead", performance.now() - t0);
-  });
+      // One page per <= PAGE_SIZE rows for that staff.
+      expect(out).toHaveLength(perStaff);
+      expect(table.rangeCalls).toBe(expectedRangeCalls(perStaff, PAGE_SIZE));
+      expect(out.every((r) => r.staff_id === targetStaff)).toBe(true);
+      recordAndAssert("filteredRead", performance.now() - t0);
+    },
+  );
 
   it(
     "stays within a tight time budget for a large dataset",
@@ -492,73 +484,73 @@ describe(`paginated leave query — stress & performance (profile=${PROFILE.name
     HARD_TIME_LIMIT_MS + 30_000,
   );
 
-  it("computes correct 'days since last annual leave' for every staff member at scale", { timeout: TEST_TIMEOUT_MS }, async () => {
-    const t0 = performance.now();
-    const { staff, perStaff } = PROFILE.scenarioD;
-    // Strip pre-existing annual/approved rows so the injected "recent" row
-    // is unambiguously the most recent for every staff — otherwise the
-    // generator's spread can, at large profile sizes, produce a base row
-    // with an even later end_date and beat the injected value.
-    const baseRows = generateLeaveRows(staff, perStaff).filter(
-      (r) => !(r.type === "annual" && r.status === "approved"),
-    );
-    const rows: Row[] = baseRows;
-    // Explicit UTC anchor. `Date.UTC` bypasses the host timezone entirely
-    // so the same numeric timestamp is produced on every runner; the
-    // roundtrip assertion below fails immediately if a rogue local-time
-    // `Date` constructor leaks in.
-    const todayMs = Date.UTC(2026, 6, 10);
-    expect(new Date(todayMs).toISOString()).toBe("2026-07-10T00:00:00.000Z");
-    const recentByStaff = new Map<string, { end: string; daysAgo: number }>();
-    for (let s = 0; s < staff; s++) {
-      const staffId = `staff-${String(s).padStart(4, "0")}`;
-      const daysAgo = 5 + (s % 40); // 5..44 days ago
-      const end = new Date(todayMs - daysAgo * 86_400_000)
-        .toISOString()
-        .slice(0, 10);
-      rows.push({
-        id: `${staffId}-recent-annual`,
-        staff_id: staffId,
-        type: "annual",
-        status: "approved",
-        end_date: end,
-      });
-      recentByStaff.set(staffId, { end, daysAgo });
-    }
-    // Spot-check the boundary rows against fully-explicit UTC ISO dates.
-    // If any Date arithmetic above silently used local time, these fail
-    // loudly rather than only surfacing as an off-by-one day count later.
-    expect(recentByStaff.get("staff-0000")!.end).toBe("2026-07-05"); // 5 days
-    expect(recentByStaff.get("staff-0039")!.end).toBe("2026-05-27"); // 44 days
-
-    const table = makeFakeLeaveTable(rows);
-    const out = await fetchAllPaged<Row>(
-      () => table.order("end_date", { ascending: false }),
-      PAGE_SIZE,
-    );
-
-    const perStaffLast = new Map<string, string>();
-    for (const r of out) {
-      if (r.type !== "annual" || r.status !== "approved") continue;
-      const cur = perStaffLast.get(r.staff_id);
-      if (!cur || r.end_date > cur) perStaffLast.set(r.staff_id, r.end_date);
-    }
-
-    for (const [staffId, { end: expectedEnd, daysAgo }] of recentByStaff) {
-      const gotEnd = perStaffLast.get(staffId);
-      expect(gotEnd, `no annual leave found for ${staffId}`).toBeDefined();
-      // Exact ISO calendar-day match. Any UTC drift shifts `gotEnd` by
-      // one day and this fires before day-count math can mask it.
-      expect(gotEnd).toBe(expectedEnd);
-      const gotDays = Math.floor(
-        (todayMs - new Date(gotEnd!).getTime()) / 86_400_000,
+  it(
+    "computes correct 'days since last annual leave' for every staff member at scale",
+    { timeout: TEST_TIMEOUT_MS },
+    async () => {
+      const t0 = performance.now();
+      const { staff, perStaff } = PROFILE.scenarioD;
+      // Strip pre-existing annual/approved rows so the injected "recent" row
+      // is unambiguously the most recent for every staff — otherwise the
+      // generator's spread can, at large profile sizes, produce a base row
+      // with an even later end_date and beat the injected value.
+      const baseRows = generateLeaveRows(staff, perStaff).filter(
+        (r) => !(r.type === "annual" && r.status === "approved"),
       );
-      // `daysAgo` is the ground truth we injected, computed WITHOUT
-      // round-tripping through `expectedEnd` — so this is an independent
-      // check that "date string → day count" matches the seed value.
-      expect(gotDays).toBe(daysAgo);
-      expect(gotDays).toBeLessThan(300);
-    }
-    recordAndAssert("daysSinceLastAnnual", performance.now() - t0);
-  });
+      const rows: Row[] = baseRows;
+      // Explicit UTC anchor. `Date.UTC` bypasses the host timezone entirely
+      // so the same numeric timestamp is produced on every runner; the
+      // roundtrip assertion below fails immediately if a rogue local-time
+      // `Date` constructor leaks in.
+      const todayMs = Date.UTC(2026, 6, 10);
+      expect(new Date(todayMs).toISOString()).toBe("2026-07-10T00:00:00.000Z");
+      const recentByStaff = new Map<string, { end: string; daysAgo: number }>();
+      for (let s = 0; s < staff; s++) {
+        const staffId = `staff-${String(s).padStart(4, "0")}`;
+        const daysAgo = 5 + (s % 40); // 5..44 days ago
+        const end = new Date(todayMs - daysAgo * 86_400_000).toISOString().slice(0, 10);
+        rows.push({
+          id: `${staffId}-recent-annual`,
+          staff_id: staffId,
+          type: "annual",
+          status: "approved",
+          end_date: end,
+        });
+        recentByStaff.set(staffId, { end, daysAgo });
+      }
+      // Spot-check the boundary rows against fully-explicit UTC ISO dates.
+      // If any Date arithmetic above silently used local time, these fail
+      // loudly rather than only surfacing as an off-by-one day count later.
+      expect(recentByStaff.get("staff-0000")!.end).toBe("2026-07-05"); // 5 days
+      expect(recentByStaff.get("staff-0039")!.end).toBe("2026-05-27"); // 44 days
+
+      const table = makeFakeLeaveTable(rows);
+      const out = await fetchAllPaged<Row>(
+        () => table.order("end_date", { ascending: false }),
+        PAGE_SIZE,
+      );
+
+      const perStaffLast = new Map<string, string>();
+      for (const r of out) {
+        if (r.type !== "annual" || r.status !== "approved") continue;
+        const cur = perStaffLast.get(r.staff_id);
+        if (!cur || r.end_date > cur) perStaffLast.set(r.staff_id, r.end_date);
+      }
+
+      for (const [staffId, { end: expectedEnd, daysAgo }] of recentByStaff) {
+        const gotEnd = perStaffLast.get(staffId);
+        expect(gotEnd, `no annual leave found for ${staffId}`).toBeDefined();
+        // Exact ISO calendar-day match. Any UTC drift shifts `gotEnd` by
+        // one day and this fires before day-count math can mask it.
+        expect(gotEnd).toBe(expectedEnd);
+        const gotDays = Math.floor((todayMs - new Date(gotEnd!).getTime()) / 86_400_000);
+        // `daysAgo` is the ground truth we injected, computed WITHOUT
+        // round-tripping through `expectedEnd` — so this is an independent
+        // check that "date string → day count" matches the seed value.
+        expect(gotDays).toBe(daysAgo);
+        expect(gotDays).toBeLessThan(300);
+      }
+      recordAndAssert("daysSinceLastAnnual", performance.now() - t0);
+    },
+  );
 });

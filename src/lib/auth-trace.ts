@@ -34,11 +34,8 @@ export function fingerprint(token: string | null | undefined): string | null {
 export function describeRecoveryUrl(href: string): Record<string, unknown> {
   try {
     const u = new URL(href);
-    const hashParams = new URLSearchParams(
-      u.hash.startsWith("#") ? u.hash.slice(1) : "",
-    );
-    const pick = (k: string) =>
-      u.searchParams.get(k) ?? hashParams.get(k) ?? null;
+    const hashParams = new URLSearchParams(u.hash.startsWith("#") ? u.hash.slice(1) : "");
+    const pick = (k: string) => u.searchParams.get(k) ?? hashParams.get(k) ?? null;
     return {
       pathname: u.pathname,
       searchKeys: [...u.searchParams.keys()],
@@ -59,7 +56,15 @@ export function describeRecoveryUrl(href: string): Record<string, unknown> {
 
 /** Summarise a Supabase session without leaking tokens. */
 export function describeSession(
-  session: { user?: { id?: string; email?: string | null } | null; access_token?: string; refresh_token?: string; expires_at?: number | null } | null | undefined,
+  session:
+    | {
+        user?: { id?: string; email?: string | null } | null;
+        access_token?: string;
+        refresh_token?: string;
+        expires_at?: number | null;
+      }
+    | null
+    | undefined,
 ): Record<string, unknown> {
   if (!session) return { present: false };
   return {

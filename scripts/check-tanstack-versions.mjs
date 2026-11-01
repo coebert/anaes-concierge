@@ -33,9 +33,7 @@ const errors = [];
 for (const [pkg, minVersion] of Object.entries(REQUIREMENTS)) {
   let installed;
   try {
-    installed = JSON.parse(
-      readFileSync(require.resolve(`${pkg}/package.json`), "utf8"),
-    ).version;
+    installed = JSON.parse(readFileSync(require.resolve(`${pkg}/package.json`), "utf8")).version;
   } catch (err) {
     errors.push(`${pkg}: not installed (${err.message})`);
     continue;

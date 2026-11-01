@@ -52,7 +52,9 @@ function theatre(date: string, half: "am" | "pm"): AssignmentLite {
   };
 }
 
-function leave(over: Partial<LeaveRowLite> & Pick<LeaveRowLite, "start_date" | "end_date">): LeaveRowLite {
+function leave(
+  over: Partial<LeaveRowLite> & Pick<LeaveRowLite, "start_date" | "end_date">,
+): LeaveRowLite {
   return {
     type: "annual",
     status: "approved",
@@ -145,12 +147,7 @@ describe("expandApprovedLeaveToAssignments", () => {
     const out = expandApprovedLeaveToAssignments(STAFF.id, rows, "2025-01-01", "2025-01-31");
     // Only the approved row survives, clipped to 2025-01-01..2025-01-02.
     const keys = out.map((a) => `${a.session_date}|${a.session}`).sort();
-    expect(keys).toEqual([
-      "2025-01-01|am",
-      "2025-01-01|pm",
-      "2025-01-02|am",
-      "2025-01-02|pm",
-    ]);
+    expect(keys).toEqual(["2025-01-01|am", "2025-01-01|pm", "2025-01-02|am", "2025-01-02|pm"]);
   });
 });
 
@@ -202,12 +199,7 @@ describe("dominant location updates after leave overlay", () => {
       leave({ start_date: "2025-01-13", end_date: "2025-01-13" }),
       leave({ start_date: "2025-01-20", end_date: "2025-01-20" }),
     ];
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id,
-      leaveRows,
-      WINDOW_FROM,
-      WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const effective = applyLeaveOverlay(baseAssignments, overlay);
     const grid = dominantByHalfSession(effective, sessionsById, theatresById, 2);
     // The theatre assignments were dropped; leave now dominates AM Monday.
@@ -268,6 +260,5 @@ describe("dominant location updates after leave overlay", () => {
     const leaveShare = res.locationBreakdown.find((b) => b.location === LOCATION_LABELS.leave);
     // 3 approved full days = 6 half-sessions of leave.
     expect(leaveShare?.count).toBe(6);
-
   });
 });

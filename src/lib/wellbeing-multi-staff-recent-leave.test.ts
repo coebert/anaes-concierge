@@ -81,17 +81,10 @@ function makeFakeTable(rows: Row[]) {
   return build;
 }
 
-function lastApproved(
-  staffId: string,
-  type: LeaveType,
-  leave: readonly Row[],
-): Row | null {
+function lastApproved(staffId: string, type: LeaveType, leave: readonly Row[]): Row | null {
   return (
     leave
-      .filter(
-        (l) =>
-          l.staff_id === staffId && l.type === type && l.status === "approved",
-      )
+      .filter((l) => l.staff_id === staffId && l.type === type && l.status === "approved")
       .sort((a, b) => b.end_date.localeCompare(a.end_date))[0] ?? null
   );
 }
@@ -105,9 +98,30 @@ function lastApproved(
  */
 function buildFixture() {
   const staff = [
-    { id: "staff-a", name: "Dr A. Patel", type: "annual" as const, recentEnd: 12, recentStart: 18, staleEnd: 340 },
-    { id: "staff-b", name: "Dr B. Kim", type: "study" as const, recentEnd: 7, recentStart: 10, staleEnd: 310 },
-    { id: "staff-c", name: "Dr C. Novak", type: "compassionate" as const, recentEnd: 25, recentStart: 27, staleEnd: 355 },
+    {
+      id: "staff-a",
+      name: "Dr A. Patel",
+      type: "annual" as const,
+      recentEnd: 12,
+      recentStart: 18,
+      staleEnd: 340,
+    },
+    {
+      id: "staff-b",
+      name: "Dr B. Kim",
+      type: "study" as const,
+      recentEnd: 7,
+      recentStart: 10,
+      staleEnd: 310,
+    },
+    {
+      id: "staff-c",
+      name: "Dr C. Novak",
+      type: "compassionate" as const,
+      recentEnd: 25,
+      recentStart: 27,
+      staleEnd: 355,
+    },
   ];
   const fillerStaff = Array.from({ length: 20 }, (_, i) => ({
     id: `staff-filler-${i}`,
@@ -181,9 +195,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     const { staff, rows } = buildFixture();
     const table = makeFakeTable(rows);
 
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
     expect(fetched.length).toBe(rows.length);
 
     // Every `.range(...)` call must have been preceded by a consistent
@@ -226,9 +238,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
           start_date: r.start_date,
           end_date: r.end_date,
         }));
-      const legacyLeave: LeaveLite[] = paginatedLeave.filter(
-        (l) => daysSince(l.start_date) > 90,
-      );
+      const legacyLeave: LeaveLite[] = paginatedLeave.filter((l) => daysSince(l.start_date) > 90);
 
       const paginatedScore = computeWellbeing({
         staffId: s.id,
@@ -334,14 +344,10 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       expect(onFirstPage, `${s.name}'s recent row must NOT be on page 1`).toBe(false);
     }
 
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
     for (const s of staff) {
       const approved = fetched
-        .filter(
-          (r) => r.staff_id === s.id && r.type === s.type && r.status === "approved",
-        )
+        .filter((r) => r.staff_id === s.id && r.type === s.type && r.status === "approved")
         .map((r) => r.end_date);
       expect(approved).toEqual([isoDaysAgo(s.recentEnd), isoDaysAgo(s.staleEnd)]);
     }
@@ -407,9 +413,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     }
 
     const table = makeFakeTable(rows);
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
     expect(fetched.length).toBe(rows.length);
 
     // Ordering: every page fetched with end_date desc, no exceptions.
@@ -452,9 +456,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
 
     // Verify the exclusion is specifically the 91-days-ago row — drop it,
     // reduce value to 2, normalised to 2/3.
-    const withoutBoundary: LeaveLite[] = leaveInput.filter(
-      (l) => l.start_date !== isoDaysAgo(91),
-    );
+    const withoutBoundary: LeaveLite[] = leaveInput.filter((l) => l.start_date !== isoDaysAgo(91));
     // (No-op: the 91-day row was already excluded from the score above.
     // This branch removes it from the *input* to confirm the score is
     // identical — proving the driver truly ignored it, not merely capped.)
@@ -467,15 +469,11 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       exceptions: [],
     });
     expect(resultWithoutOutOfWindow.score).toBe(result.score);
-    expect(
-      resultWithoutOutOfWindow.drivers.find((d) => d.key === "leave")!.value,
-    ).toBe(3);
+    expect(resultWithoutOutOfWindow.drivers.find((d) => d.key === "leave")!.value).toBe(3);
 
     // And dropping an in-window row (the day-90 boundary one) must lower
     // the driver — confirming day 90 is inclusive.
-    const withoutDay90: LeaveLite[] = leaveInput.filter(
-      (l) => l.start_date !== isoDaysAgo(90),
-    );
+    const withoutDay90: LeaveLite[] = leaveInput.filter((l) => l.start_date !== isoDaysAgo(90));
     const resultWithoutDay90 = computeWellbeing({
       staffId: STAFF.id,
       now: TODAY,
@@ -484,9 +482,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       leave: withoutDay90,
       exceptions: [],
     });
-    expect(
-      resultWithoutDay90.drivers.find((d) => d.key === "leave")!.value,
-    ).toBe(2);
+    expect(resultWithoutDay90.drivers.find((d) => d.key === "leave")!.value).toBe(2);
     expect(resultWithoutDay90.score).toBeGreaterThan(result.score);
   });
 
@@ -565,9 +561,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
     });
 
     const table = makeFakeTable(rows);
-    const fetched = await fetchAllPaged<Row>(() =>
-      table.order("end_date", { ascending: false }),
-    );
+    const fetched = await fetchAllPaged<Row>(() => table.order("end_date", { ascending: false }));
     expect(fetched.length).toBe(rows.length);
     // Ordering discipline holds across the paginated scan.
     for (const call of table.rangeCalls) {
@@ -623,7 +617,12 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
 
     // Drop the compassionate cancellation → value 1 (study only).
     const studyOnly: LeaveLite[] = leaveInput.filter(
-      (l) => !(l.type === "compassionate" && l.status === "cancelled" && l.start_date === isoDaysAgo(20)),
+      (l) =>
+        !(
+          l.type === "compassionate" &&
+          l.status === "cancelled" &&
+          l.start_date === isoDaysAgo(20)
+        ),
     );
     const studyOnlyResult = computeWellbeing({
       staffId: STAFF.id,
@@ -648,9 +647,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       leave: compassionateOnly,
       exceptions: [],
     });
-    expect(
-      compassionateOnlyResult.drivers.find((d) => d.key === "leave")!.value,
-    ).toBe(1);
+    expect(compassionateOnlyResult.drivers.find((d) => d.key === "leave")!.value).toBe(1);
     expect(compassionateOnlyResult.score).toBe(studyOnlyResult.score);
 
     // Composite delta: driver went from 0 (drop both) to 2/3 saturation.

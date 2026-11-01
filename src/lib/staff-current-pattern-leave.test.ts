@@ -124,11 +124,7 @@ describe("chat leave availability — mergeLeaveAvailability", () => {
       isSelf: true,
     });
 
-    expect(merged.leave.upcoming.map((r) => r.type)).toEqual([
-      "annual",
-      "study",
-      "compassionate",
-    ]);
+    expect(merged.leave.upcoming.map((r) => r.type)).toEqual(["annual", "study", "compassionate"]);
     expect(merged.leave.overlapsByType.annual).toBe(1);
     expect(merged.leave.overlapsByType.study).toBe(1);
     expect(merged.leave.overlapsByType.compassionate).toBe(1);
@@ -258,13 +254,7 @@ describe("chat leave availability — mergeLeaveAvailability", () => {
 
     // Weekend/weekday scope untouched.
     for (const half of merged.weeklyGrid) {
-      expect(half.days.map((d) => d.weekday)).toEqual([
-        "Mon",
-        "Tue",
-        "Wed",
-        "Thu",
-        "Fri",
-      ]);
+      expect(half.days.map((d) => d.weekday)).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
     }
 
     // Regularity threshold text still uses the shared minCount/windowDays.

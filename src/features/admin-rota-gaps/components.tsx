@@ -35,7 +35,10 @@ export function GapRangeRow({ range }: { range: GapRange }) {
 }
 
 export function Stat({
-  icon: Icon, tone, label, value,
+  icon: Icon,
+  tone,
+  label,
+  value,
 }: {
   icon: typeof CheckCircle2;
   tone: "ok" | "bad" | "muted";
@@ -53,11 +56,7 @@ export const KIND_TONE: Record<GapKind, string> = {
   sync_missing: "bg-destructive/10 text-destructive",
 };
 
-export function ClassifiedSection({
-  report,
-}: {
-  report: ReturnType<typeof classifyRotaGaps>;
-}) {
+export function ClassifiedSection({ report }: { report: ReturnType<typeof classifyRotaGaps> }) {
   const total =
     report.counts.pre_rotation +
     report.counts.rotation_ended +

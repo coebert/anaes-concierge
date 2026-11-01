@@ -112,9 +112,7 @@ function runInvestigate(args: { data: { apply: boolean } }) {
     consultant_or_sas_on_session: corrections.filter(
       (c) => c.category === "consultant_or_sas_on_session",
     ),
-    unmatched_theatre_solo: corrections.filter(
-      (c) => c.category === "unmatched_theatre_solo",
-    ),
+    unmatched_theatre_solo: corrections.filter((c) => c.category === "unmatched_theatre_solo"),
     non_training_label: corrections.filter((c) => c.category === "non_training_label"),
   };
 
@@ -259,7 +257,6 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     return valueDiv.textContent ?? "";
   }
 
-
   it("preview shows counts without mutating the store", async () => {
     renderCard();
 
@@ -270,7 +267,6 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     });
     expect(statValue(/review: unmatched theatre row/i)).toBe("1");
     expect(statValue(/review: non-training label/i)).toBe("0");
-
 
     // Persistence guarantee: no row was changed by a dry-run preview.
     const train = store.assignments.find((a) => a.id === "asg-train")!;
@@ -286,9 +282,7 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     await clickButton(/investigate & fix now/i);
 
     await waitFor(() => {
-      expect(
-        screen.queryByText(/list\(s\) reclassified solo → supervised/i),
-      ).not.toBeNull();
+      expect(screen.queryByText(/list\(s\) reclassified solo → supervised/i)).not.toBeNull();
     });
 
     expect(investigateMock).toHaveBeenCalledWith({ data: { apply: true } });
@@ -298,15 +292,9 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     expect(train.role_on_list).toBe("supervised");
     expect(train.supervisor_id).toBe("cons-1");
 
-    expect(store.assignments.find((a) => a.id === "asg-cons")!.role_on_list).toBe(
-      "solo",
-    );
-    expect(store.assignments.find((a) => a.id === "asg-unmatched")!.role_on_list).toBe(
-      "solo",
-    );
-    expect(store.assignments.find((a) => a.id === "asg-legit")!.role_on_list).toBe(
-      "solo",
-    );
+    expect(store.assignments.find((a) => a.id === "asg-cons")!.role_on_list).toBe("solo");
+    expect(store.assignments.find((a) => a.id === "asg-unmatched")!.role_on_list).toBe("solo");
+    expect(store.assignments.find((a) => a.id === "asg-legit")!.role_on_list).toBe("solo");
 
     expect(store.reclassificationLog).toEqual([
       expect.objectContaining({
@@ -317,9 +305,7 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
       }),
     ]);
 
-    expect(toastSuccess).toHaveBeenCalledWith(
-      expect.stringMatching(/corrected 1 list\(s\)/i),
-    );
+    expect(toastSuccess).toHaveBeenCalledWith(expect.stringMatching(/corrected 1 list\(s\)/i));
     expect(toastError).not.toHaveBeenCalled();
   });
 
@@ -328,9 +314,7 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
 
     await clickButton(/investigate & fix now/i);
     await waitFor(() =>
-      expect(
-        screen.queryByText(/list\(s\) reclassified solo → supervised/i),
-      ).not.toBeNull(),
+      expect(screen.queryByText(/list\(s\) reclassified solo → supervised/i)).not.toBeNull(),
     );
 
     await clickButton(/preview findings/i);
@@ -338,7 +322,6 @@ describe("Admin → Settings → Investigate & fix now (e2e)", () => {
     await waitFor(() => {
       expect(statValue(/auto-correctable/i)).toBe("0");
     });
-
 
     expect(store.reclassificationLog).toHaveLength(1);
   });

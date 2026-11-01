@@ -14,7 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Activity, CalendarClock, Moon, Users } from "lucide-react";
 import {
@@ -108,11 +113,13 @@ function IcuWorkloadPage() {
         .order("full_name");
       if (pErr) throw pErr;
 
-      const { data: rulesRow } = await supabase
+      const { data: rulesRow, error: rulesError } = await supabase
         .from("rota_rules")
         .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
         .limit(1)
         .maybeSingle();
+      // Never silently substitute default PA rates when the settings read fails.
+      if (rulesError) throw new Error(`PA settings could not be loaded: ${rulesError.message}`);
 
       const rules: IcuPaRules = {
         sessions_per_pa: Number(rulesRow?.sessions_per_pa ?? DEFAULT_RULES.sessions_per_pa),
@@ -129,7 +136,9 @@ function IcuWorkloadPage() {
       for (let from = 0; ; from += PAGE_SIZE) {
         const { data: page, error } = await supabase
           .from("rota_assignments")
-          .select("staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids")
+          .select(
+            "staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids",
+          )
           // No staff_id filter: a row rostered to a trainee can still name a
           // consultant in attending_consultant_ids, and that consultant must be
           // credited. Non-consultant tallies are dropped after tallying.
@@ -155,10 +164,10 @@ function IcuWorkloadPage() {
     const tallies = tallyIcuWorkload(data.rows, data.rules)
       .filter((t) => nameById.has(t.staff_id))
       .map((t) => ({
-      ...t,
-      name: nameById.get(t.staff_id) ?? "Unknown",
-      grade: gradeById.get(t.staff_id) ?? null,
-    }));
+        ...t,
+        name: nameById.get(t.staff_id) ?? "Unknown",
+        grade: gradeById.get(t.staff_id) ?? null,
+      }));
 
     return {
       rows: tallies,
@@ -206,9 +215,7 @@ function IcuWorkloadPage() {
             </div>
             <Button
               onClick={() => applyRange(fromInput, toInput)}
-              disabled={
-                !ISO_RE.test(fromInput) || !ISO_RE.test(toInput) || fromInput > toInput
-              }
+              disabled={!ISO_RE.test(fromInput) || !ISO_RE.test(toInput) || fromInput > toInput}
             >
               Apply
             </Button>
@@ -241,7 +248,12 @@ function IcuWorkloadPage() {
             <StatCard label="Doctors with ICU activity" value={view.rows.length} icon={Users} />
             <StatCard label="ICU days worked" value={view.totalDays} icon={CalendarClock} />
             <StatCard label="ICU on-calls" value={view.totalOnCalls} icon={Moon} />
-            <StatCard label="Total ICU PAs" value={view.totalPas.toFixed(1)} icon={Activity} tone="info" />
+            <StatCard
+              label="Total ICU PAs"
+              value={view.totalPas.toFixed(1)}
+              icon={Activity}
+              tone="info"
+            />
           </div>
 
           <Card>
@@ -251,20 +263,29 @@ function IcuWorkloadPage() {
                   <TableRow>
                     <TableHead>Doctor</TableHead>
                     <TableHead>Grade</TableHead>
-                    <TableHead className="text-right" title="Distinct dates with a daytime ICU session">
+                    <TableHead
+                      className="text-right"
+                      title="Distinct dates with a daytime ICU session"
+                    >
                       ICU days
                     </TableHead>
                     <TableHead className="text-right" title="Daytime ICU session halves (AM + PM)">
                       Sessions
                     </TableHead>
-                    <TableHead className="text-right" title="Distinct dates with an evening or overnight ICU on-call">
+                    <TableHead
+                      className="text-right"
+                      title="Distinct dates with an evening or overnight ICU on-call"
+                    >
                       On-calls
                     </TableHead>
                     <TableHead className="text-right" title="Distinct Saturday/Sunday ICU dates">
                       Weekend days
                     </TableHead>
                     <TableHead className="text-right">Job-planned PAs</TableHead>
-                    <TableHead className="text-right" title="Extra, locum, WLI and SAG ICU sessions">
+                    <TableHead
+                      className="text-right"
+                      title="Extra, locum, WLI and SAG ICU sessions"
+                    >
                       Extra PAs
                     </TableHead>
                     <TableHead className="text-right">Total PAs</TableHead>
@@ -290,7 +311,9 @@ function IcuWorkloadPage() {
                           <TableCell className="text-right tabular-nums">{r.sessions}</TableCell>
                           <TableCell className="text-right tabular-nums">{r.onCalls}</TableCell>
                           <TableCell className="text-right tabular-nums">{r.weekendDays}</TableCell>
-                          <TableCell className="text-right tabular-nums">{r.plannedPas.toFixed(1)}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {r.plannedPas.toFixed(1)}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums text-muted-foreground">
                             {r.extraPas.toFixed(1)}
                           </TableCell>
@@ -298,7 +321,8 @@ function IcuWorkloadPage() {
                             {r.totalPas.toFixed(1)}
                             {r.clwrotaPas > 0 ? (
                               <div className="text-[10px] font-normal text-muted-foreground">
-                                {r.clwrotaPas.toFixed(1)} recorded · {r.estimatedPas.toFixed(1)} est.
+                                {r.clwrotaPas.toFixed(1)} recorded · {r.estimatedPas.toFixed(1)}{" "}
+                                est.
                               </div>
                             ) : null}
                           </TableCell>
@@ -334,12 +358,10 @@ function IcuWorkloadPage() {
               </Table>
 
               <p className="mt-3 text-xs text-muted-foreground">
-                Where CLWRota records a PA value for a session it is used
-                directly (shown as “recorded”); remaining sessions are
-                estimated from the department rota rules:{" "}
-                {view.rules.sessions_per_pa} session(s) per PA,{" "}
-                {view.rules.oncall_pa_credit} PA per on-call,{" "}
-                {view.rules.weekend_pa_credit} PA per weekend day.
+                Where CLWRota records a PA value for a session it is used directly (shown as
+                “recorded”); remaining sessions are estimated from the department rota rules:{" "}
+                {view.rules.sessions_per_pa} session(s) per PA, {view.rules.oncall_pa_credit} PA per
+                on-call, {view.rules.weekend_pa_credit} PA per weekend day.
               </p>
             </CardContent>
           </Card>

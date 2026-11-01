@@ -49,10 +49,7 @@ function weekStartIso(d: Date): string {
 export function computePoacWeeklyStats(
   assignments: ReadonlyArray<PoacAssignmentInput>,
 ): PoacWeekStats[] {
-  const buckets = new Map<
-    string,
-    { total: number; wedAm: number; wedPm: number }
-  >();
+  const buckets = new Map<string, { total: number; wedAm: number; wedPm: number }>();
 
   for (const a of assignments) {
     const d = parseLocal(a.date);
@@ -93,9 +90,7 @@ export type PoacBaselineViolation = {
   stats: PoacWeekStats;
 };
 
-export function validatePoacBaseline(
-  weeks: ReadonlyArray<PoacWeekStats>,
-): PoacBaselineViolation[] {
+export function validatePoacBaseline(weeks: ReadonlyArray<PoacWeekStats>): PoacBaselineViolation[] {
   const violations: PoacBaselineViolation[] = [];
   for (const w of weeks) {
     if (w.baseline !== 0 && w.baseline !== 1) {

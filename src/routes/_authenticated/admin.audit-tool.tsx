@@ -28,11 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import {
   BarChart,
   Bar,
@@ -83,8 +79,6 @@ import {
   downloadAllPdf,
   type RunSqlOutput,
 } from "@/features/admin-audit-tool/panels";
-
-
 
 const STORAGE_KEY_PREFIX = "audit-tool:messages:";
 
@@ -212,9 +206,11 @@ function AuditToolPage() {
             <Button
               variant="default"
               size="sm"
-              onClick={() => void sendMessage({
-                text: "Please produce a professional audit report on this analysis using the generate_report tool. Run any additional queries you need first, then call generate_report with a clear title, executive summary, key findings as bullet points, sections with prose and charts where useful, and recommendations or caveats as appropriate.",
-              })}
+              onClick={() =>
+                void sendMessage({
+                  text: "Please produce a professional audit report on this analysis using the generate_report tool. Run any additional queries you need first, then call generate_report with a clear title, executive summary, key findings as bullet points, sections with prose and charts where useful, and recommendations or caveats as appropriate.",
+                })
+              }
               disabled={isBusy || messages.length === 0}
             >
               <FileText className="mr-1.5 h-4 w-4" />
@@ -280,10 +276,7 @@ function AuditToolPage() {
                 disabled={isBusy}
               />
               <PromptInputFooter className="justify-end">
-                <PromptInputSubmit
-                  status={status}
-                  disabled={!input.trim() && !isBusy}
-                />
+                <PromptInputSubmit status={status} disabled={!input.trim() && !isBusy} />
               </PromptInputFooter>
             </PromptInput>
           </div>
@@ -302,7 +295,8 @@ function AuditToolPage() {
             <>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-muted-foreground">
-                  {reports.length} {reports.length === 1 ? "report" : "reports"} in this conversation
+                  {reports.length} {reports.length === 1 ? "report" : "reports"} in this
+                  conversation
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -322,7 +316,9 @@ function AuditToolPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              {reports.map((r) => <ReportCard key={r.id} output={r.output} />)}
+              {reports.map((r) => (
+                <ReportCard key={r.id} output={r.output} />
+              ))}
             </>
           )}
         </div>

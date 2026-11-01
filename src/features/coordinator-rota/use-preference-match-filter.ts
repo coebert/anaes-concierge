@@ -44,9 +44,7 @@ export function usePreferenceMatchFilter(): [boolean, (v: boolean) => void] {
     } catch {
       /* ignore */
     }
-    window.dispatchEvent(
-      new CustomEvent<boolean>("rota:pref-match-changed", { detail: v }),
-    );
+    window.dispatchEvent(new CustomEvent<boolean>("rota:pref-match-changed", { detail: v }));
   };
 
   return [value, set];

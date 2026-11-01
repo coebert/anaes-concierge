@@ -205,7 +205,7 @@ export const getIcuFeedStatus = createServerFn({ method: "POST" })
 /** Mark an ICU divergence alert as seen. Admin / rota coordinator only. */
 export const acknowledgeIcuAuditAlert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .inputValidator((data) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await assertCoordinator(context as never);
     const { error } = await context.supabase

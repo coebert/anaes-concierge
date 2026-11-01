@@ -21,10 +21,11 @@ export async function loadTheatreNameAliases(): Promise<Map<string, string>> {
 export async function loadDutyTypeMappings(): Promise<DutyTypeMappingRow[]> {
   const { data, error } = await supabaseAdmin
     .from("duty_type_mappings")
-    .select("duty_type, pattern, match_type, grade_filter, trainee_seniority_filter, priority, active")
+    .select(
+      "duty_type, pattern, match_type, grade_filter, trainee_seniority_filter, priority, active",
+    )
     .eq("active", true)
     .order("priority", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as DutyTypeMappingRow[];
 }
-

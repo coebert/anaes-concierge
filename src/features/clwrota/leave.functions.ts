@@ -21,9 +21,6 @@ import {
 } from "@/lib/clwrota-leave-classify";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-
-
-
 /**
  * Pull leave from the configured CLWRota leave report URL and upsert into
  * `leave_requests`, keyed by `clwrota_external_id`.
@@ -40,7 +37,6 @@ export const syncClwRotaLeave = createServerFn({ method: "POST" })
 export async function performLeaveSync() {
   const startedAt = Date.now();
   const { apiKey } = getEnv();
-
 
   // Pre-sync count for the historical-data safeguard.
   const { count: preCount, error: preCountErr } = await supabaseAdmin
@@ -117,7 +113,6 @@ export async function performLeaveSync() {
     return { ...emptyResult, message: "Leave URL returned 0 rows.", rawPreview, sampleKeys };
   }
 
-
   // Build staff lookup maps.
   const { data: profiles, error: profErr } = await supabaseAdmin
     .from("profiles")
@@ -155,48 +150,107 @@ export async function performLeaveSync() {
     try {
       const personEmail = pick(row, ["person.email", "email", "person_email", "Email"]);
       const personExtId = pick(row, [
-        "person.local_id", "person.esr_employee_number", "person.assignment_number",
-        "person_id", "local_id", "staff_id", "user_id",
+        "person.local_id",
+        "person.esr_employee_number",
+        "person.assignment_number",
+        "person_id",
+        "local_id",
+        "staff_id",
+        "user_id",
       ]);
       const personFirst = pick(row, ["person.first_name"]);
       const personLast = pick(row, ["person.last_name"]);
       const personName =
-        pick(row, ["person.rota_name", "person", "person_name", "name", "staff", "Name", "full_name"]) ??
+        pick(row, [
+          "person.rota_name",
+          "person",
+          "person_name",
+          "name",
+          "staff",
+          "Name",
+          "full_name",
+        ]) ??
         ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
 
       const startRaw = pick(row, [
-        "start_date", "from_date", "from", "Start", "Start Date", "start", "date_from", "begin",
-        "start_time", "date",
+        "start_date",
+        "from_date",
+        "from",
+        "Start",
+        "Start Date",
+        "start",
+        "date_from",
+        "begin",
+        "start_time",
+        "date",
       ]);
       const endRaw = pick(row, [
-        "end_date", "to_date", "to", "End", "End Date", "end", "date_to", "finish",
-        "end_time", "date",
+        "end_date",
+        "to_date",
+        "to",
+        "End",
+        "End Date",
+        "end",
+        "date_to",
+        "finish",
+        "end_time",
+        "date",
       ]);
       const typeRaw = pick(row, [
-        "leave_type.name", "leave_type", "category.name", "category", "absence_type.name",
-        "absence_type", "type", "Type", "reason_category", "kind",
+        "leave_type.name",
+        "leave_type",
+        "category.name",
+        "category",
+        "absence_type.name",
+        "absence_type",
+        "type",
+        "Type",
+        "reason_category",
+        "kind",
       ]);
       const statusRaw = pick(row, [
-        "leave_request.state", "leave_submittal.state",
-        "status.name", "status", "state", "Status", "approval_status",
+        "leave_request.state",
+        "leave_submittal.state",
+        "status.name",
+        "status",
+        "state",
+        "Status",
+        "approval_status",
       ]);
       const reasonText = pick(row, [
-        "leave_request.details", "leave_submittal.admin_notes",
-        "reason", "comment", "comments", "notes", "description", "Notes",
+        "leave_request.details",
+        "leave_submittal.admin_notes",
+        "reason",
+        "comment",
+        "comments",
+        "notes",
+        "description",
+        "Notes",
       ]);
       const externalId =
         pick(row, ["leave_request.local_id", "id", "leave_id", "request_id", "external_id"]) ??
         (personExtId && startRaw && endRaw ? `leave|${personExtId}|${startRaw}|${endRaw}` : null);
 
-
       const start_date = normaliseDate(startRaw);
       const end_date = normaliseDate(endRaw);
       const label = `${startRaw ?? "?"} → ${endRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
 
-      if (!start_date) { skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` }); continue; }
-      if (!end_date)   { skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` }); continue; }
-      if (end_date < start_date) { skipped.push({ label, reason: `end_date < start_date` }); continue; }
-      if (!externalId) { skipped.push({ label, reason: "no stable external id" }); continue; }
+      if (!start_date) {
+        skipped.push({ label, reason: `cannot parse start date "${startRaw ?? ""}"` });
+        continue;
+      }
+      if (!end_date) {
+        skipped.push({ label, reason: `cannot parse end date "${endRaw ?? ""}"` });
+        continue;
+      }
+      if (end_date < start_date) {
+        skipped.push({ label, reason: `end_date < start_date` });
+        continue;
+      }
+      if (!externalId) {
+        skipped.push({ label, reason: "no stable external id" });
+        continue;
+      }
 
       let staffId: string | undefined;
       if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
@@ -229,7 +283,6 @@ export async function performLeaveSync() {
       continue;
     }
   }
-
 
   const drafts = Array.from(draftsByExtId.values());
 
@@ -329,7 +382,10 @@ export async function performLeaveSync() {
     console.warn(
       `[clwrota] chunk ${chunkLabel} still failing after ${MAX_ATTEMPTS} attempts — falling back to per-row upsert: ${chunkErr}`,
     );
-    errors.push({ label: `(${chunkLabel})`, error: `chunk failed after retries: ${chunkErr} — falling back to per-row` });
+    errors.push({
+      label: `(${chunkLabel})`,
+      error: `chunk failed after retries: ${chunkErr} — falling back to per-row`,
+    });
     let perRowOk = 0;
     let perRowFail = 0;
     for (const draft of chunk) {
@@ -354,7 +410,6 @@ export async function performLeaveSync() {
   metrics.rows_upserted = upserted;
   metrics.rows_failed = metrics.per_row_failed;
   metrics.rows_skipped_validation = skipped.length;
-
 
   // Historical-data safeguard.
   const { count: postCount, error: postCountErr } = await supabaseAdmin
@@ -395,32 +450,34 @@ export async function performLeaveSync() {
   // Persist a metrics row per run so the admin dashboard can chart
   // reliability over time (retries, fallbacks, failures). Best-effort:
   // a failure here must not break the sync result.
-  const { error: metricsInsertErr } = await supabaseAdmin
-    .from("clwrota_sync_metrics")
-    .insert({
-      sync_kind: "leave",
-      run_at: new Date().toISOString(),
-      ok: errors.length === 0,
-      duration_ms: durationMs,
-      rows_pulled: metrics.rows_pulled,
-      rows_drafted: metrics.rows_drafted,
-      rows_upserted: metrics.rows_upserted,
-      rows_failed: metrics.rows_failed,
-      rows_skipped_validation: metrics.rows_skipped_validation,
-      chunks_total: metrics.chunks_total,
-      chunks_succeeded_first_try: metrics.chunks_succeeded_first_try,
-      chunks_succeeded_after_retry: metrics.chunks_succeeded_after_retry,
-      chunks_fell_back_to_per_row: metrics.chunks_fell_back_to_per_row,
-      per_row_attempts: metrics.per_row_attempts,
-      per_row_succeeded: metrics.per_row_succeeded,
-      per_row_failed: metrics.per_row_failed,
-      upsert_attempts_total: metrics.upsert_attempts_total,
-      upsert_retries_total: metrics.upsert_retries_total,
-      errors_count: errors.length,
-      notes: errors.length
-        ? errors.slice(0, 3).map((e) => `${e.label}: ${e.error}`).join("; ").slice(0, 1000)
-        : null,
-    });
+  const { error: metricsInsertErr } = await supabaseAdmin.from("clwrota_sync_metrics").insert({
+    sync_kind: "leave",
+    run_at: new Date().toISOString(),
+    ok: errors.length === 0,
+    duration_ms: durationMs,
+    rows_pulled: metrics.rows_pulled,
+    rows_drafted: metrics.rows_drafted,
+    rows_upserted: metrics.rows_upserted,
+    rows_failed: metrics.rows_failed,
+    rows_skipped_validation: metrics.rows_skipped_validation,
+    chunks_total: metrics.chunks_total,
+    chunks_succeeded_first_try: metrics.chunks_succeeded_first_try,
+    chunks_succeeded_after_retry: metrics.chunks_succeeded_after_retry,
+    chunks_fell_back_to_per_row: metrics.chunks_fell_back_to_per_row,
+    per_row_attempts: metrics.per_row_attempts,
+    per_row_succeeded: metrics.per_row_succeeded,
+    per_row_failed: metrics.per_row_failed,
+    upsert_attempts_total: metrics.upsert_attempts_total,
+    upsert_retries_total: metrics.upsert_retries_total,
+    errors_count: errors.length,
+    notes: errors.length
+      ? errors
+          .slice(0, 3)
+          .map((e) => `${e.label}: ${e.error}`)
+          .join("; ")
+          .slice(0, 1000)
+      : null,
+  });
   if (metricsInsertErr) {
     console.warn("[clwrota] failed to insert sync metrics:", metricsInsertErr.message);
   }
@@ -430,11 +487,13 @@ export async function performLeaveSync() {
     last_sync_at: new Date().toISOString(),
     last_status: errors.length ? "leave_partial" : "leave_success",
     last_error: errors.length
-      ? `${summary} || ${errors.slice(0, 5).map((e) => `${e.label}: ${e.error}`).join("; ")}`
+      ? `${summary} || ${errors
+          .slice(0, 5)
+          .map((e) => `${e.label}: ${e.error}`)
+          .join("; ")}`
       : summary,
     last_pulled_rows: rows.length,
   });
-
 
   return {
     ok: errors.length === 0,

@@ -132,9 +132,7 @@ function MetricList({ rows }: { rows: Row[] }) {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div className="font-medium">{r.name}</div>
             {r.weight ? (
-              <div className="text-xs text-muted-foreground">
-                Weight: {r.weight}
-              </div>
+              <div className="text-xs text-muted-foreground">Weight: {r.weight}</div>
             ) : null}
           </div>
           <p className="mt-1 text-sm">
@@ -151,11 +149,7 @@ function MetricList({ rows }: { rows: Row[] }) {
   );
 }
 
-export function WellbeingMetricGuide({
-  showAttrition = false,
-}: {
-  showAttrition?: boolean;
-}) {
+export function WellbeingMetricGuide({ showAttrition = false }: { showAttrition?: boolean }) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -167,99 +161,80 @@ export function WellbeingMetricGuide({
       <CardContent>
         <Accordion type="multiple" className="w-full">
           <AccordionItem value="score">
-            <AccordionTrigger className="text-sm">
-              Wellbeing score (0 – 100)
-            </AccordionTrigger>
+            <AccordionTrigger className="text-sm">Wellbeing score (0 – 100)</AccordionTrigger>
             <AccordionContent className="space-y-3 text-sm">
               <p>
-                A rolling <strong>90-day</strong> composite score built only
-                from data the app already collects — no self-report is used
-                for the number itself. <strong>Higher is better.</strong>
+                A rolling <strong>90-day</strong> composite score built only from data the app
+                already collects — no self-report is used for the number itself.{" "}
+                <strong>Higher is better.</strong>
               </p>
               <p>
-                Each of the drivers below is scaled 0 – 1 (0 = no concern,
-                1 = fully weighted concern), multiplied by its weight, then
-                summed to give a total "harm" value. The score is{" "}
-                <code className="rounded bg-muted px-1">
-                  round((1 − harm) × 100)
-                </code>
-                , clamped to 0 – 100.
+                Each of the drivers below is scaled 0 – 1 (0 = no concern, 1 = fully weighted
+                concern), multiplied by its weight, then summed to give a total "harm" value. The
+                score is <code className="rounded bg-muted px-1">round((1 − harm) × 100)</code>,
+                clamped to 0 – 100.
               </p>
               <div className="rounded-md border bg-muted/30 p-3 text-sm">
                 <div className="font-medium">Bands</div>
                 <ul className="mt-1 space-y-0.5 text-muted-foreground">
                   <li>
-                    <strong className="text-foreground">Thriving</strong>{" "}
-                    — 80 or above
+                    <strong className="text-foreground">Thriving</strong> — 80 or above
                   </li>
                   <li>
-                    <strong className="text-foreground">Steady</strong>{" "}
-                    — 65 – 79
+                    <strong className="text-foreground">Steady</strong> — 65 – 79
                   </li>
                   <li>
-                    <strong className="text-foreground">Strained</strong>{" "}
-                    — 45 – 64
+                    <strong className="text-foreground">Strained</strong> — 45 – 64
                   </li>
                   <li>
-                    <strong className="text-foreground">At risk</strong>{" "}
-                    — below 45
+                    <strong className="text-foreground">At risk</strong> — below 45
                   </li>
                 </ul>
               </div>
               <MetricList rows={WELLBEING_ROWS} />
               <p className="text-xs text-muted-foreground">
-                The weights above sum to 100% of the harm calculation and
-                are hard-coded in{" "}
-                <code>src/features/wellbeing/wellbeing-score.ts</code> — they
-                aren't tuned per person.
+                The weights above sum to 100% of the harm calculation and are hard-coded in{" "}
+                <code>src/features/wellbeing/wellbeing-score.ts</code> — they aren't tuned per
+                person.
               </p>
             </AccordionContent>
           </AccordionItem>
 
           {showAttrition ? (
             <AccordionItem value="attrition">
-              <AccordionTrigger className="text-sm">
-                Attrition risk (0 – 100%)
-              </AccordionTrigger>
+              <AccordionTrigger className="text-sm">Attrition risk (0 – 100%)</AccordionTrigger>
               <AccordionContent className="space-y-3 text-sm">
                 <p>
-                  A transparent weighted rubric — <strong>not</strong> a
-                  machine-learning prediction — estimating how likely a
-                  staff member is to disengage or leave over the coming
+                  A transparent weighted rubric — <strong>not</strong> a machine-learning prediction
+                  — estimating how likely a staff member is to disengage or leave over the coming
                   months. <strong>Higher is worse.</strong>
                 </p>
                 <p>
-                  Each factor is scaled 0 – 1, multiplied by its weight,
-                  then summed to give the risk. Results are grouped into
-                  bands for triage.
+                  Each factor is scaled 0 – 1, multiplied by its weight, then summed to give the
+                  risk. Results are grouped into bands for triage.
                 </p>
                 <div className="rounded-md border bg-muted/30 p-3 text-sm">
                   <div className="font-medium">Bands</div>
                   <ul className="mt-1 space-y-0.5 text-muted-foreground">
                     <li>
-                      <strong className="text-foreground">Low</strong>{" "}
-                      — under 25%
+                      <strong className="text-foreground">Low</strong> — under 25%
                     </li>
                     <li>
-                      <strong className="text-foreground">Watch</strong>{" "}
-                      — 25 – 44%
+                      <strong className="text-foreground">Watch</strong> — 25 – 44%
                     </li>
                     <li>
-                      <strong className="text-foreground">Elevated</strong>{" "}
-                      — 45 – 64%
+                      <strong className="text-foreground">Elevated</strong> — 45 – 64%
                     </li>
                     <li>
-                      <strong className="text-foreground">High</strong>{" "}
-                      — 65% or above
+                      <strong className="text-foreground">High</strong> — 65% or above
                     </li>
                   </ul>
                 </div>
                 <MetricList rows={ATTRITION_ROWS} />
                 <p className="text-xs text-muted-foreground">
                   The weights above sum to 100% and are hard-coded in{" "}
-                  <code>src/lib/attrition-risk.ts</code>. Use the "Top
-                  drivers" column to see which factors dominate for each
-                  person — that's where an intervention will have the
+                  <code>src/lib/attrition-risk.ts</code>. Use the "Top drivers" column to see which
+                  factors dominate for each person — that's where an intervention will have the
                   biggest effect.
                 </p>
               </AccordionContent>
@@ -272,13 +247,12 @@ export function WellbeingMetricGuide({
             </AccordionTrigger>
             <AccordionContent className="space-y-2 text-sm text-muted-foreground">
               <p>
-                Personal wellbeing pages are visible only to the individual
-                and to admins. Attrition risk is admin-only.
+                Personal wellbeing pages are visible only to the individual and to admins. Attrition
+                risk is admin-only.
               </p>
               <p>
-                Neither score is a clinical or HR judgement. They're a
-                triage aid built from operational data — a low score is a
-                prompt to have a conversation, not a diagnosis.
+                Neither score is a clinical or HR judgement. They're a triage aid built from
+                operational data — a low score is a prompt to have a conversation, not a diagnosis.
               </p>
             </AccordionContent>
           </AccordionItem>

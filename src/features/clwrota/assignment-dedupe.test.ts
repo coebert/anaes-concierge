@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { dedupeAssignmentsBySyncKeys } from "./assignment-dedupe";
 
-const assignment = (overrides: Partial<Parameters<typeof dedupeAssignmentsBySyncKeys>[0][number]>) => ({
+const assignment = (
+  overrides: Partial<Parameters<typeof dedupeAssignmentsBySyncKeys>[0][number]>,
+) => ({
   staff_id: "staff-1",
   session_date: "2026-01-10",
   session: "am",

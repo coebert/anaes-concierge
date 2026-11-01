@@ -8,39 +8,27 @@
  *
  * No runtime code — purely type-level.
  */
-import type {
-  ClwRotaSyncMetricRow,
-  ListClwRotaSyncMetricsResponse,
-} from "./clwrota-metrics-types";
+import type { ClwRotaSyncMetricRow, ListClwRotaSyncMetricsResponse } from "./clwrota-metrics-types";
 import { isBackfillMetricRow } from "./clwrota-metrics-types";
 
 // --- tiny type-equality helpers -------------------------------------------
 type Equal<X, Y> =
-  (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2)
-    ? true
-    : false;
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;
 
 // `?:` makes a key optional; this resolves to `true` only for required keys.
-type IsRequired<T, K extends keyof T> =
-  Record<string, never> extends Pick<T, K> ? false : true;
+type IsRequired<T, K extends keyof T> = Record<string, never> extends Pick<T, K> ? false : true;
 
 // --- assertions -----------------------------------------------------------
 
 // 1. `is_backfill` exists on the row.
-type _HasIsBackfill = Expect<
-  Equal<keyof ClwRotaSyncMetricRow & "is_backfill", "is_backfill">
->;
+type _HasIsBackfill = Expect<Equal<keyof ClwRotaSyncMetricRow & "is_backfill", "is_backfill">>;
 
 // 2. `is_backfill` is REQUIRED (not optional) on read.
-type _IsBackfillRequired = Expect<
-  IsRequired<ClwRotaSyncMetricRow, "is_backfill">
->;
+type _IsBackfillRequired = Expect<IsRequired<ClwRotaSyncMetricRow, "is_backfill">>;
 
 // 3. `is_backfill` is strictly `boolean` — not `boolean | null`, not `unknown`.
-type _IsBackfillIsBoolean = Expect<
-  Equal<ClwRotaSyncMetricRow["is_backfill"], boolean>
->;
+type _IsBackfillIsBoolean = Expect<Equal<ClwRotaSyncMetricRow["is_backfill"], boolean>>;
 
 // 4. The list-metrics response carries rows of the same shape, so every UI
 //    consumer that reads `response.rows[n]` sees the same required field.
@@ -91,4 +79,3 @@ export type __ClwRotaMetricsTypeTests = [
   _ClassifierAcceptsRow,
 ];
 export const __clwRotaMetricsRuntimeRefs = { _missingIsBackfill };
-

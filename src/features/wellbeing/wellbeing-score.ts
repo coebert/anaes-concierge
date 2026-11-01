@@ -89,8 +89,7 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
   const nights = myAssignments.filter((a) => a.session === "night").length;
   const evenings = myAssignments.filter((a) => a.session === "eve").length;
   const weekends = myAssignments.filter((a) => isWeekend(a.session_date)).length;
-  const unsocialShare =
-    totalSessions > 0 ? (nights + evenings + weekends) / totalSessions : 0;
+  const unsocialShare = totalSessions > 0 ? (nights + evenings + weekends) / totalSessions : 0;
 
   // Short-notice changes received (own session moved with <= 48h notice)
   const shortNoticeChanges = input.changes.filter(
@@ -156,24 +155,21 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
       label: `${badLeave} rejected/cancelled leave`,
       value: badLeave,
       normalised: harmNorm(badLeave, 3),
-      weight: 0.10,
+      weight: 0.1,
     },
     {
       key: "exceptions",
       label: `${exceptionsInWin} trainee exception reports`,
       value: exceptionsInWin,
       normalised: harmNorm(exceptionsInWin, 4),
-      weight: 0.10,
+      weight: 0.1,
     },
     {
       key: "bradford",
-      label:
-        input.bradfordScore == null
-          ? "Bradford —"
-          : `Bradford ${input.bradfordScore}`,
+      label: input.bradfordScore == null ? "Bradford —" : `Bradford ${input.bradfordScore}`,
       value: input.bradfordScore ?? 0,
       normalised: harmNorm(input.bradfordScore ?? 0, 300),
-      weight: 0.10,
+      weight: 0.1,
     },
   ];
 

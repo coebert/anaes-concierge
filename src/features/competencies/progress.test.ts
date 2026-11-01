@@ -1,43 +1,58 @@
 import { describe, it, expect } from "vitest";
-import {
-  computeTraineeProgress,
-  computeEligibility,
-} from "./progress";
-import type {
-  Competency,
-  CompetencyRequirement,
-  StaffCompetency,
-} from "./competencies";
+import { computeTraineeProgress, computeEligibility } from "./progress";
+import type { Competency, CompetencyRequirement, StaffCompetency } from "./competencies";
 
 const comp = (id: string, name = id): Competency => ({
-  id, code: id.toUpperCase(), name, description: null,
-  category: "subspecialty", applies_to_grades: [], active: true, sort_order: 0,
+  id,
+  code: id.toUpperCase(),
+  name,
+  description: null,
+  category: "subspecialty",
+  applies_to_grades: [],
+  active: true,
+  sort_order: 0,
 });
 const req = (
-  specialty_id: string, competency_id: string,
+  specialty_id: string,
+  competency_id: string,
   requirement: "required" | "recommended" = "required",
   applies_to_role: "solo" | "supervising" | "any" = "solo",
 ): CompetencyRequirement => ({
   id: `${specialty_id}-${competency_id}-${applies_to_role}`,
-  specialty_id, competency_id, requirement, applies_to_role,
+  specialty_id,
+  competency_id,
+  requirement,
+  applies_to_role,
 });
 const hold = (
-  staff_id: string, competency_id: string,
+  staff_id: string,
+  competency_id: string,
   overrides: Partial<StaffCompetency> = {},
 ): StaffCompetency => ({
-  id: `${staff_id}-${competency_id}`, staff_id, competency_id, level: null,
-  granted_at: "2020-01-01", expires_at: null, revoked_at: null, notes: null,
+  id: `${staff_id}-${competency_id}`,
+  staff_id,
+  competency_id,
+  level: null,
+  granted_at: "2020-01-01",
+  expires_at: null,
+  revoked_at: null,
+  notes: null,
   ...overrides,
 });
 
-const specs = [{ id: "s-card", name: "Cardiac" }, { id: "s-paeds", name: "Paediatric" }];
+const specs = [
+  { id: "s-card", name: "Cardiac" },
+  { id: "s-paeds", name: "Paediatric" },
+];
 const comps = [comp("c-tee", "TOE"), comp("c-paeds", "Paeds airway")];
 
 describe("computeTraineeProgress", () => {
   it("marks missing required competencies", () => {
     const out = computeTraineeProgress({
-      staffId: "t1", onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      staffId: "t1",
+      onDate: "2026-07-07",
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee")],
       staffCompetencies: [],
     });
@@ -49,8 +64,10 @@ describe("computeTraineeProgress", () => {
 
   it("counts a held independent sign-off as complete", () => {
     const out = computeTraineeProgress({
-      staffId: "t1", onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      staffId: "t1",
+      onDate: "2026-07-07",
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee")],
       staffCompetencies: [hold("t1", "c-tee", { level: "independent" })],
     });
@@ -60,8 +77,10 @@ describe("computeTraineeProgress", () => {
 
   it("flags expiring sign-offs within 30 days", () => {
     const out = computeTraineeProgress({
-      staffId: "t1", onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      staffId: "t1",
+      onDate: "2026-07-07",
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee")],
       staffCompetencies: [hold("t1", "c-tee", { level: "independent", expires_at: "2026-07-20" })],
     });
@@ -71,8 +90,10 @@ describe("computeTraineeProgress", () => {
 
   it("skips specialties with no requirements", () => {
     const out = computeTraineeProgress({
-      staffId: "t1", onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      staffId: "t1",
+      onDate: "2026-07-07",
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee")],
       staffCompetencies: [],
     });
@@ -81,12 +102,12 @@ describe("computeTraineeProgress", () => {
 
   it("treats revoked and expired holdings as not held", () => {
     const out = computeTraineeProgress({
-      staffId: "t1", onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      staffId: "t1",
+      onDate: "2026-07-07",
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee")],
-      staffCompetencies: [
-        hold("t1", "c-tee", { level: "independent", revoked_at: "2026-01-01" }),
-      ],
+      staffCompetencies: [hold("t1", "c-tee", { level: "independent", revoked_at: "2026-01-01" })],
     });
     expect(out[0].requiredHeld).toBe(0);
     expect(out[0].items[0].status).toBe("revoked");
@@ -103,7 +124,8 @@ describe("computeEligibility", () => {
   it("lists consultants holding all required competencies as solo eligible", () => {
     const out = computeEligibility({
       onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee", "required", "solo")],
       staff,
       staffCompetencies: [
@@ -119,7 +141,8 @@ describe("computeEligibility", () => {
   it("excludes staff whose only holding is supervised-level from solo", () => {
     const out = computeEligibility({
       onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee", "required", "solo")],
       staff,
       staffCompetencies: [hold("c1", "c-tee", { level: "supervised" })],
@@ -131,7 +154,8 @@ describe("computeEligibility", () => {
   it("distinguishes supervising-only eligibility", () => {
     const out = computeEligibility({
       onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      specialties: specs,
+      competencies: comps,
       requirements: [
         req("s-card", "c-tee", "required", "solo"),
         req("s-card", "c-tee", "required", "supervising"),
@@ -147,9 +171,11 @@ describe("computeEligibility", () => {
   it("ignores recommended-only requirements for eligibility", () => {
     const out = computeEligibility({
       onDate: "2026-07-07",
-      specialties: specs, competencies: comps,
+      specialties: specs,
+      competencies: comps,
       requirements: [req("s-card", "c-tee", "recommended", "solo")],
-      staff, staffCompetencies: [],
+      staff,
+      staffCompetencies: [],
     });
     const card = out.find((s) => s.specialtyId === "s-card")!;
     // No required reqs -> everyone trivially eligible.

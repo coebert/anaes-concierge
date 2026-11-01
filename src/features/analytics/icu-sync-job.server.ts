@@ -25,9 +25,7 @@ function addDays(isoDate: string, days: number): string {
   return iso(new Date(new Date(`${isoDate}T00:00:00.000Z`).getTime() + days * DAY_MS));
 }
 function daysBetween(a: string, b: string): number {
-  return Math.round(
-    (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS,
-  );
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS);
 }
 
 export type IcuSyncJobResult = {
@@ -83,8 +81,7 @@ export function pickGapSliceStart(args: {
     if (run.diverged) return sliceStart;
     // Dates CLWRota may still publish into are re-checked periodically.
     const stillMoving = sliceEnd >= addDays(today, -RECHECK_DAYS);
-    if (stillMoving && now - run.ranAt > RECHECK_INTERVAL_DAYS * DAY_MS)
-      return sliceStart;
+    if (stillMoving && now - run.ranAt > RECHECK_INTERVAL_DAYS * DAY_MS) return sliceStart;
   }
   return null;
 }
@@ -95,11 +92,7 @@ export async function runIcuSyncJob(opts?: {
 }): Promise<IcuSyncJobResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const stateRes = await supabaseAdmin
-    .from("icu_sync_state")
-    .select("*")
-    .eq("id", 1)
-    .maybeSingle();
+  const stateRes = await supabaseAdmin.from("icu_sync_state").select("*").eq("id", 1).maybeSingle();
   if (stateRes.error) throw new Error(stateRes.error.message);
   const state = stateRes.data;
   if (!state) throw new Error("icu_sync_state row missing.");
@@ -135,8 +128,9 @@ export async function runIcuSyncJob(opts?: {
   // dates are re-checked as soon as they land on CLWRota instead of waiting
   // for the slow historical rotation to come round.
   const forwardEnd = addDays(today, Math.min(FORWARD_HORIZON_DAYS, state.days_ahead ?? 60));
-  let futureCursor = (state as { future_cursor_start?: string | null })
-    .future_cursor_start as string | null;
+  let futureCursor = (state as { future_cursor_start?: string | null }).future_cursor_start as
+    | string
+    | null;
   if (!futureCursor || futureCursor < today || futureCursor > forwardEnd) {
     futureCursor = today;
   }
@@ -248,7 +242,6 @@ export async function runIcuSyncJob(opts?: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
-
 
   if (lastError) {
     return {

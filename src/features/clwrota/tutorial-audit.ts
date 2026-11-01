@@ -9,9 +9,7 @@ type TutorialAuditAssignment = {
   locationName?: string | null;
 };
 
-export function isTutorialAttendeeAssignment(
-  row: Pick<TutorialAuditAssignment, "notes">,
-): boolean {
+export function isTutorialAttendeeAssignment(row: Pick<TutorialAuditAssignment, "notes">): boolean {
   return /^\s*tutorial\s*\(attending\)/i.test(row.notes ?? "");
 }
 
@@ -28,9 +26,7 @@ export function getTutorialEvidenceLabel(row: TutorialAuditAssignment): string |
   return null;
 }
 
-function getTutorialEvidenceLabels(
-  row: TutorialAuditAssignment,
-): Array<string | null | undefined> {
+function getTutorialEvidenceLabels(row: TutorialAuditAssignment): Array<string | null | undefined> {
   return [
     row.notes,
     row.extra_type ?? null,

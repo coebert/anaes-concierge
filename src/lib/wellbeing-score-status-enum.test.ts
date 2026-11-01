@@ -45,10 +45,7 @@ const STAFF_ID = "staff-1";
 const NOW = new Date("2026-07-10T12:00:00Z");
 const WINDOW_DAYS = 90;
 
-function makeLeaveRow(
-  status: string,
-  overrides: Partial<LeaveLite> = {},
-): LeaveLite {
+function makeLeaveRow(status: string, overrides: Partial<LeaveLite> = {}): LeaveLite {
   return {
     staff_id: STAFF_ID,
     status,
@@ -82,9 +79,7 @@ describe("wellbeing-score — leave status enum conformance", () => {
     // Static guard: catches a regression where the DB enum shifts and
     // stale code slips back in. Cheap, hard to game.
     const src = readFileSync(
-      fileURLToPath(
-        new URL("../features/wellbeing/wellbeing-score.ts", import.meta.url),
-      ),
+      fileURLToPath(new URL("../features/wellbeing/wellbeing-score.ts", import.meta.url)),
       "utf8",
     );
     // The word "denied" as a bare token — status literals ("denied"),
@@ -97,33 +92,25 @@ describe("wellbeing-score — leave status enum conformance", () => {
     ).toBe(false);
   });
 
-  it.each(BAD_STATUSES)(
-    "counts a single %s row in the leave driver",
-    (status) => {
-      const driver = leaveDriver(runWithLeave([makeLeaveRow(status)]));
-      expect(driver.value).toBe(1);
-      expect(driver.weight).toBe(0.10);
-      // capAt = 3 → 1/3 normalised.
-      expect(driver.normalised).toBeCloseTo(1 / 3, 10);
-      expect(driver.label).toMatch(/rejected\/cancelled/);
-    },
-  );
+  it.each(BAD_STATUSES)("counts a single %s row in the leave driver", (status) => {
+    const driver = leaveDriver(runWithLeave([makeLeaveRow(status)]));
+    expect(driver.value).toBe(1);
+    expect(driver.weight).toBe(0.1);
+    // capAt = 3 → 1/3 normalised.
+    expect(driver.normalised).toBeCloseTo(1 / 3, 10);
+    expect(driver.label).toMatch(/rejected\/cancelled/);
+  });
 
-  it.each(NEUTRAL_STATUSES)(
-    "ignores %s rows in the leave driver",
-    (status) => {
-      const driver = leaveDriver(runWithLeave([makeLeaveRow(status)]));
-      expect(driver.value).toBe(0);
-      expect(driver.normalised).toBe(0);
-    },
-  );
+  it.each(NEUTRAL_STATUSES)("ignores %s rows in the leave driver", (status) => {
+    const driver = leaveDriver(runWithLeave([makeLeaveRow(status)]));
+    expect(driver.value).toBe(0);
+    expect(driver.normalised).toBe(0);
+  });
 
   it("does NOT treat the legacy 'denied' value as bad leave", () => {
     // Behavioural mirror of the source-file guard: if the filter ever
     // regresses to `l.status === "denied"`, this row would count.
-    const driver = leaveDriver(
-      runWithLeave([makeLeaveRow("denied" as unknown as string)]),
-    );
+    const driver = leaveDriver(runWithLeave([makeLeaveRow("denied" as unknown as string)]));
     expect(driver.value).toBe(0);
     expect(driver.normalised).toBe(0);
   });
@@ -148,7 +135,7 @@ describe("wellbeing-score — leave status enum conformance", () => {
     expect(rejected.weight).toBe(cancelled.weight);
     // Three rows at capAt=3 → fully weighted.
     expect(rejected.normalised).toBe(1);
-    expect(rejected.weight).toBe(0.10);
+    expect(rejected.weight).toBe(0.1);
   });
 
   it("applies the exact 0.10 leave weight to the composite score", () => {
@@ -178,9 +165,7 @@ describe("wellbeing-score — leave status enum conformance", () => {
       "counts a %s row whose start_date is outside the window but decided_at is inside",
       (status) => {
         const driver = leaveDriver(
-          runWithLeave([
-            makeLeaveRow(status, { ...OUTSIDE, decided_at: decidedInside }),
-          ]),
+          runWithLeave([makeLeaveRow(status, { ...OUTSIDE, decided_at: decidedInside })]),
         );
         expect(driver.value).toBe(1);
       },
@@ -190,9 +175,7 @@ describe("wellbeing-score — leave status enum conformance", () => {
       "drops a %s row whose decided_at is outside the window even if start_date is inside",
       (status) => {
         const driver = leaveDriver(
-          runWithLeave([
-            makeLeaveRow(status, { ...INSIDE, decided_at: decidedOutside }),
-          ]),
+          runWithLeave([makeLeaveRow(status, { ...INSIDE, decided_at: decidedOutside })]),
         );
         expect(driver.value).toBe(0);
       },
@@ -204,9 +187,7 @@ describe("wellbeing-score — leave status enum conformance", () => {
         const nullAnchor = leaveDriver(
           runWithLeave([makeLeaveRow(status, { ...INSIDE, decided_at: null })]),
         );
-        const undefAnchor = leaveDriver(
-          runWithLeave([makeLeaveRow(status, INSIDE)]),
-        );
+        const undefAnchor = leaveDriver(runWithLeave([makeLeaveRow(status, INSIDE)]));
         expect(nullAnchor.value).toBe(1);
         expect(undefAnchor.value).toBe(1);
       },

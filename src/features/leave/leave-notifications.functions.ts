@@ -29,10 +29,7 @@ async function coordinatorEmails(): Promise<string[]> {
     .in("role", ["admin", "rota_coordinator"]);
   const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
   if (!ids.length) return [];
-  const { data: profs } = await supabaseAdmin
-    .from("profiles")
-    .select("email")
-    .in("id", ids);
+  const { data: profs } = await supabaseAdmin.from("profiles").select("email").in("id", ids);
   return [...new Set((profs ?? []).map((p) => p.email).filter((e): e is string => !!e))];
 }
 
@@ -43,9 +40,11 @@ function fmtDates(start: string, end: string) {
 export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({
-      leaveId: z.string().uuid(),
-    }).parse(d),
+    z
+      .object({
+        leaveId: z.string().guid(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: req } = await supabaseAdmin
@@ -87,9 +86,11 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
 export const notifyLeaveDecided = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({
-      leaveId: z.string().uuid(),
-    }).parse(d),
+    z
+      .object({
+        leaveId: z.string().guid(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     if (!(await callerIsCoordOrAdmin(context.userId))) {

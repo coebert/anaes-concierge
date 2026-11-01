@@ -39,10 +39,20 @@ const SPECIALTY_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
 const SESSION_ID = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
 
 const rotaAssignments = [
-  { staff_id: USER_ID, duty_type: null, session_date: "2026-06-01", session: "am",
-    theatre_session_id: SESSION_ID },
-  { staff_id: USER_ID, duty_type: null, session_date: "2026-06-08", session: "am",
-    theatre_session_id: SESSION_ID },
+  {
+    staff_id: USER_ID,
+    duty_type: null,
+    session_date: "2026-06-01",
+    session: "am",
+    theatre_session_id: SESSION_ID,
+  },
+  {
+    staff_id: USER_ID,
+    duty_type: null,
+    session_date: "2026-06-08",
+    session: "am",
+    theatre_session_id: SESSION_ID,
+  },
 ];
 const theatreSessions = [
   { id: SESSION_ID, theatre_id: THEATRE_ID, specialty_id: SPECIALTY_ID, is_non_sag: false },
@@ -59,16 +69,37 @@ const specialties = [{ id: SPECIALTY_ID, name: "Orthopaedics" }];
  */
 const twinDatesLeave = [
   // Twin dates, twin type → status is the ONLY thing that distinguishes them.
-  { type: "annual", start_date: "2026-07-13", end_date: "2026-07-17",
-    status: "rejected", half_day_start: null, half_day_end: null,
-    reason: "wedding", decision_notes: "clash with on-call cover" },
-  { type: "annual", start_date: "2026-07-13", end_date: "2026-07-17",
-    status: "cancelled", half_day_start: null, half_day_end: null,
-    reason: "withdrew — plans changed", decision_notes: null },
+  {
+    type: "annual",
+    start_date: "2026-07-13",
+    end_date: "2026-07-17",
+    status: "rejected",
+    half_day_start: null,
+    half_day_end: null,
+    reason: "wedding",
+    decision_notes: "clash with on-call cover",
+  },
+  {
+    type: "annual",
+    start_date: "2026-07-13",
+    end_date: "2026-07-17",
+    status: "cancelled",
+    half_day_start: null,
+    half_day_end: null,
+    reason: "withdrew — plans changed",
+    decision_notes: null,
+  },
   // A control approved row (must still be surfaced and counted).
-  { type: "compassionate", start_date: "2026-07-20", end_date: "2026-07-20",
-    status: "approved", half_day_start: null, half_day_end: null,
-    reason: null, decision_notes: null },
+  {
+    type: "compassionate",
+    start_date: "2026-07-20",
+    end_date: "2026-07-20",
+    status: "approved",
+    half_day_start: null,
+    half_day_end: null,
+    reason: null,
+    decision_notes: null,
+  },
 ];
 
 /**
@@ -79,12 +110,26 @@ const twinDatesLeave = [
  * `upcoming` so it can explain each event's wellbeing hit.
  */
 const spanTodayLeave = [
-  { type: "annual", start_date: "2026-07-05", end_date: "2026-07-08",
-    status: "rejected", half_day_start: null, half_day_end: null,
-    reason: null, decision_notes: null },
-  { type: "annual", start_date: "2026-07-05", end_date: "2026-07-08",
-    status: "cancelled", half_day_start: null, half_day_end: null,
-    reason: null, decision_notes: null },
+  {
+    type: "annual",
+    start_date: "2026-07-05",
+    end_date: "2026-07-08",
+    status: "rejected",
+    half_day_start: null,
+    half_day_end: null,
+    reason: null,
+    decision_notes: null,
+  },
+  {
+    type: "annual",
+    start_date: "2026-07-05",
+    end_date: "2026-07-08",
+    status: "cancelled",
+    half_day_start: null,
+    half_day_end: null,
+    reason: null,
+    decision_notes: null,
+  },
 ];
 
 let leaveFixture: unknown[] = twinDatesLeave;
@@ -102,7 +147,11 @@ interface QueryState {
 function makeAdminClient() {
   const build = (table: string) => {
     const state: QueryState = {
-      table, eqCols: {}, gteCols: {}, lteCols: {}, single: false,
+      table,
+      eqCols: {},
+      gteCols: {},
+      lteCols: {},
+      single: false,
     };
     const resolve = () => Promise.resolve({ data: dataFor(state), error: null });
     const b: any = {};
@@ -112,13 +161,24 @@ function makeAdminClient() {
       return b;
     };
     b.in = () => b;
-    b.gte = (col: string, val: string) => { state.gteCols[col] = val; return b; };
-    b.lte = (col: string, val: string) => { state.lteCols[col] = val; return b; };
+    b.gte = (col: string, val: string) => {
+      state.gteCols[col] = val;
+      return b;
+    };
+    b.lte = (col: string, val: string) => {
+      state.lteCols[col] = val;
+      return b;
+    };
+    // exception_reports query filters .neq("status","withdrawn") (added with the wellbeing tool).
+    b.neq = () => b;
     b.range = () => b;
     b.limit = () => b;
     b.order = () => b;
     b.or = () => b;
-    b.maybeSingle = () => { state.single = true; return b; };
+    b.maybeSingle = () => {
+      state.single = true;
+      return b;
+    };
     b.single = b.maybeSingle;
     b.insert = () => ({
       select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: "new" }, error: null }) }),
@@ -131,6 +191,8 @@ function makeAdminClient() {
   };
   return {
     from: (t: string) => build(t),
+    // Durable chat quota RPC (take_request_quota) — always within limits here.
+    rpc: async () => ({ data: true, error: null }),
     auth: { getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }) },
   };
 }
@@ -139,16 +201,22 @@ function dataFor(state: QueryState): unknown {
   switch (state.table) {
     case "ai_conversations":
       return state.single ? { id: CONVERSATION_ID, user_id: USER_ID, title: "Chat" } : [];
-    case "ai_messages": return [];
-    case "user_roles": return state.single ? null : [];
+    case "ai_messages":
+      return [];
+    case "user_roles":
+      return state.single ? null : [];
     case "profiles":
       return state.single
         ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
-    case "theatres": return theatres;
-    case "specialties": return specialties;
-    case "rota_assignments": return rotaAssignments;
-    case "theatre_sessions": return theatreSessions;
+    case "theatres":
+      return theatres;
+    case "specialties":
+      return specialties;
+    case "rota_assignments":
+      return rotaAssignments;
+    case "theatre_sessions":
+      return theatreSessions;
     case "leave_requests": {
       // Past-window overlay pins `.eq("status","approved")` → return empty
       // there so no past leave overlays the grid. All other queries get
@@ -161,8 +229,10 @@ function dataFor(state: QueryState): unknown {
       return state.single
         ? { annual_days: 32, study_days: 10, leave_year_start: "2026-04-01" }
         : [];
-    case "custom_rota_rules": return [];
-    default: return state.single ? null : [];
+    case "custom_rota_rules":
+      return [];
+    default:
+      return state.single ? null : [];
   }
 }
 
@@ -170,7 +240,7 @@ function dataFor(state: QueryState): unknown {
 
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => makeAdminClient() }));
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 vi.mock("@/lib/gmail.server", () => ({ sendGmail: vi.fn(async () => ({ ok: true })) }));
 
@@ -309,10 +379,7 @@ describe("/api/chat e2e — wellbeing-impact reply distinguishes rejected vs can
       const upcomingTwin = pattern.leave.upcoming.filter(
         (r) => r.start_date === "2026-07-13" && r.end_date === "2026-07-17",
       );
-      expect(upcomingTwin.map((r) => r.status).sort()).toEqual([
-        "cancelled",
-        "rejected",
-      ]);
+      expect(upcomingTwin.map((r) => r.status).sort()).toEqual(["cancelled", "rejected"]);
       expect(pattern.leave.overlapsByType.annual).toBe(0);
       expect(pattern.leave.overlapsByType.compassionate).toBe(1);
 
@@ -353,21 +420,18 @@ describe("/api/chat e2e — wellbeing-impact reply distinguishes rejected vs can
     },
   );
 
-  it(
-    "get_my_leave_summary tool description advertises rejected as a distinct status",
-    async () => {
-      // The description shipped to the model is part of the contract: if
-      // it stops enumerating `rejected` (or worse, invents a joint
-      // "rejected/cancelled" bucket), the model has no cue to distinguish
-      // them in wellbeing explanations.
-      leaveFixture = twinDatesLeave;
-      await invokeChat("Summarise my leave requests.");
-      // Guard: some fixture invocation must have happened.
-      expect(captured.leaveSummary).not.toBeNull();
-      // System prompt or tool wiring must never merge the two statuses
-      // into a single label that hides the distinction.
-      expect(captured.systemPrompt).not.toMatch(/rejected\s*\/\s*cancelled/i);
-      expect(captured.systemPrompt).not.toMatch(/cancelled\s*\/\s*rejected/i);
-    },
-  );
+  it("get_my_leave_summary tool description advertises rejected as a distinct status", async () => {
+    // The description shipped to the model is part of the contract: if
+    // it stops enumerating `rejected` (or worse, invents a joint
+    // "rejected/cancelled" bucket), the model has no cue to distinguish
+    // them in wellbeing explanations.
+    leaveFixture = twinDatesLeave;
+    await invokeChat("Summarise my leave requests.");
+    // Guard: some fixture invocation must have happened.
+    expect(captured.leaveSummary).not.toBeNull();
+    // System prompt or tool wiring must never merge the two statuses
+    // into a single label that hides the distinction.
+    expect(captured.systemPrompt).not.toMatch(/rejected\s*\/\s*cancelled/i);
+    expect(captured.systemPrompt).not.toMatch(/cancelled\s*\/\s*rejected/i);
+  });
 });

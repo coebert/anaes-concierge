@@ -25,8 +25,8 @@ import type { Grade } from "./robustness";
 // -------- public types --------
 
 export interface FeasibilityThresholds {
-  ownerPresentMinPct: number;   // 0-100
-  ownerOrDeputyMinPct: number;  // 0-100
+  ownerPresentMinPct: number; // 0-100
+  ownerOrDeputyMinPct: number; // 0-100
   forbidNewShortfalls: boolean;
   /** Minimum occurrences in window for a slot to be considered "regular". */
   minOccurrences: number;
@@ -50,7 +50,6 @@ export const DEFAULT_THRESHOLDS: FeasibilityThresholds = {
   regularWorkingMinPct: 50,
 };
 
-
 export type Verdict = "feasible" | "borderline" | "not_feasible";
 
 export interface CandidateOwner {
@@ -65,11 +64,11 @@ export interface CandidateOwner {
 
 export interface ListSlotFeasibility {
   key: string;
-  dow: number;                  // 1=Mon ... 5=Fri
+  dow: number; // 1=Mon ... 5=Fri
   session: "am" | "pm";
   theatreId: string;
   theatreName: string;
-  surgeon: string;              // normalised display name
+  surgeon: string; // normalised display name
   occurrences: number;
   /** Top consultant by frequency on this slot. May be null if no consultant ever covered it. */
   ownerId: string | null;
@@ -98,7 +97,7 @@ export interface ListSlotFeasibility {
 }
 
 export interface ConsultantPatternCell {
-  dow: number;            // 1-5
+  dow: number; // 1-5
   session: "am" | "pm";
   /** Total weekdays of this dow within this consultant's personal tenure
    *  (intersection of the data window and dates they actually appear in
@@ -168,7 +167,6 @@ export interface ListFeasibilityResult {
   consultantPatterns: ConsultantPattern[];
 }
 
-
 // -------- helpers --------
 
 function isoMonthsAgo(months: number): string {
@@ -195,17 +193,13 @@ function displaySurgeon(raw: string | null | undefined): string {
   return raw.replace(/\s+/g, " ").trim();
 }
 
-function classify(
-  pct: number,
-  thresholdPct: number,
-): "above" | "near" | "below" {
+function classify(pct: number, thresholdPct: number): "above" | "near" | "below" {
   if (pct >= thresholdPct) return "above";
   if (pct >= thresholdPct - 10) return "near";
   return "below";
 }
 
 import { fetchAllRowsPaged, idKey, rotaAssignmentKey } from "./paginate";
-
 
 // -------- core compute --------
 
@@ -241,7 +235,13 @@ export async function computeListFeasibility(
   void isoMonthsAgo;
 
   const [profiles, theatres, specialties, sessions, assignments] = await Promise.all([
-    fetchAllRowsPaged<{ id: string; full_name: string | null; grade: string | null; active: boolean | null; ltft_days_off: number[] | null }>(
+    fetchAllRowsPaged<{
+      id: string;
+      full_name: string | null;
+      grade: string | null;
+      active: boolean | null;
+      ltft_days_off: number[] | null;
+    }>(
       (from, to) =>
         supabase
           .from("profiles")
@@ -271,7 +271,14 @@ export async function computeListFeasibility(
           .range(from, to),
       { rowKey: idKey, label: "list-feasibility.specialties" },
     ),
-    fetchAllRowsPaged<{ id: string; session_date: string; session: string; theatre_id: string | null; surgical_consultant: string | null; specialty_id: string | null }>(
+    fetchAllRowsPaged<{
+      id: string;
+      session_date: string;
+      session: string;
+      theatre_id: string | null;
+      surgical_consultant: string | null;
+      specialty_id: string | null;
+    }>(
       (from, to) =>
         supabase
           .from("theatre_sessions")
@@ -283,11 +290,21 @@ export async function computeListFeasibility(
           .range(from, to),
       { rowKey: idKey, label: "list-feasibility.theatre_sessions" },
     ),
-    fetchAllRowsPaged<{ staff_id: string; session_date: string; session: string; duty_type: string; role_on_list: string; theatre_session_id: string | null; notes: string | null }>(
+    fetchAllRowsPaged<{
+      staff_id: string;
+      session_date: string;
+      session: string;
+      duty_type: string;
+      role_on_list: string;
+      theatre_session_id: string | null;
+      notes: string | null;
+    }>(
       (from, to) =>
         supabase
           .from("rota_assignments")
-          .select("staff_id, session_date, session, duty_type, role_on_list, theatre_session_id, notes")
+          .select(
+            "staff_id, session_date, session, duty_type, role_on_list, theatre_session_id, notes",
+          )
           .gte("session_date", windowStart)
           .lte("session_date", windowEnd)
           .order("session_date", { ascending: true })
@@ -298,7 +315,6 @@ export async function computeListFeasibility(
     ),
   ]);
 
-
   // Specialty IDs that represent emergency / unscheduled work. These lists
   // are not regular bookings and shouldn't be expected to have a fixed
   // anaesthetic consultant owner — exclude them from the feasibility model.
@@ -307,10 +323,7 @@ export async function computeListFeasibility(
     const n = ((sp.name as string) || "").toLowerCase();
     if (/emerg|cepod/.test(n)) emergencySpecialtyIds.add(sp.id as string);
   }
-  const isEmergencySession = (
-    specialtyId: string | null,
-    surgeonRaw: string,
-  ): boolean => {
+  const isEmergencySession = (specialtyId: string | null, surgeonRaw: string): boolean => {
     if (specialtyId && emergencySpecialtyIds.has(specialtyId)) return true;
     return /\b(emergency|cepod)\b/i.test(surgeonRaw);
   };
@@ -451,8 +464,7 @@ export async function computeListFeasibility(
   // Per-consultant, per (dow|session), clinical-activity and on-call counts.
   type PatternCounts = { clinical: number; oncall: number };
   const patternCounts = new Map<string, PatternCounts>(); // key: staffId|dow|session
-  const cellKey = (staffId: string, dow: number, session: string) =>
-    `${staffId}|${dow}|${session}`;
+  const cellKey = (staffId: string, dow: number, session: string) => `${staffId}|${dow}|${session}`;
 
   // Also track which dows the consultant has ANY rota record on (any duty
   // type). Used below to infer "regular day off" — a dow with substantial
@@ -533,9 +545,8 @@ export async function computeListFeasibility(
     const consultantDowRecords = dowsWithAnyRecord.get(c.id) ?? new Set<number>();
     let regularSessions = 0;
     for (let dow = 1; dow <= 5; dow++) {
-      const tenureDowOccurrences = tenureStart && tenureEnd
-        ? countDowInRange(dow, tenureStart, tenureEnd)
-        : 0;
+      const tenureDowOccurrences =
+        tenureStart && tenureEnd ? countDowInRange(dow, tenureStart, tenureEnd) : 0;
       // A dow is a "regular day off" if profiles.ltft_days_off lists it, OR
       // if the consultant has meaningful tenure exposure but zero records of
       // any duty type on that dow.
@@ -554,8 +565,7 @@ export async function computeListFeasibility(
           clinical: 0,
           oncall: 0,
         };
-        const workingPct =
-          total > 0 ? Math.round((counts.clinical / total) * 100) : 0;
+        const workingPct = total > 0 ? Math.round((counts.clinical / total) * 100) : 0;
         const regular = !regularDayOff && workingPct >= thresholds.regularWorkingMinPct;
         if (regular) regularSessions += 1;
         cells.push({
@@ -600,7 +610,6 @@ export async function computeListFeasibility(
     const cell = pat.cells.find((c) => c.dow === dow && c.session === session);
     return cell?.workingPct ?? 0;
   };
-
 
   // Group theatre_sessions into recurring slots.
   type Slot = {
@@ -678,9 +687,7 @@ export async function computeListFeasibility(
     for (const occ of slot.occurrences) {
       const asns = asnByTheatreSession.get(occ.theatreSessionId) ?? [];
       // A session can have multiple consultants assigned — iterate all.
-      const coverers = new Set(
-        asns.filter((a) => a.dutyType === "theatre").map((a) => a.staffId),
-      );
+      const coverers = new Set(asns.filter((a) => a.dutyType === "theatre").map((a) => a.staffId));
       const coveredByOwnerOrDeputy =
         (ownerId && coverers.has(ownerId)) || (deputyId && coverers.has(deputyId));
       if (coveredByOwnerOrDeputy) ownerOrDeputyCovered += 1;
@@ -699,8 +706,7 @@ export async function computeListFeasibility(
       // it's either linked to a different theatre_session OR unlinked
       // entirely, they were busy on some other list and physically cannot
       // also cover this one. Count as unavailable, not "free but replaced".
-      const ownerBusyOnOtherTheatre =
-        ownerSameHalf?.dutyType === "theatre";
+      const ownerBusyOnOtherTheatre = ownerSameHalf?.dutyType === "theatre";
       const dt = ownerSameHalf?.dutyType ?? ownerAllDay[0]?.dutyType;
       const isUnavailable = !!dt && dt !== "theatre"; // leave/on-call/SPA/admin/obstetrics/etc.
 
@@ -722,19 +728,15 @@ export async function computeListFeasibility(
         // Owner had some record that day but not on this half and not theatre.
         ownerFreeButReplaced += 1;
       }
-
     }
 
     const ownerPresentPct = Math.round((ownerCovered / slot.occurrences.length) * 100);
-    const ownerOrDeputyPct = Math.round(
-      (ownerOrDeputyCovered / slot.occurrences.length) * 100,
-    );
+    const ownerOrDeputyPct = Math.round((ownerOrDeputyCovered / slot.occurrences.length) * 100);
 
     const reasons: string[] = [];
     const ownerBand = classify(ownerPresentPct, thresholds.ownerPresentMinPct);
     const deputyBand = classify(ownerOrDeputyPct, thresholds.ownerOrDeputyMinPct);
-    const shortfallFail =
-      thresholds.forbidNewShortfalls && shortfallsIfLocked > 0;
+    const shortfallFail = thresholds.forbidNewShortfalls && shortfallsIfLocked > 0;
 
     let verdict: Verdict;
     if (!ownerId) {
@@ -749,7 +751,9 @@ export async function computeListFeasibility(
     } else {
       verdict = "not_feasible";
       if (ownerBand === "below")
-        reasons.push(`Owner present ${ownerPresentPct}% — below ${thresholds.ownerPresentMinPct}%.`);
+        reasons.push(
+          `Owner present ${ownerPresentPct}% — below ${thresholds.ownerPresentMinPct}%.`,
+        );
       if (deputyBand === "below")
         reasons.push(
           `Owner+deputy ${ownerOrDeputyPct}% — below ${thresholds.ownerOrDeputyMinPct}%.`,
@@ -805,11 +809,11 @@ export async function computeListFeasibility(
       surgeon: displaySurgeon(slot.surgeonRaw),
       occurrences: slot.occurrences.length,
       ownerId,
-      ownerName: ownerId ? consultantById.get(ownerId)?.name ?? null : null,
+      ownerName: ownerId ? (consultantById.get(ownerId)?.name ?? null) : null,
       ownerCovered,
       ownerPresentPct,
       deputyId,
-      deputyName: deputyId ? consultantById.get(deputyId)?.name ?? null : null,
+      deputyName: deputyId ? (consultantById.get(deputyId)?.name ?? null) : null,
       deputyCovered,
       ownerOrDeputyPct,
       ownerUnavailable,
@@ -822,7 +826,6 @@ export async function computeListFeasibility(
     });
   }
 
-
   // Dept rollup. A slot that runs once/week ≈ 0.1 WTE per session (10 PAs/week).
   // We treat the gap as: per missing consultant, 1/10 WTE per regular session/week.
   const totalSlots = slotResults.length;
@@ -831,8 +834,7 @@ export async function computeListFeasibility(
   const notFeasible = slotResults.filter((s) => s.verdict === "not_feasible").length;
   const estimatedExtraWte =
     Math.round(
-      slotResults.reduce((acc, s) => acc + s.headcountGap * thresholds.wtePerWeeklySession, 0) *
-        10,
+      slotResults.reduce((acc, s) => acc + s.headcountGap * thresholds.wtePerWeeklySession, 0) * 10,
     ) / 10;
 
   // ----- SAS-adjusted estimate -------------------------------------------
@@ -857,13 +859,10 @@ export async function computeListFeasibility(
     sasTheatreHalfDays += 1;
   }
   const windowDays =
-    (Date.parse(windowEnd + "T00:00:00Z") -
-      Date.parse(windowStart + "T00:00:00Z")) /
-      86_400_000 +
+    (Date.parse(windowEnd + "T00:00:00Z") - Date.parse(windowStart + "T00:00:00Z")) / 86_400_000 +
     1;
   const weeksInWindow = Math.max(1, windowDays / 7);
-  const sasListSessionsPerWeek =
-    Math.round((sasTheatreHalfDays / weeksInWindow) * 10) / 10;
+  const sasListSessionsPerWeek = Math.round((sasTheatreHalfDays / weeksInWindow) * 10) / 10;
   const sasWteOffset =
     Math.round(sasListSessionsPerWeek * thresholds.wtePerWeeklySession * 10) / 10;
   const estimatedExtraWteWithSas =
@@ -898,7 +897,6 @@ export async function computeListFeasibility(
     consultantPatterns,
   };
 }
-
 
 /**
  * Crude proxy for "the day was thin on consultants": if more than ~70%

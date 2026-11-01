@@ -83,8 +83,7 @@ describe("validateHalfDayRange", () => {
       half_day_end: null,
     });
     expect(r.ok).toBe(false);
-    if (!r.ok)
-      expect(r.errors.map((e) => e.code)).toContain("invalid_start_marker");
+    if (!r.ok) expect(r.errors.map((e) => e.code)).toContain("invalid_start_marker");
   });
 
   it("rejects semantically meaningless half_day_end='pm'", () => {
@@ -106,8 +105,7 @@ describe("validateHalfDayRange", () => {
       half_day_end: "am",
     });
     expect(r.ok).toBe(false);
-    if (!r.ok)
-      expect(r.errors.map((e) => e.code)).toContain("reversed_single_day");
+    if (!r.ok) expect(r.errors.map((e) => e.code)).toContain("reversed_single_day");
   });
 
   it("does NOT flag reversed_single_day on multi-day PM..AM (that's a valid range)", () => {
@@ -130,11 +128,7 @@ describe("validateHalfDayRange", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       const codes = r.errors.map((e) => e.code).sort();
-      expect(codes).toEqual([
-        "invalid_end_marker",
-        "invalid_start_marker",
-        "reversed_dates",
-      ]);
+      expect(codes).toEqual(["invalid_end_marker", "invalid_start_marker", "reversed_dates"]);
     }
   });
 });

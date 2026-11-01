@@ -56,19 +56,14 @@ export interface ComputeMismatchArgs {
 function daysBetween(a: string, b: string): number {
   const [ay, am, ad] = a.split("-").map(Number);
   const [by, bm, bd] = b.split("-").map(Number);
-  return Math.round(
-    (Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000,
-  );
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
 }
 
-export function computeCompetencyMismatch(
-  args: ComputeMismatchArgs,
-): MismatchDetails {
+export function computeCompetencyMismatch(args: ComputeMismatchArgs): MismatchDetails {
   const compById = new Map(args.competencies.map((c) => [c.id, c]));
   const relevant = args.requirements.filter(
     (r) =>
-      r.specialty_id === args.specialtyId &&
-      roleMatchesRequirement(args.role, r.applies_to_role),
+      r.specialty_id === args.specialtyId && roleMatchesRequirement(args.role, r.applies_to_role),
   );
   const heldById = new Map<string, StaffCompetency>();
   for (const h of args.staffCompetencies) {
@@ -106,11 +101,7 @@ export function computeCompetencyMismatch(
     ) {
       status = "supervised_only_for_solo";
       blocking = true;
-    } else if (
-      active &&
-      holding.expires_at &&
-      daysBetween(args.onDate, holding.expires_at) <= 30
-    ) {
+    } else if (active && holding.expires_at && daysBetween(args.onDate, holding.expires_at) <= 30) {
       status = "expiring";
       blocking = false;
     } else if (holding.level === "independent") {
@@ -136,15 +127,12 @@ export function computeCompetencyMismatch(
       blocking,
       level: (holding?.level ?? null) as CompetencyLevel | null,
       expiresAt: holding?.expires_at ?? null,
-      daysUntilExpiry: holding?.expires_at
-        ? daysBetween(args.onDate, holding.expires_at)
-        : null,
+      daysUntilExpiry: holding?.expires_at ? daysBetween(args.onDate, holding.expires_at) : null,
     });
   }
 
   rows.sort((a, b) => {
-    const score = (r: MismatchRow) =>
-      (r.blocking ? 0 : r.requirement === "required" ? 1 : 2);
+    const score = (r: MismatchRow) => (r.blocking ? 0 : r.requirement === "required" ? 1 : 2);
     const s = score(a) - score(b);
     if (s !== 0) return s;
     return a.competencyName.localeCompare(b.competencyName);

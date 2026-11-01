@@ -9,18 +9,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { ArrowRightLeft } from "lucide-react";
 import { computeHandoverRisk } from "@/features/analytics/analyses";
 
-export const Route = createFileRoute(
-  "/_authenticated/admin/analytics/handover-risk",
-)({
+export const Route = createFileRoute("/_authenticated/admin/analytics/handover-risk")({
   head: () => ({
     meta: [
       { title: "Handover-adjacency risk — HR analytics" },
-      { name: "description", content: "Consultants running consecutive high-acuity sessions on the same day." },
+      {
+        name: "description",
+        content: "Consultants running consecutive high-acuity sessions on the same day.",
+      },
     ],
   }),
   component: HandoverRiskPage,
@@ -35,14 +41,18 @@ function HandoverRiskPage() {
       since.setUTCDate(since.getUTCDate() - 84); // 12 weeks
       const sinceIso = since.toISOString().slice(0, 10);
       const [rotaRes, tsRes, specRes, profRes] = await Promise.all([
-        supabase.from("rota_assignments")
+        supabase
+          .from("rota_assignments")
           .select("staff_id,session_date,session,theatre_session_id")
           .gte("session_date", sinceIso)
           .range(0, 49999),
         supabase.from("theatre_sessions").select("id,specialty_id").range(0, 49999),
         supabase.from("specialties").select("id,name"),
-        supabase.from("profiles").select("id,full_name,grade,active")
-          .eq("grade", "consultant").eq("active", true),
+        supabase
+          .from("profiles")
+          .select("id,full_name,grade,active")
+          .eq("grade", "consultant")
+          .eq("active", true),
       ]);
       if (rotaRes.error) throw rotaRes.error;
       if (tsRes.error) throw tsRes.error;
@@ -60,7 +70,7 @@ function HandoverRiskPage() {
           session_date: r.session_date,
           session: r.session,
           specialty_name: r.theatre_session_id
-            ? specById.get(tsById.get(r.theatre_session_id) ?? "") ?? null
+            ? (specById.get(tsById.get(r.theatre_session_id) ?? "") ?? null)
             : null,
         }));
       return { rows, profiles: profRes.data ?? [] };
@@ -70,8 +80,10 @@ function HandoverRiskPage() {
   const view = useMemo(() => {
     if (!data) return [];
     const nameById = new Map(data.profiles.map((p) => [p.id, p.full_name || "Unknown"]));
-    return computeHandoverRisk(data.rows)
-      .map((r) => ({ ...r, name: nameById.get(r.staff_id) ?? "Unknown" }));
+    return computeHandoverRisk(data.rows).map((r) => ({
+      ...r,
+      name: nameById.get(r.staff_id) ?? "Unknown",
+    }));
   }, [data]);
 
   if (loading) return <PageLoading />;
@@ -86,10 +98,16 @@ function HandoverRiskPage() {
       />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Consultants with events" value={view.length} icon={ArrowRightLeft} />
-        <StatCard label="Total events"
-          value={view.reduce((a, r) => a + r.events, 0)} icon={ArrowRightLeft} />
-        <StatCard label="Max events per consultant"
-          value={view.length ? view[0].events : 0} icon={ArrowRightLeft} />
+        <StatCard
+          label="Total events"
+          value={view.reduce((a, r) => a + r.events, 0)}
+          icon={ArrowRightLeft}
+        />
+        <StatCard
+          label="Max events per consultant"
+          value={view.length ? view[0].events : 0}
+          icon={ArrowRightLeft}
+        />
       </div>
       <Card>
         <CardContent className="p-0">

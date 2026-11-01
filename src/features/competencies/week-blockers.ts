@@ -94,9 +94,7 @@ export function computeWeekBlockingCompetencyIssues(
       competencies: args.competencies,
       blockMissingRequired: true,
     });
-    const errorMsgs = issues
-      .filter((i) => i.severity === "error")
-      .map((i) => i.message);
+    const errorMsgs = issues.filter((i) => i.severity === "error").map((i) => i.message);
     if (errorMsgs.length === 0) continue;
 
     const theatre = theatreById.get(ts.theatre_id);
@@ -117,9 +115,7 @@ export function computeWeekBlockingCompetencyIssues(
   const out: StaffBlockerGroup[] = [];
   for (const [staffId, issues] of byStaff.entries()) {
     issues.sort((a, b) =>
-      a.date === b.date
-        ? a.session.localeCompare(b.session)
-        : a.date.localeCompare(b.date),
+      a.date === b.date ? a.session.localeCompare(b.session) : a.date.localeCompare(b.date),
     );
     out.push({
       staffId,

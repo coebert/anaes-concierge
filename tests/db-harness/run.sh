@@ -16,7 +16,7 @@ $P -f "$HERE/fixture.sql" >/dev/null
 for m in "$ROOT"/drizzle/migrations/000[0-9]_*.sql; do
   sed '/--> statement-breakpoint/d' "$m" | $P >/dev/null
 done
-[ -f "$HERE/pending-0002.sql" ] && $P -f "$HERE/pending-0002.sql" >/dev/null
+for f in "$HERE"/pending-*.sql; do [ -f "$f" ] && $P -f "$f" >/dev/null; done
 $P -f "$HERE/cases.sql" >/dev/null
 
 # 4. admin_run_readonly_sql: separate sessions so transaction mode is real.

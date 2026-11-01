@@ -16,12 +16,7 @@ function sanitiseHeader(value: string) {
   return value.replace(/[\r\n\0]/g, " ").trim();
 }
 
-function buildRawEmail(params: {
-  to: string;
-  subject: string;
-  text?: string;
-  html?: string;
-}) {
+function buildRawEmail(params: { to: string; subject: string; text?: string; html?: string }) {
   const headers = [
     `To: ${sanitiseHeader(params.to)}`,
     `Subject: ${sanitiseHeader(params.subject)}`,

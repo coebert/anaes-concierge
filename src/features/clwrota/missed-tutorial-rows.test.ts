@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { looksLikeTutorialLabel, pickTutorialLabel } from "./parsing";
 import { isTutorialAuditCandidate } from "./tutorial-audit";
-import {
-  MISSED_TUTORIAL_ROWS,
-  TUTORIAL_TEXT_PICK_KEYS,
-} from "./__fixtures__/missed-tutorial-rows";
+import { MISSED_TUTORIAL_ROWS, TUTORIAL_TEXT_PICK_KEYS } from "./__fixtures__/missed-tutorial-rows";
 
 /**
  * Regression fixtures for the "tutorial audit finds nothing" bug.

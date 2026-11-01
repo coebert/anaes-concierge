@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -60,12 +64,15 @@ function TheatresCard() {
       if (!newName.trim()) throw new Error("Name required");
       const maxSort = Math.max(0, ...(data ?? []).map((t) => t.sort_order));
       const { error } = await supabase.from("theatres").insert({
-        name: newName.trim(), kind: newKind, sort_order: maxSort + 1,
+        name: newName.trim(),
+        kind: newKind,
+        sort_order: maxSort + 1,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Theatre added"); setNewName("");
+      toast.success("Theatre added");
+      setNewName("");
       qc.invalidateQueries({ queryKey: ["theatres-admin"] });
       qc.invalidateQueries({ queryKey: ["theatres"] });
     },
@@ -110,7 +117,9 @@ function TheatresCard() {
                   value={t.kind}
                   onValueChange={(v) => update.mutate({ id: t.id, kind: v as Kind })}
                 >
-                  <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-36">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="main">main</SelectItem>
                     <SelectItem value="day_surgery">day surgery</SelectItem>
@@ -136,7 +145,9 @@ function TheatresCard() {
             className="h-8"
           />
           <Select value={newKind} onValueChange={(v) => setNewKind(v as Kind)}>
-            <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-36">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="main">main</SelectItem>
               <SelectItem value="day_surgery">day surgery</SelectItem>
@@ -144,7 +155,8 @@ function TheatresCard() {
             </SelectContent>
           </Select>
           <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>
-            <Plus className="mr-1 h-4 w-4" />Add
+            <Plus className="mr-1 h-4 w-4" />
+            Add
           </Button>
         </div>
       </CardContent>
@@ -177,7 +189,8 @@ function SpecialtiesCard() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Specialty added"); setName("");
+      toast.success("Specialty added");
+      setName("");
       qc.invalidateQueries({ queryKey: ["specialties"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -222,15 +235,11 @@ function SpecialtiesCard() {
             {data.map((s) => (
               <li key={s.id} className="flex items-center gap-2 p-2 text-sm">
                 <span className="flex-1 font-medium">{s.name}</span>
-                {s.is_trainee_bucket && (
-                  <Badge variant="secondary">trainee bucket</Badge>
-                )}
+                {s.is_trainee_bucket && <Badge variant="secondary">trainee bucket</Badge>}
                 <label className="flex items-center gap-1 text-xs">
                   <Checkbox
                     checked={s.is_trainee_bucket}
-                    onCheckedChange={(v) =>
-                      update.mutate({ id: s.id, is_trainee_bucket: !!v })
-                    }
+                    onCheckedChange={(v) => update.mutate({ id: s.id, is_trainee_bucket: !!v })}
                   />
                   bucket
                 </label>
@@ -253,7 +262,8 @@ function SpecialtiesCard() {
             trainee bucket
           </label>
           <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>
-            <Plus className="mr-1 h-4 w-4" />Add
+            <Plus className="mr-1 h-4 w-4" />
+            Add
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">

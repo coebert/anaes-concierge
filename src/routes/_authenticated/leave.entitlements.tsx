@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRowsPaged } from "@/features/audit/paginate";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,49 +42,66 @@ export const Route = createFileRoute("/_authenticated/leave/entitlements")({
 function EntitlementsPage() {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     enabled: !!user,
     queryKey: ["my-entitlements", user?.id],
     queryFn: async () => {
-      const [allowRes, profRes, leaveRes, ledgerRes] = await Promise.all([
+      const [allowRes, profRes, leave, ledger] = await Promise.all([
         supabase.from("leave_allowances").select("*").eq("staff_id", user!.id),
         supabase
           .from("profiles")
           .select("start_date,left_at,full_name")
           .eq("id", user!.id)
           .single(),
-        supabase
-          .from("leave_requests")
-          .select(
-            "id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
-          )
-          .eq("staff_id", user!.id)
-          .range(0, 4999),
-        supabase
-          .from("leave_ledger_entries")
-          .select("entry_date,kind,hours,reason,created_at")
-          .eq("staff_id", user!.id)
-          .order("entry_date", { ascending: false })
-          .range(0, 499),
+        // Paged with a stable order: the API returns at most 1000 rows per
+        // request, so a wide .range() could silently drop history.
+        fetchAllRowsPaged<LeaveRow>(
+          (from, to) =>
+            supabase
+              .from("leave_requests")
+              .select(
+                "id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
+              )
+              .eq("staff_id", user!.id)
+              .order("start_date")
+              .order("id")
+              .range(from, to) as never,
+          { label: "Leave history" },
+        ),
+        // TOIL balance sums EVERY ledger entry — a 500-row cap made it wrong.
+        fetchAllRowsPaged<{
+          entry_date: string;
+          kind: "accrual" | "spend" | "adjustment";
+          hours: number;
+          reason: string | null;
+          created_at: string;
+          id: string;
+        }>(
+          (from, to) =>
+            supabase
+              .from("leave_ledger_entries")
+              .select("id,entry_date,kind,hours,reason,created_at")
+              .eq("staff_id", user!.id)
+              .order("entry_date", { ascending: false })
+              .order("id")
+              .range(from, to) as never,
+          { label: "TOIL ledger" },
+        ),
       ]);
       if (allowRes.error) throw allowRes.error;
       if (profRes.error) throw profRes.error;
-      if (leaveRes.error) throw leaveRes.error;
-      if (ledgerRes.error) throw ledgerRes.error;
       return {
         allowances: (allowRes.data ?? []) as AllowanceRow[],
         profile: profRes.data,
-        leave: (leaveRes.data ?? []) as LeaveRow[],
-        ledger: ledgerRes.data ?? [],
+        leave,
+        ledger,
       };
     },
   });
 
   const years = useMemo(
     () =>
-      (data?.allowances ?? [])
-        .map((a) => a.leave_year_start)
-        .sort((a, b) => b.localeCompare(a)),
+      (data?.allowances ?? []).map((a) => a.leave_year_start).sort((a, b) => b.localeCompare(a)),
     [data],
   );
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -97,7 +115,11 @@ function EntitlementsPage() {
       allowance,
       { start_date: data.profile?.start_date, left_at: data.profile?.left_at },
       data.leave,
-      (data.ledger as { entry_date: string; kind: "accrual" | "spend" | "adjustment"; hours: number }[]) ?? [],
+      (data.ledger as {
+        entry_date: string;
+        kind: "accrual" | "spend" | "adjustment";
+        hours: number;
+      }[]) ?? [],
     );
   }, [allowance, data]);
 
@@ -109,6 +131,22 @@ function EntitlementsPage() {
   const slaTarget = allowance?.sla_target_days ?? 14;
 
   if (isLoading) return <PageLoading />;
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className="space-y-3 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive"
+      >
+        <p>
+          Your entitlements could not be loaded, so no totals are shown:{" "}
+          {error instanceof Error ? error.message : String(error)}
+        </p>
+        <button type="button" className="underline" onClick={() => void refetch()}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -120,18 +158,15 @@ function EntitlementsPage() {
       {!allowance ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No leave allowance has been recorded for you yet. Ask an admin to set
-            up an allowance record so entitlements can be shown.
+            No leave allowance has been recorded for you yet. Ask an admin to set up an allowance
+            record so entitlements can be shown.
           </CardContent>
         </Card>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-sm text-muted-foreground">Leave year starting</div>
-            <Select
-              value={activeYear ?? undefined}
-              onValueChange={(v) => setSelectedYear(v)}
-            >
+            <Select value={activeYear ?? undefined} onValueChange={(v) => setSelectedYear(v)}>
               <SelectTrigger className="w-[220px]">
                 <SelectValue />
               </SelectTrigger>
@@ -165,9 +200,7 @@ function EntitlementsPage() {
               <CardContent className="space-y-2">
                 {pendingRequests.map((r) => {
                   const ageDays = r.created_at
-                    ? Math.floor(
-                        (Date.now() - new Date(r.created_at).getTime()) / 86_400_000,
-                      )
+                    ? Math.floor((Date.now() - new Date(r.created_at).getTime()) / 86_400_000)
                     : 0;
                   const breached = ageDays > slaTarget;
                   return (
@@ -212,7 +245,9 @@ function EntitlementsPage() {
                       <div className="w-28 shrink-0 text-xs text-muted-foreground">
                         {formatDateWithWeekdayGB(l.entry_date)}
                       </div>
-                      <Badge variant="outline" className="capitalize">{l.kind}</Badge>
+                      <Badge variant="outline" className="capitalize">
+                        {l.kind}
+                      </Badge>
                       <div className={l.kind === "spend" ? "text-destructive" : ""}>
                         {l.kind === "spend" ? "−" : "+"}
                         {Number(l.hours).toFixed(2)} h

@@ -5,7 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -53,10 +57,30 @@ const DUTY_CONFIG: DutyConfig[] = [
   { type: "general_consultant_oncall", label: "General consultant on-call", slots: ALL_SLOTS },
   { type: "registrar_oncall", label: "Registrar on-call", slots: ALL_SLOTS },
   { type: "sho_oncall", label: "SHO on-call", slots: ALL_SLOTS },
-  { type: "spa", label: "SPA (Supporting Professional Activities)", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
-  { type: "admin", label: "Admin / management", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
-  { type: "teaching", label: "Teaching", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
-  { type: "non_clinical", label: "Other non-clinical", slots: ["am", "pm"], description: "Non-patient-facing scheduled time" },
+  {
+    type: "spa",
+    label: "SPA (Supporting Professional Activities)",
+    slots: ["am", "pm"],
+    description: "Non-patient-facing scheduled time",
+  },
+  {
+    type: "admin",
+    label: "Admin / management",
+    slots: ["am", "pm"],
+    description: "Non-patient-facing scheduled time",
+  },
+  {
+    type: "teaching",
+    label: "Teaching",
+    slots: ["am", "pm"],
+    description: "Non-patient-facing scheduled time",
+  },
+  {
+    type: "non_clinical",
+    label: "Other non-clinical",
+    slots: ["am", "pm"],
+    description: "Non-patient-facing scheduled time",
+  },
 ];
 
 const SLOT_LABEL: Record<Slot, string> = { am: "AM", pm: "PM", eve: "Eve", night: "Night" };
@@ -146,13 +170,16 @@ function DutiesPage() {
 
   const staffName = (id: string) => staff?.find((s) => s.id === id)?.full_name ?? "—";
   const isOnLeave = (staffId: string, dateIso: string) =>
-    (leave ?? []).some((l) => l.staff_id === staffId && l.start_date <= dateIso && l.end_date >= dateIso);
+    (leave ?? []).some(
+      (l) => l.staff_id === staffId && l.start_date <= dateIso && l.end_date >= dateIso,
+    );
 
   const eligibleStaff = (duty: DutyConfig, dateIso: string): StaffRow[] => {
     if (!staff) return [];
     return staff.filter((s) => {
       // Trainees can't be allocated after their rotation end
-      if (s.grade === "trainee" && s.rotation_end_date && s.rotation_end_date < dateIso) return false;
+      if (s.grade === "trainee" && s.rotation_end_date && s.rotation_end_date < dateIso)
+        return false;
       // Grade gating
       switch (duty.type) {
         case "consultant_in_charge":
@@ -177,7 +204,12 @@ function DutiesPage() {
   };
 
   const addMut = useMutation({
-    mutationFn: async (args: { staff_id: string; session_date: string; session: Slot; duty_type: DutyType }) => {
+    mutationFn: async (args: {
+      staff_id: string;
+      session_date: string;
+      session: Slot;
+      duty_type: DutyType;
+    }) => {
       const { error } = await supabase.from("rota_assignments").insert({
         staff_id: args.staff_id,
         session_date: args.session_date,
@@ -219,15 +251,17 @@ function DutiesPage() {
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <div>
             <CardTitle>Duties &amp; on-call</CardTitle>
-            <CardDescription>
-              Week of {formatDateLongGB(startIso)}
-            </CardDescription>
+            <CardDescription>Week of {formatDateLongGB(startIso)}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setAnchor(addDays(anchor, -7))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setAnchor(startOfWeek(new Date()))}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setAnchor(startOfWeek(new Date()))}
+            >
               This week
             </Button>
             <Button variant="outline" size="icon" onClick={() => setAnchor(addDays(anchor, 7))}>
@@ -242,7 +276,12 @@ function DutiesPage() {
           <CardHeader>
             <CardTitle className="text-base">
               {duty.type === "spa" ? (
-                <><GlossaryTerm>SPA</GlossaryTerm> <span className="text-muted-foreground font-normal">(Supporting Professional Activities)</span></>
+                <>
+                  <GlossaryTerm>SPA</GlossaryTerm>{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (Supporting Professional Activities)
+                  </span>
+                </>
               ) : (
                 duty.label
               )}
@@ -258,7 +297,9 @@ function DutiesPage() {
                       {/* Weekday-only label ("Mon") — full date is rendered on the next line. */}
                       {/* eslint-disable-next-line no-restricted-syntax */}
                       <div>{d.toLocaleDateString("en-GB", { weekday: "short" })}</div>
-                      <div className="text-muted-foreground">{formatDateGB(isoLocal(d)).slice(0, 5)}</div>
+                      <div className="text-muted-foreground">
+                        {formatDateGB(isoLocal(d)).slice(0, 5)}
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -281,7 +322,9 @@ function DutiesPage() {
                                 <span className="truncate">
                                   {staffName(r.staff_id)}
                                   {isOnLeave(r.staff_id, dateIso) && (
-                                    <Badge variant="destructive" className="ml-1 text-[10px]">leave</Badge>
+                                    <Badge variant="destructive" className="ml-1 text-[10px]">
+                                      leave
+                                    </Badge>
                                   )}
                                 </span>
                                 <button

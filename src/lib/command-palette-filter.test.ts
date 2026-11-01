@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  commandPaletteFilter,
-  normalizeForSearch,
-  tokenizeQuery,
-} from "./command-palette-filter";
+import { commandPaletteFilter, normalizeForSearch, tokenizeQuery } from "./command-palette-filter";
 
 // Mirrors how command-palette.tsx builds the CommandItem `value`:
 // `${label} ${keywords.join(" ")} ${to}`.

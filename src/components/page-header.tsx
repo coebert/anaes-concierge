@@ -31,14 +31,10 @@ export function PageHeader({
           <h1 className="font-display text-2xl font-semibold tracking-tight text-balance text-foreground md:text-3xl">
             {title}
           </h1>
-          {description ? (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          ) : null}
+          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {actions}
-          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
         ) : null}
       </div>
       {children}

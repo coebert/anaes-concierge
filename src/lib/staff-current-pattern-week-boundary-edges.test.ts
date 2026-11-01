@@ -110,9 +110,7 @@ describe("weeklyGrid — leave starts EXACTLY on Monday", () => {
   );
 
   it("Mon AM stays 'Main theatres'; Mon PM, Tue, Wed flip to 'On leave' 3/3", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const res = build(applyLeaveOverlay(baseline, overlay));
 
     expect(cell(res, "am", "Mon").location).toBe(LOCATION_LABELS.main);
@@ -150,9 +148,7 @@ describe("weeklyGrid — leave ends EXACTLY on Friday", () => {
   );
 
   it("Fri AM flips to 'On leave' 3/3; Fri PM stays 'Main theatres' 3/3", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const res = build(applyLeaveOverlay(baseline, overlay));
 
     expect(cell(res, "am", "Fri").location).toBe(LOCATION_LABELS.leave);
@@ -185,9 +181,7 @@ describe("weeklyGrid — leave starts on a Saturday (weekend, off-grid)", () => 
   );
 
   it("Mon & Tue AM+PM all flip to 'On leave' 3/3; Wed/Thu/Fri remain empty", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const res = build(applyLeaveOverlay(baseline, overlay));
 
     for (const wd of ["Mon", "Tue"]) {
@@ -222,9 +216,7 @@ describe("weeklyGrid — leave ends on a Sunday (weekend, off-grid)", () => {
   );
 
   it("Wed, Thu, Fri all flip to 'On leave' 3/3; Mon/Tue remain empty (Sat/Sun stay off-grid)", () => {
-    const overlay = expandApprovedLeaveToAssignments(
-      STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO,
-    );
+    const overlay = expandApprovedLeaveToAssignments(STAFF.id, leaveRows, WINDOW_FROM, WINDOW_TO);
     const res = build(applyLeaveOverlay(baseline, overlay));
 
     for (const wd of ["Wed", "Thu", "Fri"]) {

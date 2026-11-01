@@ -144,9 +144,7 @@ export async function loadLeavePressure(
     weekMap.set(wk, cur);
   }
 
-  const weeks = [...weekMap.values()].sort((a, b) =>
-    a.weekStart < b.weekStart ? -1 : 1,
-  );
+  const weeks = [...weekMap.values()].sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
 
   return { days, weeks, staff };
 }

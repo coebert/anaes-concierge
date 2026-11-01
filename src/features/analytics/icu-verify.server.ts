@@ -55,7 +55,6 @@ export type IcuVerifyResult = {
   tracesDeleted: number;
   /** Stale ICU rota rows removed so the audit tally matches CLWRota exactly. */
   assignmentsDeleted: number;
-
 };
 
 // Must mirror the CLWRota sync's `dutyLabels` exactly — same fields, same
@@ -121,8 +120,6 @@ const LABEL_GROUPS: string[][] = [
   ],
 ];
 const LABEL_KEYS = LABEL_GROUPS.map((g) => g[0]);
-
-
 
 function normaliseName(raw: string): string {
   return raw
@@ -192,11 +189,7 @@ export async function verifyIcuWindow(opts: {
 
   const dutyMappings = await loadDutyTypeMappings();
 
-  const windowedUrl = explicitDateWindow(
-    ensureRotaReportFields(url),
-    opts.startIso,
-    opts.endIso,
-  );
+  const windowedUrl = explicitDateWindow(ensureRotaReportFields(url), opts.startIso, opts.endIso);
   const text = await fetchReportRaw(windowedUrl, apiKey, { extendFutureWindow: false });
   const { rows } = parseRows(text);
 
@@ -220,7 +213,6 @@ export async function verifyIcuWindow(opts: {
     sourceRow: Record<string, unknown>;
   };
   const evidence = new Map<string, Evidence>();
-
 
   for (const row of rows) {
     const session_date = normaliseDate(
@@ -264,9 +256,7 @@ export async function verifyIcuWindow(opts: {
         "Name",
         "full_name",
       ]) ??
-      [pick(row, ["person.first_name"]), pick(row, ["person.last_name"])]
-        .filter(Boolean)
-        .join(" ");
+      [pick(row, ["person.first_name"]), pick(row, ["person.last_name"])].filter(Boolean).join(" ");
 
     const staffId =
       (email ? byEmail.get(email.toLowerCase()) : undefined) ??
@@ -276,12 +266,7 @@ export async function verifyIcuWindow(opts: {
 
     const labels = LABEL_GROUPS.map((keys) => pick(row, keys));
     const prof = profById.get(staffId);
-    const dutyType = classifyDutyType(
-      labels,
-      prof?.grade,
-      prof?.training_level,
-      dutyMappings,
-    );
+    const dutyType = classifyDutyType(labels, prof?.grade, prof?.training_level, dutyMappings);
     if (!icuTypes.has(dutyType)) continue;
 
     // ICU rows can name several consultants in the slot text ("Dr Hogan &
@@ -318,10 +303,9 @@ export async function verifyIcuWindow(opts: {
           session_date,
           session,
           dutyType,
-          clwrotaExternalId:
-            pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ?? null,
-          matchedField: matchedIdx >= 0 ? LABEL_KEYS[matchedIdx] ?? null : null,
-          matchedValue: matchedIdx >= 0 ? labels[matchedIdx] ?? null : null,
+          clwrotaExternalId: pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ?? null,
+          matchedField: matchedIdx >= 0 ? (LABEL_KEYS[matchedIdx] ?? null) : null,
+          matchedValue: matchedIdx >= 0 ? (labels[matchedIdx] ?? null) : null,
           placeName: pick(row, ["place.name"]) ?? null,
           slotTitles: pick(row, ["slot_titles"]) ?? null,
           roleLabel: pick(row, ["role.name", "assignment_type.name"]) ?? null,
@@ -344,7 +328,6 @@ export async function verifyIcuWindow(opts: {
     }
   }
 
-
   // Audit side: what the ICU audit page counts for the same window.
   const auditRows = await fetchAllPaged<{
     id: string;
@@ -358,7 +341,9 @@ export async function verifyIcuWindow(opts: {
   }>(() =>
     supabaseAdmin
       .from("rota_assignments")
-      .select("id,staff_id,session_date,session,duty_type,attending_consultant_ids,source,locally_modified")
+      .select(
+        "id,staff_id,session_date,session,duty_type,attending_consultant_ids,source,locally_modified",
+      )
       .gte("session_date", opts.startIso)
       .lte("session_date", opts.endIso)
       .in("duty_type", [...ICU_DUTY_TYPES])
@@ -446,10 +431,7 @@ export async function verifyIcuWindow(opts: {
     .map((r) => r.id);
   for (let i = 0; i < staleIds.length; i += 200) {
     const chunk = staleIds.slice(i, i + 200);
-    const { error } = await supabaseAdmin
-      .from("icu_detection_matches")
-      .delete()
-      .in("id", chunk);
+    const { error } = await supabaseAdmin.from("icu_detection_matches").delete().in("id", chunk);
     if (error) {
       console.error("ICU stale trace cleanup failed:", error.message);
       break;
@@ -489,7 +471,6 @@ export async function verifyIcuWindow(opts: {
       }
     }
   }
-
 
   const missingFromAudit = [...source.values()]
     .filter((s) => !audit.has(s.key))
@@ -535,6 +516,5 @@ export async function verifyIcuWindow(opts: {
     diverged: missingFromAudit.length > 0 || extraInAudit.length > 0,
     tracesDeleted,
     assignmentsDeleted,
-
   };
 }

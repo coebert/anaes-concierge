@@ -80,8 +80,8 @@ export function ValidateResultPanel({
       {data.mismatches.length === 0 ? (
         <div className="flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-success dark:bg-emerald-950/40 dark:text-emerald-400">
           <CheckCircle2 className="h-3 w-3" />
-          All trainees with theatre rows have at least one matched list
-          and an unmatched ratio below 50%.
+          All trainees with theatre rows have at least one matched list and an unmatched ratio below
+          50%.
         </div>
       ) : (
         <>
@@ -127,10 +127,10 @@ export function ValidateResultPanel({
                             ? "No theatre listing"
                             : m.likelyCause === "mixed"
                               ? "Mixed"
-                              : "Unknown"}
-                        {" "}
+                              : "Unknown"}{" "}
                         <span className="text-muted-foreground">
-                          ({m.unmatchedWithOtherTheatreSessions}/{m.unmatched} on days with a theatre)
+                          ({m.unmatchedWithOtherTheatreSessions}/{m.unmatched} on days with a
+                          theatre)
                         </span>
                       </td>
                     </tr>
@@ -142,14 +142,16 @@ export function ValidateResultPanel({
         </>
       )}
       {data.onIcuBlock.length > 0 && (
-        <details className="rounded border border-sky-300/60 bg-sky-50/50 p-2 dark:border-sky-700/60 dark:bg-sky-950/30" open>
+        <details
+          className="rounded border border-sky-300/60 bg-sky-50/50 p-2 dark:border-sky-700/60 dark:bg-sky-950/30"
+          open
+        >
           <summary className="cursor-pointer font-medium text-sky-800 dark:text-sky-200">
             On ICU block — no theatre lists expected ({data.onIcuBlock.length})
           </summary>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            These trainees' remaining rotation is ICU-only, so unmatched
-            theatre rows are not treated as warnings. They have been
-            excluded from the mismatch list above.
+            These trainees' remaining rotation is ICU-only, so unmatched theatre rows are not
+            treated as warnings. They have been excluded from the mismatch list above.
           </p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {data.onIcuBlock.map((t) => (
@@ -437,9 +439,7 @@ export function StaffSyncResultPanel({ data }: { data: StaffSyncData }) {
               {data.emailDiagnostics.emailFieldsTried.join(", ")}
             </div>
             <div>
-              <span className="font-medium text-foreground">
-                Email fields detected in payload:
-              </span>{" "}
+              <span className="font-medium text-foreground">Email fields detected in payload:</span>{" "}
               {data.emailDiagnostics.detectedEmailFields.length
                 ? data.emailDiagnostics.detectedEmailFields.join(", ")
                 : "none — staff report has no recognised email column"}
@@ -494,9 +494,7 @@ export function StaffSyncResultPanel({ data }: { data: StaffSyncData }) {
           <summary className="cursor-pointer font-medium">
             Detected CLWRota columns ({data.sampleKeys.length})
           </summary>
-          <div className="mt-2 break-all text-muted-foreground">
-            {data.sampleKeys.join(", ")}
-          </div>
+          <div className="mt-2 break-all text-muted-foreground">{data.sampleKeys.join(", ")}</div>
         </details>
       )}
       {data.rawPreview && data.total === 0 && (

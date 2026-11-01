@@ -1,11 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -54,17 +48,24 @@ export function AllowancesTab({
 }) {
   const [allowanceFilter, setAllowanceFilter] = useState("");
 
-  const allowanceByStaff = useMemo(() => {
+  // Keyed by staff AND leave year: a staff member has one allowance row per
+  // leave year, so "last row per staff" would show the wrong year's figures.
+  const allowanceByStaffYear = useMemo(() => {
     const m = new Map<string, AllowanceRow>();
-    for (const a of allowances) m.set(a.staff_id, a);
+    for (const a of allowances) m.set(`${a.staff_id}|${a.leave_year_start}`, a);
     return m;
   }, [allowances]);
 
   const allowanceRows = useMemo(() => {
     type Bucket = { taken: number; booked: number };
     type BucketKey =
-      | "annual" | "study" | "professional"
-      | "sick" | "parental" | "compassionate" | "other";
+      | "annual"
+      | "study"
+      | "professional"
+      | "sick"
+      | "parental"
+      | "compassionate"
+      | "other";
     type Summary = {
       profile: ProfileRow;
       yearStartISO: string;
@@ -84,7 +85,7 @@ export function AllowancesTab({
     });
     const out: Summary[] = [];
     for (const p of profiles) {
-      const a = allowanceByStaff.get(p.id);
+      const a = allowanceByStaffYear.get(`${p.id}|${selectedYearStartISO}`);
       const yearStartISO = selectedYearStartISO;
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
@@ -93,16 +94,22 @@ export function AllowancesTab({
       for (const r of yearLeave) {
         if (r.staff_id !== p.id) continue;
         if (!leaveOverlapsYear(r, yearStartISO)) continue;
-        const days = leaveWorkingDays(r);
+        const days = leaveWorkingDays(r, yearStartISO);
         if (days <= 0) continue;
         const k: BucketKey =
-          r.type === "annual" ? "annual"
-          : r.type === "study" ? "study"
-          : r.type === "professional" ? "professional"
-          : r.type === "sick" ? "sick"
-          : r.type === "parental" ? "parental"
-          : r.type === "compassionate" ? "compassionate"
-          : "other";
+          r.type === "annual"
+            ? "annual"
+            : r.type === "study"
+              ? "study"
+              : r.type === "professional"
+                ? "professional"
+                : r.type === "sick"
+                  ? "sick"
+                  : r.type === "parental"
+                    ? "parental"
+                    : r.type === "compassionate"
+                      ? "compassionate"
+                      : "other";
         if (r.status === "approved") buckets[k].taken += days;
         else if (r.status === "pending") buckets[k].booked += days;
       }
@@ -116,7 +123,7 @@ export function AllowancesTab({
       });
     }
     return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
-  }, [profiles, yearLeave, allowanceByStaff, selectedYearStartISO]);
+  }, [profiles, yearLeave, allowanceByStaffYear, selectedYearStartISO]);
 
   const allowanceVisible = useMemo(() => {
     const q = allowanceFilter.trim().toLowerCase();
@@ -134,9 +141,9 @@ export function AllowancesTab({
         <div>
           <CardTitle className="text-base">Leave allowances</CardTitle>
           <CardDescription>
-            Days taken (approved) + booked (pending) vs annual allowance for the
-            current leave year. Counts working days (Mon–Fri); half-day requests
-            count as 0.5. Study and professional leave are tracked separately.
+            Days taken (approved) + booked (pending) vs annual allowance for the current leave year.
+            Counts working days (Mon–Fri); half-day requests count as 0.5. Study and professional
+            leave are tracked separately.
           </CardDescription>
         </div>
         <div className="flex items-end gap-2">
@@ -155,7 +162,9 @@ export function AllowancesTab({
                   });
                 }
                 return opts.map((o) => (
-                  <SelectItem key={o.iso} value={o.iso}>{o.label}</SelectItem>
+                  <SelectItem key={o.iso} value={o.iso}>
+                    {o.label}
+                  </SelectItem>
                 ));
               })()}
             </SelectContent>
@@ -180,20 +189,52 @@ export function AllowancesTab({
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Grade</TableHead>
-                  <TableHead className="text-right" title="Annual taken (approved) / booked (pending)">Annual taken/booked</TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="Annual taken (approved) / booked (pending)"
+                  >
+                    Annual taken/booked
+                  </TableHead>
                   <TableHead className="text-right">Annual allowance</TableHead>
-                  <TableHead className="text-right" title="Allowance minus taken only (booked future leave is NOT subtracted)">Annual remaining (excl. booked)</TableHead>
-                  <TableHead className="text-right" title="Annual remaining minus booked future leave">Annual remaining (after booked)</TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="Allowance minus taken only (booked future leave is NOT subtracted)"
+                  >
+                    Annual remaining (excl. booked)
+                  </TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="Annual remaining minus booked future leave"
+                  >
+                    Annual remaining (after booked)
+                  </TableHead>
                   <TableHead className="text-right">Study taken/booked</TableHead>
                   <TableHead className="text-right">Study allowance</TableHead>
                   <TableHead className="text-right">Study remaining</TableHead>
                   <TableHead className="text-right">Professional taken/booked</TableHead>
                   <TableHead className="text-right">Professional allowance</TableHead>
                   <TableHead className="text-right">Professional remaining</TableHead>
-                  <TableHead className="text-right" title="Sick leave — informational only, not deducted from an allowance">Sick taken/booked</TableHead>
-                  <TableHead className="text-right" title="Parental leave — informational only">Parental taken/booked</TableHead>
-                  <TableHead className="text-right" title="Compassionate leave — informational only">Compassionate taken/booked</TableHead>
-                  <TableHead className="text-right" title="Any other leave type — informational only">Other taken/booked</TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="Sick leave — informational only, not deducted from an allowance"
+                  >
+                    Sick taken/booked
+                  </TableHead>
+                  <TableHead className="text-right" title="Parental leave — informational only">
+                    Parental taken/booked
+                  </TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="Compassionate leave — informational only"
+                  >
+                    Compassionate taken/booked
+                  </TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="Any other leave type — informational only"
+                  >
+                    Other taken/booked
+                  </TableHead>
                   <TableHead className="text-xs text-muted-foreground">Leave year</TableHead>
                 </TableRow>
               </TableHeader>
@@ -208,9 +249,11 @@ export function AllowancesTab({
                   const profRem = s.professionalAllowance - profUsed;
                   const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
                   const remTone = (rem: number) =>
-                    rem < 0 ? "text-destructive font-semibold"
-                    : rem <= 2 ? "text-warning font-medium"
-                    : "";
+                    rem < 0
+                      ? "text-destructive font-semibold"
+                      : rem <= 2
+                        ? "text-warning font-medium"
+                        : "";
                   return (
                     <TableRow key={s.profile.id}>
                       <TableCell className="font-medium">{s.profile.full_name}</TableCell>

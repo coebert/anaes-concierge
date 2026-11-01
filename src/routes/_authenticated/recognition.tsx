@@ -7,7 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageLoading } from "@/components/loading";
-import { RecognitionDialog, RECOGNITION_CATEGORIES } from "@/components/wellbeing/RecognitionDialog";
+import {
+  RecognitionDialog,
+  RECOGNITION_CATEGORIES,
+} from "@/components/wellbeing/RecognitionDialog";
 import { Sparkles } from "lucide-react";
 import { formatDateWithWeekdayGB } from "@/lib/utils";
 
@@ -38,10 +41,7 @@ function RecognitionPage() {
       if (feedRes.error) throw feedRes.error;
       if (profilesRes.error) throw profilesRes.error;
       const nameById = new Map(
-        (profilesRes.data ?? []).map((p) => [
-          p.id,
-          p.full_name || p.email || "Unknown",
-        ]),
+        (profilesRes.data ?? []).map((p) => [p.id, p.full_name || p.email || "Unknown"]),
       );
       return {
         entries: (feedRes.data ?? []) as Array<{
@@ -96,7 +96,9 @@ function RecognitionPage() {
                     {CATEGORY_LABEL[e.category] ?? e.category}
                   </Badge>
                   {!e.is_public && (
-                    <Badge variant="outline" className="text-xs">Private</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Private
+                    </Badge>
                   )}
                   <span className="ml-auto text-xs text-muted-foreground">
                     {formatDateWithWeekdayGB(e.created_at.slice(0, 10))}
@@ -111,11 +113,7 @@ function RecognitionPage() {
         </div>
       )}
 
-      <RecognitionDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSaved={() => refetch()}
-      />
+      <RecognitionDialog open={dialogOpen} onOpenChange={setDialogOpen} onSaved={() => refetch()} />
     </div>
   );
 }

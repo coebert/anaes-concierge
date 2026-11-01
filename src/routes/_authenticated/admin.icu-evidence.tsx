@@ -14,10 +14,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Activity, AlertTriangle, CalendarClock, Moon } from "lucide-react";
 import {
@@ -201,7 +210,10 @@ function IcuEvidencePage() {
           <Button variant="outline" onClick={appraisalYear}>
             Appraisal year
           </Button>
-          <Button variant="outline" onClick={() => apply({ from: isoDaysAgo(365), to: todayIso() })}>
+          <Button
+            variant="outline"
+            onClick={() => apply({ from: isoDaysAgo(365), to: todayIso() })}
+          >
             Last 12 months
           </Button>
         </CardContent>
@@ -273,9 +285,7 @@ function IcuEvidencePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Sessions ({data.sessions.length})
-              </CardTitle>
+              <CardTitle className="text-base">Sessions ({data.sessions.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {data.sessions.length === 0 ? (

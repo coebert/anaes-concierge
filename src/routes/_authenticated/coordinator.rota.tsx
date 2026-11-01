@@ -13,6 +13,7 @@ import { parseDateLocal, toISODateLocal, formatDateWithWeekdayGB } from "@/lib/u
 import { useAuth } from "@/lib/auth-context";
 import { type Profile, type RotaRules } from "@/lib/rota-validation";
 import { RotaWeekGrid } from "@/features/coordinator-rota/RotaWeekGrid";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { CellDialog } from "@/features/coordinator-rota/CellDialog";
 import { CompetencyBlockersPanel } from "@/features/coordinator-rota/CompetencyBlockersPanel";
 import { usePreferenceMatchFilter } from "@/features/coordinator-rota/use-preference-match-filter";
@@ -27,7 +28,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 import type {
-  SessionHalf, RotaRole, WeekAssignment, ContextAssignment,
+  SessionHalf,
+  RotaRole,
+  WeekAssignment,
+  ContextAssignment,
 } from "@/features/coordinator-rota/types";
 
 const DEFAULT_RULES: RotaRules = {
@@ -67,9 +71,13 @@ function startOfWeek(d: Date) {
   return x;
 }
 function addDays(d: Date, n: number) {
-  const x = new Date(d); x.setDate(x.getDate() + n); return x;
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
 }
-function iso(d: Date) { return toISODateLocal(d); }
+function iso(d: Date) {
+  return toISODateLocal(d);
+}
 function fmt(d: Date) {
   // British DD/MM/YYYY with weekday context, e.g. "Mon 26/05/2026".
   return formatDateWithWeekdayGB(d);
@@ -77,15 +85,25 @@ function fmt(d: Date) {
 
 function RotaGridPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart],
+  );
   const startIso = iso(days[0]);
   const endIso = iso(days[days.length - 1]);
 
   const [cellOpen, setCellOpen] = useState<{
-    theatreId: string; date: string; session: SessionHalf;
+    theatreId: string;
+    date: string;
+    session: SessionHalf;
   } | null>(null);
 
-  const { data: theatres } = useQuery({
+  const {
+    data: theatres,
+    error: theatresErr,
+    isPending: theatresPending,
+    refetch: theatresRefetch,
+  } = useQuery({
     queryKey: ["theatres-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -98,7 +116,12 @@ function RotaGridPage() {
     },
   });
 
-  const { data: theatreSessions } = useQuery({
+  const {
+    data: theatreSessions,
+    error: theatreSessionsErr,
+    isPending: theatreSessionsPending,
+    refetch: theatreSessionsRefetch,
+  } = useQuery({
     queryKey: ["theatre-sessions", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -114,14 +137,18 @@ function RotaGridPage() {
   const { data: specialtiesList } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties").select("id,name").order("name");
+      const { data, error } = await supabase.from("specialties").select("id,name").order("name");
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: assignments } = useQuery({
+  const {
+    data: assignments,
+    error: assignmentsErr,
+    isPending: assignmentsPending,
+    refetch: assignmentsRefetch,
+  } = useQuery({
     queryKey: ["assignments", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -138,7 +165,12 @@ function RotaGridPage() {
 
   const ctxStartIso = iso(addDays(days[0], -21));
   const ctxEndIso = iso(addDays(days[days.length - 1], 21));
-  const { data: contextAssignments } = useQuery({
+  const {
+    data: contextAssignments,
+    error: contextAssignmentsErr,
+    isPending: contextAssignmentsPending,
+    refetch: contextAssignmentsRefetch,
+  } = useQuery({
     queryKey: ["assignments-context", ctxStartIso, ctxEndIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -153,7 +185,12 @@ function RotaGridPage() {
     },
   });
 
-  const { data: staff } = useQuery({
+  const {
+    data: staff,
+    error: staffErr,
+    isPending: staffPending,
+    refetch: staffRefetch,
+  } = useQuery({
     queryKey: ["staff-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -166,17 +203,30 @@ function RotaGridPage() {
     },
   });
 
-  const { data: rules } = useQuery({
+  const {
+    data: rules,
+    error: rulesErr,
+    isPending: rulesPending,
+    refetch: rulesRefetch,
+  } = useQuery({
     queryKey: ["rota-rules"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("rota_rules").select("*").eq("id", 1).maybeSingle();
+        .from("rota_rules")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
       if (error) throw error;
       return (data ?? null) as RotaRules | null;
     },
   });
 
-  const { data: jobPlans } = useQuery({
+  const {
+    data: jobPlans,
+    error: jobPlansErr,
+    isPending: jobPlansPending,
+    refetch: jobPlansRefetch,
+  } = useQuery({
     queryKey: ["job-plans-all"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -187,7 +237,12 @@ function RotaGridPage() {
     },
   });
 
-  const { data: leave } = useQuery({
+  const {
+    data: leave,
+    error: leaveErr,
+    isPending: leavePending,
+    refetch: leaveRefetch,
+  } = useQuery({
     queryKey: ["leave-week", startIso, endIso],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -200,7 +255,12 @@ function RotaGridPage() {
     },
   });
 
-  const { data: fixedSessions } = useQuery({
+  const {
+    data: fixedSessions,
+    error: fixedSessionsErr,
+    isPending: fixedSessionsPending,
+    refetch: fixedSessionsRefetch,
+  } = useQuery({
     queryKey: ["fixed-sessions-all"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -210,6 +270,42 @@ function RotaGridPage() {
       return data as { staff_id: string; day_of_week: number; session: SessionHalf }[];
     },
   });
+
+  // Every source the cell editor validates against. If any is still
+  // loading or failed, editing is BLOCKED — validating against [] or
+  // default rules would silently approve unsafe changes.
+  const validationSources = [
+    { label: "staff", pending: staffPending, error: staffErr, retry: staffRefetch },
+    { label: "rota rules", pending: rulesPending, error: rulesErr, retry: rulesRefetch },
+    { label: "job plans", pending: jobPlansPending, error: jobPlansErr, retry: jobPlansRefetch },
+    { label: "leave", pending: leavePending, error: leaveErr, retry: leaveRefetch },
+    {
+      label: "fixed sessions",
+      pending: fixedSessionsPending,
+      error: fixedSessionsErr,
+      retry: fixedSessionsRefetch,
+    },
+    {
+      label: "this week's assignments",
+      pending: assignmentsPending,
+      error: assignmentsErr,
+      retry: assignmentsRefetch,
+    },
+    {
+      label: "surrounding assignments",
+      pending: contextAssignmentsPending,
+      error: contextAssignmentsErr,
+      retry: contextAssignmentsRefetch,
+    },
+  ];
+  const validationFailed = validationSources.filter((v) => v.error);
+  const validationLoading = validationSources.filter((v) => v.pending && !v.error);
+  const validationReady = validationFailed.length === 0 && validationLoading.length === 0;
+  const gridSources = [
+    { label: "theatres", error: theatresErr, retry: theatresRefetch },
+    { label: "theatre sessions", error: theatreSessionsErr, retry: theatreSessionsRefetch },
+    { label: "assignments", error: assignmentsErr, retry: assignmentsRefetch },
+  ].filter((g) => g.error);
 
   const [matchOnly, setMatchOnly] = usePreferenceMatchFilter();
 
@@ -237,9 +333,7 @@ function RotaGridPage() {
 
   // Count consultants/SAS who would match at least one list scheduled this week.
   const matchStats = useMemo(() => {
-    const applicable = (staff ?? []).filter(
-      (s) => s.grade === "consultant" || s.grade === "sas",
-    );
+    const applicable = (staff ?? []).filter((s) => s.grade === "consultant" || s.grade === "sas");
     const total = applicable.length;
 
     // Distinct specialties present on this week's sessions.
@@ -247,9 +341,7 @@ function RotaGridPage() {
     for (const ts of theatreSessions ?? []) {
       if (ts.specialty_id) weekSpecialtyIds.add(ts.specialty_id);
     }
-    const weekSpecialties = (specialtiesList ?? []).filter((sp) =>
-      weekSpecialtyIds.has(sp.id),
-    );
+    const weekSpecialties = (specialtiesList ?? []).filter((sp) => weekSpecialtyIds.has(sp.id));
 
     const practiceById = new Map<string, StaffPracticePref>();
     for (const p of practicePrefs ?? []) practiceById.set(p.staff_id, p);
@@ -257,13 +349,14 @@ function RotaGridPage() {
     const specByStaff = new Map<string, Map<string, StaffSpecialtyPref>>();
     for (const p of specialtyPrefs ?? []) {
       let m = specByStaff.get(p.staff_id);
-      if (!m) { m = new Map(); specByStaff.set(p.staff_id, m); }
+      if (!m) {
+        m = new Map();
+        specByStaff.set(p.staff_id, m);
+      }
       m.set(p.specialty_id, p);
     }
 
-    const specialtyNames = weekSpecialties
-      .map((sp) => sp.name)
-      .sort((a, b) => a.localeCompare(b));
+    const specialtyNames = weekSpecialties.map((sp) => sp.name).sort((a, b) => a.localeCompare(b));
 
     if (weekSpecialties.length === 0) {
       return {
@@ -322,10 +415,6 @@ function RotaGridPage() {
     return { matching, preferred, total, hasLists: true, specialtyNames, perSpecialty };
   }, [staff, theatreSessions, specialtiesList, practicePrefs, specialtyPrefs]);
 
-
-
-
-
   return (
     <div className="space-y-4">
       <PageHeader
@@ -333,25 +422,43 @@ function RotaGridPage() {
         description={`Week of ${fmt(days[0])} — click any cell to set the surgical list and assign anaesthetists.`}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-              <ChevronLeft className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setWeekStart(addDays(weekStart, -7))}
+              aria-label="Previous week"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
             </Button>
             <Input
-              type="date" value={iso(weekStart)}
+              type="date"
+              value={iso(weekStart)}
+              aria-label="Jump to week containing date"
               onChange={(e) => {
                 const d = parseDateLocal(e.target.value);
                 if (d) setWeekStart(startOfWeek(d));
               }}
               className="h-8 w-40"
             />
-            <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-              <ChevronRight className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setWeekStart(addDays(weekStart, 7))}
+              aria-label="Next week"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setWeekStart(startOfWeek(new Date()))}
+            >
               This week
             </Button>
             <div className="flex items-center gap-2 rounded border border-border bg-muted/40 px-2 py-1 text-xs">
-              <span aria-hidden className="text-amber-500">★</span>
+              <span aria-hidden className="text-amber-500">
+                ★
+              </span>
               <Label htmlFor="rota-pref-match" className="text-xs font-medium cursor-pointer">
                 Match preferences
               </Label>
@@ -374,14 +481,17 @@ function RotaGridPage() {
                         .join("\n")}`
                     : "No lists scheduled this week yet — all consultants / SAS count as matching."
                 }
-
               >
-                <span className="text-amber-500" aria-hidden>★</span>
-                <span aria-label={`${matchStats.preferred} preferred`}>
-                  {matchStats.preferred}
+                <span className="text-amber-500" aria-hidden>
+                  ★
                 </span>
-                <span className="text-muted-foreground" aria-hidden>·</span>
-                <span className="text-emerald-600 dark:text-emerald-400" aria-hidden>✓</span>
+                <span aria-label={`${matchStats.preferred} preferred`}>{matchStats.preferred}</span>
+                <span className="text-muted-foreground" aria-hidden>
+                  ·
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400" aria-hidden>
+                  ✓
+                </span>
                 <span aria-label={`${matchStats.matching} matching of ${matchStats.total}`}>
                   {matchStats.matching}/{matchStats.total}
                 </span>
@@ -400,31 +510,39 @@ function RotaGridPage() {
                   <p className="mb-2 font-semibold">Staff dropdown legend</p>
                   <ul className="space-y-1.5">
                     <li className="flex items-start gap-2">
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-amber-500">★</span>
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-amber-500">
+                        ★
+                      </span>
                       <span>
-                        <span className="font-medium">Preferred</span> — actively enjoys / requests this specialty.
+                        <span className="font-medium">Preferred</span> — actively enjoys / requests
+                        this specialty.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-emerald-600 dark:text-emerald-400">✓</span>
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-emerald-600 dark:text-emerald-400">
+                        ✓
+                      </span>
                       <span>
-                        <span className="font-medium">Matches</span> — covers the required specialty and any obs / paeds / cleft flags.
+                        <span className="font-medium">Matches</span> — covers the required specialty
+                        and any obs / paeds / cleft flags.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-destructive">!</span>
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center font-bold text-destructive">
+                        !
+                      </span>
                       <span>
-                        <span className="font-medium">Warning</span> — missing a required coverage or marked as not covering the specialty.
+                        <span className="font-medium">Warning</span> — missing a required coverage
+                        or marked as not covering the specialty.
                       </span>
                     </li>
                   </ul>
                   <p className="mt-2 text-muted-foreground">
-                    Icons appear next to each name in the assignment dropdown when <span className="font-medium">Match preferences</span> is on.
+                    Icons appear next to each name in the assignment dropdown when{" "}
+                    <span className="font-medium">Match preferences</span> is on.
                   </p>
                 </PopoverContent>
               </Popover>
-
-
             </div>
           </>
         }
@@ -438,6 +556,39 @@ function RotaGridPage() {
         onSelectCell={setCellOpen}
       />
 
+      {gridSources.length > 0 && (
+        <QueryErrorNotice
+          error={gridSources[0].error}
+          what={`the rota (${gridSources.map((g) => g.label).join(", ")})`}
+          onRetry={() => gridSources.forEach((g) => void g.retry())}
+        />
+      )}
+      {!validationReady && (
+        <div
+          role="status"
+          className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs"
+        >
+          {validationFailed.length > 0 ? (
+            <>
+              Editing is paused: {validationFailed.map((v) => v.label).join(", ")} could not be
+              loaded, so changes can't be checked for clashes or rule breaches.{" "}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => validationFailed.forEach((v) => void v.retry())}
+              >
+                Retry
+              </button>
+            </>
+          ) : (
+            <>
+              Editing will be available once {validationLoading.map((v) => v.label).join(", ")}{" "}
+              finish loading…
+            </>
+          )}
+        </div>
+      )}
+
       <RotaWeekGrid
         days={days}
         theatres={theatres}
@@ -448,8 +599,7 @@ function RotaGridPage() {
         onCellClick={setCellOpen}
       />
 
-
-      {cellOpen && (
+      {cellOpen && validationReady && (
         <CellDialog
           theatreId={cellOpen.theatreId}
           theatreName={theatres?.find((t) => t.id === cellOpen.theatreId)?.name ?? ""}
@@ -463,6 +613,7 @@ function RotaGridPage() {
           jobPlans={jobPlans ?? []}
           leave={leave ?? []}
           fixedSessions={fixedSessions ?? []}
+          // Rules row genuinely absent (loaded, no error) → documented defaults.
           rules={rules ?? DEFAULT_RULES}
         />
       )}

@@ -82,13 +82,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -127,9 +124,7 @@ function applySync(outcome: SyncOutcome) {
     return;
   }
   const rowsToTouch =
-    outcome.mode === "timeout"
-      ? outcome.appliedRowIds
-      : Object.keys(outcome.updates);
+    outcome.mode === "timeout" ? outcome.appliedRowIds : Object.keys(outcome.updates);
 
   fixture.theatre_sessions = (fixture.theatre_sessions as Row[]).map((row) => {
     const id = row.id as string;
@@ -278,7 +273,6 @@ describe("emergency detection — CLWRota sync failures across consecutive updat
     expect(am.risk).toBe("shortfall");
   });
 
-
   it("timeout that partially wrote a ROUTINE row to null fields → routine stays planned, not reclassified as emergency", async () => {
     // Symmetry guard: a partial write that nulls both fields on a
     // routine list must NOT cause it to be silently treated as emergency
@@ -334,7 +328,6 @@ describe("emergency detection — CLWRota sync failures across consecutive updat
     expect(am.required, "all signals now gone → planned").toBe(3);
     expect(am.unfilled).toBe(1);
     expect(am.risk).toBe("shortfall"); // surfaced gap, no roster-evidenced spare
-
 
     // Sync #5: recovery — successful sync re-applies both emergency
     // signals. Classification reverts immediately.

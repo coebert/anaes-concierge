@@ -72,13 +72,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -103,10 +100,7 @@ const ANCHOR_ID = "ts-anchor-am";
  * mutate in place rather than appending — exactly as the sync upserter
  * does in production.
  */
-function applySync(update: {
-  specialty_id: string | null;
-  surgical_consultant: string | null;
-}) {
+function applySync(update: { specialty_id: string | null; surgical_consultant: string | null }) {
   fixture.theatre_sessions = (fixture.theatre_sessions as Row[]).filter(
     (t) => t.id !== CANDIDATE_ID,
   );

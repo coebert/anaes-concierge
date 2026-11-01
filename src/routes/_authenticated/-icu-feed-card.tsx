@@ -63,7 +63,9 @@ export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: st
             <p className="text-sm text-muted-foreground">
               The feed collects {data.sliceDays} day{data.sliceDays === 1 ? "" : "s"} at a time,
               covering {data.daysBack} days back to {data.daysAhead} days ahead.
-              {data.cursor ? ` Next run continues from ${formatDateWithWeekdayGB(data.cursor)}.` : ""}
+              {data.cursor
+                ? ` Next run continues from ${formatDateWithWeekdayGB(data.cursor)}.`
+                : ""}
               {data.lastRunAt
                 ? ` Last run ${new Date(data.lastRunAt).toLocaleString("en-GB")}.`
                 : " It has not run yet."}
@@ -75,7 +77,9 @@ export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: st
             <div className="rounded-md border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-medium">Weekly re-check against CLWRota</h3>
-                <Badge variant={data.weekly.paused || !data.weekly.enabled ? "destructive" : "outline"}>
+                <Badge
+                  variant={data.weekly.paused || !data.weekly.enabled ? "destructive" : "outline"}
+                >
                   {!data.weekly.enabled
                     ? "Switched off"
                     : data.weekly.paused
@@ -110,7 +114,9 @@ export function IcuFeedCard({ startIso, endIso }: { startIso: string; endIso: st
                       key={a.id}
                       className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1 text-sm"
                     >
-                      <span className={a.acknowledgedAt ? "text-muted-foreground" : "text-amber-600"}>
+                      <span
+                        className={a.acknowledgedAt ? "text-muted-foreground" : "text-amber-600"}
+                      >
                         {a.windowStart} → {a.windowEnd}: CLWRota {a.sourceCount} vs audit{" "}
                         {a.auditCount}
                       </span>

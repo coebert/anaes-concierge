@@ -23,8 +23,7 @@ import type {
 // Replace TanStack Router primitives with inert stand-ins so the page can be
 // rendered outside a router context.
 vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tanstack/react-router")>();
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
     createFileRoute: (_path: string) => (opts: Record<string, unknown>) => ({
@@ -34,9 +33,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
       children,
       to,
       ...rest
-    }: React.PropsWithChildren<
-      { to?: string } & Record<string, unknown>
-    >) => React.createElement("a", { href: to, ...rest }, children),
+    }: React.PropsWithChildren<{ to?: string } & Record<string, unknown>>) =>
+      React.createElement("a", { href: to, ...rest }, children),
   };
 });
 
@@ -45,9 +43,9 @@ const { computeListFeasibility } = vi.hoisted(() => ({
   computeListFeasibility: vi.fn(),
 }));
 vi.mock("@/features/audit/list-feasibility", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/features/audit/list-feasibility")
-  >("@/features/audit/list-feasibility");
+  const actual = await vi.importActual<typeof import("@/features/audit/list-feasibility")>(
+    "@/features/audit/list-feasibility",
+  );
   return { ...actual, computeListFeasibility };
 });
 
@@ -187,13 +185,7 @@ describe("regular-list feasibility page", () => {
       defaultOptions: { queries: { retry: false } },
     });
 
-    render(
-      React.createElement(
-        QueryClientProvider,
-        { client: qc },
-        React.createElement(Page),
-      ),
-    );
+    render(React.createElement(QueryClientProvider, { client: qc }, React.createElement(Page)));
 
     // Wait for the query to resolve and the slots table to render.
     await waitFor(() => {
@@ -728,7 +720,9 @@ describe("regular-list feasibility page", () => {
 
     // Verify the summary stat numbers match AM + PM counts
     // The Stat component renders the value inside a div with text-xl font-semibold
-    const summaryCard = (await screen.findAllByText(/4 recurring list slot/))[0]!.closest("[class*='rounded-xl']") as HTMLElement;
+    const summaryCard = (await screen.findAllByText(/4 recurring list slot/))[0]!.closest(
+      "[class*='rounded-xl']",
+    ) as HTMLElement;
     expect(summaryCard).toBeTruthy();
 
     cleanup();

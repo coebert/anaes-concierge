@@ -86,7 +86,6 @@ function IcuDashboardPage() {
     traces.reset();
   };
 
-
   return (
     <div className="space-y-6 p-4 md:p-6" data-testid="icu-dashboard">
       <header className="space-y-1">
@@ -98,8 +97,6 @@ function IcuDashboardPage() {
       </header>
 
       <IcuFeedCard startIso={range.startIso} endIso={range.endIso} />
-
-
 
       <Card>
         <CardHeader>
@@ -222,7 +219,9 @@ function IcuDashboardPage() {
                           <td className="py-2 pr-3 text-right tabular-nums">{s.auditCount}</td>
                           <td
                             className={`py-2 pr-3 text-right tabular-nums ${
-                              s.diff === 0 ? "text-muted-foreground" : "font-medium text-destructive"
+                              s.diff === 0
+                                ? "text-muted-foreground"
+                                : "font-medium text-destructive"
                             }`}
                           >
                             {s.diff > 0 ? `+${s.diff}` : s.diff}
@@ -360,4 +359,3 @@ function IcuDashboardPage() {
     </div>
   );
 }
-

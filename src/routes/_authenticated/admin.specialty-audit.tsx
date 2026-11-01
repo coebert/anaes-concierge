@@ -14,10 +14,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Activity, CalendarClock, Layers, Moon } from "lucide-react";
 import {
@@ -147,11 +156,13 @@ function SpecialtyAuditPage() {
         .order("full_name");
       if (pErr) throw pErr;
 
-      const { data: rulesRow } = await supabase
+      const { data: rulesRow, error: rulesError } = await supabase
         .from("rota_rules")
         .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
         .limit(1)
         .maybeSingle();
+      // Never silently substitute default PA rates when the settings read fails.
+      if (rulesError) throw new Error(`PA settings could not be loaded: ${rulesError.message}`);
 
       const rules: SpecialtyPaRules = {
         sessions_per_pa: Number(rulesRow?.sessions_per_pa ?? DEFAULT_RULES.sessions_per_pa),
@@ -209,7 +220,7 @@ function SpecialtyAuditPage() {
         pa_credit: r.pa_credit,
         attending_consultant_ids: r.attending_consultant_ids,
         specialty_name: r.theatre_session_id
-          ? specialtyBySession.get(r.theatre_session_id) ?? null
+          ? (specialtyBySession.get(r.theatre_session_id) ?? null)
           : null,
       }));
 
@@ -272,7 +283,9 @@ function SpecialtyAuditPage() {
         recordedPas: round2(d.recordedPas),
         estimatedPas: round2(d.estimatedPas),
         totalPas: round2(d.totalPas),
-        rows: d.rows.sort((a, b) => b.date.localeCompare(a.date) || a.session.localeCompare(b.session)),
+        rows: d.rows.sort(
+          (a, b) => b.date.localeCompare(a.date) || a.session.localeCompare(b.session),
+        ),
       };
     });
     doctors.sort(
@@ -326,9 +339,15 @@ function SpecialtyAuditPage() {
               />
             </div>
             <Button onClick={() => applyRange(fromInput, toInput)}>Apply</Button>
-            <Button variant="outline" onClick={() => preset(90)}>Last 3 months</Button>
-            <Button variant="outline" onClick={() => preset(365)}>Last 12 months</Button>
-            <Button variant="outline" onClick={appraisalYear}>Appraisal year</Button>
+            <Button variant="outline" onClick={() => preset(90)}>
+              Last 3 months
+            </Button>
+            <Button variant="outline" onClick={() => preset(365)}>
+              Last 12 months
+            </Button>
+            <Button variant="outline" onClick={appraisalYear}>
+              Appraisal year
+            </Button>
           </div>
 
           <div className="flex flex-wrap items-end gap-3">
@@ -344,7 +363,9 @@ function SpecialtyAuditPage() {
                 <SelectContent>
                   <SelectItem value="all">All areas</SelectItem>
                   {(view?.areas ?? []).map((a) => (
-                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                    <SelectItem key={a} value={a}>
+                      {a}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -361,7 +382,9 @@ function SpecialtyAuditPage() {
                 <SelectContent>
                   <SelectItem value="all">All doctors</SelectItem>
                   {(data?.profiles ?? []).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.full_name || "Unknown"}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name || "Unknown"}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -377,7 +400,11 @@ function SpecialtyAuditPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Sessions" value={String(view.totalSessions)} icon={Layers} />
             <StatCard label="On-calls" value={String(view.totalOnCalls)} icon={Moon} />
-            <StatCard label="Programmed activities" value={view.totalPas.toFixed(2)} icon={Activity} />
+            <StatCard
+              label="Programmed activities"
+              value={view.totalPas.toFixed(2)}
+              icon={Activity}
+            />
             <StatCard
               label="Without a recorded value"
               value={String(view.unrecorded)}

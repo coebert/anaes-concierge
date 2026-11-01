@@ -83,10 +83,7 @@ function recordWellbeingInvalidation(
   );
   // Replace the array reference so `useSyncExternalStore` (which
   // bails on Object.is-equal snapshots) actually re-renders.
-  entries = [
-    { id: nextId++, key, reason: label, mutationType, ids: [...ids], at },
-    ...entries,
-  ];
+  entries = [{ id: nextId++, key, reason: label, mutationType, ids: [...ids], at }, ...entries];
   if (entries.length > MAX_ENTRIES) entries = entries.slice(0, MAX_ENTRIES);
   for (const l of listeners) l();
 }

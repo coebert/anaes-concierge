@@ -48,8 +48,7 @@ export const checkTableGrants = createServerFn({ method: "POST" })
         // Postgres 42501 = insufficient_privilege ("permission denied for
         // table X"). PostgREST returns the same code in `error.code`.
         const isGrantError =
-          code === "42501" ||
-          /permission denied for (table|relation)/i.test(message);
+          code === "42501" || /permission denied for (table|relation)/i.test(message);
 
         return {
           table,
@@ -61,12 +60,10 @@ export const checkTableGrants = createServerFn({ method: "POST" })
     );
 
     const missing = results.filter(
-      (r): r is Extract<typeof r, { ok: false }> =>
-        !r.ok && r.reason === "missing_grant",
+      (r): r is Extract<typeof r, { ok: false }> => !r.ok && r.reason === "missing_grant",
     );
     const otherErrors = results.filter(
-      (r): r is Extract<typeof r, { ok: false }> =>
-        !r.ok && r.reason === "other",
+      (r): r is Extract<typeof r, { ok: false }> => !r.ok && r.reason === "other",
     );
 
     return {

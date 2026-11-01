@@ -53,10 +53,10 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
         const toDate = params.get("to");
         const dateRe = /^\d{4}-\d{2}-\d{2}$/;
         if ((fromDate && !dateRe.test(fromDate)) || (toDate && !dateRe.test(toDate))) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "from/to must be YYYY-MM-DD." }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "from/to must be YYYY-MM-DD." }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
         }
 
         // Dynamic import — keeps server-only modules out of the client bundle.
@@ -122,13 +122,10 @@ export const Route = createFileRoute("/api/public/hooks/clwrota-sync")({
           (steps.includes("rota") && errors.rotaError);
         const ok = !blockingFailure;
 
-        return new Response(
-          JSON.stringify({ ok, steps, ...result, ...errors }),
-          {
-            status: ok ? 200 : 500,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return new Response(JSON.stringify({ ok, steps, ...result, ...errors }), {
+          status: ok ? 200 : 500,
+          headers: { "Content-Type": "application/json" },
+        });
       },
     },
   },

@@ -23,14 +23,16 @@ import { render, screen, within, cleanup } from "@testing-library/react";
 import React from "react";
 
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TraineeMetricsCard } from "@/components/trainee-metrics-card";
-import {
-  computeTraineeMetrics,
-  type MetricAssignment,
-} from "@/features/trainees/trainee-metrics";
+import { computeTraineeMetrics, type MetricAssignment } from "@/features/trainees/trainee-metrics";
 
 // --- In-memory rota store (mocked CLWRota sync) -------------------------
 
@@ -48,9 +50,7 @@ type RotaRow = {
 const STAFF_ID = "trainee-1";
 let rotaStore: RotaRow[] = [];
 
-function importRota(
-  rows: Array<Omit<RotaRow, "id" | "staff_id" | "locally_modified">>,
-) {
+function importRota(rows: Array<Omit<RotaRow, "id" | "staff_id" | "locally_modified">>) {
   rotaStore = rotaStore.filter((r) => r.staff_id !== STAFF_ID);
   rows.forEach((r, idx) => {
     rotaStore.push({
@@ -101,11 +101,7 @@ function renderMetricsCard() {
     false,
   );
   return render(
-    <TraineeMetricsCard
-      metrics={metrics}
-      startDate={WINDOW_START}
-      title="ICU trainee"
-    />,
+    <TraineeMetricsCard metrics={metrics} startDate={WINDOW_START} title="ICU trainee" />,
   );
 }
 
@@ -149,9 +145,7 @@ function StaffSessionLog() {
   // extended with the ICU-per-date collapsing rule from trainee-metrics.
   const clinical = collapseIcuRowsForSessionLog(
     rotaStore.filter((a) => a.staff_id === STAFF_ID),
-  ).filter((a) =>
-    ["solo", "supervised", "supervising"].includes(a.role_on_list),
-  );
+  ).filter((a) => ["solo", "supervised", "supervising"].includes(a.role_on_list));
   return (
     <section aria-label="Session log">
       <h2>Session log ({clinical.length})</h2>
@@ -202,10 +196,12 @@ describe("e2e: partial ICU rota → staff individual rota view + on-call rollup"
 
   it("Three partial dates: session log shows 3 ICU rows, on-call rollup shows 3", () => {
     importRota([
-      icuRow("am", "2026-06-10"),                                 // AM only
-      icuRow("pm", "2026-06-11"), icuRow("eve", "2026-06-11"),    // PM + eve
-      icuRow("am", "2026-06-12"), icuRow("pm", "2026-06-12"),
-        icuRow("eve", "2026-06-12"),                              // full day
+      icuRow("am", "2026-06-10"), // AM only
+      icuRow("pm", "2026-06-11"),
+      icuRow("eve", "2026-06-11"), // PM + eve
+      icuRow("am", "2026-06-12"),
+      icuRow("pm", "2026-06-12"),
+      icuRow("eve", "2026-06-12"), // full day
     ]);
 
     const v = render(<StaffSessionLog />);
@@ -220,16 +216,21 @@ describe("e2e: partial ICU rota → staff individual rota view + on-call rollup"
 
   it("Mixed ICU + non-ICU on-call: ICU collapses, non-ICU on-calls stay per-session", () => {
     importRota([
-      icuRow("am", "2026-06-15"), icuRow("pm", "2026-06-15"),     // 1 ICU shift
+      icuRow("am", "2026-06-15"),
+      icuRow("pm", "2026-06-15"), // 1 ICU shift
       {
-        role_on_list: "solo", session: "eve",
+        role_on_list: "solo",
+        session: "eve",
         duty_type: "registrar_oncall",
-        theatre_session_id: null, session_date: "2026-06-16",
+        theatre_session_id: null,
+        session_date: "2026-06-16",
       },
       {
-        role_on_list: "solo", session: "eve",
+        role_on_list: "solo",
+        session: "eve",
         duty_type: "registrar_oncall",
-        theatre_session_id: null, session_date: "2026-06-17",
+        theatre_session_id: null,
+        session_date: "2026-06-17",
       },
     ]);
 

@@ -9,10 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
@@ -145,9 +154,10 @@ function DutyMappingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Add mapping</CardTitle>
           <CardDescription>
-            Pattern is matched (case-insensitive) against the concatenated consultant/role/specialty/theatre
-            text from each CLWRota row. Use <em>word</em> for whole-word tokens like <code>SPA</code> or{" "}
-            <code>CIC</code>, <em>substring</em> for general phrases, or <em>regex</em> for advanced rules.
+            Pattern is matched (case-insensitive) against the concatenated
+            consultant/role/specialty/theatre text from each CLWRota row. Use <em>word</em> for
+            whole-word tokens like <code>SPA</code> or <code>CIC</code>, <em>substring</em> for
+            general phrases, or <em>regex</em> for advanced rules.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-7">
@@ -165,9 +175,15 @@ function DutyMappingsPage() {
               value={draft.match_type}
               onValueChange={(v) => setDraft({ ...draft, match_type: v as MatchType })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {MATCH_TYPES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                {MATCH_TYPES.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -177,9 +193,15 @@ function DutyMappingsPage() {
               value={draft.duty_type}
               onValueChange={(v) => setDraft({ ...draft, duty_type: v as DutyType })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {DUTY_TYPES.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                {DUTY_TYPES.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {d}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -187,11 +209,19 @@ function DutyMappingsPage() {
             <label className="text-xs text-muted-foreground">Grade</label>
             <Select
               value={draft.grade_filter}
-              onValueChange={(v) => setDraft({ ...draft, grade_filter: v as typeof GRADES[number] })}
+              onValueChange={(v) =>
+                setDraft({ ...draft, grade_filter: v as (typeof GRADES)[number] })
+              }
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                {GRADES.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -200,12 +230,18 @@ function DutyMappingsPage() {
             <Select
               value={draft.trainee_seniority_filter}
               onValueChange={(v) =>
-                setDraft({ ...draft, trainee_seniority_filter: v as typeof SENIORITIES[number] })
+                setDraft({ ...draft, trainee_seniority_filter: v as (typeof SENIORITIES)[number] })
               }
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {SENIORITIES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {SENIORITIES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -235,7 +271,8 @@ function DutyMappingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Current mappings {data ? <span className="text-muted-foreground">· {data.length}</span> : null}
+            Current mappings{" "}
+            {data ? <span className="text-muted-foreground">· {data.length}</span> : null}
           </CardTitle>
           <CardDescription>
             Lower priority runs first. Toggle <em>Active</em> to disable a rule without deleting it.
@@ -275,11 +312,19 @@ function DutyMappingsPage() {
                         />
                       </TableCell>
                       <TableCell className="font-mono text-xs">{m.pattern}</TableCell>
-                      <TableCell><Badge variant="outline">{m.match_type}</Badge></TableCell>
-                      <TableCell><Badge>{m.duty_type}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{m.match_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge>{m.duty_type}</Badge>
+                      </TableCell>
                       <TableCell className="text-xs">{m.grade_filter ?? "any"}</TableCell>
-                      <TableCell className="text-xs">{m.trainee_seniority_filter ?? "any"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{m.notes ?? ""}</TableCell>
+                      <TableCell className="text-xs">
+                        {m.trainee_seniority_filter ?? "any"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {m.notes ?? ""}
+                      </TableCell>
                       <TableCell>
                         <Switch
                           checked={m.active}

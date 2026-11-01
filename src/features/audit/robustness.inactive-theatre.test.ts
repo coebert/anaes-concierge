@@ -44,13 +44,10 @@ function chain(table: string) {
   };
   const resolve = () => {
     const rows = (fixture as unknown as Record<string, Row[]>)[table] ?? [];
-    const filtered = filters.length
-      ? rows.filter((r) => filters.every((f) => f(r)))
-      : rows;
+    const filtered = filters.length ? rows.filter((r) => filters.every((f) => f(r))) : rows;
     return Promise.resolve({ data: filtered, error: null });
   };
-  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) =>
-    resolve().then(ok);
+  c.then = (ok: (v: { data: Row[]; error: null }) => unknown) => resolve().then(ok);
   return c;
 }
 
@@ -85,14 +82,47 @@ describe("computeRobustness — inactive theatre regression", () => {
       { id: "t-legacy", active: false },
     ];
     fixture.theatre_sessions = [
-      { id: "ts1", session_date: DATE, session: "am", specialty_id: null, surgical_consultant: null, theatre_id: "t-active-1" },
-      { id: "ts2", session_date: DATE, session: "am", specialty_id: null, surgical_consultant: null, theatre_id: "t-active-2" },
+      {
+        id: "ts1",
+        session_date: DATE,
+        session: "am",
+        specialty_id: null,
+        surgical_consultant: null,
+        theatre_id: "t-active-1",
+      },
+      {
+        id: "ts2",
+        session_date: DATE,
+        session: "am",
+        specialty_id: null,
+        surgical_consultant: null,
+        theatre_id: "t-active-2",
+      },
       // Phantom list on the inactive theatre — must not be counted as demand.
-      { id: "ts-legacy", session_date: DATE, session: "am", specialty_id: null, surgical_consultant: null, theatre_id: "t-legacy" },
+      {
+        id: "ts-legacy",
+        session_date: DATE,
+        session: "am",
+        specialty_id: null,
+        surgical_consultant: null,
+        theatre_id: "t-legacy",
+      },
     ];
     fixture.rota_assignments = [
-      { staff_id: "c1", session_date: DATE, session: "am", duty_type: "theatre", theatre_session_id: "ts1" },
-      { staff_id: "c2", session_date: DATE, session: "am", duty_type: "theatre", theatre_session_id: "ts2" },
+      {
+        staff_id: "c1",
+        session_date: DATE,
+        session: "am",
+        duty_type: "theatre",
+        theatre_session_id: "ts1",
+      },
+      {
+        staff_id: "c2",
+        session_date: DATE,
+        session: "am",
+        duty_type: "theatre",
+        theatre_session_id: "ts2",
+      },
     ];
 
     const { days } = await computeRobustness(DATE, DATE);
@@ -116,12 +146,32 @@ describe("computeRobustness — inactive theatre regression", () => {
       { id: "t-active-2", active: true },
     ];
     fixture.theatre_sessions = [
-      { id: "ts1", session_date: DATE, session: "am", specialty_id: null, surgical_consultant: null, theatre_id: "t-active-1" },
-      { id: "ts2", session_date: DATE, session: "am", specialty_id: null, surgical_consultant: null, theatre_id: "t-active-2" },
+      {
+        id: "ts1",
+        session_date: DATE,
+        session: "am",
+        specialty_id: null,
+        surgical_consultant: null,
+        theatre_id: "t-active-1",
+      },
+      {
+        id: "ts2",
+        session_date: DATE,
+        session: "am",
+        specialty_id: null,
+        surgical_consultant: null,
+        theatre_id: "t-active-2",
+      },
     ];
     // Only one of the two active lists is covered.
     fixture.rota_assignments = [
-      { staff_id: "c1", session_date: DATE, session: "am", duty_type: "theatre", theatre_session_id: "ts1" },
+      {
+        staff_id: "c1",
+        session_date: DATE,
+        session: "am",
+        duty_type: "theatre",
+        theatre_session_id: "ts1",
+      },
     ];
 
     const { days } = await computeRobustness(DATE, DATE);

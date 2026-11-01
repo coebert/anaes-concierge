@@ -185,7 +185,6 @@ Requirements for a good report:
 
 Be friendly, concise, and use markdown. Use the user's terminology where reasonable.`;
 
-
 function getAdminClient() {
   const url = process.env.SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -248,22 +247,14 @@ async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
       .eq("active", true)
       .order("sort_order", { ascending: true })
       .limit(200),
-    admin
-      .from("profiles")
-      .select("grade, training_level, active")
-      .eq("active", true)
-      .limit(2000),
+    admin.from("profiles").select("grade, training_level, active").eq("active", true).limit(2000),
     admin
       .from("rota_assignments")
       .select("duty_type")
       .gte("session_date", isoDaysAgo(30))
       .not("duty_type", "is", null)
       .limit(20000),
-    admin
-      .from("specialties")
-      .select("name")
-      .order("name", { ascending: true })
-      .limit(100),
+    admin.from("specialties").select("name").order("name", { ascending: true }).limit(100),
   ]);
 
   const lines: string[] = [];
@@ -314,11 +305,7 @@ async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
       counts.set(k, (counts.get(k) ?? 0) + 1);
     }
     const ranked = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-    lines.push(
-      `DUTY TYPES IN USE (last 30d) — ${ranked
-        .map(([k, n]) => `${k}=${n}`)
-        .join(", ")}`,
-    );
+    lines.push(`DUTY TYPES IN USE (last 30d) — ${ranked.map(([k, n]) => `${k}=${n}`).join(", ")}`);
   }
 
   if (!specialtiesRes.error && specialtiesRes.data?.length) {
@@ -422,14 +409,17 @@ export const Route = createFileRoute("/api/audit-tool")({
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
 
-        const AuditMessage = z.object({
-          id: z.string().optional(),
-          role: z.enum(["user", "assistant"]),
-          parts: z.array(z.record(z.any())).optional(),
-          content: z.string().optional(),
-        }).passthrough();
+        const AuditMessage = z
+          .object({
+            id: z.string().optional(),
+            role: z.enum(["user", "assistant"]),
+            parts: z.array(z.record(z.string(), z.any())).optional(),
+            content: z.string().optional(),
+          })
+          .passthrough();
         const AuditBody = z.object({
-          messages: z.array(AuditMessage)
+          messages: z
+            .array(AuditMessage)
             .min(1, "Please send at least one message to start the audit.")
             .max(500, "Conversation is too long — please start a new audit."),
         });
@@ -439,16 +429,19 @@ export const Route = createFileRoute("/api/audit-tool")({
           const raw = await request.json();
           parsed = AuditBody.parse(raw);
         } catch (e) {
-          const friendly = e instanceof z.ZodError
-            ? e.errors.slice(0, 3).map((x) => {
-                const field = x.path.join(".") || "request";
-                return `“${field}”: ${x.message}`;
-              }).join("; ")
-            : "The request body wasn't valid JSON.";
+          const friendly =
+            e instanceof z.ZodError
+              ? e.issues
+                  .slice(0, 3)
+                  .map((x) => {
+                    const field = x.path.join(".") || "request";
+                    return `“${field}”: ${x.message}`;
+                  })
+                  .join("; ")
+              : "The request body wasn't valid JSON.";
           return new Response(`We couldn't start the audit. ${friendly}`, { status: 400 });
         }
         const messages = parsed.messages as unknown as UIMessage[];
-
 
         const userClient = getUserClient(auth.token);
         const adminClient = getAdminClient();
@@ -497,9 +490,9 @@ export const Route = createFileRoute("/api/audit-tool")({
                 const { data, error } = await userClient.rpc(
                   "admin_run_readonly_sql",
                   {
-                  p_query:
-                    "SELECT table_name FROM information_schema.tables " +
-                    "WHERE table_schema = 'public' ORDER BY table_name",
+                    p_query:
+                      "SELECT table_name FROM information_schema.tables " +
+                      "WHERE table_schema = 'public' ORDER BY table_name",
                   },
                   // GET => PostgREST read-only transaction (required by the DB function).
                   { get: true },
@@ -517,7 +510,7 @@ export const Route = createFileRoute("/api/audit-tool")({
               const { data, error } = await userClient.rpc(
                 "admin_run_readonly_sql",
                 {
-                p_query: sql,
+                  p_query: sql,
                 },
                 // GET => PostgREST read-only transaction (required by the DB function).
                 { get: true },
@@ -549,7 +542,7 @@ export const Route = createFileRoute("/api/audit-tool")({
               const { data, error } = await userClient.rpc(
                 "admin_run_readonly_sql",
                 {
-                p_query: sql,
+                  p_query: sql,
                 },
                 // GET => PostgREST read-only transaction (required by the DB function).
                 { get: true },
@@ -603,7 +596,7 @@ export const Route = createFileRoute("/api/audit-tool")({
             description:
               "Delete a stored memory by id. Use when the user says a stored memory is wrong " +
               "or out of date. The id is shown in the STORED MEMORIES block of the system prompt.",
-            inputSchema: z.object({ id: z.string().uuid() }),
+            inputSchema: z.object({ id: z.string().guid() }),
             execute: async ({ id }) => {
               const { error } = await adminClient
                 .from("audit_assistant_memories")
@@ -820,8 +813,9 @@ export const Route = createFileRoute("/api/audit-tool")({
           originalMessages: messages,
           onFinish: async ({ responseMessage }) => {
             const assistantText = (responseMessage.parts ?? [])
-              .filter((p): p is { type: "text"; text: string } =>
-                (p as { type?: string })?.type === "text",
+              .filter(
+                (p): p is { type: "text"; text: string } =>
+                  (p as { type?: string })?.type === "text",
               )
               .map((p) => p.text)
               .join("\n")
@@ -841,7 +835,6 @@ export const Route = createFileRoute("/api/audit-tool")({
             }
           },
         });
-
       },
     },
   },

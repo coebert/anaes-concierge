@@ -47,9 +47,7 @@ export function classifyConsultantAssignment(
   if (a.duty_type === "spa") return { bucket: "spa", reviewed: false };
 
   const assignmentNonSag = a.is_non_sag === true;
-  const sessionMark = a.theatre_session_id
-    ? sagBySession.get(a.theatre_session_id)
-    : undefined;
+  const sessionMark = a.theatre_session_id ? sagBySession.get(a.theatre_session_id) : undefined;
 
   if (assignmentNonSag) {
     return { bucket: "non_sag", reviewed: sessionMark?.reviewed === true };

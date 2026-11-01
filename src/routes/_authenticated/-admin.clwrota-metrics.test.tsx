@@ -106,9 +106,7 @@ describe("CLWRota metrics dashboard — invalid is_backfill", () => {
     renderPage();
 
     // Safe error card appears.
-    const errorCard = await waitFor(() =>
-      screen.getByTestId("clwrota-metrics-error"),
-    );
+    const errorCard = await waitFor(() => screen.getByTestId("clwrota-metrics-error"));
     expect(errorCard).toBeTruthy();
     expect(errorCard.textContent ?? "").toMatch(/Couldn't load sync metrics/i);
     // Error message mentions the offending path so an operator can debug.
@@ -134,9 +132,7 @@ describe("CLWRota metrics dashboard — invalid is_backfill", () => {
 
     renderPage();
 
-    const errorCard = await waitFor(() =>
-      screen.getByTestId("clwrota-metrics-error"),
-    );
+    const errorCard = await waitFor(() => screen.getByTestId("clwrota-metrics-error"));
     expect(errorCard.textContent ?? "").toMatch(/is_backfill/);
     expect(screen.queryByRole("table")).toBeNull();
   });

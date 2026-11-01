@@ -10,16 +10,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Trash2, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
 import { compareBySurname } from "@/lib/name-sort";
 import type {
-  Competency, CompetencyCategory, StaffCompetency, CompetencyRequirement,
-  RequirementLevel, CompetencyRequirementRole, CompetencyLevel,
+  Competency,
+  CompetencyCategory,
+  StaffCompetency,
+  CompetencyRequirement,
+  RequirementLevel,
+  CompetencyRequirementRole,
+  CompetencyLevel,
 } from "@/features/competencies/competencies";
 
 export const Route = createFileRoute("/_authenticated/admin/competencies")({
@@ -66,9 +82,15 @@ function CompetenciesPage() {
           <TabsTrigger value="requirements">Specialty requirements</TabsTrigger>
           <TabsTrigger value="signoffs">Staff sign-offs</TabsTrigger>
         </TabsList>
-        <TabsContent value="catalogue" className="mt-4"><CatalogueTab /></TabsContent>
-        <TabsContent value="requirements" className="mt-4"><RequirementsTab /></TabsContent>
-        <TabsContent value="signoffs" className="mt-4"><SignoffsTab /></TabsContent>
+        <TabsContent value="catalogue" className="mt-4">
+          <CatalogueTab />
+        </TabsContent>
+        <TabsContent value="requirements" className="mt-4">
+          <RequirementsTab />
+        </TabsContent>
+        <TabsContent value="signoffs" className="mt-4">
+          <SignoffsTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -85,7 +107,8 @@ function useCompetencies() {
       const { data, error } = await supabase
         .from("competencies")
         .select("id,code,name,description,category,applies_to_grades,active,sort_order")
-        .order("sort_order").order("name");
+        .order("sort_order")
+        .order("name");
       if (error) throw error;
       return (data ?? []) as Competency[];
     },
@@ -96,15 +119,20 @@ function CatalogueTab() {
   const qc = useQueryClient();
   const { data: comps } = useCompetencies();
   const [form, setForm] = useState({
-    code: "", name: "", description: "", category: "subspecialty" as CompetencyCategory,
+    code: "",
+    name: "",
+    description: "",
+    category: "subspecialty" as CompetencyCategory,
   });
 
   const create = useMutation({
     mutationFn: async () => {
       if (!form.code || !form.name) throw new Error("Code and name are required.");
       const { error } = await supabase.from("competencies").insert({
-        code: form.code, name: form.name,
-        description: form.description || null, category: form.category,
+        code: form.code,
+        name: form.name,
+        description: form.description || null,
+        category: form.category,
       });
       if (error) throw error;
     },
@@ -119,7 +147,9 @@ function CatalogueTab() {
   const toggleActive = useMutation({
     mutationFn: async (c: Competency) => {
       const { error } = await supabase
-        .from("competencies").update({ active: !c.active }).eq("id", c.id);
+        .from("competencies")
+        .update({ active: !c.active })
+        .eq("id", c.id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["competencies"] }),
@@ -141,48 +171,65 @@ function CatalogueTab() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle className="text-base">Add competency</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Add competency</CardTitle>
+        </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Code</Label>
-            <Input value={form.code}
+            <Input
+              value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
-              placeholder="e.g. difficult_airway_lead" />
+              placeholder="e.g. difficult_airway_lead"
+            />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label className="text-xs">Name</Label>
-            <Input value={form.name}
+            <Input
+              value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Difficult airway lead" />
+              placeholder="e.g. Difficult airway lead"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Category</Label>
-            <Select value={form.category}
-              onValueChange={(v) => setForm({ ...form, category: v as CompetencyCategory })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={form.category}
+              onValueChange={(v) => setForm({ ...form, category: v as CompetencyCategory })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5 flex flex-col justify-end">
             <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
-              <Plus className="mr-1 h-4 w-4" />Add
+              <Plus className="mr-1 h-4 w-4" />
+              Add
             </Button>
           </div>
           <div className="space-y-1.5 sm:col-span-5">
             <Label className="text-xs">Description (optional)</Label>
-            <Input value={form.description}
+            <Input
+              value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Short description shown as tooltip in the picker" />
+              placeholder="Short description shown as tooltip in the picker"
+            />
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Catalogue</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Catalogue</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -204,15 +251,21 @@ function CatalogueTab() {
                       <div className="text-xs text-muted-foreground">{c.description}</div>
                     )}
                   </TableCell>
-                  <TableCell><Badge variant="outline">{c.category}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{c.category}</Badge>
+                  </TableCell>
                   <TableCell className="text-xs">{c.applies_to_grades.join(", ")}</TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="ghost"
-                      onClick={() => toggleActive.mutate(c)}>
+                    <Button size="sm" variant="ghost" onClick={() => toggleActive.mutate(c)}>
                       {c.active ? "Retire" : "Reactivate"}
                     </Button>
-                    <Button size="icon" variant="ghost"
-                      onClick={() => { if (confirm(`Delete "${c.name}"?`)) remove.mutate(c.id); }}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        if (confirm(`Delete "${c.name}"?`)) remove.mutate(c.id);
+                      }}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -244,8 +297,7 @@ function RequirementsTab() {
   const { data: specialties } = useQuery({
     queryKey: ["specialties-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("specialties").select("id,name").order("name");
+      const { data, error } = await supabase.from("specialties").select("id,name").order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -274,8 +326,7 @@ function RequirementsTab() {
       if (!form.specialty_id || !form.competency_id) {
         throw new Error("Pick a specialty and a competency.");
       }
-      const { error } = await supabase
-        .from("specialty_competency_requirements").insert(form);
+      const { error } = await supabase.from("specialty_competency_requirements").insert(form);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -289,7 +340,9 @@ function RequirementsTab() {
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("specialty_competency_requirements").delete().eq("id", id);
+        .from("specialty_competency_requirements")
+        .delete()
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty-competency-requirements"] }),
@@ -300,45 +353,62 @@ function RequirementsTab() {
     () => new Map((specialties ?? []).map((s) => [s.id, s.name])),
     [specialties],
   );
-  const compById = useMemo(
-    () => new Map((comps ?? []).map((c) => [c.id, c])),
-    [comps],
-  );
+  const compById = useMemo(() => new Map((comps ?? []).map((c) => [c.id, c])), [comps]);
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle className="text-base">Add requirement</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Add requirement</CardTitle>
+        </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1.5">
             <Label className="text-xs">Specialty</Label>
-            <Select value={form.specialty_id}
-              onValueChange={(v) => setForm({ ...form, specialty_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Pick specialty" /></SelectTrigger>
+            <Select
+              value={form.specialty_id}
+              onValueChange={(v) => setForm({ ...form, specialty_id: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pick specialty" />
+              </SelectTrigger>
               <SelectContent>
                 {(specialties ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label className="text-xs">Competency</Label>
-            <Select value={form.competency_id}
-              onValueChange={(v) => setForm({ ...form, competency_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Pick competency" /></SelectTrigger>
+            <Select
+              value={form.competency_id}
+              onValueChange={(v) => setForm({ ...form, competency_id: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pick competency" />
+              </SelectTrigger>
               <SelectContent>
-                {(comps ?? []).filter((c) => c.active).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
+                {(comps ?? [])
+                  .filter((c) => c.active)
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Requirement</Label>
-            <Select value={form.requirement}
-              onValueChange={(v) => setForm({ ...form, requirement: v as RequirementLevel })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={form.requirement}
+              onValueChange={(v) => setForm({ ...form, requirement: v as RequirementLevel })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="required">Required</SelectItem>
                 <SelectItem value="recommended">Recommended</SelectItem>
@@ -347,9 +417,15 @@ function RequirementsTab() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Applies to role</Label>
-            <Select value={form.applies_to_role}
-              onValueChange={(v) => setForm({ ...form, applies_to_role: v as CompetencyRequirementRole })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={form.applies_to_role}
+              onValueChange={(v) =>
+                setForm({ ...form, applies_to_role: v as CompetencyRequirementRole })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="solo">Solo</SelectItem>
                 <SelectItem value="supervising">Supervising</SelectItem>
@@ -359,14 +435,17 @@ function RequirementsTab() {
           </div>
           <div className="sm:col-span-5">
             <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>
-              <Plus className="mr-1 h-4 w-4" />Add requirement
+              <Plus className="mr-1 h-4 w-4" />
+              Add requirement
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Current requirements</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Current requirements</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -425,7 +504,8 @@ function SignoffsTab() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id,full_name,grade,training_level")
-        .eq("active", true).order("full_name");
+        .eq("active", true)
+        .order("full_name");
       if (error) throw error;
       return data ?? [];
     },
@@ -488,7 +568,9 @@ function SignoffsTab() {
   const unrevoke = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("staff_competencies").update({ revoked_at: null }).eq("id", id);
+        .from("staff_competencies")
+        .update({ revoked_at: null })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["staff-competencies-all"] }),
@@ -509,37 +591,42 @@ function SignoffsTab() {
     [holdings, staffId],
   );
 
-  const compById = useMemo(
-    () => new Map((comps ?? []).map((c) => [c.id, c])),
-    [comps],
-  );
+  const compById = useMemo(() => new Map((comps ?? []).map((c) => [c.id, c])), [comps]);
 
   const currentStaff = staff?.find((s) => s.id === staffId);
   const eligibleComps = useMemo(() => {
     if (!currentStaff) return [];
     return (comps ?? []).filter(
-      (c) => c.active
-        && c.applies_to_grades.includes(currentStaff.grade ?? "")
-        && !staffHoldings.some((h) => h.competency_id === c.id && !h.revoked_at),
+      (c) =>
+        c.active &&
+        c.applies_to_grades.includes(currentStaff.grade ?? "") &&
+        !staffHoldings.some((h) => h.competency_id === c.id && !h.revoked_at),
     );
   }, [comps, currentStaff, staffHoldings]);
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader><CardTitle className="text-base">Record sign-off</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Record sign-off</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Staff member</Label>
             <Select value={staffId} onValueChange={setStaffId}>
-              <SelectTrigger className="max-w-md"><SelectValue placeholder="Pick staff" /></SelectTrigger>
+              <SelectTrigger className="max-w-md">
+                <SelectValue placeholder="Pick staff" />
+              </SelectTrigger>
               <SelectContent>
                 {(staff ?? [])
                   .slice()
                   .sort((a, b) => compareBySurname(a.full_name, b.full_name))
                   .map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.full_name} {s.grade ? `(${s.grade}${s.training_level ? " " + s.training_level : ""})` : ""}
+                      {s.full_name}{" "}
+                      {s.grade
+                        ? `(${s.grade}${s.training_level ? " " + s.training_level : ""})`
+                        : ""}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -550,21 +637,33 @@ function SignoffsTab() {
             <div className="grid gap-3 sm:grid-cols-6">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Competency</Label>
-                <Select value={form.competency_id}
-                  onValueChange={(v) => setForm({ ...form, competency_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Pick competency" /></SelectTrigger>
+                <Select
+                  value={form.competency_id}
+                  onValueChange={(v) => setForm({ ...form, competency_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pick competency" />
+                  </SelectTrigger>
                   <SelectContent>
                     {eligibleComps.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Level</Label>
-                <Select value={form.level || "unspecified"}
-                  onValueChange={(v) => setForm({ ...form, level: v === "unspecified" ? "" : v as CompetencyLevel })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.level || "unspecified"}
+                  onValueChange={(v) =>
+                    setForm({ ...form, level: v === "unspecified" ? "" : (v as CompetencyLevel) })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unspecified">Unspecified</SelectItem>
                     <SelectItem value="independent">Independent</SelectItem>
@@ -575,23 +674,32 @@ function SignoffsTab() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Granted</Label>
-                <Input type="date" value={form.granted_at}
-                  onChange={(e) => setForm({ ...form, granted_at: e.target.value })} />
+                <Input
+                  type="date"
+                  value={form.granted_at}
+                  onChange={(e) => setForm({ ...form, granted_at: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Expires (optional)</Label>
-                <Input type="date" value={form.expires_at}
-                  onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+                <Input
+                  type="date"
+                  value={form.expires_at}
+                  onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5 flex flex-col justify-end">
                 <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>
-                  <Plus className="mr-1 h-4 w-4" />Record
+                  <Plus className="mr-1 h-4 w-4" />
+                  Record
                 </Button>
               </div>
               <div className="space-y-1.5 sm:col-span-6">
                 <Label className="text-xs">Notes (optional)</Label>
-                <Input value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                <Input
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                />
               </div>
             </div>
           )}
@@ -601,9 +709,7 @@ function SignoffsTab() {
       {staffId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
-              Sign-offs for {currentStaff?.full_name}
-            </CardTitle>
+            <CardTitle className="text-base">Sign-offs for {currentStaff?.full_name}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -621,8 +727,8 @@ function SignoffsTab() {
                 {staffHoldings.map((h) => {
                   const c = compById.get(h.competency_id);
                   const revoked = !!h.revoked_at;
-                  const expired = h.expires_at
-                    && h.expires_at < new Date().toISOString().slice(0, 10);
+                  const expired =
+                    h.expires_at && h.expires_at < new Date().toISOString().slice(0, 10);
                   return (
                     <TableRow key={h.id} className={revoked ? "opacity-50" : ""}>
                       <TableCell>{c?.name ?? "—"}</TableCell>
@@ -635,7 +741,10 @@ function SignoffsTab() {
                         ) : expired ? (
                           <Badge variant="destructive">expired</Badge>
                         ) : (
-                          <Badge variant="default"><Check className="mr-1 h-3 w-3" />active</Badge>
+                          <Badge variant="default">
+                            <Check className="mr-1 h-3 w-3" />
+                            active
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -648,8 +757,13 @@ function SignoffsTab() {
                             Revoke
                           </Button>
                         )}
-                        <Button size="icon" variant="ghost"
-                          onClick={() => { if (confirm("Delete this record entirely?")) remove.mutate(h.id); }}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm("Delete this record entirely?")) remove.mutate(h.id);
+                          }}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>

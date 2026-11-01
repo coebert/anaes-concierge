@@ -26,7 +26,20 @@ import { createStaffMember } from "@/features/staff/admin-staff.functions";
 
 type Grade = "consultant" | "sas" | "trainee" | "";
 type AppRole = "staff" | "rota_coordinator" | "admin";
-const TRAINING_LEVELS = ["CT1","CT2","CT3","ACCS1","ACCS2","ACCS3","ST4","ST5","ST6","ST7","ST8","ST8+"] as const;
+const TRAINING_LEVELS = [
+  "CT1",
+  "CT2",
+  "CT3",
+  "ACCS1",
+  "ACCS2",
+  "ACCS3",
+  "ST4",
+  "ST5",
+  "ST6",
+  "ST7",
+  "ST8",
+  "ST8+",
+] as const;
 
 export function AddStaffDialog({
   open,
@@ -49,9 +62,15 @@ export function AddStaffDialog({
   const [password, setPassword] = useState("");
 
   const reset = () => {
-    setEmail(""); setTitle(""); setFirstName(""); setSurname("");
-    setGrade(""); setTrainingLevel("");
-    setRole("staff"); setSendInvite(true); setPassword("");
+    setEmail("");
+    setTitle("");
+    setFirstName("");
+    setSurname("");
+    setGrade("");
+    setTrainingLevel("");
+    setRole("staff");
+    setSendInvite(true);
+    setPassword("");
   };
 
   const mutation = useMutation({
@@ -61,7 +80,10 @@ export function AddStaffDialog({
           email: email.trim(),
           full_name: composeName({ title, firstName, surname }),
           grade: grade || null,
-          training_level: grade === "trainee" && trainingLevel ? (trainingLevel as typeof TRAINING_LEVELS[number]) : null,
+          training_level:
+            grade === "trainee" && trainingLevel
+              ? (trainingLevel as (typeof TRAINING_LEVELS)[number])
+              : null,
           role,
           send_invite: sendInvite,
           password: sendInvite ? undefined : password,
@@ -80,18 +102,22 @@ export function AddStaffDialog({
   });
 
   const canSubmit =
-    email.trim().length > 0 &&
-    surname.trim().length > 0 &&
-    (sendInvite || password.length >= 8);
+    email.trim().length > 0 && surname.trim().length > 0 && (sendInvite || password.length >= 8);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) reset();
+        onOpenChange(o);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add staff member</DialogTitle>
           <DialogDescription>
-            Create a new user account. They will receive an email to set their password
-            unless you set one manually.
+            Create a new user account. They will receive an email to set their password unless you
+            set one manually.
           </DialogDescription>
         </DialogHeader>
 
@@ -144,8 +170,13 @@ export function AddStaffDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Grade</Label>
-              <Select value={grade || "none"} onValueChange={(v) => setGrade(v === "none" ? "" : (v as Grade))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={grade || "none"}
+                onValueChange={(v) => setGrade(v === "none" ? "" : (v as Grade))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
                   <SelectItem value="consultant">Consultant</SelectItem>
@@ -159,10 +190,14 @@ export function AddStaffDialog({
               <div className="space-y-1.5">
                 <Label>Training level</Label>
                 <Select value={trainingLevel} onValueChange={setTrainingLevel}>
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
                   <SelectContent>
                     {TRAINING_LEVELS.map((l) => (
-                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                      <SelectItem key={l} value={l}>
+                        {l}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -173,7 +208,9 @@ export function AddStaffDialog({
           <div className="space-y-1.5">
             <Label>App role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="staff">Staff</SelectItem>
                 <SelectItem value="rota_coordinator">Rota coordinator</SelectItem>
@@ -209,7 +246,9 @@ export function AddStaffDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending}>
             {mutation.isPending ? "Saving…" : sendInvite ? "Send invite" : "Create user"}
           </Button>

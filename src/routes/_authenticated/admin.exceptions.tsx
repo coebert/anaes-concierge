@@ -61,7 +61,7 @@ function AdminExceptionsPage() {
       const staffIds = Array.from(
         new Set([
           ...reports.map((r) => r.trainee_id),
-          ...reports.map((r) => r.responder_id).filter(Boolean) as string[],
+          ...(reports.map((r) => r.responder_id).filter(Boolean) as string[]),
         ]),
       );
       const nameById = new Map<string, string>();
@@ -88,8 +88,11 @@ function AdminExceptionsPage() {
       // filter === "all" → no status filter
       if (q) {
         const name = data.nameById.get(r.trainee_id) ?? "";
-        if (!name.toLowerCase().includes(q.toLowerCase())
-          && !r.description.toLowerCase().includes(q.toLowerCase())) return false;
+        if (
+          !name.toLowerCase().includes(q.toLowerCase()) &&
+          !r.description.toLowerCase().includes(q.toLowerCase())
+        )
+          return false;
       }
       return true;
     });
@@ -108,13 +111,16 @@ function AdminExceptionsPage() {
   if (!hasRole("admin")) return <Navigate to="/" />;
 
   const now = Date.now();
-  const openCount = data?.reports.filter((r) => !["resolved", "withdrawn"].includes(r.status)).length ?? 0;
-  const overdueCount = data?.reports.filter(
-    (r) => !["resolved", "withdrawn"].includes(r.status) && new Date(r.due_by).getTime() < now,
-  ).length ?? 0;
-  const safetyCount = data?.reports.filter(
-    (r) => r.immediate_safety_concern && !["resolved", "withdrawn"].includes(r.status),
-  ).length ?? 0;
+  const openCount =
+    data?.reports.filter((r) => !["resolved", "withdrawn"].includes(r.status)).length ?? 0;
+  const overdueCount =
+    data?.reports.filter(
+      (r) => !["resolved", "withdrawn"].includes(r.status) && new Date(r.due_by).getTime() < now,
+    ).length ?? 0;
+  const safetyCount =
+    data?.reports.filter(
+      (r) => r.immediate_safety_concern && !["resolved", "withdrawn"].includes(r.status),
+    ).length ?? 0;
   const resolvedCount = data?.reports.filter((r) => r.status === "resolved").length ?? 0;
 
   return (
@@ -126,10 +132,14 @@ function AdminExceptionsPage() {
           <>
             <div className="w-40">
               <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(FILTER_LABEL) as Filter[]).map((k) => (
-                    <SelectItem key={k} value={k}>{FILTER_LABEL[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>
+                      {FILTER_LABEL[k]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -146,24 +156,36 @@ function AdminExceptionsPage() {
 
       <div className="grid gap-3 sm:grid-cols-4">
         <StatCard icon={Clock} label="Open" value={openCount} />
-        <StatCard icon={ShieldAlert} tone={overdueCount > 0 ? "destructive" : "default"}
-          label="Overdue" value={overdueCount} />
-        <StatCard icon={AlertTriangle} tone={safetyCount > 0 ? "destructive" : "default"}
-          label="Safety-flagged open" value={safetyCount} />
+        <StatCard
+          icon={ShieldAlert}
+          tone={overdueCount > 0 ? "destructive" : "default"}
+          label="Overdue"
+          value={overdueCount}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          tone={safetyCount > 0 ? "destructive" : "default"}
+          label="Safety-flagged open"
+          value={safetyCount}
+        />
         <StatCard icon={ShieldCheck} tone="success" label="Resolved" value={resolvedCount} />
       </div>
 
       {isLoading ? (
         <PageLoading />
       ) : rows.length === 0 ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">
-          No exception reports match this view.
-        </CardContent></Card>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            No exception reports match this view.
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
           {rows.map((r) => {
             const traineeName = data?.nameById.get(r.trainee_id) ?? "Unknown trainee";
-            const responderName = r.responder_id ? data?.nameById.get(r.responder_id) ?? null : null;
+            const responderName = r.responder_id
+              ? (data?.nameById.get(r.responder_id) ?? null)
+              : null;
             return (
               <ExceptionCard
                 key={r.id}

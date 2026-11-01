@@ -1,4 +1,8 @@
-import { computeBradfordFactor, type BradfordSpell, type BradfordResult } from "@/lib/bradford-factor";
+import {
+  computeBradfordFactor,
+  type BradfordSpell,
+  type BradfordResult,
+} from "@/lib/bradford-factor";
 
 export type SickSpellRow = {
   id: string;
@@ -79,11 +83,13 @@ export function summariseAbsence(
   const rtwByLeave = new Map<string, RtwRow>();
   for (const r of rtws) rtwByLeave.set(r.leave_request_id, r);
 
-  const today = new Date(Date.UTC(
-    referenceDate.getUTCFullYear(),
-    referenceDate.getUTCMonth(),
-    referenceDate.getUTCDate(),
-  ));
+  const today = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate(),
+    ),
+  );
   const todayIso = today.toISOString().slice(0, 10);
 
   const bradfordInput: BradfordSpell[] = approved.map((s) => ({

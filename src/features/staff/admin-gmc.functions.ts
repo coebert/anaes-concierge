@@ -3,10 +3,9 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/lib/require-admin";
 
-
 export const getProfileGmcNumber = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
-  .inputValidator((d) => z.object({ staffId: z.string().uuid() }).parse(d))
+  .inputValidator((d) => z.object({ staffId: z.string().guid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
@@ -23,7 +22,7 @@ export const updateProfileGmcNumber = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
       .object({
-        staffId: z.string().uuid(),
+        staffId: z.string().guid(),
         gmc_number: z
           .string()
           .trim()

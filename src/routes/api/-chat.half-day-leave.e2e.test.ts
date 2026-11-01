@@ -115,6 +115,8 @@ function makeAdminClient() {
       state.lteCols[col] = val;
       return b;
     };
+    // exception_reports query filters .neq("status","withdrawn") (added with the wellbeing tool).
+    b.neq = () => b;
     b.range = () => b;
     b.limit = () => b;
     b.order = () => b;
@@ -136,6 +138,8 @@ function makeAdminClient() {
 
   return {
     from: (t: string) => build(t),
+    // Durable chat quota RPC (take_request_quota) — always within limits here.
+    rpc: async () => ({ data: true, error: null }),
     auth: {
       getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }),
     },
@@ -184,7 +188,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 vi.mock("@/lib/ai-gateway.server", () => ({
-  createLovableAiGatewayProvider: () => () => ({} as unknown),
+  createLovableAiGatewayProvider: () => () => ({}) as unknown,
 }));
 
 vi.mock("@/lib/gmail.server", () => ({

@@ -52,8 +52,7 @@ function PulsePage() {
 
   if (isLoading) return <PageLoading />;
 
-  const alreadyResponded =
-    data?.cycle && data.history.some((r) => r.cycle_id === data.cycle!.id);
+  const alreadyResponded = data?.cycle && data.history.some((r) => r.cycle_id === data.cycle!.id);
 
   return (
     <div className="space-y-6">
@@ -92,7 +91,10 @@ function PulsePage() {
             <div className="mb-2 text-sm font-medium">My past responses</div>
             <div className="space-y-1 text-sm">
               {data.history.map((r, i) => (
-                <div key={i} className="flex items-center justify-between border-b py-1 last:border-none">
+                <div
+                  key={i}
+                  className="flex items-center justify-between border-b py-1 last:border-none"
+                >
                   <span className="text-muted-foreground">
                     {formatDateWithWeekdayGB(r.created_at.slice(0, 10))}
                   </span>

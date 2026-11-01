@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  tallyIcuWorkload,
-  type IcuPaRules,
-  type IcuRow,
-} from "@/features/analytics/icu-workload";
+import { tallyIcuWorkload, type IcuPaRules, type IcuRow } from "@/features/analytics/icu-workload";
 
 const DEFAULT_RULES: IcuPaRules = {
   sessions_per_pa: 1,
@@ -70,10 +66,7 @@ describe("tallyIcuWorkload — attending consultants & recorded PAs", () => {
   });
 
   it("counts stored PAs on extra rows toward extra PAs, not planned", () => {
-    const out = tallyIcuWorkload(
-      [{ ...base, extra_type: "locum", pa_credit: 1 }],
-      DEFAULT_RULES,
-    );
+    const out = tallyIcuWorkload([{ ...base, extra_type: "locum", pa_credit: 1 }], DEFAULT_RULES);
     expect(out[0].extraPas).toBeCloseTo(1, 5);
     expect(out[0].plannedPas).toBeCloseTo(0, 5);
   });

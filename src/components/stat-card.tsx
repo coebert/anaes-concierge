@@ -36,12 +36,7 @@ export function StatCard({
     <Card className={cn("relative overflow-hidden", className)}>
       <CardContent className="flex items-start gap-4 p-4 sm:p-5">
         {Icon ? (
-          <div
-            className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
-              t.icon,
-            )}
-          >
+          <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", t.icon)}>
             <Icon className="h-5 w-5" />
           </div>
         ) : null}
@@ -57,9 +52,7 @@ export function StatCard({
               <div className={cn("text-xs font-medium tabular-nums", t.delta)}>{delta}</div>
             ) : null}
           </div>
-          {hint ? (
-            <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div>
-          ) : null}
+          {hint ? <div className="mt-1 truncate text-xs text-muted-foreground">{hint}</div> : null}
         </div>
       </CardContent>
     </Card>

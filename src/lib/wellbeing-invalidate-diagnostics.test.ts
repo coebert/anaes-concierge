@@ -65,7 +65,9 @@ describe("invalidateWellbeing — dev-mode diagnostics", () => {
 
     // Two invalidateQueries calls — one per key — regardless of logging.
     expect(invalidateSpy).toHaveBeenCalledTimes(2);
-    const keys = invalidateSpy.mock.calls.map((c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey);
+    const keys = invalidateSpy.mock.calls.map(
+      (c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey,
+    );
     expect(keys).toContainEqual(["admin-wellbeing"]);
     expect(keys).toContainEqual(["my-wellbeing"]);
   });

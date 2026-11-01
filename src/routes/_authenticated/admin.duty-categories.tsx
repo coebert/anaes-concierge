@@ -3,16 +3,23 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -49,24 +56,21 @@ const CATEGORIES = [
     label: "Clinical list",
     description:
       "Person is already covering a list this session (theatre, POAC, pain clinic, future activities). Removed from the headroom pool for that half-day.",
-    badgeClass:
-      "bg-success-muted text-success border-success/40",
+    badgeClass: "bg-success-muted text-success border-success/40",
   },
   {
     value: "excluded",
     label: "Excluded (all day)",
     description:
       "Person is unavailable for the whole day — ICU, obstetrics, on-call, teaching, admin, etc. Never counts toward headroom.",
-    badgeClass:
-      "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/40",
+    badgeClass: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/40",
   },
   {
     value: "flex",
     label: "Flexible cover (SPA)",
     description:
       "Not counted in baseline headroom, but counted in headroom-with-SPA as redeployable cover.",
-    badgeClass:
-      "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/40",
+    badgeClass: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/40",
   },
   {
     value: "ignored",
@@ -169,10 +173,10 @@ function DutyCategoriesPage() {
         <CardHeader>
           <CardTitle>Duty categories — headroom pool rules</CardTitle>
           <CardDescription>
-            Decide how each duty type affects the robustness/availability pool. Set new
-            clinical activities (POAC, pain clinic, future services) to{" "}
-            <strong>Clinical list</strong> so anyone booked into them is excluded from
-            headroom for that half-day. Changes take effect immediately for everyone.
+            Decide how each duty type affects the robustness/availability pool. Set new clinical
+            activities (POAC, pain clinic, future services) to <strong>Clinical list</strong> so
+            anyone booked into them is excluded from headroom for that half-day. Changes take effect
+            immediately for everyone.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

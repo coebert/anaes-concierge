@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { clampPushPayload, isAllowedPushEndpoint, isDeliverableSubscription, isValidPushKeys } from "@/lib/push-endpoint";
+import {
+  clampPushPayload,
+  isAllowedPushEndpoint,
+  isDeliverableSubscription,
+  isValidPushKeys,
+} from "@/lib/push-endpoint";
 
 const P256 = "B" + "a".repeat(86); // 87 chars, base64url
 const AUTH = "c".repeat(22);
@@ -38,8 +43,20 @@ describe("push endpoint allowlist", () => {
     expect(isValidPushKeys(P256, "<script>alert(1)</script>xx")).toBe(false);
   });
   it("dispatch-time revalidation drops tampered rows", () => {
-    expect(isDeliverableSubscription({ endpoint: "https://fcm.googleapis.com/fcm/send/a", p256dh: P256, auth: AUTH })).toBe(true);
-    expect(isDeliverableSubscription({ endpoint: "https://internal.local/hook", p256dh: P256, auth: AUTH })).toBe(false);
+    expect(
+      isDeliverableSubscription({
+        endpoint: "https://fcm.googleapis.com/fcm/send/a",
+        p256dh: P256,
+        auth: AUTH,
+      }),
+    ).toBe(true);
+    expect(
+      isDeliverableSubscription({
+        endpoint: "https://internal.local/hook",
+        p256dh: P256,
+        auth: AUTH,
+      }),
+    ).toBe(false);
   });
   it("limits payload size", () => {
     expect(clampPushPayload(JSON.stringify({ title: "ok" }))).not.toBeNull();

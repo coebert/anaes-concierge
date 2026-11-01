@@ -38,7 +38,7 @@ export function computeAttritionRisk(input: AttritionInput): AttritionResult {
       key: "wellbeing",
       label: `Wellbeing ${input.wellbeing.score}/100`,
       contribution: clamp01((100 - input.wellbeing.score) / 100),
-      weight: 0.30,
+      weight: 0.3,
     },
     {
       key: "bradford",
@@ -65,10 +65,8 @@ export function computeAttritionRisk(input: AttritionInput): AttritionResult {
           ? "No annual leave recorded"
           : `${input.daysSinceLastAnnual}d since annual leave`,
       contribution:
-        input.daysSinceLastAnnual == null
-          ? 0.7
-          : clamp01(input.daysSinceLastAnnual / 180),
-      weight: 0.10,
+        input.daysSinceLastAnnual == null ? 0.7 : clamp01(input.daysSinceLastAnnual / 180),
+      weight: 0.1,
     },
     {
       key: "rtw",
@@ -82,8 +80,7 @@ export function computeAttritionRisk(input: AttritionInput): AttritionResult {
         input.pulseTrend == null
           ? "No recent pulse response"
           : `Pulse trend ${input.pulseTrend > 0 ? "+" : ""}${input.pulseTrend.toFixed(1)}`,
-      contribution:
-        input.pulseTrend == null ? 0.3 : clamp01(-input.pulseTrend / 2),
+      contribution: input.pulseTrend == null ? 0.3 : clamp01(-input.pulseTrend / 2),
       weight: 0.13,
     },
   ];

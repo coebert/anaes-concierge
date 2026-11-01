@@ -1,15 +1,6 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import {
-  DOW_LABEL,
-  type ConsultantPattern,
-} from "@/features/audit/list-feasibility";
+import { DOW_LABEL, type ConsultantPattern } from "@/features/audit/list-feasibility";
 
 export function WorkingPatternsCard({
   patterns,
@@ -26,13 +17,12 @@ export function WorkingPatternsCard({
         <CardTitle className="text-base">Consultant working patterns</CardTitle>
         <CardDescription>
           For each consultant, the percentage of Mon–Fri half-days{" "}
-          <strong>within their own tenure in the data window</strong> on which
-          CLWRota recorded them as covering a theatre list (clinical activity).
-          Each consultant's denominator is scoped to the first and last date
-          they appear in the rota inside the window, so recent joiners and
-          leavers are not artificially diluted. Weeks containing on-call are
-          still included in the denominator. Cells highlighted in green are
-          at or above the regular-working threshold ({regularMinPct}%).
+          <strong>within their own tenure in the data window</strong> on which CLWRota recorded them
+          as covering a theatre list (clinical activity). Each consultant's denominator is scoped to
+          the first and last date they appear in the rota inside the window, so recent joiners and
+          leavers are not artificially diluted. Weeks containing on-call are still included in the
+          denominator. Cells highlighted in green are at or above the regular-working threshold (
+          {regularMinPct}%).
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -40,7 +30,9 @@ export function WorkingPatternsCard({
           <thead className="text-muted-foreground">
             <tr>
               <th className="px-2 py-1 text-left font-medium">Consultant</th>
-              <th className="px-2 py-1 text-left font-medium whitespace-nowrap">Tenure in window</th>
+              <th className="px-2 py-1 text-left font-medium whitespace-nowrap">
+                Tenure in window
+              </th>
               {DAYS.map((d) => (
                 <th key={d} className="px-1 py-1 text-center font-medium" colSpan={2}>
                   {DOW_LABEL[d]}
@@ -52,8 +44,12 @@ export function WorkingPatternsCard({
               <th />
               <th />
               {DAYS.flatMap((d) => [
-                <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">AM</th>,
-                <th key={`${d}-pm`} className="px-1 py-0.5 text-center font-normal">PM</th>,
+                <th key={`${d}-am`} className="px-1 py-0.5 text-center font-normal">
+                  AM
+                </th>,
+                <th key={`${d}-pm`} className="px-1 py-0.5 text-center font-normal">
+                  PM
+                </th>,
               ])}
               <th />
             </tr>
@@ -66,9 +62,7 @@ export function WorkingPatternsCard({
                   {p.tenureStart && p.tenureEnd ? (
                     <>
                       {p.tenureStart} → {p.tenureEnd}
-                      <span className="ml-1 text-muted-foreground/70">
-                        ({p.tenureWeekdays} wd)
-                      </span>
+                      <span className="ml-1 text-muted-foreground/70">({p.tenureWeekdays} wd)</span>
                     </>
                   ) : (
                     <span className="italic">no data</span>
@@ -96,9 +90,7 @@ export function WorkingPatternsCard({
                     {c.regularDayOff ? "off" : `${c.workingPct}%`}
                   </td>
                 ))}
-                <td className="px-2 py-1 text-center font-medium">
-                  {p.regularSessionsPerWeek}
-                </td>
+                <td className="px-2 py-1 text-center font-medium">{p.regularSessionsPerWeek}</td>
               </tr>
             ))}
           </tbody>

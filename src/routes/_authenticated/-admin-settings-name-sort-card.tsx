@@ -1,11 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useNameSortDirection, setNameSortDirection } from "@/lib/name-sort";
@@ -18,9 +12,7 @@ export function NameSortPreferenceCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Display preferences</CardTitle>
-        <CardDescription>
-          Personal display options — stored on this device only.
-        </CardDescription>
+        <CardDescription>Personal display options — stored on this device only.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-4">

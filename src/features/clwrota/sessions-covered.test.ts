@@ -8,10 +8,7 @@ describe("sessionsCoveredByTimeRange (medical examiner AM/PM splitting)", () => 
 
   it("splits ISO-timestamped all-day ranges", () => {
     expect(
-      sessionsCoveredByTimeRange(
-        "2026-05-26T08:00:00+01:00",
-        "2026-05-26T17:00:00+01:00",
-      ),
+      sessionsCoveredByTimeRange("2026-05-26T08:00:00+01:00", "2026-05-26T17:00:00+01:00"),
     ).toEqual(["am", "pm"]);
   });
 
