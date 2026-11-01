@@ -110,15 +110,19 @@ export function RotaWeekGrid({
                     return (
                       <td
                         key={t.id + iso(d) + s}
-                        onClick={() =>
-                          onCellClick({ theatreId: t.id, date: iso(d), session: s })
-                        }
                         className={cn(
-                          "min-w-[110px] cursor-pointer border-b p-1.5 hover:bg-accent/40",
+                          "min-w-[110px] border-b p-0",
                           isPm ? "border-r" : "border-r border-r-border/30",
                           ts && tone.cell,
                         )}
                       >
+                        {/* A real button: keyboard (Enter/Space) and screen-reader accessible. */}
+                        <button
+                          type="button"
+                          className="block h-full w-full p-1.5 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                          aria-label={`${t.name}, ${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}, ${s === "am" ? "morning" : "afternoon"} session${spec ? `, ${spec}` : ""} — ${assigns.length} assigned. Edit`}
+                          onClick={() => onCellClick({ theatreId: t.id, date: iso(d), session: s })}
+                        >
                         {ts ? (
                           <div className="space-y-1">
                             {ts.is_non_sag && (
@@ -178,8 +182,9 @@ export function RotaWeekGrid({
                             })()}
                           </div>
                         ) : (
-                          <div className="text-muted-foreground/60 text-[10px]">+ add</div>
+                          <div className="text-muted-foreground/60 text-[10px]" aria-hidden>+ add</div>
                         )}
+                        </button>
                       </td>
                     );
                   }),
