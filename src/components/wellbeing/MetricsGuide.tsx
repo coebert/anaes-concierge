@@ -38,7 +38,7 @@ const WELLBEING_ROWS: Row[] = [
   {
     name: "Night sessions",
     weight: "22%",
-    what: "How often you're rostered overnight — the driver most strongly linked with fatigue and burnout in shift-work research.",
+    what: "How often you're rostered overnight — a common fatigue concern in shift work.",
     how: "Number of sessions with session = 'night' in the last 90 days, normalised so that ~4 nights/month reaches the full weight.",
   },
   {
@@ -51,12 +51,12 @@ const WELLBEING_ROWS: Row[] = [
     name: "Unsocial-hours share",
     weight: "12%",
     what: "The proportion of your work happening at night, evenings or weekends — a load-shape indicator that matters even when totals look reasonable.",
-    how: "(nights + evenings + weekend sessions) ÷ total sessions over the 90-day window. 50% or more reaches full weight.",
+    how: "Sessions that are a night, an evening OR on a weekend (each session counted once, so a weekend night is one session) ÷ total sessions over the 90-day window. 50% or more reaches full weight.",
   },
   {
     name: "Short-notice changes",
     weight: "18%",
-    what: "How often your rota was moved with under 48 hours' notice — a known driver of stress and lost recovery time.",
+    what: "How often your rota was moved with under 48 hours' notice — which can cut into recovery time.",
     how: "Rota change-log entries where hours_before_session ≤ 48 (in either direction). 6 such changes reaches full weight.",
   },
   {
@@ -83,14 +83,14 @@ const ATTRITION_ROWS: Row[] = [
   {
     name: "Wellbeing score",
     weight: "30%",
-    what: "The single strongest predictor of who leaves — a low wellbeing score today tends to precede resignation.",
+    what: "The wellbeing score above, reused as one input. Its weight is a design choice, not a measured relationship with leaving.",
     how: "(100 − wellbeing score) ÷ 100. A score of 0 fully contributes; a score of 100 doesn't contribute at all.",
   },
   {
     name: "Pulse-survey trend",
     weight: "13%",
-    what: "Whether the person's own answers are getting more negative cycle-on-cycle.",
-    how: "Average change vs the previous cycle on a −4…+4 scale. A drop of −2 or more fully contributes. Missing responses contribute 30% (a soft signal, not a scored answer).",
+    what: "Intended to reflect whether the person's own survey answers are getting more negative. NOT CURRENTLY MEASURED: no per-person survey trend is connected yet, so this is shown as 'not assessed' for everyone.",
+    how: "When unavailable (currently always), a fixed 30% placeholder contributes, as in the original rubric. A measured trend would use average change vs the previous cycle on a −4…+4 scale, with −2 or worse fully contributing.",
   },
   {
     name: "Bradford Factor",
@@ -101,26 +101,26 @@ const ATTRITION_ROWS: Row[] = [
   {
     name: "Leave denial rate",
     weight: "12%",
-    what: "The share of leave decisions that went against the person — repeated denials are a strong retention risk.",
-    how: "rejected ÷ (approved + rejected) over 12 months. 40% or more fully contributes.",
+    what: "The share of leave decisions that went against the person.",
+    how: "rejected ÷ (approved + rejected) for decisions made in the last 12 months (decision date; falls back to request date, then start date, for older rows). 40% or more fully contributes.",
   },
   {
     name: "Short-notice changes",
     weight: "12%",
     what: "Rostering disruption over the whole year (the wellbeing driver only looks at 90 days).",
-    how: "Count of rota changes with ≤48h notice in the last 12 months. 20 or more fully contributes.",
+    how: "Count of rota changes with ≤48h notice for sessions in the last 12 months up to today (future sessions are excluded). 20 or more fully contributes.",
   },
   {
     name: "Time since last annual leave",
     weight: "10%",
     what: "How long the person has gone without a proper break.",
-    how: "Days since the end of the most recent approved annual-leave request. 180 days fully contributes. No annual leave on record contributes 70%.",
+    how: "Days since the end of the most recent approved annual leave that has already started (0 while on leave; future bookings don't count). 180 days fully contributes. No annual leave taken on record contributes 70%.",
   },
   {
     name: "Overdue return-to-work interview",
     weight: "8%",
-    what: "Missed RTW interviews are both a retention risk and a compliance gap.",
-    how: "Count of approved sick spells that ended more than 3 days ago and still have no return_to_work_interviews row. 2 or more fully contributes.",
+    what: "A process gap worth following up.",
+    how: "Count of approved sick spells that ended 3 or more days ago with no completed return-to-work interview (an interview without a completion date does not count). 2 or more fully contributes.",
   },
 ];
 
@@ -166,7 +166,9 @@ export function WellbeingMetricGuide({ showAttrition = false }: { showAttrition?
               <p>
                 A rolling <strong>90-day</strong> composite score built only from data the app
                 already collects — no self-report is used for the number itself.{" "}
-                <strong>Higher is better.</strong>
+                <strong>Higher is better.</strong> If fewer than 10 of your rota sessions fall in
+                the window, no score is given ("Not enough data") — missing data is never shown as
+                good wellbeing. The window is the last 90 calendar days including today.
               </p>
               <p>
                 Each of the drivers below is scaled 0 – 1 (0 = no concern, 1 = fully weighted
@@ -202,31 +204,36 @@ export function WellbeingMetricGuide({ showAttrition = false }: { showAttrition?
 
           {showAttrition ? (
             <AccordionItem value="attrition">
-              <AccordionTrigger className="text-sm">Attrition risk (0 – 100%)</AccordionTrigger>
+              <AccordionTrigger className="text-sm">
+                Retention signal score (0 – 100)
+              </AccordionTrigger>
               <AccordionContent className="space-y-3 text-sm">
                 <p>
-                  A transparent weighted rubric — <strong>not</strong> a machine-learning prediction
-                  — estimating how likely a staff member is to disengage or leave over the coming
-                  months. <strong>Higher is worse.</strong>
+                  A transparent weighted rubric that adds up operational signals into a score out
+                  of 100. <strong>It is not a prediction or a probability</strong> of anyone leaving
+                  and has not been validated against who actually leaves. Higher means more
+                  signals are present.
                 </p>
                 <p>
                   Each factor is scaled 0 – 1, multiplied by its weight, then summed to give the
-                  risk. Results are grouped into bands for triage.
+                  total, which is rounded to a whole number out of 100. The band is chosen from that
+                  rounded number, so a displayed 25 is always "Watch". If the wellbeing score has
+                  too little data, the row is shown as "Not assessed".
                 </p>
                 <div className="rounded-md border bg-muted/30 p-3 text-sm">
                   <div className="font-medium">Bands</div>
                   <ul className="mt-1 space-y-0.5 text-muted-foreground">
                     <li>
-                      <strong className="text-foreground">Low</strong> — under 25%
+                      <strong className="text-foreground">Low</strong> — under 25
                     </li>
                     <li>
-                      <strong className="text-foreground">Watch</strong> — 25 – 44%
+                      <strong className="text-foreground">Watch</strong> — 25 – 44
                     </li>
                     <li>
-                      <strong className="text-foreground">Elevated</strong> — 45 – 64%
+                      <strong className="text-foreground">Elevated</strong> — 45 – 64
                     </li>
                     <li>
-                      <strong className="text-foreground">High</strong> — 65% or above
+                      <strong className="text-foreground">High</strong> — 65 or above
                     </li>
                   </ul>
                 </div>
@@ -234,8 +241,8 @@ export function WellbeingMetricGuide({ showAttrition = false }: { showAttrition?
                 <p className="text-xs text-muted-foreground">
                   The weights above sum to 100% and are hard-coded in{" "}
                   <code>src/lib/attrition-risk.ts</code>. Use the "Top drivers" column to see which
-                  factors dominate for each person — that's where an intervention will have the
-                  biggest effect.
+                  factors dominate for each person, as a starting point for a supportive
+                  conversation.
                 </p>
               </AccordionContent>
             </AccordionItem>
@@ -247,12 +254,13 @@ export function WellbeingMetricGuide({ showAttrition = false }: { showAttrition?
             </AccordionTrigger>
             <AccordionContent className="space-y-2 text-sm text-muted-foreground">
               <p>
-                Personal wellbeing pages are visible only to the individual and to admins. Attrition
-                risk is admin-only.
+                Personal wellbeing pages are visible only to the individual and to admins. The
+                retention signal score is admin-only.
               </p>
               <p>
                 Neither score is a clinical or HR judgement. They're a triage aid built from
-                operational data — a low score is a prompt to have a conversation, not a diagnosis.
+                operational data — a low score is a prompt to have a supportive conversation, not a
+                diagnosis, and must not be used for HR, performance or employment decisions.
               </p>
             </AccordionContent>
           </AccordionItem>

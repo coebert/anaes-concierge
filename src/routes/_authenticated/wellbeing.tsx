@@ -246,9 +246,15 @@ export function WellbeingPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-5xl font-semibold tabular-nums">
-              {wellbeing.score}
+              {wellbeing.scoreKnown ? wellbeing.score : "—"}
               <span className="ml-1 text-lg text-muted-foreground">/ 100</span>
             </div>
+            {!wellbeing.scoreKnown ? (
+              <p className="text-sm text-muted-foreground" data-testid="wellbeing-insufficient">
+                Not enough rota data in this window to give a score ({wellbeing.sessionsInWindow}{" "}
+                sessions found). Missing data is not a sign of good wellbeing.
+              </p>
+            ) : null}
             <div className="text-xs text-muted-foreground">
               Window: {formatDateWithWeekdayGB(wellbeing.windowStart)} →{" "}
               {formatDateWithWeekdayGB(wellbeing.windowEnd)}
