@@ -494,11 +494,16 @@ export const Route = createFileRoute("/api/audit-tool")({
             }),
             execute: async ({ tables }) => {
               if (!tables || tables.length === 0) {
-                const { data, error } = await userClient.rpc("admin_run_readonly_sql", {
+                const { data, error } = await userClient.rpc(
+                  "admin_run_readonly_sql",
+                  {
                   p_query:
                     "SELECT table_name FROM information_schema.tables " +
                     "WHERE table_schema = 'public' ORDER BY table_name",
-                });
+                  },
+                  // GET => PostgREST read-only transaction (required by the DB function).
+                  { get: true },
+                );
                 if (error) return { error: error.message };
                 return { tables: (data as Array<{ table_name: string }>).map((r) => r.table_name) };
               }
@@ -509,9 +514,14 @@ export const Route = createFileRoute("/api/audit-tool")({
                 WHERE table_schema = 'public'
                   AND table_name IN (${tables.map((t) => `'${t.replace(/'/g, "''")}'`).join(",")})
                 ORDER BY table_name, ordinal_position`;
-              const { data, error } = await userClient.rpc("admin_run_readonly_sql", {
+              const { data, error } = await userClient.rpc(
+                "admin_run_readonly_sql",
+                {
                 p_query: sql,
-              });
+                },
+                // GET => PostgREST read-only transaction (required by the DB function).
+                { get: true },
+              );
               if (error) return { error: error.message };
               return { columns: data };
             },
@@ -536,9 +546,14 @@ export const Route = createFileRoute("/api/audit-tool")({
                 .optional(),
             }),
             execute: async ({ title, sql, chart }) => {
-              const { data, error } = await userClient.rpc("admin_run_readonly_sql", {
+              const { data, error } = await userClient.rpc(
+                "admin_run_readonly_sql",
+                {
                 p_query: sql,
-              });
+                },
+                // GET => PostgREST read-only transaction (required by the DB function).
+                { get: true },
+              );
               if (error) return { error: error.message, title, sql };
               const rows = (data as Record<string, unknown>[] | null) ?? [];
               const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
