@@ -54,9 +54,11 @@ export function AllowancesTab({
 }) {
   const [allowanceFilter, setAllowanceFilter] = useState("");
 
-  const allowanceByStaff = useMemo(() => {
+  // Keyed by staff AND leave year: a staff member has one allowance row per
+  // leave year, so "last row per staff" would show the wrong year's figures.
+  const allowanceByStaffYear = useMemo(() => {
     const m = new Map<string, AllowanceRow>();
-    for (const a of allowances) m.set(a.staff_id, a);
+    for (const a of allowances) m.set(`${a.staff_id}|${a.leave_year_start}`, a);
     return m;
   }, [allowances]);
 
@@ -84,7 +86,7 @@ export function AllowancesTab({
     });
     const out: Summary[] = [];
     for (const p of profiles) {
-      const a = allowanceByStaff.get(p.id);
+      const a = allowanceByStaffYear.get(`${p.id}|${selectedYearStartISO}`);
       const yearStartISO = selectedYearStartISO;
       const annualAllowance = Number(a?.annual_days ?? DEFAULT_ANNUAL);
       const studyAllowance = Number(a?.study_days ?? DEFAULT_STUDY);
@@ -93,7 +95,7 @@ export function AllowancesTab({
       for (const r of yearLeave) {
         if (r.staff_id !== p.id) continue;
         if (!leaveOverlapsYear(r, yearStartISO)) continue;
-        const days = leaveWorkingDays(r);
+        const days = leaveWorkingDays(r, yearStartISO);
         if (days <= 0) continue;
         const k: BucketKey =
           r.type === "annual" ? "annual"
@@ -116,7 +118,7 @@ export function AllowancesTab({
       });
     }
     return out.sort((a, b) => compareBySurname(a.profile.full_name, b.profile.full_name));
-  }, [profiles, yearLeave, allowanceByStaff, selectedYearStartISO]);
+  }, [profiles, yearLeave, allowanceByStaffYear, selectedYearStartISO]);
 
   const allowanceVisible = useMemo(() => {
     const q = allowanceFilter.trim().toLowerCase();
