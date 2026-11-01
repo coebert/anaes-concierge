@@ -135,7 +135,7 @@ function StaffCalendarPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["staff-rota-calendar", staffId, start, end],
     queryFn: async () => {
-      const [{ data: profiles, error: profilesError }, { data: rulesRow }] = await Promise.all([
+      const [{ data: profiles, error: profilesError }, { data: rulesRow, error: rulesError }] = await Promise.all([
         supabase.from("profiles").select("id,full_name,grade").order("full_name"),
         supabase
           .from("rota_rules")
@@ -144,6 +144,8 @@ function StaffCalendarPage() {
           .maybeSingle(),
       ]);
       if (profilesError) throw profilesError;
+      // Never silently substitute default PA rates when the settings read fails.
+      if (rulesError) throw new Error(`PA settings could not be loaded: ${rulesError.message}`);
 
       const rules: SpecialtyPaRules = {
         sessions_per_pa: Number(rulesRow?.sessions_per_pa ?? DEFAULT_RULES.sessions_per_pa),

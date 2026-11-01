@@ -123,11 +123,13 @@ function SpecialtyWorkloadPage() {
         .order("full_name");
       if (pErr) throw pErr;
 
-      const { data: rulesRow } = await supabase
+      const { data: rulesRow, error: rulesError } = await supabase
         .from("rota_rules")
         .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
         .limit(1)
         .maybeSingle();
+      // Never silently substitute default PA rates when the settings read fails.
+      if (rulesError) throw new Error(`PA settings could not be loaded: ${rulesError.message}`);
 
       const rules: SpecialtyPaRules = {
         sessions_per_pa: Number(rulesRow?.sessions_per_pa ?? DEFAULT_RULES.sessions_per_pa),
