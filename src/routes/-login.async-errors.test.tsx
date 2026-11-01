@@ -2,9 +2,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-const signInWithPassword = vi.fn();
-const signInWithOAuth = vi.fn();
-const toastError = vi.fn();
+const { signInWithPassword, signInWithOAuth, toastError } = vi.hoisted(() => ({
+  signInWithPassword: vi.fn(),
+  signInWithOAuth: vi.fn(),
+  toastError: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: unknown) => ({ options: opts }),
