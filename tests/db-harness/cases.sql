@@ -116,3 +116,7 @@ SELECT t('quota: within limits allowed', NULL, $q$SELECT assert_true(take_reques
 SELECT t('quota: third hit in window refused and nothing counted', NULL, $q$SELECT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); SELECT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0); SELECT assert_true(NOT take_request_quota(ARRAY['q:a|3600|2|','q:g|3600|10|'],0),'refused'); SELECT assert_true((SELECT hits FROM request_quota_buckets WHERE bucket='q:g')=2,'atomic')$q$, 'allowed');
 SELECT t('quota: byte cap enforced', NULL, $q$SELECT assert_true(NOT take_request_quota(ARRAY['b:a|3600|100|1000'],5000),'bytes')$q$, 'allowed');
 SELECT t('quota: authenticated cannot call', :S, $q$SELECT take_request_quota(ARRAY['x|60|1|'],0)$q$, 'denied');
+SELECT t('quota: zero window rejected (no divide-by-zero)', NULL, $q$SELECT take_request_quota(ARRAY['z:a|0|5|'],0)$q$, 'denied');
+SELECT t('quota: malformed spec rejected', NULL, $q$SELECT take_request_quota(ARRAY['bad key with spaces|60|1|'],0)$q$, 'denied');
+SELECT t('quota: negative bytes rejected', NULL, $q$SELECT take_request_quota(ARRAY['n:a|60|5|'],-1)$q$, 'denied');
+SELECT t('quota: zero max rejected', NULL, $q$SELECT take_request_quota(ARRAY['m:a|60|0|'],0)$q$, 'denied');
