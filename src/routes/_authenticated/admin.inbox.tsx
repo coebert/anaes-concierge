@@ -307,8 +307,14 @@ function CoordinatorInboxPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading || dismissalsQuery.isPending ? (
         <PageLoading />
+      ) : dismissalsQuery.isError ? (
+        <QueryErrorNotice
+          error={dismissalsQuery.error}
+          onRetry={() => void dismissalsQuery.refetch()}
+          what="which inbox items are addressed"
+        />
       ) : isError ? (
         <QueryErrorNotice error={error} onRetry={() => void refetch()} what="the inbox" />
       ) : filtered.length === 0 ? (
@@ -339,7 +345,12 @@ function CoordinatorInboxPage() {
                   onSuccess: () => toast.success("Restored to pending"),
                 });
               }}
-              busy={dismissMutation.isPending || restoreMutation.isPending}
+              busy={
+                dismissMutation.isPending ||
+                restoreMutation.isPending ||
+                !dismissalsQuery.isSuccess ||
+                dismissalsQuery.isFetching
+              }
             />
           ))}
         </div>
