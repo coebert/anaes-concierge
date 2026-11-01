@@ -366,7 +366,7 @@ function TraineeDetailPage() {
                       <TableCell>{formatDateWithWeekdayGB(a.session_date)}</TableCell>
                       <TableCell className="capitalize">{a.session}</TableCell>
                       <TableCell>
-                        {ts ? (data.theatreMap.get(ts.theatre_id) ?? "—") : "—"}
+                        {ts?.theatre_id ? (data.theatreMap.get(ts.theatre_id) ?? "—") : "—"}
                       </TableCell>
                       <TableCell>
                         {ts?.specialty_id ? (data.specMap.get(ts.specialty_id) ?? "—") : "—"}
