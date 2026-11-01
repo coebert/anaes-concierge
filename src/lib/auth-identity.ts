@@ -3,11 +3,14 @@ import type { QueryClient } from "@tanstack/react-query";
 /**
  * Tracks which account the client-side caches belong to. When the signed-in
  * identity changes (sign-out, or a different user signs in on the same tab)
- * every in-flight query is cancelled and the whole cache is dropped so no
- * previous-account data can render under the new identity.
+ * the load generation is bumped and the whole cache is dropped
+ * SYNCHRONOUSLY, so nothing from the previous account can render or settle
+ * under the new identity. In-flight queries are cancelled fire-and-forget:
+ * the purge never waits on (possibly unbounded) cancellation.
  *
  * Also hands out load tokens so a slow profile/roles fetch for a previous
  * identity can never install its result after the identity has moved on.
+ * A same-user event (token refresh) changes nothing.
  */
 export class AuthIdentityGuard {
   private currentUserId: string | null | undefined = undefined;
@@ -15,14 +18,31 @@ export class AuthIdentityGuard {
 
   constructor(private readonly queryClient: Pick<QueryClient, "cancelQueries" | "clear">) {}
 
-  /** Returns true when the identity actually changed and caches were purged. */
-  async setIdentity(userId: string | null): Promise<boolean> {
+  get userId(): string | null | undefined {
+    return this.currentUserId;
+  }
+
+  /** True when `userId` differs from the identity currently installed. */
+  isChange(userId: string | null): boolean {
+    return this.currentUserId !== userId;
+  }
+
+  /**
+   * Synchronously install `userId`. Returns true when caches were purged
+   * (a real switch away from a previously observed identity).
+   */
+  setIdentity(userId: string | null): boolean {
     const prev = this.currentUserId;
+    if (prev === userId) return false; // token refresh / duplicate event
     this.currentUserId = userId;
     this.generation += 1;
-    // First observation (initial mount) of an identity: nothing stale to purge.
-    if (prev === undefined || prev === userId) return false;
-    await this.queryClient.cancelQueries();
+    if (prev === undefined) return false; // first observation: nothing stale
+    try {
+      // Fire-and-forget: a hanging cancellation must never delay the purge.
+      void Promise.resolve(this.queryClient.cancelQueries()).catch(() => undefined);
+    } catch {
+      /* ignore */
+    }
     this.queryClient.clear();
     return true;
   }

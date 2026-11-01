@@ -1,4 +1,13 @@
 # Accuracy, reliability and security follow-up remediation — 2026-11-01
+> **Superseded in part (later the same day):** see `docs/audit-2026-11-01-final-verification.md`.
+> Corrections to claims below: the audit-reader column list was a computed *denylist*
+> (raw `source_row` / `details` / report-URL columns were reachable) — replaced by an
+> explicit allowlist in migration 0005; the AuthProvider account switch was **not** safe
+> (B could briefly see A's roles) — fixed and tested against the real provider; the
+> scanner could still false-pass on some malformed inputs and silently skipped the
+> `xlsx` tarball — hardened; calendar assignment notes were still published — removed.
+> Dependency counts below are pre-override (now 2 moderate + 1 low).
+
 
 Scope: the independent follow-up security review plus accuracy/reliability items A–I,
 the baseline red tests, supply chain and zod 4. Continues from security pass

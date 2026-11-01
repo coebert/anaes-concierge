@@ -83,7 +83,8 @@ describe("calendar feed route", () => {
     expect(body.split("\r\n").every((l) => !l.includes("\n"))).toBe(true);
     expect(body).toContain("SUMMARY:Leave (approved)");
     expect(body).not.toMatch(/sick/i);
-    expect(body).toContain("Notes: line1\\nline2");
+    // Assignment notes are free text and are never published to the feed.
+    expect(body).not.toMatch(/Notes:|line1|line2/);
     expect(selects.leave_requests.join()).not.toContain("reason");
   });
   it("returns 503 (not a partial 200) when leave cannot be read", async () => {

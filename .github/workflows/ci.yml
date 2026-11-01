@@ -75,6 +75,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.4"
+      # Never install first: the scan reads the committed lock only, and a
+      # failing exit (advisories or scan error) must fail this job.
       - run: bun run check:supply-chain
 
   typecheck-build:
@@ -89,8 +91,15 @@ jobs:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-1.4.4-${{ hashFiles('bun.lock') }}
       - run: bun install --frozen-lockfile
+      - name: Verify bun.lock is the only, unchanged lockfile
+        # --frozen-lockfile above already fails if package.json and bun.lock disagree.
+        run: |
+          git diff --exit-code -- bun.lock
+          test ! -e package-lock.json
       - run: bun run typecheck
-      - run: bun run build
+      - name: Production build
+        # `build` sets --max-old-space-size=8192 itself; ubuntu-latest has 16 GB.
+        run: bun run build
 
   security-scan:
     # Static application security scan. Fails the build (and therefore

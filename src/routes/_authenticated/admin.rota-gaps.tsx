@@ -222,7 +222,6 @@ function RotaGapsPage() {
       });
   }, [data, filter, hideClean]);
 
-
   const traineesWithGaps = rows.filter((r) => r.report.totalMissingDays > 0).length;
   const totalGapDays = rows.reduce((sum, r) => sum + r.report.totalMissingDays, 0);
   const totalRanges = rows.reduce((sum, r) => sum + r.report.ranges.length, 0);
