@@ -121,7 +121,7 @@ export function TraineeMetricsCard({ metrics, startDate, rotationEndDate, icuBlo
           <Metric
             label="On-call"
             value={onCallLists.toString()}
-            sub={onCallPct !== null ? `${onCallPct}% of total` : "N/A"}
+            sub={onCallPct !== null ? `${onCallPct}% of rostered sessions` : "No sessions — unavailable"}
           />
           <Metric label="Total assignments" value={totalAssignments.toString()} />
         </dl>

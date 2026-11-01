@@ -192,8 +192,8 @@ export function computeTraineeMetrics(
   // divided by raw session rows, so an all-ICU AM+PM+eve day read 33.3%.)
   // Exact duplicate rows (same date + session + duty) are counted once.
   const sessionKey = (a: MetricAssignment, i: number) =>
-    a.session_date && (a as { session?: string | null }).session
-      ? `${a.session_date}|${(a as { session?: string | null }).session}|${a.duty_type ?? ""}`
+    a.session_date && a.session
+      ? `${a.session_date}|${a.session}|${a.duty_type ?? ""}`
       : `__row-${i}`;
   const uniqueSessions = new Map<string, MetricAssignment>();
   assignments.forEach((a, i) => uniqueSessions.set(sessionKey(a, i), a));
