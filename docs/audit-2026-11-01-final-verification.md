@@ -75,7 +75,7 @@ denied; direct helper calls 42501; every forbidden sync call enqueues 0;
 service and scheduler enqueue exactly 1 (all-steps: 3); all queued rows carry
 only the expected URL and dummy secret; audit rows read
 `A/authenticated, null/service_role, null/scheduler:postgres`. Real PostgREST:
-24 GET/POST cases incl. bad-signature and `alg=none` JWTs (401).
+25 GET/POST cases incl. bad-signature and `alg=none` JWTs (401).
 Live metadata after apply: all 15 functions have the expected ACLs; no
 authenticated-executable definer function still tests `current_user`.
 
