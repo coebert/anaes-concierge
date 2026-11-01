@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { todayISO, addDaysISO, formatDateGB } from "@/lib/utils";
 import { SummaryDashboard } from "@/components/summary-dashboard";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { TodayInHospital } from "@/components/today-in-hospital";
 import { StatCard } from "@/components/stat-card";
 import { PageLoading } from "@/components/loading";
@@ -61,7 +62,7 @@ function AuditDashboard() {
   const today = todayISO();
   const in90 = addDaysISO(90);
 
-  const { data } = useQuery({
+  const { data, error: loadError, refetch } = useQuery({
     queryKey: ["audit-dashboard"],
     queryFn: async () => {
       const [trainees, leaveSoon, sync, rotaRows] = await Promise.all([
@@ -75,6 +76,8 @@ function AuditDashboard() {
         supabase.from("rota_assignments").select("id", { count: "exact", head: true })
           .gte("session_date", today).lte("session_date", in90),
       ]);
+      // A failed count must not be shown as 0.
+      for (const r of [trainees, leaveSoon, sync, rotaRows]) if (r.error) throw r.error;
       return {
         trainees: trainees.count ?? 0,
         leaveSoon: leaveSoon.count ?? 0,
@@ -90,6 +93,9 @@ function AuditDashboard() {
   return (
     <div className="space-y-6">
       <Header subtitle="Audit workspace — synced from CLWRota" />
+      {loadError ? (
+        <QueryErrorNotice error={loadError} stale={!!data} what="the audit summary" onRetry={() => void refetch()} />
+      ) : null}
 
       {/* Sync freshness banner */}
       <Card className={syncWarning ? "border-warning/40 bg-warning-muted/40 dark:bg-amber-950/20" : ""}>
@@ -185,7 +191,7 @@ function AuditDashboard() {
 /* ---------- CONSULTANT / SAS ---------- */
 function ConsultantSasDashboard() {
   const { user } = useAuth();
-  const { data } = useQuery({
+  const { data, error: loadError, refetch } = useQuery({
     enabled: !!user?.id,
     queryKey: ["consultant-dashboard", user?.id],
     queryFn: async () => {
@@ -209,6 +215,8 @@ function ConsultantSasDashboard() {
           .eq("staff_id", user!.id)
           .maybeSingle(),
       ]);
+      // A failed count must not be shown as 0.
+      for (const r of [upcoming, pendingLeave, jobPlan]) if (r.error) throw r.error;
       return {
         upcoming: upcoming.count ?? 0,
         pendingLeave: pendingLeave.count ?? 0,
@@ -220,6 +228,9 @@ function ConsultantSasDashboard() {
   return (
     <div className="space-y-6">
       <Header subtitle="Your clinical workspace" />
+      {loadError ? (
+        <QueryErrorNotice error={loadError} stale={!!data} what="your summary" onRetry={() => void refetch()} />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Sessions next 14 days" value={data?.upcoming ?? "—"} icon={CalendarRange} />
@@ -247,7 +258,7 @@ function ConsultantSasDashboard() {
 /* ---------- TRAINEE ---------- */
 function TraineeDashboard() {
   const { user } = useAuth();
-  const { data } = useQuery({
+  const { data, error: loadError, refetch } = useQuery({
     enabled: !!user?.id,
     queryKey: ["trainee-dashboard", user?.id],
     queryFn: async () => {
@@ -263,6 +274,8 @@ function TraineeDashboard() {
           .in("role_on_list", ["solo", "supervised"]),
         supabase.from("profiles").select("training_level").eq("id", user!.id).maybeSingle(),
       ]);
+      // A failed count must not be shown as 0.
+      for (const r of [upcoming, pendingLeave, pastLogged, profile]) if (r.error) throw r.error;
       return {
         upcoming: upcoming.count ?? 0,
         pendingLeave: pendingLeave.count ?? 0,
@@ -275,6 +288,9 @@ function TraineeDashboard() {
   return (
     <div className="space-y-6">
       <Header subtitle="Your training workspace" />
+      {loadError ? (
+        <QueryErrorNotice error={loadError} stale={!!data} what="your summary" onRetry={() => void refetch()} />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Sessions next 14 days" value={data?.upcoming ?? "—"} icon={CalendarRange} />
