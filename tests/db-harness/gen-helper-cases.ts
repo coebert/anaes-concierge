@@ -27,9 +27,11 @@ const keepsDecision = (id: string) =>
 
 const cancel = buildLeaveStatusPatch("cancelled", { decided_at: "2030-01-01T00:00:00Z", decided_by: "00000000-0000-0000-0000-00000000000a" });
 kase("helper cancel: staff cancels own pending (exact UI payload)", S, `${upd(PENDING, cancel)}; ${keepsDecision(PENDING)}`, "allowed");
-kase("helper cancel: staff cancels own APPROVED (exact UI payload, decision kept)", S, `${upd(S_APPROVED, cancel)}; ${keepsDecision(S_APPROVED)}`, "allowed");
+// Live RLS: ordinary staff may only update their own PENDING rows, so this is a 0-row no-op the helper reports as failure.
+kase("helper cancel: ordinary staff on own APPROVED is a 0-row no-op (helper fails + rolls back)", S, `${upd(S_APPROVED, cancel)}; ${keepsDecision(S_APPROVED)}`, "denied");
+kase("legacy helper payload rejected for self-coordinator too", C, upd(C_APPROVED, { status: "cancelled", decided_at: "2030-01-01T00:00:00Z" }), "denied");
 kase("helper cancel: self-coordinator cancels own approved (exact UI payload)", C, `${upd(C_APPROVED, cancel)}; ${keepsDecision(C_APPROVED)}`, "allowed");
-kase("legacy helper payload (status+decided_at) rejected by owner guard", S, upd(S_APPROVED, { status: "cancelled", decided_at: "2030-01-01T00:00:00Z" }), "denied");
+kase("legacy helper payload (status+decided_at) rejected by owner guard", S, upd(PENDING, { status: "cancelled", decided_at: "2030-01-01T00:00:00Z" }), "denied");
 // Failed path the helper must roll back: a staff member cannot cancel someone else's leave (RLS => 0 rows).
 kase("helper cancel: staff on another's leave updates 0 rows (helper treats as failure)", S, `${upd(C_APPROVED, cancel)}; SELECT assert_true((SELECT status FROM leave_requests WHERE id='${C_APPROVED}')='cancelled','changed')`, "denied");
 for (const st of ["approved", "rejected"] as const) {
