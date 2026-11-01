@@ -695,8 +695,9 @@ export function auditTcs2016(
   const sortedWE = Array.from(weekendsWorked).sort();
   const weekendShifts = shifts.filter((s) => s.isWeekend).map(summarise);
   const cycle = options.rotaCycleWeeks;
-  const cycleKnown = typeof cycle === "number" && Number.isInteger(cycle) && cycle > 0;
   const refWeeks = Math.max(1, Math.round(refSpanDaysRaw / 7));
+  // Needs a known cycle AND a window covering at least one whole cycle.
+  const cycleKnown = typeof cycle === "number" && Number.isInteger(cycle) && cycle > 0 && refWeeks >= cycle;
   const weekendFreq = weekendsWorked.size / refWeeks;
   rules.push({
     id: "weekend_freq",
@@ -704,7 +705,7 @@ export function auditTcs2016(
     status: !cycleKnown ? "indeterminate" : weekendFreq <= 0.5 ? "pass" : "fail",
     detail: cycleKnown
       ? `${weekendsWorked.size} weekend(s) worked over ~${refWeeks} week(s) ≈ 1 in ${weekendFreq > 0 ? (1 / weekendFreq).toFixed(1) : "∞"} (rota cycle ${cycle} weeks)`
-      : `${weekendsWorked.size} weekend(s) worked in window — not assessed: the full rota cycle length is unknown`,
+      : `${weekendsWorked.size} weekend(s) worked in window — not assessed: the full rota cycle is unknown or not fully covered`,
     evidence:
       weekendShifts.length === 0
         ? undefined
