@@ -23,7 +23,9 @@ describe("calendar feed least disclosure", () => {
   });
   it("feed route never selects leave reasons and is not publicly cacheable", () => {
     const src = readFileSync("src/routes/api/public/calendar/$token.ts", "utf8");
-    expect(src).not.toMatch(/half_day_end, reason/);
-    expect(src).toContain('"Cache-Control": "private, no-store, max-age=0"');
+    const lib = readFileSync("src/lib/calendar-feed.ts", "utf8");
+    expect(lib).not.toMatch(/half_day_end, reason/);
+    expect(src).toContain('const NO_STORE = "private, no-store, max-age=0"');
+    expect(src).toContain('"Cache-Control": NO_STORE');
   });
 });

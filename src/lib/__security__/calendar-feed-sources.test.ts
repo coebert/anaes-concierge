@@ -65,7 +65,7 @@ describe("calendar feed sources (fail closed)", () => {
     const selects: Record<string, string[]> = {};
     const r = await buildCalendarFeedForToken(fakeSb(base(), selects), TOKEN, { now: NOW });
     expect(r.kind).toBe("ok");
-    const body = (r as { body: string }).body;
+    const body = (r as { body: string }).body.replace(/\r\n /g, "");
     expect(body).toContain("SUMMARY:Theatre 3 – Ortho");
     expect(body).toContain("Supervisor: Dr Super");
     // Sensitive free text is never requested nor rendered.
