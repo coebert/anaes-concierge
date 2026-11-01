@@ -15,6 +15,13 @@
       "when": 1793538483522,
       "tag": "0001_audit_reader_restricted_role",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793539206096,
+      "tag": "0002_audit_sql_force_read_only",
+      "breakpoints": true
     }
   ]
 }
