@@ -74,10 +74,13 @@ COMP="(SELECT count(*) FROM public.get_competency_eligibility('2026-11-01'))"
 c "TRAP staffA reads staffB AI chat"            user:$A "$(MSG $CB)"                               "ok:1:B-secret|q=0"
 c "TRAP staffA reads every RTW interview"       user:$A "$RTW"                                     "ok:3:A-rtw,B-rtw,I-rtw|q=0"
 c "TRAP staffA triggers CLWRota sync"           user:$A "public.trigger_clwrota_sync('staff') IS NOT NULL" "ok:true|q=1"
-c "TRAP staffA lists cron runs"                 user:$A "(SELECT count(*) FROM public.list_clwrota_cron_runs(5))" "ok:1|q=0"
-c "TRAP no-claims authenticated competency"     noclaims "$COMP"                                   "ok:5|q=0"
+# Live body passes the guard for staffA and then hits the pre-existing 42702
+# (ambiguous OUT column); reaching 42702 instead of 42501 proves the bypass.
+c "TRAP staffA passes cron-listing guard"       user:$A "(SELECT count(*) FROM public.list_clwrota_cron_runs(5))" "err:42702|q=0"
+c "TRAP no-claims authenticated passes competency guard" noclaims "$COMP"                       "err:42702|q=0"
 c "TRAP postgres-switched-authenticated sync"   pg-as-auth "public.trigger_clwrota_sync('rota') IS NOT NULL" "ok:true|q=1"
-c "TRAP audit logs definer owner as caller"     user:$A "(SELECT string_agg(DISTINCT db_role, ',') FROM public.rpc_access_audit)" "ok:postgres|q=0"
+LAUD=$($H -U harness -At -c "SELECT string_agg(DISTINCT db_role, ',') FROM public.rpc_access_audit")
+$H -U harness -c "INSERT INTO results VALUES ('live','TRAP audit logs definer owner as caller role','postgres','$LAUD')"
 
 # ---------- Phase 2: apply the reviewed migration as postgres ----------
 sed '/--> statement-breakpoint/d' "$MIG" | $H -U postgres >/dev/null
@@ -193,7 +196,7 @@ h() { # name method token path body expect_code body_regex expect_queue_delta
   else out=$(curl -s -w '\n%{http_code}' "${auth[@]}" -H 'Content-Type: application/json' -X POST -d "$5" "http://127.0.0.1:55451$4"); fi
   local code; code=$(echo "$out" | tail -1); local body; body=$(echo "$out" | sed '$d'); local q1; q1=$(qcount)
   local m=no; echo "$body" | grep -Eq "$7" && m=yes
-  $H -U harness -c "INSERT INTO results VALUES ('postgrest', \$a\$$1\$a\$, \$e\$$6|match|q=$8\$e\$, \$v\$$code|$m|q=$((q1-q0))\$v\$)"
+  $H -U harness -c "INSERT INTO results VALUES ('postgrest', \$a\$$1\$a\$, \$e\$$6|yes|q=$8\$e\$, \$v\$$code|$m|q=$((q1-q0))\$v\$)"
 }
 h "POST staffA cannot read staffB chat"      POST "$TA" /rpc/get_ai_messages_decrypted "{\"p_conversation_id\":\"$CB\"}" 200 '^\[\]$' 0
 h "GET staffA reads own chat"                GET  "$TA" "/rpc/get_ai_messages_decrypted?p_conversation_id=$CA" "" 200 'A-secret' 0

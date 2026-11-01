@@ -248,6 +248,10 @@ CREATE OR REPLACE FUNCTION public.get_competency_eligibility(p_on_date date DEFA
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
+#variable_conflict use_column
+-- 0007: OUT column names (staff_id, specialty_id, runid, ...) collide with
+-- unqualified columns in the body; live variable_conflict=error made every
+-- call fail with 42702 once past the guard.
 BEGIN
   -- 0007: signed service_role request, or a signed-in ACTIVE member.
   IF NOT (public._request_is_service_role()
@@ -344,6 +348,10 @@ CREATE OR REPLACE FUNCTION public.list_clwrota_cron_runs(p_limit integer DEFAULT
  SECURITY DEFINER
  SET search_path TO 'public', 'cron'
 AS $function$
+#variable_conflict use_column
+-- 0007: OUT column names (staff_id, specialty_id, runid, ...) collide with
+-- unqualified columns in the body; live variable_conflict=error made every
+-- call fail with 42702 once past the guard.
 BEGIN
   -- 0007: service path = signed service_role request; user path = active admin.
   IF NOT (public._request_is_service_role() OR public._request_is_active_admin()) THEN
