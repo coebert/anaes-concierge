@@ -4,7 +4,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const USER_ID = "00000000-0000-4000-8000-0000000000u1".replace("u1", "01");
+const USER_ID = "00000000-0000-4000-8000-000000000001";
 const CONV = "00000000-0000-4000-8000-0000000000cc";
 const LEASE = "00000000-0000-4000-8000-0000000000aa";
 
