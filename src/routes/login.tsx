@@ -69,30 +69,50 @@ function LoginPage() {
     }
     setBusy(true);
     setRememberMe(remember);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.signInWithPassword(parsed.data);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      // Passkey offer is optional — never block sign-in if the check fails.
+      let offer = false;
+      try {
+        offer = await shouldOfferPasskey(listPk);
+      } catch {
+        offer = false;
+      }
+      if (offer) setOfferPasskey(true);
+      else void navigate({ to: "/" });
+    } catch {
+      toast.error("Couldn't reach the sign-in service. Check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
-    const offer = await shouldOfferPasskey(listPk);
-    if (offer) setOfferPasskey(true);
-    else void navigate({ to: "/" });
   };
 
   const handleGoogle = async () => {
     setBusy(true);
     setRememberMe(remember);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setBusy(false);
-      toast.error(result.error.message ?? "Google sign-in failed");
-      return;
+    let redirecting = false;
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error(result.error.message ?? "Google sign-in failed");
+        return;
+      }
+      if (result.redirected) {
+        redirecting = true; // page is navigating away; keep the button busy
+        return;
+      }
+      void navigate({ to: "/" });
+    } catch {
+      toast.error("Couldn't start Google sign-in. Check your connection and try again.");
+    } finally {
+      if (!redirecting) setBusy(false);
     }
-    if (result.redirected) return;
-    void navigate({ to: "/" });
   };
 
   return (
