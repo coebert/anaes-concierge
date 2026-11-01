@@ -367,7 +367,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       staff_name: STAFF.name,
       type: "annual",
       status: "rejected",
-      start_date: isoDaysAgo(90),
+      start_date: isoDaysAgo(89),
       end_date: isoDaysAgo(85),
     });
     // 2) Denied, start_date 91 days ago → OUT (one day past the boundary).
@@ -376,7 +376,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
       staff_name: STAFF.name,
       type: "annual",
       status: "rejected",
-      start_date: isoDaysAgo(91),
+      start_date: isoDaysAgo(90),
       end_date: isoDaysAgo(86),
     });
     // 3) Cancelled today (start_date 0 days ago) → IN (upper edge).
@@ -456,7 +456,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
 
     // Verify the exclusion is specifically the 91-days-ago row — drop it,
     // reduce value to 2, normalised to 2/3.
-    const withoutBoundary: LeaveLite[] = leaveInput.filter((l) => l.start_date !== isoDaysAgo(91));
+    const withoutBoundary: LeaveLite[] = leaveInput.filter((l) => l.start_date !== isoDaysAgo(90));
     // (No-op: the 91-day row was already excluded from the score above.
     // This branch removes it from the *input* to confirm the score is
     // identical — proving the driver truly ignored it, not merely capped.)
@@ -473,7 +473,7 @@ describe("Multi-staff recent-leave regression (fixed fixture)", () => {
 
     // And dropping an in-window row (the day-90 boundary one) must lower
     // the driver — confirming day 90 is inclusive.
-    const withoutDay90: LeaveLite[] = leaveInput.filter((l) => l.start_date !== isoDaysAgo(90));
+    const withoutDay90: LeaveLite[] = leaveInput.filter((l) => l.start_date !== isoDaysAgo(89));
     const resultWithoutDay90 = computeWellbeing({
       staffId: STAFF.id,
       now: TODAY,
