@@ -156,7 +156,10 @@ function makeAdminClient() {
   return {
     from: (t: string) => build(t),
     // Durable chat quota RPC (take_request_quota) — always within limits here.
-    rpc: async () => ({ data: true, error: null }),
+    rpc: async (name: string) => ({
+      data: name === "acquire_chat_stream_lease" ? "00000000-0000-4000-8000-0000000000aa" : true,
+      error: null,
+    }),
     auth: {
       getUser: async () => ({ data: { user: { id: USER_ID } }, error: null }),
     },
@@ -170,10 +173,10 @@ function dataFor(state: QueryState): unknown {
     case "ai_messages":
       return [];
     case "user_roles":
-      return state.single ? null : [];
+      return state.single ? null : [{ role: "staff" }];
     case "profiles":
       return state.single
-        ? { id: USER_ID, full_name: "Dr Overlap", grade: "consultant", email: null }
+        ? { id: USER_ID, full_name: "Dr Overlap", grade: "consultant", email: null, active: true, left_at: null }
         : [{ id: USER_ID, full_name: "Dr Overlap", grade: "consultant" }];
     case "theatres":
       return theatres;
