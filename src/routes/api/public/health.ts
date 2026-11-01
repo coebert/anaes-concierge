@@ -5,6 +5,8 @@ import { validateJson } from "@/lib/json-validation";
 import { secretsMatch } from "@/lib/webhook-auth";
 
 const version = "1.0.0";
+const CHECK_TIMEOUT_MS = 4000;
+const DETAIL_CACHE_MS = 30_000;
 
 export interface HealthResponse {
   status: "healthy" | "degraded" | "unhealthy";
@@ -233,9 +235,6 @@ async function checkKeyTables(): Promise<HealthCheck> {
   }
 }
 
-
-const CHECK_TIMEOUT_MS = 4000;
-const DETAIL_CACHE_MS = 30_000;
 
 let cachedDetail: { at: number; promise: Promise<HealthCheck[]> } | null = null;
 
