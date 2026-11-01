@@ -26,6 +26,7 @@
  * flipped to cancelled/rejected with `decided_at = today`. The reply must
  * differ, the leave driver value must move, and the score must drop.
  */
+import { weekdayAmRows } from "@/features/wellbeing/coverage-fixture";
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
 // --------------------- fixtures ---------------------
@@ -123,6 +124,9 @@ function dataFor(state: QueryState): unknown {
       return state.single
         ? { id: USER_ID, full_name: "Dr Test", grade: "consultant", email: null }
         : [{ id: USER_ID, full_name: "Dr Test", grade: "consultant" }];
+    case "rota_assignments":
+      // Coverage fixture: weekday AM rows so the score is assessable.
+      return weekdayAmRows(USER_ID);
     case "leave_requests":
       return leaveFixture;
     case "leave_allowances":

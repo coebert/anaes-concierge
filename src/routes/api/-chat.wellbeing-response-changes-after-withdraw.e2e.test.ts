@@ -13,6 +13,7 @@
  * the same fixture set (only exception_reports differ) and asserts the
  * two assistant strings are not equal.
  */
+import { weekdayAmRows } from "@/features/wellbeing/coverage-fixture";
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
 // --------------------- fixtures ---------------------
@@ -126,15 +127,8 @@ function dataFor(state: QueryState): unknown {
     case "specialties":
       return [];
     case "rota_assignments":
-      // Coverage fixture: 12 weekday-agnostic AM rows in the last 90 days so
-      // the score is assessable; AM rows add no harm to any driver.
-      return Array.from({ length: 12 }, (_, i) => ({
-        staff_id: USER_ID,
-        session_date: new Date(Date.now() - (7 + i) * 86_400_000).toISOString().slice(0, 10),
-        session: "am",
-        theatre_id: null,
-        role: "solo",
-      }));
+      // Coverage fixture: weekday AM rows so the score is assessable.
+      return weekdayAmRows(USER_ID);
     case "theatre_sessions":
       return [];
     case "rota_change_log":

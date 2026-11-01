@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { weekdayAmRows } from "@/features/wellbeing/coverage-fixture";
 import "@/test/assert-utc-hook";
 /**
  * Cross-route enum-mapping integration test.
@@ -308,11 +309,7 @@ beforeEach(() => {
 
   state.leaveRows = buildFixtureRows();
   // Weekday AM rows so the score clears the coverage gate on both routes.
-  state.assignmentRows = Array.from({ length: 12 }, (_, i) => ({
-    staff_id: USER_ID,
-    session_date: new Date(NOW.getTime() - (7 + i) * 86_400_000).toISOString().slice(0, 10),
-    session: "am",
-  }));
+  state.assignmentRows = weekdayAmRows(USER_ID, NOW);
   state.profileRows = [
     {
       id: USER_ID,
