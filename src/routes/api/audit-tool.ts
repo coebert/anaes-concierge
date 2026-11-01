@@ -232,12 +232,11 @@ function isoDaysAgo(days: number) {
  */
 async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
   const [theatresRes, profilesRes, dutyRes, specialtiesRes] = await Promise.all([
-    admin
-      .from("theatres")
-      .select("name, kind, active, sort_order")
-      .eq("active", true)
-      .order("sort_order", { ascending: true })
-      .limit(200),
+    pagedRows("theatres", "name, kind, active, sort_order", {
+      client: admin,
+      filter: (q) => q.eq("active", true),
+      order: ["sort_order", "id"],
+    }),
     pagedRows("profiles", "grade, training_level, active", {
       client: admin,
       filter: (q) => q.eq("active", true),
@@ -248,7 +247,7 @@ async function buildDepartmentSnapshot(admin: SupabaseClient): Promise<string> {
       filter: (q) => q.gte("session_date", isoDaysAgo(30)).not("duty_type", "is", null),
       order: ["session_date", "id"],
     }),
-    admin.from("specialties").select("name").order("name", { ascending: true }).limit(100),
+    pagedRows("specialties", "name", { client: admin, order: ["name", "id"] }),
   ]);
 
   const lines: string[] = [];
