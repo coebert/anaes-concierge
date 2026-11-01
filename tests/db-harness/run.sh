@@ -4,6 +4,7 @@
 # synthetic fixture + the REAL migration SQL from drizzle/migrations, runs
 # allow/deny cases, prints a table, exits non-zero on any mismatch.
 set -euo pipefail
+if [ "$(id -u)" = 0 ]; then exec su nobody -s /bin/bash -c "PG=${PG:-} bash $(readlink -f "$0")"; fi
 PG=${PG:-$(nix build nixpkgs#postgresql_16 --no-link --print-out-paths | grep -v -- -man | head -1)}
 export PATH="$PG/bin:$PATH"
 D=$(mktemp -d /tmp/pgharness.XXXX); trap 'pg_ctl -D "$D/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"' EXIT
