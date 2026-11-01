@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -131,6 +132,8 @@ export type DashboardBodyProps = {
     }>;
   } | null;
   soloLoading: boolean;
+  /** Set when the solo-list query failed — shown instead of empty charts. */
+  soloError?: { error: unknown; retry: () => void } | null;
   bucket: TraineeBucket;
   setBucket: (b: TraineeBucket) => void;
   showOnlyActive: boolean;
@@ -141,6 +144,7 @@ export type DashboardBodyProps = {
   atRiskPct: number;
   behindPct: number;
   traineeMetricsLoading: boolean;
+  traineeMetricsError?: { error: unknown; retry: () => void } | null;
   traineeMetricRows: TraineeMetricRow[];
 };
 
@@ -151,6 +155,7 @@ export function DashboardBody(props: DashboardBodyProps) {
     annualLeaveStats,
     soloStats,
     soloLoading,
+    soloError,
     bucket,
     setBucket,
     showOnlyActive,
@@ -161,6 +166,7 @@ export function DashboardBody(props: DashboardBodyProps) {
     atRiskPct,
     behindPct,
     traineeMetricsLoading,
+    traineeMetricsError,
     traineeMetricRows,
   } = props;
 
@@ -437,7 +443,13 @@ export function DashboardBody(props: DashboardBodyProps) {
           </div>
         </div>
 
-        {soloLoading || !soloStats ? (
+        {soloError ? (
+          <QueryErrorNotice
+            error={soloError.error}
+            onRetry={soloError.retry}
+            what="solo trainee lists"
+          />
+        ) : soloLoading || !soloStats ? (
           <div className="text-sm text-muted-foreground">Loading solo trainee data…</div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
@@ -854,7 +866,13 @@ export function DashboardBody(props: DashboardBodyProps) {
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Per-trainee metrics (all-time)
         </h2>
-        {traineeMetricsLoading ? (
+        {traineeMetricsError ? (
+          <QueryErrorNotice
+            error={traineeMetricsError.error}
+            onRetry={traineeMetricsError.retry}
+            what="trainee metrics"
+          />
+        ) : traineeMetricsLoading ? (
           <div className="text-sm text-muted-foreground">Loading trainee metrics…</div>
         ) : traineeMetricRows.length === 0 ? (
           <div className="text-sm text-muted-foreground">No active trainees on record.</div>

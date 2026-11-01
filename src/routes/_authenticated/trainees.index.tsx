@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { pagedRows } from "@/lib/paged-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -82,7 +83,7 @@ function TraineesPage() {
   }, [fromDate, toDate]);
 
   const fetchTrainees = useServerFn(listTraineesForOverview);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["trainees-overview"],
     queryFn: async () => {
       const [trainees, { data: targets, error: e2 }, { data: specs, error: e3 }] =
@@ -578,6 +579,8 @@ function TraineesPage() {
         </p>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading metrics…</p>
+        ) : isError ? (
+          <QueryErrorNotice error={error} onRetry={() => void refetch()} what="trainee metrics" />
         ) : metricRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No trainees on record.</p>
         ) : (
@@ -606,6 +609,8 @@ function TraineesPage() {
         <CardContent>
           {isLoading ? (
             <PageLoading />
+          ) : isError ? (
+            <QueryErrorNotice error={error} onRetry={() => void refetch()} what="trainees" />
           ) : !rows.length ? (
             <p className="text-sm text-muted-foreground">No trainees on record.</p>
           ) : (

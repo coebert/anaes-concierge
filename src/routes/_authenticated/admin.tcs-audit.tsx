@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { pagedRows, pagedSelect } from "@/lib/paged-select";
 import { chunkIds } from "@/lib/supabase-chunked";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
@@ -69,7 +70,7 @@ function TcsAuditPage() {
   const [lookback, setLookback] = useState<Lookback>("180");
   const [filter, setFilter] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["tcs-audit", lookback],
     queryFn: async () => {
       const today = new Date();
@@ -330,6 +331,8 @@ function TcsAuditPage() {
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Running audit…</div>
+      ) : isError ? (
+        <QueryErrorNotice error={error} onRetry={() => void refetch()} what="the hours screen" />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-4">

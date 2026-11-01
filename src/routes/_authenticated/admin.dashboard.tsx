@@ -281,7 +281,12 @@ function AdminDashboardPage() {
   const [showOnlyActive, setShowOnlyActive] = useState(false);
   const [expandedTrainee, setExpandedTrainee] = useState<string | null>(null);
 
-  const { data: soloMonthly, isLoading: soloLoading } = useQuery({
+  const {
+    data: soloMonthly,
+    isLoading: soloLoading,
+    error: soloErr,
+    refetch: refetchSolo,
+  } = useQuery({
     queryKey: ["admin-dashboard-solo-monthly"],
     queryFn: async () => {
       // Last 12 full months including current month
@@ -331,7 +336,12 @@ function AdminDashboardPage() {
     },
   });
 
-  const { data: traineeMetricsData, isLoading: traineeMetricsLoading } = useQuery({
+  const {
+    data: traineeMetricsData,
+    isLoading: traineeMetricsLoading,
+    error: traineeMetricsErr,
+    refetch: refetchTraineeMetrics,
+  } = useQuery({
     queryKey: ["admin-dashboard-trainee-metrics"],
     queryFn: async () => {
       const today = todayISO();
@@ -843,6 +853,7 @@ function AdminDashboardPage() {
           annualLeaveStats={annualLeaveStats}
           soloStats={soloStats}
           soloLoading={soloLoading}
+          soloError={soloErr ? { error: soloErr, retry: () => void refetchSolo() } : null}
           bucket={bucket}
           setBucket={setBucket}
           showOnlyActive={showOnlyActive}
@@ -853,6 +864,11 @@ function AdminDashboardPage() {
           atRiskPct={atRiskPct}
           behindPct={behindPct}
           traineeMetricsLoading={traineeMetricsLoading}
+          traineeMetricsError={
+            traineeMetricsErr
+              ? { error: traineeMetricsErr, retry: () => void refetchTraineeMetrics() }
+              : null
+          }
           traineeMetricRows={traineeMetricRows}
         />
       )}

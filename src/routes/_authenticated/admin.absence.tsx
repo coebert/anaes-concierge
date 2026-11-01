@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -74,7 +75,7 @@ function AdminAbsencePage() {
     spellEnd: string;
   } | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-absence"],
     queryFn: async () => {
       const [profilesRes, leaveRes, rtwRes] = await Promise.all([
@@ -194,6 +195,8 @@ function AdminAbsencePage() {
 
           {isLoading ? (
             <PageLoading />
+          ) : isError ? (
+            <QueryErrorNotice error={error} onRetry={() => void refetch()} what="absence data" />
           ) : filteredRows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No sickness spells match the current filter.

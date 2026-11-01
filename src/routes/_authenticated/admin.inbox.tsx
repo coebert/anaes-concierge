@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate, Link } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { pagedRows } from "@/lib/paged-select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -149,7 +150,7 @@ function CoordinatorInboxPage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["coordinator-inbox"],
     queryFn: async () => {
       const todayIso = new Date().toISOString().slice(0, 10);
@@ -308,6 +309,8 @@ function CoordinatorInboxPage() {
 
       {isLoading ? (
         <PageLoading />
+      ) : isError ? (
+        <QueryErrorNotice error={error} onRetry={() => void refetch()} what="the inbox" />
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -51,7 +52,7 @@ function LeaveFairnessPage() {
   const [q, setQ] = useState("");
   const [toilFor, setToilFor] = useState<{ id: string; name: string | null } | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-leave-fairness"],
     queryFn: async () => {
       const [profRes, leaveRes, allowRes] = await Promise.all([
@@ -172,6 +173,8 @@ function LeaveFairnessPage() {
 
           {isLoading ? (
             <PageLoading />
+          ) : isError ? (
+            <QueryErrorNotice error={error} onRetry={() => void refetch()} what="leave fairness data" />
           ) : filteredRows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No leave activity in the last 12 months.
