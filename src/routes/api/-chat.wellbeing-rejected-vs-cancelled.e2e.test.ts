@@ -114,6 +114,8 @@ function makeAdminClient() {
     b.in = () => b;
     b.gte = (col: string, val: string) => { state.gteCols[col] = val; return b; };
     b.lte = (col: string, val: string) => { state.lteCols[col] = val; return b; };
+    // exception_reports query filters .neq("status","withdrawn") (added with the wellbeing tool).
+    b.neq = () => b;
     b.range = () => b;
     b.limit = () => b;
     b.order = () => b;
