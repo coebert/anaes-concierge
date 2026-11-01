@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AuthIdentityGuard } from "@/lib/auth-identity";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { shouldDropSessionOnLoad } from "@/lib/remember-me";
@@ -46,8 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [grade, setGrade] = useState<StaffGrade | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const guardRef = useRef<AuthIdentityGuard | null>(null);
+  if (!guardRef.current) guardRef.current = new AuthIdentityGuard(queryClient);
 
   const loadProfile = async (userId: string | undefined) => {
+    const guard = guardRef.current!;
+    const token = guard.beginLoad(userId ?? null);
     if (!userId) {
       setRoles([]);
       setGrade(null);
@@ -58,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase.from("profiles").select("grade, full_name").eq("id", userId).maybeSingle(),
     ]);
+    // Identity moved on while we were fetching: never install stale roles.
+    if (!guard.isCurrent(token)) return;
     if (rolesErr) console.error("Failed to load roles", rolesErr);
     if (profErr) console.error("Failed to load profile", profErr);
     setRoles((roleRows ?? []).map((r) => r.role as AppRole));
@@ -75,9 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session: describeSession(newSession),
         pathname: typeof window !== "undefined" ? window.location.pathname : null,
       });
+      const nextId = newSession?.user.id ?? null;
       setSession(newSession);
       setTimeout(() => {
-        void loadProfile(newSession?.user.id);
+        void (async () => {
+          const changed = await guardRef.current!.setIdentity(nextId);
+          if (changed) {
+            setRoles([]);
+            setGrade(null);
+            setFullName(null);
+          }
+          await loadProfile(nextId ?? undefined);
+        })();
       }, 0);
     });
 
@@ -109,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) traceError("auth-context.init.getSession.error", error);
       trace("auth-context.init.getSession", { session: describeSession(data.session) });
       setSession(data.session);
+      await guardRef.current!.setIdentity(data.session?.user.id ?? null);
       await loadProfile(data.session?.user.id);
       setLoading(false);
     };
@@ -136,6 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           session: describeSession(session),
         });
         await supabase.auth.signOut();
+        await guardRef.current!.setIdentity(null);
+        setRoles([]);
+        setGrade(null);
+        setFullName(null);
       },
       refreshRoles: async () => {
         await loadProfile(session?.user.id);
