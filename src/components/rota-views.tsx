@@ -514,7 +514,6 @@ const StaffListCellContent = memo(function StaffListCellContent({
   );
 });
 
-
 const NhhCellContent = memo(function NhhCellContent({ model }: { model: NhhCellModel }) {
   if (model.staff.length === 0) {
     return <div className="text-muted-foreground/40 text-[10px]">—</div>;
