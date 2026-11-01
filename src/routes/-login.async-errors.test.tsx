@@ -23,6 +23,8 @@ vi.mock("@/components/passkey-login-button", () => ({ PasskeyLoginButton: () => 
 vi.mock("@/components/app-logo", () => ({ AppLogo: () => null }));
 vi.mock("sonner", () => ({ toast: { error: (...a: unknown[]) => toastError(...a), success: vi.fn() } }));
 
+globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never;
+
 import { Route } from "./login";
 
 const Login = (Route as unknown as { options: { component: () => JSX.Element } }).options.component;
