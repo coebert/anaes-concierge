@@ -44,7 +44,7 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
-      leaveId: z.string().uuid(),
+      leaveId: z.string().guid(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -88,7 +88,7 @@ export const notifyLeaveDecided = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
-      leaveId: z.string().uuid(),
+      leaveId: z.string().guid(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {

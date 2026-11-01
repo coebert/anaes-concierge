@@ -603,7 +603,7 @@ export const Route = createFileRoute("/api/audit-tool")({
             description:
               "Delete a stored memory by id. Use when the user says a stored memory is wrong " +
               "or out of date. The id is shown in the STORED MEMORIES block of the system prompt.",
-            inputSchema: z.object({ id: z.string().uuid() }),
+            inputSchema: z.object({ id: z.string().guid() }),
             execute: async ({ id }) => {
               const { error } = await adminClient
                 .from("audit_assistant_memories")

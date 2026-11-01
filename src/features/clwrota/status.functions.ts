@@ -67,7 +67,7 @@ export const listReclassificationRuns = createServerFn({ method: "GET" })
  */
 export const undoReclassificationRun = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
-  .inputValidator((input) => z.object({ sync_run_id: z.string().uuid() }).parse(input))
+  .inputValidator((input) => z.object({ sync_run_id: z.string().guid() }).parse(input))
   .handler(async ({ context, data }) => {
     const { data: entries, error: loadErr } = await supabaseAdmin
       .from("rota_reclassification_log")

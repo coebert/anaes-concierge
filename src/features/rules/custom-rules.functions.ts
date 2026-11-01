@@ -5,7 +5,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 
 const CheckInput = z.object({
-  staffId: z.string().uuid(),
+  staffId: z.string().guid(),
   date: z.string(),
   session: z.enum(["am", "pm"]),
   role: z.string(),

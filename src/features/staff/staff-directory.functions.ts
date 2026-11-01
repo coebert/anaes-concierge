@@ -57,7 +57,7 @@ export const listActiveStaffSafe = createServerFn({ method: "GET" })
 export const listStaffByIdsSafe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({ ids: z.array(z.string().uuid()).max(500) }).parse(d),
+    z.object({ ids: z.array(z.string().guid()).max(500) }).parse(d),
   )
   .handler(async ({ data, context }): Promise<SafeStaff[]> => {
     await getActiveMembership(context.supabase, context.userId);
@@ -121,8 +121,8 @@ export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" 
   .inputValidator((d) =>
     z
       .object({
-        staffId: z.string().uuid(),
-        supervisorIds: z.array(z.string().uuid()).max(500).default([]),
+        staffId: z.string().guid(),
+        supervisorIds: z.array(z.string().guid()).max(500).default([]),
       })
       .parse(d),
   )

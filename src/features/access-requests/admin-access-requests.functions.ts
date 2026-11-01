@@ -18,7 +18,7 @@ export const listAccessRequests = createServerFn({ method: "GET" })
   });
 
 const DecideSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().guid(),
   decision: z.enum(["approved", "declined"]),
   notes: z.string().trim().max(1000).optional(),
   send_invite: z.boolean().default(true),
@@ -61,7 +61,7 @@ export const decideAccessRequest = createServerFn({ method: "POST" })
 
 export const deleteAccessRequest = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d) => z.object({ id: z.string().guid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("access_requests").delete().eq("id", data.id);

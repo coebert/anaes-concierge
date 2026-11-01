@@ -90,7 +90,7 @@ export const getIcuConsultantEvidence = createServerFn({ method: "POST" })
   .inputValidator((data) =>
     z
       .object({
-        staffId: z.string().uuid().optional(),
+        staffId: z.string().guid().optional(),
         startIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         endIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       })

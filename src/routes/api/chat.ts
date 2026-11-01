@@ -148,14 +148,14 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Create a single rota assignment for a staff member on a specific date/session. The DB unique constraint prevents double-booking the same staff member on the same date+session.",
       inputSchema: z.object({
-        staff_id: z.string().uuid(),
+        staff_id: z.string().guid(),
         session_date: z.string().describe("ISO date YYYY-MM-DD"),
         session: z.enum(["am", "pm", "eve", "night", "long_day"]).describe("Session slot"),
         role_on_list: z
           .enum(["solo", "supervised", "supervisor", "on_call", "teaching", "admin"])
           .optional(),
-        theatre_session_id: z.string().uuid().optional(),
-        supervisor_id: z.string().uuid().optional(),
+        theatre_session_id: z.string().guid().optional(),
+        supervisor_id: z.string().guid().optional(),
         notes: z.string().max(500).optional(),
       }),
       execute: async (input) => {
@@ -182,15 +182,15 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Update an existing rota assignment (e.g. move it to a different theatre, change role, reassign to another staff member, change notes).",
       inputSchema: z.object({
-        id: z.string().uuid(),
-        staff_id: z.string().uuid().optional(),
+        id: z.string().guid(),
+        staff_id: z.string().guid().optional(),
         session_date: z.string().optional(),
         session: z.enum(["am", "pm", "eve", "night", "long_day"]).optional(),
         role_on_list: z
           .enum(["solo", "supervised", "supervisor", "on_call", "teaching", "admin"])
           .optional(),
-        theatre_session_id: z.string().uuid().nullable().optional(),
-        supervisor_id: z.string().uuid().nullable().optional(),
+        theatre_session_id: z.string().guid().nullable().optional(),
+        supervisor_id: z.string().guid().nullable().optional(),
         notes: z.string().max(500).nullable().optional(),
       }),
       execute: async ({ id, ...patch }) => {
@@ -206,7 +206,7 @@ function buildAdminTools() {
 
     delete_rota_assignment: tool({
       description: "ADMIN ONLY. Delete a rota assignment by id.",
-      inputSchema: z.object({ id: z.string().uuid() }),
+      inputSchema: z.object({ id: z.string().guid() }),
       execute: async ({ id }) => {
         const { error } = await admin.from("rota_assignments").delete().eq("id", id);
         if (error) return { error: error.message };
@@ -218,7 +218,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Look up rota assignments by staff_id and/or date range to find the id needed for update/delete.",
       inputSchema: z.object({
-        staff_id: z.string().uuid().optional(),
+        staff_id: z.string().guid().optional(),
         from: z.string().describe("ISO date YYYY-MM-DD"),
         to: z.string().describe("ISO date YYYY-MM-DD"),
       }),
@@ -240,7 +240,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Update a staff member's current job plan: total/DCC/SPA PAs, LTFT status and percentage, on-call commitment, notes. Updates the most recent active job plan; if none exists a new one is created.",
       inputSchema: z.object({
-        staff_id: z.string().uuid(),
+        staff_id: z.string().guid(),
         total_pas: z.number().min(0).max(20).optional(),
         dcc_pas: z.number().min(0).max(20).optional(),
         spa_pas: z.number().min(0).max(20).optional(),
@@ -283,7 +283,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Update a staff member's profile fields: grade (consultant/sas/trainee), training_level (e.g. ST4), full_name, active flag.",
       inputSchema: z.object({
-        staff_id: z.string().uuid(),
+        staff_id: z.string().guid(),
         full_name: z.string().min(1).max(200).optional(),
         grade: z.enum(["consultant", "sas", "trainee"]).nullable().optional(),
         training_level: z
@@ -307,7 +307,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. List the active custom working-pattern rules. Optionally filter by staff_id or grade.",
       inputSchema: z.object({
-        staff_id: z.string().uuid().optional(),
+        staff_id: z.string().guid().optional(),
         grade: z.enum(["consultant", "sas", "trainee"]).optional(),
       }),
       execute: async ({ staff_id, grade }) => {
@@ -329,7 +329,7 @@ function buildAdminTools() {
         "ADMIN ONLY. Persist a new custom working-pattern rule so it is remembered across sessions and factored into future rota work. Scope is 'staff' (one person), 'grade' (e.g. all trainees), or 'department' (everyone). Provide a short `summary` (≤80 chars) for display and the full `rule_text` capturing the rule.",
       inputSchema: z.object({
         scope: z.enum(["staff", "grade", "department"]),
-        staff_id: z.string().uuid().optional(),
+        staff_id: z.string().guid().optional(),
         grade: z.enum(["consultant", "sas", "trainee"]).optional(),
         summary: z.string().min(3).max(120),
         rule_text: z.string().min(5).max(1000),
@@ -359,7 +359,7 @@ function buildAdminTools() {
       description:
         "ADMIN ONLY. Edit an existing custom rule (summary, rule_text, active flag).",
       inputSchema: z.object({
-        id: z.string().uuid(),
+        id: z.string().guid(),
         summary: z.string().min(3).max(120).optional(),
         rule_text: z.string().min(5).max(1000).optional(),
         active: z.boolean().optional(),
@@ -377,7 +377,7 @@ function buildAdminTools() {
 
     delete_custom_rule: tool({
       description: "ADMIN ONLY. Remove a custom working-pattern rule by id.",
-      inputSchema: z.object({ id: z.string().uuid() }),
+      inputSchema: z.object({ id: z.string().guid() }),
       execute: async ({ id }) => {
         const { error } = await admin.from("custom_rota_rules").delete().eq("id", id);
         if (error) return { error: error.message };
@@ -714,7 +714,7 @@ function buildTools(userId: string, isAdminUser: boolean, canSeeColleagueNames: 
       inputSchema: z.object({
         staff_id: z
           .string()
-          .uuid()
+          .guid()
           .optional()
           .describe("Target staff. Omit to summarise the signed-in user."),
         windowDays: z
@@ -1011,7 +1011,7 @@ export const ChatBody = z.object({
   conversationId: z.string({
     // zod 4: one `error` param replaces required_error / invalid_type_error.
     error: "Missing conversation — please open or start a chat first.",
-  }).uuid("The conversation reference is invalid — please start a new chat."),
+  }).guid("The conversation reference is invalid — please start a new chat."),
   /** Email the reply to the signed-in user. Off unless the client explicitly asks. */
   emailReply: z.boolean().optional().default(false),
 });

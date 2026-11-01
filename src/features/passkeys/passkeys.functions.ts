@@ -105,7 +105,7 @@ export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
       .object({
         response: z.any(),
         deviceName: z.string().max(80).optional(),
-        ceremonyId: z.string().uuid(),
+        ceremonyId: z.string().guid(),
       })
       .parse(data),
   )
@@ -215,7 +215,7 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
       .object({
         email: z.string().trim().email().max(255).optional(),
         response: z.any(),
-        ceremonyId: z.string().uuid(),
+        ceremonyId: z.string().guid(),
       })
       .parse(data),
   )
@@ -314,7 +314,7 @@ export const listMyPasskeys = createServerFn({ method: "GET" })
 export const deleteMyPasskey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) =>
-    z.object({ id: z.string().uuid() }).parse(data),
+    z.object({ id: z.string().guid() }).parse(data),
   )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase

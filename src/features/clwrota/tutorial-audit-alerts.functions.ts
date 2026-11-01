@@ -100,7 +100,7 @@ export const getTutorialAuditStatus = createServerFn({ method: "POST" })
 
 export const acknowledgeTutorialAuditAlert = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
+  .inputValidator((data) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     await assertCoordinator(context);
     const { error } = await context.supabase
