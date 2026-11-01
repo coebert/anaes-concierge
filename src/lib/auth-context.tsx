@@ -64,11 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Fetch roles/profile for `userId` and install them only if the identity is
    * still the one the load started for. Ends the loading gate for that load.
    */
-  const loadProfile = async (userId: string | null) => {
+  const loadProfile = async (
+    userId: string | null,
+    scheduledToken?: { userId: string | null; generation: number },
+  ) => {
     const guard = guardRef.current!;
-    const token = guard.beginLoad(userId);
+    // Token is captured when the load is SCHEDULED, so a deferred load for a
+    // superseded identity (e.g. sign-out's null load firing after B signed in)
+    // can never touch B's loading gate.
+    const token = scheduledToken ?? guard.beginLoad(userId);
     if (!userId) {
-      setLoading(false);
+      if (guard.isCurrent(token)) setLoading(false);
       return;
     }
     try {
@@ -114,7 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     trace("auth-context.identityChanged", { source, hasUser: nextId !== null });
     // Defer network work out of the auth callback (supabase-js lock rule);
     // the generation token makes a superseded load a no-op.
-    setTimeout(() => void loadProfile(nextId), 0);
+    const token = guard.beginLoad(nextId);
+    setTimeout(() => void loadProfile(nextId, token), 0);
   };
   const applyRef = useRef(applySession);
   applyRef.current = applySession;
