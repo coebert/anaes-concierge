@@ -305,6 +305,14 @@ export function SummaryDashboard() {
               <CardDescription>Worst-half risk per day. Click a day to drill down.</CardDescription>
             </CardHeader>
             <CardContent>
+              {rLoadingErr && robustness ? (
+                <QueryErrorNotice
+                  stale
+                  error={rLoadingErr}
+                  what="the 7-day robustness check"
+                  onRetry={() => void rLoadingRetry()}
+                />
+              ) : null}
               {rLoading ? (
                 <PageLoading />
               ) : rLoadingErr && !robustness ? (
@@ -423,6 +431,14 @@ export function SummaryDashboard() {
               <CardDescription>Approved leave covering {formatDateGB(today)}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+              {lLoadingErr && leaveToday ? (
+                <QueryErrorNotice
+                  stale
+                  error={lLoadingErr}
+                  what="today's leave"
+                  onRetry={() => void lLoadingRetry()}
+                />
+              ) : null}
               {lLoading ? (
                 <PageLoading />
               ) : lLoadingErr && !leaveToday ? (
@@ -455,6 +471,14 @@ export function SummaryDashboard() {
               <CardDescription>Approved leave covering {formatDateGB(today)}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+              {lLoadingErr && leaveToday ? (
+                <QueryErrorNotice
+                  stale
+                  error={lLoadingErr}
+                  what="today's leave"
+                  onRetry={() => void lLoadingRetry()}
+                />
+              ) : null}
               {lLoading ? (
                 <PageLoading />
               ) : lLoadingErr && !leaveToday ? (
@@ -487,6 +511,14 @@ export function SummaryDashboard() {
               <CardDescription>Trainee assigned as solo on a theatre list.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+              {sLoadingErr && soloToday ? (
+                <QueryErrorNotice
+                  stale
+                  error={sLoadingErr}
+                  what="solo trainees"
+                  onRetry={() => void sLoadingRetry()}
+                />
+              ) : null}
               {sLoading ? (
                 <PageLoading />
               ) : sLoadingErr && !soloToday ? (
@@ -527,6 +559,7 @@ export function SummaryDashboard() {
             tone="text-success"
             loading={nwLoading}
             error={nwLoadingErr && !notWorking ? nwLoadingErr : null}
+            staleError={nwLoadingErr && notWorking ? nwLoadingErr : null}
             onRetry={() => void nwLoadingRetry()}
             entries={notWorking?.consultants ?? []}
             today={today}
@@ -537,6 +570,7 @@ export function SummaryDashboard() {
             tone="text-indigo-600"
             loading={nwLoading}
             error={nwLoadingErr && !notWorking ? nwLoadingErr : null}
+            staleError={nwLoadingErr && notWorking ? nwLoadingErr : null}
             onRetry={() => void nwLoadingRetry()}
             entries={notWorking?.sas ?? []}
             today={today}
@@ -547,6 +581,7 @@ export function SummaryDashboard() {
             tone="text-fuchsia-600"
             loading={nwLoading}
             error={nwLoadingErr && !notWorking ? nwLoadingErr : null}
+            staleError={nwLoadingErr && notWorking ? nwLoadingErr : null}
             onRetry={() => void nwLoadingRetry()}
             entries={notWorking?.trainees ?? []}
             today={today}
@@ -567,6 +602,14 @@ export function SummaryDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {cLoadingErr && listCoverage ? (
+              <QueryErrorNotice
+                stale
+                error={cLoadingErr}
+                what="list coverage"
+                onRetry={() => void cLoadingRetry()}
+              />
+            ) : null}
             {cLoading ? (
               <PageLoading />
             ) : cLoadingErr && !listCoverage ? (
@@ -823,6 +866,7 @@ function NotScheduledCard({
   tone,
   loading,
   error,
+  staleError,
   onRetry,
   entries,
   today,
@@ -832,6 +876,8 @@ function NotScheduledCard({
   tone: string;
   loading: boolean;
   error?: unknown;
+  /** Refresh failed while older data is shown. */
+  staleError?: unknown;
   onRetry?: () => void;
   entries: Array<{ id: string; name: string; trainingLevel: string | null }>;
   today: string;
@@ -852,6 +898,9 @@ function NotScheduledCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
+        {staleError ? (
+          <QueryErrorNotice stale error={staleError} what="today's schedule" onRetry={onRetry} />
+        ) : null}
         {loading ? (
           <PageLoading />
         ) : error ? (
