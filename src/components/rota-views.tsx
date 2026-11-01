@@ -46,8 +46,7 @@ import {
   parseDateLocal,
   toISODateLocal,
   formatDateGB,
-  formatDateWithWeekdayGB,
-} from "@/lib/utils";
+  formatDateWithWeekdayGB, formatMonthYearGB, formatDateTimeGB } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { specialtyTone, specialtyColorKey } from "@/lib/specialty-colors";
 
@@ -193,7 +192,7 @@ export function PeriodNav({
     // Month-only navigation label (e.g. "May 2026") — not a full date.
 
     if (mode === "month")
-      return anchor.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      return formatMonthYearGB(anchor);
     const ws = startOfWeek(anchor);
     return `Week of ${fmt(ws)}`;
   })();
@@ -507,7 +506,7 @@ const MedicalExaminerDetailsDialog = memo(function MedicalExaminerDetailsDialog(
           )}
           <dt className="text-muted-foreground">Synced</dt>
           <dd className="text-muted-foreground">
-            {new Date(details.updatedAt).toLocaleString("en-GB")}
+            {formatDateTimeGB(details.updatedAt)}
           </dd>
         </dl>
       </DialogContent>

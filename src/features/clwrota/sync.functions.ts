@@ -915,7 +915,7 @@ export async function performRotaSync(
     // because "dr s abbas [non-sag]" doesn't equal "dr s abbas".
     const personName = personNameRaw
       ? personNameRaw
-          .replace(/[\s]*[\[\(\{][^\]\)\}]*non[\s-]?sag[^\]\)\}]*[\]\)\}]/gi, "")
+          .replace(/[\s]*[[({][^\])}]*non[\s-]?sag[^\])}]*[\])}]/gi, "")
           .replace(/[\s,;|\-–—]*\bnon[\s-]?sag\b[\s,;|\-–—]*$/gi, "")
           .trim() || null
       : null;

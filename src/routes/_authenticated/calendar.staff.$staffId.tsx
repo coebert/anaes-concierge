@@ -20,7 +20,7 @@ import { PageLoading } from "@/components/loading";
 import { StatCard } from "@/components/stat-card";
 import { StaffWeekView } from "@/components/rota-views";
 import { CurrentPatternCard } from "@/components/current-pattern-card";
-import { cn } from "@/lib/utils";
+import { cn, formatMonthYearGB, formatShortDayMonthGB } from "@/lib/utils";
 import {
   listSpecialtySessions,
   type SpecialtyPaRules,
@@ -105,20 +105,11 @@ function currentMonth() {
 }
 
 function friendlyMonth(month: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${month}-01T12:00:00Z`));
+  return formatMonthYearGB(new Date(`${month}-01T12:00:00Z`), "UTC");
 }
 
 function friendlyDay(iso: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(new Date(`${iso}T12:00:00Z`));
+  return formatShortDayMonthGB(iso);
 }
 
 function sessionLabel(session: string) {

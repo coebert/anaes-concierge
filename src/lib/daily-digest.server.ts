@@ -9,7 +9,7 @@
 import webpush from "web-push";
 import { clampPushPayload, isDeliverableSubscription } from "@/lib/push-endpoint";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { formatDateWithWeekdayGB } from "@/lib/utils";
+import { formatDateWithWeekdayGB, londonDateISO, londonHourOfDay } from "@/lib/utils";
 
 type AssignmentRow = {
   id: string;
@@ -70,23 +70,12 @@ function configureVapid() {
 
 /** Today's date in Europe/London as YYYY-MM-DD. */
 export function londonToday(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
+  return londonDateISO(now);
 }
 
 /** Current hour (0-23) in Europe/London. */
 export function londonHour(now: Date = new Date()): number {
-  return Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/London",
-      hour: "2-digit",
-      hour12: false,
-    }).format(now),
-  );
+  return londonHourOfDay(now);
 }
 
 export function describeAssignment(

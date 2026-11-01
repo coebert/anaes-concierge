@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { formatDateWithWeekdayGB, parseDateLocal, toISODateLocal } from "@/lib/utils";
+import { formatDateWithWeekdayGB, parseDateLocal, toISODateLocal, formatDateTimeGB } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/tutorials")({
   component: TutorialsAuditPage,
@@ -467,7 +467,7 @@ function WeeklyAuditStatusCard() {
               )}
               {data.nextPassAt && !data.cursorStart && (
                 <Badge variant="outline">
-                  Next pass {new Date(data.nextPassAt).toLocaleString("en-GB")}
+                  Next pass {formatDateTimeGB(data.nextPassAt)}
                 </Badge>
               )}
               <Badge variant={data.openAlerts.length ? "destructive" : "secondary"}>
