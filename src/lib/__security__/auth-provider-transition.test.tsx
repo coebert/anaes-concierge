@@ -71,7 +71,10 @@ async function settleLoad(uid: string, roles: string[], name: string, idx = -1) 
     p.resolve({ data: { grade: "consultant", full_name: name }, error: null });
   });
 }
-const flushTimers = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
+const flushTimers = () =>
+  act(async () => {
+    for (let i = 0; i < 3; i++) await new Promise((r) => setTimeout(r, 0));
+  });
 
 let qc: QueryClient;
 function mount() {
