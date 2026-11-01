@@ -38,6 +38,10 @@ describe("assistant message rendering safety (synthetic, no network)", () => {
     );
   });
 
+  it("maths really renders through KaTeX (so the checks below are meaningful)", () => {
+    expect(html("$$x^2$$").querySelector(".katex")).not.toBeNull();
+  });
+
   it("KaTeX \\href with javascript: is not trusted", () => {
     const c = html("$$\\href{javascript:alert(1)}{click}$$");
     assertNoActiveContent(c);
