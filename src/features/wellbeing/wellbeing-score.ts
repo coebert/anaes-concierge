@@ -4,7 +4,18 @@
 
 const DAY_MS = 86_400_000;
 
-export type WellbeingBand = "thriving" | "steady" | "strained" | "at_risk";
+export type WellbeingBand = "thriving" | "steady" | "strained" | "at_risk" | "unknown";
+
+/**
+ * Minimum number of the person's own rota rows inside the window before a
+ * score is asserted. Below this the result is `coverage: "insufficient"` and
+ * `band: "unknown"` — absent data must never read as "Thriving 100".
+ * This is a coverage gate only; it does not alter weights, caps or bands.
+ * 10 rows ≈ fewer than one session a week across 90 days.
+ */
+export const MIN_ASSESSABLE_SESSIONS = 10;
+
+export type WellbeingCoverage = "insufficient" | "assessed";
 
 export interface WellbeingDriver {
   key: string;
@@ -15,7 +26,13 @@ export interface WellbeingDriver {
 }
 
 export interface WellbeingResult {
-  score: number; // 0..100, higher = better
+  /** 0..100, higher = better. Arithmetic is always computed, but when
+   * `scoreKnown` is false it must not be displayed as a wellbeing level. */
+  score: number;
+  scoreKnown: boolean;
+  coverage: WellbeingCoverage;
+  /** Own rota rows found in the window (coverage basis). */
+  sessionsInWindow: number;
   band: WellbeingBand;
   windowStart: string;
   windowEnd: string;
@@ -60,7 +77,22 @@ export interface WellbeingInput {
 }
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
-const parseDay = (iso: string) => new Date(iso + "T00:00:00Z").getTime();
+
+/** Calendar-day key for a date/timestamp string (first 10 chars). */
+const dayKey = (iso: string) => iso.slice(0, 10);
+
+/**
+ * Inclusive calendar-day window ending on the as-of day (UTC date of `now`).
+ * windowDays=90 ⇒ 90 calendar days: [asOf − 89, asOf]. Comparison is by
+ * day key only, so the time-of-day of `now` (midnight vs noon) never changes
+ * which dates are in or out.
+ */
+export function wellbeingWindow(now: Date, windowDays = 90): { start: string; end: string } {
+  const end = isoDay(now);
+  const endMs = Date.parse(end + "T00:00:00Z");
+  const start = isoDay(new Date(endMs - (windowDays - 1) * DAY_MS));
+  return { start, end };
+}
 
 // Normalise a harm signal so that value=capAt (or worse) → 1, 0 → 0.
 function harmNorm(value: number, capAt: number): number {
@@ -76,20 +108,24 @@ function isWeekend(iso: string): boolean {
 export function computeWellbeing(input: WellbeingInput): WellbeingResult {
   const now = input.now ?? new Date();
   const windowDays = input.windowDays ?? 90;
-  const windowStartMs = now.getTime() - windowDays * DAY_MS;
-  const windowStart = isoDay(new Date(windowStartMs));
-  const windowEnd = isoDay(now);
+  const { start: windowStart, end: windowEnd } = wellbeingWindow(now, windowDays);
 
-  const inWin = (iso: string) => parseDay(iso) >= windowStartMs && parseDay(iso) <= now.getTime();
+  const inWin = (iso: string) => {
+    const k = dayKey(iso);
+    return k >= windowStart && k <= windowEnd;
+  };
 
   const myAssignments = input.assignments.filter(
     (a) => a.staff_id === input.staffId && inWin(a.session_date),
   );
   const totalSessions = myAssignments.length;
   const nights = myAssignments.filter((a) => a.session === "night").length;
-  const evenings = myAssignments.filter((a) => a.session === "eve").length;
   const weekends = myAssignments.filter((a) => isWeekend(a.session_date)).length;
-  const unsocialShare = totalSessions > 0 ? (nights + evenings + weekends) / totalSessions : 0;
+  // UNION of qualifying rows: a weekend night counts once, not twice.
+  const unsocialRows = myAssignments.filter(
+    (a) => a.session === "night" || a.session === "eve" || isWeekend(a.session_date),
+  ).length;
+  const unsocialShare = totalSessions > 0 ? unsocialRows / totalSessions : 0;
 
   // Short-notice changes received (own session moved with <= 48h notice)
   const shortNoticeChanges = input.changes.filter(
@@ -176,10 +212,24 @@ export function computeWellbeing(input: WellbeingInput): WellbeingResult {
   const harm = drivers.reduce((s, d) => s + d.normalised * d.weight, 0);
   const score = Math.round(Math.max(0, Math.min(100, (1 - harm) * 100)));
 
-  const band: WellbeingBand =
-    score >= 80 ? "thriving" : score >= 65 ? "steady" : score >= 45 ? "strained" : "at_risk";
+  const scoreKnown = totalSessions >= MIN_ASSESSABLE_SESSIONS;
+  const band: WellbeingBand = !scoreKnown ? "unknown" : wellbeingBandFor(score);
 
-  return { score, band, windowStart, windowEnd, drivers };
+  return {
+    score,
+    scoreKnown,
+    coverage: scoreKnown ? "assessed" : "insufficient",
+    sessionsInWindow: totalSessions,
+    band,
+    windowStart,
+    windowEnd,
+    drivers,
+  };
+}
+
+/** Band thresholds (unchanged): 80 / 65 / 45 on the rounded score. */
+export function wellbeingBandFor(score: number): Exclude<WellbeingBand, "unknown"> {
+  return score >= 80 ? "thriving" : score >= 65 ? "steady" : score >= 45 ? "strained" : "at_risk";
 }
 
 export const WELLBEING_BAND_LABEL: Record<WellbeingBand, string> = {
@@ -187,6 +237,7 @@ export const WELLBEING_BAND_LABEL: Record<WellbeingBand, string> = {
   steady: "Steady",
   strained: "Strained",
   at_risk: "At risk",
+  unknown: "Not enough data",
 };
 
 export const WELLBEING_BAND_TONE: Record<WellbeingBand, string> = {
@@ -194,4 +245,5 @@ export const WELLBEING_BAND_TONE: Record<WellbeingBand, string> = {
   steady: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
   strained: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   at_risk: "bg-destructive/15 text-destructive",
+  unknown: "bg-muted text-muted-foreground",
 };

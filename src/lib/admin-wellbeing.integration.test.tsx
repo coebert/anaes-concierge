@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { weekdayAmRows } from "@/features/wellbeing/coverage-fixture";
 import "@/test/assert-utc-hook";
 /**
  * Integration regression for the admin wellbeing page.
@@ -240,7 +241,10 @@ describe("AdminWellbeingPage — study & compassionate leave integration", () =>
       });
     }
     rowsByTable.leave_requests = leave;
-    rowsByTable.rota_assignments = [];
+    // Enough weekday rota rows per person to be assessable (coverage gate).
+    rowsByTable.rota_assignments = ["s-study", "s-compassionate"].flatMap((sid) =>
+      weekdayAmRows(sid),
+    );
     rowsByTable.rota_change_log = [];
     rowsByTable.exception_reports = [];
     rowsByTable.return_to_work_interviews = [];

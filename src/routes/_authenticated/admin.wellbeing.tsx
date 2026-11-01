@@ -30,6 +30,7 @@ import {
   ATTRITION_BAND_TONE,
   type AttritionResult,
 } from "@/lib/attrition-risk";
+import { selectAdminSignalInputs } from "@/features/wellbeing/admin-inputs";
 import { computeBradfordFactor } from "@/lib/bradford-factor";
 import { fetchAllPaged, createQueryBudget, reportQueryBudget } from "@/lib/supabase-chunked";
 import { WellbeingMetricGuide } from "@/components/wellbeing/MetricsGuide";
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/admin/wellbeing")({
       {
         name: "description",
         content:
-          "Per-doctor wellbeing score and attrition-risk rubric derived from rota load, leave, sickness and pulse-survey signals.",
+          "Per-doctor wellbeing score and an unvalidated retention signal score derived from rota load, leave and sickness records — a support prompt, not a prediction.",
       },
     ],
   }),
@@ -162,80 +163,62 @@ export function AdminWellbeingPage() {
   const rows = useMemo(() => {
     if (!data) return [];
     const now = new Date();
-    const oneYearMs = 365 * 86_400_000;
-    return data.profiles
-      .map((p) => {
-        const staffLeave = data.leave.filter((l) => l.staff_id === p.id);
-        const sickSpells = staffLeave
-          .filter((l) => l.type === "sick" && l.status === "approved")
-          .map((s) => ({
-            start_date: s.start_date,
-            end_date: s.end_date,
-            half_day_start: !!s.half_day_start,
-            half_day_end: !!s.half_day_end,
-          }));
-        const bradford = computeBradfordFactor(sickSpells);
-        const wellbeing = computeWellbeing({
-          staffId: p.id,
-          assignments: data.assignments,
-          changes: data.changes,
-          leave: staffLeave,
-          exceptions: data.exceptions,
-          bradfordScore: bradford.score,
-        });
+    return (
+      data.profiles
+        .map((p) => {
+          const staffLeave = data.leave.filter((l) => l.staff_id === p.id);
+          const sickSpells = staffLeave
+            .filter((l) => l.type === "sick" && l.status === "approved")
+            .map((s) => ({
+              start_date: s.start_date,
+              end_date: s.end_date,
+              half_day_start: !!s.half_day_start,
+              half_day_end: !!s.half_day_end,
+            }));
+          const bradford = computeBradfordFactor(sickSpells);
+          const wellbeing = computeWellbeing({
+            staffId: p.id,
+            now,
+            assignments: data.assignments,
+            changes: data.changes,
+            leave: staffLeave,
+            exceptions: data.exceptions,
+            bradfordScore: bradford.score,
+          });
 
-        // Attrition inputs
-        const totalDecisions = staffLeave.filter(
-          (l) => l.status === "approved" || l.status === "rejected",
-        ).length;
-        const denials = staffLeave.filter((l) => l.status === "rejected").length;
-        const denialRate = totalDecisions > 0 ? denials / totalDecisions : 0;
-        const shortNotice12m = data.changes.filter(
-          (c) =>
-            c.staff_id === p.id &&
-            c.hours_before_session !== null &&
-            c.hours_before_session <= 48 &&
-            c.hours_before_session >= -48,
-        ).length;
-        const approvedAnnual = staffLeave
-          .filter((l) => l.type === "annual" && l.status === "approved")
-          .sort((a, b) => b.end_date.localeCompare(a.end_date));
-        const daysSinceAnnual = approvedAnnual[0]
-          ? Math.max(
-              0,
-              Math.floor(
-                (now.getTime() - new Date(approvedAnnual[0].end_date).getTime()) / 86_400_000,
-              ),
-            )
-          : null;
-        const overdueRtw = staffLeave.filter((l) => {
-          if (l.type !== "sick" || l.status !== "approved") return false;
-          const end = new Date(l.end_date).getTime();
-          if (Number.isNaN(end)) return false;
-          if (now.getTime() - end < 3 * 86_400_000) return false;
-          return !data.rtws.some((r) => r.leave_request_id === l.id);
-        }).length;
+          const signals = selectAdminSignalInputs({
+            staffId: p.id,
+            asOf: now,
+            leave: staffLeave,
+            changes: data.changes,
+            rtws: data.rtws,
+          });
 
-        const attrition = computeAttritionRisk({
-          wellbeing,
-          bradfordScore: bradford.score,
-          denialRate12m: denialRate,
-          shortNoticeChanges12m: shortNotice12m,
-          daysSinceLastAnnual: daysSinceAnnual,
-          overdueRtwCount: overdueRtw,
-          pulseTrend: null,
-        });
+          const attrition = computeAttritionRisk({
+            wellbeing,
+            bradfordScore: bradford.score,
+            denialRate12m: signals.denialRate12m,
+            shortNoticeChanges12m: signals.shortNoticeChanges12m,
+            daysSinceLastAnnual: signals.daysSinceLastAnnual,
+            overdueRtwCount: signals.overdueRtwCount,
+            pulseTrend: signals.pulseTrend,
+          });
 
-        return {
-          id: p.id,
-          name: p.full_name || p.email || "Unknown",
-          grade: p.grade,
-          wellbeing,
-          attrition,
-        };
-      })
-      .sort((a, b) => a.wellbeing.score - b.wellbeing.score);
-    void oneYearMs;
+          return {
+            id: p.id,
+            name: p.full_name || p.email || "Unknown",
+            grade: p.grade,
+            wellbeing,
+            attrition,
+          };
+        })
+        // Unknown-coverage rows sort first so missing data is reviewed, not hidden.
+        .sort(
+          (a, b) =>
+            Number(a.wellbeing.scoreKnown) - Number(b.wellbeing.scoreKnown) ||
+            a.wellbeing.score - b.wellbeing.score,
+        )
+    );
   }, [data]);
 
   const filteredRows = rows.filter((r) =>
@@ -245,6 +228,7 @@ export function AdminWellbeingPage() {
   const atRiskCount = rows.filter(
     (r) => r.wellbeing.band === "at_risk" || r.wellbeing.band === "strained",
   ).length;
+  const notAssessedCount = rows.filter((r) => !r.wellbeing.scoreKnown).length;
   const highAttrition = rows.filter(
     (r) => r.attrition.band === "high" || r.attrition.band === "elevated",
   ).length;
@@ -264,7 +248,7 @@ export function AdminWellbeingPage() {
     <div className="space-y-6">
       <PageHeader
         title="Wellbeing & retention"
-        description="Rolling 90-day wellbeing score per active staff member, plus a transparent attrition-risk rubric — sorted worst-first for triage."
+        description="Rolling 90-day wellbeing score per active staff member, plus an unvalidated retention signal score (x/100) — a conversation prompt only, sorted with missing data first, then lowest wellbeing."
       />
 
       {errorMessage ? (
@@ -287,15 +271,17 @@ export function AdminWellbeingPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
         <StatCard label="Staff assessed" value={rows.length} icon={HeartPulse} />
         <StatCard label="Strained / at-risk" value={atRiskCount} icon={AlertTriangle} />
-        <StatCard
-          label="High / elevated attrition risk"
-          value={highAttrition}
-          icon={TrendingDown}
-        />
+        <StatCard label="High / elevated signal score" value={highAttrition} icon={TrendingDown} />
+        <StatCard label="Not enough data" value={notAssessedCount} icon={HeartPulse} />
       </div>
+      <p className="text-xs text-muted-foreground" data-testid="admin-wellbeing-caveat">
+        These are unvalidated operational signal scores, not predictions of who will leave. Use them
+        only to prompt a supportive conversation — never for HR or performance decisions. The
+        pulse-survey trend is not yet measured per person and is shown as not assessed.
+      </p>
 
       <Card>
         <CardContent className="p-4">
@@ -321,7 +307,7 @@ export function AdminWellbeingPage() {
                   <TableHead>Grade</TableHead>
                   <TableHead className="text-right">Score</TableHead>
                   <TableHead>Wellbeing</TableHead>
-                  <TableHead>Attrition</TableHead>
+                  <TableHead>Retention signal</TableHead>
                   <TableHead>Top drivers</TableHead>
                 </TableRow>
               </TableHeader>
@@ -355,7 +341,9 @@ function RowView({
     <TableRow>
       <TableCell className="font-medium">{row.name}</TableCell>
       <TableCell className="text-xs capitalize text-muted-foreground">{row.grade ?? "—"}</TableCell>
-      <TableCell className="text-right tabular-nums">{row.wellbeing.score}</TableCell>
+      <TableCell className="text-right tabular-nums">
+        {row.wellbeing.scoreKnown ? row.wellbeing.score : "—"}
+      </TableCell>
       <TableCell>
         <Badge className={WELLBEING_BAND_TONE[row.wellbeing.band]}>
           {WELLBEING_BAND_LABEL[row.wellbeing.band]}
@@ -363,11 +351,16 @@ function RowView({
       </TableCell>
       <TableCell>
         <Badge className={ATTRITION_BAND_TONE[row.attrition.band]}>
-          {ATTRITION_BAND_LABEL[row.attrition.band]} ({Math.round(row.attrition.risk * 100)}%)
+          {row.attrition.band === "not_assessed"
+            ? ATTRITION_BAND_LABEL.not_assessed
+            : `${ATTRITION_BAND_LABEL[row.attrition.band]} (${row.attrition.score}/100)`}
         </Badge>
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
         {row.attrition.topFactors.map((f) => f.label).join(" · ")}
+        {row.attrition.notAssessed.length > 0
+          ? ` · Not assessed: ${row.attrition.notAssessed.join(", ")}`
+          : ""}
       </TableCell>
     </TableRow>
   );

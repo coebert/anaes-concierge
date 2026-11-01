@@ -36,7 +36,7 @@ A=$(jwt 00000000-0000-0000-0000-00000000000a); S=$(jwt 00000000-0000-0000-0000-0
 PGRST_DB_URI="postgres://authenticator@/postgres?host=$D&port=55440" PGRST_DB_SCHEMAS=public PGRST_DB_ANON_ROLE=anon \
 PGRST_JWT_SECRET="$SECRET" PGRST_SERVER_PORT=55441 PGRST_SERVER_HOST=127.0.0.1 PGRST_LOG_LEVEL=crit postgrest >"$D/pgrst.log" 2>&1 &
 RPID=$!
-for _ in $(seq 1 50); do curl -s -o /dev/null http://127.0.0.1:55441/ && break; sleep 0.2; done
+for _ in $(seq 1 100); do [ "$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:55441/)" = 200 ] && break; sleep 0.2; done  # wait for schema cache (root 200), not just a listening socket
 
 PASS=0; FAILS=0
 check() { # name method token query expect_status_prefix [body_regex]

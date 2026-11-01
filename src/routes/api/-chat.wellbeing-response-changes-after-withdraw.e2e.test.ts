@@ -13,6 +13,7 @@
  * the same fixture set (only exception_reports differ) and asserts the
  * two assistant strings are not equal.
  */
+import { weekdayAmRows } from "@/features/wellbeing/coverage-fixture";
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 
 // --------------------- fixtures ---------------------
@@ -126,7 +127,8 @@ function dataFor(state: QueryState): unknown {
     case "specialties":
       return [];
     case "rota_assignments":
-      return [];
+      // Coverage fixture: weekday AM rows so the score is assessable.
+      return weekdayAmRows(USER_ID);
     case "theatre_sessions":
       return [];
     case "rota_change_log":

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { weekdayAmRows } from "@/features/wellbeing/coverage-fixture";
 import "@/test/assert-utc-hook";
 /**
  * Cross-route enum-mapping integration test.
@@ -55,6 +56,7 @@ type LeaveRow = {
 };
 
 const state = vi.hoisted(() => ({
+  assignmentRows: [] as Array<{ staff_id: string; session_date: string; session: string }>,
   leaveRows: [] as Array<{
     id: string;
     staff_id: string;
@@ -85,6 +87,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client", () => {
   function tableRows(table: string): unknown[] {
     if (table === "leave_requests") return state.leaveRows;
+    if (table === "rota_assignments") return state.assignmentRows;
     if (table === "profiles") return state.profileRows;
     return [];
   }
@@ -305,6 +308,8 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
 
   state.leaveRows = buildFixtureRows();
+  // Weekday AM rows so the score clears the coverage gate on both routes.
+  state.assignmentRows = weekdayAmRows(USER_ID, NOW);
   state.profileRows = [
     {
       id: USER_ID,
@@ -321,6 +326,7 @@ afterEach(() => {
   vi.useRealTimers();
   state.leaveRows = [];
   state.profileRows = [];
+  state.assignmentRows = [];
   vi.clearAllMocks();
 });
 
@@ -333,7 +339,7 @@ describe("wellbeing enum mapping — /wellbeing and /admin/wellbeing agree", () 
     const reference = computeWellbeing({
       staffId: USER_ID,
       now: NOW,
-      assignments: [],
+      assignments: state.assignmentRows,
       changes: [],
       leave: toLeaveLite(state.leaveRows),
       exceptions: [],
@@ -379,7 +385,7 @@ describe("wellbeing enum mapping — /wellbeing and /admin/wellbeing agree", () 
       const reference = computeWellbeing({
         staffId: USER_ID,
         now: NOW,
-        assignments: [],
+        assignments: state.assignmentRows,
         changes: [],
         leave: toLeaveLite(state.leaveRows),
         exceptions: [],
