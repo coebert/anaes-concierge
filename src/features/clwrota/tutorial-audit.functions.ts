@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchAllPaged } from "@/lib/supabase-chunked";
 import { isTutorialAuditCandidate } from "./tutorial-audit";
 
@@ -55,7 +55,7 @@ export type TutorialAuditSession = {
 };
 
 export const listTutorialAuditSessions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({

@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendGmail } from "@/lib/gmail.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -38,7 +38,7 @@ function fmtDates(start: string, end: string) {
 }
 
 export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((d) =>
     z
       .object({
@@ -84,7 +84,7 @@ export const notifyLeaveSubmitted = createServerFn({ method: "POST" })
   });
 
 export const notifyLeaveDecided = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((d) =>
     z
       .object({

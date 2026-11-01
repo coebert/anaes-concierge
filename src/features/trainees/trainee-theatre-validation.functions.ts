@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { HIGH_UNMATCHED_RATIO } from "./trainee-metrics";
 import { isIcuBlockOnly } from "@/features/audit/trainee-audit";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -307,7 +307,7 @@ export async function performTraineeTheatreValidation(
 }
 
 export const validateTraineeTheatreMatches = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((input: { from?: string; to?: string } | undefined) =>
     z
       .object({

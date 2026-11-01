@@ -1,5 +1,5 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { classifyLeaveOverlap } from "./trainee-leave-audit-classify";
 import { isoDateOffsetUTC, LEAVE_LOOKAHEAD_DAYS } from "./trainee-leave-audit-window";
 import { compareBySurnameAsc } from "@/lib/utils";
@@ -83,7 +83,7 @@ export type AuditResult = {
 const isoDateOffset = (days: number) => isoDateOffsetUTC(days);
 
 export const getTraineeStartDateAudit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }): Promise<AuditResult> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: role } = await context.supabase

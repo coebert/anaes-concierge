@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const CreateStaffSchema = z.object({
   email: z.string().email().max(255),
@@ -29,7 +29,7 @@ const CreateStaffSchema = z.object({
 });
 
 export const createStaffMember = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((d) => CreateStaffSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -95,7 +95,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
 /** Admin-only: list staff including sensitive fields (email). */
 export const listStaffForAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: roleRow } = await context.supabase

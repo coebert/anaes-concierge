@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getActiveMembership } from "@/lib/app-membership";
 
@@ -41,7 +41,7 @@ function toSafe(p: {
 
 /** Active staff with safe columns — visible to any authenticated user. */
 export const listActiveStaffSafe = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }): Promise<SafeStaff[]> => {
     await getActiveMembership(context.supabase, context.userId);
     const { data, error } = await supabaseAdmin.rpc("get_profiles_decrypted");
@@ -53,7 +53,7 @@ export const listActiveStaffSafe = createServerFn({ method: "GET" })
 
 /** Lookup safe staff rows by ids — visible to any authenticated user. */
 export const listStaffByIdsSafe = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((d) => z.object({ ids: z.array(z.string().guid()).max(500) }).parse(d))
   .handler(async ({ data, context }): Promise<SafeStaff[]> => {
     await getActiveMembership(context.supabase, context.userId);
@@ -86,7 +86,7 @@ async function assertAdminOrTrainee(supabase: any, userId: string) {
 
 /** Trainee overview list. Email is included only for admins/coordinators. */
 export const listTraineesForOverview = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const access = await assertAdminOrTrainee(context.supabase, context.userId);
     const canSeeEmail = access.isAdmin || access.isCoordinator;
@@ -111,7 +111,7 @@ export const listTraineesForOverview = createServerFn({ method: "GET" })
 
 /** Single trainee profile + supervisor name lookups. Email visible to admins/coordinators or the trainee themselves. */
 export const getTraineeProfileWithSupervisors = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((d) =>
     z
       .object({

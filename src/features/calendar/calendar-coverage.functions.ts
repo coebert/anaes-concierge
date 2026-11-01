@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
  * Backend check that verifies the global /calendar can resolve staff names
@@ -50,7 +50,7 @@ function eachDate(start: string, end: string): string[] {
 }
 
 export const checkCalendarStaffCoverage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((d) =>
     z
       .object({ start: DateSchema, end: DateSchema })

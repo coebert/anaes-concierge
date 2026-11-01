@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { ICU_DUTY_TYPES, type IcuPaRules, type IcuRow } from "./icu-workload";
 import { tallyPaByConsultant, type PaConsultantTally } from "./pa-by-consultant";
 
@@ -31,7 +31,7 @@ const DEFAULT_RULES: IcuPaRules = {
 };
 
 export const getPaByConsultant = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({

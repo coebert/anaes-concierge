@@ -1,5 +1,5 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function ensureAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
@@ -8,7 +8,7 @@ async function ensureAdmin(supabase: any, userId: string) {
 }
 
 export const getCalendarFeedToken = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
@@ -34,7 +34,7 @@ export const getCalendarFeedToken = createServerFn({ method: "POST" })
   });
 
 export const regenerateCalendarFeedToken = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);

@@ -1,6 +1,6 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   ICU_DUTY_TYPES,
   tallyIcuWorkload,
@@ -70,7 +70,7 @@ const DEFAULT_RULES: IcuPaRules = {
 
 /** Consultants and SAS doctors an admin can pick from. */
 export const listIcuEvidenceStaff = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }): Promise<IcuEvidenceStaffOption[]> => {
     const { data, error } = await context.supabase
       .from("profiles")
@@ -86,7 +86,7 @@ export const listIcuEvidenceStaff = createServerFn({ method: "POST" })
   });
 
 export const getIcuConsultantEvidence = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data) =>
     z
       .object({

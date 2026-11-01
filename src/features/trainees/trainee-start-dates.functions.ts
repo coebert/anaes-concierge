@@ -1,5 +1,5 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
@@ -166,7 +166,7 @@ export async function predictTraineeStartDatesImpl(): Promise<PredictionResult> 
 
 /** Admin-callable wrapper. */
 export const predictTraineeStartDates = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { data: role } = await context.supabase
       .from("user_roles")

@@ -1,9 +1,9 @@
+import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { checkActiveMembership } from "@/lib/app-membership";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   consumeRegistrationChallenge,
   verifyAuthenticationCore,
@@ -57,7 +57,7 @@ async function cleanupExpiredChallenges(supabaseAdmin: any) {
 // ---------------------------------------------------------------------------
 
 export const startPasskeyRegistration = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { supabaseAdmin, srv } = await loadServer();
     const { rpID, rpName } = getRpInfo();
@@ -99,7 +99,7 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
   });
 
 export const verifyPasskeyRegistration = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data: { response: any; deviceName?: string; ceremonyId: string }) =>
     z
       .object({
@@ -310,7 +310,7 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 export const listMyPasskeys = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("passkey_credentials")
@@ -322,7 +322,7 @@ export const listMyPasskeys = createServerFn({ method: "GET" })
   });
 
 export const deleteMyPasskey = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveMember])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().guid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
