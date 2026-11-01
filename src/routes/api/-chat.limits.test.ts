@@ -5,7 +5,20 @@ const sendGmail = vi.fn();
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
     rpc,
-    from: () => {
+    // Membership reads (active member) are allowed; any other table read
+    // would mean we got past the quota gate.
+    from: (t: string) => {
+      const ok = (data: unknown) => {
+        const q = {
+          select: () => q,
+          eq: () => q,
+          maybeSingle: () => Promise.resolve({ data, error: null }),
+          then: (r: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(r),
+        };
+        return q;
+      };
+      if (t === "user_roles") return ok([{ role: "staff" }]);
+      if (t === "profiles") return ok({ grade: null, active: true, left_at: null });
       throw new Error("should not query tables when over quota");
     },
     auth: {
