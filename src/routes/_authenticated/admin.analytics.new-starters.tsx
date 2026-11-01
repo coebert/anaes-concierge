@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,29 +43,10 @@ function NewStartersPage() {
       cutoff.setUTCDate(cutoff.getUTCDate() - 90);
       const cutoffIso = cutoff.toISOString().slice(0, 10);
       const [profRes, sickRes, exRes, changeRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,grade,start_date,active,training_level")
-          .gte("start_date", cutoffIso)
-          .eq("active", true),
-        supabase
-          .from("leave_requests")
-          .select("staff_id,start_date,end_date")
-          .eq("type", "sick")
-          .eq("status", "approved")
-          .gte("start_date", cutoffIso)
-          .range(0, 9999),
-        supabase
-          .from("exception_reports")
-          .select("trainee_id,created_at")
-          .gte("created_at", cutoff.toISOString())
-          .range(0, 9999),
-        supabase
-          .from("rota_change_log")
-          .select("staff_id,action,hours_before_session,changed_at")
-          .gte("changed_at", cutoff.toISOString())
-          .lte("hours_before_session", 48)
-          .range(0, 9999),
+        pagedRows("profiles", "id,full_name,grade,start_date,active,training_level", { filter: (q) => q.gte("start_date", cutoffIso).eq("active", true), order: ["id"] }),
+        pagedRows("leave_requests", "staff_id,start_date,end_date", { filter: (q) => q.eq("type", "sick").eq("status", "approved").gte("start_date", cutoffIso), order: ["start_date", "id"] }),
+        pagedRows("exception_reports", "trainee_id,created_at", { filter: (q) => q.gte("created_at", cutoff.toISOString()), order: ["event_date", "id"] }),
+        pagedRows("rota_change_log", "staff_id,action,hours_before_session,changed_at", { filter: (q) => q.gte("changed_at", cutoff.toISOString()).lte("hours_before_session", 48), order: ["changed_at", "id"] }),
       ]);
       if (profRes.error) throw profRes.error;
       if (sickRes.error) throw sickRes.error;

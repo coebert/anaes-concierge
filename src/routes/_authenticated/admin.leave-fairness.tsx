@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,14 +55,9 @@ function LeaveFairnessPage() {
     queryKey: ["admin-leave-fairness"],
     queryFn: async () => {
       const [profRes, leaveRes, allowRes] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,email,grade,active").eq("active", true),
-        supabase
-          .from("leave_requests")
-          .select(
-            "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at",
-          )
-          .range(0, 19999),
-        supabase.from("leave_allowances").select("staff_id,sla_target_days"),
+        pagedRows("profiles", "id,full_name,email,grade,active", { filter: (q) => q.eq("active", true), order: ["id"] }),
+        pagedRows("leave_requests", "id,staff_id,type,status,start_date,end_date,half_day_start,half_day_end,created_at,decided_at", { order: ["start_date", "id"] }),
+        pagedRows("leave_allowances", "staff_id,sla_target_days", { order: ["id"] }),
       ]);
       if (profRes.error) throw profRes.error;
       if (leaveRes.error) throw leaveRes.error;

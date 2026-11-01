@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,14 +43,10 @@ function AllocationFairnessPage() {
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const sinceIso = since.toISOString().slice(0, 10);
       const [profRes, rotaRes, tsRes, specRes] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,grade,active").eq("active", true),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id,session_date,duty_type,role_on_list,theatre_session_id")
-          .gte("session_date", sinceIso)
-          .range(0, 49999),
-        supabase.from("theatre_sessions").select("id,specialty_id").range(0, 49999),
-        supabase.from("specialties").select("id,name"),
+        pagedRows("profiles", "id,full_name,grade,active", { filter: (q) => q.eq("active", true), order: ["id"] }),
+        pagedRows("rota_assignments", "staff_id,session_date,duty_type,role_on_list,theatre_session_id", { filter: (q) => q.gte("session_date", sinceIso), order: ["session_date", "id"] }),
+        pagedRows("theatre_sessions", "id,specialty_id", { order: ["session_date", "id"] }),
+        pagedRows("specialties", "id,name", { order: ["id"] }),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;

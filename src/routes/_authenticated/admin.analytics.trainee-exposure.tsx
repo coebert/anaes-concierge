@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,19 +38,11 @@ function TraineeExposurePage() {
       const yearAgo = new Date();
       yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1);
       const [profRes, rotaRes, tsRes, specRes, targetRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,training_level,active,grade")
-          .eq("grade", "trainee")
-          .eq("active", true),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id,theatre_session_id")
-          .gte("session_date", yearAgo.toISOString().slice(0, 10))
-          .range(0, 49999),
-        supabase.from("theatre_sessions").select("id,specialty_id").range(0, 49999),
-        supabase.from("specialties").select("id,name"),
-        supabase.from("trainee_targets").select("training_level,specialty_id,required_sessions"),
+        pagedRows("profiles", "id,full_name,training_level,active,grade", { filter: (q) => q.eq("grade", "trainee").eq("active", true), order: ["id"] }),
+        pagedRows("rota_assignments", "staff_id,theatre_session_id", { filter: (q) => q.gte("session_date", yearAgo.toISOString().slice(0, 10)), order: ["session_date", "id"] }),
+        pagedRows("theatre_sessions", "id,specialty_id", { order: ["session_date", "id"] }),
+        pagedRows("specialties", "id,name", { order: ["id"] }),
+        pagedRows("trainee_targets", "training_level,specialty_id,required_sessions", { order: ["id"] }),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;

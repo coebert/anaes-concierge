@@ -64,3 +64,29 @@ export async function pagedSelect<T>(
     { source: opts.source ?? table, maxRows: opts.maxRows },
   );
 }
+
+type PublicTables = import("@/integrations/supabase/types").Database["public"]["Tables"];
+
+/**
+ * pagedSelect with a supabase-like `{ data, error }` result so existing
+ * `if (res.error) throw …; res.data ?? []` call sites keep working. Errors
+ * and overflow THROW (error is always null on return).
+ */
+export async function pagedRows<
+  TName extends keyof PublicTables & string,
+  Row = PublicTables[TName]["Row"],
+>(table: TName, columns: string, opts: PagedSelectOptions): Promise<{ data: Row[]; error: null }> {
+  const data = await pagedSelect<Row>(table, columns, opts);
+  return { data, error: null };
+}
+
+/** Default stable (date, id) order per table for full-history reads. */
+export const STABLE_ORDER: Record<string, readonly string[]> = {
+  rota_assignments: ["session_date", "id"],
+  theatre_sessions: ["session_date", "id"],
+  leave_requests: ["start_date", "id"],
+  exception_reports: ["event_date", "id"],
+  rota_change_log: ["changed_at", "id"],
+  return_to_work_interviews: ["created_at", "id"],
+  staff_competencies: ["expires_at", "id"],
+};

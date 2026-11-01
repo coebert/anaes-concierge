@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { pagedRows } from "@/lib/paged-select";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,16 +43,8 @@ function OnCallInequalityPage() {
       const since = new Date();
       since.setUTCFullYear(since.getUTCFullYear() - 1);
       const [profRes, rotaRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,ltft_days_off,grade,active")
-          .eq("grade", "consultant")
-          .eq("active", true),
-        supabase
-          .from("rota_assignments")
-          .select("staff_id,duty_type,role_on_list")
-          .gte("session_date", since.toISOString().slice(0, 10))
-          .range(0, 49999),
+        pagedRows("profiles", "id,full_name,ltft_days_off,grade,active", { filter: (q) => q.eq("grade", "consultant").eq("active", true), order: ["id"] }),
+        pagedRows("rota_assignments", "staff_id,duty_type,role_on_list", { filter: (q) => q.gte("session_date", since.toISOString().slice(0, 10)), order: ["session_date", "id"] }),
       ]);
       if (profRes.error) throw profRes.error;
       if (rotaRes.error) throw rotaRes.error;
