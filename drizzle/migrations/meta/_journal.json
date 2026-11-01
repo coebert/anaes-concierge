@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793538452774,
+      "tag": "0000_security_remediation_workflow_guards",
+      "breakpoints": true
+    }
+  ]
+}
