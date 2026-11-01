@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getActiveMembership } from "@/lib/app-membership";
+import { checkActiveMembership, getActiveMembership } from "@/lib/app-membership";
 
 function client(
   roles: string[] | Error,
-  profile: { grade: string; active: boolean } | null | Error,
+  profile: { grade: string; active: boolean; left_at?: string | null } | null | Error,
 ) {
   const res = (v: unknown) =>
     v instanceof Error ? { data: null, error: v } : { data: v, error: null };
@@ -39,5 +39,24 @@ describe("active app membership gate", () => {
     await expect(
       getActiveMembership(client(new Error("x"), { grade: "t", active: true }), "u"),
     ).rejects.toThrow(/verify/);
+  });
+});
+
+describe("checkActiveMembership (shared gate)", () => {
+  it("departed (left_at) is not a member", async () => {
+    expect(
+      await checkActiveMembership(
+        client(["admin"], { grade: "c", active: true, left_at: "2026-01-01" }),
+        "u",
+      ),
+    ).toEqual({ ok: false, reason: "not_member" });
+  });
+  it("a client that throws fails closed as unavailable", async () => {
+    const boom = { from: () => { throw new Error("net"); } };
+    expect(await checkActiveMembership(boom, "u")).toEqual({ ok: false, reason: "unavailable" });
+  });
+  it("active admin is a member with roles", async () => {
+    const r = await checkActiveMembership(client(["admin"], { grade: "c", active: true }), "u");
+    expect(r.ok && [...r.roles]).toEqual(["admin"]);
   });
 });

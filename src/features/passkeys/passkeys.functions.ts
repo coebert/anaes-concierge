@@ -1,6 +1,7 @@
 import { requireActiveMember } from "@/lib/require-admin";
 import { createServerFn } from "@tanstack/react-start";
 import { checkActiveMembership } from "@/lib/app-membership";
+import { mintPasskeySession } from "@/features/passkeys/passkey-session";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
@@ -275,34 +276,23 @@ export const verifyPasskeyAuthentication = createServerFn({ method: "POST" })
       { ceremonyId: data.ceremonyId, email: data.email, response: data.response, origin, rpID },
     );
 
-    // Only active approved members may receive a session. Same generic
-    // error for every refusal so a disabled account is not revealed.
-    const membership = await checkActiveMembership(supabaseAdmin, userId);
-    if (!membership.ok) {
-      throw new Error(
-        membership.reason === "unavailable"
-          ? "Passkey sign-in is temporarily unavailable."
-          : "Passkey sign-in failed.",
-      );
-    }
-
-    // Look up the user's email so we can mint a magic-link session token.
-    const { data: userRec, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const email = userRec?.user?.email;
-    if (userErr || !email) {
-      throw new Error(userErr?.message ?? "Could not resolve account email.");
-    }
-
-    // Mint a one-shot magic link token the client exchanges for a session.
-    const { data: link, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-    });
-    if (linkErr || !link?.properties?.hashed_token) {
-      throw new Error(linkErr?.message ?? "Failed to mint session token.");
-    }
-
-    return { tokenHash: link.properties.hashed_token };
+    return mintPasskeySession(
+      {
+        checkMembership: (id) => checkActiveMembership(supabaseAdmin, id),
+        getUserEmail: async (id) => {
+          const { data: userRec, error } = await supabaseAdmin.auth.admin.getUserById(id);
+          return error ? { error: true } : { email: userRec?.user?.email ?? null };
+        },
+        generateMagicLinkHash: async (email) => {
+          const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+            type: "magiclink",
+            email,
+          });
+          return error ? null : (link?.properties?.hashed_token ?? null);
+        },
+      },
+      userId,
+    );
   });
 
 // ---------------------------------------------------------------------------
