@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
@@ -29,7 +30,7 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 
 import { Route } from "./login";
 
-const Login = (Route as unknown as { options: { component: () => JSX.Element } }).options.component;
+const Login = (Route as unknown as { options: { component: () => React.ReactElement } }).options.component;
 
 describe("login async failures", () => {
   beforeEach(() => {
