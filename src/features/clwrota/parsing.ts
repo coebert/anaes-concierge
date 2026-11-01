@@ -351,7 +351,7 @@ export function parseRows(text: string): { rows: Record<string, unknown>[]; pars
         rows: [],
         parseError:
           `Unrecognised CLWRota JSON shape (expected array, central_api object, or wrapped rows). ` +
-          `Details: ${validated.error.errors
+          `Details: ${validated.error.issues
             .slice(0, 3)
             .map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`)
             .join("; ")}`,

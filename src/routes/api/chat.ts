@@ -1009,8 +1009,8 @@ export const ChatBody = z.object({
     .min(1, "Please type a message before sending.")
     .max(CHAT_LIMITS.maxMessages, "This conversation is too long — please start a new chat."),
   conversationId: z.string({
-    required_error: "Missing conversation — please open or start a chat first.",
-    invalid_type_error: "Missing conversation — please open or start a chat first.",
+    // zod 4: one `error` param replaces required_error / invalid_type_error.
+    error: "Missing conversation — please open or start a chat first.",
   }).uuid("The conversation reference is invalid — please start a new chat."),
   /** Email the reply to the signed-in user. Off unless the client explicitly asks. */
   emailReply: z.boolean().optional().default(false),
