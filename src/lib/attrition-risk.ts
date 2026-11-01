@@ -1,9 +1,11 @@
-// Pure-TS attrition risk model — transparent weighted rubric, not ML.
-// Combines wellbeing signals + Bradford + leave/history features.
+// Pure-TS operational signal score — a transparent weighted rubric, NOT a
+// validated prediction of leaving and NOT a probability. It has no outcome
+// validation evidence; it exists only to prompt a supportive conversation.
+// Weights, caps and band thresholds are unchanged from the original rubric.
 
 import type { WellbeingResult } from "@/features/wellbeing/wellbeing-score";
 
-export type AttritionBand = "low" | "watch" | "elevated" | "high";
+export type AttritionBand = "low" | "watch" | "elevated" | "high" | "not_assessed";
 
 export interface AttritionFactor {
   key: string;
@@ -13,9 +15,15 @@ export interface AttritionFactor {
 }
 
 export interface AttritionResult {
-  risk: number; // 0..1
+  /** Unrounded weighted sum, 0..1 (internal). */
+  risk: number;
+  /** Displayed signal score, integer 0..100. The band is selected from THIS
+   * rounded value so the shown number and band always agree. */
+  score: number;
   band: AttritionBand;
   topFactors: AttritionFactor[];
+  /** Inputs that were not measured (shown, never silently treated as good). */
+  notAssessed: string[];
 }
 
 export interface AttritionInput {
@@ -78,7 +86,7 @@ export function computeAttritionRisk(input: AttritionInput): AttritionResult {
       key: "pulse",
       label:
         input.pulseTrend == null
-          ? "No recent pulse response"
+          ? "Pulse trend not assessed"
           : `Pulse trend ${input.pulseTrend > 0 ? "+" : ""}${input.pulseTrend.toFixed(1)}`,
       contribution: input.pulseTrend == null ? 0.3 : clamp01(-input.pulseTrend / 2),
       weight: 0.13,
@@ -87,14 +95,23 @@ export function computeAttritionRisk(input: AttritionInput): AttritionResult {
 
   const risk = factors.reduce((s, f) => s + f.contribution * f.weight, 0);
   const clamped = Math.max(0, Math.min(1, risk));
-  const band: AttritionBand =
-    clamped >= 0.65 ? "high" : clamped >= 0.45 ? "elevated" : clamped >= 0.25 ? "watch" : "low";
+  const score = Math.round(clamped * 100);
+  const notAssessed: string[] = [];
+  if (input.pulseTrend == null) notAssessed.push("pulse survey trend");
+  const wellbeingKnown = input.wellbeing.scoreKnown !== false;
+  if (!wellbeingKnown) notAssessed.push("wellbeing (insufficient rota data)");
+  const band: AttritionBand = !wellbeingKnown ? "not_assessed" : attritionBandFor(score);
 
   const topFactors = [...factors]
     .sort((a, b) => b.contribution * b.weight - a.contribution * a.weight)
     .slice(0, 3);
 
-  return { risk: Math.round(clamped * 100) / 100, band, topFactors };
+  return { risk: clamped, score, band, topFactors, notAssessed };
+}
+
+/** Thresholds unchanged (25 / 45 / 65), applied to the displayed integer. */
+export function attritionBandFor(score: number): Exclude<AttritionBand, "not_assessed"> {
+  return score >= 65 ? "high" : score >= 45 ? "elevated" : score >= 25 ? "watch" : "low";
 }
 
 export const ATTRITION_BAND_LABEL: Record<AttritionBand, string> = {
@@ -102,6 +119,7 @@ export const ATTRITION_BAND_LABEL: Record<AttritionBand, string> = {
   watch: "Watch",
   elevated: "Elevated",
   high: "High",
+  not_assessed: "Not assessed",
 };
 
 export const ATTRITION_BAND_TONE: Record<AttritionBand, string> = {
@@ -109,4 +127,5 @@ export const ATTRITION_BAND_TONE: Record<AttritionBand, string> = {
   watch: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
   elevated: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   high: "bg-destructive/15 text-destructive",
+  not_assessed: "bg-muted text-muted-foreground",
 };
