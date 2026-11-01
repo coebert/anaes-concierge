@@ -73,8 +73,8 @@ function CalendarSubscribeCard() {
     try {
       const res = await getToken();
       setToken(res.token);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not generate calendar feed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate calendar feed");
     } finally {
       setBusy(false);
     }
@@ -112,8 +112,8 @@ function CalendarSubscribeCard() {
       const res = await regen();
       setToken(res.token);
       toast.success("New calendar link generated");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not regenerate link");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not regenerate link");
     } finally {
       setBusy(false);
     }
@@ -164,14 +164,14 @@ function CalendarSubscribeCard() {
                 : `Unbalanced VEVENT blocks (${beginEvents} BEGIN / ${endEvents} END)`,
         durationMs,
       });
-    } catch (e: any) {
+    } catch (e) {
       setTestResult({
         ok: false,
         status: 0,
         contentType: "",
         parses: false,
         eventCount: 0,
-        error: e?.message ?? "Network error",
+        error: e instanceof Error ? e.message : "Network error",
         durationMs: Math.round(performance.now() - started),
       });
     } finally {

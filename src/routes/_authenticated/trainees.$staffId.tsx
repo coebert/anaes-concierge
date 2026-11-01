@@ -134,7 +134,7 @@ function TraineeDetailPage() {
       );
       const { data: theatres } = theatreIds.length
         ? await supabase.from("theatres").select("id,name").in("id", theatreIds)
-        : { data: [] as any[] };
+        : { data: [] as { id: string; name: string }[] };
 
       // Mirror the overview page: a "solo" entry on a theatre session that
       // also has a consultant OR SAS doctor rostered is in fact supervised.
