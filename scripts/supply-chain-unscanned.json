@@ -1,0 +1,8 @@
+[
+  {
+    "key": "xlsx",
+    "resolution": "xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "integrity": "sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==",
+    "reason": "SheetJS publishes fixed releases only on its CDN; the npm advisory DB does not cover this tarball. 0.20.3 is past the fixes for the npm-registry xlsx advisories (prototype pollution < 0.19.3, ReDoS < 0.20.2). Reviewed manually; pinned by exact URL + integrity. Any change requires re-review."
+  }
+]
