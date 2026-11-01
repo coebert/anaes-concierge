@@ -98,7 +98,7 @@ beforeEach(() => {
 describe("rota cell dialog validation gate (synthetic)", () => {
   it("all checks loaded → Assign is enabled", async () => {
     renderDialog();
-    await waitFor(() => expect(assignButton()).toBeEnabled());
+    await waitFor(() => expect((assignButton() as HTMLButtonElement).disabled).toBe(false));
   });
 
   for (const table of SOURCES) {
@@ -106,19 +106,19 @@ describe("rota cell dialog validation gate (synthetic)", () => {
       modes[table] = "hang";
       renderDialog();
       await screen.findByText(/loading validation checks/i);
-      expect(assignButton()).toBeDisabled();
+      expect((assignButton() as HTMLButtonElement).disabled).toBe(true);
     });
 
     it(`${table} failed → Assign disabled, Retry recovers`, async () => {
       modes[table] = "fail";
       renderDialog();
       const alert = await screen.findByText(new RegExp(`${table} unavailable`));
-      expect(assignButton()).toBeDisabled();
+      expect((assignButton() as HTMLButtonElement).disabled).toBe(true);
       expect(inserts).toHaveLength(0);
       modes[table] = "ok";
       const notice = alert.closest("[role=alert]") as HTMLElement;
       fireEvent.click(within(notice).getByRole("button", { name: /retry/i }));
-      await waitFor(() => expect(assignButton()).toBeEnabled());
+      await waitFor(() => expect((assignButton() as HTMLButtonElement).disabled).toBe(false));
     });
   }
 
@@ -126,7 +126,7 @@ describe("rota cell dialog validation gate (synthetic)", () => {
     modes.theatre_sessions = "fail";
     renderDialog();
     await screen.findByText(/theatre_sessions unavailable/);
-    expect(assignButton()).toBeDisabled();
-    expect(screen.getByRole("button", { name: /(create|update) list/i })).toBeDisabled();
+    expect((assignButton() as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /(create|update) list/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
