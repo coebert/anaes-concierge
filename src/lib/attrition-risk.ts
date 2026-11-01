@@ -44,7 +44,12 @@ export function computeAttritionRisk(input: AttritionInput): AttritionResult {
   const factors: AttritionFactor[] = [
     {
       key: "wellbeing",
-      label: `Wellbeing ${input.wellbeing.score}/100`,
+      // Below the coverage gate the arithmetic score is not a wellbeing level
+      // and must not be shown as one (e.g. "Wellbeing 100/100").
+      label:
+        input.wellbeing.scoreKnown === false
+          ? "Wellbeing not assessed"
+          : `Wellbeing ${input.wellbeing.score}/100`,
       contribution: clamp01((100 - input.wellbeing.score) / 100),
       weight: 0.3,
     },

@@ -93,9 +93,14 @@ export function selectAdminSignalInputs(args: {
     if (daysSinceLastAnnual === null || days < daysSinceLastAnnual) daysSinceLastAnnual = days;
   }
 
-  // RTW only counts as done when it has a completion timestamp.
+  // RTW only counts as done when it has a completion timestamp that is not
+  // after asOf — a completion recorded later must not clear an interview
+  // that was overdue on the as-of date.
+  const asOfMs = args.asOf.getTime();
   const completedRtw = new Set(
-    args.rtws.filter((r) => r.conducted_at != null).map((r) => r.leave_request_id),
+    args.rtws
+      .filter((r) => r.conducted_at != null && Date.parse(r.conducted_at) <= asOfMs)
+      .map((r) => r.leave_request_id),
   );
   const overdueCutoff = addDays(asOfDay, -3);
   const overdueRtwCount = leave.filter(
