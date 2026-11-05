@@ -4,6 +4,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { compactChatHistory } from "@/lib/chat-history-compact";
 import {
   Conversation,
   ConversationContent,
@@ -67,7 +68,7 @@ function ConversationPage() {
           const headers: Record<string, string> = {};
           if (token) headers.Authorization = `Bearer ${token}`;
           return {
-            body: { messages, conversationId, ...(body ?? {}) },
+            body: { messages: compactChatHistory(messages), conversationId, ...(body ?? {}) },
             headers,
           };
         },
