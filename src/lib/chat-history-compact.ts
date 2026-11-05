@@ -1,7 +1,7 @@
 import { CHAT_LIMITS } from "@/lib/request-quota";
 
-type Part = { type: string; text?: string; [k: string]: unknown };
-type Msg = { id?: string; role: string; parts?: Part[]; [k: string]: unknown };
+type Part = { type: string; text?: string };
+type Msg = { id?: string; role: string; parts?: readonly object[] };
 
 const TRUNC_NOTE = "\n…[truncated]";
 
@@ -22,13 +22,15 @@ export function compactChatHistory<M extends Msg>(
   byteBudget = CHAT_LIMITS.maxRequestBytes - 10_000,
 ): M[] {
   const compacted = messages.map((m) => {
-    const parts = (m.parts ?? [])
+    const parts = ((m.parts ?? []) as Part[])
       .filter((p) => p.type === "text" && typeof p.text === "string")
       .map((p) => ({ type: "text", text: clip(p.text as string) }))
       .slice(-CHAT_LIMITS.maxPartsPerMessage);
     return { id: m.id, role: m.role, parts } as unknown as M;
   });
-  let out = compacted.filter((m, i) => i === compacted.length - 1 || (m.parts?.length ?? 0) > 0);
+  let out = compacted.filter(
+    (m, i) => i === compacted.length - 1 || (m.parts?.length ?? 0) > 0,
+  );
   if (out.length > CHAT_LIMITS.maxMessages) out = out.slice(-CHAT_LIMITS.maxMessages);
   const size = (arr: M[]) => new TextEncoder().encode(JSON.stringify(arr)).length;
   while (out.length > 1 && size(out) > byteBudget) out = out.slice(1);

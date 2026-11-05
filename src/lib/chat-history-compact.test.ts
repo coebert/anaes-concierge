@@ -24,7 +24,7 @@ describe("compactChatHistory", () => {
     const body = { messages: out, conversationId: CID };
     expect(() => ChatBody.parse(body)).not.toThrow();
     expect(JSON.stringify(body).length).toBeLessThan(200_000);
-    expect(out.at(-1)?.parts?.[0]?.text).toBe("follow up");
+    expect((out.at(-1)?.parts?.[0] as { text?: string } | undefined)?.text).toBe("follow up");
   });
 
   it("drops oldest messages to stay within 100 messages and the byte budget", () => {
