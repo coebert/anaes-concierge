@@ -61,19 +61,36 @@ SQL
   if [ -n "$code" ]; then actual="err:$code"; else actual=$(echo "$out" | grep '^ok:' | head -1 || true); fi
   $H -U harness -c "INSERT INTO results VALUES ('$PHASE', \$a\$$1\$a\$, \$e\$$4\$e\$, \$v\$$actual\$v\$)"
 }
+# cw: like c, but $3 is a complete statement selecting 'ok:'||value (needed
+# for data-modifying CTEs, which must be top level).
+cw() {
+  local s; s=$(setup "$2"); local user=${s%%|*} pre=${s#*|}
+  local out; out=$(psql -h "$D" -p 55460 -d postgres -U "$user" -At 2>&1 <<SQL || true
+\set VERBOSITY sqlstate
+BEGIN;
+$pre
+$3;
+COMMIT;
+SQL
+)
+  local code; code=$(echo "$out" | grep -o 'ERROR:  [0-9A-Z]\{5\}' | head -1 | awk '{print $2}' || true)
+  local actual
+  if [ -n "$code" ]; then actual="err:$code"; else actual=$(echo "$out" | grep '^ok:' | head -1 || true); fi
+  $H -U harness -c "INSERT INTO results VALUES ('$PHASE', \$a\$$1\$a\$, \$e\$$4\$e\$, \$v\$$actual\$v\$)"
+}
 # Raw values: the secret marker must never reach a non-service caller.
-INS="(WITH i AS (INSERT INTO $T (theatre_session_id, list_titles, list_notes, place_notes, title_tags, note_tags, source_rows_seen, evidence_complete) VALUES
+INS="WITH i AS (INSERT INTO $T (theatre_session_id, list_titles, list_notes, place_notes, title_tags, note_tags, source_rows_seen, evidence_complete) VALUES
  ('$S1', ARRAY['SYNTHSECRET VRAM list'], ARRAY['SYNTHSECRET note DIEP'], '{}', ARRAY['VRAM'], ARRAY['DIEP'], 3, true),
  ('$S2', ARRAY['synthsecret  vram LIST'], '{}', '{}', ARRAY['VRAM'], '{}', 2, true),
  ('$S3', '{}', '{}', '{}', '{}', '{}', 1, true),
  ('$S4', '{}', '{}', ARRAY['SYNTHSECRET off site'], '{}', '{}', 1, false),
- ('$S5', ARRAY['SYNTHSECRET out of window'], '{}', '{}', '{}', '{}', 1, true) RETURNING 1) SELECT count(*) FROM i)"
+ ('$S5', ARRAY['SYNTHSECRET out of window'], '{}', '{}', '{}', '{}', 1, true) RETURNING 1) SELECT 'ok:' || count(*) FROM i"
 SIG="(SELECT string_agg(concat_ws(',', right(theatre_session_id::text,1), has_title, has_note, has_place_note, array_to_string(title_tags,'+'), array_to_string(note_tags,'+'), coalesce(title_group::text,'-'), source_rows_seen, evidence_complete), ';' ORDER BY theatre_session_id) FROM public.get_theatre_session_label_signals('2030-01-01','2030-01-31'))"
 SIGROWS="ok:1,true,true,false,VRAM,DIEP,1,3,true;2,true,false,false,VRAM,,1,2,true;3,false,false,false,,,-,1,true;4,false,false,true,,,-,1,false"
 NOLEAK="(SELECT bool_and(r::text NOT ILIKE '%synthsecret%') FROM public.get_theatre_session_label_signals('2030-01-01','2030-01-31') r)"
 CNT="(SELECT count(*) FROM public.get_theatre_session_label_signals('2030-01-01','2030-01-31'))"
 
-c "service inserts raw labels"                 service "$INS"                         "ok:5"
+cw "service inserts raw labels"                service "$INS"                         "ok:5"
 c "staffA derived signals (tags, groups, completeness)" user:$A "$SIG"                "$SIGROWS"
 c "staffA signals contain no raw text"         user:$A "$NOLEAK"                      "ok:true"
 c "coordinator signals"                        user:$C "$CNT"                         "ok:4"
@@ -82,9 +99,9 @@ c "service signals"                            service "$CNT"                   
 c "out-of-window session excluded"             user:$A "(SELECT count(*) FROM public.get_theatre_session_label_signals('2031-06-01','2031-06-30'))" "ok:1"
 c "staffA SELECT raw denied"                   user:$A "(SELECT count(*) FROM $T)"    "err:42501"
 c "staffA SELECT raw title column denied"      user:$A "(SELECT string_agg(array_to_string(list_titles,','),';') FROM $T)" "err:42501"
-c "staffA INSERT raw denied"                   user:$A "(WITH i AS (INSERT INTO $T (theatre_session_id) VALUES ('$S5') ON CONFLICT DO NOTHING RETURNING 1) SELECT count(*) FROM i)" "err:42501"
-c "staffA UPDATE raw denied"                   user:$A "(WITH u AS (UPDATE $T SET list_titles='{}' RETURNING 1) SELECT count(*) FROM u)" "err:42501"
-c "staffA DELETE raw denied"                   user:$A "(WITH d AS (DELETE FROM $T RETURNING 1) SELECT count(*) FROM d)" "err:42501"
+cw "staffA INSERT raw denied"                   user:$A "WITH i AS (INSERT INTO $T (theatre_session_id) VALUES ('$S5') ON CONFLICT DO NOTHING RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:42501"
+cw "staffA UPDATE raw denied"                   user:$A "WITH u AS (UPDATE $T SET list_titles='{}' RETURNING 1) SELECT 'ok:' || count(*) FROM u" "err:42501"
+cw "staffA DELETE raw denied"                   user:$A "WITH d AS (DELETE FROM $T RETURNING 1) SELECT 'ok:' || count(*) FROM d" "err:42501"
 c "admin SELECT raw denied"                    user:$DA "(SELECT count(*) FROM $T)"   "err:42501"
 c "anon SELECT raw denied"                     anon "(SELECT count(*) FROM $T)"       "err:42501"
 c "anon signals denied"                        anon "$CNT"                            "err:42501"
@@ -99,12 +116,12 @@ c "no-claims postgres session not exempt"      sched "$CNT"                     
 c "window to<from rejected"                    user:$A "(SELECT count(*) FROM public.get_theatre_session_label_signals('2030-02-01','2030-01-01'))" "err:22023"
 c "window >400 days rejected"                  user:$A "(SELECT count(*) FROM public.get_theatre_session_label_signals('2030-01-01','2031-03-01'))" "err:22023"
 c "null window rejected"                       user:$A "(SELECT count(*) FROM public.get_theatre_session_label_signals(NULL,'2030-01-01'))" "err:22023"
-c "blank value rejected"                       service "(WITH u AS (UPDATE $T SET list_titles=ARRAY['  '] WHERE theatre_session_id='$S3' RETURNING 1) SELECT count(*) FROM u)" "err:22023"
-c "oversize value rejected"                    service "(WITH u AS (UPDATE $T SET list_notes=ARRAY[repeat('x',2001)] WHERE theatre_session_id='$S3' RETURNING 1) SELECT count(*) FROM u)" "err:22023"
-c "more than 20 values rejected"               service "(WITH u AS (UPDATE $T SET list_titles=ARRAY(SELECT 't'||g FROM generate_series(1,21) g) WHERE theatre_session_id='$S3' RETURNING 1) SELECT count(*) FROM u)" "err:23514"
-c "unknown tag rejected"                       service "(WITH u AS (UPDATE $T SET title_tags=ARRAY['Laser'] WHERE theatre_session_id='$S3' RETURNING 1) SELECT count(*) FROM u)" "err:23514"
-c "service upsert replaces (confirmed removal)" service "(WITH u AS (INSERT INTO $T (theatre_session_id, list_titles, evidence_complete, source_rows_seen) VALUES ('$S2','{}',true,1) ON CONFLICT (theatre_session_id) DO UPDATE SET list_titles=EXCLUDED.list_titles, title_tags='{}' RETURNING cardinality(list_titles)) SELECT string_agg(cardinality::text,',') FROM u)" "ok:0"
-c "staffA sees removal as blank"               user:$A "(SELECT has_title::text || ',' || coalesce(title_group::text,'-') FROM public.get_theatre_session_label_signals('2030-01-07','2030-01-07') WHERE theatre_session_id='$S2')" "ok:false,-"
+cw "blank value rejected"                       service "WITH u AS (UPDATE $T SET list_titles=ARRAY['  '] WHERE theatre_session_id='$S3' RETURNING 1) SELECT 'ok:' || count(*) FROM u" "err:22023"
+cw "oversize value rejected"                    service "WITH u AS (UPDATE $T SET list_notes=ARRAY[repeat('x',2001)] WHERE theatre_session_id='$S3' RETURNING 1) SELECT 'ok:' || count(*) FROM u" "err:22023"
+cw "more than 20 values rejected"               service "WITH u AS (UPDATE $T SET list_titles=ARRAY(SELECT 't'||g FROM generate_series(1,21) g) WHERE theatre_session_id='$S3' RETURNING 1) SELECT 'ok:' || count(*) FROM u" "err:23514"
+cw "unknown tag rejected"                       service "WITH u AS (UPDATE $T SET title_tags=ARRAY['Laser'] WHERE theatre_session_id='$S3' RETURNING 1) SELECT 'ok:' || count(*) FROM u" "err:23514"
+cw "service upsert replaces (confirmed removal)" service "WITH u AS (INSERT INTO $T (theatre_session_id, list_titles, evidence_complete, source_rows_seen) VALUES ('$S2','{}',true,1) ON CONFLICT (theatre_session_id) DO UPDATE SET list_titles=EXCLUDED.list_titles, title_tags='{}' RETURNING cardinality(list_titles)) SELECT 'ok:' || string_agg(cardinality::text,',') FROM u" "ok:0"
+c "staffA sees removal as blank"               user:$A "(SELECT has_title::text || ',' || coalesce(title_group::text,'-') FROM public.get_theatre_session_label_signals('2030-01-07','2030-01-07') WHERE theatre_session_id='$S2')" "ok:f,-"
 c "legacy title/coordinator note untouched"    user:$A "(SELECT string_agg(coalesce(surgical_consultant,'-')||'/'||coalesce(notes,'-'), ';' ORDER BY id) FROM public.theatre_sessions WHERE id IN ('$S1','$S2'))" "ok:legacy title/-;-/coordinator note"
 
 # Metadata: least privilege on the relation and function.
@@ -119,7 +136,7 @@ META="(SELECT concat_ws(',',
   (SELECT prosecdef FROM pg_proc WHERE oid='public.get_theatre_session_label_signals(date,date)'::regprocedure),
   (SELECT array_to_string(proconfig,';') FROM pg_proc WHERE oid='public.get_theatre_session_label_signals(date,date)'::regprocedure),
   has_function_privilege('authenticated','public._validate_theatre_session_source_labels()','EXECUTE')))"
-c "metadata: privileges, RLS, no policies, definer config" sched "$META" "ok:false,false,false,false,false,true,true,0,false,true,true,search_path=public,false"
+c "metadata: privileges, RLS, no policies, definer config" sched "$META" "ok:f,f,f,f,f,t,t,0,f,t,t,search_path=public,f"
 
 # ---------- real PostgREST, synthetic JWTs ----------
 SECRET="harness-only-jwt-secret-0123456789abcdef"
@@ -159,7 +176,7 @@ h "POST forged service JWT rejected"      POST "$TBAD" "/rpc/get_theatre_session
 h "POST service signals"                  POST "$TS" "/rpc/get_theatre_session_label_signals" "$W" 200 '"evidence_complete":false'
 
 PHASE=sql
-c "cascade: deleting a session removes its labels" sched "(WITH d AS (DELETE FROM public.theatre_sessions WHERE id='$S4' RETURNING 1) SELECT (SELECT count(*) FROM d)::text || ',' || (SELECT count(*) FROM $T WHERE theatre_session_id='$S4'))" "ok:1,0"
+cw "cascade: deleting a session removes its labels" sched "WITH d AS (DELETE FROM public.theatre_sessions WHERE id='$S4' RETURNING 1) SELECT 'ok:' || (SELECT count(*) FROM d)::text || ',' || (SELECT count(*) FROM $T WHERE theatre_session_id='$S4')" "ok:1,0"
 
 $H -U harness -P pager=off -c "SELECT CASE WHEN expected=actual THEN 'PASS' ELSE 'FAIL' END AS result, phase, name, expected, actual FROM results ORDER BY phase DESC, 1, 3"
 FAILS=$($H -U harness -At -c "SELECT count(*) FROM results WHERE expected<>actual")
