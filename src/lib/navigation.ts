@@ -220,6 +220,15 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
   },
   {
+    id: "rota-unplaced",
+    label: "Unplaced sessions",
+    to: "/coordinator/unlinked-sessions",
+    icon: Unlink,
+    group: "rota",
+    roles: ["admin", "rota_coordinator"],
+    keywords: ["unlinked", "blank lists", "uncovered", "clwrota", "reconcile"],
+  },
+  {
     id: "glossary",
     label: "Glossary",
     to: "/glossary",
