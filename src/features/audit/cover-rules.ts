@@ -85,3 +85,35 @@ export const COVER_TEXT = {
     shortfall: "Not enough solo-capable staff even if every consultant on SPA is redeployed.",
   } satisfies Record<CoverRisk, string>,
 } as const;
+
+/** What-if comparison of one day (worst change across its AM/PM halves). */
+export type ScenarioVerdict = "new_shortfall" | "new_spa_required" | "already_at_risk" | "tight" | "ok";
+
+export const SCENARIO_VERDICT_LABEL: Record<ScenarioVerdict, string> = {
+  new_shortfall: "New shortfall",
+  new_spa_required: "New SPA needed",
+  already_at_risk: "Already at risk",
+  tight: "Tight",
+  ok: "OK",
+};
+
+export function scenarioVerdict(
+  base: { am: CoverRisk; pm: CoverRisk },
+  sim: { am: CoverRisk; pm: CoverRisk },
+): ScenarioVerdict {
+  const halves = ["am", "pm"] as const;
+  if (halves.some((h) => sim[h] === "shortfall" && base[h] !== "shortfall")) return "new_shortfall";
+  if (
+    halves.some(
+      (h) => sim[h] === "spa_required" && RISK_SEVERITY[base[h]] < RISK_SEVERITY.spa_required,
+    )
+  )
+    return "new_spa_required";
+  const worst = worseRisk(sim.am, sim.pm);
+  if (RISK_SEVERITY[worst] >= RISK_SEVERITY.spa_required) return "already_at_risk";
+  return worst === "tight" ? "tight" : "ok";
+}
+
+/** How the simulator removes hypothetical absences (matches computeRobustness). */
+export const SIMULATOR_ABSENCE_TEXT =
+  "Consultant absences come off free consultants (not those on SPA). Trainee absences come off junior trainees first, then ST6–ST8. SAS absences are shown but don't change headroom, because SAS doctors aren't counted as solo-capable.";
