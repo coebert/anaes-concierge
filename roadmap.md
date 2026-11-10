@@ -19,5 +19,5 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] Uncovered sessions / week status dates / planned-vs-delivered: needs an authorised Report Builder API report or exact export header sample
 - [x] Shared cover rules, duty-category read failures shown with Retry, weekly import status (Status vs Import) — synthetic-tested
 - [x] Apply migrations 0008/0009/0010 to live and run one real rota import
-- [ ] Publish so the hourly import records titles/notes, week status and import coverage — waiting on Rob
+- [ ] Publish (incl. off-site day-off fix) and run one live import; verify 17 Nov Laser AM, forecast, unmatched counts
 - [ ] Decide whether a list staffed only by SAS/junior doctors counts as filled in headroom — waiting on department
