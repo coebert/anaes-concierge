@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Disposable harness for the PENDING migrations 0008 (restricted CLWRota list
+# Disposable harness for migrations 0008 (restricted CLWRota list
 # title/note storage + derived-only signals) and 0009 (observed week rota
 # status, member-readable). Uses the definer fixture (a
 # non-superuser postgres owner that is a service_role member, as live), the
