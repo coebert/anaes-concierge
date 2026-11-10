@@ -23,6 +23,13 @@ import {
   type TaggedList,
   type TheatrePressureForecast,
 } from "./theatre-pressure";
+import {
+  WEEK_STATUS_HELP,
+  WEEK_STATUS_LABEL,
+  type TimelineStatus,
+  type WeekStatusTimeline,
+} from "./rota-week-status";
+import { isoWeekStart } from "@/features/clwrota/week-status-core";
 
 const LEVEL_LABEL: Record<PressureLevel, string> = {
   elevated: "Potential pressure — elevated",
@@ -48,6 +55,13 @@ export interface TheatrePressureCardProps {
   /** Re-reads list labels and cover (e.g. after the rota is re-imported). */
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  /** Week rota status as observed by the import (optional). */
+  weekStatus?: {
+    timeline: WeekStatusTimeline | null;
+    isLoading: boolean;
+    error: unknown;
+    onRetry: () => void;
+  };
 }
 
 export function TheatrePressureCard(props: TheatrePressureCardProps) {
@@ -138,7 +152,16 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
                 </table>
               </div>
             )}
-            <UnverifiedSlots slots={forecast.unverifiedSlots} capture={forecast.labelCapture} />
+            {props.weekStatus ? <WeekStatusStrip {...props.weekStatus} /> : null}
+            <UnverifiedSlots
+              slots={forecast.unverifiedSlots}
+              capture={forecast.labelCapture}
+              weeks={
+                props.weekStatus?.timeline?.capture === "available" && !props.weekStatus.error
+                  ? props.weekStatus.timeline
+                  : null
+              }
+            />
             <DetectionLimits forecast={forecast} />
           </>
         ) : null}
@@ -372,7 +395,15 @@ function reasonHelp(reason: UnverifiedReason, capture: LabelCapture): string {
 
 type ReasonFilter = UnverifiedReason | "all";
 
-function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture: LabelCapture }) {
+function UnverifiedSlots({
+  slots,
+  capture,
+  weeks,
+}: {
+  slots: UnverifiedSlot[];
+  capture: LabelCapture;
+  weeks: WeekStatusTimeline | null;
+}) {
   const [filter, setFilter] = useState<ReasonFilter>("all");
   const counts = useMemo(() => {
     const m = new Map<UnverifiedReason, number>();
@@ -393,8 +424,10 @@ function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture:
       </div>
       <p className="text-xs text-muted-foreground">
         Lists whose title or note can&apos;t be verified, so whether they are tagged is unknown —
-        recheck these once the rota is published, then use Refresh. Whether the rota is published
-        isn&apos;t part of the import, so it isn&apos;t shown.
+        recheck these once the rota is published, then use Refresh.{" "}
+        {weeks
+          ? "The Week column is the rota feed's own week status as last seen by the import."
+          : "Week publication status isn't recorded yet, so it isn't shown."}
       </p>
       {slots.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -428,6 +461,7 @@ function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture:
                   <th className="px-2 py-1 text-left font-medium">Date</th>
                   <th className="px-2 py-1 text-left font-medium">Theatre</th>
                   <th className="px-2 py-1 text-left font-medium">Half</th>
+                  {weeks ? <th className="px-2 py-1 text-left font-medium">Week</th> : null}
                   <th className="px-2 py-1 text-left font-medium">Why unverified</th>
                 </tr>
               </thead>
@@ -445,6 +479,11 @@ function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture:
                     </td>
                     <td className="px-2 py-1.5">{s.theatreName ?? "All theatres"}</td>
                     <td className="px-2 py-1.5">{s.half ? halfLabel(s.half) : "—"}</td>
+                    {weeks ? (
+                      <td className="px-2 py-1.5">
+                        <WeekChip status={weeks.byWeek.get(isoWeekStart(s.date))?.status ?? "not_observed"} />
+                      </td>
+                    ) : null}
                     <td className="px-2 py-1.5">
                       <span className="font-medium">{REASON_LABEL[s.reason]}</span>
                       <span className="text-muted-foreground">
@@ -459,6 +498,85 @@ function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture:
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+const WEEK_CHIP_CLASS: Record<TimelineStatus, string> = {
+  published: "border-success/40 bg-success/10 text-success",
+  setup: "border-warning/40 bg-warning-muted text-warning",
+  not_setup: "border-border bg-muted text-muted-foreground",
+  mixed: "border-warning/40 bg-warning-muted text-warning",
+  unknown: "border-dashed border-border text-muted-foreground",
+  other: "border-dashed border-border text-muted-foreground",
+  not_observed: "border-dashed border-border text-muted-foreground",
+};
+
+function WeekChip({ status }: { status: TimelineStatus }) {
+  return (
+    <span
+      title={WEEK_STATUS_HELP[status]}
+      className={cn(
+        "inline-block whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-medium",
+        WEEK_CHIP_CLASS[status],
+      )}
+    >
+      {WEEK_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function WeekStatusStrip({
+  timeline,
+  isLoading,
+  error,
+  onRetry,
+}: NonNullable<TheatrePressureCardProps["weekStatus"]>) {
+  return (
+    <section aria-labelledby="week-status-title" className="space-y-2 rounded-md border p-3">
+      <h3 id="week-status-title" className="text-sm font-semibold">
+        Rota week status
+      </h3>
+      {error ? (
+        <QueryErrorNotice error={error} onRetry={onRetry} what="rota week status" stale={!!timeline} />
+      ) : null}
+      {!timeline && !error && isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading week status…</p>
+      ) : null}
+      {timeline && !error ? (
+        timeline.capture === "not_installed" ? (
+          <p className="text-xs text-muted-foreground">
+            Week status from the rota feed isn&apos;t recorded yet (database update pending), so no
+            week is shown as published or draft.
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              The rota feed&apos;s own status for each week, as last seen by the import. “Checked”
+              is when the import saw it — not when the rota was published. Weeks the import
+              hasn&apos;t seen show “Not checked”, never a status.
+            </p>
+            <ul className="flex flex-wrap gap-1.5" aria-label="Week status by week">
+              {timeline.weeks.map((w) => (
+                <li
+                  key={w.weekStart}
+                  data-testid="week-status"
+                  className="flex flex-col gap-0.5 rounded border px-2 py-1 text-[11px]"
+                >
+                  <span className="text-muted-foreground">w/c {formatDateGB(w.weekStart)}</span>
+                  <WeekChip status={w.status} />
+                  {w.observedAt ? (
+                    <span className={cn("text-[10px]", w.stale ? "text-warning" : "text-muted-foreground")}>
+                      Checked {formatDateGB(w.observedAt.slice(0, 10))}
+                      {w.stale ? " · may be out of date" : ""}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      ) : null}
     </section>
   );
 }

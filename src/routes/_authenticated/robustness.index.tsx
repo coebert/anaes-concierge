@@ -19,6 +19,7 @@ import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robust
 import { PageLoading } from "@/components/loading";
 import { QueryErrorNotice } from "@/components/query-state-notice";
 import { TheatrePressureCard } from "@/features/audit/TheatrePressureCard";
+import { buildWeekStatusTimeline, loadWeekStatus } from "@/features/audit/rota-week-status";
 import {
   buildTheatrePressureForecast,
   loadTheatrePressureEvidence,
@@ -63,6 +64,24 @@ function RobustnessPage() {
     queryKey: ["theatre-pressure-evidence", rangeStart, rangeEnd],
     queryFn: () => loadTheatrePressureEvidence(rangeStart, rangeEnd),
   });
+  // Week rota status as observed by the import (absent table → not_installed).
+  const weekStatusQuery = useQuery({
+    queryKey: ["clwrota-week-status", rangeStart, rangeEnd],
+    queryFn: () => loadWeekStatus(rangeStart, rangeEnd),
+  });
+  const weekTimeline = useMemo(
+    () =>
+      weekStatusQuery.data
+        ? buildWeekStatusTimeline({
+            rangeStart,
+            rangeEnd,
+            rows: weekStatusQuery.data.rows,
+            capture: weekStatusQuery.data.capture,
+            now: new Date(),
+          })
+        : null,
+    [weekStatusQuery.data, rangeStart, rangeEnd],
+  );
   const forecast = useMemo(
     () =>
       evidenceQuery.data
@@ -173,8 +192,15 @@ function RobustnessPage() {
           onRefresh={() => {
             void evidenceQuery.refetch();
             void robustnessQuery.refetch();
+            void weekStatusQuery.refetch();
           }}
-          isRefreshing={evidenceQuery.isFetching}
+          isRefreshing={evidenceQuery.isFetching || weekStatusQuery.isFetching}
+          weekStatus={{
+            timeline: weekTimeline,
+            isLoading: weekStatusQuery.isLoading,
+            error: weekStatusQuery.error,
+            onRetry: () => void weekStatusQuery.refetch(),
+          }}
         />
 
         {/* Legend */}
