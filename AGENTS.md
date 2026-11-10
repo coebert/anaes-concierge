@@ -14,3 +14,4 @@
 - The retention "attrition" rubric is an unvalidated signal score shown as x/100 with the band picked from the displayed integer; never present it as a prediction or probability.
 - Every handler that uses service-role data or privileged tools first passes the shared active-membership check (`src/lib/app-membership.ts` / `requireActiveMember`), failing closed — a valid token alone is not membership.
 - Assistant streams hold a durable per-user lease (`chat_stream_leases` RPCs) released on finish/error/abort with TTL recovery; refuse the request if the lease store is unavailable.
+- Theatre pressure forecast tags come only from explicit whole-word labels in `src/features/audit/theatre-pressure.ts` (never surgeon, theatre name or specialty), and raw label text/IDs are stripped before caching or display — the import keeps only one free-text field, so missing labels must read as unknown.
