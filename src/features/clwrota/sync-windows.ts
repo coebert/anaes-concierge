@@ -61,16 +61,18 @@ export function resolveRequestedWindow(input: {
 export function coveredRange(
   rows: ReadonlyArray<Record<string, unknown>>,
   requested: { from: string; to: string },
-): { from: string; to: string } | null {
+): { from: string; to: string; rows: number } | null {
   let lo: string | null = null;
   let hi: string | null = null;
+  let n = 0;
   for (const r of rows) {
     const d = normaliseDate(pick(r, ["date", "session_date", "Date", "rota_date", "day"]) ?? null);
     if (!d || d < requested.from || d > requested.to) continue;
+    n += 1;
     if (lo === null || d < lo) lo = d;
     if (hi === null || d > hi) hi = d;
   }
-  return lo && hi ? { from: lo, to: hi } : null;
+  return lo && hi ? { from: lo, to: hi, rows: n } : null;
 }
 
 /**
@@ -105,7 +107,7 @@ export function buildSyncWindowRecord(input: {
   const covered = input.threw ? null : coveredRange(input.rows, input.requested);
   const outcome = classifySyncOutcome({
     threw: input.threw,
-    rowsInWindow: input.rows.length,
+    rowsInWindow: covered?.rows ?? 0,
     writeErrors: input.writeErrors,
     covered,
   });
@@ -121,7 +123,7 @@ export function buildSyncWindowRecord(input: {
     covered_to: keepCovered && covered ? covered.to : null,
     outcome,
     explicit_window: input.requested.explicit,
-    rows_in_window: outcome === "empty" || outcome === "failed" ? 0 : input.rows.length,
+    rows_in_window: keepCovered && covered ? covered.rows : 0,
     rows_skipped: Math.max(0, input.skipped),
     write_errors: outcome === "partial" ? Math.max(1, input.writeErrors) : 0,
   };
