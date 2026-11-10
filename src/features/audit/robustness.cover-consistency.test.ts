@@ -103,9 +103,9 @@ describe("cover rules — one set of semantics across overview and day detail", 
   it("day-detail breakdown rolls up to exactly the overview's solo-capable count (AM and PM)", async () => {
     const { days } = await computeRobustness(DATE, DATE);
     const d = await loadDayDetail(DATE);
-    console.log("DBG", JSON.stringify(days[0].am), JSON.stringify(days[0].pm));
     expect(days[0].am.soloCapable).toBe(1); // ST8 free in the AM
-    expect(days[0].pm.soloCapable).toBe(1); // consultant free after SPA in the PM
+    // PM: c1 (AM list only) and c2 (AM SPA only) are rostered and free.
+    expect(days[0].pm.soloCapable).toBe(2);
     expect(d.am.soloCapable).toBe(days[0].am.soloCapable);
     expect(soloIn(d.amBreakdown)).toBe(days[0].am.soloCapable);
     expect(soloIn(d.pmBreakdown)).toBe(days[0].pm.soloCapable);
