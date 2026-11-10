@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRowsPaged, idKey, rotaAssignmentKey, type PaginateOptions } from "./paginate";
 import {
   RISK_LABEL,
-  RISK_TIGHT,
   classifyRisk as classifyCoverRisk,
   isSeniorTrainee as isSeniorTraineeRule,
   isSoloCapable,
@@ -79,7 +78,7 @@ export interface DayCapacity {
   pm: HalfDayCapacity;
 }
 
-void RISK_TIGHT; // threshold lives in ./cover-rules (shared by every view)
+// Risk threshold (RISK_TIGHT) lives in ./cover-rules, shared by every view.
 
 function eachWeekday(start: string, end: string): string[] {
   const s = new Date(start + "T00:00:00Z");
