@@ -184,13 +184,26 @@ function UnlinkedSessionsPage() {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks((o) => o - WEEKS_VISIBLE)}
+        >
           <ChevronLeft className="mr-1 h-4 w-4" aria-hidden /> Previous {WEEKS_VISIBLE} weeks
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks(0)} disabled={offsetWeeks === 0}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks(0)}
+          disabled={offsetWeeks === 0}
+        >
           From today
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOffsetWeeks((o) => o + WEEKS_VISIBLE)}
+        >
           Next {WEEKS_VISIBLE} weeks <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
         </Button>
       </div>
@@ -317,8 +330,8 @@ function UnlinkedSessionsPage() {
               <div>
                 <CardTitle>CLWRota rows not placed on a list</CardTitle>
                 <CardDescription>
-                  Imported rows with no theatre list. On-call, admin and ward work is normally
-                  here; theatre rows are the ones worth checking.
+                  Imported rows with no theatre list. On-call, admin and ward work is normally here;
+                  theatre rows are the ones worth checking.
                 </CardDescription>
               </div>
               <Select value={dutyFilter} onValueChange={setDutyFilter}>

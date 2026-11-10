@@ -4,14 +4,23 @@ import {
   type ReconListInput,
   type ReconUnlinkedInput,
 } from "./session-reconciliation";
-import { buildImportCoverageTimeline, type SyncCoverageRow } from "@/features/audit/rota-sync-coverage";
+import {
+  buildImportCoverageTimeline,
+  type SyncCoverageRow,
+} from "@/features/audit/rota-sync-coverage";
 import { buildWeekStatusTimeline } from "@/features/audit/rota-week-status";
 
 // Synthetic only — no real rota, staff or list data.
 const NOW = new Date("2030-01-10T12:00:00Z");
 const RANGE = { rangeStart: "2030-01-07", rangeEnd: "2030-01-20" };
 
-const list = (id: string, date: string, half: "am" | "pm", theatreName = "Endo", active = true): ReconListInput => ({
+const list = (
+  id: string,
+  date: string,
+  half: "am" | "pm",
+  theatreName = "Endo",
+  active = true,
+): ReconListInput => ({
   id,
   date,
   half,
@@ -39,7 +48,12 @@ const cov = (week_start: string, ok: boolean, at = "2030-01-10T06:00:00Z"): Sync
 });
 const importTimeline = (rows: SyncCoverageRow[]) =>
   buildImportCoverageTimeline({ ...RANGE, rows, capture: "available", now: NOW });
-const weekTimeline = buildWeekStatusTimeline({ ...RANGE, rows: [], capture: "available", now: NOW });
+const weekTimeline = buildWeekStatusTimeline({
+  ...RANGE,
+  rows: [],
+  capture: "available",
+  now: NOW,
+});
 
 describe("buildSessionReconciliation", () => {
   it("a list with nobody linked and a theatre row unplaced on the same half is a candidate, not a match", () => {
@@ -63,7 +77,10 @@ describe("buildSessionReconciliation", () => {
       ...RANGE,
       lists: [list("L1", "2030-01-08", "am")],
       linked: [],
-      unlinked: [row("r1", "2030-01-08", "am", "registrar_oncall"), row("r2", "2030-01-08", "am", "admin")],
+      unlinked: [
+        row("r1", "2030-01-08", "am", "registrar_oncall"),
+        row("r2", "2030-01-08", "am", "admin"),
+      ],
       weekStatus: weekTimeline,
       importCoverage: importTimeline([cov("2030-01-07", true)]),
     });
@@ -72,15 +89,24 @@ describe("buildSessionReconciliation", () => {
   });
 
   it("with no confirmed complete, fresh import the list is never settled as 'nobody in the feed'", () => {
-    const base = { ...RANGE, lists: [list("L1", "2030-01-15", "pm")], linked: [], unlinked: [], weekStatus: weekTimeline };
+    const base = {
+      ...RANGE,
+      lists: [list("L1", "2030-01-15", "pm")],
+      linked: [],
+      unlinked: [],
+      weekStatus: weekTimeline,
+    };
     // Partial week import.
     expect(
-      buildSessionReconciliation({ ...base, importCoverage: importTimeline([cov("2030-01-14", false)]) })
-        .emptyLists[0].verdict,
+      buildSessionReconciliation({
+        ...base,
+        importCoverage: importTimeline([cov("2030-01-14", false)]),
+      }).emptyLists[0].verdict,
     ).toBe("import_unconfirmed");
     // Week never tracked.
     expect(
-      buildSessionReconciliation({ ...base, importCoverage: importTimeline([]) }).emptyLists[0].verdict,
+      buildSessionReconciliation({ ...base, importCoverage: importTimeline([]) }).emptyLists[0]
+        .verdict,
     ).toBe("import_unconfirmed");
     // Complete but older than 48 hours.
     expect(
@@ -90,9 +116,9 @@ describe("buildSessionReconciliation", () => {
       }).emptyLists[0].verdict,
     ).toBe("import_unconfirmed");
     // Coverage tracking unavailable.
-    expect(buildSessionReconciliation({ ...base, importCoverage: null }).emptyLists[0].verdict).toBe(
-      "import_unconfirmed",
-    );
+    expect(
+      buildSessionReconciliation({ ...base, importCoverage: null }).emptyLists[0].verdict,
+    ).toBe("import_unconfirmed");
   });
 
   it("lists with CLWRota or manual rows are not empty; inactive theatres are skipped and counted", () => {

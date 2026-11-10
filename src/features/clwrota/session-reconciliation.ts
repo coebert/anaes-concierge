@@ -16,10 +16,7 @@
 import { pagedSelect } from "@/lib/paged-select";
 import { isoWeekStart } from "@/features/clwrota/week-status-core";
 import type { TimelineStatus, WeekStatusTimeline } from "@/features/audit/rota-week-status";
-import type {
-  ImportCoverageTimeline,
-  ImportWeekState,
-} from "@/features/audit/rota-sync-coverage";
+import type { ImportCoverageTimeline, ImportWeekState } from "@/features/audit/rota-sync-coverage";
 
 export type RowHalf = "am" | "pm" | "eve" | "night";
 export type ListHalf = "am" | "pm";
@@ -269,7 +266,10 @@ export async function loadReconciliationInputs(
       "id,session_date,session,theatre_id",
       {
         filter: (q) =>
-          q.gte("session_date", rangeStart).lte("session_date", rangeEnd).in("session", ["am", "pm"]),
+          q
+            .gte("session_date", rangeStart)
+            .lte("session_date", rangeEnd)
+            .in("session", ["am", "pm"]),
         order: ["session_date", "id"],
         source: "theatre_sessions",
       },
