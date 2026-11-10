@@ -17,3 +17,6 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] Apply pending migration `drizzle/pending/0009_clwrota_week_status.sql` (needs Rob's go-ahead); next import records week status
 - [ ] Decide whether CLWRota `state=planned` rows (future Not setup weeks) should be imported as assignments
 - [ ] Uncovered sessions / week status dates / planned-vs-delivered: needs an authorised Report Builder API report or exact export header sample
+- [x] Shared cover rules, duty-category read failures shown with Retry, weekly import status (Status vs Import) — synthetic-tested
+- [ ] Apply pending migrations 0008/0009/0010 to live — waiting on approval
+- [ ] Decide whether a list staffed only by SAS/junior doctors counts as filled in headroom — waiting on department
