@@ -22,6 +22,10 @@ import { QueryErrorNotice } from "@/components/query-state-notice";
 import { TheatrePressureCard } from "@/features/audit/TheatrePressureCard";
 import { buildWeekStatusTimeline, loadWeekStatus } from "@/features/audit/rota-week-status";
 import {
+  buildImportCoverageTimeline,
+  loadImportCoverage,
+} from "@/features/audit/rota-sync-coverage";
+import {
   buildTheatrePressureForecast,
   loadTheatrePressureEvidence,
 } from "@/features/audit/theatre-pressure";
@@ -82,6 +86,24 @@ function RobustnessPage() {
           })
         : null,
     [weekStatusQuery.data, rangeStart, rangeEnd],
+  );
+  // Per-week import coverage/freshness (derived; absent function → not_installed).
+  const importCoverageQuery = useQuery({
+    queryKey: ["clwrota-import-coverage", rangeStart, rangeEnd],
+    queryFn: () => loadImportCoverage(rangeStart, rangeEnd),
+  });
+  const importTimeline = useMemo(
+    () =>
+      importCoverageQuery.data
+        ? buildImportCoverageTimeline({
+            rangeStart,
+            rangeEnd,
+            rows: importCoverageQuery.data.rows,
+            capture: importCoverageQuery.data.capture,
+            now: new Date(),
+          })
+        : null,
+    [importCoverageQuery.data, rangeStart, rangeEnd],
   );
   const forecast = useMemo(
     () =>
@@ -199,13 +221,22 @@ function RobustnessPage() {
             void evidenceQuery.refetch();
             void robustnessQuery.refetch();
             void weekStatusQuery.refetch();
+            void importCoverageQuery.refetch();
           }}
-          isRefreshing={evidenceQuery.isFetching || weekStatusQuery.isFetching}
+          isRefreshing={
+            evidenceQuery.isFetching || weekStatusQuery.isFetching || importCoverageQuery.isFetching
+          }
           weekStatus={{
             timeline: weekTimeline,
             isLoading: weekStatusQuery.isLoading,
             error: weekStatusQuery.error,
             onRetry: () => void weekStatusQuery.refetch(),
+          }}
+          importCoverage={{
+            timeline: importTimeline,
+            isLoading: importCoverageQuery.isLoading,
+            error: importCoverageQuery.error,
+            onRetry: () => void importCoverageQuery.refetch(),
           }}
         />
 
