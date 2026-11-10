@@ -7,6 +7,7 @@ import {
   isNonWorkingRotaLabel,
   normaliseRotaLabelText,
 } from "@/lib/clwrota-labels";
+import { selectStaleNonWorkingExtIds } from "./non-working-cleanup";
 import { evaluateHistoricalSafeguard } from "@/lib/clwrota-historical-safeguard";
 import {
   fetchReportRaw,
@@ -1863,8 +1864,21 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
   // row" warnings on trainee dashboards. Locally-modified rows are
   // preserved so coordinators don't lose hand edits.
   let nonWorkingCleaned = 0;
-  if (nonWorkingExtIds.size > 0) {
-    const ids = Array.from(nonWorkingExtIds);
+  // Never delete a key that a working row in this same import also uses
+  // (the feed's fallback key is person|date|session, shared by a working row
+  // and an "Available"/off row in Not setup weeks).
+  const { stale: staleNonWorkingIds, keptForWorkingRow } = selectStaleNonWorkingExtIds(
+    nonWorkingExtIds,
+    assignmentDrafts.map((a) => a.clwrota_external_id),
+  );
+  if (keptForWorkingRow > 0) {
+    skipped.push({
+      label: "working rows kept despite a non-working row with the same key",
+      reason: `${keptForWorkingRow} working row(s) kept: the same person/date/session also has a non-working row`,
+    });
+  }
+  if (staleNonWorkingIds.length > 0) {
+    const ids = staleNonWorkingIds;
     const DELETE_CHUNK = 500;
     for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
       const chunk = ids.slice(i, i + DELETE_CHUNK);

@@ -23,4 +23,5 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] Decide whether a list staffed only by SAS/junior doctors counts as filled in headroom — waiting on department
 - [x] 13 unverified slots (2 Dec–28 Jan) re-imported under the fixed off-site rule (live import 25 Nov–1 Feb, 10 Nov 18:35)
 - [ ] 6 blank Endo slots (24 Nov, 22 Dec, 26 Jan): needs CLWRota Uncovered sessions report or slot-level report to tell no-list from uncovered
-- [ ] Importer deletes a working row when the same person/date/half key also has a non-working row (feed has no row id; 48 rows in 25 Nov–1 Feb, all Not setup weeks, 12 theatre) — needs Rob's go-ahead for a code fix
+- [x] Importer no longer deletes a working row that shares its person/date/half key with a non-working row (fixed in preview, tested)
+- [ ] Publish that fix and run one import so the 48 Not setup working rows are saved live — needs Rob's go-ahead to publish
