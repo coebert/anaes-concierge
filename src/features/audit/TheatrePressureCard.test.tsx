@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -40,9 +40,12 @@ describe("TheatrePressureCard", () => {
         staffingLoading={false}
       />,
     );
-    expect(screen.getByText("Theatre A")).toBeTruthy();
-    expect(screen.getByText("DIEP")).toBeTruthy();
-    expect(screen.getByText("Robotic")).toBeTruthy();
+    const [a, b] = screen.getAllByTestId("pressure-list");
+    expect(within(a).getByText("Theatre A")).toBeTruthy();
+    expect(within(a).getByText("DIEP")).toBeTruthy();
+    expect(within(a).getByText("AM")).toBeTruthy();
+    expect(within(b).getByText("Theatre B")).toBeTruthy();
+    expect(within(b).getByText("Robotic")).toBeTruthy();
     expect(screen.getAllByText("Not verified").length).toBe(2);
     expect(screen.getByText(/2 distinct tagged lists on the same day/)).toBeTruthy();
     expect(screen.getByText(/does not predict overruns/)).toBeTruthy();
