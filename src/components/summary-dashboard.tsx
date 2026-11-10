@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskLabel } from "@/features/audit/robustness";
-import { COVER_TEXT, RISK_SEVERITY } from "@/features/audit/cover-rules";
+import { COVER_TEXT, worseRisk } from "@/features/audit/cover-rules";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { PageLoading } from "@/components/loading";
@@ -69,13 +69,8 @@ function dayChipAccent(risk: "ok" | "tight" | "shortfall" | "spa_required") {
   return "bg-emerald-500 text-white";
 }
 
-function worstRisk(
-  a: "ok" | "tight" | "shortfall" | "spa_required",
-  b: "ok" | "tight" | "shortfall" | "spa_required",
-) {
-  const order = { ok: 0, tight: 1, spa_required: 2, shortfall: 3 } as const;
-  return order[a] >= order[b] ? a : b;
-}
+// Worst half of a day — same severity order as every other cover roll-up.
+const worstRisk = worseRisk;
 
 export function SummaryDashboard() {
   const today = todayISO();
