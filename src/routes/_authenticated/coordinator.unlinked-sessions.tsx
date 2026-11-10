@@ -86,6 +86,11 @@ const ROLE_LABEL: Record<string, string> = {
   teaching: "Teaching",
   admin_session: "Admin",
 };
+const GRADE_LABEL: Record<string, string> = {
+  consultant: "Consultant",
+  sas: "SAS",
+  trainee: "Trainee",
+};
 const dutyLabel = (d: string) => DUTY_LABEL[d] ?? d;
 const VERDICT_VARIANT: Record<ListVerdict, "default" | "secondary" | "outline" | "destructive"> = {
   candidate_rows: "default",
@@ -379,7 +384,9 @@ function UnlinkedSessionsPage() {
                             <td className="py-2 pr-3 whitespace-nowrap">{formatDateGB(r.date)}</td>
                             <td className="py-2 pr-3">{HALF_LABEL[r.half] ?? r.half}</td>
                             <td className="py-2 pr-3">{p?.name ?? "Not visible to you"}</td>
-                            <td className="py-2 pr-3 capitalize">{p?.grade ?? "—"}</td>
+                            <td className="py-2 pr-3">
+                              {p?.grade ? (GRADE_LABEL[p.grade] ?? p.grade) : "—"}
+                            </td>
                             <td className="py-2 pr-3">{dutyLabel(r.dutyType)}</td>
                             <td className="py-2 pr-3">{ROLE_LABEL[r.role] ?? r.role}</td>
                             <td className="py-2 pr-3 whitespace-nowrap">
