@@ -14,3 +14,6 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] Review 16 SECURITY DEFINER linter warnings individually; deep code scan is stale (cannot trigger here)
 - [ ] Theatre pressure forecast: manual confirm/override of tagged lists — needs a new table (production migration), kept read-only in v1
 - [ ] Apply pending migration `drizzle/pending/0008_theatre_session_source_labels.sql` to the live database (needs Rob's go-ahead), then one rota import fills the original titles/notes
+- [ ] Apply pending migration `drizzle/pending/0009_clwrota_week_status.sql` (needs Rob's go-ahead); next import records week status
+- [ ] Decide whether CLWRota `state=planned` rows (future Not setup weeks) should be imported as assignments
+- [ ] Uncovered sessions / week status dates / planned-vs-delivered: needs an authorised Report Builder API report or exact export header sample
