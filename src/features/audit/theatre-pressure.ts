@@ -8,13 +8,17 @@
  * the theatre (room) name or from a broad specialty.
  *
  * Where the labels come from (verified against the CLWRota import):
- *  - `theatre_sessions.surgical_consultant` — the imported list/slot title
- *    (CLWRota `slot_titles`). Only explicit tokens in that text are used.
+ *  - derived source-label signals (`get_theatre_session_label_signals`) —
+ *    the import keeps every distinct list title (`slot_titles`), list note
+ *    (`slot_notes`) and place note (`place.additional_info`) as supplied on a
+ *    restricted relation; the browser receives only tags, has-title/has-note
+ *    flags, a title-equality group and import completeness. Pending until
+ *    migration 0008 is applied — before that the forecast falls back to:
+ *  - `theatre_sessions.surgical_consultant` — legacy single imported title.
  *  - `theatre_sessions.notes` — NOT written by the import; only a
  *    coordinator-entered list note from the theatre grid / cell dialog.
  *  - linked `rota_assignments.notes` — the import keeps only the FIRST
- *    non-empty free-text field (often the place name), so later fields on
- *    the same CLWRota row are not stored and cannot be scanned.
+ *    non-empty free-text field (often the place name).
  *  - There are no structured procedure-tag columns in the data model.
  *
  * Privacy: raw label text and database identifiers never leave the
@@ -25,38 +29,69 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRowsPaged, idKey } from "./paginate";
 import type { HalfDayCapacity } from "./robustness";
+import {
+  detectProcedureTags,
+  PROCEDURE_TAGS,
+  TAG_SCAN_MAX_CHARS,
+  sanitiseProcedureTags,
+  type ProcedureTag,
+} from "./procedure-tags";
 
-export type ProcedureTag = "VRAM" | "DIEP" | "Robotic";
-export const PROCEDURE_TAGS: readonly ProcedureTag[] = ["VRAM", "DIEP", "Robotic"];
+export {
+  detectProcedureTags,
+  PROCEDURE_TAGS,
+  TAG_SCAN_MAX_CHARS,
+  type ProcedureTag,
+} from "./procedure-tags";
 
-/** Only the first N characters of any single label are scanned. */
-export const TAG_SCAN_MAX_CHARS = 500;
-
-// Bounded on both sides by a non-alphanumeric character (or string edge),
-// so "DIEP flap" / "(VRAM)" / "Robot-assisted" match but "diepoxide",
-// "vrams", "irobot" and "robotically" do not.
-const TAG_RE = /(?<![a-z0-9])(vram|diep|robotics|robotic|robot)(?![a-z0-9])/gi;
-
-export function detectProcedureTags(text: string | null | undefined): ProcedureTag[] {
-  if (!text) return [];
-  const scanned = text.slice(0, TAG_SCAN_MAX_CHARS);
-  const out = new Set<ProcedureTag>();
-  for (const m of scanned.matchAll(TAG_RE)) {
-    const t = (m[1] ?? "").toLowerCase();
-    if (t === "vram") out.add("VRAM");
-    else if (t === "diep") out.add("DIEP");
-    else out.add("Robotic");
-  }
-  return PROCEDURE_TAGS.filter((t) => out.has(t));
-}
-
-export type TagSource = "imported_list_title" | "coordinator_list_note" | "assignment_note";
+export type TagSource =
+  | "imported_list_title"
+  | "imported_list_note"
+  | "coordinator_list_note"
+  | "assignment_note";
 
 export const TAG_SOURCE_LABEL: Record<TagSource, string> = {
   imported_list_title: "imported list title",
+  imported_list_note: "imported list note",
   coordinator_list_note: "coordinator list note",
   assignment_note: "linked assignment note",
 };
+
+/**
+ * Whether a list's title/note can be verified.
+ *  - labelled          — an imported title/list note/place note, the legacy
+ *                        imported title, or a coordinator note exists.
+ *  - blank_in_source   — the last complete import supplied this list with no
+ *                        title or note at all.
+ *  - partial_evidence  — blank, but the last import for that day skipped
+ *                        rows, so the blank isn't confirmed.
+ *  - not_captured      — imported rows exist but titles/notes were not kept
+ *                        (imported before capture, or capture not installed).
+ *  - no_linked_rows    — no imported rota row is linked to this list at all.
+ */
+export type SlotLabelStatus =
+  | "labelled"
+  | "blank_in_source"
+  | "partial_evidence"
+  | "not_captured"
+  | "no_linked_rows";
+
+export type LabelCapture = "available" | "not_installed";
+
+/** Derived, text-free per-session output of get_theatre_session_label_signals. */
+export interface SessionLabelSignal {
+  theatre_session_id: string;
+  has_title: boolean;
+  has_note: boolean;
+  has_place_note: boolean;
+  title_tags: string[] | null;
+  note_tags: string[] | null;
+  title_group: number | null;
+  scan_truncated: boolean;
+  source_rows_seen: number;
+  evidence_complete: boolean;
+  last_seen_at?: string | null;
+}
 
 export type ForecastHalf = "am" | "pm" | "eve" | "night";
 
@@ -71,8 +106,9 @@ export interface ListEvidence {
   sources: TagSource[];
   /** One-way fingerprint of the normalised imported title; null when absent. */
   titleFingerprint: string | null;
-  /** No imported title and no coordinator note — tag status unknown. */
+  /** No verifiable title or note — tag status unknown. */
   missingTitle: boolean;
+  labelStatus: SlotLabelStatus;
   /** Some label exceeded TAG_SCAN_MAX_CHARS and was only partly scanned. */
   scanTruncated: boolean;
 }
@@ -81,6 +117,8 @@ export interface EvidenceSet {
   lists: ListEvidence[];
   excludedInactiveTagged: number;
   missingTheatre: number;
+  /** Whether original titles/notes are captured (migration 0008 applied). */
+  labelCapture: LabelCapture;
 }
 
 export interface RawSession {
@@ -132,11 +170,18 @@ export function extractListEvidence(
   sessions: RawSession[],
   theatres: RawTheatre[],
   assignments: RawAssignment[],
+  signals: SessionLabelSignal[] = [],
+  labelCapture: LabelCapture = "not_installed",
 ): EvidenceSet {
   const theatreById = new Map(theatres.map((t) => [t.id, t]));
   const theatreOrdinal = new Map<string, number>();
+  const signalBySession = new Map(signals.map((g) => [g.theatre_session_id, g]));
+  const linkedRows = new Map<string, number>();
   const notesBySession = new Map<string, string[]>();
   for (const a of assignments) {
+    if (a.theatre_session_id) {
+      linkedRows.set(a.theatre_session_id, (linkedRows.get(a.theatre_session_id) ?? 0) + 1);
+    }
     if (!a.theatre_session_id || !nonEmpty(a.notes)) continue;
     const arr = notesBySession.get(a.theatre_session_id) ?? [];
     arr.push(a.notes);
@@ -156,6 +201,16 @@ export function extractListEvidence(
       const found = detectProcedureTags(text);
       if (found.length) sourceTags.set(src, [...(sourceTags.get(src) ?? []), ...found]);
     };
+    const signal = signalBySession.get(s.id);
+    const addTags = (src: TagSource, raw: readonly unknown[] | null | undefined) => {
+      const found = sanitiseProcedureTags(raw);
+      if (found.length) sourceTags.set(src, [...(sourceTags.get(src) ?? []), ...found]);
+    };
+    if (signal) {
+      addTags("imported_list_title", signal.title_tags);
+      addTags("imported_list_note", signal.note_tags);
+      if (signal.scan_truncated) truncated = true;
+    }
     scan("imported_list_title", s.surgical_consultant);
     scan("coordinator_list_note", s.notes);
     // Repeated linked assignments (several anaesthetists, duplicate rows)
@@ -176,7 +231,31 @@ export function extractListEvidence(
     const ordKey = theatre?.id ?? `missing:${s.theatre_id ?? "none"}`;
     if (!theatreOrdinal.has(ordKey)) theatreOrdinal.set(ordKey, theatreOrdinal.size);
 
-    const title = nonEmpty(s.surgical_consultant) ? normaliseTitle(s.surgical_consultant) : "";
+    const legacyTitle = nonEmpty(s.surgical_consultant) ? normaliseTitle(s.surgical_consultant) : "";
+    // Source titles compare by the server's per-(date, theatre) group; the
+    // legacy title by a local fingerprint. Different prefixes never match,
+    // so a mixed pair stays unresolved (conservative).
+    const titleFingerprint =
+      signal?.has_title && signal.title_group != null
+        ? `g:${signal.title_group}`
+        : legacyTitle
+          ? `l:${fingerprint(legacyTitle)}`
+          : null;
+    const labelled =
+      !!signal?.has_title ||
+      !!signal?.has_note ||
+      !!signal?.has_place_note ||
+      nonEmpty(s.surgical_consultant) ||
+      nonEmpty(s.notes);
+    const labelStatus: SlotLabelStatus = labelled
+      ? "labelled"
+      : signal
+        ? signal.evidence_complete && signal.source_rows_seen > 0
+          ? "blank_in_source"
+          : "partial_evidence"
+        : (linkedRows.get(s.id) ?? 0) === 0
+          ? "no_linked_rows"
+          : "not_captured";
     lists.push({
       date: s.session_date,
       half: (["am", "pm", "eve", "night"].includes(s.session) ? s.session : "am") as ForecastHalf,
@@ -184,12 +263,13 @@ export function extractListEvidence(
       theatreName: theatre?.name ?? "Unknown theatre",
       tags,
       sources: (Object.keys(TAG_SOURCE_LABEL) as TagSource[]).filter((k) => sourceTags.has(k)),
-      titleFingerprint: title ? fingerprint(title) : null,
-      missingTitle: !nonEmpty(s.surgical_consultant) && !nonEmpty(s.notes),
+      titleFingerprint,
+      missingTitle: labelStatus !== "labelled",
+      labelStatus,
       scanTruncated: truncated,
     });
   }
-  return { lists, excludedInactiveTagged, missingTheatre };
+  return { lists, excludedInactiveTagged, missingTheatre, labelCapture };
 }
 
 // ───────────────────────────── Forecast ─────────────────────────────
