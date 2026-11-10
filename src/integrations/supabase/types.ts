@@ -459,6 +459,96 @@ export type Database = {
         }
         Relationships: []
       }
+      clwrota_sync_windows: {
+        Row: {
+          covered_from: string | null
+          covered_to: string | null
+          explicit_window: boolean
+          finished_at: string
+          id: string
+          outcome: string
+          requested_from: string
+          requested_to: string
+          rows_in_window: number
+          rows_skipped: number
+          started_at: string
+          write_errors: number
+        }
+        Insert: {
+          covered_from?: string | null
+          covered_to?: string | null
+          explicit_window?: boolean
+          finished_at?: string
+          id?: string
+          outcome: string
+          requested_from: string
+          requested_to: string
+          rows_in_window?: number
+          rows_skipped?: number
+          started_at: string
+          write_errors?: number
+        }
+        Update: {
+          covered_from?: string | null
+          covered_to?: string | null
+          explicit_window?: boolean
+          finished_at?: string
+          id?: string
+          outcome?: string
+          requested_from?: string
+          requested_to?: string
+          rows_in_window?: number
+          rows_skipped?: number
+          started_at?: string
+          write_errors?: number
+        }
+        Relationships: []
+      }
+      clwrota_week_status: {
+        Row: {
+          actual_rows: number
+          dates_seen: number
+          first_observed_at: string
+          observed_at: string
+          other_state_rows: number
+          planned_rows: number
+          previous_status_code: string | null
+          rows_seen: number
+          source_values: string[]
+          status_code: string
+          status_since: string
+          week_start: string
+        }
+        Insert: {
+          actual_rows?: number
+          dates_seen?: number
+          first_observed_at?: string
+          observed_at?: string
+          other_state_rows?: number
+          planned_rows?: number
+          previous_status_code?: string | null
+          rows_seen?: number
+          source_values?: string[]
+          status_code: string
+          status_since?: string
+          week_start: string
+        }
+        Update: {
+          actual_rows?: number
+          dates_seen?: number
+          first_observed_at?: string
+          observed_at?: string
+          other_state_rows?: number
+          planned_rows?: number
+          previous_status_code?: string | null
+          rows_seen?: number
+          source_values?: string[]
+          status_code?: string
+          status_since?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       competencies: {
         Row: {
           active: boolean
@@ -2843,6 +2933,59 @@ export type Database = {
           },
         ]
       }
+      theatre_session_source_labels: {
+        Row: {
+          created_at: string
+          evidence_complete: boolean
+          last_seen_at: string
+          list_notes: string[]
+          list_titles: string[]
+          note_tags: string[]
+          place_notes: string[]
+          scan_truncated: boolean
+          source_rows_seen: number
+          theatre_session_id: string
+          title_tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_complete?: boolean
+          last_seen_at?: string
+          list_notes?: string[]
+          list_titles?: string[]
+          note_tags?: string[]
+          place_notes?: string[]
+          scan_truncated?: boolean
+          source_rows_seen?: number
+          theatre_session_id: string
+          title_tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence_complete?: boolean
+          last_seen_at?: string
+          list_notes?: string[]
+          list_titles?: string[]
+          note_tags?: string[]
+          place_notes?: string[]
+          scan_truncated?: boolean
+          source_rows_seen?: number
+          theatre_session_id?: string
+          title_tags?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theatre_session_source_labels_theatre_session_id_fkey"
+            columns: ["theatre_session_id"]
+            isOneToOne: true
+            referencedRelation: "theatre_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theatre_sessions: {
         Row: {
           clwrota_external_id: string | null
@@ -3930,6 +4073,21 @@ export type Database = {
           staff_id: string
         }[]
       }
+      get_rota_sync_week_coverage: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          days_latest_not_ok: number
+          days_ok: number
+          days_partial_only: number
+          days_total: number
+          last_full_ok_at: string
+          latest_attempt_at: string
+          latest_attempt_outcome: string
+          newest_ok_at: string
+          tracking_since: string
+          week_start: string
+        }[]
+      }
       get_rtw_interviews_decrypted: {
         Args: never
         Returns: {
@@ -3945,6 +4103,22 @@ export type Database = {
           reasonable_adjustments: string
           staff_id: string
           updated_at: string
+        }[]
+      }
+      get_theatre_session_label_signals: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          evidence_complete: boolean
+          has_note: boolean
+          has_place_note: boolean
+          has_title: boolean
+          last_seen_at: string
+          note_tags: string[]
+          scan_truncated: boolean
+          source_rows_seen: number
+          theatre_session_id: string
+          title_group: number
+          title_tags: string[]
         }[]
       }
       has_role: {

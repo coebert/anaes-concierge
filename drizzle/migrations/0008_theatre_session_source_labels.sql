@@ -1,4 +1,4 @@
--- 0008 theatre_session_source_labels — PENDING. NOT applied to the live database.
+-- 0008 theatre_session_source_labels — approved by Rob Coe and applied live 2026-11-10.
 --
 -- Keeps the ORIGINAL CLWRota list titles (slot_titles), list notes
 -- (slot_notes) and place notes (place.additional_info) per theatre session,

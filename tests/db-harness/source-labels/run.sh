@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Disposable harness for the PENDING migrations 0008 (restricted CLWRota list
+# Disposable harness for migrations 0008 (restricted CLWRota list
 # title/note storage + derived-only signals) and 0009 (observed week rota
 # status, member-readable). Uses the definer fixture (a
 # non-superuser postgres owner that is a service_role member, as live), the
@@ -13,12 +13,9 @@ PGRST=${PGRST:-$(nix build nixpkgs#postgrest --no-link --print-out-paths | head 
 export PATH="$PG/bin:$PGRST/bin:$PATH"
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../../.."; DEF="$HERE/../definer"
 M7="$ROOT/drizzle/migrations/0007_definer_caller_identity.sql"
-M8="$ROOT/drizzle/pending/0008_theatre_session_source_labels.sql"
-[ -f "$M8" ] || M8=$(ls "$ROOT"/drizzle/migrations/*_theatre_session_source_labels.sql | head -1)
-M9="$ROOT/drizzle/pending/0009_clwrota_week_status.sql"
-[ -f "$M9" ] || M9=$(ls "$ROOT"/drizzle/migrations/*_clwrota_week_status.sql | head -1)
-M10="$ROOT/drizzle/pending/0010_clwrota_sync_windows.sql"
-[ -f "$M10" ] || M10=$(ls "$ROOT"/drizzle/migrations/*_clwrota_sync_windows.sql | head -1)
+M8=$(ls "$ROOT"/drizzle/migrations/*_theatre_session_source_labels.sql | head -1)
+M9=$(ls "$ROOT"/drizzle/migrations/*_clwrota_week_status.sql | head -1)
+M10=$(ls "$ROOT"/drizzle/migrations/*_clwrota_sync_windows.sql | head -1)
 D=$(mktemp -d /tmp/pglabels.XXXX)
 cleanup() { [ -n "${RPID:-}" ] && kill "$RPID" 2>/dev/null || true; pg_ctl -D "$D/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"; }
 trap cleanup EXIT

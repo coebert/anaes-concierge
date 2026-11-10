@@ -1,4 +1,4 @@
--- 0010 clwrota_sync_windows — PENDING. NOT applied to the live database.
+-- 0010 clwrota_sync_windows — approved by Rob Coe and applied live 2026-11-10.
 --
 -- One row per rota import run (each slice of a chunked import is its own
 -- run), recording WHICH DATES the run asked the feed for, which dates its

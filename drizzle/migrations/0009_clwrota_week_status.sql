@@ -1,4 +1,4 @@
--- 0009 clwrota_week_status — PENDING. NOT applied to the live database.
+-- 0009 clwrota_week_status — approved by Rob Coe and applied live 2026-11-10.
 --
 -- One row per ISO week (Monday) whose rota status the CLWRota import has
 -- OBSERVED in the Central API assignments feed (`rota_status`: "Published",
