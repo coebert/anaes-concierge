@@ -67,7 +67,10 @@ function build(
 
 describe("derived source signals", () => {
   it("tags from an imported list NOTE are found even when the title has none", () => {
-    const f = build([sess("a")], [sig("a", { has_title: true, has_note: true, note_tags: ["DIEP"], title_group: 1 })]);
+    const f = build(
+      [sess("a")],
+      [sig("a", { has_title: true, has_note: true, note_tags: ["DIEP"], title_group: 1 })],
+    );
     expect(f.days[0].lists[0].tags).toEqual(["DIEP"]);
     expect(f.days[0].lists[0].sources).toEqual(["imported_list_note"]);
     expect(f.unverifiedSlots.filter((u) => u.date === MON && u.half)).toEqual([]);
@@ -143,7 +146,10 @@ describe("Unverified slots queue", () => {
     );
     expect(f.labelCapture).toBe("not_installed");
     expect(f.days[0].lists[0].tags).toEqual(["VRAM"]);
-    expect(f.unverifiedSlots[0]).toMatchObject({ theatreName: "Theatre B", reason: "no_linked_rows" });
+    expect(f.unverifiedSlots[0]).toMatchObject({
+      theatreName: "Theatre B",
+      reason: "no_linked_rows",
+    });
     expect(f.totals.untitledLists).toBe(1);
   });
 
@@ -167,7 +173,10 @@ describe("Unverified slots queue", () => {
 });
 
 describe("signal loader", () => {
-  type Res = { data: SessionLabelSignal[] | null; error: { code?: string; message?: string } | null };
+  type Res = {
+    data: SessionLabelSignal[] | null;
+    error: { code?: string; message?: string } | null;
+  };
   function rpcClient(pages: (from: number) => Res) {
     const calls: Array<{ fn: string; args: unknown; from: number; to: number }> = [];
     return {
@@ -195,7 +204,10 @@ describe("signal loader", () => {
     const r = await loadSessionLabelSignals(MON, TUE, c.client);
     expect(r.labelCapture).toBe("available");
     expect(r.signals).toHaveLength(1500);
-    expect(c.calls[0]).toMatchObject({ fn: "get_theatre_session_label_signals", args: { p_from: MON, p_to: TUE } });
+    expect(c.calls[0]).toMatchObject({
+      fn: "get_theatre_session_label_signals",
+      args: { p_from: MON, p_to: TUE },
+    });
   });
 
   it("missing function → not_installed (legacy fallback), no throw", async () => {
@@ -207,7 +219,10 @@ describe("signal loader", () => {
   });
 
   it("permission or later-page errors throw (Retry), never a silent empty", async () => {
-    const denied = rpcClient(() => ({ data: null, error: { code: "42501", message: "not authorised" } }));
+    const denied = rpcClient(() => ({
+      data: null,
+      error: { code: "42501", message: "not authorised" },
+    }));
     await expect(loadSessionLabelSignals(MON, TUE, denied.client)).rejects.toThrow();
     const all = many(1500);
     const page2 = rpcClient((from) =>
@@ -232,7 +247,10 @@ describe("signal loader", () => {
           Promise.resolve({ data: (tables[table] ?? []).slice(from, to + 1), error: null });
         return c;
       },
-      ...rpcClient(() => ({ data: [sig("a", { has_title: true, title_tags: ["DIEP"] })], error: null })).client,
+      ...rpcClient(() => ({
+        data: [sig("a", { has_title: true, title_tags: ["DIEP"] })],
+        error: null,
+      })).client,
     };
     const ev = await loadTheatrePressureEvidence(MON, TUE, client as never);
     expect(ev.labelCapture).toBe("available");

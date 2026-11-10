@@ -55,7 +55,10 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
   return (
     <Card aria-labelledby="theatre-pressure-title">
       <CardHeader>
-        <CardTitle id="theatre-pressure-title" className="flex flex-wrap items-center gap-2 text-base">
+        <CardTitle
+          id="theatre-pressure-title"
+          className="flex flex-wrap items-center gap-2 text-base"
+        >
           <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
           Theatre pressure forecast
           <Badge variant="outline" className="text-[10px]">
@@ -444,7 +447,10 @@ function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture:
                     <td className="px-2 py-1.5">{s.half ? halfLabel(s.half) : "—"}</td>
                     <td className="px-2 py-1.5">
                       <span className="font-medium">{REASON_LABEL[s.reason]}</span>
-                      <span className="text-muted-foreground"> — {reasonHelp(s.reason, capture)}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {reasonHelp(s.reason, capture)}
+                      </span>
                     </td>
                   </tr>
                 ))}

@@ -92,8 +92,22 @@ describe("TheatrePressureCard — Unverified slots", () => {
     rangeEnd: "2030-01-08",
     evidence: extractListEvidence(
       [
-        { id: "x", session_date: "2030-01-07", session: "am", theatre_id: "t1", surgical_consultant: null, notes: null },
-        { id: "y", session_date: "2030-01-07", session: "pm", theatre_id: "t2", surgical_consultant: null, notes: null },
+        {
+          id: "x",
+          session_date: "2030-01-07",
+          session: "am",
+          theatre_id: "t1",
+          surgical_consultant: null,
+          notes: null,
+        },
+        {
+          id: "y",
+          session_date: "2030-01-07",
+          session: "pm",
+          theatre_id: "t2",
+          surgical_consultant: null,
+          notes: null,
+        },
       ],
       [
         { id: "t1", name: "Theatre A", active: true },

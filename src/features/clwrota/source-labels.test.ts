@@ -253,7 +253,9 @@ describe("persistSourceLabels", () => {
     c.markUncertain(D1);
     c.observe(K_AM, D1, { titles: ["New"], notes: [], placeNotes: [] });
     const f = fakeClient({
-      stored: [{ theatre_session_id: "sess-am", list_titles: ["Old"], list_notes: [], place_notes: [] }],
+      stored: [
+        { theatre_session_id: "sess-am", list_titles: ["Old"], list_notes: [], place_notes: [] },
+      ],
     });
     const res = await persistSourceLabels(f.client, c, IDS, { nowIso: NOW, inChunk: 1 });
     expect(res.status).toBe("ok");
@@ -276,7 +278,8 @@ describe("persistSourceLabels", () => {
     const f = fakeClient({
       upsertError: {
         code: "PGRST205",
-        message: "Could not find the table 'public.theatre_session_source_labels' in the schema cache",
+        message:
+          "Could not find the table 'public.theatre_session_source_labels' in the schema cache",
       },
     });
     const res = await persistSourceLabels(f.client, c, IDS, { nowIso: NOW });

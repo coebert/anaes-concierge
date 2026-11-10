@@ -73,7 +73,8 @@ function readPath(row: Record<string, unknown>, key: string): unknown {
 
 function stringsOf(v: unknown): string[] {
   if (typeof v === "string") return v.trim() ? [v.trim()] : [];
-  if (Array.isArray(v)) return v.flatMap((x) => (typeof x === "string" && x.trim() ? [x.trim()] : []));
+  if (Array.isArray(v))
+    return v.flatMap((x) => (typeof x === "string" && x.trim() ? [x.trim()] : []));
   return [];
 }
 
@@ -184,7 +185,9 @@ export interface SourceLabelRecord {
 }
 
 const capValues = (vs: string[]) =>
-  vs.slice(0, MAX_VALUES_PER_FIELD).map((v) => (v.length > MAX_VALUE_CHARS ? v.slice(0, MAX_VALUE_CHARS) : v));
+  vs
+    .slice(0, MAX_VALUES_PER_FIELD)
+    .map((v) => (v.length > MAX_VALUE_CHARS ? v.slice(0, MAX_VALUE_CHARS) : v));
 
 function tagsOf(values: string[]): ProcedureTag[] {
   const set = new Set<ProcedureTag>();
@@ -261,7 +264,10 @@ export function planSourceLabelWrites(input: {
 
 type DbError = { code?: string; message?: string } | null;
 interface SelectChain {
-  in(col: string, ids: string[]): PromiseLike<{ data: StoredSourceLabels[] | null; error: DbError }>;
+  in(
+    col: string,
+    ids: string[],
+  ): PromiseLike<{ data: StoredSourceLabels[] | null; error: DbError }>;
 }
 /** Minimal untyped view of the service-role client (the relation is not in the generated types until the migration is applied). */
 export interface SourceLabelClient {
@@ -277,7 +283,9 @@ export interface SourceLabelClient {
 export function isMissingRelationError(e: DbError): boolean {
   if (!e) return false;
   if (e.code === "42P01" || e.code === "PGRST205") return true;
-  return /schema cache/i.test(e.message ?? "") && /theatre_session_source_labels/.test(e.message ?? "");
+  return (
+    /schema cache/i.test(e.message ?? "") && /theatre_session_source_labels/.test(e.message ?? "")
+  );
 }
 
 export type PersistResult =

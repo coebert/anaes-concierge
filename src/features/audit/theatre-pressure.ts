@@ -231,7 +231,9 @@ export function extractListEvidence(
     const ordKey = theatre?.id ?? `missing:${s.theatre_id ?? "none"}`;
     if (!theatreOrdinal.has(ordKey)) theatreOrdinal.set(ordKey, theatreOrdinal.size);
 
-    const legacyTitle = nonEmpty(s.surgical_consultant) ? normaliseTitle(s.surgical_consultant) : "";
+    const legacyTitle = nonEmpty(s.surgical_consultant)
+      ? normaliseTitle(s.surgical_consultant)
+      : "";
     // Source titles compare by the server's per-(date, theatre) group; the
     // legacy title by a local fingerprint. Different prefixes never match,
     // so a mixed pair stays unresolved (conservative).
