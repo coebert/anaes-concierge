@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { cleanup, render, screen, fireEvent, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -41,6 +41,8 @@ const forecast = buildTheatrePressureForecast({
   ),
   staffing: null,
 });
+
+afterEach(cleanup);
 
 describe("TheatrePressureCard", () => {
   it("shows tags, theatre, half, unverified cover and no raw label text", () => {

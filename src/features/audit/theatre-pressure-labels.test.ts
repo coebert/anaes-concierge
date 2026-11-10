@@ -78,7 +78,7 @@ describe("derived source signals", () => {
     expect(f.days[0].lists[0].tags).toEqual(["VRAM"]);
   });
 
-  it("AM/PM with the same server title group is one all-day list; different groups are two", () => {
+  it("AM/PM with the same server title group is one all-day list; different groups stay unresolved", () => {
     const same = build(
       [sess("a"), sess("b", { session: "pm" })],
       [
@@ -95,7 +95,8 @@ describe("derived source signals", () => {
         sig("b", { has_title: true, title_tags: ["Robotic"], title_group: 2 }),
       ],
     );
-    expect(diff.days[0].distinctMin).toBe(2);
+    // Different titles but the same tag: identity unproven → a range, never confirmed 2.
+    expect([diff.days[0].distinctMin, diff.days[0].distinctMax]).toEqual([1, 2]);
   });
 });
 
