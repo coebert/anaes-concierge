@@ -27,6 +27,7 @@ import {
   UserCircle,
   UserPlus,
   Users,
+  Unlink,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -218,6 +219,15 @@ export const NAV_ITEMS: NavItem[] = [
     icon: CalendarX,
     group: "rota",
     roles: ["admin"],
+  },
+  {
+    id: "rota-unplaced",
+    label: "Unplaced sessions",
+    to: "/coordinator/unlinked-sessions",
+    icon: Unlink,
+    group: "rota",
+    roles: ["admin", "rota_coordinator"],
+    keywords: ["unlinked", "blank lists", "uncovered", "clwrota", "reconcile"],
   },
   {
     id: "glossary",

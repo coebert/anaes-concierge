@@ -22,6 +22,8 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [x] Publish (incl. off-site day-off fix) and run one live import; verify 17 Nov Laser AM, forecast, unmatched counts
 - [ ] Decide whether a list staffed only by SAS/junior doctors counts as filled in headroom — waiting on department
 - [x] 13 unverified slots (2 Dec–28 Jan) re-imported under the fixed off-site rule (live import 25 Nov–1 Feb, 10 Nov 18:35)
-- [ ] 6 blank Endo slots (24 Nov, 22 Dec, 26 Jan): needs CLWRota Uncovered sessions report or slot-level report to tell no-list from uncovered
+- [x] Unplaced sessions report (admins + coordinators): lists with nobody linked beside CLWRota rows placed on no list
+- [ ] 6 blank Endo slots (24 Nov, 22 Dec, 26 Jan): report narrows them, but only CLWRota (Uncovered sessions) can say cancelled vs uncovered
+- [ ] 104 lists have nobody linked but only 6 show as unverified in the forecast (the rest have titles) — investigate why their staff rows aren't linked
 - [x] Importer no longer deletes a working row that shares its person/date/half key with a non-working row (fixed in preview, tested)
 - [ ] Publish that fix and run one import so the 48 Not setup working rows are saved live — needs Rob's go-ahead to publish
