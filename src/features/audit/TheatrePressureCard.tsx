@@ -56,7 +56,8 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
         <CardDescription>
           Days where lists explicitly labelled <strong>VRAM</strong>, <strong>DIEP</strong> or{" "}
           <strong>robot / robotic / robotics</strong> may add potential pressure, using the same
-          AM/PM cover as the daily headroom table on this screen. This flags potential pressure only — it does not predict overruns.
+          AM/PM cover as the daily headroom table on this screen. This flags potential pressure only
+          — it does not predict overruns.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -72,7 +73,10 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
         {forecast ? (
           <>
             {staffingError ? (
-              <p role="status" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+              <p
+                role="status"
+                className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs"
+              >
                 Staffing cover couldn't be loaded, so every tagged half below is shown as{" "}
                 <em>not verified</em> rather than OK. Use Retry on the daily headroom table below.
               </p>
@@ -257,9 +261,9 @@ function DetectionLimits({ forecast }: { forecast: TheatrePressureForecast }) {
           </li>
           <li>
             Fields read: the imported list title, any coordinator list note and linked assignment
-            notes. The rota import stores only the first free-text field of each row, so labels
-            held in later fields are not available. There are no structured procedure tags yet,
-            and there is no manual confirm/override in this version.
+            notes. The rota import stores only the first free-text field of each row, so labels held
+            in later fields are not available. There are no structured procedure tags yet, and there
+            is no manual confirm/override in this version.
           </li>
           <li>
             {t.untitledLists} of {t.listsInWindow} list(s) in this window have no title or note, so
@@ -267,8 +271,8 @@ function DetectionLimits({ forecast }: { forecast: TheatrePressureForecast }) {
           </li>
           {t.unresolvedPairs > 0 ? (
             <li>
-              {t.unresolvedPairs} AM/PM pair(s) in the same theatre could be one all-day list or
-              two lists; they are counted as a range and never as confirmed 2-list days.
+              {t.unresolvedPairs} AM/PM pair(s) in the same theatre could be one all-day list or two
+              lists; they are counted as a range and never as confirmed 2-list days.
             </li>
           ) : null}
           <li>
@@ -276,8 +280,8 @@ function DetectionLimits({ forecast }: { forecast: TheatrePressureForecast }) {
             rota may not be published yet. Those days are not assessed, not zero-risk.
           </li>
           <li>
-            Cover is only modelled for weekday AM and PM. Weekend, evening and night lists show
-            “Not verified”.
+            Cover is only modelled for weekday AM and PM. Weekend, evening and night lists show “Not
+            verified”.
           </li>
           {t.truncatedScans > 0 ? (
             <li>

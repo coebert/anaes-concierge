@@ -16,8 +16,22 @@ const forecast = buildTheatrePressureForecast({
   rangeEnd: "2030-01-07",
   evidence: extractListEvidence(
     [
-      { id: "a", session_date: "2030-01-07", session: "am", theatre_id: "t1", surgical_consultant: "Hidden DIEP text", notes: null },
-      { id: "b", session_date: "2030-01-07", session: "am", theatre_id: "t2", surgical_consultant: "robotic", notes: null },
+      {
+        id: "a",
+        session_date: "2030-01-07",
+        session: "am",
+        theatre_id: "t1",
+        surgical_consultant: "Hidden DIEP text",
+        notes: null,
+      },
+      {
+        id: "b",
+        session_date: "2030-01-07",
+        session: "am",
+        theatre_id: "t2",
+        surgical_consultant: "robotic",
+        notes: null,
+      },
     ],
     [
       { id: "t1", name: "Theatre A", active: true },

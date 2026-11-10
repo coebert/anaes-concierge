@@ -42,9 +42,13 @@ type Risk = HalfDayCapacity["risk"];
 function staffing(date: string, am: Risk, pm: Risk): StaffingDayInput {
   return { date, am: { risk: am }, pm: { risk: pm } };
 }
-const OK_WEEK: StaffingDayInput[] = ["2030-01-07", "2030-01-08", "2030-01-09", "2030-01-10", "2030-01-11"].map(
-  (d) => staffing(d, "ok", "ok"),
-);
+const OK_WEEK: StaffingDayInput[] = [
+  "2030-01-07",
+  "2030-01-08",
+  "2030-01-09",
+  "2030-01-10",
+  "2030-01-11",
+].map((d) => staffing(d, "ok", "ok"));
 const withDay = (s: StaffingDayInput) => OK_WEEK.map((d) => (d.date === s.date ? s : d));
 
 function forecast(
@@ -82,7 +86,9 @@ describe("detectProcedureTags — explicit, case-insensitive, bounded", () => {
 
 describe("no inference from surgeon, theatre name or specialty", () => {
   it("a theatre named 'Robotic Suite' with an untagged title yields no tagged list", () => {
-    const f = forecast([sess({ theatre_id: T_ROBOT_ROOM.id, surgical_consultant: "Mr Synthetic" })]);
+    const f = forecast([
+      sess({ theatre_id: T_ROBOT_ROOM.id, surgical_consultant: "Mr Synthetic" }),
+    ]);
     expect(f.days).toEqual([]);
   });
   it("a surgeon name alone never produces a tag", () => {
@@ -123,12 +129,15 @@ describe("deduplication", () => {
   });
 
   it("AM/PM pair with differing or missing titles is unresolved: a range, never confirmed", () => {
-    const f = forecast([
-      sess({ session: "am", surgical_consultant: "DIEP synthetic one" }),
-      sess({ session: "pm", surgical_consultant: null, notes: null }),
-    ], {
-      assignments: [],
-    });
+    const f = forecast(
+      [
+        sess({ session: "am", surgical_consultant: "DIEP synthetic one" }),
+        sess({ session: "pm", surgical_consultant: null, notes: null }),
+      ],
+      {
+        assignments: [],
+      },
+    );
     // PM has no title and no tag → only the AM list is tagged.
     expect(f.days[0].lists).toHaveLength(1);
 
@@ -255,7 +264,17 @@ describe("privacy", () => {
       assignments: [{ theatre_session_id: s2.id, notes: "assignment private-note robot" }],
     });
     const json = JSON.stringify(f);
-    for (const leak of ["Zyxwv", "secretword", "coordnote", "Qwerty", "private-note", s1.id, s2.id, "th-1", "th-2"]) {
+    for (const leak of [
+      "Zyxwv",
+      "secretword",
+      "coordnote",
+      "Qwerty",
+      "private-note",
+      s1.id,
+      s2.id,
+      "th-1",
+      "th-2",
+    ]) {
       expect(json).not.toContain(leak);
     }
     expect(json).toContain("Theatre A");
@@ -300,7 +319,11 @@ describe("loader uses complete paging and fails loudly", () => {
     const ev = await loadTheatrePressureEvidence(
       MON,
       MON,
-      client({ theatre_sessions: many(2500), theatres: THEATRES as unknown as Row[], rota_assignments: [] }) as never,
+      client({
+        theatre_sessions: many(2500),
+        theatres: THEATRES as unknown as Row[],
+        rota_assignments: [],
+      }) as never,
     );
     expect(ev.lists).toHaveLength(2500);
     expect(ev.lists.filter((l) => l.tags.length).length).toBe(1);
@@ -312,7 +335,11 @@ describe("loader uses complete paging and fails loudly", () => {
         MON,
         MON,
         client(
-          { theatre_sessions: many(2500), theatres: THEATRES as unknown as Row[], rota_assignments: [] },
+          {
+            theatre_sessions: many(2500),
+            theatres: THEATRES as unknown as Row[],
+            rota_assignments: [],
+          },
           { table: "theatre_sessions", from: 1000 },
         ) as never,
       ),
