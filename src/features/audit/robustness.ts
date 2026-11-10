@@ -809,6 +809,8 @@ export interface DayDetailSession {
     trainingLevel: string | null;
   }>;
   unfilled: boolean;
+  /** Emergency / CEPOD list — covered by on-call, not part of planned demand. */
+  emergency: boolean;
 }
 
 export interface PersonRef {
@@ -834,6 +836,8 @@ export type StaffStatusCategory =
   | "free_senior_trainee"
   | "free_junior_trainee"
   | "free_sas"
+  | "free_other"
+  | "not_rostered"
   | "on_spa"
   | "on_clinical_list"
   | "on_excluded_duty"
@@ -1011,6 +1015,21 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   // NHH) so they don't appear as unfilled lists in the day drilldown.
   const ts = tsAll.filter((t) => !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id as string)));
   const specialtyNameById = new Map((specialties ?? []).map((s) => [s.id, s.name]));
+  // Same emergency/CEPOD rule as computeRobustness: not planned demand, and
+  // assignments to them neither fill a list nor count as rostered evidence.
+  const emergencySpecialtyIdsDay = new Set(
+    (specialties ?? []).filter((sp) => /emergenc|cepod/i.test(sp.name ?? "")).map((sp) => sp.id),
+  );
+  const emergencySessionIdsDay = new Set(
+    tsAll.filter((t) => isEmergencyTheatreSession(t, emergencySpecialtyIdsDay)).map((t) => t.id),
+  );
+  // Roster evidence (same gate as computeRobustness): any non-emergency
+  // assignment today means the person is on duty.
+  const rosteredToday = new Set<string>();
+  for (const a of assignments) {
+    if (a.theatre_session_id && emergencySessionIdsDay.has(a.theatre_session_id)) continue;
+    rosteredToday.add(a.staff_id);
+  }
 
   const profById = new Map(
     (profiles ?? []).map((p) => [
@@ -1079,6 +1098,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         surgicalConsultant: (t.surgical_consultant as string | null) ?? null,
         assignments: asns,
         unfilled: asns.length === 0,
+        emergency: emergencySessionIdsDay.has(t.id),
       };
     })
     .sort((a, b) =>
@@ -1142,7 +1162,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   }
 
   type HalfAssn =
-    | { kind: "theatre"; theatreSessionId: string; role: string | null }
+    | { kind: "theatre"; theatreSessionId: string | null; role: string | null }
     | { kind: "spa" }
     | undefined;
   const halfAssn: Record<SessionHalf, Map<string, HalfAssn>> = {
@@ -1154,16 +1174,19 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     const sid = a.staff_id as string;
     const dt = a.duty_type as string;
     const sess = a.session as string;
+    if (a.theatre_session_id && emergencySessionIdsDay.has(a.theatre_session_id)) continue;
     if (poolSets.unavailable.has(dt)) {
       if (!excludedAllDay.has(sid)) excludedAllDay.set(sid, dt);
       continue;
     }
     if (sess !== "am" && sess !== "pm") continue;
     const half = sess as SessionHalf;
-    if (poolSets.clinicalList.has(dt) && a.theatre_session_id) {
+    // Same as computeRobustness: a clinical-list duty this half removes the
+    // person from the pool whether or not it is linked to a theatre session.
+    if (poolSets.clinicalList.has(dt)) {
       halfAssn[half].set(sid, {
         kind: "theatre",
-        theatreSessionId: a.theatre_session_id as string,
+        theatreSessionId: (a.theatre_session_id as string | null) ?? null,
         role: (a.role_on_list as string | null) ?? null,
       });
     } else if (poolSets.flex.has(dt)) {
@@ -1301,9 +1324,18 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         });
         continue;
       }
+      if (!rosteredToday.has(id)) {
+        entries.push({
+          ...ref,
+          category: "not_rostered",
+          reason: "No rota entry today — treated as not on duty",
+          countsToSolo: false,
+        });
+        continue;
+      }
       const ha = halfAssn[half].get(id);
       if (ha?.kind === "theatre") {
-        const info = tsInfoById.get(ha.theatreSessionId);
+        const info = ha.theatreSessionId ? tsInfoById.get(ha.theatreSessionId) : undefined;
         const sessionLabel = half.toUpperCase(); // AM / PM
         const specialty = info?.specialty ?? "specialty not mapped";
         const theatre = info?.theatreName ?? "a theatre list";
@@ -1391,8 +1423,8 @@ function freeEntry(ref: PersonRef): StaffStatusEntry {
   }
   return {
     ...ref,
-    category: "free_consultant",
-    reason: "Free (grade unknown)",
+    category: "free_other",
+    reason: "Free — grade not recorded, so not counted as solo-capable",
     countsToSolo: false,
   };
 }
