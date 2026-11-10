@@ -137,14 +137,14 @@ function RobustnessPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Days flagged" value={flagged.length} icon={AlertTriangle} tone="amber" />
+          <Stat label="Days flagged" value={data ? flagged.length : "—"} icon={AlertTriangle} tone="amber" />
           <Stat
             label="Days with shortfall"
-            value={shortfalls.length}
+            value={data ? shortfalls.length : "—"}
             icon={ShieldAlert}
             tone="red"
           />
-          <Stat label="SPA half-days (separate)" value={spaHalfDays} icon={Coffee} tone="orange" />
+          <Stat label="SPA half-days (separate)" value={data ? spaHalfDays : "—"} icon={Coffee} tone="orange" />
           <Stat
             label="Workforce (active)"
             value={data ? Object.values(data.totalStaffByGrade).reduce((a, b) => a + b, 0) : "—"}

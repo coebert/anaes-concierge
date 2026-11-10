@@ -55,8 +55,8 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
         </CardTitle>
         <CardDescription>
           Days where lists explicitly labelled <strong>VRAM</strong>, <strong>DIEP</strong> or{" "}
-          <strong>robot / robotic / robotics</strong> may add potential pressure, shown next to the
-          AM/PM cover above. This flags potential pressure only — it does not predict overruns.
+          <strong>robot / robotic / robotics</strong> may add potential pressure, using the same
+          AM/PM cover as the daily headroom table on this screen. This flags potential pressure only — it does not predict overruns.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -74,7 +74,7 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
             {staffingError ? (
               <p role="status" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
                 Staffing cover couldn't be loaded, so every tagged half below is shown as{" "}
-                <em>not verified</em> rather than OK. Use Retry on the cover table above.
+                <em>not verified</em> rather than OK. Use Retry on the daily headroom table below.
               </p>
             ) : staffingLoading && !forecast.staffingAvailable ? (
               <p role="status" className="text-xs text-muted-foreground">
