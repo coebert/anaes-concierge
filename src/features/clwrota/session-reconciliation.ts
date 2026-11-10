@@ -308,8 +308,8 @@ export async function loadReconciliationInputs(
 
   const staffIds = [...new Set(unlinkedRows.map((r) => r.staff_id))];
   const staff = new Map<string, { name: string; grade: string | null }>();
-  for (let i = 0; i < staffIds.length; i += 500) {
-    const chunk = staffIds.slice(i, i + 500);
+  for (let i = 0; i < staffIds.length; i += 100) {
+    const chunk = staffIds.slice(i, i + 100);
     const rows = await pagedSelect<{ id: string; full_name: string; grade: string | null }>(
       "profiles",
       "id,full_name,grade",
