@@ -35,6 +35,12 @@ import { loadTheatreNameAliases, loadDutyTypeMappings } from "./parsing.server";
 import { getEnv } from "./settings.functions";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assignmentNaturalKey, dedupeAssignmentsBySyncKeys } from "./assignment-dedupe";
+import {
+  SourceLabelCollector,
+  extractRowSourceLabels,
+  persistSourceLabels,
+  type SourceLabelClient,
+} from "./source-labels";
 
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
@@ -868,6 +874,9 @@ export async function performRotaSync(
   // and other free-text fields on NHH-style lists covered as part of NHS
   // job plans. Detection lives in isNonSagRotaLabel (see clwrota-labels.ts).
   const nonSagSessionKeys = new Set<string>();
+  // Original list titles / list notes per theatre session, kept as supplied
+  // on the restricted source-label relation (see ./source-labels.ts).
+  const labelCollector = new SourceLabelCollector();
 
   for (const row of rows) {
     const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
@@ -1084,14 +1093,17 @@ export async function performRotaSync(
     const label = `${dateRaw ?? "?"} ${sessRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
 
     if (!session_date) {
+      labelCollector.markUncertain(null);
       skipped.push({ label, reason: `cannot parse date "${dateRaw ?? ""}"` });
       continue;
     }
     if (!session) {
+      labelCollector.markUncertain(session_date);
       skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` });
       continue;
     }
     if (!externalId) {
+      labelCollector.markUncertain(session_date);
       skipped.push({
         label,
         reason: "no stable external id (need person.local_id + date + session)",
@@ -1132,6 +1144,9 @@ export async function performRotaSync(
     if (!staffId && personExtId) staffId = profByExtId.get(personExtId);
     if (!staffId && personName) staffId = profByName.get(personName.toLowerCase().trim());
     if (!staffId) {
+      // The row may belong to a list we DO import from another row, so a
+      // blank title on this date can't be treated as a confirmed blank.
+      labelCollector.markUncertain(session_date);
       unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
       skipped.push({
         label,
@@ -1251,6 +1266,7 @@ export async function performRotaSync(
     if (dutyType === "theatre" && theatreId) {
       theatreSessionKey = `${session_date}|${theatreId}|${session}`;
       if (isNonSagRow) nonSagSessionKeys.add(theatreSessionKey);
+      labelCollector.observe(theatreSessionKey, session_date, extractRowSourceLabels(row));
       // "non-SAG" classification is normally admin-managed via the
       // theatre-grid Non-SAG checkbox. When the upstream CLWRota feed
       // actually carries a "[Non-SAG]" tag on any field of the row
@@ -1451,6 +1467,28 @@ export async function performRotaSync(
   for (const key of ["SC", "S_", "_C", "__"]) {
     const rows = sessionBuckets.get(key);
     if (rows && rows.length) await upsertSessions(rows);
+  }
+
+  // Pass 3a: keep original list titles / list notes on the restricted
+  // source-label relation. Legacy surgical_consultant above is unchanged;
+  // coordinator notes and assignment notes are never touched here. Raw
+  // values are never logged or returned — only counts.
+  if (labelCollector.size > 0) {
+    const labelResult = await persistSourceLabels(
+      supabaseAdmin as unknown as SourceLabelClient,
+      labelCollector,
+      sessionIdByKey,
+      { nowIso, inChunk: SUPABASE_IN_CHUNK },
+    );
+    if (labelResult.status === "not_installed") {
+      warnings.push({
+        label: "(list title capture)",
+        reason:
+          "list title/note storage is not installed yet (database update pending); only the legacy single title was kept",
+      });
+    } else if (labelResult.status === "error") {
+      errors.push({ label: "(list title capture)", error: labelResult.message });
+    }
   }
 
   // Propagate Non-SAG tags detected in the feed onto theatre_sessions.
