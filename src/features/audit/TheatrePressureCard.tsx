@@ -30,6 +30,13 @@ import {
   type WeekStatusTimeline,
 } from "./rota-week-status";
 import { isoWeekStart } from "@/features/clwrota/week-status-core";
+import {
+  importWeekHelp,
+  importWeekLabel,
+  type ImportCoverageTimeline,
+  type ImportWeekEntry,
+  type ImportWeekState,
+} from "./rota-sync-coverage";
 
 const LEVEL_LABEL: Record<PressureLevel, string> = {
   elevated: "Potential pressure — elevated",
@@ -58,6 +65,13 @@ export interface TheatrePressureCardProps {
   /** Week rota status as observed by the import (optional). */
   weekStatus?: {
     timeline: WeekStatusTimeline | null;
+    isLoading: boolean;
+    error: unknown;
+    onRetry: () => void;
+  };
+  /** Per-week import coverage / freshness (optional; separate from publication state). */
+  importCoverage?: {
+    timeline: ImportCoverageTimeline | null;
     isLoading: boolean;
     error: unknown;
     onRetry: () => void;
@@ -152,13 +166,21 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
                 </table>
               </div>
             )}
-            {props.weekStatus ? <WeekStatusStrip {...props.weekStatus} /> : null}
+            {props.weekStatus || props.importCoverage ? (
+              <WeekStatusStrip status={props.weekStatus} imports={props.importCoverage} />
+            ) : null}
             <UnverifiedSlots
               slots={forecast.unverifiedSlots}
               capture={forecast.labelCapture}
               weeks={
                 props.weekStatus?.timeline?.capture === "available" && !props.weekStatus.error
                   ? props.weekStatus.timeline
+                  : null
+              }
+              imports={
+                props.importCoverage?.timeline?.capture === "available" &&
+                !props.importCoverage.error
+                  ? props.importCoverage.timeline
                   : null
               }
             />
@@ -399,10 +421,12 @@ function UnverifiedSlots({
   slots,
   capture,
   weeks,
+  imports,
 }: {
   slots: UnverifiedSlot[];
   capture: LabelCapture;
   weeks: WeekStatusTimeline | null;
+  imports: ImportCoverageTimeline | null;
 }) {
   const [filter, setFilter] = useState<ReasonFilter>("all");
   const counts = useMemo(() => {
@@ -427,7 +451,10 @@ function UnverifiedSlots({
         recheck these once the rota is published, then use Refresh.{" "}
         {weeks
           ? "The Week column is the rota feed's own week status as last seen by the import."
-          : "Week publication status isn't recorded yet, so it isn't shown."}
+          : "Week publication status isn't recorded yet, so it isn't shown."}{" "}
+        {imports
+          ? "The Import column says whether a complete import has confirmed that week, and when."
+          : null}
       </p>
       {slots.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -462,6 +489,7 @@ function UnverifiedSlots({
                   <th className="px-2 py-1 text-left font-medium">Theatre</th>
                   <th className="px-2 py-1 text-left font-medium">Half</th>
                   {weeks ? <th className="px-2 py-1 text-left font-medium">Week</th> : null}
+                  {imports ? <th className="px-2 py-1 text-left font-medium">Import</th> : null}
                   <th className="px-2 py-1 text-left font-medium">Why unverified</th>
                 </tr>
               </thead>
@@ -484,6 +512,11 @@ function UnverifiedSlots({
                         <WeekChip
                           status={weeks.byWeek.get(isoWeekStart(s.date))?.status ?? "not_observed"}
                         />
+                      </td>
+                    ) : null}
+                    {imports ? (
+                      <td className="px-2 py-1.5">
+                        <ImportChip entry={imports.byWeek.get(isoWeekStart(s.date)) ?? null} />
                       </td>
                     ) : null}
                     <td className="px-2 py-1.5">
@@ -514,7 +547,7 @@ const WEEK_CHIP_CLASS: Record<TimelineStatus, string> = {
   not_observed: "border-dashed border-border text-muted-foreground",
 };
 
-function WeekChip({ status }: { status: TimelineStatus }) {
+export function WeekChip({ status }: { status: TimelineStatus }) {
   return (
     <span
       title={WEEK_STATUS_HELP[status]}
@@ -528,51 +561,133 @@ function WeekChip({ status }: { status: TimelineStatus }) {
   );
 }
 
+const IMPORT_CHIP_CLASS: Record<ImportWeekState, string> = {
+  current: "border-success/40 bg-success/10 text-success",
+  stale: "border-warning/40 bg-warning-muted text-warning",
+  incomplete: "border-warning/40 bg-warning-muted text-warning",
+  attempt_problem: "border-destructive/40 bg-destructive/10 text-destructive",
+  not_tracked: "border-dashed border-border text-muted-foreground",
+};
+
+export function ImportChip({ entry }: { entry: ImportWeekEntry | null }) {
+  if (!entry) {
+    return (
+      <span className="inline-block whitespace-nowrap rounded border border-dashed px-1.5 py-0.5 text-[10px] text-muted-foreground">
+        Import not tracked
+      </span>
+    );
+  }
+  return (
+    <span
+      title={importWeekHelp(entry)}
+      data-testid="import-chip"
+      className={cn(
+        "inline-block whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-medium",
+        IMPORT_CHIP_CLASS[entry.state],
+      )}
+    >
+      {importWeekLabel(entry)}
+    </span>
+  );
+}
+
+/**
+ * Two separate facts per week, never merged:
+ *   - Rota status: the feed's own week status (published / setup / …), as last seen;
+ *   - Import: whether a complete import has confirmed every day, when (last
+ *     known good), and whether the newest attempt had a problem.
+ */
 function WeekStatusStrip({
-  timeline,
-  isLoading,
-  error,
-  onRetry,
-}: NonNullable<TheatrePressureCardProps["weekStatus"]>) {
+  status,
+  imports,
+}: {
+  status?: TheatrePressureCardProps["weekStatus"];
+  imports?: TheatrePressureCardProps["importCoverage"];
+}) {
+  const statusTl =
+    status?.timeline && !status.error && status.timeline.capture === "available"
+      ? status.timeline
+      : null;
+  const importTl =
+    imports?.timeline && !imports.error && imports.timeline.capture === "available"
+      ? imports.timeline
+      : null;
+  const weekStarts = (statusTl?.weeks ?? importTl?.weeks ?? []).map((w) => w.weekStart);
   return (
     <section aria-labelledby="week-status-title" className="space-y-2 rounded-md border p-3">
       <h3 id="week-status-title" className="text-sm font-semibold">
-        Rota week status
+        Rota weeks — status and import
       </h3>
-      {error ? (
+      {status?.error ? (
         <QueryErrorNotice
-          error={error}
-          onRetry={onRetry}
+          error={status.error}
+          onRetry={status.onRetry}
           what="rota week status"
-          stale={!!timeline}
+          stale={!!status.timeline}
         />
       ) : null}
-      {!timeline && !error && isLoading ? (
+      {imports?.error ? (
+        <QueryErrorNotice
+          error={imports.error}
+          onRetry={imports.onRetry}
+          what="rota import coverage"
+          stale={!!imports.timeline}
+        />
+      ) : null}
+      {(status && !status.timeline && !status.error && status.isLoading) ||
+      (imports && !imports.timeline && !imports.error && imports.isLoading) ? (
         <p className="text-xs text-muted-foreground">Loading week status…</p>
       ) : null}
-      {timeline && !error ? (
-        timeline.capture === "not_installed" ? (
+      {status?.timeline && !status.error && status.timeline.capture === "not_installed" ? (
+        <p className="text-xs text-muted-foreground">
+          Week status from the rota feed isn&apos;t recorded yet (database update pending), so no
+          week is shown as published or draft.
+        </p>
+      ) : null}
+      {imports?.timeline && !imports.error && imports.timeline.capture === "not_installed" ? (
+        <p className="text-xs text-muted-foreground">
+          Import date tracking isn&apos;t switched on yet (database update pending), so how up to
+          date each week&apos;s import is isn&apos;t shown.
+        </p>
+      ) : null}
+      {weekStarts.length > 0 ? (
+        <>
           <p className="text-xs text-muted-foreground">
-            Week status from the rota feed isn&apos;t recorded yet (database update pending), so no
-            week is shown as published or draft.
+            {statusTl ? (
+              <>
+                <strong>Status</strong> is the rota feed&apos;s own label for the week, as last seen
+                — “Checked” is when the import saw it, not when the rota was published. Weeks never
+                seen show “Not checked”.{" "}
+              </>
+            ) : null}
+            {importTl ? (
+              <>
+                <strong>Import</strong> says whether a complete import has confirmed every day of
+                the week, and when. A partial or failed attempt keeps the last known good time.
+                {importTl.trackingSince
+                  ? ` Import tracking started ${formatDateGB(importTl.trackingSince.slice(0, 10))}; earlier weeks aren't tracked.`
+                  : " No import has been tracked yet."}
+              </>
+            ) : null}
           </p>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground">
-              The rota feed&apos;s own status for each week, as last seen by the import. “Checked”
-              is when the import saw it — not when the rota was published. Weeks the import
-              hasn&apos;t seen show “Not checked”, never a status.
-            </p>
-            <ul className="flex flex-wrap gap-1.5" aria-label="Week status by week">
-              {timeline.weeks.map((w) => (
+          <ul className="flex flex-wrap gap-1.5" aria-label="Rota weeks">
+            {weekStarts.map((wk) => {
+              const w = statusTl?.byWeek.get(wk);
+              const imp = importTl?.byWeek.get(wk) ?? null;
+              return (
                 <li
-                  key={w.weekStart}
+                  key={wk}
                   data-testid="week-status"
                   className="flex flex-col gap-0.5 rounded border px-2 py-1 text-[11px]"
                 >
-                  <span className="text-muted-foreground">w/c {formatDateGB(w.weekStart)}</span>
-                  <WeekChip status={w.status} />
-                  {w.observedAt ? (
+                  <span className="text-muted-foreground">w/c {formatDateGB(wk)}</span>
+                  {statusTl ? (
+                    <span className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">Status</span>
+                      <WeekChip status={w?.status ?? "not_observed"} />
+                    </span>
+                  ) : null}
+                  {w?.observedAt ? (
                     <span
                       className={cn(
                         "text-[10px]",
@@ -583,11 +698,22 @@ function WeekStatusStrip({
                       {w.stale ? " · may be out of date" : ""}
                     </span>
                   ) : null}
+                  {importTl ? (
+                    <span className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">Import</span>
+                      <ImportChip entry={imp} />
+                    </span>
+                  ) : null}
+                  {imp?.lastKnownGoodAt ? (
+                    <span className="text-[10px] text-muted-foreground">
+                      Good as of {formatDateGB(imp.lastKnownGoodAt.slice(0, 10))}
+                    </span>
+                  ) : null}
                 </li>
-              ))}
-            </ul>
-          </>
-        )
+              );
+            })}
+          </ul>
+        </>
       ) : null}
     </section>
   );

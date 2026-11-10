@@ -17,6 +17,8 @@ M8="$ROOT/drizzle/pending/0008_theatre_session_source_labels.sql"
 [ -f "$M8" ] || M8=$(ls "$ROOT"/drizzle/migrations/*_theatre_session_source_labels.sql | head -1)
 M9="$ROOT/drizzle/pending/0009_clwrota_week_status.sql"
 [ -f "$M9" ] || M9=$(ls "$ROOT"/drizzle/migrations/*_clwrota_week_status.sql | head -1)
+M10="$ROOT/drizzle/pending/0010_clwrota_sync_windows.sql"
+[ -f "$M10" ] || M10=$(ls "$ROOT"/drizzle/migrations/*_clwrota_sync_windows.sql | head -1)
 D=$(mktemp -d /tmp/pglabels.XXXX)
 cleanup() { [ -n "${RPID:-}" ] && kill "$RPID" 2>/dev/null || true; pg_ctl -D "$D/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"; }
 trap cleanup EXIT
@@ -30,6 +32,7 @@ sed '/--> statement-breakpoint/d' "$M7" | $H -U postgres >/dev/null
 $H -U postgres -f "$HERE/fixture-theatre.sql" >/dev/null
 sed '/--> statement-breakpoint/d' "$M8" | $H -U postgres >/dev/null
 sed '/--> statement-breakpoint/d' "$M9" | $H -U postgres >/dev/null
+sed '/--> statement-breakpoint/d' "$M10" | $H -U postgres >/dev/null
 $H -U harness -c "CREATE TABLE results (phase text, name text, expected text, actual text)"
 
 A=00000000-0000-0000-0000-0000000000a1; C=00000000-0000-0000-0000-0000000000c3
@@ -169,6 +172,53 @@ W9META="(SELECT concat_ws(',', has_table_privilege('authenticated','$W9','SELECT
   (SELECT relrowsecurity FROM pg_class WHERE oid='$W9'::regclass), (SELECT count(*) FROM pg_policy WHERE polrelid='$W9'::regclass)))"
 c "metadata: week status privileges and RLS"   sched "$W9META"                        "ok:t,f,f,f,f,t,1"
 
+# ---------- 0010 import date windows ----------
+W10=public.clwrota_sync_windows
+SW="INSERT INTO $W10 (started_at, finished_at, requested_from, requested_to, covered_from, covered_to, outcome, explicit_window, rows_in_window, rows_skipped, write_errors)"
+SWINS="WITH i AS ($SW VALUES
+ ('2030-01-01 10:00+00','2030-01-01 10:05+00','2030-01-07','2030-01-20','2030-01-07','2030-01-20','ok',false,50,3,0),
+ ('2030-01-02 10:00+00','2030-01-02 10:05+00','2030-01-14','2030-01-27','2030-01-14','2030-01-27','partial',false,40,0,2),
+ ('2030-01-03 10:00+00','2030-01-03 10:05+00','2030-01-28','2030-02-03',NULL,NULL,'failed',true,0,0,0),
+ ('2030-01-04 10:00+00','2030-01-04 10:05+00','2030-02-04','2030-02-06','2030-02-04','2030-02-06','ok',true,9,0,0),
+ ('2030-01-05 10:00+00','2030-01-05 10:05+00','2030-02-07','2030-02-10','2030-02-07','2030-02-09','ok',true,7,0,0)
+ RETURNING 1) SELECT 'ok:' || count(*) FROM i"
+COV="public.get_rota_sync_week_coverage('2030-01-07','2030-02-17')"
+COVSIG="(SELECT string_agg(week_start::text || ':' || days_total || '/' || days_ok || '/' || days_partial_only || '/' || days_latest_not_ok || '/' || (last_full_ok_at IS NOT NULL)::text || '/' || coalesce(latest_attempt_outcome,'-'), ';' ORDER BY week_start) FROM $COV)"
+COVEXP="ok:2030-01-07:7/7/0/0/true/ok;2030-01-14:7/7/0/7/true/partial;2030-01-21:7/0/7/7/false/partial;2030-01-28:7/0/0/7/false/failed;2030-02-04:7/6/0/0/false/ok;2030-02-11:7/0/0/0/false/-"
+cw "service records import windows"            service "$SWINS"                       "ok:5"
+c "staffA week coverage (ok/partial/failed/chunked/untracked)" user:$A "$COVSIG"     "$COVEXP"
+c "partial after ok keeps last known good time" user:$A "(SELECT extract(epoch FROM last_full_ok_at)::bigint = extract(epoch FROM '2030-01-01 10:00+00'::timestamptz)::bigint FROM $COV WHERE week_start='2030-01-14')" "ok:true"
+c "tracking start reported"                    user:$A "(SELECT bool_and(extract(epoch FROM tracking_since)::bigint = extract(epoch FROM '2030-01-01 10:00+00'::timestamptz)::bigint) FROM $COV)" "ok:true"
+c "mid-week range returns whole weeks"         user:$A "(SELECT string_agg(week_start::text || '=' || days_total, ';' ORDER BY week_start) FROM public.get_rota_sync_week_coverage('2030-01-09','2030-01-15'))" "ok:2030-01-07=7;2030-01-14=7"
+c "coordinator week coverage"                  user:$C "(SELECT count(*) FROM $COV)"  "ok:6"
+c "service week coverage"                      service "(SELECT count(*) FROM $COV)"  "ok:6"
+c "coverage output has no error text column"   sched "(SELECT count(*) FROM information_schema.columns WHERE table_name='clwrota_sync_windows' AND data_type='text' AND column_name<>'outcome')" "ok:0"
+c "roleless coverage denied"                   user:$R "(SELECT count(*) FROM $COV)"  "err:42501"
+c "inactive admin coverage denied"             user:$E "(SELECT count(*) FROM $COV)"  "err:42501"
+c "departed staff coverage denied"             user:$I "(SELECT count(*) FROM $COV)"  "err:42501"
+c "missing-profile coverage denied"            user:$M "(SELECT count(*) FROM $COV)"  "err:42501"
+c "anon coverage denied"                       anon "(SELECT count(*) FROM $COV)"     "err:42501"
+c "no-claims authenticated coverage denied"    noclaims "(SELECT count(*) FROM $COV)" "err:42501"
+c "forged service claim coverage denied"       forged-svc "(SELECT count(*) FROM $COV)" "err:42501"
+c "no-claims postgres coverage not exempt"     sched "(SELECT count(*) FROM $COV)"    "err:42501"
+c "coverage window >400 days rejected"         user:$A "(SELECT count(*) FROM public.get_rota_sync_week_coverage('2030-01-01','2031-03-01'))" "err:22023"
+c "coverage null window rejected"              user:$A "(SELECT count(*) FROM public.get_rota_sync_week_coverage(NULL,'2030-01-01'))" "err:22023"
+c "staffA raw windows denied"                  user:$A "(SELECT count(*) FROM $W10)"  "err:42501"
+c "admin raw windows denied"                   user:$DA "(SELECT count(*) FROM $W10)" "err:42501"
+cw "staffA cannot record a window"             user:$A "WITH i AS ($SW VALUES ('2030-01-01','2030-01-01','2030-03-04','2030-03-10','2030-03-04','2030-03-10','ok',true,1,0,0) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:42501"
+cw "ok run with write errors rejected"         service "WITH i AS ($SW VALUES ('2030-01-01','2030-01-01','2030-03-04','2030-03-10','2030-03-04','2030-03-10','ok',true,1,0,1) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "partial run without errors rejected"       service "WITH i AS ($SW VALUES ('2030-01-01','2030-01-01','2030-03-04','2030-03-10','2030-03-04','2030-03-10','partial',true,1,0,0) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "failed run cannot claim coverage"          service "WITH i AS ($SW VALUES ('2030-01-01','2030-01-01','2030-03-04','2030-03-10','2030-03-04','2030-03-10','failed',true,0,0,0) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "coverage outside requested rejected"       service "WITH i AS ($SW VALUES ('2030-01-01','2030-01-01','2030-03-04','2030-03-10','2030-03-03','2030-03-10','ok',true,1,0,0) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+W10META="(SELECT concat_ws(',', has_table_privilege('authenticated','$W10','SELECT'), has_table_privilege('authenticated','$W10','INSERT'),
+  has_table_privilege('anon','$W10','SELECT'), has_table_privilege('service_role','$W10','INSERT'),
+  (SELECT relrowsecurity FROM pg_class WHERE oid='$W10'::regclass), (SELECT count(*) FROM pg_policy WHERE polrelid='$W10'::regclass),
+  has_function_privilege('anon','public.get_rota_sync_week_coverage(date,date)','EXECUTE'),
+  has_function_privilege('authenticated','public.get_rota_sync_week_coverage(date,date)','EXECUTE'),
+  (SELECT prosecdef FROM pg_proc WHERE oid='public.get_rota_sync_week_coverage(date,date)'::regprocedure),
+  (SELECT array_to_string(proconfig,';') FROM pg_proc WHERE oid='public.get_rota_sync_week_coverage(date,date)'::regprocedure)))"
+c "metadata: import windows privileges, RLS, definer config" sched "$W10META" "ok:f,f,f,t,t,0,f,t,t,search_path=public"
+
 # ---------- real PostgREST, synthetic JWTs ----------
 SECRET="harness-only-jwt-secret-0123456789abcdef"
 jwt() { node -e '
@@ -208,6 +258,12 @@ h "POST service signals"                  POST "$TS" "/rpc/get_theatre_session_l
 h "GET staffA week status (paged order)"  GET  "$TA" "/clwrota_week_status?select=week_start,status_code&order=week_start&limit=1&offset=1" "" 200 '^\[\{"week_start":"2030-01-14","status_code":"setup"\}\]$'
 h "GET roleless week status empty"        GET  "$TR" "/clwrota_week_status?select=week_start" "" 200 '^\[\]$'
 h "GET anon week status denied"           GET  ""    "/clwrota_week_status" "" 401 '42501'
+CW='{"p_from":"2030-01-07","p_to":"2030-02-17"}'
+h "POST staffA week coverage (derived)"   POST "$TA" "/rpc/get_rota_sync_week_coverage" "$CW" 200 '"latest_attempt_outcome":"partial"'
+h "POST roleless week coverage denied"    POST "$TR" "/rpc/get_rota_sync_week_coverage" "$CW" 403 '42501'
+h "POST anon week coverage denied"        POST ""    "/rpc/get_rota_sync_week_coverage" "$CW" 401 '42501'
+h "GET staffA raw import windows denied"  GET  "$TA" "/clwrota_sync_windows?select=outcome" "" 403 '42501'
+h "POST service week coverage"            POST "$TS" "/rpc/get_rota_sync_week_coverage" "$CW" 200 '"week_start":"2030-02-11"'
 h "POST staffA week status write denied"  POST "$TA" "/clwrota_week_status" '{"week_start":"2030-02-04","status_code":"published","rows_seen":1,"dates_seen":1,"actual_rows":1}' 403 '42501'
 
 PHASE=sql

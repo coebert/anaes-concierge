@@ -16,10 +16,15 @@ import {
 } from "lucide-react";
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robustness";
+import { COVER_TEXT } from "@/features/audit/cover-rules";
 import { PageLoading } from "@/components/loading";
 import { QueryErrorNotice } from "@/components/query-state-notice";
 import { TheatrePressureCard } from "@/features/audit/TheatrePressureCard";
 import { buildWeekStatusTimeline, loadWeekStatus } from "@/features/audit/rota-week-status";
+import {
+  buildImportCoverageTimeline,
+  loadImportCoverage,
+} from "@/features/audit/rota-sync-coverage";
 import {
   buildTheatrePressureForecast,
   loadTheatrePressureEvidence,
@@ -82,6 +87,24 @@ function RobustnessPage() {
         : null,
     [weekStatusQuery.data, rangeStart, rangeEnd],
   );
+  // Per-week import coverage/freshness (derived; absent function → not_installed).
+  const importCoverageQuery = useQuery({
+    queryKey: ["clwrota-import-coverage", rangeStart, rangeEnd],
+    queryFn: () => loadImportCoverage(rangeStart, rangeEnd),
+  });
+  const importTimeline = useMemo(
+    () =>
+      importCoverageQuery.data
+        ? buildImportCoverageTimeline({
+            rangeStart,
+            rangeEnd,
+            rows: importCoverageQuery.data.rows,
+            capture: importCoverageQuery.data.capture,
+            now: new Date(),
+          })
+        : null,
+    [importCoverageQuery.data, rangeStart, rangeEnd],
+  );
   const forecast = useMemo(
     () =>
       evidenceQuery.data
@@ -114,10 +137,15 @@ function RobustnessPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Rota robustness</h1>
             <p className="text-sm text-muted-foreground">
-              Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks. Headroom =
-              consultants + ST6/7 trainees available, minus theatre lists. On-call, ICU, obstetrics,
-              teaching, admin, leave and LTFT days are excluded.
+              Forward-looking coverage headroom for the next {WEEKS_VISIBLE} weeks.{" "}
+              {COVER_TEXT.headroom} {COVER_TEXT.soloCapable} On-call, ICU, obstetrics, teaching,
+              admin, leave and LTFT days are excluded.
             </p>
+            {data?.poolRulesSource === "defaults" ? (
+              <p role="status" className="mt-1 text-xs text-muted-foreground">
+                No duty categories are set up in admin, so the built-in categories are being used.
+              </p>
+            ) : null}
           </div>
           <Badge variant="secondary">
             {formatDateGB(rangeStart)} – {formatDateGB(rangeEnd)}
@@ -193,13 +221,22 @@ function RobustnessPage() {
             void evidenceQuery.refetch();
             void robustnessQuery.refetch();
             void weekStatusQuery.refetch();
+            void importCoverageQuery.refetch();
           }}
-          isRefreshing={evidenceQuery.isFetching || weekStatusQuery.isFetching}
+          isRefreshing={
+            evidenceQuery.isFetching || weekStatusQuery.isFetching || importCoverageQuery.isFetching
+          }
           weekStatus={{
             timeline: weekTimeline,
             isLoading: weekStatusQuery.isLoading,
             error: weekStatusQuery.error,
             onRetry: () => void weekStatusQuery.refetch(),
+          }}
+          importCoverage={{
+            timeline: importTimeline,
+            isLoading: importCoverageQuery.isLoading,
+            error: importCoverageQuery.error,
+            onRetry: () => void importCoverageQuery.refetch(),
           }}
         />
 
@@ -213,25 +250,21 @@ function RobustnessPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex flex-wrap gap-3">
-              <LegendItem
-                color="bg-emerald-300/50"
-                label="OK"
-                description="Enough solo-capable staff to cover all lists."
-              />
+              <LegendItem color="bg-emerald-300/50" label="OK" description={COVER_TEXT.risk.ok} />
               <LegendItem
                 color="bg-amber-400/80"
                 label="Tight"
-                description="Headroom ≤ 1 — little buffer for unexpected absence."
+                description={COVER_TEXT.risk.tight}
               />
               <LegendItem
                 color="bg-orange-400/80 text-white"
                 label="SPA needed"
-                description="Not enough solo-capable staff; a consultant on SPA would need to be pulled onto a list."
+                description={COVER_TEXT.risk.spa_required}
               />
               <LegendItem
                 color="bg-red-500/80 text-white"
                 label="Shortfall"
-                description="Even with all SPA consultants redeployed, there are not enough staff to cover lists."
+                description={COVER_TEXT.risk.shortfall}
               />
             </div>
             <div className="rounded-md bg-muted/40 p-2.5 text-muted-foreground">
@@ -241,9 +274,7 @@ function RobustnessPage() {
               ICU, obstetrics, teaching, admin or CIC duties, <em>and</em> who are <em>not</em>{" "}
               already covering a clinical list (theatre, POAC, pain clinic or any other
               theatre_session). Staff with no entry on a date are treated as off-duty, not as spare
-              capacity. ST6/ST7/ST8 trainees count as solo-capable; junior trainees and SAS doctors
-              are shown for context but do <em>not</em> count toward headroom. Consultants on SPA
-              are reported separately — they only close the gap as flexible cover.
+              capacity. {COVER_TEXT.soloCapable} {COVER_TEXT.spa}
             </div>
           </CardContent>
         </Card>
@@ -293,7 +324,7 @@ function RobustnessPage() {
                       />
                       <ThTooltip
                         label="AM headroom"
-                        tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in."
+                        tooltip={`${COVER_TEXT.headroom} ${COVER_TEXT.soloCapable} SPA is reported separately in the next column.`}
                       />
                       <ThTooltip
                         label="AM SPA"
@@ -306,7 +337,7 @@ function RobustnessPage() {
                       />
                       <ThTooltip
                         label="PM headroom"
-                        tooltip="Spare solo-capable staff (free consultants + free ST6/7/8 trainees) after covering every unfilled list. SPA is reported separately in the next column and is NOT folded in."
+                        tooltip={`${COVER_TEXT.headroom} ${COVER_TEXT.soloCapable} SPA is reported separately in the next column.`}
                       />
                       <ThTooltip
                         label="PM SPA"

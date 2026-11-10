@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeRobustness, computeListCoverage, riskLabel } from "@/features/audit/robustness";
+import { COVER_TEXT, worseRisk } from "@/features/audit/cover-rules";
 import { todayISO, addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { compareBySurname } from "@/lib/name-sort";
 import { PageLoading } from "@/components/loading";
@@ -68,13 +69,8 @@ function dayChipAccent(risk: "ok" | "tight" | "shortfall" | "spa_required") {
   return "bg-emerald-500 text-white";
 }
 
-function worstRisk(
-  a: "ok" | "tight" | "shortfall" | "spa_required",
-  b: "ok" | "tight" | "shortfall" | "spa_required",
-) {
-  const order = { ok: 0, tight: 1, spa_required: 2, shortfall: 3 } as const;
-  return order[a] >= order[b] ? a : b;
-}
+// Worst half of a day — same severity order as every other cover roll-up.
+const worstRisk = worseRisk;
 
 export function SummaryDashboard() {
   const today = todayISO();
@@ -805,30 +801,21 @@ function RobustnessLegend() {
         How rota robustness is calculated
       </div>
       <p className="mb-2 text-[10px] text-muted-foreground leading-relaxed">
-        Robustness compares solo-capable staff (consultants + senior trainees ST6–ST8 who are free)
-        against unfilled theatre lists. Junior trainees and SAS doctors are tracked but do not count
-        toward solo cover. Each day shows the worst half (AM or PM).
+        {COVER_TEXT.headroom} {COVER_TEXT.soloCapable} {COVER_TEXT.spa} Each day shows the worst
+        half (AM or PM).
       </p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
-        <LegendSwatch
-          color="bg-emerald-300/50"
-          label="OK"
-          description="Comfortable headroom (>1 spare solo-capable person)."
-        />
-        <LegendSwatch
-          color="bg-amber-400/80"
-          label="Tight"
-          description="Covered, but headroom is 0 or 1."
-        />
+        <LegendSwatch color="bg-emerald-300/50" label="OK" description={COVER_TEXT.risk.ok} />
+        <LegendSwatch color="bg-amber-400/80" label="Tight" description={COVER_TEXT.risk.tight} />
         <LegendSwatch
           color="bg-orange-400/80"
           label="SPA needed"
-          description="Shortfall closes only by pulling a consultant off SPA time."
+          description={COVER_TEXT.risk.spa_required}
         />
         <LegendSwatch
           color="bg-red-500/80"
           label="Shortfall"
-          description="Not enough solo-capable staff even after redeploying SPA."
+          description={COVER_TEXT.risk.shortfall}
         />
       </div>
     </div>

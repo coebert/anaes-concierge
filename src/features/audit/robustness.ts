@@ -1,6 +1,12 @@
 import { compareBySurname } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRowsPaged, idKey, rotaAssignmentKey, type PaginateOptions } from "./paginate";
+import {
+  RISK_LABEL,
+  classifyRisk as classifyCoverRisk,
+  isSeniorTrainee as isSeniorTraineeRule,
+  isSoloCapable,
+} from "./cover-rules";
 
 /**
  * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
@@ -72,7 +78,7 @@ export interface DayCapacity {
   pm: HalfDayCapacity;
 }
 
-const RISK_TIGHT = 1;
+// Risk threshold (RISK_TIGHT) lives in ./cover-rules, shared by every view.
 
 function eachWeekday(start: string, end: string): string[] {
   const s = new Date(start + "T00:00:00Z");
@@ -86,17 +92,14 @@ function eachWeekday(start: string, end: string): string[] {
   return out;
 }
 
-/** ST6 / ST7 trainees can solo-cover daytime lists. */
-export function isSeniorTrainee(trainingLevel: string | null | undefined): boolean {
-  if (!trainingLevel) return false;
-  const t = trainingLevel.trim().toUpperCase();
-  return t === "ST6" || t === "ST7" || t === "ST8";
-}
+/** ST6 / ST7 / ST8 trainees can solo-cover daytime lists (see ./cover-rules). */
+export const isSeniorTrainee = isSeniorTraineeRule;
 
 /**
- * Built-in fallback classification used only if the `duty_type_pool_rules`
- * settings table is empty or unreachable. Admins can override every entry
- * via /admin/duty-categories.
+ * Built-in classification used ONLY when the `duty_type_pool_rules` settings
+ * table was read successfully and is empty. A failed read is an error (the
+ * caller shows Retry), never a silent fallback to these defaults. Admins can
+ * override every entry via /admin/duty-categories.
  */
 const DEFAULT_UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "icu_consultant_oncall",
@@ -125,17 +128,33 @@ export interface DutyPoolSets {
   flex: Set<string>;
 }
 
-async function loadDutyPoolSets(): Promise<DutyPoolSets> {
-  const { data } = await supabase.from("duty_type_pool_rules").select("duty_type, category");
-  const rows = (data ?? []) as Array<{ duty_type: string; category: string }>;
+/** Where the duty categories came from: the admin table, or built-in defaults because it is empty. */
+export type PoolRulesSource = "configured" | "defaults";
+
+export async function loadDutyPoolSets(): Promise<DutyPoolSets & { source: PoolRulesSource }> {
+  const rows = await fetchAllRows<{ duty_type: string; category: string }>(
+    (from, to) =>
+      supabase
+        .from("duty_type_pool_rules")
+        .select("duty_type, category")
+        .order("duty_type", { ascending: true })
+        .range(from, to),
+    { rowKey: (r) => r.duty_type, label: "robustness.duty_type_pool_rules" },
+  ).catch((e: unknown) => {
+    throw new Error(
+      `Duty categories couldn't be loaded, so cover can't be calculated reliably (${e instanceof Error ? e.message : String(e)}).`,
+    );
+  });
   if (rows.length === 0) {
     return {
+      source: "defaults",
       clinicalList: new Set(DEFAULT_CLINICAL_LIST_DUTY_TYPES),
       unavailable: new Set(DEFAULT_UNAVAILABLE_DUTY_TYPES),
       flex: new Set(DEFAULT_FLEX_DUTY_TYPES),
     };
   }
-  const sets: DutyPoolSets = {
+  const sets: DutyPoolSets & { source: PoolRulesSource } = {
+    source: "configured",
     clinicalList: new Set(),
     unavailable: new Set(),
     flex: new Set(),
@@ -157,10 +176,7 @@ async function loadDutyPoolSets(): Promise<DutyPoolSets> {
  * - ok: comfortable headroom
  */
 export function classifyRisk(headroom: number, headroomWithSpa: number): HalfDayCapacity["risk"] {
-  if (headroom < 0 && headroomWithSpa >= 0) return "spa_required";
-  if (headroom < 0) return "shortfall";
-  if (headroom <= RISK_TIGHT) return "tight";
-  return "ok";
+  return classifyCoverRisk(headroom, headroomWithSpa);
 }
 
 // Backwards-compatible internal alias.
@@ -241,7 +257,11 @@ export async function computeRobustness(
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
   options: RobustnessOptions = {},
-): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
+): Promise<{
+  days: DayCapacity[];
+  totalStaffByGrade: Record<Grade, number>;
+  poolRulesSource: PoolRulesSource;
+}> {
   const requireRosterEvidence = options.requireRosterEvidence ?? true;
   const poolSets = await loadDutyPoolSets();
 
@@ -336,11 +356,17 @@ export async function computeRobustness(
   // the "required" count and surface as a false consultant shortfall even
   // though every real theatre is fully staffed. Drop them up-front so they
   // don't contribute to demand or coverage.
-  const { data: inactiveTheatreRows } = await supabase
-    .from("theatres")
-    .select("id")
-    .eq("active", false);
-  const inactiveTheatreIds = new Set((inactiveTheatreRows ?? []).map((t) => t.id as string));
+  const inactiveTheatreRows = await fetchAllRows<{ id: string }>(
+    (from, to) =>
+      supabase
+        .from("theatres")
+        .select("id")
+        .eq("active", false)
+        .order("id", { ascending: true })
+        .range(from, to),
+    { rowKey: idKey, label: "robustness.inactive_theatres" },
+  );
+  const inactiveTheatreIds = new Set(inactiveTheatreRows.map((t) => t.id));
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll.filter((s) => /emergenc|cepod/i.test(s.name ?? "")).map((s) => s.id),
@@ -564,7 +590,7 @@ export async function computeRobustness(
     });
   }
 
-  return { days, totalStaffByGrade };
+  return { days, totalStaffByGrade, poolRulesSource: poolSets.source };
 }
 
 /* --------------------------------------------------------------------------
@@ -623,11 +649,16 @@ export async function computeListCoverage(
           .range(from, to),
       { rowKey: idKey, label: "list-coverage.specialties" },
     ),
-    supabase
-      .from("theatres")
-      .select("id")
-      .eq("active", false)
-      .then((r) => r.data ?? []),
+    fetchAllRows<{ id: string }>(
+      (from, to) =>
+        supabase
+          .from("theatres")
+          .select("id")
+          .eq("active", false)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "list-coverage.inactive_theatres" },
+    ),
   ]);
 
   const emergencySpecialtyIds = new Set(
@@ -685,7 +716,7 @@ export async function computeListCoverage(
     };
     const grade = a.profiles.grade;
     const level = a.profiles.training_level;
-    if (grade === "consultant" || (grade === "trainee" && isSeniorTrainee(level))) {
+    if (isSoloCapable(grade, level)) {
       cur.hasSolo = true;
     } else if (grade === "trainee" || grade === "sas") {
       cur.hasSupervised = true;
@@ -760,10 +791,7 @@ export function riskColor(risk: HalfDayCapacity["risk"]): string {
 }
 
 export function riskLabel(risk: HalfDayCapacity["risk"]): string {
-  if (risk === "shortfall") return "Shortfall";
-  if (risk === "spa_required") return "SPA needed";
-  if (risk === "tight") return "Tight";
-  return "OK";
+  return RISK_LABEL[risk];
 }
 
 // ============= Per-day drilldown =============
@@ -781,6 +809,8 @@ export interface DayDetailSession {
     trainingLevel: string | null;
   }>;
   unfilled: boolean;
+  /** Emergency / CEPOD list — covered by on-call, not part of planned demand. */
+  emergency: boolean;
 }
 
 export interface PersonRef {
@@ -806,6 +836,8 @@ export type StaffStatusCategory =
   | "free_senior_trainee"
   | "free_junior_trainee"
   | "free_sas"
+  | "free_other"
+  | "not_rostered"
   | "on_spa"
   | "on_clinical_list"
   | "on_excluded_duty"
@@ -852,49 +884,131 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
 
   const poolSets = await loadDutyPoolSets();
 
-  const [
-    { data: theatreSessions },
-    { data: profiles },
-    { data: leave },
-    { data: assignments },
-    { data: traineeTargets },
-  ] = await Promise.all([
-    supabase
-      .from("theatre_sessions")
-      .select("id, session, theatre_id, specialty_id, surgical_consultant")
-      .eq("session_date", date),
-    supabase
-      .from("profiles")
-      .select("id, full_name, grade, training_level, ltft_days_off, active")
-      .eq("active", true),
-    supabase
-      .from("leave_requests")
-      .select("staff_id, type, status")
-      .eq("status", "approved")
-      .lte("start_date", date)
-      .gte("end_date", date),
-    supabase
-      .from("rota_assignments")
-      .select("staff_id, theatre_session_id, role_on_list, duty_type, session")
-      .eq("session_date", date),
-    supabase
-      .from("trainee_targets")
-      .select(
-        "training_level, specialty_id, required_sessions, required_solo, required_supervised",
-      ),
+  // Every read below fails loudly (the page shows Retry) — an ignored error
+  // used to read as "no lists / no staff / no targets".
+  type TsRow = {
+    id: string;
+    session: string;
+    theatre_id: string | null;
+    specialty_id: string | null;
+    surgical_consultant: string | null;
+  };
+  type ProfileRow = {
+    id: string;
+    full_name: string;
+    grade: string | null;
+    training_level: string | null;
+    ltft_days_off: number[] | null;
+    active: boolean;
+  };
+  type LeaveRow = { id: string; staff_id: string; type: string; status: string };
+  type AsnRow = {
+    id: string;
+    staff_id: string;
+    theatre_session_id: string | null;
+    role_on_list: string | null;
+    duty_type: string;
+    session: string;
+  };
+  type TargetRowDb = {
+    id: string;
+    training_level: string;
+    specialty_id: string;
+    required_sessions: number;
+    required_solo: number;
+    required_supervised: number;
+  };
+  const [theatreSessions, profiles, leave, assignments, traineeTargets] = await Promise.all([
+    fetchAllRows<TsRow>(
+      (from, to) =>
+        supabase
+          .from("theatre_sessions")
+          .select("id, session, theatre_id, specialty_id, surgical_consultant")
+          .eq("session_date", date)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.theatre_sessions" },
+    ),
+    fetchAllRows<ProfileRow>(
+      (from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, full_name, grade, training_level, ltft_days_off, active")
+          .eq("active", true)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.profiles" },
+    ),
+    fetchAllRows<LeaveRow>(
+      (from, to) =>
+        supabase
+          .from("leave_requests")
+          .select("id, staff_id, type, status")
+          .eq("status", "approved")
+          .lte("start_date", date)
+          .gte("end_date", date)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.leave_requests" },
+    ),
+    fetchAllRows<AsnRow>(
+      (from, to) =>
+        supabase
+          .from("rota_assignments")
+          .select("id, staff_id, theatre_session_id, role_on_list, duty_type, session")
+          .eq("session_date", date)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.rota_assignments" },
+    ),
+    fetchAllRows<TargetRowDb>(
+      (from, to) =>
+        supabase
+          .from("trainee_targets")
+          .select(
+            "id, training_level, specialty_id, required_sessions, required_solo, required_supervised",
+          )
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.trainee_targets" },
+    ),
   ]);
 
-  const tsAll = theatreSessions ?? [];
+  const tsAll = theatreSessions;
   const theatreIds = [...new Set(tsAll.map((t) => t.theatre_id).filter(Boolean))] as string[];
   const specialtyIds = [...new Set(tsAll.map((t) => t.specialty_id).filter(Boolean))] as string[];
 
-  const [{ data: theatres }, { data: specialties }] = await Promise.all([
-    theatreIds.length
-      ? supabase.from("theatres").select("id, name, active").in("id", theatreIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string; active: boolean }> }),
-    specialtyIds.length
-      ? supabase.from("specialties").select("id, name").in("id", specialtyIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+  // ID lists for one day are small, but chunk anyway (≤200 per IN) and page.
+  const byIds = async <T extends { id: string }>(
+    table: "theatres" | "specialties",
+    cols: string,
+    ids: string[],
+  ): Promise<T[]> => {
+    const out: T[] = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      const slice = ids.slice(i, i + 200);
+      out.push(
+        ...(await fetchAllRows<T>(
+          (from, to) =>
+            supabase
+              .from(table)
+              .select(cols)
+              .in("id", slice)
+              .order("id", { ascending: true })
+              .range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>,
+          { rowKey: idKey, label: `day-detail.${table}` },
+        )),
+      );
+    }
+    return out;
+  };
+  const [theatres, specialties] = await Promise.all([
+    byIds<{ id: string; name: string; active: boolean }>(
+      "theatres",
+      "id, name, active",
+      theatreIds,
+    ),
+    byIds<{ id: string; name: string }>("specialties", "id, name", specialtyIds),
   ]);
 
   const theatreNameById = new Map((theatres ?? []).map((t) => [t.id, t.name]));
@@ -905,6 +1019,21 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   // NHH) so they don't appear as unfilled lists in the day drilldown.
   const ts = tsAll.filter((t) => !(t.theatre_id && inactiveTheatreIds.has(t.theatre_id as string)));
   const specialtyNameById = new Map((specialties ?? []).map((s) => [s.id, s.name]));
+  // Same emergency/CEPOD rule as computeRobustness: not planned demand, and
+  // assignments to them neither fill a list nor count as rostered evidence.
+  const emergencySpecialtyIdsDay = new Set(
+    (specialties ?? []).filter((sp) => /emergenc|cepod/i.test(sp.name ?? "")).map((sp) => sp.id),
+  );
+  const emergencySessionIdsDay = new Set(
+    tsAll.filter((t) => isEmergencyTheatreSession(t, emergencySpecialtyIdsDay)).map((t) => t.id),
+  );
+  // Roster evidence (same gate as computeRobustness): any non-emergency
+  // assignment today means the person is on duty.
+  const rosteredToday = new Set<string>();
+  for (const a of assignments) {
+    if (a.theatre_session_id && emergencySessionIdsDay.has(a.theatre_session_id)) continue;
+    rosteredToday.add(a.staff_id);
+  }
 
   const profById = new Map(
     (profiles ?? []).map((p) => [
@@ -973,6 +1102,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         surgicalConsultant: (t.surgical_consultant as string | null) ?? null,
         assignments: asns,
         unfilled: asns.length === 0,
+        emergency: emergencySessionIdsDay.has(t.id),
       };
     })
     .sort((a, b) =>
@@ -1036,7 +1166,7 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
   }
 
   type HalfAssn =
-    | { kind: "theatre"; theatreSessionId: string; role: string | null }
+    | { kind: "theatre"; theatreSessionId: string | null; role: string | null }
     | { kind: "spa" }
     | undefined;
   const halfAssn: Record<SessionHalf, Map<string, HalfAssn>> = {
@@ -1048,16 +1178,19 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     const sid = a.staff_id as string;
     const dt = a.duty_type as string;
     const sess = a.session as string;
+    if (a.theatre_session_id && emergencySessionIdsDay.has(a.theatre_session_id)) continue;
     if (poolSets.unavailable.has(dt)) {
       if (!excludedAllDay.has(sid)) excludedAllDay.set(sid, dt);
       continue;
     }
     if (sess !== "am" && sess !== "pm") continue;
     const half = sess as SessionHalf;
-    if (poolSets.clinicalList.has(dt) && a.theatre_session_id) {
+    // Same as computeRobustness: a clinical-list duty this half removes the
+    // person from the pool whether or not it is linked to a theatre session.
+    if (poolSets.clinicalList.has(dt)) {
       halfAssn[half].set(sid, {
         kind: "theatre",
-        theatreSessionId: a.theatre_session_id as string,
+        theatreSessionId: (a.theatre_session_id as string | null) ?? null,
         role: (a.role_on_list as string | null) ?? null,
       });
     } else if (poolSets.flex.has(dt)) {
@@ -1195,9 +1328,18 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
         });
         continue;
       }
+      if (!rosteredToday.has(id)) {
+        entries.push({
+          ...ref,
+          category: "not_rostered",
+          reason: "No rota entry today — treated as not on duty",
+          countsToSolo: false,
+        });
+        continue;
+      }
       const ha = halfAssn[half].get(id);
       if (ha?.kind === "theatre") {
-        const info = tsInfoById.get(ha.theatreSessionId);
+        const info = ha.theatreSessionId ? tsInfoById.get(ha.theatreSessionId) : undefined;
         const sessionLabel = half.toUpperCase(); // AM / PM
         const specialty = info?.specialty ?? "specialty not mapped";
         const theatre = info?.theatreName ?? "a theatre list";
@@ -1285,8 +1427,8 @@ function freeEntry(ref: PersonRef): StaffStatusEntry {
   }
   return {
     ...ref,
-    category: "free_consultant",
-    reason: "Free (grade unknown)",
+    category: "free_other",
+    reason: "Free — grade not recorded, so not counted as solo-capable",
     countsToSolo: false,
   };
 }

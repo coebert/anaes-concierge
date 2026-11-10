@@ -9,7 +9,10 @@ export async function loadTheatreNameAliases(): Promise<Map<string, string>> {
     .from("theatre_name_aliases")
     .select("alias, theatre_id, active")
     .eq("active", true);
-  if (error || !data) return out;
+  // A failed read must not import rows with silently unmatched theatres:
+  // fail the run (recorded as a failed import window) so it is retried.
+  if (error) throw new Error(`Theatre aliases couldn't be loaded: ${error.message}`);
+  if (!data) return out;
   for (const row of data) {
     const key = (row.alias ?? "").toLowerCase().trim();
     if (!key) continue;

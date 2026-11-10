@@ -15,6 +15,13 @@ import {
   type Grade,
 } from "@/features/audit/robustness";
 import { PageLoading } from "@/components/loading";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import {
+  COVER_TEXT,
+  SCENARIO_VERDICT_LABEL,
+  SIMULATOR_ABSENCE_TEXT,
+  scenarioVerdict,
+} from "@/features/audit/cover-rules";
 
 export const Route = createFileRoute("/_authenticated/robustness/simulate")({
   head: () => ({ meta: [{ title: "Robustness simulator — Salisbury Anaesthetics Rota" }] }),
@@ -63,11 +70,15 @@ function SimulatePage() {
     return { base: b, sim: s ?? b };
   });
 
-  const newShortfalls = rows.filter(
-    (r) =>
-      (r.sim.am.risk === "shortfall" && r.base.am.risk !== "shortfall") ||
-      (r.sim.pm.risk === "shortfall" && r.base.pm.risk !== "shortfall"),
+  const verdicts = rows.map((r) =>
+    scenarioVerdict(
+      { am: r.base.am.risk, pm: r.base.pm.risk },
+      { am: r.sim.am.risk, pm: r.sim.pm.risk },
+    ),
   );
+  const newShortfalls = verdicts.filter((v) => v === "new_shortfall");
+  const newSpaNeeded = verdicts.filter((v) => v === "new_spa_required");
+  const loadError = baseline.error ?? sim.error;
 
   return (
     <div className="space-y-6">
@@ -96,7 +107,9 @@ function SimulatePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Scenario</CardTitle>
-          <CardDescription>How many people are off, by staff group?</CardDescription>
+          <CardDescription>
+            How many people are off, by staff group? {SIMULATOR_ABSENCE_TEXT}
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-4">
           {(["consultant", "sas", "trainee"] as Grade[]).map((g) => (
@@ -148,13 +161,27 @@ function SimulatePage() {
         <CardHeader>
           <CardTitle className="text-base">Impact summary</CardTitle>
           <CardDescription>
-            {newShortfalls.length === 0
-              ? "No new shortfall days under this scenario."
-              : `${newShortfalls.length} day(s) tip from OK/tight into shortfall.`}
+            {loadError
+              ? "Cover couldn't be calculated, so no impact is shown."
+              : sim.isLoading || baseline.isLoading
+                ? "Calculating…"
+                : newShortfalls.length === 0 && newSpaNeeded.length === 0
+                  ? "No day tips into SPA needed or shortfall under this scenario."
+                  : `${newShortfalls.length} day(s) tip into shortfall; ${newSpaNeeded.length} more now need a consultant pulled off SPA.`}{" "}
+            {COVER_TEXT.spa}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {sim.isLoading || baseline.isLoading ? (
+          {loadError ? (
+            <QueryErrorNotice
+              error={loadError}
+              onRetry={() => {
+                void baseline.refetch();
+                void sim.refetch();
+              }}
+              what="the cover for this scenario"
+            />
+          ) : sim.isLoading || baseline.isLoading ? (
             <PageLoading />
           ) : rows.length === 0 ? (
             <div className="text-sm text-muted-foreground">No weekdays in range.</div>
@@ -192,17 +219,8 @@ function SimulatePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ base, sim: s }) => {
-                    const amTipped = s.am.risk === "shortfall" && base.am.risk !== "shortfall";
-                    const pmTipped = s.pm.risk === "shortfall" && base.pm.risk !== "shortfall";
-                    const verdict =
-                      amTipped || pmTipped
-                        ? "New shortfall"
-                        : s.am.risk === "shortfall" || s.pm.risk === "shortfall"
-                          ? "Already at risk"
-                          : s.am.risk === "tight" || s.pm.risk === "tight"
-                            ? "Tight"
-                            : "OK";
+                  {rows.map(({ base, sim: s }, idx) => {
+                    const verdict = SCENARIO_VERDICT_LABEL[verdicts[idx]];
                     return (
                       <tr key={base.date} className="border-t">
                         <td className="px-2 py-1.5">{formatDateGB(base.date)}</td>
@@ -244,6 +262,7 @@ function SimulatePage() {
                           className={cn(
                             "px-2 py-1.5 font-medium",
                             verdict === "New shortfall" && "text-red-600",
+                            verdict === "New SPA needed" && "text-orange-700",
                             verdict === "Already at risk" && "text-red-500/80",
                             verdict === "Tight" && "text-warning",
                           )}

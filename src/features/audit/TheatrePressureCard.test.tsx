@@ -10,6 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
 import { TheatrePressureCard } from "./TheatrePressureCard";
 import { buildTheatrePressureForecast, extractListEvidence } from "./theatre-pressure";
 import { buildWeekStatusTimeline } from "./rota-week-status";
+import { buildImportCoverageTimeline } from "./rota-sync-coverage";
 
 // Synthetic only.
 const forecast = buildTheatrePressureForecast({
@@ -226,7 +227,7 @@ describe("TheatrePressureCard — Rota week status", () => {
         weekStatus={{ timeline, isLoading: false, error: null, onRetry: () => {} }}
       />,
     );
-    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
     const weeks = within(strip).getAllByTestId("week-status");
     expect(weeks).toHaveLength(2);
     expect(within(weeks[0]).getByText("Published")).toBeTruthy();
@@ -248,7 +249,7 @@ describe("TheatrePressureCard — Rota week status", () => {
         }}
       />,
     );
-    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
     expect(within(strip).getByText(/isn't recorded yet/)).toBeTruthy();
     expect(screen.queryByTestId("week-status")).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
@@ -262,9 +263,124 @@ describe("TheatrePressureCard — Rota week status", () => {
         weekStatus={{ timeline: null, isLoading: false, error: new Error("x"), onRetry: retry }}
       />,
     );
-    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
     fireEvent.click(within(strip).getByRole("button", { name: /retry/i }));
     expect(retry).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
+  });
+});
+
+describe("TheatrePressureCard — import coverage per week (separate from status)", () => {
+  const f = buildTheatrePressureForecast({
+    rangeStart: "2030-01-07",
+    rangeEnd: "2030-01-20",
+    evidence: extractListEvidence(
+      [
+        {
+          id: "x",
+          session_date: "2030-01-07",
+          session: "am",
+          theatre_id: "t1",
+          surgical_consultant: null,
+          notes: null,
+        },
+        {
+          id: "y",
+          session_date: "2030-01-14",
+          session: "pm",
+          theatre_id: "t1",
+          surgical_consultant: null,
+          notes: null,
+        },
+      ],
+      [{ id: "t1", name: "Theatre A", active: true }],
+      [],
+    ),
+    staffing: null,
+  });
+  const base = {
+    forecast: f,
+    isLoading: false,
+    error: null,
+    onRetry: () => {},
+    staffingError: null,
+    staffingLoading: false,
+  };
+  const row = (week_start: string, o: Partial<import("./rota-sync-coverage").SyncCoverageRow>) => ({
+    week_start,
+    days_total: 7,
+    days_ok: 7,
+    days_partial_only: 0,
+    days_latest_not_ok: 0,
+    last_full_ok_at: "2030-01-15T08:00:00Z",
+    newest_ok_at: "2030-01-15T08:00:00Z",
+    latest_attempt_at: "2030-01-15T08:00:00Z",
+    latest_attempt_outcome: "ok",
+    tracking_since: "2030-01-01T00:00:00Z",
+    ...o,
+  });
+  const imports = buildImportCoverageTimeline({
+    rangeStart: "2030-01-07",
+    rangeEnd: "2030-01-20",
+    rows: [
+      row("2030-01-07", {}),
+      row("2030-01-14", {
+        days_latest_not_ok: 7,
+        latest_attempt_at: "2030-01-16T08:00:00Z",
+        latest_attempt_outcome: "failed",
+      }),
+    ],
+    capture: "available",
+    now: new Date("2030-01-16T12:00:00Z"),
+  });
+
+  it("shows Import separately from Status, keeps last known good on a failed attempt, adds an Import column", () => {
+    render(
+      <TheatrePressureCard
+        {...base}
+        importCoverage={{ timeline: imports, isLoading: false, error: null, onRetry: () => {} }}
+      />,
+    );
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
+    const weeks = within(strip).getAllByTestId("week-status");
+    expect(weeks).toHaveLength(2);
+    expect(within(weeks[0]).getByText("Imported")).toBeTruthy();
+    expect(within(weeks[1]).getByText("Last import failed")).toBeTruthy();
+    expect(within(weeks[1]).getByText(/Good as of 15\/01\/2030/)).toBeTruthy();
+    // No publication status is invented when only import data is present.
+    expect(within(strip).queryByText("Published")).toBeNull();
+    const slots = screen.getByRole("region", { name: "Unverified slots" });
+    expect(within(slots).getByRole("columnheader", { name: "Import" })).toBeTruthy();
+    expect(within(slots).queryByRole("columnheader", { name: "Week" })).toBeNull();
+  });
+
+  it("not installed: says tracking is pending and shows no Import column", () => {
+    render(
+      <TheatrePressureCard
+        {...base}
+        importCoverage={{
+          timeline: { ...imports, capture: "not_installed", weeks: [], byWeek: new Map() },
+          isLoading: false,
+          error: null,
+          onRetry: () => {},
+        }}
+      />,
+    );
+    expect(screen.getByText(/Import date tracking isn't switched on yet/)).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Import" })).toBeNull();
+  });
+
+  it("failed coverage load shows Retry and no Import column", () => {
+    const retry = vi.fn();
+    render(
+      <TheatrePressureCard
+        {...base}
+        importCoverage={{ timeline: null, isLoading: false, error: new Error("x"), onRetry: retry }}
+      />,
+    );
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
+    fireEvent.click(within(strip).getByRole("button", { name: /retry/i }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("columnheader", { name: "Import" })).toBeNull();
   });
 });
