@@ -44,7 +44,14 @@ export interface WeekStatusTimeline {
 }
 
 export const STALE_AFTER_DAYS = 3;
-const KNOWN: ReadonlySet<string> = new Set(["published", "setup", "not_setup", "mixed", "unknown", "other"]);
+const KNOWN: ReadonlySet<string> = new Set([
+  "published",
+  "setup",
+  "not_setup",
+  "mixed",
+  "unknown",
+  "other",
+]);
 
 export const WEEK_STATUS_LABEL: Record<TimelineStatus, string> = {
   published: "Published",
@@ -83,7 +90,11 @@ export function buildWeekStatusTimeline(input: {
   const weeks: WeekStatusEntry[] = [];
   for (let w = isoWeekStart(rangeStart); w <= rangeEnd; w = addDays(w, 7)) {
     const r = capture === "available" ? byStart.get(w) : undefined;
-    const status: TimelineStatus = r ? (KNOWN.has(r.status_code) ? r.status_code : "other") : "not_observed";
+    const status: TimelineStatus = r
+      ? KNOWN.has(r.status_code)
+        ? r.status_code
+        : "other"
+      : "not_observed";
     const observedMs = r ? Date.parse(r.observed_at) : NaN;
     weeks.push({
       weekStart: w,
@@ -93,7 +104,8 @@ export function buildWeekStatusTimeline(input: {
       statusSince: r?.status_since ?? null,
       plannedRows: r?.planned_rows ?? 0,
       actualRows: r?.actual_rows ?? 0,
-      stale: Number.isFinite(observedMs) && now.getTime() - observedMs > STALE_AFTER_DAYS * 86_400_000,
+      stale:
+        Number.isFinite(observedMs) && now.getTime() - observedMs > STALE_AFTER_DAYS * 86_400_000,
     });
   }
   return { capture, weeks, byWeek: new Map(weeks.map((e) => [e.weekStart, e])) };
@@ -103,10 +115,22 @@ type QueryError = { code?: string; message?: string } | null;
 interface WeekStatusQuery {
   from(t: "clwrota_week_status"): {
     select(c: string): {
-      gte(col: string, v: string): {
-        lte(col: string, v: string): {
-          order(col: "week_start", o: { ascending: boolean }): {
-            range(a: number, b: number): PromiseLike<{ data: WeekStatusRow[] | null; error: QueryError }>;
+      gte(
+        col: string,
+        v: string,
+      ): {
+        lte(
+          col: string,
+          v: string,
+        ): {
+          order(
+            col: "week_start",
+            o: { ascending: boolean },
+          ): {
+            range(
+              a: number,
+              b: number,
+            ): PromiseLike<{ data: WeekStatusRow[] | null; error: QueryError }>;
           };
         };
       };
@@ -131,7 +155,9 @@ export async function loadWeekStatus(
     async (from, to) => {
       const res = await q
         .from("clwrota_week_status")
-        .select("week_start,status_code,source_values,rows_seen,planned_rows,actual_rows,observed_at,status_since")
+        .select(
+          "week_start,status_code,source_values,rows_seen,planned_rows,actual_rows,observed_at,status_since",
+        )
         .gte("week_start", isoWeekStart(rangeStart))
         .lte("week_start", rangeEnd)
         .order("week_start", { ascending: true })

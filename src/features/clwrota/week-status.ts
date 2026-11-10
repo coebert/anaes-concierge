@@ -46,7 +46,15 @@ export class WeekStatusCollector {
     const wk = isoWeekStart(dateIso);
     let a = this.weeks.get(wk);
     if (!a) {
-      a = { rows: 0, codes: new Set(), raw: new Map(), planned: 0, actual: 0, otherState: 0, dates: new Set() };
+      a = {
+        rows: 0,
+        codes: new Set(),
+        raw: new Map(),
+        planned: 0,
+        actual: 0,
+        otherState: 0,
+        dates: new Set(),
+      };
       this.weeks.set(wk, a);
     }
     a.rows += 1;
@@ -55,7 +63,8 @@ export class WeekStatusCollector {
     if (code) {
       a.codes.add(code);
       const t = String(rotaStatusRaw).trim();
-      if (SAFE_RAW.test(t) && a.raw.size < 5 && !a.raw.has(t.toLowerCase())) a.raw.set(t.toLowerCase(), t);
+      if (SAFE_RAW.test(t) && a.raw.size < 5 && !a.raw.has(t.toLowerCase()))
+        a.raw.set(t.toLowerCase(), t);
     }
     const st = typeof stateRaw === "string" ? stateRaw.trim().toLowerCase() : "";
     if (st === "planned") a.planned += 1;
@@ -133,7 +142,10 @@ type DbError = { code?: string; message?: string } | null;
 export interface WeekStatusClient {
   from(table: string): {
     select(cols: string): {
-      in(col: string, keys: string[]): PromiseLike<{ data: StoredWeekStatus[] | null; error: DbError }>;
+      in(
+        col: string,
+        keys: string[],
+      ): PromiseLike<{ data: StoredWeekStatus[] | null; error: DbError }>;
     };
     upsert(rows: WeekStatusRecord[], opts: { onConflict: string }): PromiseLike<{ error: DbError }>;
   };
@@ -168,7 +180,11 @@ export async function persistWeekStatus(
     if (error) {
       if (isMissingWeekStatusTable(error)) return { status: "not_installed", written: 0 };
       // Without prior rows we'd reset first-seen / since times: stop.
-      return { status: "error", written: 0, message: `existing week status: ${error.message ?? "lookup failed"}` };
+      return {
+        status: "error",
+        written: 0,
+        message: `existing week status: ${error.message ?? "lookup failed"}`,
+      };
     }
     for (const r of data ?? []) existing.set(r.week_start, r);
   }
@@ -176,10 +192,17 @@ export async function persistWeekStatus(
   let written = 0;
   for (let i = 0; i < records.length; i += upsertChunk) {
     const chunk = records.slice(i, i + upsertChunk);
-    const { error } = await client.from(WEEK_STATUS_TABLE).upsert(chunk, { onConflict: "week_start" });
+    const { error } = await client
+      .from(WEEK_STATUS_TABLE)
+      .upsert(chunk, { onConflict: "week_start" });
     if (error) {
-      if (written === 0 && isMissingWeekStatusTable(error)) return { status: "not_installed", written: 0 };
-      return { status: "error", written, message: `week status chunk ${i}: ${error.message ?? "upsert failed"}` };
+      if (written === 0 && isMissingWeekStatusTable(error))
+        return { status: "not_installed", written: 0 };
+      return {
+        status: "error",
+        written,
+        message: `week status chunk ${i}: ${error.message ?? "upsert failed"}`,
+      };
     }
     written += chunk.length;
   }

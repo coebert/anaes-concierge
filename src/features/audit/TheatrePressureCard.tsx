@@ -481,7 +481,9 @@ function UnverifiedSlots({
                     <td className="px-2 py-1.5">{s.half ? halfLabel(s.half) : "—"}</td>
                     {weeks ? (
                       <td className="px-2 py-1.5">
-                        <WeekChip status={weeks.byWeek.get(isoWeekStart(s.date))?.status ?? "not_observed"} />
+                        <WeekChip
+                          status={weeks.byWeek.get(isoWeekStart(s.date))?.status ?? "not_observed"}
+                        />
                       </td>
                     ) : null}
                     <td className="px-2 py-1.5">
@@ -538,7 +540,12 @@ function WeekStatusStrip({
         Rota week status
       </h3>
       {error ? (
-        <QueryErrorNotice error={error} onRetry={onRetry} what="rota week status" stale={!!timeline} />
+        <QueryErrorNotice
+          error={error}
+          onRetry={onRetry}
+          what="rota week status"
+          stale={!!timeline}
+        />
       ) : null}
       {!timeline && !error && isLoading ? (
         <p className="text-xs text-muted-foreground">Loading week status…</p>
@@ -566,7 +573,12 @@ function WeekStatusStrip({
                   <span className="text-muted-foreground">w/c {formatDateGB(w.weekStart)}</span>
                   <WeekChip status={w.status} />
                   {w.observedAt ? (
-                    <span className={cn("text-[10px]", w.stale ? "text-warning" : "text-muted-foreground")}>
+                    <span
+                      className={cn(
+                        "text-[10px]",
+                        w.stale ? "text-warning" : "text-muted-foreground",
+                      )}
+                    >
                       Checked {formatDateGB(w.observedAt.slice(0, 10))}
                       {w.stale ? " · may be out of date" : ""}
                     </span>

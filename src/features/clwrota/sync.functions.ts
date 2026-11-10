@@ -1489,7 +1489,8 @@ export async function performRotaSync(
     if (weekResult.status === "not_installed") {
       warnings.push({
         label: "(week rota status)",
-        reason: "week status storage is not installed yet (database update pending); status not recorded",
+        reason:
+          "week status storage is not installed yet (database update pending); status not recorded",
       });
     } else if (weekResult.status === "error") {
       errors.push({ label: "(week rota status)", error: weekResult.message });

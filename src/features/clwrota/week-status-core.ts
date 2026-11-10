@@ -2,9 +2,14 @@
 export type WeekStatusCode = "published" | "setup" | "not_setup" | "mixed" | "unknown" | "other";
 
 /** Feed value → code. `null` for blank/absent. */
-export function normaliseRotaStatus(raw: unknown): Exclude<WeekStatusCode, "mixed" | "unknown"> | null {
+export function normaliseRotaStatus(
+  raw: unknown,
+): Exclude<WeekStatusCode, "mixed" | "unknown"> | null {
   if (typeof raw !== "string") return null;
-  const k = raw.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  const k = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
   if (!k) return null;
   if (k === "published") return "published";
   if (k === "setup" || k === "set up") return "setup";
@@ -20,4 +25,3 @@ export function isoWeekStart(dateIso: string): string {
   const back = (dow + 6) % 7;
   return new Date(t - back * 86_400_000).toISOString().slice(0, 10);
 }
-
