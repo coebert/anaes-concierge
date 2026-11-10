@@ -329,10 +329,37 @@ export interface PressureDay {
   untitledLists: number;
 }
 
+export type UnverifiedReason = Exclude<SlotLabelStatus, "labelled"> | "no_imported_lists";
+
+/**
+ * One entry of the actionable "Unverified slots" list. Contains only the
+ * date, theatre (room) name, half and a reason code — no label text, staff
+ * or record identifiers. `theatreName`/`half` are null for a whole weekday
+ * with no imported lists.
+ */
+export interface UnverifiedSlot {
+  key: string;
+  date: string;
+  theatreName: string | null;
+  half: ForecastHalf | null;
+  reason: UnverifiedReason;
+}
+
+export const UNVERIFIED_REASONS: readonly UnverifiedReason[] = [
+  "blank_in_source",
+  "partial_evidence",
+  "not_captured",
+  "no_linked_rows",
+  "no_imported_lists",
+];
+
 export interface TheatrePressureForecast {
   rangeStart: string;
   rangeEnd: string;
   days: PressureDay[];
+  /** Every slot whose title/note can't be verified, sorted by date/half/theatre. */
+  unverifiedSlots: UnverifiedSlot[];
+  labelCapture: LabelCapture;
   totals: {
     taggedDays: number;
     elevatedDays: number;
@@ -347,6 +374,7 @@ export interface TheatrePressureForecast {
     weekdaysWithoutLists: number;
     excludedInactiveTagged: number;
     missingTheatre: number;
+    unverifiedSlots: number;
   };
   staffingAvailable: boolean;
 }
@@ -546,14 +574,52 @@ export function buildTheatrePressureForecast(input: {
   }
 
   const datesWithLists = new Set(inRange.map((l) => l.date));
-  const weekdaysWithoutLists = eachDate(rangeStart, rangeEnd).filter(
+  const emptyWeekdays = eachDate(rangeStart, rangeEnd).filter(
     (d) => isWeekday(d) && !datesWithLists.has(d),
-  ).length;
+  );
+  const weekdaysWithoutLists = emptyWeekdays.length;
+
+  // Actionable recheck queue: individual blank / unverifiable lists (tagged
+  // lists are labelled by definition) plus whole weekdays with no lists.
+  const unverifiedSlots: UnverifiedSlot[] = [
+    ...inRange
+      .filter((l) => l.labelStatus !== "labelled")
+      .map((l) => ({
+        key: `${l.date}-${l.half}-${l.theatreRef}`,
+        date: l.date,
+        theatreName: l.theatreName,
+        half: l.half,
+        reason: l.labelStatus as UnverifiedReason,
+      })),
+    ...emptyWeekdays.map((d) => ({
+      key: `${d}-day`,
+      date: d,
+      theatreName: null,
+      half: null,
+      reason: "no_imported_lists" as const,
+    })),
+  ].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      (a.half ? HALF_ORDER[a.half] : -1) - (b.half ? HALF_ORDER[b.half] : -1) ||
+      (a.theatreName ?? "").localeCompare(b.theatreName ?? "") ||
+      a.key.localeCompare(b.key),
+  );
+  // Two sessions in the same theatre/half/date can't exist (unique key), but
+  // keep keys unique defensively for rendering.
+  const seenKeys = new Map<string, number>();
+  for (const u of unverifiedSlots) {
+    const k = seenKeys.get(u.key) ?? 0;
+    seenKeys.set(u.key, k + 1);
+    if (k > 0) u.key = `${u.key}-${k}`;
+  }
 
   return {
     rangeStart,
     rangeEnd,
     days,
+    unverifiedSlots,
+    labelCapture: evidence.labelCapture,
     staffingAvailable: staffing !== null,
     totals: {
       taggedDays: days.length,
@@ -570,13 +636,71 @@ export function buildTheatrePressureForecast(input: {
       weekdaysWithoutLists,
       excludedInactiveTagged: evidence.excludedInactiveTagged,
       missingTheatre: evidence.missingTheatre,
+      unverifiedSlots: unverifiedSlots.length,
     },
   };
 }
 
 // ───────────────────────────── Loader ─────────────────────────────
 
-type Client = Pick<typeof supabase, "from">;
+type Client = Pick<typeof supabase, "from"> | Pick<typeof supabase, "from" | "rpc">;
+
+type RpcError = { code?: string; message?: string } | null;
+/** The signals function isn't in the generated types until 0008 is applied. */
+interface SignalsRpc {
+  rpc(
+    fn: "get_theatre_session_label_signals",
+    args: { p_from: string; p_to: string },
+  ): {
+    order(
+      col: "theatre_session_id",
+      opts: { ascending: boolean },
+    ): {
+      range(
+        from: number,
+        to: number,
+      ): PromiseLike<{ data: SessionLabelSignal[] | null; error: RpcError }>;
+    };
+  };
+}
+
+/** PostgREST / Postgres "function does not exist" — migration 0008 not applied yet. */
+export function isMissingSignalsFunction(e: RpcError): boolean {
+  if (!e) return false;
+  return e.code === "PGRST202" || e.code === "42883";
+}
+
+/**
+ * Pages the derived signals. Returns `not_installed` (and no signals) only
+ * when the function doesn't exist; any other failure throws so the card
+ * shows Retry instead of silently treating titles as missing.
+ */
+export async function loadSessionLabelSignals(
+  rangeStart: string,
+  rangeEnd: string,
+  client: unknown,
+): Promise<{ signals: SessionLabelSignal[]; labelCapture: LabelCapture }> {
+  const rpcClient = client as Partial<SignalsRpc>;
+  if (typeof rpcClient.rpc !== "function") return { signals: [], labelCapture: "not_installed" };
+  let missing = false;
+  const signals = await fetchAllRowsPaged<SessionLabelSignal>(
+    async (from, to) => {
+      const res = await (rpcClient as SignalsRpc)
+        .rpc("get_theatre_session_label_signals", { p_from: rangeStart, p_to: rangeEnd })
+        .order("theatre_session_id", { ascending: true })
+        .range(from, to);
+      if (from === 0 && isMissingSignalsFunction(res.error)) {
+        missing = true;
+        return { data: [], error: null };
+      }
+      return res;
+    },
+    { rowKey: (r) => r.theatre_session_id, label: "theatre-pressure.label_signals" },
+  );
+  return missing
+    ? { signals: [], labelCapture: "not_installed" }
+    : { signals, labelCapture: "available" };
+}
 
 /**
  * Loads the window's theatre sessions, theatres and linked assignment
@@ -589,7 +713,7 @@ export async function loadTheatrePressureEvidence(
   rangeEnd: string,
   client: Client = supabase,
 ): Promise<EvidenceSet> {
-  const [sessions, theatres, assignments] = await Promise.all([
+  const [sessions, theatres, assignments, labelSignals] = await Promise.all([
     fetchAllRowsPaged<RawSession>(
       (from, to) =>
         client
@@ -622,6 +746,13 @@ export async function loadTheatrePressureEvidence(
           .range(from, to),
       { rowKey: idKey, label: "theatre-pressure.rota_assignments" },
     ),
+    loadSessionLabelSignals(rangeStart, rangeEnd, client),
   ]);
-  return extractListEvidence(sessions, theatres, assignments);
+  return extractListEvidence(
+    sessions,
+    theatres,
+    assignments,
+    labelSignals.signals,
+    labelSignals.labelCapture,
+  );
 }
