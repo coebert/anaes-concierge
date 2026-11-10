@@ -547,7 +547,7 @@ const WEEK_CHIP_CLASS: Record<TimelineStatus, string> = {
   not_observed: "border-dashed border-border text-muted-foreground",
 };
 
-function WeekChip({ status }: { status: TimelineStatus }) {
+export function WeekChip({ status }: { status: TimelineStatus }) {
   return (
     <span
       title={WEEK_STATUS_HELP[status]}
@@ -569,7 +569,7 @@ const IMPORT_CHIP_CLASS: Record<ImportWeekState, string> = {
   not_tracked: "border-dashed border-border text-muted-foreground",
 };
 
-function ImportChip({ entry }: { entry: ImportWeekEntry | null }) {
+export function ImportChip({ entry }: { entry: ImportWeekEntry | null }) {
   if (!entry) {
     return (
       <span className="inline-block whitespace-nowrap rounded border border-dashed px-1.5 py-0.5 text-[10px] text-muted-foreground">
