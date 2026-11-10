@@ -226,7 +226,7 @@ describe("TheatrePressureCard — Rota week status", () => {
         weekStatus={{ timeline, isLoading: false, error: null, onRetry: () => {} }}
       />,
     );
-    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
     const weeks = within(strip).getAllByTestId("week-status");
     expect(weeks).toHaveLength(2);
     expect(within(weeks[0]).getByText("Published")).toBeTruthy();
@@ -248,7 +248,7 @@ describe("TheatrePressureCard — Rota week status", () => {
         }}
       />,
     );
-    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
     expect(within(strip).getByText(/isn't recorded yet/)).toBeTruthy();
     expect(screen.queryByTestId("week-status")).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
@@ -262,7 +262,7 @@ describe("TheatrePressureCard — Rota week status", () => {
         weekStatus={{ timeline: null, isLoading: false, error: new Error("x"), onRetry: retry }}
       />,
     );
-    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const strip = screen.getByRole("region", { name: "Rota weeks — status and import" });
     fireEvent.click(within(strip).getByRole("button", { name: /retry/i }));
     expect(retry).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
