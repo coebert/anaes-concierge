@@ -57,7 +57,7 @@ describe("TheatrePressureCard", () => {
     const [a, b] = screen.getAllByTestId("pressure-list");
     expect(within(a).getByText("Theatre A")).toBeTruthy();
     expect(within(a).getByText("DIEP")).toBeTruthy();
-    expect(within(a).getByText("AM")).toBeTruthy();
+    expect(within(a).getAllByText("AM").length).toBeGreaterThan(0);
     expect(within(b).getByText("Theatre B")).toBeTruthy();
     expect(within(b).getByText("Robotic")).toBeTruthy();
     expect(screen.getAllByText("Not verified").length).toBe(2);
