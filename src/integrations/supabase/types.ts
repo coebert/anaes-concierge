@@ -459,6 +459,51 @@ export type Database = {
         }
         Relationships: []
       }
+      clwrota_week_status: {
+        Row: {
+          actual_rows: number
+          dates_seen: number
+          first_observed_at: string
+          observed_at: string
+          other_state_rows: number
+          planned_rows: number
+          previous_status_code: string | null
+          rows_seen: number
+          source_values: string[]
+          status_code: string
+          status_since: string
+          week_start: string
+        }
+        Insert: {
+          actual_rows?: number
+          dates_seen?: number
+          first_observed_at?: string
+          observed_at?: string
+          other_state_rows?: number
+          planned_rows?: number
+          previous_status_code?: string | null
+          rows_seen?: number
+          source_values?: string[]
+          status_code: string
+          status_since?: string
+          week_start: string
+        }
+        Update: {
+          actual_rows?: number
+          dates_seen?: number
+          first_observed_at?: string
+          observed_at?: string
+          other_state_rows?: number
+          planned_rows?: number
+          previous_status_code?: string | null
+          rows_seen?: number
+          source_values?: string[]
+          status_code?: string
+          status_since?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       competencies: {
         Row: {
           active: boolean

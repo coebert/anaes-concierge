@@ -64,6 +64,13 @@
       "when": 1794330422192,
       "tag": "0008_theatre_session_source_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794330439077,
+      "tag": "0009_clwrota_week_status",
+      "breakpoints": true
     }
   ]
 }
