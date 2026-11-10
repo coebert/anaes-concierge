@@ -7,13 +7,14 @@ export function normaliseRotaLabelText(raw: string): string {
     .trim();
 }
 
+// "off site" after normaliseRotaLabelText (covers Off-site, Off/Site, OFF SITE).
+const OFF_SITE_PHRASE = /\boff site(s)?\b/g;
+
 /**
  * CLWRota can emit placeholder rows such as "Off", "Off Day" or
  * "Surgeon: Off Day" in rota/list fields. These are explicit non-working
  * markers, not theatre sessions and not evidence of availability.
  */
-const OFF_SITE_PHRASE = /\boff site(s)?\b/g;
-
 export function isNonWorkingRotaLabel(
   labels: Array<string | null | undefined>,
   extraTokens: string[] = [],
