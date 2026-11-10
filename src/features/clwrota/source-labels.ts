@@ -276,7 +276,7 @@ export interface SourceLabelClient {
 
 export function isMissingRelationError(e: DbError): boolean {
   if (!e) return false;
-  if (e.code === "42P01" || e.code === "PGRST205" || e.code === "PGRST204") return true;
+  if (e.code === "42P01" || e.code === "PGRST205") return true;
   return /schema cache/i.test(e.message ?? "") && /theatre_session_source_labels/.test(e.message ?? "");
 }
 
