@@ -21,6 +21,9 @@ import {
   type OtherDutyDetail,
 } from "@/features/audit/robustness";
 import { BreakdownCard } from "@/components/robustness/BreakdownCard";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { COVER_TEXT, RISK_TIGHT } from "@/features/audit/cover-rules";
+import { DayWeekContext } from "@/features/audit/DayWeekContext";
 import { SessionChip } from "@/components/rota-views";
 
 export const Route = createFileRoute("/_authenticated/robustness/day/$date")({
@@ -34,18 +37,36 @@ function formatDuty(d: string): string {
 
 function DayDetailPage() {
   const { date } = Route.useParams();
-  const { data, isLoading } = useQuery({
+  const dayQuery = useQuery({
     queryKey: ["robustness-day", date],
     queryFn: () => loadDayDetail(date),
   });
+  const { data, isLoading, error } = dayQuery;
 
+  if (error && !data) {
+    // A failed read must never look like an empty or fully-covered day.
+    return (
+      <div className="space-y-3">
+        <Link to="/robustness" className="text-xs text-muted-foreground hover:underline">
+          <ChevronLeft className="mr-1 inline h-3 w-3" />
+          Back to robustness report
+        </Link>
+        <QueryErrorNotice
+          error={error}
+          onRetry={() => void dayQuery.refetch()}
+          what="this day's cover"
+        />
+      </div>
+    );
+  }
   if (isLoading || !data) {
     return <div className="text-sm text-muted-foreground">Loading day detail…</div>;
   }
 
   const amSessions = data.sessions.filter((s) => s.session === "am");
   const pmSessions = data.sessions.filter((s) => s.session === "pm");
-  const totalUnfilled = data.sessions.filter((s) => s.unfilled).length;
+  // Emergency / CEPOD lists are on-call cover, not planned demand.
+  const totalUnfilled = data.sessions.filter((s) => s.unfilled && !s.emergency).length;
 
   return (
     <TooltipProvider>
@@ -59,10 +80,20 @@ function DayDetailPage() {
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">{formatDateGB(data.date)}</h1>
           <p className="text-sm text-muted-foreground">
-            Per-session coverage. Lists need a consultant (or ST6/ST7 solo). SAS and junior trainees
-            pair with a consultant but cannot solo-cover.
+            Per-session coverage. {COVER_TEXT.soloCapable} {COVER_TEXT.spa}
           </p>
         </header>
+
+        {error ? (
+          <QueryErrorNotice
+            error={error}
+            onRetry={() => void dayQuery.refetch()}
+            what="this day's cover"
+            stale
+          />
+        ) : null}
+
+        <DayWeekContext date={data.date} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <HalfSummary label="AM" h={data.am} />
@@ -267,7 +298,9 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
             </TooltipTrigger>
             <TooltipContent side="top">
               <p className="max-w-[18rem]">
-                {riskLabel(h.risk)}: {h.soloCapable} solo-capable staff vs {h.required} lists.
+                {riskLabel(h.risk)}: {h.soloCapable} solo-capable staff vs {h.unfilled} list(s)
+                still without anyone assigned (of {h.required} planned). Tight means headroom 0–
+                {RISK_TIGHT}.
                 {h.consultantsOnSpa > 0 &&
                   ` ${h.consultantsOnSpa} consultant(s) on SPA could be flexed.`}
                 {h.risk === "spa_required" &&
@@ -290,7 +323,7 @@ function HalfSummary({ label, h }: { label: string; h: HalfDayCapacity }) {
           <Stat
             label="Solo-capable"
             value={h.soloCapable}
-            tooltip="Free consultants + ST6/7/8 trainees not already on a list. Only these can lead a new list alone."
+            tooltip={`${COVER_TEXT.soloCapable} Only these can lead a new list alone.`}
           />
           <Stat label="Unfilled" value={h.unfilled} tooltip="Lists with no staff assigned yet." />
         </div>
@@ -367,12 +400,16 @@ function SessionsCard({ title, sessions }: { title: string; sessions: DayDetailS
               key={s.id}
               className={cn(
                 "rounded-md border p-2 text-sm",
-                s.unfilled && "border-red-500/50 bg-red-500/5",
+                s.unfilled && !s.emergency && "border-red-500/50 bg-red-500/5",
               )}
             >
               <div className="flex items-center justify-between">
                 <div className="font-medium">{s.theatreName}</div>
-                {s.unfilled ? (
+                {s.emergency ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    Emergency — on-call, not in headroom
+                  </Badge>
+                ) : s.unfilled ? (
                   <Badge variant="destructive" className="text-[10px]">
                     UNFILLED
                   </Badge>
