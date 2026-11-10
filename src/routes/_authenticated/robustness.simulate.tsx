@@ -262,6 +262,7 @@ function SimulatePage() {
                           className={cn(
                             "px-2 py-1.5 font-medium",
                             verdict === "New shortfall" && "text-red-600",
+                            verdict === "New SPA needed" && "text-orange-700",
                             verdict === "Already at risk" && "text-red-500/80",
                             verdict === "Tight" && "text-warning",
                           )}
