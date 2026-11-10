@@ -130,7 +130,7 @@ export function planWeekStatusWrites(input: {
     const status_code: WeekStatusCode =
       a.codes.size === 0 ? "unknown" : a.codes.size > 1 ? "mixed" : [...a.codes][0];
     const prior = existing.get(week_start);
-    const changed = !prior || prior.status_code !== status_code;
+    const unchanged = prior !== undefined && prior.status_code === status_code;
     return {
       week_start,
       status_code,
@@ -142,8 +142,8 @@ export function planWeekStatusWrites(input: {
       other_state_rows: a.otherState,
       observed_at: nowIso,
       first_observed_at: prior?.first_observed_at ?? nowIso,
-      status_since: changed ? nowIso : prior.status_since,
-      previous_status_code: changed ? (prior?.status_code ?? null) : prior.previous_status_code,
+      status_since: unchanged ? prior.status_since : nowIso,
+      previous_status_code: unchanged ? prior.previous_status_code : (prior?.status_code ?? null),
     };
   });
 }

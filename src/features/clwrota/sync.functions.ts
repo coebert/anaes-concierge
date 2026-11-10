@@ -41,6 +41,7 @@ import {
   persistSourceLabels,
   type SourceLabelClient,
 } from "./source-labels";
+import { WeekStatusCollector, persistWeekStatus, type WeekStatusClient } from "./week-status";
 
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
@@ -877,6 +878,9 @@ export async function performRotaSync(
   // Original list titles / list notes per theatre session, kept as supplied
   // on the restricted source-label relation (see ./source-labels.ts).
   const labelCollector = new SourceLabelCollector();
+  // Per-week feed rota_status ("Published"/"Setup"/"Not setup"), recorded only
+  // for weeks the feed returned rows for (see ./week-status.ts).
+  const weekStatusCollector = new WeekStatusCollector();
 
   for (const row of rows) {
     const dateRaw = pick(row, ["date", "session_date", "Date", "rota_date", "day"]);
@@ -1097,6 +1101,9 @@ export async function performRotaSync(
       skipped.push({ label, reason: `cannot parse date "${dateRaw ?? ""}"` });
       continue;
     }
+    // Week status is week-level: every dated row counts, even ones skipped
+    // below for row-level reasons.
+    weekStatusCollector.observeRow(session_date, row);
     if (!session) {
       labelCollector.markUncertain(session_date);
       skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` });
@@ -1473,6 +1480,22 @@ export async function performRotaSync(
   // source-label relation. Legacy surgical_consultant above is unchanged;
   // coordinator notes and assignment notes are never touched here. Raw
   // values are never logged or returned — only counts.
+  if (weekStatusCollector.size > 0) {
+    const weekResult = await persistWeekStatus(
+      supabaseAdmin as unknown as WeekStatusClient,
+      weekStatusCollector,
+      { nowIso, inChunk: SUPABASE_IN_CHUNK },
+    );
+    if (weekResult.status === "not_installed") {
+      warnings.push({
+        label: "(week rota status)",
+        reason: "week status storage is not installed yet (database update pending); status not recorded",
+      });
+    } else if (weekResult.status === "error") {
+      errors.push({ label: "(week rota status)", error: weekResult.message });
+    }
+  }
+
   if (labelCollector.size > 0) {
     const labelResult = await persistSourceLabels(
       supabaseAdmin as unknown as SourceLabelClient,
