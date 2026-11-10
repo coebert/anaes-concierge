@@ -10,6 +10,7 @@ describe("ensureRotaReportFields", () => {
     expect(params).toContain("slot_titles");
     expect(params).toContain("place.name");
     expect(params).toContain("place.additional_info");
+    expect(params).toContain("rota_status");
     // keeps existing fields
     expect(params).toContain("date");
     expect(params).toContain("role");

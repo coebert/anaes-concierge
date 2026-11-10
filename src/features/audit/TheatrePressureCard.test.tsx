@@ -9,6 +9,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 import { TheatrePressureCard } from "./TheatrePressureCard";
 import { buildTheatrePressureForecast, extractListEvidence } from "./theatre-pressure";
+import { buildWeekStatusTimeline } from "./rota-week-status";
 
 // Synthetic only.
 const forecast = buildTheatrePressureForecast({
@@ -151,7 +152,7 @@ describe("TheatrePressureCard — Unverified slots", () => {
     expect(within(section).getByText("Blank in rota")).toBeTruthy();
     expect(within(section).getByText("No imported rows")).toBeTruthy();
     expect(within(section).getByText("No lists imported")).toBeTruthy();
-    expect(within(section).getByText(/isn't part of the import/)).toBeTruthy();
+    expect(within(section).getByText(/publication status isn't recorded yet/)).toBeTruthy();
     fireEvent.click(within(section).getByRole("button", { name: /Blank in rota \(1\)/ }));
     const rows = within(section).getAllByTestId("unverified-slot");
     expect(rows).toHaveLength(1);
@@ -160,5 +161,110 @@ describe("TheatrePressureCard — Unverified slots", () => {
     expect(within(rows[0]).getByRole("link")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TheatrePressureCard — Rota week status", () => {
+  const f = buildTheatrePressureForecast({
+    rangeStart: "2030-01-07",
+    rangeEnd: "2030-01-15",
+    evidence: extractListEvidence(
+      [
+        {
+          id: "x",
+          session_date: "2030-01-07",
+          session: "am",
+          theatre_id: "t1",
+          surgical_consultant: null,
+          notes: null,
+        },
+        {
+          id: "y",
+          session_date: "2030-01-14",
+          session: "am",
+          theatre_id: "t1",
+          surgical_consultant: null,
+          notes: null,
+        },
+      ],
+      [{ id: "t1", name: "Theatre A", active: true }],
+      [],
+    ),
+    staffing: null,
+  });
+  const base = {
+    forecast: f,
+    isLoading: false,
+    error: null,
+    onRetry: () => {},
+    staffingError: null,
+    staffingLoading: false,
+  };
+  const timeline = buildWeekStatusTimeline({
+    rangeStart: "2030-01-07",
+    rangeEnd: "2030-01-15",
+    rows: [
+      {
+        week_start: "2030-01-07",
+        status_code: "published",
+        source_values: ["Published"],
+        rows_seen: 2,
+        planned_rows: 0,
+        actual_rows: 2,
+        observed_at: "2030-01-15T00:00:00Z",
+        status_since: "2030-01-15T00:00:00Z",
+      },
+    ],
+    capture: "available",
+    now: new Date("2030-01-16T00:00:00Z"),
+  });
+
+  it("shows feed status per week, 'Not checked' for unseen weeks, and a Week column on slots", () => {
+    render(
+      <TheatrePressureCard
+        {...base}
+        weekStatus={{ timeline, isLoading: false, error: null, onRetry: () => {} }}
+      />,
+    );
+    const strip = screen.getByRole("region", { name: "Rota week status" });
+    const weeks = within(strip).getAllByTestId("week-status");
+    expect(weeks).toHaveLength(2);
+    expect(within(weeks[0]).getByText("Published")).toBeTruthy();
+    expect(within(weeks[1]).getByText("Not checked")).toBeTruthy();
+    expect(within(strip).getByText(/not when the rota was published/)).toBeTruthy();
+    const slots = screen.getByRole("region", { name: "Unverified slots" });
+    expect(within(slots).getByRole("columnheader", { name: "Week" })).toBeTruthy();
+  });
+
+  it("not installed: says so, no status shown and no Week column", () => {
+    render(
+      <TheatrePressureCard
+        {...base}
+        weekStatus={{
+          timeline: { ...timeline, capture: "not_installed", weeks: [], byWeek: new Map() },
+          isLoading: false,
+          error: null,
+          onRetry: () => {},
+        }}
+      />,
+    );
+    const strip = screen.getByRole("region", { name: "Rota week status" });
+    expect(within(strip).getByText(/isn't recorded yet/)).toBeTruthy();
+    expect(screen.queryByTestId("week-status")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
+  });
+
+  it("failed load shows Retry and hides the Week column", () => {
+    const retry = vi.fn();
+    render(
+      <TheatrePressureCard
+        {...base}
+        weekStatus={{ timeline: null, isLoading: false, error: new Error("x"), onRetry: retry }}
+      />,
+    );
+    const strip = screen.getByRole("region", { name: "Rota week status" });
+    fireEvent.click(within(strip).getByRole("button", { name: /retry/i }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
   });
 });
