@@ -169,7 +169,7 @@ h "POST staffA raw insert denied"         POST "$TA" "/theatre_session_source_la
 h "GET service reads raw table"           GET  "$TS" "/theatre_session_source_labels?select=list_titles&theatre_session_id=eq.$S1" "" 200 'SYNTHSECRET VRAM list'
 h "POST staffA signals (derived)"         POST "$TA" "/rpc/get_theatre_session_label_signals" "$W" 200 '"title_tags":\["VRAM"\]'
 h "POST staffA signals have no raw text"  POST "$TA" "/rpc/get_theatre_session_label_signals" "$W" 200 '^[^S]*$'
-h "GET staffA signals paged (limit/offset)" GET "$TA" "/rpc/get_theatre_session_label_signals?p_from=2030-01-01&p_to=2030-01-31&select=has_title&order=theatre_session_id&limit=2&offset=2" "" 200 '^\[\{"has_title":false\}, ?\{"has_title":false\}\]$'
+h "GET staffA signals paged (limit/offset)" GET "$TA" "/rpc/get_theatre_session_label_signals?p_from=2030-01-01&p_to=2030-01-31&select=theatre_session_id,has_title&order=theatre_session_id&limit=2&offset=2" "" 200 '^\[\{"theatre_session_id":"[0-9a-f-]+3","has_title":false\}, ?\{"theatre_session_id":"[0-9a-f-]+4","has_title":false\}\]$'
 h "POST roleless signals denied"          POST "$TR" "/rpc/get_theatre_session_label_signals" "$W" 403 '42501'
 h "POST anon signals denied"              POST ""    "/rpc/get_theatre_session_label_signals" "$W" 401 '42501'
 h "POST forged service JWT rejected"      POST "$TBAD" "/rpc/get_theatre_session_label_signals" "$W" 401 'PGRST'
