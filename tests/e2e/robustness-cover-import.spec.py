@@ -136,7 +136,7 @@ async def main() -> None:
             await expect(strip).to_be_visible(timeout=30000)
             await page.wait_for_timeout(1500)
             await page.screenshot(path=str(SHOTS / "1_overview.png"))
-            header = await page.locator("header").first.inner_text()
+            header = await page.get_by_role("heading", name="Rota robustness", exact=True).locator("..").inner_text()
             ok("overview wording names ST6/ST7/ST8 and SPA contingency",
                "ST6/ST7/ST8" in header and "never part of headroom" in header, header[:200])
             txt = await strip.inner_text()
