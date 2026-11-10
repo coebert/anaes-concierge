@@ -1,16 +1,22 @@
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { QueryErrorNotice } from "@/components/query-state-notice";
 import { PageLoading } from "@/components/loading";
-import { ChevronDown, Gauge } from "lucide-react";
+import { ChevronDown, Gauge, RefreshCw } from "lucide-react";
 import { cn, formatDateGB } from "@/lib/utils";
 import { riskColor, riskLabel } from "./robustness";
 import {
   TAG_SCAN_MAX_CHARS,
   TAG_SOURCE_LABEL,
+  UNVERIFIED_REASONS,
   halfLabel,
+  type LabelCapture,
+  type UnverifiedReason,
+  type UnverifiedSlot,
   type PressureDay,
   type PressureLevel,
   type StaffingStatus,
@@ -39,6 +45,9 @@ export interface TheatrePressureCardProps {
   onRetry: () => void;
   staffingError: unknown;
   staffingLoading: boolean;
+  /** Re-reads list labels and cover (e.g. after the rota is re-imported). */
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function TheatrePressureCard(props: TheatrePressureCardProps) {
@@ -46,12 +55,28 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
   return (
     <Card aria-labelledby="theatre-pressure-title">
       <CardHeader>
-        <CardTitle id="theatre-pressure-title" className="flex items-center gap-2 text-base">
+        <CardTitle id="theatre-pressure-title" className="flex flex-wrap items-center gap-2 text-base">
           <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
           Theatre pressure forecast
           <Badge variant="outline" className="text-[10px]">
             v1 · read-only
           </Badge>
+          {props.onRefresh ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="ml-auto h-7 gap-1 text-xs"
+              onClick={props.onRefresh}
+              disabled={props.isRefreshing}
+            >
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", props.isRefreshing && "animate-spin")}
+                aria-hidden
+              />
+              {props.isRefreshing ? "Refreshing…" : "Refresh"}
+            </Button>
+          ) : null}
         </CardTitle>
         <CardDescription>
           Days where lists explicitly labelled <strong>VRAM</strong>, <strong>DIEP</strong> or{" "}
@@ -110,6 +135,7 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
                 </table>
               </div>
             )}
+            <UnverifiedSlots slots={forecast.unverifiedSlots} capture={forecast.labelCapture} />
             <DetectionLimits forecast={forecast} />
           </>
         ) : null}
@@ -130,9 +156,10 @@ function Totals({ forecast }: { forecast: TheatrePressureForecast }) {
     ["Elevated days", String(t.elevatedDays)],
     ["Potential-pressure days", String(t.potentialDays)],
     ["Days with unverified cover", String(t.unverifiedDays)],
+    ["Unverified slots", String(t.unverifiedSlots)],
   ];
   return (
-    <dl className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <dl className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
       {items.map(([k, v]) => (
         <div key={k} className="rounded-md border p-2">
           <dt className="text-[11px] text-muted-foreground">{k}</dt>
@@ -259,12 +286,23 @@ function DetectionLimits({ forecast }: { forecast: TheatrePressureForecast }) {
             case). Procedures are never inferred from the surgeon, the theatre name or the
             specialty. Other wording (for example a robot brand name) is not detected.
           </li>
-          <li>
-            Fields read: the imported list title, any coordinator list note and linked assignment
-            notes. The rota import stores only the first free-text field of each row, so labels held
-            in later fields are not available. There are no structured procedure tags yet, and there
-            is no manual confirm/override in this version.
-          </li>
+          {forecast.labelCapture === "available" ? (
+            <li>
+              Fields read: the imported list titles and list notes (kept separately, as supplied in
+              the rota), any coordinator list note and linked assignment notes. Place notes such as
+              “off site” count as a known label but are not scanned for tags. The original text is
+              stored privately and never shown here — only the tags found. There are no structured
+              procedure tags yet, and there is no manual confirm/override in this version.
+            </li>
+          ) : (
+            <li>
+              Fields read: the legacy imported list title, any coordinator list note and linked
+              assignment notes. Separate capture of original list titles and notes isn&apos;t
+              switched on yet (database update pending), so labels held in other fields are not
+              available. There are no structured procedure tags yet, and there is no manual
+              confirm/override in this version.
+            </li>
+          )}
           <li>
             {t.untitledLists} of {t.listsInWindow} list(s) in this window have no title or note, so
             whether they are tagged is unknown.
@@ -301,5 +339,120 @@ function DetectionLimits({ forecast }: { forecast: TheatrePressureForecast }) {
         </ul>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+const REASON_LABEL: Record<UnverifiedReason, string> = {
+  blank_in_source: "Blank in rota",
+  partial_evidence: "Partial import",
+  not_captured: "Title not captured",
+  no_linked_rows: "No imported rows",
+  no_imported_lists: "No lists imported",
+};
+
+function reasonHelp(reason: UnverifiedReason, capture: LabelCapture): string {
+  switch (reason) {
+    case "blank_in_source":
+      return "The last complete import supplied this list with no title or note.";
+    case "partial_evidence":
+      return "Blank, but the last import for this day skipped some rows, so the blank isn't confirmed.";
+    case "not_captured":
+      return capture === "available"
+        ? "Imported before titles and notes were kept separately — the next import will confirm it."
+        : "Imported rows exist, but original titles and notes aren't captured yet.";
+    case "no_linked_rows":
+      return "No imported rota rows are linked to this list, so there's no source title to check.";
+    case "no_imported_lists":
+      return "No lists at all were imported for this weekday.";
+  }
+}
+
+type ReasonFilter = UnverifiedReason | "all";
+
+function UnverifiedSlots({ slots, capture }: { slots: UnverifiedSlot[]; capture: LabelCapture }) {
+  const [filter, setFilter] = useState<ReasonFilter>("all");
+  const counts = useMemo(() => {
+    const m = new Map<UnverifiedReason, number>();
+    for (const s of slots) m.set(s.reason, (m.get(s.reason) ?? 0) + 1);
+    return m;
+  }, [slots]);
+  const shown = filter === "all" ? slots : slots.filter((s) => s.reason === filter);
+  const options: ReasonFilter[] = ["all", ...UNVERIFIED_REASONS.filter((r) => counts.has(r))];
+  return (
+    <section aria-labelledby="unverified-slots-title" className="space-y-2 rounded-md border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 id="unverified-slots-title" className="text-sm font-semibold">
+          Unverified slots
+        </h3>
+        <Badge variant={slots.length ? "outline" : "secondary"} className="text-[10px]">
+          {slots.length}
+        </Badge>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Lists whose title or note can&apos;t be verified, so whether they are tagged is unknown —
+        recheck these once the rota is published, then use Refresh. Whether the rota is published
+        isn&apos;t part of the import, so it isn&apos;t shown.
+      </p>
+      {slots.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Every imported list in this window has a title or note.
+        </p>
+      ) : (
+        <>
+          <div role="group" aria-label="Filter unverified slots" className="flex flex-wrap gap-1.5">
+            {options.map((o) => {
+              const n = o === "all" ? slots.length : (counts.get(o) ?? 0);
+              const active = filter === o;
+              return (
+                <Button
+                  key={o}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  aria-pressed={active}
+                  className="h-7 text-xs"
+                  onClick={() => setFilter(o)}
+                >
+                  {o === "all" ? "All" : REASON_LABEL[o]} ({n})
+                </Button>
+              );
+            })}
+          </div>
+          <div className="max-h-80 overflow-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-card text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1 text-left font-medium">Date</th>
+                  <th className="px-2 py-1 text-left font-medium">Theatre</th>
+                  <th className="px-2 py-1 text-left font-medium">Half</th>
+                  <th className="px-2 py-1 text-left font-medium">Why unverified</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((s) => (
+                  <tr key={s.key} className="border-t align-top" data-testid="unverified-slot">
+                    <td className="whitespace-nowrap px-2 py-1.5">
+                      <Link
+                        to="/robustness/day/$date"
+                        params={{ date: s.date }}
+                        className="text-primary hover:underline"
+                      >
+                        {formatDateGB(s.date)}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-1.5">{s.theatreName ?? "All theatres"}</td>
+                    <td className="px-2 py-1.5">{s.half ? halfLabel(s.half) : "—"}</td>
+                    <td className="px-2 py-1.5">
+                      <span className="font-medium">{REASON_LABEL[s.reason]}</span>
+                      <span className="text-muted-foreground"> — {reasonHelp(s.reason, capture)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

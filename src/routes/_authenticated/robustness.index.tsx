@@ -170,6 +170,11 @@ function RobustnessPage() {
           onRetry={() => void evidenceQuery.refetch()}
           staffingError={robustnessQuery.error}
           staffingLoading={robustnessQuery.isLoading}
+          onRefresh={() => {
+            void evidenceQuery.refetch();
+            void robustnessQuery.refetch();
+          }}
+          isRefreshing={evidenceQuery.isFetching}
         />
 
         {/* Legend */}
