@@ -2843,6 +2843,59 @@ export type Database = {
           },
         ]
       }
+      theatre_session_source_labels: {
+        Row: {
+          created_at: string
+          evidence_complete: boolean
+          last_seen_at: string
+          list_notes: string[]
+          list_titles: string[]
+          note_tags: string[]
+          place_notes: string[]
+          scan_truncated: boolean
+          source_rows_seen: number
+          theatre_session_id: string
+          title_tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_complete?: boolean
+          last_seen_at?: string
+          list_notes?: string[]
+          list_titles?: string[]
+          note_tags?: string[]
+          place_notes?: string[]
+          scan_truncated?: boolean
+          source_rows_seen?: number
+          theatre_session_id: string
+          title_tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence_complete?: boolean
+          last_seen_at?: string
+          list_notes?: string[]
+          list_titles?: string[]
+          note_tags?: string[]
+          place_notes?: string[]
+          scan_truncated?: boolean
+          source_rows_seen?: number
+          theatre_session_id?: string
+          title_tags?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theatre_session_source_labels_theatre_session_id_fkey"
+            columns: ["theatre_session_id"]
+            isOneToOne: true
+            referencedRelation: "theatre_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theatre_sessions: {
         Row: {
           clwrota_external_id: string | null
@@ -3945,6 +3998,22 @@ export type Database = {
           reasonable_adjustments: string
           staff_id: string
           updated_at: string
+        }[]
+      }
+      get_theatre_session_label_signals: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          evidence_complete: boolean
+          has_note: boolean
+          has_place_note: boolean
+          has_title: boolean
+          last_seen_at: string
+          note_tags: string[]
+          scan_truncated: boolean
+          source_rows_seen: number
+          theatre_session_id: string
+          title_group: number
+          title_tags: string[]
         }[]
       }
       has_role: {

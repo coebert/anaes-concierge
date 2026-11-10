@@ -57,6 +57,13 @@
       "when": 1793547016982,
       "tag": "0007_definer_caller_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794330422192,
+      "tag": "0008_theatre_session_source_labels",
+      "breakpoints": true
     }
   ]
 }
