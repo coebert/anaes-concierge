@@ -21,3 +21,5 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [x] Apply migrations 0008/0009/0010 to live and run one real rota import
 - [x] Publish (incl. off-site day-off fix) and run one live import; verify 17 Nov Laser AM, forecast, unmatched counts
 - [ ] Decide whether a list staffed only by SAS/junior doctors counts as filled in headroom — waiting on department
+- [ ] 13 unverified slots (2 Dec–28 Jan) await re-import under the fixed off-site rule — nightly import should reach them 14–15 Nov, or run one rota import for 25 Nov–1 Feb if Rob approves
+- [ ] 6 blank Endo slots (24 Nov, 22 Dec, 26 Jan): needs CLWRota Uncovered sessions report or slot-level report to tell no-list from uncovered
