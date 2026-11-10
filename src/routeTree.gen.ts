@@ -71,6 +71,7 @@ import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_a
 import { Route as AuthenticatedCoordinatorDutiesRouteImport } from './routes/_authenticated/coordinator.duties'
 import { Route as AuthenticatedCoordinatorLeaveRouteImport } from './routes/_authenticated/coordinator.leave'
 import { Route as AuthenticatedCoordinatorRotaRouteImport } from './routes/_authenticated/coordinator.rota'
+import { Route as AuthenticatedCoordinatorUnlinkedSessionsRouteImport } from './routes/_authenticated/coordinator.unlinked-sessions'
 import { Route as AuthenticatedLeaveEntitlementsRouteImport } from './routes/_authenticated/leave.entitlements'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
 import { Route as AuthenticatedMeCompetenciesRouteImport } from './routes/_authenticated/me.competencies'
@@ -456,6 +457,12 @@ const AuthenticatedCoordinatorRotaRoute =
     path: '/coordinator/rota',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCoordinatorUnlinkedSessionsRoute =
+  AuthenticatedCoordinatorUnlinkedSessionsRouteImport.update({
+    id: '/coordinator/unlinked-sessions',
+    path: '/coordinator/unlinked-sessions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedLeaveEntitlementsRoute =
   AuthenticatedLeaveEntitlementsRouteImport.update({
     id: '/entitlements',
@@ -724,6 +731,7 @@ export interface FileRoutesByFullPath {
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/coordinator/unlinked-sessions': typeof AuthenticatedCoordinatorUnlinkedSessionsRoute
   '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/me/competencies': typeof AuthenticatedMeCompetenciesRoute
@@ -820,6 +828,7 @@ export interface FileRoutesByTo {
   '/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/coordinator/unlinked-sessions': typeof AuthenticatedCoordinatorUnlinkedSessionsRoute
   '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/me/competencies': typeof AuthenticatedMeCompetenciesRoute
@@ -920,6 +929,7 @@ export interface FileRoutesById {
   '/_authenticated/coordinator/duties': typeof AuthenticatedCoordinatorDutiesRoute
   '/_authenticated/coordinator/leave': typeof AuthenticatedCoordinatorLeaveRoute
   '/_authenticated/coordinator/rota': typeof AuthenticatedCoordinatorRotaRoute
+  '/_authenticated/coordinator/unlinked-sessions': typeof AuthenticatedCoordinatorUnlinkedSessionsRoute
   '/_authenticated/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/me/competencies': typeof AuthenticatedMeCompetenciesRoute
@@ -1020,6 +1030,7 @@ export interface FileRouteTypes {
     | '/coordinator/duties'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/coordinator/unlinked-sessions'
     | '/leave/entitlements'
     | '/leave/forecast'
     | '/me/competencies'
@@ -1116,6 +1127,7 @@ export interface FileRouteTypes {
     | '/coordinator/duties'
     | '/coordinator/leave'
     | '/coordinator/rota'
+    | '/coordinator/unlinked-sessions'
     | '/leave/entitlements'
     | '/leave/forecast'
     | '/me/competencies'
@@ -1215,6 +1227,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coordinator/duties'
     | '/_authenticated/coordinator/leave'
     | '/_authenticated/coordinator/rota'
+    | '/_authenticated/coordinator/unlinked-sessions'
     | '/_authenticated/leave/entitlements'
     | '/_authenticated/leave_/forecast'
     | '/_authenticated/me/competencies'
@@ -1711,6 +1724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoordinatorRotaRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/coordinator/unlinked-sessions': {
+      id: '/_authenticated/coordinator/unlinked-sessions'
+      path: '/coordinator/unlinked-sessions'
+      fullPath: '/coordinator/unlinked-sessions'
+      preLoaderRoute: typeof AuthenticatedCoordinatorUnlinkedSessionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/leave/entitlements': {
       id: '/_authenticated/leave/entitlements'
       path: '/entitlements'
@@ -2100,6 +2120,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorDutiesRoute: typeof AuthenticatedCoordinatorDutiesRoute
   AuthenticatedCoordinatorLeaveRoute: typeof AuthenticatedCoordinatorLeaveRoute
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
+  AuthenticatedCoordinatorUnlinkedSessionsRoute: typeof AuthenticatedCoordinatorUnlinkedSessionsRoute
   AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
   AuthenticatedRobustnessConsultantAuditsRoute: typeof AuthenticatedRobustnessConsultantAuditsRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
@@ -2174,6 +2195,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorDutiesRoute: AuthenticatedCoordinatorDutiesRoute,
   AuthenticatedCoordinatorLeaveRoute: AuthenticatedCoordinatorLeaveRoute,
   AuthenticatedCoordinatorRotaRoute: AuthenticatedCoordinatorRotaRoute,
+  AuthenticatedCoordinatorUnlinkedSessionsRoute:
+    AuthenticatedCoordinatorUnlinkedSessionsRoute,
   AuthenticatedLeaveForecastRoute: AuthenticatedLeaveForecastRoute,
   AuthenticatedRobustnessConsultantAuditsRoute:
     AuthenticatedRobustnessConsultantAuditsRoute,
