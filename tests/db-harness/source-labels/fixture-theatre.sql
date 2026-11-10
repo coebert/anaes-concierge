@@ -28,3 +28,9 @@ INSERT INTO public.theatre_sessions (id, session_date, theatre_id, session, surg
  ('80000000-0000-0000-0000-000000000003','2030-01-07','70000000-0000-0000-0000-000000000002','am',NULL,NULL),
  ('80000000-0000-0000-0000-000000000004','2030-01-08','70000000-0000-0000-0000-000000000001','am',NULL,NULL),
  ('80000000-0000-0000-0000-000000000005','2031-06-02','70000000-0000-0000-0000-000000000001','am',NULL,NULL);
+
+-- Live-equivalent self-read on membership tables so the SECURITY INVOKER
+-- is_app_member() used by member policies can evaluate for the caller.
+GRANT SELECT ON public.profiles, public.user_roles TO authenticated;
+CREATE POLICY self_read_profile ON public.profiles FOR SELECT TO authenticated USING (id = auth.uid());
+CREATE POLICY self_read_roles ON public.user_roles FOR SELECT TO authenticated USING (user_id = auth.uid());

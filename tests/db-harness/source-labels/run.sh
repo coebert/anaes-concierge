@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Disposable harness for the PENDING migration 0008 (restricted CLWRota list
-# title/note storage + derived-only signals). Uses the definer fixture (a
+# Disposable harness for the PENDING migrations 0008 (restricted CLWRota list
+# title/note storage + derived-only signals) and 0009 (observed week rota
+# status, member-readable). Uses the definer fixture (a
 # non-superuser postgres owner that is a service_role member, as live), the
 # reviewed 0007 caller-identity helpers, then 0008. Proves privileges by exact
 # SQLSTATE / row content in SQL and through a real PostgREST with synthetic
@@ -14,6 +15,8 @@ HERE=$(cd "$(dirname "$0")" && pwd); ROOT="$HERE/../../.."; DEF="$HERE/../define
 M7="$ROOT/drizzle/migrations/0007_definer_caller_identity.sql"
 M8="$ROOT/drizzle/pending/0008_theatre_session_source_labels.sql"
 [ -f "$M8" ] || M8=$(ls "$ROOT"/drizzle/migrations/*_theatre_session_source_labels.sql | head -1)
+M9="$ROOT/drizzle/pending/0009_clwrota_week_status.sql"
+[ -f "$M9" ] || M9=$(ls "$ROOT"/drizzle/migrations/*_clwrota_week_status.sql | head -1)
 D=$(mktemp -d /tmp/pglabels.XXXX)
 cleanup() { [ -n "${RPID:-}" ] && kill "$RPID" 2>/dev/null || true; pg_ctl -D "$D/data" stop -m immediate >/dev/null 2>&1 || true; rm -rf "$D"; }
 trap cleanup EXIT
@@ -26,6 +29,7 @@ $H -U postgres -f "$DEF/seed.sql" >/dev/null
 sed '/--> statement-breakpoint/d' "$M7" | $H -U postgres >/dev/null
 $H -U postgres -f "$HERE/fixture-theatre.sql" >/dev/null
 sed '/--> statement-breakpoint/d' "$M8" | $H -U postgres >/dev/null
+sed '/--> statement-breakpoint/d' "$M9" | $H -U postgres >/dev/null
 $H -U harness -c "CREATE TABLE results (phase text, name text, expected text, actual text)"
 
 A=00000000-0000-0000-0000-0000000000a1; C=00000000-0000-0000-0000-0000000000c3
@@ -138,6 +142,33 @@ META="(SELECT concat_ws(',',
   has_function_privilege('authenticated','public._validate_theatre_session_source_labels()','EXECUTE')))"
 c "metadata: privileges, RLS, no policies, definer config" sched "$META" "ok:f,f,f,f,f,t,t,0,f,t,t,search_path=public,f"
 
+# ---------- 0009 week status ----------
+W9=public.clwrota_week_status
+WINS="WITH i AS (INSERT INTO $W9 (week_start, status_code, source_values, rows_seen, dates_seen, planned_rows, actual_rows, other_state_rows) VALUES
+ ('2030-01-07','published',ARRAY['Published'],10,5,0,10,0), ('2030-01-14','setup',ARRAY['Setup'],8,5,0,8,0),
+ ('2030-01-21','not_setup',ARRAY['Not setup'],6,5,4,2,0) RETURNING 1) SELECT 'ok:' || count(*) FROM i"
+WREAD="(SELECT string_agg(week_start::text || '=' || status_code, ';' ORDER BY week_start) FROM $W9)"
+cw "service writes week status"                service "$WINS"                        "ok:3"
+c "staffA reads week status"                   user:$A "$WREAD"                       "ok:2030-01-07=published;2030-01-14=setup;2030-01-21=not_setup"
+c "coordinator reads week status"              user:$C "(SELECT count(*) FROM $W9)"   "ok:3"
+c "roleless sees no week rows (RLS)"           user:$R "(SELECT count(*) FROM $W9)"   "ok:0"
+c "inactive admin sees no week rows"           user:$E "(SELECT count(*) FROM $W9)"   "ok:0"
+c "departed staff sees no week rows"           user:$I "(SELECT count(*) FROM $W9)"   "ok:0"
+c "missing-profile sees no week rows"          user:$M "(SELECT count(*) FROM $W9)"   "ok:0"
+c "no-claims authenticated sees no week rows"  noclaims "(SELECT count(*) FROM $W9)"  "ok:0"
+c "anon week status denied"                    anon "(SELECT count(*) FROM $W9)"      "err:42501"
+cw "staffA cannot write week status"           user:$A "WITH i AS (INSERT INTO $W9 (week_start, status_code, rows_seen, dates_seen, actual_rows) VALUES ('2030-02-04','published',1,1,1) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:42501"
+cw "admin cannot write week status"            user:$DA "WITH u AS (UPDATE $W9 SET status_code='published' RETURNING 1) SELECT 'ok:' || count(*) FROM u" "err:42501"
+cw "non-Monday week rejected"                  service "WITH i AS (INSERT INTO $W9 (week_start, status_code, rows_seen, dates_seen, actual_rows) VALUES ('2030-02-05','published',1,1,1) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "unknown status code rejected"              service "WITH i AS (INSERT INTO $W9 (week_start, status_code, rows_seen, dates_seen, actual_rows) VALUES ('2030-02-04','draft',1,1,1) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "zero-row week rejected (no inference)"     service "WITH i AS (INSERT INTO $W9 (week_start, status_code, rows_seen, dates_seen) VALUES ('2030-02-04','published',0,0) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "state counts must add up"                  service "WITH i AS (INSERT INTO $W9 (week_start, status_code, rows_seen, dates_seen, actual_rows) VALUES ('2030-02-04','published',5,1,1) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:23514"
+cw "non-word source value rejected"            service "WITH i AS (INSERT INTO $W9 (week_start, status_code, source_values, rows_seen, dates_seen, actual_rows) VALUES ('2030-02-04','other',ARRAY['Dr X <b>'],1,1,1) RETURNING 1) SELECT 'ok:' || count(*) FROM i" "err:22023"
+W9META="(SELECT concat_ws(',', has_table_privilege('authenticated','$W9','SELECT'), has_table_privilege('authenticated','$W9','INSERT'),
+  has_table_privilege('authenticated','$W9','UPDATE'), has_table_privilege('authenticated','$W9','DELETE'), has_table_privilege('anon','$W9','SELECT'),
+  (SELECT relrowsecurity FROM pg_class WHERE oid='$W9'::regclass), (SELECT count(*) FROM pg_policy WHERE polrelid='$W9'::regclass)))"
+c "metadata: week status privileges and RLS"   sched "$W9META"                        "ok:t,f,f,f,f,t,1"
+
 # ---------- real PostgREST, synthetic JWTs ----------
 SECRET="harness-only-jwt-secret-0123456789abcdef"
 jwt() { node -e '
@@ -174,6 +205,10 @@ h "POST roleless signals denied"          POST "$TR" "/rpc/get_theatre_session_l
 h "POST anon signals denied"              POST ""    "/rpc/get_theatre_session_label_signals" "$W" 401 '42501'
 h "POST forged service JWT rejected"      POST "$TBAD" "/rpc/get_theatre_session_label_signals" "$W" 401 'PGRST'
 h "POST service signals"                  POST "$TS" "/rpc/get_theatre_session_label_signals" "$W" 200 '"evidence_complete":false'
+h "GET staffA week status (paged order)"  GET  "$TA" "/clwrota_week_status?select=week_start,status_code&order=week_start&limit=1&offset=1" "" 200 '^\[\{"week_start":"2030-01-14","status_code":"setup"\}\]$'
+h "GET roleless week status empty"        GET  "$TR" "/clwrota_week_status?select=week_start" "" 200 '^\[\]$'
+h "GET anon week status denied"           GET  ""    "/clwrota_week_status" "" 401 '42501'
+h "POST staffA week status write denied"  POST "$TA" "/clwrota_week_status" '{"week_start":"2030-02-04","status_code":"published","rows_seen":1,"dates_seen":1,"actual_rows":1}' 403 '42501'
 
 PHASE=sql
 cw "cascade: delete a theatre session"       sched "WITH d AS (DELETE FROM public.theatre_sessions WHERE id='$S4' RETURNING 1) SELECT 'ok:' || count(*) FROM d" "ok:1"
