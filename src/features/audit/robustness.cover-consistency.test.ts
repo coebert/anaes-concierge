@@ -42,7 +42,13 @@ const prof = (id: string, grade: string | null, training_level: string | null = 
   ltft_days_off: [],
   active: true,
 });
-const asn = (id: string, staff_id: string, session: string, duty_type: string, ts: string | null = null) => ({
+const asn = (
+  id: string,
+  staff_id: string,
+  session: string,
+  duty_type: string,
+  ts: string | null = null,
+) => ({
   id,
   staff_id,
   session_date: DATE,
@@ -65,9 +71,30 @@ beforeEach(() => {
   ];
   db.theatres = [{ id: "th1", name: "Theatre 1", active: true }];
   db.theatre_sessions = [
-    { id: "ts1", session_date: DATE, session: "am", specialty_id: "sp-g", surgical_consultant: null, theatre_id: "th1" },
-    { id: "ts2", session_date: DATE, session: "pm", specialty_id: "sp-g", surgical_consultant: null, theatre_id: "th1" },
-    { id: "ts3", session_date: DATE, session: "am", specialty_id: "sp-em", surgical_consultant: null, theatre_id: "th1" },
+    {
+      id: "ts1",
+      session_date: DATE,
+      session: "am",
+      specialty_id: "sp-g",
+      surgical_consultant: null,
+      theatre_id: "th1",
+    },
+    {
+      id: "ts2",
+      session_date: DATE,
+      session: "pm",
+      specialty_id: "sp-g",
+      surgical_consultant: null,
+      theatre_id: "th1",
+    },
+    {
+      id: "ts3",
+      session_date: DATE,
+      session: "am",
+      specialty_id: "sp-em",
+      surgical_consultant: null,
+      theatre_id: "th1",
+    },
   ];
   db.profiles = [
     prof("c1", "consultant"),
@@ -91,7 +118,14 @@ beforeEach(() => {
     asn("a8", "t7", "am", "spa"),
   ];
   db.leave_requests = [
-    { id: "l1", staff_id: "t7", type: "annual", status: "approved", start_date: DATE, end_date: DATE },
+    {
+      id: "l1",
+      staff_id: "t7",
+      type: "annual",
+      status: "approved",
+      start_date: DATE,
+      end_date: DATE,
+    },
   ];
   db.trainee_targets = [];
 });
@@ -142,7 +176,9 @@ describe("cover rules — one set of semantics across overview and day detail", 
 describe("duty_type_pool_rules — failure vs successful empty config", () => {
   it("a failed read is an error (Retry), never a number from built-in defaults", async () => {
     failing.add("duty_type_pool_rules");
-    await expect(computeRobustness(DATE, DATE)).rejects.toThrow(/Duty categories couldn't be loaded/);
+    await expect(computeRobustness(DATE, DATE)).rejects.toThrow(
+      /Duty categories couldn't be loaded/,
+    );
     await expect(loadDayDetail(DATE)).rejects.toThrow(/Duty categories couldn't be loaded/);
   });
 

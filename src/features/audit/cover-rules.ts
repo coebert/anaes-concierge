@@ -35,7 +35,10 @@ export function isSeniorTrainee(trainingLevel: string | null | undefined): boole
 }
 
 /** Grade + level → may this person lead a planned list alone? */
-export function isSoloCapable(grade: string | null | undefined, trainingLevel: string | null | undefined) {
+export function isSoloCapable(
+  grade: string | null | undefined,
+  trainingLevel: string | null | undefined,
+) {
   if (grade === "consultant") return true;
   if (grade === "trainee") return isSeniorTrainee(trainingLevel);
   return false;
@@ -81,13 +84,19 @@ export const COVER_TEXT = {
   risk: {
     ok: `Headroom above ${RISK_TIGHT} — more than ${RISK_TIGHT} spare solo-capable person.`,
     tight: `Covered, but headroom is 0–${RISK_TIGHT} — little buffer for unexpected absence.`,
-    spa_required: "Not enough solo-capable staff; covering every list needs a consultant pulled off SPA.",
+    spa_required:
+      "Not enough solo-capable staff; covering every list needs a consultant pulled off SPA.",
     shortfall: "Not enough solo-capable staff even if every consultant on SPA is redeployed.",
   } satisfies Record<CoverRisk, string>,
 } as const;
 
 /** What-if comparison of one day (worst change across its AM/PM halves). */
-export type ScenarioVerdict = "new_shortfall" | "new_spa_required" | "already_at_risk" | "tight" | "ok";
+export type ScenarioVerdict =
+  | "new_shortfall"
+  | "new_spa_required"
+  | "already_at_risk"
+  | "tight"
+  | "ok";
 
 export const SCENARIO_VERDICT_LABEL: Record<ScenarioVerdict, string> = {
   new_shortfall: "New shortfall",

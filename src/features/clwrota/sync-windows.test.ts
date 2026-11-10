@@ -16,12 +16,22 @@ const t1 = new Date("2030-01-01T10:05:00Z");
 describe("resolveRequestedWindow", () => {
   it("explicit slice is kept as-is", () => {
     expect(
-      resolveRequestedWindow({ from: "2030-01-07", to: "2030-01-13", daysBack: 30, daysAhead: 120, now: t0 }),
+      resolveRequestedWindow({
+        from: "2030-01-07",
+        to: "2030-01-13",
+        daysBack: 30,
+        daysAhead: 120,
+        now: t0,
+      }),
     ).toEqual({ from: "2030-01-07", to: "2030-01-13", explicit: true });
   });
   it("default window is today−back … today+ahead in UTC", () => {
     expect(
-      resolveRequestedWindow({ daysBack: 30, daysAhead: 120, now: new Date("2030-01-31T23:30:00Z") }),
+      resolveRequestedWindow({
+        daysBack: 30,
+        daysAhead: 120,
+        now: new Date("2030-01-31T23:30:00Z"),
+      }),
     ).toEqual({ from: "2030-01-01", to: "2030-05-31", explicit: false });
   });
 });
@@ -51,8 +61,13 @@ describe("classifySyncOutcome / buildSyncWindowRecord", () => {
   });
   it("any write error makes the whole window partial", () => {
     const r = buildSyncWindowRecord({
-      startedAt: t0, finishedAt: t1, requested: req, threw: false,
-      rows: rows(["2030-01-08"]), skipped: 0, writeErrors: 4,
+      startedAt: t0,
+      finishedAt: t1,
+      requested: req,
+      threw: false,
+      rows: rows(["2030-01-08"]),
+      skipped: 0,
+      writeErrors: 4,
     });
     expect(r.outcome).toBe("partial");
     expect(r.write_errors).toBe(4);
@@ -60,25 +75,57 @@ describe("classifySyncOutcome / buildSyncWindowRecord", () => {
   });
   it("no rows inside the request → empty with no coverage claimed", () => {
     const r = buildSyncWindowRecord({
-      startedAt: t0, finishedAt: t1, requested: req, threw: false,
-      rows: rows(["2031-01-01"]), skipped: 0, writeErrors: 0,
+      startedAt: t0,
+      finishedAt: t1,
+      requested: req,
+      threw: false,
+      rows: rows(["2031-01-01"]),
+      skipped: 0,
+      writeErrors: 0,
     });
-    expect(r).toMatchObject({ outcome: "empty", covered_from: null, covered_to: null, rows_in_window: 0 });
+    expect(r).toMatchObject({
+      outcome: "empty",
+      covered_from: null,
+      covered_to: null,
+      rows_in_window: 0,
+    });
   });
   it("a run that threw → failed, never coverage", () => {
     const r = buildSyncWindowRecord({
-      startedAt: t0, finishedAt: t1, requested: req, threw: true,
-      rows: rows(["2030-01-08"]), skipped: 0, writeErrors: 0,
+      startedAt: t0,
+      finishedAt: t1,
+      requested: req,
+      threw: true,
+      rows: rows(["2030-01-08"]),
+      skipped: 0,
+      writeErrors: 0,
     });
-    expect(r).toMatchObject({ outcome: "failed", covered_from: null, rows_in_window: 0, write_errors: 0 });
+    expect(r).toMatchObject({
+      outcome: "failed",
+      covered_from: null,
+      rows_in_window: 0,
+      write_errors: 0,
+    });
   });
   it("threw wins over everything", () => {
-    expect(classifySyncOutcome({ threw: true, rowsInWindow: 5, writeErrors: 0, covered: { from: "a", to: "b" } })).toBe("failed");
+    expect(
+      classifySyncOutcome({
+        threw: true,
+        rowsInWindow: 5,
+        writeErrors: 0,
+        covered: { from: "a", to: "b" },
+      }),
+    ).toBe("failed");
   });
   it("records hold no free text beyond dates and the outcome code", () => {
     const r = buildSyncWindowRecord({
-      startedAt: t0, finishedAt: t1, requested: req, threw: false,
-      rows: [{ date: "2030-01-08", "person.name": "SYNTH Person", note: "secret" }], skipped: 0, writeErrors: 0,
+      startedAt: t0,
+      finishedAt: t1,
+      requested: req,
+      threw: false,
+      rows: [{ date: "2030-01-08", "person.name": "SYNTH Person", note: "secret" }],
+      skipped: 0,
+      writeErrors: 0,
     });
     expect(JSON.stringify(r)).not.toMatch(/SYNTH|secret/);
   });
@@ -86,8 +133,13 @@ describe("classifySyncOutcome / buildSyncWindowRecord", () => {
 
 describe("persistSyncWindow", () => {
   const rec = buildSyncWindowRecord({
-    startedAt: t0, finishedAt: t1, requested: req, threw: false,
-    rows: rows(["2030-01-08"]), skipped: 0, writeErrors: 0,
+    startedAt: t0,
+    finishedAt: t1,
+    requested: req,
+    threw: false,
+    rows: rows(["2030-01-08"]),
+    skipped: 0,
+    writeErrors: 0,
   });
   const client = (error: unknown, seen: SyncWindowRecord[] = []) => ({
     from: (t: string) => {

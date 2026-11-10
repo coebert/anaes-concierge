@@ -655,9 +655,9 @@ function WeekStatusStrip({
           <p className="text-xs text-muted-foreground">
             {statusTl ? (
               <>
-                <strong>Status</strong> is the rota feed&apos;s own label for the week, as last
-                seen — “Checked” is when the import saw it, not when the rota was published.
-                Weeks never seen show “Not checked”.{" "}
+                <strong>Status</strong> is the rota feed&apos;s own label for the week, as last seen
+                — “Checked” is when the import saw it, not when the rota was published. Weeks never
+                seen show “Not checked”.{" "}
               </>
             ) : null}
             {importTl ? (

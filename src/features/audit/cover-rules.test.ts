@@ -47,7 +47,9 @@ describe("risk classification with explicit SPA contingency", () => {
 
 describe("simulator verdicts", () => {
   it("a half newly at shortfall → new_shortfall", () => {
-    expect(scenarioVerdict({ am: "ok", pm: "ok" }, { am: "shortfall", pm: "ok" })).toBe("new_shortfall");
+    expect(scenarioVerdict({ am: "ok", pm: "ok" }, { am: "shortfall", pm: "ok" })).toBe(
+      "new_shortfall",
+    );
   });
   it("a half newly needing SPA is reported (previously missed)", () => {
     expect(scenarioVerdict({ am: "tight", pm: "ok" }, { am: "spa_required", pm: "ok" })).toBe(
@@ -55,9 +57,9 @@ describe("simulator verdicts", () => {
     );
   });
   it("already at risk in baseline → already_at_risk", () => {
-    expect(scenarioVerdict({ am: "spa_required", pm: "ok" }, { am: "spa_required", pm: "ok" })).toBe(
-      "already_at_risk",
-    );
+    expect(
+      scenarioVerdict({ am: "spa_required", pm: "ok" }, { am: "spa_required", pm: "ok" }),
+    ).toBe("already_at_risk");
   });
   it("tight / ok by the worst simulated half", () => {
     expect(scenarioVerdict({ am: "ok", pm: "ok" }, { am: "ok", pm: "tight" })).toBe("tight");

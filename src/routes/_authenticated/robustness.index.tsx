@@ -250,11 +250,7 @@ function RobustnessPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex flex-wrap gap-3">
-              <LegendItem
-                color="bg-emerald-300/50"
-                label="OK"
-                description={COVER_TEXT.risk.ok}
-              />
+              <LegendItem color="bg-emerald-300/50" label="OK" description={COVER_TEXT.risk.ok} />
               <LegendItem
                 color="bg-amber-400/80"
                 label="Tight"

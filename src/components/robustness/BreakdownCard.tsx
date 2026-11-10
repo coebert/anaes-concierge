@@ -28,8 +28,7 @@ const METRIC_META: Record<MetricKey, { label: string; chipClass: string; explain
   headroom: {
     label: "→ headroom",
     chipClass: "bg-success-muted text-success border-success/40",
-    explainer:
-      `Solo-capable: counts directly toward the baseline headroom metric. ${COVER_TEXT.soloCapable} SPA is NOT included here.`,
+    explainer: `Solo-capable: counts directly toward the baseline headroom metric. ${COVER_TEXT.soloCapable} SPA is NOT included here.`,
   },
   spa: {
     label: "→ SPA (separate)",

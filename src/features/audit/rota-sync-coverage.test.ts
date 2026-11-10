@@ -43,7 +43,11 @@ describe("classifyImportWeek", () => {
 
   it("partial attempt after a clean one → attempt_problem with last known good kept", () => {
     const c = classifyImportWeek(
-      row({ days_latest_not_ok: 7, latest_attempt_outcome: "partial", latest_attempt_at: "2030-01-20T09:00:00Z" }),
+      row({
+        days_latest_not_ok: 7,
+        latest_attempt_outcome: "partial",
+        latest_attempt_at: "2030-01-20T09:00:00Z",
+      }),
       NOW,
     );
     expect(c.state).toBe("attempt_problem");
@@ -71,7 +75,13 @@ describe("classifyImportWeek", () => {
   it("no runs ever → not tracked (never current)", () => {
     expect(
       classifyImportWeek(
-        row({ days_ok: 0, last_full_ok_at: null, newest_ok_at: null, latest_attempt_at: null, latest_attempt_outcome: null }),
+        row({
+          days_ok: 0,
+          last_full_ok_at: null,
+          newest_ok_at: null,
+          latest_attempt_at: null,
+          latest_attempt_outcome: null,
+        }),
         NOW,
       ).state,
     ).toBe("not_tracked");
@@ -86,7 +96,13 @@ describe("classifyImportWeek", () => {
 
   it("only failed attempts → attempt_problem with no last known good", () => {
     const c = classifyImportWeek(
-      row({ days_ok: 0, last_full_ok_at: null, newest_ok_at: null, days_latest_not_ok: 7, latest_attempt_outcome: "failed" }),
+      row({
+        days_ok: 0,
+        last_full_ok_at: null,
+        newest_ok_at: null,
+        days_latest_not_ok: 7,
+        latest_attempt_outcome: "failed",
+      }),
       NOW,
     );
     expect(c.state).toBe("attempt_problem");
@@ -146,7 +162,11 @@ describe("loadImportCoverage", () => {
   });
   it("other errors throw (Retry), never empty", async () => {
     await expect(
-      loadImportCoverage("2030-01-14", "2030-01-27", client({ data: null, error: { code: "42501", message: "not authorised" } })),
+      loadImportCoverage(
+        "2030-01-14",
+        "2030-01-27",
+        client({ data: null, error: { code: "42501", message: "not authorised" } }),
+      ),
     ).rejects.toThrow(/couldn't be loaded/);
   });
   it("more rows than weeks requested fails instead of truncating", async () => {

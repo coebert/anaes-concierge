@@ -102,7 +102,8 @@ export function classifyImportWeek(
   if (base.daysOk < r.days_total || !base.lastKnownGoodAt) return { state: "incomplete", ...base };
   const age = now.getTime() - Date.parse(base.lastKnownGoodAt);
   return {
-    state: Number.isFinite(age) && age <= IMPORT_STALE_AFTER_HOURS * 3_600_000 ? "current" : "stale",
+    state:
+      Number.isFinite(age) && age <= IMPORT_STALE_AFTER_HOURS * 3_600_000 ? "current" : "stale",
     ...base,
   };
 }
@@ -125,9 +126,7 @@ export function buildImportCoverageTimeline(input: {
       weekStart: w,
       ...c,
       beforeTracking:
-        c.state === "not_tracked" &&
-        !!trackingSince &&
-        addDays(w, 6) < trackingSince.slice(0, 10),
+        c.state === "not_tracked" && !!trackingSince && addDays(w, 6) < trackingSince.slice(0, 10),
     });
   }
   return { capture, trackingSince, weeks, byWeek: new Map(weeks.map((e) => [e.weekStart, e])) };
@@ -188,7 +187,10 @@ interface CoverageRpc {
 export function isMissingCoverageFunction(e: RpcError): boolean {
   if (!e) return false;
   if (e.code === "PGRST202" || e.code === "42883") return true;
-  return /get_rota_sync_week_coverage/.test(e.message ?? "") && /schema cache|could not find/i.test(e.message ?? "");
+  return (
+    /get_rota_sync_week_coverage/.test(e.message ?? "") &&
+    /schema cache|could not find/i.test(e.message ?? "")
+  );
 }
 
 /**
@@ -207,7 +209,9 @@ export async function loadImportCoverage(
   });
   if (error) {
     if (isMissingCoverageFunction(error)) return { rows: [], capture: "not_installed" };
-    throw new Error(`Rota import coverage couldn't be loaded: ${error.message ?? "request failed"}`);
+    throw new Error(
+      `Rota import coverage couldn't be loaded: ${error.message ?? "request failed"}`,
+    );
   }
   const rows = data ?? [];
   let expected = 0;

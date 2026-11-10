@@ -805,16 +805,8 @@ function RobustnessLegend() {
         half (AM or PM).
       </p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
-        <LegendSwatch
-          color="bg-emerald-300/50"
-          label="OK"
-          description={COVER_TEXT.risk.ok}
-        />
-        <LegendSwatch
-          color="bg-amber-400/80"
-          label="Tight"
-          description={COVER_TEXT.risk.tight}
-        />
+        <LegendSwatch color="bg-emerald-300/50" label="OK" description={COVER_TEXT.risk.ok} />
+        <LegendSwatch color="bg-amber-400/80" label="Tight" description={COVER_TEXT.risk.tight} />
         <LegendSwatch
           color="bg-orange-400/80"
           label="SPA needed"

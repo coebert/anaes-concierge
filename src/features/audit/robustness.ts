@@ -1003,7 +1003,11 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
     return out;
   };
   const [theatres, specialties] = await Promise.all([
-    byIds<{ id: string; name: string; active: boolean }>("theatres", "id, name, active", theatreIds),
+    byIds<{ id: string; name: string; active: boolean }>(
+      "theatres",
+      "id, name, active",
+      theatreIds,
+    ),
     byIds<{ id: string; name: string }>("specialties", "id, name", specialtyIds),
   ]);
 
