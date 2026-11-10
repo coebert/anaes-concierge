@@ -69,7 +69,7 @@ export function TheatrePressureCard(props: TheatrePressureCardProps) {
           />
         ) : null}
         {!forecast && !error && isLoading ? <PageLoading /> : null}
-        {forecast && !error ? (
+        {forecast ? (
           <>
             {staffingError ? (
               <p role="status" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">

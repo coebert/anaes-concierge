@@ -17,9 +17,24 @@ import {
 import { addDaysISO, formatDateGB, cn } from "@/lib/utils";
 import { computeRobustness, riskColor, riskLabel } from "@/features/audit/robustness";
 import { PageLoading } from "@/components/loading";
+import { QueryErrorNotice } from "@/components/query-state-notice";
+import { TheatrePressureCard } from "@/features/audit/TheatrePressureCard";
+import {
+  buildTheatrePressureForecast,
+  loadTheatrePressureEvidence,
+} from "@/features/audit/theatre-pressure";
 
 export const Route = createFileRoute("/_authenticated/robustness/")({
-  head: () => ({ meta: [{ title: "Robustness — Salisbury Anaesthetics Rota" }] }),
+  head: () => ({
+    meta: [
+      { title: "Robustness — Salisbury Anaesthetics Rota" },
+      {
+        name: "description",
+        content:
+          "Twelve-week AM/PM cover headroom with a theatre pressure forecast for labelled VRAM, DIEP and robotic lists.",
+      },
+    ],
+  }),
   component: RobustnessPage,
 });
 
@@ -36,10 +51,31 @@ function RobustnessPage() {
     [offsetWeeks],
   );
 
-  const { data, isLoading } = useQuery({
+  const robustnessQuery = useQuery({
     queryKey: ["robustness", rangeStart, rangeEnd],
     queryFn: () => computeRobustness(rangeStart, rangeEnd),
   });
+  const { data, isLoading } = robustnessQuery;
+
+  // Theatre pressure forecast: label evidence is loaded separately (paged,
+  // privacy-stripped) and combined with the SAME robustness days above.
+  const evidenceQuery = useQuery({
+    queryKey: ["theatre-pressure-evidence", rangeStart, rangeEnd],
+    queryFn: () => loadTheatrePressureEvidence(rangeStart, rangeEnd),
+  });
+  const forecast = useMemo(
+    () =>
+      evidenceQuery.data
+        ? buildTheatrePressureForecast({
+            rangeStart,
+            rangeEnd,
+            evidence: evidenceQuery.data,
+            // Failed/loading cover is passed as null → "not verified", never OK.
+            staffing: robustnessQuery.isError ? null : (data?.days ?? null),
+          })
+        : null,
+    [evidenceQuery.data, data, robustnessQuery.isError, rangeStart, rangeEnd],
+  );
 
   const days = data?.days ?? [];
   const flagged = days.filter((d) => d.am.risk !== "ok" || d.pm.risk !== "ok");
@@ -117,6 +153,15 @@ function RobustnessPage() {
           />
         </div>
 
+        <TheatrePressureCard
+          forecast={forecast}
+          isLoading={evidenceQuery.isLoading}
+          error={evidenceQuery.error}
+          onRetry={() => void evidenceQuery.refetch()}
+          staffingError={robustnessQuery.error}
+          staffingLoading={robustnessQuery.isLoading}
+        />
+
         {/* Legend */}
         <Card>
           <CardHeader className="pb-2">
@@ -174,9 +219,17 @@ function RobustnessPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {robustnessQuery.error ? (
+              <QueryErrorNotice
+                error={robustnessQuery.error}
+                onRetry={() => void robustnessQuery.refetch()}
+                what="the cover headroom"
+                stale={!!data}
+              />
+            ) : null}
             {isLoading ? (
               <PageLoading />
-            ) : days.length === 0 ? (
+            ) : robustnessQuery.isError && !data ? null : days.length === 0 ? (
               <div className="text-sm text-muted-foreground">No weekdays in range.</div>
             ) : (
               <div className="overflow-x-auto">
