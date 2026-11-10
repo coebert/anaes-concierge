@@ -77,7 +77,7 @@ describe("compactChatHistory keeps earlier lookups when within limits", () => {
       id: "a0",
       role: "assistant",
       parts: [
-        { ...lookup, toolCallId: "old", output: "x".repeat(150_000) },
+        { ...lookup, toolCallId: "old", output: "x".repeat(195_000) },
         { type: "text", text: "old" },
       ],
     };
