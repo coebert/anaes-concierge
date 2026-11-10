@@ -158,7 +158,7 @@ h() { # name method token path body expect_code body_regex
   if [ "$2" = GET ]; then out=$(curl -s -w '\n%{http_code}' "${auth[@]}" "http://127.0.0.1:55461$4")
   else out=$(curl -s -w '\n%{http_code}' "${auth[@]}" -H 'Content-Type: application/json' -X POST -d "$5" "http://127.0.0.1:55461$4"); fi
   local code; code=$(echo "$out" | tail -1); local body; body=$(echo "$out" | sed '$d' | tr -d '\n')
-  local m=no; echo "$body" | grep -Eq "$7" && m=yes; [ -n "${DEBUG:-}" ] && echo "[$1] $code $body" >&2
+  local m=no; echo "$body" | grep -Eq "$7" && m=yes; [ -n "${DEBUG:-}" ] && printf "[%s] %s %q\n" "$1" "$code" "$body" >&2
   $H -U harness -c "INSERT INTO results VALUES ('postgrest', \$a\$$1\$a\$, \$e\$$6|yes\$e\$, \$v\$$code|$m\$v\$)"
 }
 W='{"p_from":"2030-01-01","p_to":"2030-01-31"}'
