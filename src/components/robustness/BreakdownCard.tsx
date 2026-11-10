@@ -12,6 +12,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COVER_TEXT, SOLO_CAPABLE_TRAINING_LEVELS } from "@/features/audit/cover-rules";
 import type {
   HalfBreakdown,
   HalfDayCapacity,
@@ -28,7 +29,7 @@ const METRIC_META: Record<MetricKey, { label: string; chipClass: string; explain
     label: "→ headroom",
     chipClass: "bg-success-muted text-success border-success/40",
     explainer:
-      "Solo-capable: counts directly toward the baseline headroom metric (free consultants + free ST6/7/8). SPA is NOT included here.",
+      `Solo-capable: counts directly toward the baseline headroom metric. ${COVER_TEXT.soloCapable} SPA is NOT included here.`,
   },
   spa: {
     label: "→ SPA (separate)",
@@ -61,7 +62,7 @@ const CATEGORY_META: Record<
     metric: "headroom",
   },
   free_senior_trainee: {
-    label: "Free senior trainees ST6–8 (solo-capable)",
+    label: `Free senior trainees ${SOLO_CAPABLE_TRAINING_LEVELS.join("/")} (solo-capable)`,
     tone: "border-success/40 bg-success-muted/30",
     iconName: "check",
     order: 2,
@@ -87,6 +88,20 @@ const CATEGORY_META: Record<
     iconName: "info",
     order: 5,
     metric: "supervisedOnly",
+  },
+  free_other: {
+    label: "Free — grade not recorded (not counted)",
+    tone: "border-muted bg-muted/30",
+    iconName: "info",
+    order: 5.5,
+    metric: "excluded",
+  },
+  not_rostered: {
+    label: "Not rostered today (no rota entry)",
+    tone: "border-muted bg-muted/30",
+    iconName: "x",
+    order: 9.5,
+    metric: "excluded",
   },
   on_clinical_list: {
     label: "Excluded — already covering a list",
