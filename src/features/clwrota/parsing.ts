@@ -113,6 +113,10 @@ export function ensureRotaReportFields(rawUrl: string): string {
     "shift.rota_label",
     "extra_type.name",
     "extra_type.description",
+    // Week rota status ("Published" / "Setup" / "Not setup"). Accepted by the
+    // assignments query target (verified against the API's own field list);
+    // recorded per week by ./week-status.ts, never inferred from missing rows.
+    "rota_status",
   ];
 
   try {
