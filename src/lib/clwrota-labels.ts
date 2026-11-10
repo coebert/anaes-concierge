@@ -7,6 +7,9 @@ export function normaliseRotaLabelText(raw: string): string {
     .trim();
 }
 
+// "off site" after normaliseRotaLabelText (covers Off-site, Off/Site, OFF SITE).
+const OFF_SITE_PHRASE = /\boff site(s)?\b/g;
+
 /**
  * CLWRota can emit placeholder rows such as "Off", "Off Day" or
  * "Surgeon: Off Day" in rota/list fields. These are explicit non-working
@@ -22,6 +25,12 @@ export function isNonWorkingRotaLabel(
   return labels.some((label) => {
     const text = normaliseRotaLabelText(label ?? "");
     if (!text) return false;
+    // "Off site" / "Off-site" / "Off/site" describes WHERE a list runs
+    // (e.g. Laser or other remote locations), not a day off. Remove that
+    // phrase before testing the built-in markers so the bare word "off"
+    // inside it can't drop a real working row. Any genuine marker that
+    // remains ("Off site — day off") still matches.
+    const builtInText = text.replace(OFF_SITE_PHRASE, " ").replace(/\s+/g, " ").trim();
     // Explicit non-working / not-on-a-list markers CLWRota uses in the
     // slot/consultant field. "available" / "spare" mean the person is
     // rostered to the cover pool rather than allocated to a real list,
@@ -32,7 +41,7 @@ export function isNonWorkingRotaLabel(
     // lists, not non-working markers.
     if (
       /(^|\b)(off|off day|day off|regular day off|ltft day off|not working|available|available clinical|spare|tbc|tba|unallocated|nil)(\b|$)/.test(
-        text,
+        builtInText,
       )
     ) {
       return true;
