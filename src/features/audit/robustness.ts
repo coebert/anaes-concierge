@@ -1,6 +1,13 @@
 import { compareBySurname } from "@/lib/name-sort";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRowsPaged, idKey, rotaAssignmentKey, type PaginateOptions } from "./paginate";
+import {
+  RISK_LABEL,
+  RISK_TIGHT,
+  classifyRisk as classifyCoverRisk,
+  isSeniorTrainee as isSeniorTraineeRule,
+  isSoloCapable,
+} from "./cover-rules";
 
 /**
  * Supabase silently caps a `.select()` at 1000 rows. For a multi-month
@@ -72,7 +79,7 @@ export interface DayCapacity {
   pm: HalfDayCapacity;
 }
 
-const RISK_TIGHT = 1;
+void RISK_TIGHT; // threshold lives in ./cover-rules (shared by every view)
 
 function eachWeekday(start: string, end: string): string[] {
   const s = new Date(start + "T00:00:00Z");
@@ -86,17 +93,14 @@ function eachWeekday(start: string, end: string): string[] {
   return out;
 }
 
-/** ST6 / ST7 trainees can solo-cover daytime lists. */
-export function isSeniorTrainee(trainingLevel: string | null | undefined): boolean {
-  if (!trainingLevel) return false;
-  const t = trainingLevel.trim().toUpperCase();
-  return t === "ST6" || t === "ST7" || t === "ST8";
-}
+/** ST6 / ST7 / ST8 trainees can solo-cover daytime lists (see ./cover-rules). */
+export const isSeniorTrainee = isSeniorTraineeRule;
 
 /**
- * Built-in fallback classification used only if the `duty_type_pool_rules`
- * settings table is empty or unreachable. Admins can override every entry
- * via /admin/duty-categories.
+ * Built-in classification used ONLY when the `duty_type_pool_rules` settings
+ * table was read successfully and is empty. A failed read is an error (the
+ * caller shows Retry), never a silent fallback to these defaults. Admins can
+ * override every entry via /admin/duty-categories.
  */
 const DEFAULT_UNAVAILABLE_DUTY_TYPES = new Set<string>([
   "icu_consultant_oncall",
@@ -125,17 +129,33 @@ export interface DutyPoolSets {
   flex: Set<string>;
 }
 
-async function loadDutyPoolSets(): Promise<DutyPoolSets> {
-  const { data } = await supabase.from("duty_type_pool_rules").select("duty_type, category");
-  const rows = (data ?? []) as Array<{ duty_type: string; category: string }>;
+/** Where the duty categories came from: the admin table, or built-in defaults because it is empty. */
+export type PoolRulesSource = "configured" | "defaults";
+
+export async function loadDutyPoolSets(): Promise<DutyPoolSets & { source: PoolRulesSource }> {
+  const rows = await fetchAllRows<{ duty_type: string; category: string }>(
+    (from, to) =>
+      supabase
+        .from("duty_type_pool_rules")
+        .select("duty_type, category")
+        .order("duty_type", { ascending: true })
+        .range(from, to),
+    { rowKey: (r) => r.duty_type, label: "robustness.duty_type_pool_rules" },
+  ).catch((e: unknown) => {
+    throw new Error(
+      `Duty categories couldn't be loaded, so cover can't be calculated reliably (${e instanceof Error ? e.message : String(e)}).`,
+    );
+  });
   if (rows.length === 0) {
     return {
+      source: "defaults",
       clinicalList: new Set(DEFAULT_CLINICAL_LIST_DUTY_TYPES),
       unavailable: new Set(DEFAULT_UNAVAILABLE_DUTY_TYPES),
       flex: new Set(DEFAULT_FLEX_DUTY_TYPES),
     };
   }
-  const sets: DutyPoolSets = {
+  const sets: DutyPoolSets & { source: PoolRulesSource } = {
+    source: "configured",
     clinicalList: new Set(),
     unavailable: new Set(),
     flex: new Set(),
@@ -157,10 +177,7 @@ async function loadDutyPoolSets(): Promise<DutyPoolSets> {
  * - ok: comfortable headroom
  */
 export function classifyRisk(headroom: number, headroomWithSpa: number): HalfDayCapacity["risk"] {
-  if (headroom < 0 && headroomWithSpa >= 0) return "spa_required";
-  if (headroom < 0) return "shortfall";
-  if (headroom <= RISK_TIGHT) return "tight";
-  return "ok";
+  return classifyCoverRisk(headroom, headroomWithSpa);
 }
 
 // Backwards-compatible internal alias.
@@ -241,7 +258,11 @@ export async function computeRobustness(
   rangeEnd: string,
   extraAbsences: ExtraAbsence[] = [],
   options: RobustnessOptions = {},
-): Promise<{ days: DayCapacity[]; totalStaffByGrade: Record<Grade, number> }> {
+): Promise<{
+  days: DayCapacity[];
+  totalStaffByGrade: Record<Grade, number>;
+  poolRulesSource: PoolRulesSource;
+}> {
   const requireRosterEvidence = options.requireRosterEvidence ?? true;
   const poolSets = await loadDutyPoolSets();
 
@@ -336,11 +357,17 @@ export async function computeRobustness(
   // the "required" count and surface as a false consultant shortfall even
   // though every real theatre is fully staffed. Drop them up-front so they
   // don't contribute to demand or coverage.
-  const { data: inactiveTheatreRows } = await supabase
-    .from("theatres")
-    .select("id")
-    .eq("active", false);
-  const inactiveTheatreIds = new Set((inactiveTheatreRows ?? []).map((t) => t.id as string));
+  const inactiveTheatreRows = await fetchAllRows<{ id: string }>(
+    (from, to) =>
+      supabase
+        .from("theatres")
+        .select("id")
+        .eq("active", false)
+        .order("id", { ascending: true })
+        .range(from, to),
+    { rowKey: idKey, label: "robustness.inactive_theatres" },
+  );
+  const inactiveTheatreIds = new Set(inactiveTheatreRows.map((t) => t.id));
 
   const emergencySpecialtyIds = new Set(
     specialtiesAll.filter((s) => /emergenc|cepod/i.test(s.name ?? "")).map((s) => s.id),
@@ -564,7 +591,7 @@ export async function computeRobustness(
     });
   }
 
-  return { days, totalStaffByGrade };
+  return { days, totalStaffByGrade, poolRulesSource: poolSets.source };
 }
 
 /* --------------------------------------------------------------------------
@@ -623,11 +650,16 @@ export async function computeListCoverage(
           .range(from, to),
       { rowKey: idKey, label: "list-coverage.specialties" },
     ),
-    supabase
-      .from("theatres")
-      .select("id")
-      .eq("active", false)
-      .then((r) => r.data ?? []),
+    fetchAllRows<{ id: string }>(
+      (from, to) =>
+        supabase
+          .from("theatres")
+          .select("id")
+          .eq("active", false)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "list-coverage.inactive_theatres" },
+    ),
   ]);
 
   const emergencySpecialtyIds = new Set(
@@ -685,7 +717,7 @@ export async function computeListCoverage(
     };
     const grade = a.profiles.grade;
     const level = a.profiles.training_level;
-    if (grade === "consultant" || (grade === "trainee" && isSeniorTrainee(level))) {
+    if (isSoloCapable(grade, level)) {
       cur.hasSolo = true;
     } else if (grade === "trainee" || grade === "sas") {
       cur.hasSupervised = true;
@@ -760,10 +792,7 @@ export function riskColor(risk: HalfDayCapacity["risk"]): string {
 }
 
 export function riskLabel(risk: HalfDayCapacity["risk"]): string {
-  if (risk === "shortfall") return "Shortfall";
-  if (risk === "spa_required") return "SPA needed";
-  if (risk === "tight") return "Tight";
-  return "OK";
+  return RISK_LABEL[risk];
 }
 
 // ============= Per-day drilldown =============
