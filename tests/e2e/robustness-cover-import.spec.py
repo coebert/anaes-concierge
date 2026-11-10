@@ -137,8 +137,10 @@ async def main() -> None:
             await page.wait_for_timeout(1500)
             await page.screenshot(path=str(SHOTS / "1_overview.png"))
             header = await page.get_by_text("Forward-looking coverage headroom").first.inner_text()
-            ok("overview wording names ST6/ST7/ST8 and SPA contingency",
-               "ST6/ST7/ST8" in header and "never part of headroom" in header, header[:200])
+            legend = await page.get_by_text("Who is counted as available?").locator("..").inner_text()
+            ok("overview wording names ST6/ST7/ST8 and the SPA contingency",
+               "ST6/ST7/ST8" in header and "ST6/ST7/ST8" in legend and "never part of headroom" in legend,
+               legend[:200])
             txt = await strip.inner_text()
             ok("strip shows feed Status separately", "Status" in txt and "Published" in txt)
             ok("strip shows fresh Import", "Imported" in txt)
