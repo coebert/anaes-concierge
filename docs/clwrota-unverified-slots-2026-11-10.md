@@ -56,3 +56,16 @@ non-theatre. No importer defect hiding tagged lists was found; app unchanged.
   Speciality, List Name) or a slot-level Report Builder API report.
 - Feed contradicts the weekly-screen observation of "blank" Laser AM 8/15 Dec:
   each has an assigned consultant row whose only title is "Laser".
+
+## Live import 25 Nov 2026 – 1 Feb 2027 (authorised, 10 Nov 18:35 UTC)
+Supported explicit-range hook on the published app; rota step only.
+- Window recorded 25 Nov – 1 Feb, outcome ok, 7,660 rows, 0 write errors, 0 unmatched staff.
+- 75 inserted, 3,227 updated, 4,345 skipped non-working, 35 duplicates collapsed, 48 removed.
+- No change-log or alert entries (all dates > 48 h ahead).
+- The 13 slots: each now has 1 linked entry and an imported title row (room name only, no
+  list note, complete evidence). Unverified slots 19 → 6 (Endo AM+PM 24 Nov, 22 Dec, 26 Jan).
+- Forecast unchanged otherwise: 6 tagged days (DIEP 11, 18, 23, 25 Nov; Robotic 13, 17 Nov),
+  3 potential pressure (11, 17, 23 Nov), 0 elevated, no multi-tagged day.
+- Discrepancy: the 48 removals are working rows (12 theatre, 27 on-call, 5 ward, 4 admin; all
+  Not setup weeks, none tagged) whose fallback key person|date|half also belongs to a
+  non-working row; the clean-up deletes them right after saving. Pre-existing; not fixed.
