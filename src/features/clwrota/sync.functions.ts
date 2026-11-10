@@ -42,6 +42,7 @@ import {
   type SourceLabelClient,
 } from "./source-labels";
 import { WeekStatusCollector, persistWeekStatus, type WeekStatusClient } from "./week-status";
+import { drainPages } from "@/lib/paged-fetch-core";
 import {
   buildSyncWindowRecord,
   persistSyncWindow,
@@ -786,18 +787,44 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     };
   }
 
-  const [
-    { data: profiles },
-    { data: theatres },
-    { data: specialties },
-    dutyMappings,
-    theatreAliases,
-  ] = await Promise.all([
-    supabaseAdmin
-      .from("profiles")
-      .select("id, email, full_name, clwrota_external_id, grade, training_level"),
-    supabaseAdmin.from("theatres").select("id, name"),
-    supabaseAdmin.from("specialties").select("id, name"),
+  // Lookups the matching depends on: read completely and fail the run on any
+  // error — an ignored error used to skip every row as "unmatched" and still
+  // report success.
+  const [profiles, theatres, specialties, dutyMappings, theatreAliases] = await Promise.all([
+    drainPages<{
+      id: string;
+      email: string | null;
+      full_name: string | null;
+      clwrota_external_id: string | null;
+      grade: string | null;
+      training_level: string | null;
+    }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("profiles")
+          .select("id, email, full_name, clwrota_external_id, grade, training_level")
+          .order("id", { ascending: true })
+          .range(from, to),
+      { label: "rota-sync.profiles" },
+    ),
+    drainPages<{ id: string; name: string }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("theatres")
+          .select("id, name")
+          .order("id", { ascending: true })
+          .range(from, to),
+      { label: "rota-sync.theatres" },
+    ),
+    drainPages<{ id: string; name: string }>(
+      (from, to) =>
+        supabaseAdmin
+          .from("specialties")
+          .select("id, name")
+          .order("id", { ascending: true })
+          .range(from, to),
+      { label: "rota-sync.specialties" },
+    ),
     loadDutyTypeMappings(),
     loadTheatreNameAliases(),
   ]);
