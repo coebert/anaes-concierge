@@ -152,7 +152,7 @@ describe("TheatrePressureCard — Unverified slots", () => {
     expect(within(section).getByText("Blank in rota")).toBeTruthy();
     expect(within(section).getByText("No imported rows")).toBeTruthy();
     expect(within(section).getByText("No lists imported")).toBeTruthy();
-    expect(within(section).getByText(/isn't part of the import/)).toBeTruthy();
+    expect(within(section).getByText(/publication status isn't recorded yet/)).toBeTruthy();
     fireEvent.click(within(section).getByRole("button", { name: /Blank in rota \(1\)/ }));
     const rows = within(section).getAllByTestId("unverified-slot");
     expect(rows).toHaveLength(1);
@@ -248,7 +248,8 @@ describe("TheatrePressureCard — Rota week status", () => {
         }}
       />,
     );
-    expect(screen.getByText(/isn't recorded yet/)).toBeTruthy();
+    const strip = screen.getByRole("region", { name: "Rota week status" });
+    expect(within(strip).getByText(/isn't recorded yet/)).toBeTruthy();
     expect(screen.queryByTestId("week-status")).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
   });
