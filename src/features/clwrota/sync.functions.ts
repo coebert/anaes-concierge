@@ -42,6 +42,12 @@ import {
   type SourceLabelClient,
 } from "./source-labels";
 import { WeekStatusCollector, persistWeekStatus, type WeekStatusClient } from "./week-status";
+import {
+  buildSyncWindowRecord,
+  persistSyncWindow,
+  resolveRequestedWindow,
+  type SyncWindowClient,
+} from "./sync-windows";
 
 export const syncClwRotaStaff = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
@@ -593,9 +599,52 @@ export const syncClwRotaRota = createServerFn({ method: "POST" })
     return performRotaSync({ from: data?.from, to: data?.to });
   });
 
-export async function performRotaSync(
-  opts: { from?: string; to?: string; daysBack?: number; daysAhead?: number } = {},
-) {
+type RotaSyncOpts = { from?: string; to?: string; daysBack?: number; daysAhead?: number };
+/** Filled in by the import so the wrapper can record the run's date window. */
+interface RotaSyncTrace {
+  requested?: { from: string; to: string; explicit: boolean };
+  rows?: Record<string, unknown>[];
+}
+
+/**
+ * Rota import + per-run date-window record (./sync-windows, pending 0010).
+ * Every run — including each chunk of a chunked import and runs that throw —
+ * records what it asked for, what its rows spanned and its outcome. The
+ * record never changes the import's own result, and a missing table is
+ * tolerated until the migration is applied.
+ */
+export async function performRotaSync(opts: RotaSyncOpts = {}) {
+  const startedAt = new Date();
+  const trace: RotaSyncTrace = {};
+  const record = async (threw: boolean, skipped: number, writeErrors: number) => {
+    const requested =
+      trace.requested ??
+      (opts.from && opts.to ? { from: opts.from, to: opts.to, explicit: true } : null);
+    if (!requested) return; // window never resolved (e.g. no feed configured)
+    const rec = buildSyncWindowRecord({
+      startedAt,
+      finishedAt: new Date(),
+      requested,
+      threw,
+      rows: threw ? [] : (trace.rows ?? []),
+      skipped,
+      writeErrors,
+    });
+    const res = await persistSyncWindow(supabaseAdmin as unknown as SyncWindowClient, rec);
+    if (res.status === "error") console.warn("[clwrota] sync window not recorded:", res.message);
+  };
+  let result: Awaited<ReturnType<typeof performRotaSyncImpl>>;
+  try {
+    result = await performRotaSyncImpl(opts, trace);
+  } catch (err) {
+    await record(true, 0, 0);
+    throw err;
+  }
+  if (trace.requested) await record(false, result.skipped.length, result.errors.length);
+  return result;
+}
+
+async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
   const startedAt = Date.now();
   const { apiKey } = getEnv();
 
@@ -654,6 +703,13 @@ export async function performRotaSync(
   if (!url) {
     return { ...emptyResult, message: "No rota report URL configured." };
   }
+  trace.requested = resolveRequestedWindow({
+    from: opts.from,
+    to: opts.to,
+    daysBack,
+    daysAhead,
+    now: new Date(startedAt),
+  });
 
   let rows: Record<string, unknown>[];
   let rawPreview = "";
@@ -709,6 +765,7 @@ export async function performRotaSync(
     throw new Error(msg);
   }
 
+  trace.rows = rows;
   if (rows.length === 0) {
     const reason = parseError
       ? `Rota URL returned no recognisable rows. ${parseError}. Preview: ${rawPreview.slice(0, 200)}`
