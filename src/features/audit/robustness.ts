@@ -880,49 +880,127 @@ export async function loadDayDetail(date: string): Promise<DayDetail> {
 
   const poolSets = await loadDutyPoolSets();
 
-  const [
-    { data: theatreSessions },
-    { data: profiles },
-    { data: leave },
-    { data: assignments },
-    { data: traineeTargets },
-  ] = await Promise.all([
-    supabase
-      .from("theatre_sessions")
-      .select("id, session, theatre_id, specialty_id, surgical_consultant")
-      .eq("session_date", date),
-    supabase
-      .from("profiles")
-      .select("id, full_name, grade, training_level, ltft_days_off, active")
-      .eq("active", true),
-    supabase
-      .from("leave_requests")
-      .select("staff_id, type, status")
-      .eq("status", "approved")
-      .lte("start_date", date)
-      .gte("end_date", date),
-    supabase
-      .from("rota_assignments")
-      .select("staff_id, theatre_session_id, role_on_list, duty_type, session")
-      .eq("session_date", date),
-    supabase
-      .from("trainee_targets")
-      .select(
-        "training_level, specialty_id, required_sessions, required_solo, required_supervised",
-      ),
+  // Every read below fails loudly (the page shows Retry) — an ignored error
+  // used to read as "no lists / no staff / no targets".
+  type TsRow = {
+    id: string;
+    session: string;
+    theatre_id: string | null;
+    specialty_id: string | null;
+    surgical_consultant: string | null;
+  };
+  type ProfileRow = {
+    id: string;
+    full_name: string;
+    grade: string | null;
+    training_level: string | null;
+    ltft_days_off: number[] | null;
+    active: boolean;
+  };
+  type LeaveRow = { id: string; staff_id: string; type: string; status: string };
+  type AsnRow = {
+    id: string;
+    staff_id: string;
+    theatre_session_id: string | null;
+    role_on_list: string | null;
+    duty_type: string;
+    session: string;
+  };
+  type TargetRowDb = {
+    id: string;
+    training_level: string;
+    specialty_id: string;
+    required_sessions: number;
+    required_solo: number;
+    required_supervised: number;
+  };
+  const [theatreSessions, profiles, leave, assignments, traineeTargets] = await Promise.all([
+    fetchAllRows<TsRow>(
+      (from, to) =>
+        supabase
+          .from("theatre_sessions")
+          .select("id, session, theatre_id, specialty_id, surgical_consultant")
+          .eq("session_date", date)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.theatre_sessions" },
+    ),
+    fetchAllRows<ProfileRow>(
+      (from, to) =>
+        supabase
+          .from("profiles")
+          .select("id, full_name, grade, training_level, ltft_days_off, active")
+          .eq("active", true)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.profiles" },
+    ),
+    fetchAllRows<LeaveRow>(
+      (from, to) =>
+        supabase
+          .from("leave_requests")
+          .select("id, staff_id, type, status")
+          .eq("status", "approved")
+          .lte("start_date", date)
+          .gte("end_date", date)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.leave_requests" },
+    ),
+    fetchAllRows<AsnRow>(
+      (from, to) =>
+        supabase
+          .from("rota_assignments")
+          .select("id, staff_id, theatre_session_id, role_on_list, duty_type, session")
+          .eq("session_date", date)
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.rota_assignments" },
+    ),
+    fetchAllRows<TargetRowDb>(
+      (from, to) =>
+        supabase
+          .from("trainee_targets")
+          .select(
+            "id, training_level, specialty_id, required_sessions, required_solo, required_supervised",
+          )
+          .order("id", { ascending: true })
+          .range(from, to),
+      { rowKey: idKey, label: "day-detail.trainee_targets" },
+    ),
   ]);
 
-  const tsAll = theatreSessions ?? [];
+  const tsAll = theatreSessions;
   const theatreIds = [...new Set(tsAll.map((t) => t.theatre_id).filter(Boolean))] as string[];
   const specialtyIds = [...new Set(tsAll.map((t) => t.specialty_id).filter(Boolean))] as string[];
 
-  const [{ data: theatres }, { data: specialties }] = await Promise.all([
-    theatreIds.length
-      ? supabase.from("theatres").select("id, name, active").in("id", theatreIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string; active: boolean }> }),
-    specialtyIds.length
-      ? supabase.from("specialties").select("id, name").in("id", specialtyIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+  // ID lists for one day are small, but chunk anyway (≤200 per IN) and page.
+  const byIds = async <T extends { id: string }>(
+    table: "theatres" | "specialties",
+    cols: string,
+    ids: string[],
+  ): Promise<T[]> => {
+    const out: T[] = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      const slice = ids.slice(i, i + 200);
+      out.push(
+        ...(await fetchAllRows<T>(
+          (from, to) =>
+            supabase
+              .from(table)
+              .select(cols)
+              .in("id", slice)
+              .order("id", { ascending: true })
+              .range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>,
+          { rowKey: idKey, label: `day-detail.${table}` },
+        )),
+      );
+    }
+    return out;
+  };
+  const [theatres, specialties] = await Promise.all([
+    byIds<{ id: string; name: string; active: boolean }>("theatres", "id, name, active", theatreIds),
+    byIds<{ id: string; name: string }>("specialties", "id, name", specialtyIds),
   ]);
 
   const theatreNameById = new Map((theatres ?? []).map((t) => [t.id, t.name]));
