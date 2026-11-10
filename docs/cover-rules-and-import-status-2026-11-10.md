@@ -1,13 +1,13 @@
 # Cover rules consistency and weekly import status — 2026-11-10
 
-Scope: priority gaps after the CLWRota title/note capture (pending 0008), the
-Unverified-slots list and the week rota status (pending 0009). Synthetic data
+Scope: priority gaps after the CLWRota title/note capture (0008), the
+Unverified-slots list and the week rota status (0009). Synthetic data
 only; nothing published, synced, notified or changed in live records. No
 migration was applied to the live database.
 
 ## 1. What was already in place (inspected, not duplicated)
 
-- **Titles/notes (0008, pending):** `src/features/clwrota/source-labels.ts`
+- **Titles/notes (0008, live):** `src/features/clwrota/source-labels.ts`
   writes original list titles / notes / place notes per session to the
   service-only `theatre_session_source_labels`; browsers read only derived
   signals (`get_theatre_session_label_signals`). The forecast falls back to
@@ -15,7 +15,7 @@ migration was applied to the live database.
 - **Unverified slots:** built in `theatre-pressure.ts` from those signals;
   reasons distinguish blank-in-source, partial evidence, not captured, no linked
   rows and no imported lists. Each row links to the day page.
-- **Week rota status (0009, pending):** the feed's `rota_status` per observed
+- **Week rota status (0009, live):** the feed's `rota_status` per observed
   week (`week-status.ts` → `clwrota_week_status`). Unobserved weeks = "Not
   checked"; times are observation times, not publication times.
 - Both work together: the Unverified slots table shows the Week status column
@@ -134,11 +134,24 @@ summary and staff breakdown.
   data): overview wording, Status vs Import strip, day context, failure Retry on
   overview / day / simulator, home renders.
 
-## 6. Live activation dependencies
+## 6. Live activation (done 2026-11-10, approved by Rob Coe)
 
-1. Review and apply, in order, `drizzle/pending/0008`, `0009`, `0010` to live.
-   Until then the forecast uses legacy labels, weeks show "not recorded yet"
-   and import tracking "isn't switched on yet".
-2. After 0010 is applied, the next imports start the history; nothing earlier
-   is back-filled.
-3. Owner decisions listed in §3 "Not changed".
+1. Applied to live, in order: `drizzle/migrations/0008_theatre_session_source_labels.sql`,
+   `0009_clwrota_week_status.sql`, `0010_clwrota_sync_windows.sql` (SQL identical to the
+   reviewed pending files apart from the header line; `drizzle/pending/` copies removed).
+   Live metadata check: all three tables have RLS on; anon has no access; signed-in users
+   can read only week status (policy: active members); the two derived functions are
+   SECURITY DEFINER, executable by authenticated/service_role, not anon; validation
+   triggers are not executable by anon/authenticated. The source-labels harness was re-run
+   against the applied files: 100 cases, 0 failures.
+2. One real rota-only import was run on request through the preview's code (window
+   2026-10-11 to 2027-03-10, the default 30 days back / 120 ahead): ok, no write errors.
+   It recorded one `ok` import window covering the whole range, week status for 23 weeks
+   (published / setup / not setup), and source labels for every session it imported.
+   Like earlier full imports, it removed assignments the feed now marks as non-working.
+   No staff or leave step, publish or notification.
+3. Still needed: the scheduled hourly import runs the **published** app's code, which
+   does not yet write source labels, week status or import windows. Until the app is
+   published, only manual preview imports update them, and weeks go "out of date" 48 h
+   after the last such import.
+4. Owner decisions listed in §3 "Not changed".

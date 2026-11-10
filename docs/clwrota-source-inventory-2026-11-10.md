@@ -39,7 +39,7 @@ document.
 | Service reports: planned vs delivered, variability, heatmap, setup/published weeks | No delivered or outcome field. `state` is planned vs actual, not delivered | — | **Not added**: provenance and meaning aren't verified. `state` counts are kept per week only to show where rows came from |
 | Capacity, Delivery, Skeleton, People, Time calculations | Not in the configured feeds | — | Not added |
 | Role / location groups | `tier1..5_org_unit.*`, `role.*`, `place_category.*` (already requested) | Requested; partly used for matching | Already covered |
-| List / slot metadata | `slot_titles`, `slot_notes`, `slot_speciality`, `place.additional_info` | Captured separately by pending 0008 | Covered (previous change) |
+| List / slot metadata | `slot_titles`, `slot_notes`, `slot_speciality`, `place.additional_info` | Captured separately by 0008 (live 2026-11-10) | Covered (previous change) |
 | Place job-planning categories | `place.job_planning_tier_1/2_category` (accepted, not requested) | — | Not added: meaning not verified, and no consumer needs it |
 
 Not read, by design: clinician preferences, messages, `extra_submittal.*`
@@ -60,7 +60,7 @@ patient identifiers.
     status.
 
   Weeks with no rows are never written.
-* Pending migration `drizzle/pending/0009_clwrota_week_status.sql`:
+* Migration `drizzle/migrations/0009_clwrota_week_status.sql` (applied live 2026-11-10):
   * active members can read it (same rule as theatre lists); only the
     import (service role) can write;
   * the database rejects non-Monday weeks, unknown codes, weeks with zero
