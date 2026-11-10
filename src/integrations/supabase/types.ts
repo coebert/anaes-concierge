@@ -459,6 +459,51 @@ export type Database = {
         }
         Relationships: []
       }
+      clwrota_sync_windows: {
+        Row: {
+          covered_from: string | null
+          covered_to: string | null
+          explicit_window: boolean
+          finished_at: string
+          id: string
+          outcome: string
+          requested_from: string
+          requested_to: string
+          rows_in_window: number
+          rows_skipped: number
+          started_at: string
+          write_errors: number
+        }
+        Insert: {
+          covered_from?: string | null
+          covered_to?: string | null
+          explicit_window?: boolean
+          finished_at?: string
+          id?: string
+          outcome: string
+          requested_from: string
+          requested_to: string
+          rows_in_window?: number
+          rows_skipped?: number
+          started_at: string
+          write_errors?: number
+        }
+        Update: {
+          covered_from?: string | null
+          covered_to?: string | null
+          explicit_window?: boolean
+          finished_at?: string
+          id?: string
+          outcome?: string
+          requested_from?: string
+          requested_to?: string
+          rows_in_window?: number
+          rows_skipped?: number
+          started_at?: string
+          write_errors?: number
+        }
+        Relationships: []
+      }
       clwrota_week_status: {
         Row: {
           actual_rows: number
@@ -4026,6 +4071,21 @@ export type Database = {
           is_public: boolean
           message: string
           staff_id: string
+        }[]
+      }
+      get_rota_sync_week_coverage: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          days_latest_not_ok: number
+          days_ok: number
+          days_partial_only: number
+          days_total: number
+          last_full_ok_at: string
+          latest_attempt_at: string
+          latest_attempt_outcome: string
+          newest_ok_at: string
+          tracking_since: string
+          week_start: string
         }[]
       }
       get_rtw_interviews_decrypted: {
