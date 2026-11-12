@@ -1,12 +1,13 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { PageLoading } from "@/components/loading";
+import { QueryErrorNotice } from "@/components/query-state-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,13 +34,9 @@ import {
   appraisalYearLabel,
   appraisalYearOf,
   appraisalYearRange,
-  buildAppraisalYear,
 } from "@/features/analytics/appraisal-year";
-import type {
-  SpecialtyPaRules,
-  SpecialtyRow,
-  SpecialtyTally,
-} from "@/features/analytics/specialty-workload";
+import { getAppraisalStaff, getAppraisalYear } from "@/features/analytics/appraisal-year.functions";
+import type { SpecialtyTally } from "@/features/analytics/specialty-workload";
 
 const searchSchema = z.object({
   year: fallback(z.number(), 0).default(0),
@@ -69,14 +66,6 @@ export const Route = createFileRoute("/_authenticated/admin/appraisal-year")({
   component: AppraisalYearPage,
 });
 
-const PAGE_SIZE = 1000;
-
-const DEFAULT_RULES: SpecialtyPaRules = {
-  sessions_per_pa: 1,
-  oncall_pa_credit: 1.5,
-  weekend_pa_credit: 3,
-};
-
 const MONTH_LABEL = (m: string) => {
   const [y, mm] = m.split("-");
   const names = [
@@ -96,125 +85,36 @@ const MONTH_LABEL = (m: string) => {
   return `${names[Number(mm) - 1]} ${y?.slice(2)}`;
 };
 
-type AssignmentRow = {
-  staff_id: string | null;
-  session_date: string | null;
-  session: string | null;
-  duty_type: string | null;
-  extra_type: string | null;
-  pa_credit: number | null;
-  attending_consultant_ids: string[] | null;
-  theatre_session_id: string | null;
-};
-
 function AppraisalYearPage() {
   const { hasRole, user, grade, loading } = useAuth();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const fetchYear = useServerFn(getAppraisalYear);
+  const fetchStaff = useServerFn(getAppraisalStaff);
 
   const isCoordinator = hasRole("admin") || hasRole("rota_coordinator");
   const currentYear = appraisalYearOf(new Date().toISOString().slice(0, 10));
   const year = search.year >= 2015 && search.year <= currentYear + 1 ? search.year : currentYear;
-  const staffId = isCoordinator ? search.staff || user?.id || "" : user?.id || "";
+  // The server decides whose year can be read; this only picks the request.
+  const requestedStaff = isCoordinator && search.staff ? search.staff : null;
+  const staffId = requestedStaff ?? user?.id ?? "";
   const { from, to } = appraisalYearRange(year);
 
   const [openArea, setOpenArea] = useState<string | null>(null);
 
-  const { data: staffList } = useQuery({
+  const staffQ = useQuery({
     queryKey: ["appraisal-year-staff"],
     enabled: isCoordinator,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id,full_name,grade")
-        .in("grade", ["consultant", "sas"])
-        .order("full_name");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => fetchStaff(),
   });
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["appraisal-year", staffId, year],
-    enabled: Boolean(staffId),
-    queryFn: async () => {
-      const { data: rulesRow, error: rulesError } = await supabase
-        .from("rota_rules")
-        .select("sessions_per_pa,oncall_pa_credit,weekend_pa_credit")
-        .limit(1)
-        .maybeSingle();
-      // Never silently substitute default PA rates when the settings read fails.
-      if (rulesError) throw new Error(`PA settings could not be loaded: ${rulesError.message}`);
-
-      const rules: SpecialtyPaRules = {
-        sessions_per_pa: Number(rulesRow?.sessions_per_pa ?? DEFAULT_RULES.sessions_per_pa),
-        oncall_pa_credit: Number(rulesRow?.oncall_pa_credit ?? DEFAULT_RULES.oncall_pa_credit),
-        weekend_pa_credit: Number(rulesRow?.weekend_pa_credit ?? DEFAULT_RULES.weekend_pa_credit),
-      };
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id,full_name,grade")
-        .eq("id", staffId)
-        .maybeSingle();
-
-      const raw: AssignmentRow[] = [];
-      for (let offset = 0; ; offset += PAGE_SIZE) {
-        const { data: page, error } = await supabase
-          .from("rota_assignments")
-          .select(
-            "id,staff_id,session_date,session,duty_type,extra_type,pa_credit,attending_consultant_ids,theatre_session_id",
-          )
-          .gte("session_date", from)
-          .lte("session_date", to)
-          .or(`staff_id.eq.${staffId},attending_consultant_ids.cs.{${staffId}}`)
-          .order("id", { ascending: true })
-          .range(offset, offset + PAGE_SIZE - 1);
-        if (error) throw error;
-        raw.push(...((page ?? []) as unknown as AssignmentRow[]));
-        if (!page || page.length < PAGE_SIZE) break;
-      }
-
-      const sessionIds = Array.from(
-        new Set(raw.map((r) => r.theatre_session_id).filter((v): v is string => Boolean(v))),
-      );
-      const specialtyBySession = new Map<string, string>();
-      for (let i = 0; i < sessionIds.length; i += 300) {
-        const { data: sessions, error } = await supabase
-          .from("theatre_sessions")
-          .select("id,specialties(name)")
-          .in("id", sessionIds.slice(i, i + 300));
-        if (error) throw error;
-        for (const s of (sessions ?? []) as unknown as Array<{
-          id: string;
-          specialties: { name: string } | { name: string }[] | null;
-        }>) {
-          const sp = Array.isArray(s.specialties) ? s.specialties[0] : s.specialties;
-          if (sp?.name) specialtyBySession.set(s.id, sp.name);
-        }
-      }
-
-      const rows: SpecialtyRow[] = raw.map((r) => ({
-        staff_id: r.staff_id,
-        session_date: r.session_date,
-        session: r.session,
-        duty_type: r.duty_type,
-        extra_type: r.extra_type,
-        pa_credit: r.pa_credit,
-        attending_consultant_ids: r.attending_consultant_ids,
-        specialty_name: r.theatre_session_id
-          ? (specialtyBySession.get(r.theatre_session_id) ?? null)
-          : null,
-      }));
-
-      return { rows, rules, profile };
-    },
+  const yearQ = useQuery({
+    queryKey: ["appraisal-year", requestedStaff ?? "me", user?.id ?? null, year],
+    enabled: Boolean(user?.id),
+    queryFn: () => fetchYear({ data: { year, staffId: requestedStaff } }),
   });
-
-  const summary = useMemo(
-    () => (data && staffId ? buildAppraisalYear(staffId, year, data.rows, data.rules) : null),
-    [data, staffId, year],
-  );
+  const data = yearQ.data;
+  const summary = data?.summary ?? null;
 
   if (loading) return <PageLoading />;
   if (!isCoordinator && grade !== "consultant" && grade !== "sas") return <Navigate to="/" />;
@@ -324,7 +224,7 @@ function AppraisalYearPage() {
                   <SelectValue placeholder="Choose a doctor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(staffList ?? []).map((p) => (
+                  {(staffQ.data ?? []).map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.full_name}
                     </SelectItem>
@@ -336,10 +236,18 @@ function AppraisalYearPage() {
 
           <p className="text-xs text-muted-foreground ml-auto">
             {from} to {to}
-            {data?.profile?.full_name ? ` · ${data.profile.full_name}` : ""}
+            {data?.doctor.name ? ` · ${data.doctor.name}` : ""}
           </p>
         </CardContent>
       </Card>
+
+      {isCoordinator && staffQ.isError ? (
+        <QueryErrorNotice
+          error={staffQ.error}
+          onRetry={() => void staffQ.refetch()}
+          what="the list of doctors"
+        />
+      ) : null}
 
       {!staffId ? (
         <Card>
@@ -347,7 +255,13 @@ function AppraisalYearPage() {
             Choose a doctor to see their appraisal year.
           </CardContent>
         </Card>
-      ) : isLoading || !summary ? (
+      ) : yearQ.isError ? (
+        <QueryErrorNotice
+          error={yearQ.error}
+          onRetry={() => void yearQ.refetch()}
+          what="this appraisal year"
+        />
+      ) : yearQ.isPending || !summary || !data ? (
         <PageLoading />
       ) : (
         <>

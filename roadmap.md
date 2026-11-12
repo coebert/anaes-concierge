@@ -35,7 +35,7 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 ## CLWRota end-to-end capture audit (12 Nov)
 - [x] Field inventory, exact row disposition, notes capture — `docs/clwrota-capture-audit-2026-11-12.md`
 - [x] Preview fixes: removed-assignment reconciliation, leave request span, per-assignment source details (writer), unused personal fields dropped
-- [ ] Publish + one rota and one leave import to activate (removes 284 stale rows, widens 892 approved leave requests) — needs Rob's go-ahead
+- [x] Published (12 Nov 11:04, Rob approved); scheduled rota/leave imports apply the fixes (284 stale rows removed, 892 leave requests widened) as they reach those dates
 - [ ] Apply pending migration 0011 (per-assignment source details) — needs Rob's go-ahead
 - [ ] Decide meaning of `half_day_start/end` (screens disagree) before importing half-day leave
 - [ ] Decide what to do with 395 past rows no longer in CLWRota (kept as history)
@@ -43,4 +43,6 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 
 ## Practice summary for appraisal (12 Nov)
 - [x] My practice summary (/me/practice-summary): own data only, appraisal-year default + custom dates, print + aggregate CSV, tests (preview only)
-- [ ] Signed-in browser check of /me/practice-summary — blocked: no signed-in preview session available to the agent
+- [x] Published; signed-in preview check of /me/practice-summary (figures match the appraisal-year page)
+- [x] Appraisal-year page loads from the server: own year only, other doctors for admins/coordinators, paged, errors with Retry (preview, tested)
+- [ ] Publish the server-side appraisal-year page — awaiting Rob
