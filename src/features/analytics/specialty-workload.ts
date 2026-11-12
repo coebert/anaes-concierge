@@ -339,3 +339,25 @@ export function listSpecialtySessions(
 
   return out;
 }
+
+/**
+ * Report-wide "days with daytime work": distinct dates with at least one AM/PM
+ * row credited to `staffId` (extra / locum / WLI / SAG rows included,
+ * evening/night excluded). Use this for any total spanning several areas —
+ * summing each area's own `days` counts a date once per area worked that day.
+ * `includeArea` limits the count to rows whose area passes (e.g. ICU only).
+ */
+export function distinctDaytimeWorkDates(
+  rows: readonly SpecialtyRow[],
+  staffId: string,
+  includeArea?: (area: string) => boolean,
+): number {
+  const dates = new Set<string>();
+  for (const r of rows) {
+    if (!r.staff_id || !r.session_date || !isDaytimeHalf(r.session)) continue;
+    if (!creditedStaffIds(r).includes(staffId)) continue;
+    if (includeArea && !includeArea(areaForRow(r))) continue;
+    dates.add(r.session_date);
+  }
+  return dates.size;
+}

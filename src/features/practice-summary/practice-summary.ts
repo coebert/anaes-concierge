@@ -27,6 +27,7 @@ import {
   isWeekendISO,
 } from "@/features/analytics/icu-workload";
 import {
+  distinctDaytimeWorkDates,
   tallySpecialtyWorkload,
   type SpecialtyPaRules,
   type SpecialtyRow,
@@ -234,21 +235,8 @@ export function isValidRange(from: string, to: string): boolean {
   return (b - a) / 86_400_000 + 1 <= MAX_RANGE_DAYS;
 }
 
-/**
- * Report-wide "days with daytime work": distinct dates with at least one AM/PM
- * entry credited to the caller (the report's definition of a day — extra /
- * locum / WLI / SAG sessions included, evening/night excluded). Summing each
- * specialty's own day count counted a date once per specialty worked that day.
- */
-export function distinctDaytimeWorkDates(rows: readonly SpecialtyRow[], userId: string): number {
-  const dates = new Set<string>();
-  for (const r of rows) {
-    if (!r.staff_id || !r.session_date || !isDaytimeHalf(r.session)) continue;
-    if (!creditedStaffIds(r).includes(userId)) continue;
-    dates.add(r.session_date);
-  }
-  return dates.size;
-}
+// Report-wide day count: shared with the appraisal-year page.
+export { distinctDaytimeWorkDates };
 
 function sumTallies(rows: SpecialtyRow[], userId: string, rules: SpecialtyPaRules) {
   const t = tallySpecialtyWorkload(rows, rules).filter((x) => x.staff_id === userId);

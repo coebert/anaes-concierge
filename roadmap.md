@@ -51,6 +51,6 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 ## 12 Nov follow-ups
 - [x] Duties & on-call: read-only MRI location line (AM/PM, people linked to MRI lists; list-with-nobody vs no list)
 - [x] My practice summary: "Days with daytime work" counts each date once (was summed per specialty: 149 → 119 on 2026/27); report + CSV + print use the same total; tests + synthetic PDF check
-- [ ] Appraisal-year page still sums days per specialty the same way (shows 149) — awaiting Rob's go-ahead
+- [x] Appraisal-year page counts each worked date once (119), shared rule with My practice summary (preview; not yet published)
 - [x] Live run 12 Nov 11:46 (rota 25 Nov–1 Feb): 284 stale rows removed by the guarded pass, but the data-loss check didn't allow for them and marked the run partial — fixed (check now subtracts guarded removals), published, re-run 11:52 clean
 - [x] Leave import re-run 12 Nov 11:48: 12,175 pulled, 4,673 saved, 0 errors; 461 skipped for 15 people not in the app

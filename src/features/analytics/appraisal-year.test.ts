@@ -101,3 +101,54 @@ describe("buildAppraisalYear", () => {
     expect(s.months.find((m) => m.month === "2025-06")!.rows).toBe(1);
   });
 });
+
+describe("buildAppraisalYear day totals (counted across specialties)", () => {
+  it("gives 119 days, not the per-specialty sum of 149, on the 201-entry synthetic year", async () => {
+    const { dayCountFixture, FIXTURE_ME } = await import(
+      "@/features/practice-summary/day-count-fixture"
+    );
+    const { rows, lists } = dayCountFixture();
+    const specRows: SpecialtyRow[] = rows.map((r) => ({
+      ...r,
+      specialty_name: r.theatre_session_id
+        ? (lists.get(r.theatre_session_id)?.specialty ?? null)
+        : null,
+    }));
+    const s = buildAppraisalYear(FIXTURE_ME, 2030, specRows, rules);
+    const perAreaSum = s.otherAreas.reduce((n, t) => n + t.days, 0);
+    expect(perAreaSum).toBe(149);
+    expect(s.overall.days).toBe(119);
+    expect(s.other.days).toBe(119);
+    expect(s.icu.days).toBe(0);
+    // Sessions and per-specialty rows are unchanged.
+    expect(s.overall.sessions).toBe(197);
+  });
+
+  it("counts a date once across specialties, ICU and other work, and AM+PM", () => {
+    const s = buildAppraisalYear(
+      "doc",
+      2025,
+      [
+        // Same date: AM gynae, PM ortho, plus an ICU AM.
+        row({ session_date: "2025-06-02", session: "am", specialty_name: "Gynae" }),
+        row({ session_date: "2025-06-02", session: "pm", specialty_name: "Ortho" }),
+        row({ session_date: "2025-06-02", session: "am", duty_type: "icu_ct2_plus" }),
+        // AM + PM in one specialty.
+        row({ session_date: "2025-06-03", session: "am", specialty_name: "Gynae" }),
+        row({ session_date: "2025-06-03", session: "pm", specialty_name: "Gynae" }),
+        // Evening-only on-call: not a day worked.
+        row({ session_date: "2025-06-04", session: "eve", duty_type: "general_consultant_oncall" }),
+        // Extra-session-only date: a day worked.
+        row({ session_date: "2025-06-05", session: "am", specialty_name: "Gynae", extra_type: "wli" }),
+        // Another doctor's work does not count.
+        row({ staff_id: "other", session_date: "2025-06-06", session: "am", specialty_name: "Gynae" }),
+      ],
+      rules,
+    );
+    expect(s.overall.days).toBe(3);
+    expect(s.icu.days).toBe(1);
+    expect(s.other.days).toBe(3);
+    expect(s.overall.sessions).toBe(5);
+    expect(s.overall.onCalls).toBe(1);
+  });
+});

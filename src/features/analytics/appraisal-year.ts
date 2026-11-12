@@ -14,6 +14,7 @@ import {
 } from "./icu-workload";
 import {
   areaForRow,
+  distinctDaytimeWorkDates,
   tallySpecialtyWorkload,
   type SpecialtyPaRules,
   type SpecialtyRow,
@@ -148,9 +149,21 @@ export function buildAppraisalYear(
   const icuAreas = tallies.filter((t) => isIcuArea(t.area));
   const otherAreas = tallies.filter((t) => !isIcuArea(t.area));
 
-  const icu = icuAreas.reduce(addTally, emptyTotals());
-  const other = otherAreas.reduce(addTally, emptyTotals());
-  const overall = tallies.reduce(addTally, emptyTotals());
+  // Sessions, on-calls and PAs add up across areas; days do not — a date
+  // worked in two specialties is one day. Days are distinct credited AM/PM
+  // dates, the same rule as My practice summary.
+  const icu = {
+    ...icuAreas.reduce(addTally, emptyTotals()),
+    days: distinctDaytimeWorkDates(inRange, staffId, isIcuArea),
+  };
+  const other = {
+    ...otherAreas.reduce(addTally, emptyTotals()),
+    days: distinctDaytimeWorkDates(inRange, staffId, (a) => !isIcuArea(a)),
+  };
+  const overall = {
+    ...tallies.reduce(addTally, emptyTotals()),
+    days: distinctDaytimeWorkDates(inRange, staffId),
+  };
 
   // Month-by-month activity, from the doctor's own credited rows.
   const mine = inRange.filter((r) => {
