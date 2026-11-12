@@ -90,4 +90,28 @@ describe("evaluateHistoricalSafeguard", () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it("counts guarded 'no longer in CLWRota' removals as intended (12 Nov live run)", () => {
+    // 44288 before; 2 non-working rows cleaned, 284 removed by the guarded
+    // removal pass, 10 inserted → 44012. Not data loss.
+    expect(
+      evaluateHistoricalSafeguard({
+        preSyncCount: 44288,
+        postSyncCount: 44012,
+        nonWorkingCleaned: 2,
+        removedFromSource: 284,
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("still flags loss beyond the cleanup and the guarded removals", () => {
+    const v = evaluateHistoricalSafeguard({
+      preSyncCount: 44288,
+      postSyncCount: 44001,
+      nonWorkingCleaned: 2,
+      removedFromSource: 284,
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.expectedFloor).toBe(44002);
+  });
 });

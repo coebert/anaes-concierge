@@ -2214,8 +2214,8 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
 
   // --- Historical-data safeguard: verify no rows were unexpectedly deleted.
   // Logic lives in `evaluateHistoricalSafeguard` so it can be unit-tested
-  // independently of Supabase. The non-working cleanup pass above is an
-  // expected source of "loss" and is subtracted from the floor.
+  // independently of Supabase. The non-working cleanup pass and the guarded
+  // removal pass above are expected sources of "loss", subtracted from the floor.
   const { count: postCount, error: postCountErr } = await supabaseAdmin
     .from("rota_assignments")
     .select("id", { count: "exact", head: true })
@@ -2227,6 +2227,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
       preSyncCount,
       postSyncCount: postCount ?? 0,
       nonWorkingCleaned,
+      removedFromSource,
     });
     if (!verdict.ok) {
       errors.push({ label: "(historical safeguard)", error: verdict.error });
