@@ -119,3 +119,17 @@ Full suite: 2,148 passed, 4 skipped. Preview build OK.
    requests widened. Deletions within 48 hours and leave changes go through the existing change
    triggers, which may raise normal alerts.
 2. Approve and apply migration 0011, then the next rota import fills the source details.
+
+
+## Live activation, 12 Nov 2026 (Rob authorised)
+
+- 0011 confirmed live: RLS on, no policies, no anon/authenticated privileges, service role read/write only.
+- Rota import 11:46, explicit window 2026-11-25..2027-02-01: 7,663 rows; 3,353 stored (10 inserted, 3,343 updated);
+  4,297 non-working skipped; 35 same-half collapses kept as collapsed rows; 48 working rows kept on shared keys;
+  2 non-working clean-ups; 284 stale rows removed by the guarded pass. The historical safeguard did not subtract
+  the guarded removals (44,288 → 44,012 = −2 −284 +10) and marked the run partial. Fixed in
+  `src/lib/clwrota-historical-safeguard.ts` (+ tests), published.
+- Rota re-run 11:52, same window: 7,663 rows, 3,357 stored (4 inserted), 0 errors, window outcome ok.
+  Source details: 3,357/3,357 stored entries in range have a row; 3,353 with titles, 14 with list notes, 35 with collapsed rows.
+- Leave import 11:48 (standard config): 12,175 pulled, 4,673 saved, 0 errors, 461 skipped (15 people not in the app).
+- No push notifications logged by either run.
