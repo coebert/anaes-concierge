@@ -2291,6 +2291,98 @@ export type Database = {
           },
         ]
       }
+      rota_assignment_source_details: {
+        Row: {
+          assignment_type: string | null
+          clwrota_external_id: string
+          collapsed_rows: Json
+          created_at: string
+          duration: string | null
+          end_time: string | null
+          extra_type_description: string | null
+          extra_type_name: string | null
+          last_seen_at: string
+          pa_value: number | null
+          place_category: string | null
+          place_local_id: string | null
+          place_name: string | null
+          place_notes: string[]
+          role_category: string | null
+          role_name: string | null
+          session_label: string | null
+          slot_notes: string[]
+          slot_speciality: string | null
+          slot_titles: string[]
+          source_rota_status: string | null
+          source_state: string | null
+          start_time: string | null
+          updated_at: string
+          values_truncated: boolean
+        }
+        Insert: {
+          assignment_type?: string | null
+          clwrota_external_id: string
+          collapsed_rows?: Json
+          created_at?: string
+          duration?: string | null
+          end_time?: string | null
+          extra_type_description?: string | null
+          extra_type_name?: string | null
+          last_seen_at?: string
+          pa_value?: number | null
+          place_category?: string | null
+          place_local_id?: string | null
+          place_name?: string | null
+          place_notes?: string[]
+          role_category?: string | null
+          role_name?: string | null
+          session_label?: string | null
+          slot_notes?: string[]
+          slot_speciality?: string | null
+          slot_titles?: string[]
+          source_rota_status?: string | null
+          source_state?: string | null
+          start_time?: string | null
+          updated_at?: string
+          values_truncated?: boolean
+        }
+        Update: {
+          assignment_type?: string | null
+          clwrota_external_id?: string
+          collapsed_rows?: Json
+          created_at?: string
+          duration?: string | null
+          end_time?: string | null
+          extra_type_description?: string | null
+          extra_type_name?: string | null
+          last_seen_at?: string
+          pa_value?: number | null
+          place_category?: string | null
+          place_local_id?: string | null
+          place_name?: string | null
+          place_notes?: string[]
+          role_category?: string | null
+          role_name?: string | null
+          session_label?: string | null
+          slot_notes?: string[]
+          slot_speciality?: string | null
+          slot_titles?: string[]
+          source_rota_status?: string | null
+          source_state?: string | null
+          start_time?: string | null
+          updated_at?: string
+          values_truncated?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rota_assignment_source_details_clwrota_external_id_fkey"
+            columns: ["clwrota_external_id"]
+            isOneToOne: true
+            referencedRelation: "rota_assignments"
+            referencedColumns: ["clwrota_external_id"]
+          },
+        ]
+      }
       rota_assignments: {
         Row: {
           attending_consultant_ids: string[]

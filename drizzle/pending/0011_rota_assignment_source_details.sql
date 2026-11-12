@@ -1,4 +1,4 @@
--- 0011 rota_assignment_source_details — PENDING (not applied anywhere live).
+-- 0011 rota_assignment_source_details (applied live 12 Nov 2026 with Rob's go-ahead).
 --
 -- Keeps the ORIGINAL CLWRota values for every stored assignment, separately
 -- and as supplied: list title(s) (slot_titles), list note(s) (slot_notes),
