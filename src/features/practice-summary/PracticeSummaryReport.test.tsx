@@ -6,6 +6,7 @@ import { buildPracticeSummary, practiceSummaryCsv, type PracticeRow } from "./pr
 import { downloadTextFile } from "./download";
 import type { PracticeSummaryResult } from "./practice-summary.functions";
 import { summariseLeave } from "./leave-summary";
+import { dayCountFixture } from "./day-count-fixture";
 
 const ME = "11111111-1111-1111-1111-111111111111";
 const OTHER = "22222222-2222-2222-2222-222222222222";
@@ -128,6 +129,32 @@ describe("PracticeSummaryReport", () => {
     );
     const printBlock = screen.getByText("Synthetic reflection", { selector: "div" });
     expect(printBlock.className).toContain("print:block");
+  });
+});
+
+describe("Days with daytime work", () => {
+  it("shows each date once in the report and the CSV (119, not 149)", () => {
+    const fx = dayCountFixture();
+    const base = fixture([]);
+    const summary = buildPracticeSummary({
+      userId: ME,
+      from: fx.from,
+      to: fx.to,
+      today: "2030-09-30",
+      rows: fx.rows,
+      lists: fx.lists,
+      rules: base.rules,
+      weekPublication: new Map(),
+      weekImport: new Map(),
+    });
+    render(
+      <PracticeSummaryReport data={{ ...base, summary }} reflection="" setReflection={() => {}} />,
+    );
+    const stat = screen.getByText("Days with daytime work").parentElement!;
+    expect(stat.textContent).toContain("119");
+    expect(stat.textContent).not.toContain("149");
+    const csv = practiceSummaryCsv(summary, { generatedAt: base.generatedAt });
+    expect(csv).toContain('"totals","all","days","119"');
   });
 });
 

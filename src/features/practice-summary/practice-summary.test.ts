@@ -9,6 +9,7 @@ import {
   type WeekPublication,
 } from "./practice-summary";
 import { tallySpecialtyWorkload } from "@/features/analytics/specialty-workload";
+import { dayCountFixture } from "./day-count-fixture";
 
 // Synthetic ids/labels only.
 const ME = "11111111-1111-1111-1111-111111111111";
@@ -215,5 +216,60 @@ describe("practiceSummaryCsv", () => {
     expect(csv).toContain(`"location","'@cmd","entries","1"`);
     expect(csv).not.toMatch(/r\d+"/); // no row ids
     expect(csv).toContain('"report","basis","note"');
+  });
+});
+
+describe("days with daytime work (report-wide)", () => {
+  it("counts a date once when AM and PM are in different specialties", () => {
+    const s = build([
+      row({ session_date: "2030-05-06", session: "am", theatre_session_id: "L1" }),
+      row({ session_date: "2030-05-06", session: "pm", duty_type: "spa" }),
+    ]);
+    expect(s.areas.map((a) => a.days)).toEqual([1, 1]);
+    expect(s.totals.days).toBe(1);
+    expect(s.totals.sessions).toBe(2);
+  });
+
+  it("counts AM + PM in the same specialty as one day", () => {
+    const s = build([
+      row({ session_date: "2030-05-06", session: "am", theatre_session_id: "L1" }),
+      row({ session_date: "2030-05-06", session: "pm", theatre_session_id: "L1" }),
+    ]);
+    expect(s.totals.days).toBe(1);
+  });
+
+  it("does not count an evening-only date; an extra-session-only date counts", () => {
+    const s = build([
+      row({ session_date: "2030-05-06", session: "eve", duty_type: "general_consultant_oncall" }),
+      row({ session_date: "2030-05-07", session: "am", extra_type: "wli" }),
+      row({ session_date: "2030-05-08", session: "am" }),
+    ]);
+    expect(s.totals.days).toBe(2);
+    expect(s.totals.sessions).toBe(1);
+    expect(s.totals.onCalls).toBe(1);
+    expect(s.totals.extraSessions).toBe(1);
+  });
+
+  it("201 entries over 119 dates read 119, not the 149 specialty sum; CSV matches", () => {
+    const fx = dayCountFixture();
+    const s = build(fx.rows, { lists: fx.lists });
+    expect(fx.rows.filter((r) => r.session === "am" || r.session === "pm")).toHaveLength(201);
+    expect(s.areas.reduce((a, x) => a + x.days, 0)).toBe(149);
+    expect(s.totals.days).toBe(119);
+    expect(s.totals.sessions).toBe(197);
+    expect(s.totals.extraSessions).toBe(4);
+    expect(s.scope.distinctDays).toBe(120);
+    expect(practiceSummaryCsv(s, { generatedAt: "x" })).toContain('"totals","all","days","119"');
+  });
+
+  it("keeps specialty days and PAs unchanged", () => {
+    const fx = dayCountFixture();
+    const s = build(fx.rows, { lists: fx.lists });
+    const by = Object.fromEntries(s.areas.map((a) => [a.area, a]));
+    expect(by["Synthetic Gynae"].days).toBe(80);
+    expect(by["Synthetic Ortho"].days).toBe(69);
+    expect(s.totals.totalPas).toBe(
+      Math.round(s.areas.reduce((a, x) => a + x.totalPas, 0) * 100) / 100,
+    );
   });
 });

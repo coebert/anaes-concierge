@@ -532,7 +532,8 @@ export function PracticeSummaryReport({
           </li>
           <li>
             <b>Daytime session</b>: an AM or PM entry. <b>Day</b>: a date with at least one daytime
-            session.
+            session, including extra sessions; each date counts once, however many specialties it
+            covers.
           </li>
           <li>
             <b>On-call</b>: evening or night entries; several on one date count as one on-call.

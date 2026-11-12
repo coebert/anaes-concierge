@@ -47,3 +47,8 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [x] Appraisal-year page loads from the server: own year only, other doctors for admins/coordinators, paged, errors with Retry (preview, tested)
 - [x] Published with the leave section (12 Nov)
 - [x] Leave import run live with the span fix (12 Nov 11:12): 4,670 requests saved, 0 errors; My practice summary shows approved leave in working days
+
+## 12 Nov follow-ups
+- [x] Duties & on-call: read-only MRI location line (AM/PM, people linked to MRI lists; list-with-nobody vs no list)
+- [x] My practice summary: "Days with daytime work" counts each date once (was summed per specialty: 149 → 119 on 2026/27); report + CSV + print use the same total; tests + synthetic PDF check
+- [ ] Appraisal-year page still sums days per specialty the same way (shows 149) — awaiting Rob's go-ahead
