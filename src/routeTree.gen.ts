@@ -75,6 +75,7 @@ import { Route as AuthenticatedCoordinatorUnlinkedSessionsRouteImport } from './
 import { Route as AuthenticatedLeaveEntitlementsRouteImport } from './routes/_authenticated/leave.entitlements'
 import { Route as AuthenticatedLeaveForecastRouteImport } from './routes/_authenticated/leave_.forecast'
 import { Route as AuthenticatedMeCompetenciesRouteImport } from './routes/_authenticated/me.competencies'
+import { Route as AuthenticatedMePracticeSummaryRouteImport } from './routes/_authenticated/me_.practice-summary'
 import { Route as AuthenticatedRobustnessIndexRouteImport } from './routes/_authenticated/robustness.index'
 import { Route as AuthenticatedRobustnessConsultantAuditsRouteImport } from './routes/_authenticated/robustness.consultant-audits'
 import { Route as AuthenticatedRobustnessConsultantFeasibilityRouteImport } from './routes/_authenticated/robustness.consultant-feasibility'
@@ -481,6 +482,12 @@ const AuthenticatedMeCompetenciesRoute =
     path: '/competencies',
     getParentRoute: () => AuthenticatedMeRoute,
   } as any)
+const AuthenticatedMePracticeSummaryRoute =
+  AuthenticatedMePracticeSummaryRouteImport.update({
+    id: '/me_/practice-summary',
+    path: '/me/practice-summary',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedRobustnessIndexRoute =
   AuthenticatedRobustnessIndexRouteImport.update({
     id: '/robustness/',
@@ -735,6 +742,7 @@ export interface FileRoutesByFullPath {
   '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/me/competencies': typeof AuthenticatedMeCompetenciesRoute
+  '/me/practice-summary': typeof AuthenticatedMePracticeSummaryRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -832,6 +840,7 @@ export interface FileRoutesByTo {
   '/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/leave/forecast': typeof AuthenticatedLeaveForecastRoute
   '/me/competencies': typeof AuthenticatedMeCompetenciesRoute
+  '/me/practice-summary': typeof AuthenticatedMePracticeSummaryRoute
   '/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -933,6 +942,7 @@ export interface FileRoutesById {
   '/_authenticated/leave/entitlements': typeof AuthenticatedLeaveEntitlementsRoute
   '/_authenticated/leave_/forecast': typeof AuthenticatedLeaveForecastRoute
   '/_authenticated/me/competencies': typeof AuthenticatedMeCompetenciesRoute
+  '/_authenticated/me_/practice-summary': typeof AuthenticatedMePracticeSummaryRoute
   '/_authenticated/robustness/consultant-audits': typeof AuthenticatedRobustnessConsultantAuditsRoute
   '/_authenticated/robustness/consultant-feasibility': typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   '/_authenticated/robustness/last-minute-changes': typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -1034,6 +1044,7 @@ export interface FileRouteTypes {
     | '/leave/entitlements'
     | '/leave/forecast'
     | '/me/competencies'
+    | '/me/practice-summary'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/last-minute-changes'
@@ -1131,6 +1142,7 @@ export interface FileRouteTypes {
     | '/leave/entitlements'
     | '/leave/forecast'
     | '/me/competencies'
+    | '/me/practice-summary'
     | '/robustness/consultant-audits'
     | '/robustness/consultant-feasibility'
     | '/robustness/last-minute-changes'
@@ -1231,6 +1243,7 @@ export interface FileRouteTypes {
     | '/_authenticated/leave/entitlements'
     | '/_authenticated/leave_/forecast'
     | '/_authenticated/me/competencies'
+    | '/_authenticated/me_/practice-summary'
     | '/_authenticated/robustness/consultant-audits'
     | '/_authenticated/robustness/consultant-feasibility'
     | '/_authenticated/robustness/last-minute-changes'
@@ -1752,6 +1765,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMeCompetenciesRouteImport
       parentRoute: typeof AuthenticatedMeRoute
     }
+    '/_authenticated/me_/practice-summary': {
+      id: '/_authenticated/me_/practice-summary'
+      path: '/me/practice-summary'
+      fullPath: '/me/practice-summary'
+      preLoaderRoute: typeof AuthenticatedMePracticeSummaryRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/robustness/': {
       id: '/_authenticated/robustness/'
       path: '/robustness'
@@ -2122,6 +2142,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCoordinatorRotaRoute: typeof AuthenticatedCoordinatorRotaRoute
   AuthenticatedCoordinatorUnlinkedSessionsRoute: typeof AuthenticatedCoordinatorUnlinkedSessionsRoute
   AuthenticatedLeaveForecastRoute: typeof AuthenticatedLeaveForecastRoute
+  AuthenticatedMePracticeSummaryRoute: typeof AuthenticatedMePracticeSummaryRoute
   AuthenticatedRobustnessConsultantAuditsRoute: typeof AuthenticatedRobustnessConsultantAuditsRoute
   AuthenticatedRobustnessConsultantFeasibilityRoute: typeof AuthenticatedRobustnessConsultantFeasibilityRoute
   AuthenticatedRobustnessLastMinuteChangesRoute: typeof AuthenticatedRobustnessLastMinuteChangesRoute
@@ -2198,6 +2219,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCoordinatorUnlinkedSessionsRoute:
     AuthenticatedCoordinatorUnlinkedSessionsRoute,
   AuthenticatedLeaveForecastRoute: AuthenticatedLeaveForecastRoute,
+  AuthenticatedMePracticeSummaryRoute: AuthenticatedMePracticeSummaryRoute,
   AuthenticatedRobustnessConsultantAuditsRoute:
     AuthenticatedRobustnessConsultantAuditsRoute,
   AuthenticatedRobustnessConsultantFeasibilityRoute:

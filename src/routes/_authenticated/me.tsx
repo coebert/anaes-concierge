@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/lib/auth-context";
@@ -37,7 +37,12 @@ function MyRotaPage() {
   }
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">My rota</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight">My rota</h1>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/me/practice-summary">Practice summary for appraisal</Link>
+        </Button>
+      </div>
       <CalendarSubscribeCard />
       <StaffWeekView staffId={user.id} />
     </div>

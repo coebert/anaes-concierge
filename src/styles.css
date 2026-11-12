@@ -277,3 +277,24 @@
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
 }
+
+/* Printable reports (pages marked data-print-report): hide app chrome and controls. */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+@media print {
+  body:has([data-print-report]) .peer[data-variant],
+  body:has([data-print-report]) header.safe-top,
+  body:has([data-print-report]) .skip-to-content,
+  [data-print-report] [data-print-hide] {
+    display: none !important;
+  }
+  body:has([data-print-report]) main {
+    max-width: none;
+    padding: 0;
+  }
+  [data-print-report] .break-inside-avoid {
+    break-inside: avoid;
+  }
+}

@@ -40,3 +40,7 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] Decide meaning of `half_day_start/end` (screens disagree) before importing half-day leave
 - [ ] Decide what to do with 395 past rows no longer in CLWRota (kept as history)
 - [ ] Weekend day lists / Cardiac Suite have no app theatre — department decision
+
+## Practice summary for appraisal (12 Nov)
+- [x] My practice summary (/me/practice-summary): own data only, appraisal-year default + custom dates, print + aggregate CSV, tests (preview only)
+- [ ] Signed-in browser check of /me/practice-summary — blocked: no signed-in preview session available to the agent
