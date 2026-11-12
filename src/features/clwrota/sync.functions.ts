@@ -914,6 +914,8 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
   // persist as bogus duty_type='theatre' rows with no theatre_session_id
   // and pollute trainee unmatched-row metrics.
   const nonWorkingExtIds = new Set<string>();
+  // Keys carried by at least one feed row classified as working.
+  const workingRowExtIds = new Set<string>();
 
   // --- Pass 1: parse rows, match staff/theatre, collect work in memory. -----
   type SessionDraft = {
@@ -937,6 +939,8 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     source: "clwrota";
     theatre_session_key: string | null; // resolve after sessions upserted
     clwrota_external_id: string;
+    /** Key is the person|date|session fallback, not a source row id. */
+    external_id_is_fallback: boolean;
     notes: string | null;
     is_non_sag: boolean;
     extra_type: string | null;
@@ -1173,8 +1177,13 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     const tutorialNote = tutorialNoteRaw ? String(tutorialNoteRaw).trim() || null : null;
     const startTimeRaw = pick(row, ["start_time", "shift.start_time", "session.start_time"]);
     const endTimeRaw = pick(row, ["end_time", "shift.end_time", "session.end_time"]);
+    const sourceRowId = pick(row, ["id", "rota_id", "assignment_id", "external_id"]);
+    // Without a source row id the key falls back to person|date|session,
+    // which several distinct feed rows (a duty plus an "Available" row, or
+    // two duties in one half) can share.
+    const externalIdIsFallback = !sourceRowId;
     const externalId =
-      pick(row, ["id", "rota_id", "assignment_id", "external_id"]) ??
+      sourceRowId ??
       (personExtId && dateRaw && sessRaw ? `${personExtId}|${dateRaw}|${sessRaw}` : null);
 
     const session_date = normaliseDate(dateRaw);
@@ -1230,6 +1239,10 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
       skipped.push({ label, reason: "non-working rota label (off/day off/available)" });
       continue;
     }
+    // Working evidence for this key, recorded before any later row-level
+    // skip (unmatched staff etc.) so a shared non-working row can never
+    // delete the stored working row for it.
+    workingRowExtIds.add(externalId);
 
     let staffId: string | undefined;
     if (personEmail) staffId = profByEmail.get(personEmail.toLowerCase());
@@ -1451,6 +1464,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
         attending_consultant_ids: Array.from(attendingIds),
         theatre_session_key: half === session ? theatreSessionKey : null,
         clwrota_external_id: extIdForHalf,
+        external_id_is_fallback: externalIdIsFallback,
         notes,
         is_non_sag: isNonSagRow,
         extra_type: extraTypeName ? String(extraTypeName).trim().toLowerCase() || null : null,
@@ -1679,9 +1693,12 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
       (row) => row.reason === "duplicate_external_id",
     ).length;
     const duplicateStaffSessions = dedupedAssignments.dropped.length - duplicateExternalIds;
+    const separateDuties = dedupedAssignments.dropped.filter(
+      (row) => row.kind === "separate_duty",
+    ).length;
     skipped.push({
       label: "duplicate CLWRota assignments collapsed",
-      reason: `${dedupedAssignments.dropped.length} duplicate row(s) ignored before upsert (${duplicateExternalIds} repeated external id, ${duplicateStaffSessions} repeated staff/session)`,
+      reason: `${dedupedAssignments.dropped.length} duplicate row(s) ignored before upsert (${duplicateExternalIds} repeated external id, ${duplicateStaffSessions} repeated staff/session; ${dedupedAssignments.dropped.length - separateDuties} identical duty, ${separateDuties} a different duty in the same half — one row per half is stored)`,
     });
   }
   const dedupedDrafts = dedupedAssignments.assignments;
@@ -1869,7 +1886,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
   // and an "Available"/off row in Not setup weeks).
   const { stale: staleNonWorkingIds, keptForWorkingRow } = selectStaleNonWorkingExtIds(
     nonWorkingExtIds,
-    assignmentDrafts.map((a) => a.clwrota_external_id),
+    [...workingRowExtIds, ...assignmentDrafts.map((a) => a.clwrota_external_id)],
   );
   if (keptForWorkingRow > 0) {
     skipped.push({

@@ -69,3 +69,43 @@ Supported explicit-range hook on the published app; rota step only.
 - Discrepancy: the 48 removals are working rows (12 theatre, 27 on-call, 5 ward, 4 admin; all
   Not setup weeks, none tagged) whose fallback key person|date|half also belongs to a
   non-working row; the clean-up deletes them right after saving. Pre-existing; not fixed.
+
+## Key-collision investigation (12 Nov 2026, 09:17–09:25 UTC)
+Read-only same-range replay (25 Nov 2026 – 1 Feb 2027) of the real import code against the
+configured feed and live database; every write was recorded in memory and never sent (database
+API limited to reads, egress limited to the feed). Counts only.
+
+- Feed now: 7,662 rows (7,660 on 10 Nov); 4,298 non-working (was 4,345), 3,364 working
+  rows -> 3,386 drafts (22 all-day medical-examiner rows split into AM+PM by their times).
+- **The 48 rows are already back.** Production already served the clean-up fix (published at or
+  after 10 Nov 18:57). The rotating imports of 11 Nov 20:00 and 20:30 re-saved all 48
+  (27 ICU consultant on-call, 13 theatre — all linked to a list, 3 obstetrics, 3 SPA, 1 admin,
+  1 in-charge) and deleted none. The old delete-every-non-working-key rule would delete the same
+  48 again (replayed: 48 deleted after saving); current code deletes 0.
+- **The "9 unexplained" were an accounting artefact.** The 44 working rows "not under their own
+  key" were 22 all-day medical-examiner rows stored as two half rows (`key|am`, `key|pm`, both
+  saved) + 22 rows lost to the one-row-per-half collapse. 44 - 35 left 9 only because the 13
+  repeated-key collapses do not leave a key missing. Historical figures reconcile exactly:
+  (7,660 - 4,345) + 22 splits - 35 collapses = 3,302 saved.
+- **35 collapses are all separate duties, not true duplicates:**
+  - 13 share a fallback key: an ICU consultant on-call row plus a theatre (7), SPA (4), admin
+    (1) or in-charge (1) row in the same weekday half. Previously the later feed row won.
+  - 22 have different keys: an all-day medical-examiner split beats an AM in-charge (10),
+    SPA (6) or theatre (6) row (existing priority). Unchanged; logged for a decision.
+- Other collision paths checked: medical-examiner pre-split purge (only un-suffixed ME rows),
+  stale same-half replacement (pre-upsert; a failed upsert chunk self-heals on the next run),
+  locally edited rows (0 in window; never deleted or overwritten), manual rows (0 in window),
+  chunked slices (a key never spans two slices), explicit source ids (latest copy still wins).
+
+### Fix (tested)
+- Working evidence is recorded for every working-classified feed row before later row skips, so
+  a shared non-working row can never delete it (e.g. if the person is temporarily unmatched).
+- Two working rows on one fallback key resolve by the existing duty priority, not feed order:
+  theatre still wins over on-call (7); ICU consultant on-call now wins over SPA (4), admin (1)
+  and in-charge (1). Repeated source row ids keep latest-copy-wins.
+- Replay vs live code, same feed: 0 rows deleted either way, 0 rows added/removed by the fix;
+  6 stored halves change duty (all 6 above, Dec–Jan), which removes 4 SPA-contingency halves.
+
+Forecast before import (app logic, read-only, 10 Nov – 1 Feb): 6 tagged days, 3 potential
+pressure (11, 17, 23 Nov), 0 elevated, 6 unverified slots (Endo AM+PM 24 Nov, 22 Dec, 26 Jan);
+25 Nov – 1 Feb halves: 57 ok, 33 tight, 4 SPA needed, 4 shortfall.

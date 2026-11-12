@@ -38,4 +38,24 @@ describe("selectStaleNonWorkingExtIds", () => {
     const r = selectStaleNonWorkingExtIds([k, k], []);
     expect(r.stale).toEqual([k]);
   });
+
+  it("is idempotent: a re-run of the same import deletes nothing new and keeps the same rows", () => {
+    const shared = key("p5", "2027-01-19", "PM");
+    const offOnly = key("p6", "2027-01-19", "PM");
+    const first = selectStaleNonWorkingExtIds([shared, offOnly], [shared]);
+    const second = selectStaleNonWorkingExtIds([shared, offOnly], [shared]);
+    expect(second).toEqual(first);
+    expect(first.stale).toEqual([offOnly]);
+  });
+
+  it("protects a key whose working row was later skipped (e.g. staff not matched)", () => {
+    // The importer passes keys of every working-classified feed row, not
+    // only rows that became drafts, so an unmatched working row still wins.
+    const k = key("p7", "2027-01-20", "AM");
+    const workingEvidence = new Set([k]);
+    const drafts: string[] = [];
+    const r = selectStaleNonWorkingExtIds([k], [...workingEvidence, ...drafts]);
+    expect(r.stale).toEqual([]);
+    expect(r.keptForWorkingRow).toBe(1);
+  });
 });
