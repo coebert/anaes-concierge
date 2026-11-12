@@ -31,3 +31,9 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] 22 rows per window lost to a same-half medical-examiner split (6 theatre, 10 in-charge, 6 SPA; all AM) — one row per half is stored; needs a department decision on which duty wins
 
 - [ ] Cover view leave read: sort order not unique (14 repeated rows dropped across pages) — add an id tiebreaker
+
+## CLWRota end-to-end capture audit (12 Nov)
+- [ ] Field inventory: requested / returned / preserved / used for assignments, staff, leave feeds
+- [ ] Exact per-row disposition for the latest window (deduped, excluded, unmatched, lost)
+- [ ] Notes-like fields preserved independently (assignment vs slot vs location); fix confirmed gaps in preview with tests
+- [ ] Concise audit doc with evidence, counts, limits and source dependencies

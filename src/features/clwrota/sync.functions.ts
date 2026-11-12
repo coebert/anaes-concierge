@@ -8,6 +8,14 @@ import {
   normaliseRotaLabelText,
 } from "@/lib/clwrota-labels";
 import { selectStaleNonWorkingExtIds } from "./non-working-cleanup";
+import { selectRemovedAssignments, type StoredClwrotaRow } from "./removed-assignments";
+import {
+  buildSourceDetailRecords,
+  extractAssignmentSourceDetails,
+  persistAssignmentSourceDetails,
+  type AssignmentSourceDetails,
+  type SourceDetailsClient,
+} from "./source-details";
 import { evaluateHistoricalSafeguard } from "@/lib/clwrota-historical-safeguard";
 import {
   fetchReportRaw,
@@ -916,6 +924,12 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
   const nonWorkingExtIds = new Set<string>();
   // Keys carried by at least one feed row classified as working.
   const workingRowExtIds = new Set<string>();
+  // Removed-assignment reconciliation evidence (see ./removed-assignments):
+  // dates the feed returned rows for, dates with a row-level skip that could
+  // hide a real row, and whether any row could not be dated at all.
+  const observedDates = new Set<string>();
+  const uncertainDates = new Set<string>();
+  let undatedRow = false;
 
   // --- Pass 1: parse rows, match staff/theatre, collect work in memory. -----
   type SessionDraft = {
@@ -946,6 +960,8 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     extra_type: string | null;
     pa_credit: number | null;
     attending_consultant_ids: string[];
+    /** Original feed values kept on the restricted source-details relation. */
+    source_details: AssignmentSourceDetails;
   };
 
   const sessionDraftsByKey = new Map<string, SessionDraft>();
@@ -1191,6 +1207,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     const label = `${dateRaw ?? "?"} ${sessRaw ?? "?"} · ${personName ?? personEmail ?? personExtId ?? "?"}`;
 
     if (!session_date) {
+      undatedRow = true;
       labelCollector.markUncertain(null);
       skipped.push({ label, reason: `cannot parse date "${dateRaw ?? ""}"` });
       continue;
@@ -1198,12 +1215,15 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     // Week status is week-level: every dated row counts, even ones skipped
     // below for row-level reasons.
     weekStatusCollector.observeRow(session_date, row);
+    observedDates.add(session_date);
     if (!session) {
+      uncertainDates.add(session_date);
       labelCollector.markUncertain(session_date);
       skipped.push({ label, reason: `cannot parse session "${sessRaw ?? ""}"` });
       continue;
     }
     if (!externalId) {
+      uncertainDates.add(session_date);
       labelCollector.markUncertain(session_date);
       skipped.push({
         label,
@@ -1251,6 +1271,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
     if (!staffId) {
       // The row may belong to a list we DO import from another row, so a
       // blank title on this date can't be treated as a confirmed blank.
+      uncertainDates.add(session_date);
       labelCollector.markUncertain(session_date);
       unmatchedStaff.add(personName ?? personEmail ?? personExtId ?? "(unknown)");
       skipped.push({
@@ -1444,6 +1465,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
             : effectiveConsultantName
               ? `Surgeon: ${effectiveConsultantName}`
               : null;
+    const sourceDetails = extractAssignmentSourceDetails(row);
 
     for (const half of coveredHalves) {
       // When we synthesise a second half from an all-day ME row the
@@ -1468,6 +1490,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
         notes,
         is_non_sag: isNonSagRow,
         extra_type: extraTypeName ? String(extraTypeName).trim().toLowerCase() || null : null,
+        source_details: sourceDetails,
       });
     }
   }
@@ -1847,6 +1870,7 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
   }
 
   let assignmentsUpserted = 0;
+  const upsertedExtIds = new Set<string>();
   for (let i = 0; i < uniqueAssignments.length; i += ASSIGN_CHUNK) {
     const chunk = uniqueAssignments.slice(i, i + ASSIGN_CHUNK);
     const { error: asgErr } = await supabaseAdmin
@@ -1860,6 +1884,38 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
       continue;
     }
     assignmentsUpserted += chunk.length;
+    for (const a of chunk) upsertedExtIds.add(a.clwrota_external_id);
+  }
+
+  // Original feed values per stored assignment (restricted relation; raw
+  // values never logged or returned). Feed rows that lost the one-row-per-
+  // half collapse are attached to the row that was stored for their half.
+  if (upsertedExtIds.size > 0) {
+    const detailPlan = buildSourceDetailRecords({
+      stored: dedupedDrafts.filter((a) => upsertedExtIds.has(a.clwrota_external_id)),
+      dropped: dedupedAssignments.dropped.filter((x) =>
+        upsertedExtIds.has(x.kept.clwrota_external_id),
+      ),
+      nowIso: new Date().toISOString(),
+    });
+    const detailResult = await persistAssignmentSourceDetails(
+      supabaseAdmin as unknown as SourceDetailsClient,
+      detailPlan.records,
+    );
+    if (detailResult.status === "not_installed") {
+      warnings.push({
+        label: "(assignment source details)",
+        reason:
+          "per-assignment title/note/time storage is not installed yet (database update pending); only the legacy note was kept",
+      });
+    } else if (detailResult.status === "error") {
+      errors.push({ label: "(assignment source details)", error: detailResult.message });
+    } else if (detailPlan.collapsedAttached > 0 || detailPlan.collapsedOverflow > 0) {
+      skipped.push({
+        label: "collapsed feed rows kept as source details",
+        reason: `${detailPlan.collapsedAttached} feed row(s) that could not be stored (one row per half) kept on the stored assignment${detailPlan.collapsedOverflow ? `; ${detailPlan.collapsedOverflow} beyond the per-row limit not kept` : ""}`,
+      });
+    }
   }
   const assignmentsInserted = uniqueAssignments.reduce(
     (n, a) => n + (preExistingExtIds.has(a.clwrota_external_id) ? 0 : 1),
@@ -1917,6 +1973,96 @@ async function performRotaSyncImpl(opts: RotaSyncOpts, trace: RotaSyncTrace) {
       skipped.push({
         label: "stale non-working rows removed",
         reason: `${nonWorkingCleaned} prior rota_assignment row(s) deleted because the upstream label is now recognised as non-working`,
+      });
+    }
+  }
+
+  // --- Pass 6: remove stored CLWRota rows the feed no longer carries. -----
+  // The feed has no tombstones; a dropped assignment just stops appearing.
+  // Guarded (see ./removed-assignments): observed, certain dates inside the
+  // requested window only; never locally edited rows; refused when the run
+  // had any error or when an implausible share of rows would go.
+  let removedFromSource = 0;
+  const removalWindow = trace.requested
+    ? { from: trace.requested.from, to: trace.requested.to }
+    : null;
+  if (removalWindow && observedDates.size > 0) {
+    const obs = Array.from(observedDates)
+      .filter((d) => d >= removalWindow.from && d <= removalWindow.to)
+      .sort();
+    const stored: StoredClwrotaRow[] = [];
+    let lookupFailed = false;
+    if (obs.length > 0 && errors.length === 0 && !undatedRow) {
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabaseAdmin
+          .from("rota_assignments")
+          .select("id,clwrota_external_id,session_date,source,locally_modified")
+          .eq("source", "clwrota")
+          .gte("session_date", obs[0])
+          .lte("session_date", obs[obs.length - 1])
+          .order("id", { ascending: true })
+          .range(from, from + 999);
+        if (error) {
+          lookupFailed = true;
+          errors.push({ label: "(removed-assignment lookup)", error: error.message });
+          break;
+        }
+        stored.push(...((data ?? []) as StoredClwrotaRow[]));
+        if ((data ?? []).length < 1000) break;
+      }
+    }
+    const plan = selectRemovedAssignments({
+      stored,
+      feedKeys: new Set([
+        ...workingRowExtIds,
+        ...nonWorkingExtIds,
+        ...assignmentDrafts.map((a) => a.clwrota_external_id),
+      ]),
+      observedDates,
+      uncertainDates,
+      window: removalWindow,
+      notBefore: new Date().toISOString().slice(0, 10),
+      runUncertain: lookupFailed || errors.length > 0 || undatedRow,
+    });
+    if (plan.guard === "too_many") {
+      warnings.push({
+        label: "(removed-assignment guard)",
+        reason: `not removing: too many stored rows (of ${plan.inScope}) are absent from the feed — check the feed before trusting this run`,
+      });
+    }
+    for (let i = 0; i < plan.remove.length; i += SUPABASE_IN_CHUNK) {
+      const chunk = plan.remove.slice(i, i + SUPABASE_IN_CHUNK);
+      const { error: rmErr, count } = await supabaseAdmin
+        .from("rota_assignments")
+        .delete({ count: "exact" })
+        .in("id", chunk)
+        .eq("source", "clwrota")
+        .eq("locally_modified", false);
+      if (rmErr) {
+        errors.push({
+          label: `(removed-assignment cleanup chunk ${i}-${i + chunk.length})`,
+          error: rmErr.message,
+        });
+        continue;
+      }
+      removedFromSource += count ?? 0;
+    }
+    if (removedFromSource > 0) {
+      skipped.push({
+        label: "assignments no longer in CLWRota removed",
+        reason: `${removedFromSource} stored row(s) removed: CLWRota no longer has them on a date it fully returned`,
+      });
+    }
+    if (plan.absentPast > 0) {
+      skipped.push({
+        label: "past assignments absent from CLWRota kept",
+        reason: `${plan.absentPast} stored row(s) dated before today are no longer in the feed; kept as history (not removed automatically)`,
+      });
+    }
+    if (plan.keptUncertainDate > 0) {
+      skipped.push({
+        label: "absent assignments kept (incomplete date)",
+        reason: `${plan.keptUncertainDate} stored row(s) not in the feed kept because a row on that date could not be matched`,
       });
     }
   }

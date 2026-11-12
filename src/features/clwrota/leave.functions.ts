@@ -172,7 +172,12 @@ export async function performLeaveSync() {
         ]) ??
         ([personFirst, personLast].filter(Boolean).join(" ").trim() || null);
 
+      // The leave_events feed is one row per leave DAY/session; the request's
+      // own span is leave_request.start_date/end_date. Reading the event's
+      // start_time/end_time first stored every multi-day request as its last
+      // event only (one day) — see docs/clwrota-capture-audit-2026-11-12.md.
       const startRaw = pick(row, [
+        "leave_request.start_date",
         "start_date",
         "from_date",
         "from",
@@ -185,6 +190,7 @@ export async function performLeaveSync() {
         "date",
       ]);
       const endRaw = pick(row, [
+        "leave_request.end_date",
         "end_date",
         "to_date",
         "to",
@@ -265,11 +271,16 @@ export async function performLeaveSync() {
         continue;
       }
 
+      // Several feed rows (one per leave day) share one request id: keep the
+      // widest span seen rather than whichever row came last.
+      const prior = draftsByExtId.get(externalId);
+      const spanStart = prior && prior.start_date < start_date ? prior.start_date : start_date;
+      const spanEnd = prior && prior.end_date > end_date ? prior.end_date : end_date;
       draftsByExtId.set(externalId, {
         staff_id: staffId,
         type: classifyLeaveType(typeRaw, reasonText),
-        start_date,
-        end_date,
+        start_date: spanStart,
+        end_date: spanEnd,
         status: classifyLeaveStatus(statusRaw),
         reason: reasonText,
         clwrota_external_id: externalId,

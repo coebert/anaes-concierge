@@ -244,6 +244,51 @@ export function dropReportField(url: string, field: string): string | null {
   }
 }
 
+/**
+ * Personal contact, login and pay fields some configured report URLs ask
+ * for but nothing in the app reads (checked across src/). Dropped from an
+ * explicit `fields=` list before every fetch so they are never pulled into
+ * the import at all. A URL without `fields=` (server default) is unchanged.
+ */
+export const UNUSED_PERSONAL_REPORT_FIELDS = [
+  "person.mobile_number",
+  "person.sharing_mobile_number",
+  "person.last_login",
+  "person.payscale",
+  "person.payroll_period_type",
+  "person.calculation_set",
+  "mobile_number",
+  "sharing_mobile_number",
+  "last_login",
+  "payscale",
+  "payroll_period_type",
+  "calculation_set",
+  "extra_submittal.payment_rate_amount",
+  "extra_submittal.payment_rate_name",
+  "extra_submittal.payment_rate_type",
+  "extra_submittal.total_amount",
+  "extra_submittal.esr_element",
+] as const;
+
+export function withoutUnusedPersonalFields(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl);
+    const existing = u.searchParams.get("fields");
+    if (!existing) return rawUrl;
+    const drop = new Set<string>(UNUSED_PERSONAL_REPORT_FIELDS);
+    const all = existing
+      .split(",")
+      .map((f) => f.trim())
+      .filter(Boolean);
+    const kept = all.filter((f) => !drop.has(f));
+    if (kept.length === all.length || kept.length === 0) return rawUrl;
+    u.searchParams.set("fields", kept.join(","));
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 export async function fetchReportRaw(
   url: string,
   apiKey: string,
@@ -256,7 +301,9 @@ export async function fetchReportRaw(
   // Callers that already asked for an explicit, bounded window (sliced syncs,
   // audits) must opt out of the rolling extension — otherwise a 3-day slice is
   // silently widened to 12 months and the worker runs out of memory.
-  let effectiveUrl = extendFutureWindow ? withRollingFutureWindow(url) : url;
+  let effectiveUrl = withoutUnusedPersonalFields(
+    extendFutureWindow ? withRollingFutureWindow(url) : url,
+  );
   let lastErr: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
