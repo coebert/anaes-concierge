@@ -97,7 +97,10 @@ function PracticeSummaryPage() {
   const exportCsv = () => {
     if (!q.data) return;
     downloadTextFile(
-      practiceSummaryCsv(q.data.summary, { generatedAt: q.data.generatedAt }),
+      practiceSummaryCsv(q.data.summary, {
+        generatedAt: q.data.generatedAt,
+        leave: q.data.leave,
+      }),
       `practice-summary_${from}_to_${to}.csv`,
       "text/csv;charset=utf-8",
     );

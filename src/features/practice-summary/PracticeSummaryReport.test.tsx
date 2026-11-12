@@ -5,6 +5,7 @@ import { PracticeSummaryReport } from "./PracticeSummaryReport";
 import { buildPracticeSummary, practiceSummaryCsv, type PracticeRow } from "./practice-summary";
 import { downloadTextFile } from "./download";
 import type { PracticeSummaryResult } from "./practice-summary.functions";
+import { summariseLeave } from "./leave-summary";
 
 const ME = "11111111-1111-1111-1111-111111111111";
 const OTHER = "22222222-2222-2222-2222-222222222222";
@@ -35,6 +36,23 @@ const fixture = (rows: PracticeRow[]): PracticeSummaryResult => ({
     weekPublication: new Map(),
     weekImport: new Map(),
   }),
+  leave: summariseLeave({
+    from: "2030-04-01",
+    to: "2031-03-31",
+    today: "2030-09-30",
+    rows: [
+      {
+        id: "lv1",
+        type: "annual",
+        status: "approved",
+        start_date: "2030-06-03",
+        end_date: "2030-06-07",
+        half_day_start: null,
+        half_day_end: null,
+        clwrota_external_id: "c1",
+      },
+    ],
+  }),
   clinician: { name: "Dr Synthetic Me", grade: "consultant" },
   rules: { sessions_per_pa: 1, oncall_pa_credit: 1.5, weekend_pa_credit: 3 },
   weekStatusInstalled: true,
@@ -46,6 +64,22 @@ const fixture = (rows: PracticeRow[]): PracticeSummaryResult => ({
 afterEach(cleanup);
 
 describe("PracticeSummaryReport", () => {
+  it("shows approved leave by type in working days", () => {
+    render(
+      <PracticeSummaryReport data={fixture([row({})])} reflection="" setReflection={() => {}} />,
+    );
+    expect(screen.getByText("Leave")).toBeTruthy();
+    const line = screen.getByText("Annual leave").closest("tr")!;
+    expect(line.textContent).toContain("5");
+    expect(screen.getByText(/counts as whole days/)).toBeTruthy();
+  });
+
+  it("puts leave days in the CSV", () => {
+    const d = fixture([row({})]);
+    const csv = practiceSummaryCsv(d.summary, { generatedAt: d.generatedAt, leave: d.leave });
+    expect(csv).toContain('"leave","annual","working_days","5"');
+  });
+
   it("renders the evidence caveat, sections and definitions; hides ICU when absent", () => {
     render(
       <PracticeSummaryReport

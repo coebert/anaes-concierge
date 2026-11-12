@@ -9,7 +9,14 @@ const ME = "11111111-1111-1111-1111-111111111111";
 const OTHER = "22222222-2222-2222-2222-222222222222";
 
 type Call = { table: string; ops: Array<[string, unknown[]]> };
-function mockDb(opts: { rulesError?: boolean; rows?: Record<string, unknown>[] } = {}) {
+function mockDb(
+  opts: {
+    rulesError?: boolean;
+    rows?: Record<string, unknown>[];
+    leave?: Record<string, unknown>[];
+    leaveError?: boolean;
+  } = {},
+) {
   const calls: Call[] = [];
   const data = (table: string): unknown => {
     if (table === "rota_rules")
@@ -18,6 +25,7 @@ function mockDb(opts: { rulesError?: boolean; rows?: Record<string, unknown>[] }
         : { sessions_per_pa: 1, oncall_pa_credit: 1.5, weekend_pa_credit: 3 };
     if (table === "profiles") return { full_name: "Synthetic Me", grade: "consultant" };
     if (table === "rota_assignments") return opts.rows ?? [];
+    if (table === "leave_requests") return opts.leave ?? [];
     if (table === "theatre_sessions")
       return [
         {
@@ -39,7 +47,10 @@ function mockDb(opts: { rulesError?: boolean; rows?: Record<string, unknown>[] }
         table === "rota_rules" && opts.rulesError
           ? { data: null, error: { message: "denied" } }
           : { data: data(table), error: null };
-      b.range = async (a: number) => ({ data: a === 0 ? data(table) : [], error: null });
+      b.range = async (a: number) =>
+        table === "leave_requests" && opts.leaveError
+          ? { data: null, error: { message: "denied" } }
+          : { data: a === 0 ? data(table) : [], error: null };
       return b;
     },
     rpc: async () => ({ data: [], error: null }),
@@ -116,5 +127,52 @@ describe("loadPracticeSummary", () => {
     await expect(loadPracticeSummary(db as never, ME, "2030-04-01", "2031-03-31")).rejects.toThrow(
       /PA settings/,
     );
+  });
+
+  it("reads only the caller's own leave, without reasons, and counts approved working days", async () => {
+    const { db, calls } = mockDb({
+      leave: [
+        {
+          id: "l1",
+          type: "annual",
+          status: "approved",
+          start_date: "2030-06-03",
+          end_date: "2030-06-07",
+          half_day_start: null,
+          half_day_end: null,
+          clwrota_external_id: "c1",
+        },
+        {
+          id: "l2",
+          type: "study",
+          status: "pending",
+          start_date: "2030-07-01",
+          end_date: "2030-07-02",
+          half_day_start: null,
+          half_day_end: null,
+          clwrota_external_id: null,
+        },
+      ],
+    });
+    const r = await loadPracticeSummary(
+      db as never,
+      ME,
+      "2030-04-01",
+      "2031-03-31",
+      new Date("2030-10-01T00:00:00Z"),
+    );
+    const lr = calls.find((c) => c.table === "leave_requests")!;
+    expect(lr.ops).toContainEqual(["eq", ["staff_id", ME]]);
+    const cols = String(lr.ops.find((o) => o[0] === "select")![1][0]);
+    expect(cols).not.toMatch(/reason|notes/);
+    expect(r.leave.workingDays).toBe(5);
+    expect(r.leave.pendingRequests).toBe(1);
+  });
+
+  it("fails with an error (not zero leave) when leave can't be read", async () => {
+    const { db } = mockDb({ leaveError: true });
+    await expect(
+      loadPracticeSummary(db as never, ME, "2030-04-01", "2031-03-31"),
+    ).rejects.toThrow();
   });
 });

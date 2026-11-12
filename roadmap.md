@@ -45,4 +45,5 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [x] My practice summary (/me/practice-summary): own data only, appraisal-year default + custom dates, print + aggregate CSV, tests (preview only)
 - [x] Published; signed-in preview check of /me/practice-summary (figures match the appraisal-year page)
 - [x] Appraisal-year page loads from the server: own year only, other doctors for admins/coordinators, paged, errors with Retry (preview, tested)
-- [ ] Publish the server-side appraisal-year page — awaiting Rob
+- [x] Published with the leave section (12 Nov)
+- [x] Leave import run live with the span fix (12 Nov 11:12): 4,670 requests saved, 0 errors; My practice summary shows approved leave in working days

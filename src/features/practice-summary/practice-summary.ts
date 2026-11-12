@@ -32,6 +32,8 @@ import {
   type SpecialtyRow,
 } from "@/features/analytics/specialty-workload";
 
+import type { PracticeLeaveSummary } from "./leave-summary";
+
 export const MAX_RANGE_DAYS = 400;
 
 export interface PracticeRow {
@@ -466,7 +468,10 @@ export function buildPracticeSummary(input: {
 }
 
 /** Aggregate-only CSV (section,item,measure,value). No identifiers or free text from the rota. */
-export function practiceSummaryCsv(s: PracticeSummary, meta: { generatedAt: string }): string {
+export function practiceSummaryCsv(
+  s: PracticeSummary,
+  meta: { generatedAt: string; leave?: PracticeLeaveSummary },
+): string {
   const lines: string[][] = [["section", "item", "measure", "value"]];
   const add = (section: string, item: string, measure: string, value: string | number) =>
     lines.push([section, item, measure, String(value)]);
@@ -502,6 +507,19 @@ export function practiceSummaryCsv(s: PracticeSummary, meta: { generatedAt: stri
     add("coverage", "week_import", k, v as number);
   add("coverage", "weeks", "in_range", s.coverage.weeksInRange);
   for (const [k, v] of Object.entries(s.quality)) add("data_quality", "all", k, v);
+  if (meta.leave) {
+    const l = meta.leave;
+    for (const t of l.byType) {
+      add("leave", t.type, "approved_requests", t.requests);
+      add("leave", t.type, "working_days", t.workingDays);
+      add("leave", t.type, "working_days_still_to_come", t.plannedWorkingDays);
+    }
+    add("leave", "all", "approved_requests", l.approvedRequests);
+    add("leave", "all", "working_days", l.workingDays);
+    add("leave", "all", "working_days_still_to_come", l.plannedWorkingDays);
+    add("leave", "all", "pending_requests_not_counted", l.pendingRequests);
+    add("leave", "all", "rejected_or_cancelled_not_counted", l.notTakenRequests);
+  }
   const esc = (v: string) => {
     // Neutralise spreadsheet formula injection and quote every cell.
     const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;

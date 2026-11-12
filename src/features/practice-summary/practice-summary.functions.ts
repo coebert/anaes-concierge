@@ -25,6 +25,7 @@ import {
   type WeekImport,
   type WeekPublication,
 } from "./practice-summary";
+import { summariseLeave, type PracticeLeaveRow, type PracticeLeaveSummary } from "./leave-summary";
 
 const ID_CHUNK = 200;
 
@@ -32,6 +33,7 @@ type Db = SupabaseClient<Database>;
 
 export interface PracticeSummaryResult {
   summary: PracticeSummary;
+  leave: PracticeLeaveSummary;
   clinician: { name: string | null; grade: string | null };
   rules: { sessions_per_pa: number; oncall_pa_credit: number; weekend_pa_credit: number };
   weekStatusInstalled: boolean;
@@ -116,6 +118,23 @@ export async function loadPracticeSummary(
     }
   }
 
+  // The caller's own leave overlapping the range (RLS: own rows only). No
+  // reason or note columns are read.
+  const leaveRows = await fetchAllRowsPaged<PracticeLeaveRow>(
+    (a, b) =>
+      db
+        .from("leave_requests")
+        .select(
+          "id,type,status,start_date,end_date,half_day_start,half_day_end,clwrota_external_id",
+        )
+        .eq("staff_id", userId)
+        .lte("start_date", to)
+        .gte("end_date", from)
+        .order("id", { ascending: true })
+        .range(a, b) as unknown as PromiseLike<{ data: PracticeLeaveRow[] | null; error: unknown }>,
+    { rowKey: (r) => r.id, label: "practice-summary.leave_requests" },
+  );
+
   const ws = await loadWeekStatus(from, to, db);
   const wsTimeline = buildWeekStatusTimeline({
     rangeStart: from,
@@ -155,6 +174,7 @@ export async function loadPracticeSummary(
       weekPublication,
       weekImport,
     }),
+    leave: summariseLeave({ rows: leaveRows, from, to, today }),
     clinician: { name: profRes.data?.full_name ?? null, grade: profRes.data?.grade ?? null },
     rules,
     weekStatusInstalled: ws.capture === "available",

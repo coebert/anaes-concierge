@@ -115,8 +115,8 @@ export function PracticeSummaryReport({
           These are entries rostered to you on CLWRota and imported into the app. They are not a
           record that the work was delivered, and they contain no case numbers, procedures, patient
           outcomes or evidence of competence. Entries after {fmtDate(s.today)} are planned work that
-          hasn't happened yet ({s.scope.futureEntries} in this range). Leave and absence are not
-          included.
+          hasn't happened yet ({s.scope.futureEntries} in this range). Leave is shown separately
+          below and is not counted as clinical work.
         </AlertDescription>
       </Alert>
 
@@ -129,6 +129,62 @@ export function PracticeSummaryReport({
           </AlertDescription>
         </Alert>
       ) : null}
+
+      <Section
+        title="Leave"
+        description="Your approved leave in these dates, in working days (Monday to Friday), counted the same way as your leave balance."
+      >
+        {data.leave.approvedRequests === 0 ? (
+          <p className="text-sm text-muted-foreground">No approved leave in these dates.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Requests</TableHead>
+                <TableHead className="text-right">Working days</TableHead>
+                <TableHead className="text-right">Of which still to come</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.leave.byType.map((l) => (
+                <TableRow key={l.type}>
+                  <TableCell>{l.label}</TableCell>
+                  <TableCell className="text-right tabular-nums">{l.requests}</TableCell>
+                  <TableCell className="text-right tabular-nums">{n2(l.workingDays)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {n2(l.plannedWorkingDays)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              <TableRow>
+                <TableCell className="font-medium">Total</TableCell>
+                <TableCell className="text-right tabular-nums font-medium">
+                  {data.leave.approvedRequests}
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-semibold">
+                  {n2(data.leave.workingDays)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {n2(data.leave.plannedWorkingDays)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          Leave that crosses the start or end date is counted only inside these dates.
+          {data.leave.fromClwrota > 0
+            ? " CLWRota doesn't send half-days, so leave imported from it counts as whole days."
+            : ""}
+          {data.leave.pendingRequests > 0
+            ? ` ${data.leave.pendingRequests} request(s) still waiting for a decision aren't counted.`
+            : ""}
+          {data.leave.notTakenRequests > 0
+            ? ` ${data.leave.notTakenRequests} rejected or cancelled request(s) aren't counted.`
+            : ""}
+        </p>
+      </Section>
 
       <Section
         title="Overall scope"
