@@ -33,7 +33,10 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [ ] Cover view leave read: sort order not unique (14 repeated rows dropped across pages) — add an id tiebreaker
 
 ## CLWRota end-to-end capture audit (12 Nov)
-- [ ] Field inventory: requested / returned / preserved / used for assignments, staff, leave feeds
-- [ ] Exact per-row disposition for the latest window (deduped, excluded, unmatched, lost)
-- [ ] Notes-like fields preserved independently (assignment vs slot vs location); fix confirmed gaps in preview with tests
-- [ ] Concise audit doc with evidence, counts, limits and source dependencies
+- [x] Field inventory, exact row disposition, notes capture — `docs/clwrota-capture-audit-2026-11-12.md`
+- [x] Preview fixes: removed-assignment reconciliation, leave request span, per-assignment source details (writer), unused personal fields dropped
+- [ ] Publish + one rota and one leave import to activate (removes 284 stale rows, widens 892 approved leave requests) — needs Rob's go-ahead
+- [ ] Apply pending migration 0011 (per-assignment source details) — needs Rob's go-ahead
+- [ ] Decide meaning of `half_day_start/end` (screens disagree) before importing half-day leave
+- [ ] Decide what to do with 395 past rows no longer in CLWRota (kept as history)
+- [ ] Weekend day lists / Cardiac Suite have no app theatre — department decision
