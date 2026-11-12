@@ -29,3 +29,5 @@ Done: security follow-up, accuracy A–E, TCS honesty, frontend F–I, baseline 
 - [x] Clean-up fix was already live (published ≥ 10 Nov 18:57); the 48 rows were re-saved by the 11 Nov 20:00/20:30 imports
 - [x] Fallback-key collisions: working evidence recorded before later skips; two working rows on one key resolved by duty priority (published + live import 25 Nov–1 Feb, 12 Nov)
 - [ ] 22 rows per window lost to a same-half medical-examiner split (6 theatre, 10 in-charge, 6 SPA; all AM) — one row per half is stored; needs a department decision on which duty wins
+
+- [ ] Cover view leave read: sort order not unique (14 repeated rows dropped across pages) — add an id tiebreaker

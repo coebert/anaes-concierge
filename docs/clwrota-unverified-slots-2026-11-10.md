@@ -104,8 +104,26 @@ API limited to reads, egress limited to the feed). Counts only.
   theatre still wins over on-call (7); ICU consultant on-call now wins over SPA (4), admin (1)
   and in-charge (1). Repeated source row ids keep latest-copy-wins.
 - Replay vs live code, same feed: 0 rows deleted either way, 0 rows added/removed by the fix;
-  6 stored halves change duty (all 6 above, Dec–Jan), which removes 4 SPA-contingency halves.
+  6 stored halves change duty (4 SPA, 1 admin, 1 in-charge -> ICU consultant on-call, 28 Dec–25 Jan).
 
 Forecast before import (app logic, read-only, 10 Nov – 1 Feb): 6 tagged days, 3 potential
 pressure (11, 17, 23 Nov), 0 elevated, 6 unverified slots (Endo AM+PM 24 Nov, 22 Dec, 26 Jan);
 25 Nov – 1 Feb halves: 57 ok, 33 tight, 4 SPA needed, 4 shortfall.
+
+### Live import after publishing (12 Nov 2026 09:31 UTC, rota only, 25 Nov 2026 – 1 Feb 2027)
+- New deployment observed on the live site before the import; the import's own summary used the
+  new wording ("0 identical duty, 35 a different duty"), confirming the new code ran.
+- 7,662 rows, 3,351 saved (48 inserted, 3,303 updated), 0 write errors, 0 rows deleted,
+  0 non-working clean-ups, 48 working rows kept despite a same-key non-working row; window
+  recorded as ok and fully covered. 0 change-log entries, 0 alerts (all dates > 48 h away).
+- Database before/after: 3,587 -> 3,635 rows; 0 removed; 48 added, all December ICU trainee
+  (46) or general on-call (2) rows that changed in CLWRota from non-working to working since
+  10 Nov — not the 48 collision rows, which were all still present. 6 duty changes exactly as
+  replayed; 0 theatre-link changes. Live result matched the replay prediction by duty type.
+- Forecast after (10 Nov – 1 Feb): unchanged — 6 tagged days, 3 potential pressure
+  (11, 17, 23 Nov), 0 elevated, 6 unverified Endo slots. Cover: only 25 Jan changed
+  (AM one fewer SPA contingency; PM ok -> tight, the consultant now on ICU on-call that day);
+  Dec ICU rows raised "other duty" counts on 14–22 Dec without changing headroom.
+  25 Nov – 1 Feb halves: 56 ok, 34 tight, 4 SPA needed, 4 shortfall.
+- Unrelated: the cover view's leave read dropped 14 rows repeated across page boundaries
+  (its sort order isn't unique) — flagged in the roadmap, not changed.
